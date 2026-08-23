@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": ".test-build",
+    "sourceMap": false,
+    "declaration": false,
+    "esModuleInterop": true
+  },
+  "include": ["src/contracts/**/*.ts", "src/testing/**/*.ts", "test/**/*.ts"]
+}
