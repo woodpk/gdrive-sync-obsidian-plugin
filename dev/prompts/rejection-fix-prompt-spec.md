@@ -49,6 +49,8 @@ If content does none of those things, exclude it.
 
 Reviewer-only reasoning, audit narrative, epistemic safeguards, general coding philosophy, and explanations of how the reviewer conducted the review do not belong in the corrective prompt.
 
+Verification instructions must also be executable in the coding agent's actual customer-facing ChatGPT environment. Do not assume conventional local development tooling that the session does not expose.
+
 ---
 
 ## No Diagnostic Redelegation
@@ -285,14 +287,24 @@ ACCEPTANCE
 
 ### VERIFICATION
 
-Require only verification relevant to the listed corrections.
+Require only verification relevant to the listed corrections and actually accessible within the coding agent's customer-facing ChatGPT session.
 
-Specify:
+The default assumption is **not** that the coding agent has a local developer shell, Node/npm runtime, package-manager access, IDE task runner, or arbitrary process execution. Do not prescribe `npm`, `npx`, `node`, shell, PowerShell, build, typecheck, lint, or test commands as required verification unless the current coding-agent session demonstrably exposes a tool capable of executing them.
 
-- exact tests/commands when known and appropriate;
-- exact behavioral cases that must be demonstrated;
-- compile/build checks when the correction can affect compilation;
-- targeted regression checks where directly necessary.
+Prefer the strongest available verification in this order, as applicable:
+
+1. direct inspection of every modified file and the exact corrected code;
+2. repository search/inspection of directly affected call sites, contracts, imports, interfaces, schemas, configuration, and tests;
+3. static semantic verification that the corrected implementation satisfies the stated contract and acceptance condition;
+4. structural checks available through repository/file tools, including confirming removed or replaced patterns are no longer present and required references are present;
+5. targeted execution only when the session actually provides an appropriate runtime/tool for the code being verified;
+6. inspection of already-available CI/build/test results when accessible to the coding agent.
+
+Do not require a verification mechanism that the coding agent cannot perform in its environment.
+
+If dynamic build/test/typecheck execution is unavailable, that unavailability is **not itself a correction failure** unless the governing build contract explicitly requires successful execution in an environment the coding agent can actually access. Require the coding agent to record the unavailable check accurately rather than fabricate or imply execution.
+
+When a check cannot be performed, report it as `NOT AVAILABLE IN THIS SESSION`, not merely `NOT EXECUTED`, and continue with the strongest available static/repository verification.
 
 Do not turn verification into a repeat of the whole review unless the correction legitimately affects the whole build.
 
@@ -303,16 +315,19 @@ Example:
 ```text
 VERIFICATION
 
-Run:
-- dotnet test <relevant-project>
-- dotnet build <relevant-solution>
+Perform the strongest checks available in the current ChatGPT session:
+
+- inspect the corrected implementation and directly affected call sites;
+- confirm repository searches show no remaining use of the rejected contract/pattern;
+- inspect the directly relevant tests and verify they assert the corrected behavior;
+- if an appropriate execution tool or accessible CI result is available, use it and report the observed result.
 
 Confirm:
-- the prohibited state in C1 is no longer constructible;
-- the regression case in C2 now passes.
-```
+- the prohibited state in C1 is no longer representable through supported paths;
+- the directly affected code now satisfies the stated acceptance condition.
 
-If commands cannot reasonably be executed in the coding-agent environment, require the strongest available static/targeted verification and require the limitation to be reported.
+If build/typecheck/test execution is unavailable, record those checks as `NOT AVAILABLE IN THIS SESSION`.
+```
 
 ### CHANGE_MANIFEST
 
@@ -322,7 +337,8 @@ Before completion, the coding agent MUST update `dev/evidence/_ca-output.md` so 
 
 - correction IDs implemented;
 - every file created, modified, or deleted during the correction pass;
-- verification commands/checks actually performed and their observed results; and
+- verification checks actually performed and their observed results;
+- any materially relevant dynamic verification that was unavailable, labeled `NOT AVAILABLE IN THIS SESSION`; and
 - any remaining blocker or verification limitation.
 
 Because `dev/evidence/_ca-output.md` is itself modified by this required evidence update, it MUST appear in the correction-pass change manifest.
@@ -344,6 +360,7 @@ Require only the handoff information needed for re-review:
 
 - corrections implemented;
 - verification actually performed and results;
+- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
 - confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - change manifest;
 - any remaining blocker or verification limitation.
@@ -357,7 +374,8 @@ COMPLETION_RESPONSE
 
 Return:
 - correction IDs completed;
-- verification commands/checks actually run and their results;
+- verification checks actually performed and their results;
+- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
 - confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - complete change manifest;
 - any remaining blocker or verification limitation.
@@ -481,15 +499,29 @@ Explain the authority relationship only when the correction would otherwise be a
 
 ---
 
-## Verification Evidence Rule
+## Verification Capability and Evidence Rule
 
-The coding agent must report only verification it actually performed.
+The coding agent operates in a customer-facing ChatGPT session. Verification requirements MUST therefore be capability-aware.
 
-Before the correction pass ends, the coding agent MUST update `dev/evidence/_ca-output.md` with the current correction-pass implementation evidence, complete change manifest, verification actually performed and observed results, and any remaining blocker or limitation. The file must no longer describe the rejected build as though it were the current repository state.
+Do not assume access to a local shell, Node/npm, package-manager commands, IDE build tasks, operating-system process execution, or any other developer-workstation facility unless that capability is actually exposed in the current session.
+
+The coding agent must use the strongest verification tools it actually has and must report only verification it actually performed. Repository inspection, code/reference search, contract comparison, static semantic analysis, and inspection of accessible existing CI/build/test evidence are valid verification methods when executable tooling is unavailable.
+
+Unavailable dynamic checks must be reported as `NOT AVAILABLE IN THIS SESSION`. They must not be presented as failed checks, silently omitted, or described merely as `NOT EXECUTED` in a way that obscures the environment limitation.
+
+Before the correction pass ends, the coding agent MUST update `dev/evidence/_ca-output.md` with:
+
+- the current correction-pass implementation evidence;
+- the complete change manifest;
+- every verification check actually performed and its observed result;
+- any materially relevant verification that was unavailable, labeled `NOT AVAILABLE IN THIS SESSION`; and
+- any remaining blocker or limitation.
+
+The file must no longer describe the rejected build as though it were the current repository state.
 
 Do not require the corrective prompt to contain generalized reviewer epistemology.
 
-If test execution is claimed, both `dev/evidence/_ca-output.md` and the completion response must identify the command/check and observed result sufficiently for the reviewer to validate it.
+If dynamic execution is claimed, both `dev/evidence/_ca-output.md` and the completion response must identify the actual tool/command/check used and observed result sufficiently for the reviewer to validate it.
 
 Final approval remains a separate reviewer action and is not part of the coding agent's repair task.
 
@@ -591,15 +623,19 @@ Do not make unrelated behavioral, architectural, cleanup, or speculative changes
 
 ## VERIFICATION
 
-Run/check:
+Perform the strongest correction-specific checks available in the current ChatGPT session. Prefer direct repository/code inspection and targeted static verification. Use dynamic build/typecheck/test execution only when the session actually provides an appropriate execution capability.
 
-- <targeted verification>
-- <targeted verification>
+Check:
+
+- <available targeted verification>
+- <available targeted verification>
 
 Confirm:
 
 - <correction-specific behavior>
 - <correction-specific behavior>
+
+For any materially relevant dynamic check that cannot be performed, record `NOT AVAILABLE IN THIS SESSION` rather than treating it as a failed or silently skipped check.
 
 ## CHANGE_MANIFEST
 
@@ -608,6 +644,7 @@ Update `dev/evidence/_ca-output.md` before completion so it records:
 - correction IDs implemented;
 - every file created, modified, or deleted during this correction pass;
 - verification actually performed and observed results;
+- any materially relevant unavailable dynamic verification, labeled `NOT AVAILABLE IN THIS SESSION`;
 - any remaining blocker or verification limitation.
 
 Include `dev/evidence/_ca-output.md` itself in the change manifest.
@@ -618,6 +655,7 @@ Return:
 
 - correction IDs completed;
 - verification actually performed and results;
+- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
 - confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - complete change manifest;
 - any remaining blocker or verification limitation.
@@ -639,12 +677,14 @@ Before emitting a corrective prompt, the reviewer must ask:
 3. Where exact replacement code can safely be established, was it supplied?
 4. Are directly necessary consequential edits identified or narrowly authorized?
 5. Does every correction have an objective acceptance condition?
-6. Is verification limited to what materially proves these repairs?
-7. Has all optional improvement and reviewer-only narrative been removed?
-8. Could the coding agent implement the repair without repeating the reviewer's diagnostic work?
-9. Does the work order explicitly require `dev/evidence/_ca-output.md` to be updated with the correction-pass evidence and complete change manifest?
-10. Is anything still present that does not help implement, constrain, or verify the repair?
+6. Is verification limited to what materially proves these repairs and executable within the coding agent's actual ChatGPT-session capabilities?
+7. Does the work order avoid requiring shell/npm/build/typecheck/test execution unless that capability is demonstrably available?
+8. Does it require unavailable materially relevant dynamic checks to be labeled `NOT AVAILABLE IN THIS SESSION` rather than falsely treated as executed or failed?
+9. Has all optional improvement and reviewer-only narrative been removed?
+10. Could the coding agent implement the repair without repeating the reviewer's diagnostic work?
+11. Does the work order explicitly require `dev/evidence/_ca-output.md` to be updated with the correction-pass evidence and complete change manifest?
+12. Is anything still present that does not help implement, constrain, or verify the repair?
 
-If item 8 or item 9 is `no`, the prompt is under-specified.
+If item 10 or item 11 is `no`, the prompt is under-specified.
 
-If item 10 is `yes`, remove that content unless it is required by another explicit authority.
+If item 12 is `yes`, remove that content unless it is required by another explicit authority.
