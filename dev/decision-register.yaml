@@ -1,23 +1,31 @@
-schema_version: 1
+schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
   as_of: "2026-08-23"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
-  workflow: "Workflow B: Stage 0 -> Stage 1 -> Stage 2B -> Stage 3"
+  workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
   authority_order:
     - user_product_intent
     - target_system_specification
-    - build_decomposition_or_internal_construction_plan
+    - build_decomposition
+    - build_session_contracts
     - repository_grounded_implementation
   stage_state:
     stage_0: complete
-    next_stage: "Stage 1 — Target-System Specification and Minimum Sound Build Decomposition"
+    stage_1_target_system_specification: complete
+    stage_1_build_decomposition: pending
+    next_step: "Stage 1 — Minimum Sound Build Decomposition and coverage/dependency artifacts"
+  supervision_model:
+    mode: "supervised_parallel_capable"
+    supervisor_lineage: "current supervising agent and successive descendant supervisors"
+    worker_bootstrap: "to be created after Stage 1 decomposition/contracts are persisted"
+    parallelism_rule: "freeze and persist shared interfaces/contracts before issuing dependent parallel work"
   status_definitions:
     locked: "Current authoritative decision. Preserve unless the user explicitly changes it."
     superseded: "Historical decision or proposal explicitly replaced by a later decision."
-    deferred_engineering: "Not a product-authority gap. Resolve through Stage 1 research, repository inspection, specification, and engineering analysis unless a material product tradeoff is exposed."
+    deferred_engineering: "Not a product-authority gap. Resolve through repository inspection, specification, and engineering analysis unless a material product tradeoff is exposed."
 
 decisions:
   - id: DEC-001
@@ -25,9 +33,10 @@ decisions:
     category: process
     decision: "The project follows agent-led-software-product-construction-manual.md."
   - id: DEC-002
-    status: locked
+    status: superseded
     category: process
     decision: "Use Recommended Default Workflow B: Stage 0 -> Stage 1 -> Stage 2B -> Stage 3."
+    superseded_by: DEC-009
   - id: DEC-003
     status: locked
     category: process
@@ -47,11 +56,15 @@ decisions:
   - id: DEC-007
     status: locked
     category: process
-    decision: "Stage 0 is complete; there are no currently known unresolved material product decisions preventing Stage 1 target-system specification."
+    decision: "Stage 0 is complete; there are no currently known unresolved material product decisions preventing Stage 1 target-system specification/decomposition."
   - id: DEC-008
     status: locked
     category: authority
     decision: "Existing open-source repositories never outrank user requirements or the target-system specification."
+  - id: DEC-009
+    status: locked
+    category: process
+    decision: "Use Workflow A for construction: Stage 0 -> Stage 1 target specification + persisted minimum sound build decomposition -> Stage 2A supervised construction -> Stage 3 independent validation. Parallel worker agents may be used under the supervisor lineage, but shared interfaces/contracts must be established and persisted before dependent parallel work begins. Successive supervisor chats must consume the persisted target specification, decision register, decomposition/coverage artifacts, and actual current repository state before issuing worker prompts."
 
   - id: DEC-010
     status: locked
@@ -668,7 +681,7 @@ decisions:
   - id: DEC-244
     status: deferred_engineering
     category: obsidian_config
-    decision: "Exact file/path-level .obsidian inclusion/exclusion list will be resolved during Stage 1 from Obsidian behavior, donor repositories, and platform-specific evidence."
+    decision: "Exact file/path-level Obsidian configuration inclusion/exclusion list is an engineering-maintained explicit safe policy; unknown configuration remains excluded until portability/safety is established."
 
   - id: DEC-250
     status: locked
@@ -805,13 +818,18 @@ superseded_decisions:
     superseded_by:
       - DEC-100
       - DEC-101
+  - id: SUP-006
+    status: superseded
+    earlier: "Use Workflow B / Stage 2B autonomous construction without persisted user-facing decomposition."
+    superseded_by:
+      - DEC-009
 
 deferred_engineering:
   - "Whether to fork Google Drive Mirror directly, substantially adapt it, or selectively transplant architecture/code."
-  - "Exact direct-on-device OAuth callback mechanics within Obsidian/iOS; Azure Static Web Apps Free is the locked fallback host if a hosted callback is required."
+  - "Exact direct-on-device OAuth callback and code-exchange mechanics within Obsidian/iOS, subject to current Google policy and the fixed same-device/callback-isolation contract."
   - "Exact mass-deletion circuit-breaker thresholds and heuristic policy."
   - "Exact tombstone/history default retention durations, within the locked bounded/configurable policy."
-  - "Exact .obsidian file/path inclusion and exclusion list."
+  - "Exact version-specific Obsidian configuration allowlist/classifier entries, within the locked portable-safe/unknown-excluded contract."
   - "Concrete synchronization-state schema, persistence technology, versioning representation, and transaction/checkpoint mechanics."
   - "Concrete remote BRAIN Sync folder/schema representation and migration implementation."
   - "Concrete locking/lease implementation used to prevent concurrent local sync writers."
