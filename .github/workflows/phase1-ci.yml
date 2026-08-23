@@ -2,7 +2,7 @@ name: Phase 1 CI
 
 on:
   push:
-    branches: [agt-stg-2a-phase-1-01]
+    branches: [master]
   pull_request:
     branches: [master]
 
