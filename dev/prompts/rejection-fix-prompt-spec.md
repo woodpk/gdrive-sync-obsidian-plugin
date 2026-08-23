@@ -497,92 +497,110 @@ Do not place commentary outside the corrective prompt.
 
 ## Canonical Corrective Prompt Shape
 
-Use the following fixed section order and correction-item shape. Omit only conditional correction fields that are not applicable.
+Use the following fixed section order and correction-item shape. Omit only conditional correction fields that are not applicable. The corrective prompt itself must be a well-formed Markdown document with exactly one level-1 heading at the top and a consistent heading hierarchy beneath it.
 
-````text
-REJECTION
+````markdown
+# REJECTION / FIX CORRECTIVE WORK ORDER
+
+## REJECTION
 
 Build rejected for <correction IDs>.
 
-SCOPE
+## SCOPE
 
 Correct <IDs> and only directly necessary consequential edits.
 Do not make unrelated behavioral, architectural, cleanup, or speculative changes.
 
-CORRECTIONS
+## CORRECTIONS
 
-C1 — <short defect name>
+### C1 — <short defect name>
 
-FILE
+#### FILE
+
 <exact path>
 
-LOCATION
+#### LOCATION
+
 <exact member/type/region>
 
-DEFECT
+#### DEFECT
+
 <what the current code does incorrectly>
 
-AUTHORITY
+#### AUTHORITY
+
 <requirement ID/path, only when useful>
 
-REQUIRED CHANGE
+#### REQUIRED CHANGE
+
 <exact post-repair contract>
 
-REPLACEMENT
+#### REPLACEMENT
 
 ```<language>
 <exact replacement code when safely determinable>
 ```
 
-RELATED CHANGES
+#### RELATED CHANGES
+
 <only directly necessary call sites/tests/dependencies, if any>
 
-CONSTRAINTS
+#### CONSTRAINTS
+
 <only defect-specific constraints, if any>
 
-ACCEPTANCE
+#### ACCEPTANCE
+
 <objective completion condition>
 
-C2 — <next independent defect, if any>
+### C2 — <next independent defect, if any>
 
-FILE
+#### FILE
+
 ...
 
-LOCATION
+#### LOCATION
+
 ...
 
-DEFECT
+#### DEFECT
+
 ...
 
-REQUIRED CHANGE
+#### REQUIRED CHANGE
+
 ...
 
-ACCEPTANCE
+#### ACCEPTANCE
+
 ...
 
-VERIFICATION
+## VERIFICATION
 
 Run/check:
+
 - <targeted verification>
 - <targeted verification>
 
 Confirm:
+
 - <correction-specific behavior>
 - <correction-specific behavior>
 
-CHANGE_MANIFEST
+## CHANGE_MANIFEST
 
 Report every file created, modified, or deleted by this correction pass.
 
-COMPLETION_RESPONSE
+## COMPLETION_RESPONSE
 
 Return:
+
 - correction IDs completed;
 - verification actually performed and results;
 - complete change manifest;
 - any remaining blocker or verification limitation.
 
-STOP
+## STOP
 
 Stop after the listed corrections and directly necessary consequential edits are implemented and verified.
 Do not continue into unrelated work.
