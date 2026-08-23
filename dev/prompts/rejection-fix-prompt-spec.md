@@ -318,6 +318,15 @@ If commands cannot reasonably be executed in the coding-agent environment, requi
 
 Require a complete manifest of files actually created, modified, or deleted during the correction pass.
 
+Before completion, the coding agent MUST update `dev/evidence/_ca-output.md` so it reflects the correction pass rather than the rejected build state. The updated evidence file must contain, at minimum:
+
+- correction IDs implemented;
+- every file created, modified, or deleted during the correction pass;
+- verification commands/checks actually performed and their observed results; and
+- any remaining blocker or verification limitation.
+
+Because `dev/evidence/_ca-output.md` is itself modified by this required evidence update, it MUST appear in the correction-pass change manifest.
+
 Keep the instruction minimal.
 
 Example:
@@ -325,7 +334,8 @@ Example:
 ```text
 CHANGE_MANIFEST
 
-Report every file created, modified, or deleted by this correction pass.
+Update `dev/evidence/_ca-output.md` with the correction-pass evidence and complete created/modified/deleted file manifest.
+Ensure `dev/evidence/_ca-output.md` itself is included in that manifest.
 ```
 
 ### COMPLETION_RESPONSE
@@ -334,6 +344,7 @@ Require only the handoff information needed for re-review:
 
 - corrections implemented;
 - verification actually performed and results;
+- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - change manifest;
 - any remaining blocker or verification limitation.
 
@@ -347,6 +358,7 @@ COMPLETION_RESPONSE
 Return:
 - correction IDs completed;
 - verification commands/checks actually run and their results;
+- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - complete change manifest;
 - any remaining blocker or verification limitation.
 ```
@@ -473,9 +485,11 @@ Explain the authority relationship only when the correction would otherwise be a
 
 The coding agent must report only verification it actually performed.
 
+Before the correction pass ends, the coding agent MUST update `dev/evidence/_ca-output.md` with the current correction-pass implementation evidence, complete change manifest, verification actually performed and observed results, and any remaining blocker or limitation. The file must no longer describe the rejected build as though it were the current repository state.
+
 Do not require the corrective prompt to contain generalized reviewer epistemology.
 
-If test execution is claimed, the completion response must identify the command/check and observed result sufficiently for the reviewer to validate it.
+If test execution is claimed, both `dev/evidence/_ca-output.md` and the completion response must identify the command/check and observed result sufficiently for the reviewer to validate it.
 
 Final approval remains a separate reviewer action and is not part of the coding agent's repair task.
 
@@ -589,7 +603,14 @@ Confirm:
 
 ## CHANGE_MANIFEST
 
-Report every file created, modified, or deleted by this correction pass.
+Update `dev/evidence/_ca-output.md` before completion so it records:
+
+- correction IDs implemented;
+- every file created, modified, or deleted during this correction pass;
+- verification actually performed and observed results;
+- any remaining blocker or verification limitation.
+
+Include `dev/evidence/_ca-output.md` itself in the change manifest.
 
 ## COMPLETION_RESPONSE
 
@@ -597,6 +618,7 @@ Return:
 
 - correction IDs completed;
 - verification actually performed and results;
+- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
 - complete change manifest;
 - any remaining blocker or verification limitation.
 
@@ -620,8 +642,9 @@ Before emitting a corrective prompt, the reviewer must ask:
 6. Is verification limited to what materially proves these repairs?
 7. Has all optional improvement and reviewer-only narrative been removed?
 8. Could the coding agent implement the repair without repeating the reviewer's diagnostic work?
-9. Is anything still present that does not help implement, constrain, or verify the repair?
+9. Does the work order explicitly require `dev/evidence/_ca-output.md` to be updated with the correction-pass evidence and complete change manifest?
+10. Is anything still present that does not help implement, constrain, or verify the repair?
 
-If item 8 is `no`, the prompt is under-specified.
+If item 8 or item 9 is `no`, the prompt is under-specified.
 
-If item 9 is `yes`, remove that content unless it is required by another explicit authority.
+If item 10 is `yes`, remove that content unless it is required by another explicit authority.
