@@ -1,0 +1,821 @@
+schema_version: 1
+record:
+  title: "BRAIN Google Drive Sync Plugin — Decision Register"
+  status: authoritative
+  as_of: "2026-08-23"
+  repository: "woodpk/gdrive-sync-obsidian-plugin"
+  process: "agent-led-software-product-construction-manual.md"
+  workflow: "Workflow B: Stage 0 -> Stage 1 -> Stage 2B -> Stage 3"
+  authority_order:
+    - user_product_intent
+    - target_system_specification
+    - build_decomposition_or_internal_construction_plan
+    - repository_grounded_implementation
+  stage_state:
+    stage_0: complete
+    next_stage: "Stage 1 — Target-System Specification and Minimum Sound Build Decomposition"
+  status_definitions:
+    locked: "Current authoritative decision. Preserve unless the user explicitly changes it."
+    superseded: "Historical decision or proposal explicitly replaced by a later decision."
+    deferred_engineering: "Not a product-authority gap. Resolve through Stage 1 research, repository inspection, specification, and engineering analysis unless a material product tradeoff is exposed."
+
+decisions:
+  - id: DEC-001
+    status: locked
+    category: process
+    decision: "The project follows agent-led-software-product-construction-manual.md."
+  - id: DEC-002
+    status: locked
+    category: process
+    decision: "Use Recommended Default Workflow B: Stage 0 -> Stage 1 -> Stage 2B -> Stage 3."
+  - id: DEC-003
+    status: locked
+    category: process
+    decision: "Development proceeds one explicit step at a time; do not dump the entire remaining process at once when the user has requested stepwise progression."
+  - id: DEC-004
+    status: locked
+    category: authority
+    decision: "The human user is authoritative for product intent, desired behavior, priorities, unacceptable outcomes, material tradeoffs, and unresolved choices that materially alter the product."
+  - id: DEC-005
+    status: locked
+    category: authority
+    decision: "Agents retain engineering authority over ordinary implementation mechanics once product intent, requirements, boundaries, and fixed decisions are sufficiently established."
+  - id: DEC-006
+    status: locked
+    category: process
+    decision: "Do not restart discovery from zero when reliable prior decisions or evidence already exist."
+  - id: DEC-007
+    status: locked
+    category: process
+    decision: "Stage 0 is complete; there are no currently known unresolved material product decisions preventing Stage 1 target-system specification."
+  - id: DEC-008
+    status: locked
+    category: authority
+    decision: "Existing open-source repositories never outrank user requirements or the target-system specification."
+
+  - id: DEC-010
+    status: locked
+    category: development_environment
+    decision: "Primary IDE is JetBrains WebStorm."
+  - id: DEC-011
+    status: locked
+    category: development_environment
+    decision: "Initial WebStorm project type is Empty Project."
+  - id: DEC-012
+    status: locked
+    category: development_environment
+    decision: "Do not bootstrap with Angular, React, Next.js, Node.js, Vite, or another WebStorm generator merely to create the project."
+  - id: DEC-013
+    status: locked
+    category: development_environment
+    decision: "Implementation ecosystem is TypeScript / JavaScript / npm."
+  - id: DEC-014
+    status: locked
+    category: development_environment
+    decision: "Source control and project hosting use GitHub; current repository is woodpk/gdrive-sync-obsidian-plugin."
+  - id: DEC-015
+    status: locked
+    category: platform
+    decision: "The product is an Obsidian plugin, not a .NET application."
+  - id: DEC-016
+    status: locked
+    category: platform
+    decision: "Windows desktop Obsidian is a first-class supported platform."
+  - id: DEC-017
+    status: locked
+    category: platform
+    decision: "iPhone/iOS Obsidian is a first-class supported platform."
+  - id: DEC-018
+    status: locked
+    category: platform
+    decision: "Cross-platform/mobile compatibility is first-class; desktop-only dependencies must not leak into code paths required on iOS."
+  - id: DEC-019
+    status: locked
+    category: distribution
+    decision: "The plugin is primarily private/custom; official Obsidian Community Plugin publication is not a product requirement."
+
+  - id: DEC-020
+    status: locked
+    category: product_scope
+    decision: "Google Drive is the selected remote synchronization infrastructure for BRAIN; the desired product must not depend on Obsidian Sync."
+  - id: DEC-021
+    status: locked
+    category: product_scope
+    decision: "Preserve Obsidian's local-first model: each device has an ordinary local vault."
+  - id: DEC-022
+    status: locked
+    category: product_scope
+    decision: "Google Drive must not be required as a mounted live filesystem for Obsidian to function."
+  - id: DEC-023
+    status: locked
+    category: product_scope
+    decision: "Temporary loss of internet or Google Drive access must not make the local vault unusable."
+  - id: DEC-024
+    status: locked
+    category: product_scope
+    decision: "The product has one human user; no user-role hierarchy is required."
+  - id: DEC-025
+    status: locked
+    category: product_scope
+    decision: "Initial scope is one BRAIN vault synchronized to one personal Google Drive remote."
+  - id: DEC-026
+    status: locked
+    category: product_scope
+    decision: "Do not carry Google Drive Mirror's multiple-sync-target or Shared Drive complexity into the initial product."
+  - id: DEC-027
+    status: locked
+    category: product_scope
+    decision: "First release is a hardened BRAIN-specific, single-user synchronization product, not a generic multi-user/multi-vault sync platform."
+  - id: DEC-028
+    status: locked
+    category: safety_priority
+    decision: "Correctness, recoverability, and data preservation take precedence over minimizing code size or implementation simplicity."
+
+  - id: DEC-030
+    status: locked
+    category: open_source_strategy
+    decision: "Google Drive Mirror (laupas/google-drive-mirror) is the primary engineering foundation/baseline."
+  - id: DEC-031
+    status: locked
+    category: open_source_strategy
+    decision: "Google Drive Merge Sync (kebl3541/Obsidian-Google-Drive-Merge-Sync) is a secondary donor/reference where its design is superior."
+  - id: DEC-032
+    status: locked
+    category: open_source_strategy
+    decision: "Do not combine the donor repositories indiscriminately; candidate code or algorithms from either must earn adoption through correctness and tests."
+  - id: DEC-033
+    status: locked
+    category: open_source_strategy
+    decision: "Mirror's existing architectural/product behavior is the presumptive baseline unless it conflicts with an established requirement, creates a material safety/data-integrity concern, or is deliberately changed."
+  - id: DEC-034
+    status: locked
+    category: open_source_strategy
+    decision: "Mirror's dedicated sync engine, reconciler separation, persistent state, Drive client abstraction, hash caching, retry/backoff, bounded concurrency, event suppression, mobile-safe behavior, test/fake architecture, and logging are preferred baseline evidence subject to explicit overrides."
+  - id: DEC-035
+    status: deferred_engineering
+    category: open_source_strategy
+    decision: "Direct fork versus substantial adaptation versus selective transplantation of Mirror remains an engineering determination after repository inspection."
+
+  - id: DEC-040
+    status: locked
+    category: sync_initiation
+    decision: "Support manual Sync now."
+  - id: DEC-041
+    status: locked
+    category: sync_initiation
+    decision: "Support configurable synchronization on startup/resume."
+  - id: DEC-042
+    status: locked
+    category: sync_initiation
+    decision: "Support automatic synchronization following local vault changes."
+  - id: DEC-043
+    status: locked
+    category: sync_initiation
+    decision: "Support periodic remote reconciliation."
+  - id: DEC-044
+    status: locked
+    category: sync_initiation
+    decision: "Automatic synchronization behaviors are configurable and must never prevent ordinary offline/local Obsidian use."
+  - id: DEC-045
+    status: locked
+    category: sync_initiation
+    decision: "Normal operating model is bidirectional synchronization; persistent push-only and pull-only modes are not part of v1."
+  - id: DEC-046
+    status: locked
+    category: sync_initiation
+    decision: "Startup, local-change, and periodic automatic-sync controls are independently configurable per device."
+  - id: DEC-047
+    status: locked
+    category: sync_initiation
+    decision: "Automatic sync remains disabled during initial setup until the first preview is reviewed and the first synchronization completes successfully."
+  - id: DEC-048
+    status: locked
+    category: mobile_behavior
+    decision: "Do not promise true background synchronization on iOS; sync on startup/resume and while Obsidian is active, and safely resume/defer after suspension."
+  - id: DEC-049
+    status: locked
+    category: mobile_behavior
+    decision: "Mobile cellular-data behavior is configurable per device, including a Wi-Fi-only option for automatic sync and large transfers."
+  - id: DEC-050
+    status: locked
+    category: sync_controls
+    decision: "Provide explicit per-device pause/resume of remote synchronization without impairing local vault use."
+  - id: DEC-051
+    status: locked
+    category: sync_execution
+    decision: "Debounce and coalesce bursts of local filesystem events instead of launching a sync for every event or keystroke."
+  - id: DEC-052
+    status: locked
+    category: sync_execution
+    decision: "Never allow overlapping sync runs on the same device; serialize execution and coalesce additional triggers into a later run."
+  - id: DEC-053
+    status: locked
+    category: sync_execution
+    decision: "Prevent multiple local plugin instances from concurrently manipulating the same vault sync state through a vault-level coordination/lease mechanism."
+  - id: DEC-054
+    status: locked
+    category: sync_execution
+    decision: "Startup reconciliation waits until Obsidian has sufficiently initialized the vault and configuration; never reconcile against partial startup state."
+
+  - id: DEC-060
+    status: locked
+    category: first_sync
+    decision: "First synchronization uses a safe-union initialization policy."
+  - id: DEC-061
+    status: locked
+    category: first_sync
+    decision: "On first sync, content present on only one side is copied to the missing side; identical content is a no-op; divergent same-path content is preserved and surfaced rather than silently overwritten."
+  - id: DEC-062
+    status: locked
+    category: first_sync
+    decision: "No deletion propagation is permitted until a trustworthy synchronization base exists; an empty side must never erase a populated side merely because initialization state is absent."
+  - id: DEC-063
+    status: locked
+    category: onboarding
+    decision: "Initial setup is guided and explicit: Google auth, remote creation/pairing, vault identity confirmation, exclusions, and first-sync preview occur before automatic sync."
+  - id: DEC-064
+    status: locked
+    category: pairing
+    decision: "Pairing to an existing remote requires explicit validated pairing; never adopt an arbitrary similarly named Drive folder automatically."
+  - id: DEC-065
+    status: locked
+    category: identity
+    decision: "Assign BRAIN a stable synchronization identity so the wrong local vault cannot be paired silently with the remote BRAIN tree."
+  - id: DEC-066
+    status: locked
+    category: identity
+    decision: "Assign each plugin installation a stable random device ID for conflict provenance, audit history, and diagnostics; do not use hardware fingerprinting."
+  - id: DEC-067
+    status: locked
+    category: identity
+    decision: "Support explicit device removal/deauthorization without deleting shared vault data or disrupting other devices."
+  - id: DEC-068
+    status: locked
+    category: identity
+    decision: "Detect restored/cloned installations conservatively so copied device identity or stale sync state cannot silently impersonate the original device."
+  - id: DEC-069
+    status: locked
+    category: authentication
+    decision: "Changing Google accounts requires explicit re-pairing and must not silently reuse prior account remote identity/state."
+  - id: DEC-070
+    status: locked
+    category: lifecycle
+    decision: "Disabling or uninstalling the plugin must never automatically delete local vault content, remote sync data, or recovery state."
+
+  - id: DEC-080
+    status: locked
+    category: remote_structure
+    decision: "Use a dedicated plugin-created BRAIN Sync folder/tree in the user's Google Drive, clearly separated from the existing BRAIN asset repository."
+  - id: DEC-081
+    status: locked
+    category: remote_structure
+    decision: "The Google Drive sync-remote area is plugin-managed infrastructure, not a general user-editable working copy; direct manual editing is not a supported normal workflow."
+  - id: DEC-082
+    status: locked
+    category: remote_structure
+    decision: "Unexpected external modifications to sync-remote data must be reconciled conservatively and surfaced when suspicious, not casually assumed valid."
+  - id: DEC-083
+    status: locked
+    category: remote_detection
+    decision: "Use Google Drive Changes API for incremental remote change detection after the initial baseline."
+  - id: DEC-084
+    status: locked
+    category: remote_detection
+    decision: "Supplement incremental change tracking with periodic full reconciliation/integrity checks instead of repeatedly enumerating the entire remote tree during ordinary operation."
+  - id: DEC-085
+    status: locked
+    category: verification
+    decision: "Provide an on-demand full Verify/Reconcile Vault operation independent of incremental change tracking."
+  - id: DEC-086
+    status: locked
+    category: verification
+    decision: "Periodic full reconciliation cadence is configurable with a conservative default."
+  - id: DEC-087
+    status: locked
+    category: remote_structure
+    decision: "Version the remote synchronization structure/schema explicitly; upgrades must be controlled and backward-aware."
+  - id: DEC-088
+    status: locked
+    category: recovery
+    decision: "If the remote BRAIN Sync folder is missing or deleted, treat it as a critical recovery condition; do not silently recreate/repopulate it, and require explicit recovery/re-pairing."
+  - id: DEC-089
+    status: locked
+    category: recovery
+    decision: "If remote synchronization state is lost, rebuild conservatively from local and Drive reality and suspend destructive propagation until a trustworthy baseline is reconstructed and previewed."
+  - id: DEC-090
+    status: locked
+    category: recovery
+    decision: "If remote identity/path mapping becomes duplicated or ambiguous, preserve data and block ambiguous operations rather than guessing."
+  - id: DEC-091
+    status: locked
+    category: recovery
+    decision: "Google Drive version/trash history is an additional recovery layer, not the primary correctness mechanism."
+
+  - id: DEC-100
+    status: locked
+    category: oauth
+    decision: "Use Google's least-privilege drive.file authorization model as the required baseline."
+  - id: DEC-101
+    status: locked
+    category: oauth
+    decision: "Do not broaden Google Drive scope merely for convenience; any proven need for broader access is a product-level reconsideration requiring explicit user approval."
+  - id: DEC-102
+    status: locked
+    category: oauth
+    decision: "Use the user's own Google Cloud project/OAuth client; do not depend on developer-owned OAuth credentials/infrastructure for this private plugin."
+  - id: DEC-103
+    status: locked
+    category: oauth
+    decision: "Every supported device, including iPhone, must be able to authenticate independently using only that device."
+  - id: DEC-104
+    status: locked
+    category: oauth
+    decision: "Desktop-assisted token transfer is not permitted as a required mobile authentication flow."
+  - id: DEC-105
+    status: locked
+    category: oauth
+    decision: "Prefer direct on-device/system-browser OAuth with no hosted callback if technically feasible in Obsidian."
+  - id: DEC-106
+    status: locked
+    category: oauth
+    decision: "If a hosted OAuth callback/bridge is required, use Azure Static Web Apps Free as the preferred hosting platform; the callback is authentication infrastructure only, not synchronization infrastructure."
+  - id: DEC-107
+    status: locked
+    category: oauth
+    decision: "A hosted callback must not handle vault data and should avoid server-side token persistence unless a later proven requirement makes it necessary."
+  - id: DEC-108
+    status: locked
+    category: oauth
+    decision: "Authentication tokens/credentials are device-local and never synchronized; use the strongest storage mechanism available on each supported platform."
+  - id: DEC-109
+    status: locked
+    category: oauth
+    decision: "On authentication failure/revocation, fail closed for remote operations while preserving local use; surface reauthentication clearly and validate sync state before destructive reconciliation resumes."
+
+  - id: DEC-120
+    status: locked
+    category: sync_state
+    decision: "Maintain persistent synchronization base/state sufficient to distinguish never-seen content from intentional deletion and to remember previously agreed state."
+  - id: DEC-121
+    status: locked
+    category: change_detection
+    decision: "Timestamps are never authoritative change truth; use sync state, stable file identity, hashes/content evidence, and Drive metadata, with timestamps advisory only."
+  - id: DEC-122
+    status: locked
+    category: interruption_safety
+    decision: "Synchronization operations must be idempotent or safely retryable."
+  - id: DEC-123
+    status: locked
+    category: interruption_safety
+    decision: "Persistent sync state must never claim an operation succeeded until the underlying change is durably complete."
+  - id: DEC-124
+    status: locked
+    category: interruption_safety
+    decision: "Interrupted runs must resume or safely recompute without losing or unintentionally duplicating data."
+  - id: DEC-125
+    status: locked
+    category: interruption_safety
+    decision: "Partially completed runs must preserve enough information to distinguish completed, pending, and uncertain operations."
+  - id: DEC-126
+    status: locked
+    category: recovery
+    decision: "Detect missing, malformed, inconsistent, or otherwise untrusted sync state and enter safe recovery mode."
+  - id: DEC-127
+    status: locked
+    category: recovery
+    decision: "Untrusted sync state must never be interpreted as evidence of deletion; destructive propagation pauses while state is rebuilt/reconciled."
+  - id: DEC-128
+    status: locked
+    category: recovery
+    decision: "Ambiguous recovery cases are surfaced rather than guessed."
+  - id: DEC-129
+    status: locked
+    category: sync_state
+    decision: "Keep authoritative per-device sync state outside ordinary user-editable vault content where practical, with explicit backup/migration support."
+  - id: DEC-130
+    status: locked
+    category: sync_state
+    decision: "Sync-state migrations may run automatically only when provably safe; checkpoint/back up prior state first and refuse unsafe upgrade/downgrade paths."
+  - id: DEC-131
+    status: locked
+    category: compatibility
+    decision: "Incompatible plugin/sync-protocol versions block affected synchronization rather than risking shared-state corruption."
+  - id: DEC-132
+    status: locked
+    category: sync_state
+    decision: "Provide explicit backup/export capability for synchronization metadata and diagnostics sufficient for recovery/troubleshooting without exposing credentials."
+  - id: DEC-133
+    status: locked
+    category: deletion_state
+    decision: "Retain deletion/tombstone history for a bounded period sufficient to distinguish legitimate deletion from stale-device reintroduction."
+  - id: DEC-134
+    status: locked
+    category: deletion_state
+    decision: "Tombstone retention duration is conservatively configurable and must not expire while a known device is still too stale to reconcile safely."
+  - id: DEC-135
+    status: locked
+    category: recovery
+    decision: "A device returning after a long offline interval must reconcile before its stale state can authorize destructive propagation."
+  - id: DEC-136
+    status: locked
+    category: transfer_safety
+    decision: "If a local file changes during transfer, invalidate the stale transfer; do not mark it synchronized, and recompute/retry safely."
+  - id: DEC-137
+    status: locked
+    category: sync_execution
+    decision: "Remote changes detected during an active sync invalidate and re-plan affected operations rather than allowing stale-plan execution."
+  - id: DEC-138
+    status: locked
+    category: sync_execution
+    decision: "Local changes occurring during an active sync are reconciled in a subsequent pass rather than unpredictably mutating the executing plan."
+  - id: DEC-139
+    status: locked
+    category: change_detection
+    decision: "Device clock skew cannot affect correctness; timestamps remain advisory metadata only."
+
+  - id: DEC-150
+    status: locked
+    category: conflicts
+    decision: "For safely recognized text files changed on both sides from the same base, use BASE + LOCAL + REMOTE three-way merge."
+  - id: DEC-151
+    status: locked
+    category: conflicts
+    decision: "If a three-way merge is clean, accept the merged result."
+  - id: DEC-152
+    status: locked
+    category: conflicts
+    decision: "If a true or ambiguous text conflict remains, preserve both versions and surface the conflict."
+  - id: DEC-153
+    status: locked
+    category: conflicts
+    decision: "Never use newest-timestamp-wins for concurrent text changes."
+  - id: DEC-154
+    status: locked
+    category: conflicts
+    decision: "Three-way merge applies to safely recognized plain-text formats such as .md and .txt; unknown/binary formats are handled conservatively."
+  - id: DEC-155
+    status: locked
+    category: conflicts
+    decision: "If the same binary or opaque vault file is independently modified on multiple devices, preserve both versions and surface the conflict; never automatically choose one."
+  - id: DEC-156
+    status: locked
+    category: conflicts
+    decision: "In deletion-vs-modification conflict, preserve the modified version and surface the conflict; a concurrent delete must never silently erase independently modified content."
+  - id: DEC-157
+    status: locked
+    category: conflicts
+    decision: "Unresolved conflicts block only affected paths while unrelated safe synchronization continues, unless overall system/state integrity is uncertain."
+  - id: DEC-158
+    status: locked
+    category: conflicts
+    decision: "Conflict copies are placed predictably near the original file with deterministic naming including device/source and timestamp, and are listed in the conflict UI."
+  - id: DEC-159
+    status: locked
+    category: conflicts
+    decision: "Preserved conflict copies are never automatically deleted."
+  - id: DEC-160
+    status: locked
+    category: conflicts
+    decision: "Conflict UI exposes explicit actions appropriate to the conflict: keep local, keep remote, keep both, accept clean merge, or manually resolve."
+  - id: DEC-161
+    status: locked
+    category: conflicts
+    decision: "An explicit user conflict resolution becomes new authoritative vault content and propagates normally to all devices."
+  - id: DEC-162
+    status: locked
+    category: files
+    decision: "Unknown or unsupported file types synchronize conservatively as opaque binary data; do not reject or reinterpret a file merely because its format is unknown."
+
+  - id: DEC-170
+    status: locked
+    category: rename_move
+    decision: "Treat renames/moves as identity-preserving operations wherever safely possible."
+  - id: DEC-171
+    status: locked
+    category: rename_move
+    decision: "Preserve Google Drive file IDs and remote object history across renames/moves where possible; avoid delete/recreate semantics unless no safe alternative exists."
+  - id: DEC-172
+    status: locked
+    category: rename_move
+    decision: "Use synchronization/path/history evidence to distinguish rename/move from delete-plus-create."
+  - id: DEC-173
+    status: locked
+    category: vault_scope
+    decision: "Sync the entire vault by default except explicit exclusions and protected or device-specific .obsidian content."
+  - id: DEC-174
+    status: locked
+    category: filesystem
+    decision: "Preserve empty directories as part of synchronized vault structure."
+  - id: DEC-175
+    status: locked
+    category: filesystem
+    decision: "Hidden/dotfiles synchronize by default unless explicitly excluded."
+  - id: DEC-176
+    status: locked
+    category: exclusions
+    decision: "Support explicit path/pattern exclusions with conservative defaults; exclusions are visible/configurable and never silently applied."
+  - id: DEC-177
+    status: locked
+    category: exclusions
+    decision: "Exclude known non-vault noise by default, including .git, OS metadata, lock/temp files, and plugin caches; make defaults visible and safely overridable."
+  - id: DEC-178
+    status: locked
+    category: filesystem
+    decision: "Do not follow or synchronize symlink, junction, or external filesystem-reference targets; surface them rather than allowing synchronization to escape the vault boundary."
+  - id: DEC-179
+    status: locked
+    category: paths
+    decision: "Normalize Unicode/path representations for comparison while preserving original names when safe; Unicode-equivalent or platform-incompatible names become conflicts rather than duplicate logical paths."
+  - id: DEC-180
+    status: locked
+    category: paths
+    decision: "Detect unsafe Windows/iOS case/path collisions and block only affected operations rather than silently normalizing or overwriting."
+  - id: DEC-181
+    status: locked
+    category: paths
+    decision: "Preflight path-length and filename compatibility before execution; invalid/unsafe paths block only affected operations."
+  - id: DEC-182
+    status: locked
+    category: filesystem
+    decision: "Synchronize file content, names, paths, and necessary identity/timestamp metadata, but not OS-specific ACLs, permissions, or extended attributes."
+  - id: DEC-183
+    status: locked
+    category: filesystem
+    decision: "Do not automatically deduplicate separately named or path-addressed user files merely because their bytes are identical."
+  - id: DEC-184
+    status: locked
+    category: transfer_safety
+    decision: "Wait for files to become stable before transfer; avoid synchronizing transient intermediate states while Obsidian or another process is still writing."
+  - id: DEC-185
+    status: locked
+    category: large_files
+    decision: "Support large files using bounded/streamed processing and configurable safeguards rather than an arbitrary small file-size limit."
+  - id: DEC-186
+    status: locked
+    category: transfer_safety
+    decision: "Use atomic local writes/replacements wherever possible; never expose a partial download/rewrite as valid vault content."
+  - id: DEC-187
+    status: locked
+    category: resource_failures
+    decision: "On local disk-space exhaustion, preserve existing valid data, stop affected downloads/writes, and surface an actionable error; never partially replace a valid file."
+  - id: DEC-188
+    status: locked
+    category: error_isolation
+    decision: "Isolate repeatedly failing individual paths and continue unrelated safe work rather than allowing one bad file to halt the entire vault permanently."
+
+  - id: DEC-200
+    status: locked
+    category: deletion
+    decision: "Normal deletion semantics are recoverable by default: use Obsidian/local trash and Google Drive trash where feasible rather than immediate hard deletion."
+  - id: DEC-201
+    status: locked
+    category: deletion
+    decision: "Ordinary low-risk deletions propagate automatically without per-item confirmation."
+  - id: DEC-202
+    status: locked
+    category: deletion
+    decision: "Never automatically empty Google Drive trash; permanent purge is outside ordinary synchronization."
+  - id: DEC-203
+    status: locked
+    category: deletion
+    decision: "Never automatically purge local trash/recovery copies; Obsidian, OS, or user retention policy governs permanent removal."
+  - id: DEC-204
+    status: locked
+    category: destructive_safety
+    decision: "Include a mass-deletion/destructive-operation circuit breaker."
+  - id: DEC-205
+    status: locked
+    category: destructive_safety
+    decision: "Before unusually large or suspicious destructive plans execute automatically, halt and require explicit user review/approval."
+  - id: DEC-206
+    status: locked
+    category: destructive_safety
+    decision: "Circuit-breaker detection considers percentage of vault affected, absolute destructive-operation count, abnormal divergence from normal behavior, and synchronization-state integrity/rebuild conditions."
+  - id: DEC-207
+    status: deferred_engineering
+    category: destructive_safety
+    decision: "Exact circuit-breaker thresholds and policy parameters will be specified/tested later; existence and protective intent are fixed."
+  - id: DEC-208
+    status: locked
+    category: destructive_safety
+    decision: "Unusually destructive operations must have a practical recoverable checkpoint in addition to trash and the circuit breaker."
+  - id: DEC-209
+    status: locked
+    category: destructive_safety
+    decision: "Do not provide a global destructive force-sync command that casually bypasses core deletion, conflict, or integrity safeguards."
+
+  - id: DEC-220
+    status: locked
+    category: dry_run
+    decision: "The synchronization engine must generate an explicit dry-run/sync plan before execution."
+  - id: DEC-221
+    status: locked
+    category: dry_run
+    decision: "The plan covers uploads, downloads, renames/moves, merges, deletions/trash actions, and conflicts."
+  - id: DEC-222
+    status: locked
+    category: dry_run
+    decision: "Manual Sync now shows the preview by default and requires an explicit Execute action; manual sync is not silently destructive."
+  - id: DEC-223
+    status: locked
+    category: dry_run
+    decision: "The same planning layer supports testing, diagnostics, and destructive-operation safety checks."
+  - id: DEC-224
+    status: locked
+    category: observability
+    decision: "Always expose a clear current synchronization status, such as idle, syncing, offline, authentication-required, conflict-blocked, recovery-required, or error."
+  - id: DEC-225
+    status: locked
+    category: observability
+    decision: "Provide a dedicated conflict/recovery management UI for unresolved conflicts, preserved alternates, blocked destructive plans, and recovery-required states."
+  - id: DEC-226
+    status: locked
+    category: notifications
+    decision: "User notifications are reserved for meaningful events such as conflicts, blocked destructive plans, authentication failure, recovery mode, or repeated sync errors; avoid routine notification noise."
+  - id: DEC-227
+    status: locked
+    category: audit
+    decision: "Keep bounded, user-visible sync history/audit information covering planned/executed operations, conflicts, errors, deletions, and recovery events."
+  - id: DEC-228
+    status: locked
+    category: audit
+    decision: "Audit/history records contain metadata and operations, not full note text or binary payloads."
+  - id: DEC-229
+    status: locked
+    category: audit
+    decision: "Audit/history retention has configurable bounded limits sufficient for recovery and diagnostics without unbounded growth."
+  - id: DEC-230
+    status: locked
+    category: sync_controls
+    decision: "Support safe cancellation of an active sync: finish or rollback the current atomic operation as appropriate, stop starting new operations, checkpoint accurately, and resume/reconcile later."
+
+  - id: DEC-240
+    status: locked
+    category: obsidian_config
+    decision: ".obsidian synchronization is selective, not all-or-nothing."
+  - id: DEC-241
+    status: locked
+    category: obsidian_config
+    decision: "Portable settings/configuration may synchronize when safe across Windows and iOS."
+  - id: DEC-242
+    status: locked
+    category: obsidian_config
+    decision: "Device-specific workspace state, caches, authentication tokens/secrets, and platform-unsafe configuration are excluded from synchronization."
+  - id: DEC-243
+    status: locked
+    category: obsidian_config
+    decision: "Exact inclusion/exclusion rules must be explicit and visible; secrets and authentication data must never synchronize."
+  - id: DEC-244
+    status: deferred_engineering
+    category: obsidian_config
+    decision: "Exact file/path-level .obsidian inclusion/exclusion list will be resolved during Stage 1 from Obsidian behavior, donor repositories, and platform-specific evidence."
+
+  - id: DEC-250
+    status: locked
+    category: offline_network
+    decision: "Fully support offline local editing and reconcile changes later when Google Drive connectivity returns."
+  - id: DEC-251
+    status: locked
+    category: offline_network
+    decision: "Use bounded retry with exponential backoff and jitter for transient network/API failures, then defer cleanly if unavailable."
+  - id: DEC-252
+    status: locked
+    category: offline_network
+    decision: "Handle Drive API rate limits proactively using bounded concurrency, backoff, and server quota or Retry-After guidance."
+  - id: DEC-253
+    status: locked
+    category: resource_failures
+    decision: "On Google Drive quota/storage exhaustion, preserve all local changes, stop affected remote writes, and surface an actionable error; never use a destructive fallback."
+  - id: DEC-254
+    status: locked
+    category: mobile_behavior
+    decision: "Automatic sync may defer expensive work under constrained mobile conditions; manual sync remains available and correctness is never compromised."
+
+  - id: DEC-260
+    status: locked
+    category: transfer_integrity
+    decision: "Verify transferred content integrity before committing sync state; a successful API response alone does not prove correct bytes were transferred."
+  - id: DEC-261
+    status: locked
+    category: transfer_integrity
+    decision: "Hash/content validation is part of transfer verification."
+  - id: DEC-262
+    status: locked
+    category: transfer_integrity
+    decision: "Downloads should use atomic replacement where feasible."
+  - id: DEC-263
+    status: locked
+    category: transfer_integrity
+    decision: "The system must remain restart-safe and idempotent around partially uploaded/downloaded content and interrupted runs."
+
+  - id: DEC-270
+    status: locked
+    category: privacy
+    decision: "No external telemetry by default; diagnostics/logging remain local unless the user explicitly exports or shares them."
+  - id: DEC-271
+    status: locked
+    category: security
+    decision: "Do not add custom application-level encryption in the initial product; rely on Google account/Drive security unless the user later establishes a requirement for plugin-controlled end-to-end encryption."
+  - id: DEC-272
+    status: locked
+    category: privacy
+    decision: "Diagnostic/audit logs must not contain full note contents or binary payloads."
+
+  - id: DEC-280
+    status: locked
+    category: brain_asset_boundary
+    decision: "ChatGPT Work continues to perform its existing scoped BRAIN asset-processing workflow; the sync plugin does not subsume that workflow."
+  - id: DEC-281
+    status: locked
+    category: brain_asset_boundary
+    decision: "The sync plugin synchronizes vault filesystem state, including binary files, without semantic asset processing."
+  - id: DEC-282
+    status: locked
+    category: brain_asset_boundary
+    decision: "A binary independently dropped into 00-Inbox is an ordinary vault file for synchronization purposes and is synchronized byte-for-byte until another workflow changes or deletes it."
+  - id: DEC-283
+    status: locked
+    category: brain_asset_boundary
+    decision: "If a binary is physically embedded inside another file, such as inside a DOCX, the plugin treats the containing file as one opaque file and does not extract or reinterpret embedded assets."
+  - id: DEC-284
+    status: locked
+    category: brain_asset_boundary
+    decision: "If Obsidian materializes an attachment as a separate vault object referenced by a note, the plugin synchronizes the note and attachment as separate ordinary vault files."
+  - id: DEC-285
+    status: locked
+    category: brain_asset_boundary
+    decision: "The plugin does not perform AI/semantic sensitivity screening, asset classification, externalization, Drive-link insertion, or other ChatGPT Work semantic duties."
+  - id: DEC-286
+    status: locked
+    category: brain_asset_boundary
+    decision: "The existing Google Drive BRAIN asset repository is strictly outside the synchronization engine's management boundary; the plugin must not enumerate, reconcile, rename, delete, or otherwise manage it as part of vault synchronization."
+  - id: DEC-287
+    status: locked
+    category: brain_asset_boundary
+    decision: "When ChatGPT Work externalizes an asset and deletes the corresponding vault binary, that vault deletion propagates across distributed vault instances and the plugin's sync-remote representation."
+  - id: DEC-288
+    status: locked
+    category: brain_asset_boundary
+    decision: "A vault deletion must never be interpreted as deletion of the separately externalized canonical Google Drive BRAIN asset copy."
+  - id: DEC-289
+    status: locked
+    category: brain_asset_boundary
+    decision: "The Google Drive BRAIN asset repository and the plugin's Google Drive BRAIN Sync remote are logically distinct storage domains even if both exist in the same Google account."
+
+superseded_decisions:
+  - id: SUP-001
+    status: superseded
+    earlier: "The sync plugin should subsume the current ChatGPT Work binary/text externalization workflow."
+    superseded_by:
+      - DEC-280
+      - DEC-281
+      - DEC-285
+      - DEC-286
+      - DEC-287
+      - DEC-288
+      - DEC-289
+  - id: SUP-002
+    status: superseded
+    earlier: "Mobile Google authentication could require desktop authentication followed by token/code transfer to iPhone."
+    superseded_by:
+      - DEC-103
+      - DEC-104
+      - DEC-105
+      - DEC-106
+  - id: SUP-003
+    status: superseded
+    earlier: "Google Drive Mirror's newer-timestamp-wins conflict behavior could remain as baseline."
+    superseded_by:
+      - DEC-150
+      - DEC-151
+      - DEC-152
+      - DEC-153
+      - DEC-154
+      - DEC-155
+  - id: SUP-004
+    status: superseded
+    earlier: "Mirror's delete/recreate rename behavior could remain as baseline."
+    superseded_by:
+      - DEC-170
+      - DEC-171
+      - DEC-172
+  - id: SUP-005
+    status: superseded
+    earlier: "Mirror's broad Google Drive drive scope could remain as baseline."
+    superseded_by:
+      - DEC-100
+      - DEC-101
+
+deferred_engineering:
+  - "Whether to fork Google Drive Mirror directly, substantially adapt it, or selectively transplant architecture/code."
+  - "Exact direct-on-device OAuth callback mechanics within Obsidian/iOS; Azure Static Web Apps Free is the locked fallback host if a hosted callback is required."
+  - "Exact mass-deletion circuit-breaker thresholds and heuristic policy."
+  - "Exact tombstone/history default retention durations, within the locked bounded/configurable policy."
+  - "Exact .obsidian file/path inclusion and exclusion list."
+  - "Concrete synchronization-state schema, persistence technology, versioning representation, and transaction/checkpoint mechanics."
+  - "Concrete remote BRAIN Sync folder/schema representation and migration implementation."
+  - "Concrete locking/lease implementation used to prevent concurrent local sync writers."
+  - "Concrete three-way merge algorithm/library and conflict-marking implementation, provided the locked semantics are preserved."
+  - "Exact hashing/cache algorithms and transfer chunking/buffering mechanics."
+  - "Exact large-file safeguards, concurrency limits, retry limits, and reconciliation cadence defaults."
+  - "Exact device-local secure-token storage mechanism available in Obsidian on each supported platform."
