@@ -1,52 +1,76 @@
 # BRAIN Google Drive Sync Plugin — Target-System Specification
 
-## 1. Document Status and Authority
+## 1. Document Status, Authority, and Use
 
 **Status:** Authoritative Stage 1 target-system specification  
 **Project:** `woodpk/gdrive-sync-obsidian-plugin`  
-**Workflow:** Agent-Led Software Product Construction Manual — Recommended Default Workflow B  
-**Stage:** Stage 1 — Target-System Specification  
+**Workflow:** Agent-Led Software Product Construction Manual — Recommended Default Workflow A  
+**Stage:** Stage 1 — Target-System Specification and Minimum Sound Build Decomposition  
+**Target-specification revision:** 2  
 **Date:** 2026-08-23
 
-This document defines the required finished product. It is intentionally a **target-system specification**, not a coding recipe and not a build decomposition.
+This document defines the required finished product. It is a **target-system specification**, not a coding recipe, build-session transcript, or substitute for the separate Stage 1 build decomposition.
 
-Authority order for this project is:
+The specification is written at the level required by `dev/agent-led-software-product-construction-manual.md`: materially different implementations must not be able to produce materially different product behavior while still claiming conformance, but ordinary engineering mechanics remain available to implementation judgment.
 
-1. explicit user product intent and subsequently approved product decisions;
-2. this target-system specification;
-3. the authoritative decision register, where it does not conflict with a later explicit user decision or this specification;
-4. internal Stage 2B construction plans and decompositions;
-5. repository-grounded implementation details;
-6. donor/reference repository behavior.
+### 1.1 Authority Rules
 
-The implementation may not reinterpret this specification merely because Google Drive Mirror or Google Drive Merge Sync behaves differently.
+The following authority rules govern this project:
 
-### 1.1 Normative Language
+1. A later explicit user decision overrides earlier project artifacts.
+2. `dev/decision-register.yaml` records the accepted product/process decisions and their supersession history.
+3. This target-system specification is the authoritative finished-system contract used by Stage 2 construction and Stage 3 validation.
+4. The Stage 1 build decomposition and coverage artifacts are implementation-planning authorities only; they may not redefine this target system.
+5. Build-session prompts are subordinate to this specification and the decomposition.
+6. The actual repository is authoritative evidence of **current implementation state**, but existing code does not override required target behavior.
+7. Donor/reference repositories are evidence and implementation accelerators only; they never define the product.
+
+If this specification and the current decision register appear materially inconsistent, a supervisor MUST treat that as an authority/specification defect to reconcile. A supervisor MUST NOT silently choose whichever artifact is more convenient.
+
+### 1.2 Normative Language
 
 `MUST`, `MUST NOT`, `SHALL`, `SHALL NOT`, `REQUIRED`, and `PROHIBITED` are normative requirements.
 
-`SHOULD` identifies a strong preference that may be changed only when engineering evidence demonstrates an equivalent or safer outcome without changing the specified product.
+`SHOULD` identifies a strong product/architecture preference that may be changed only when engineering evidence demonstrates an equivalent or safer outcome without changing required behavior, compatibility, safety, or operational semantics.
 
 `MAY` identifies implementation discretion or optional behavior.
 
-### 1.2 Authoritative Inputs and Grounding Snapshot
+### 1.3 Authoritative Inputs and Grounding Snapshot
 
 This specification was constructed from:
 
-- `dev/agent-led-software-product-construction-manual.md`, blob SHA `02adedab577f397d98fb9666166270358a581761`, fully re-read before this specification was authored;
-- `dev/decision-register.yaml`, blob SHA `58bcfd3810319feeb682523d412fb50e01412779`;
-- Stage 0 product decisions and continuation context represented by that decision register;
+- `dev/agent-led-software-product-construction-manual.md`, blob SHA `02adedab577f397d98fb9666166270358a581761`, fully re-read before the original specification and re-applied during this revision;
+- `dev/decision-register.yaml` and all accepted Stage 0 product decisions represented there;
 - repository/source grounding performed against:
   - `woodpk/gdrive-sync-obsidian-plugin` — effectively pre-implementation at Stage 1 entry;
   - `laupas/google-drive-mirror` at commit `886f47a0e52e71a33cd2833b4a013f9b81d68464`;
   - `kebl3541/Obsidian-Google-Drive-Merge-Sync` at commit `2b4c27b4d18fea52ae3e8239a89ee50bd4ae5222`;
-- current official Google Drive/OAuth and Obsidian plugin documentation consulted during Stage 1 to resolve engineering feasibility questions.
+- official Google Drive/OAuth and Obsidian platform documentation consulted during Stage 1 when engineering feasibility affected specification boundaries.
 
-Repository grounding established that Mirror provides valuable proven architecture for reconciliation, persistent base state, Drive abstraction, retries, bounded concurrency, event suppression, mobile batching, checkpointing, and IndexedDB-backed remote listing, but that several of its product semantics conflict with this specification. Merge Sync provides useful donor implementations/concepts for identity-preserving Drive moves, dry-run planning, `drive.file`, and textual three-way merge, but it likewise does not define the target product.
+Repository grounding established that Google Drive Mirror provides valuable proven architecture for reconciliation, persistent base state, Drive abstraction, retries, bounded concurrency, event suppression, mobile batching, checkpointing, IndexedDB-backed remote listing, and broad tests, but several of its product semantics conflict with this target. Google Drive Merge Sync provides useful donor implementations/concepts for identity-preserving Drive moves, dry-run planning, `drive.file`, and textual three-way merge, but likewise does not define the target product.
+
+The repository and donor commit descriptions above are **historical Stage 1 grounding**, not promises about future repository state. Every later supervisor MUST inspect the current repository before asserting current implementation locations, types, interfaces, tests, or completed work.
+
+### 1.4 Successive-Supervisor Re-entry Contract
+
+A supervisor entering this project in a later chat/session MUST, before planning or issuing implementation work:
+
+1. read the governing development manual;
+2. read this target-system specification completely;
+3. read the current decision register completely and honor supersession;
+4. once created, read the complete Stage 1 build decomposition and requirement-to-phase coverage artifact(s);
+5. inspect the actual current repository and relevant tests before naming implementation locations;
+6. determine which build phase/session is actually complete, active, or next from persisted evidence rather than predecessor prose alone;
+7. preserve all fixed contracts and cross-workstream boundaries already established;
+8. surface only genuine unresolved product-authority decisions to the user;
+9. resolve ordinary engineering uncertainty through repository inspection and engineering analysis;
+10. update persisted project-state/decomposition evidence whenever completed work changes what a later supervisor must know.
+
+When multiple build agents operate in parallel, shared interfaces/contracts required by more than one workstream MUST be established and persisted before dependent parallel implementation begins. Agents may implement behind those contracts independently but may not redefine them locally.
 
 ## 2. Product Definition
 
-The finished product is a private/custom Obsidian plugin that safely synchronizes one BRAIN Obsidian vault between Windows desktop Obsidian and iPhone/iOS Obsidian using the user's own Google Drive as the remote synchronization infrastructure.
+The finished product is a private/custom Obsidian plugin that safely synchronizes one BRAIN Obsidian vault between Windows desktop Obsidian and iPhone/iOS Obsidian using the user's own Google Drive as remote synchronization infrastructure.
 
 The intended model is local-first:
 
@@ -68,7 +92,7 @@ The product exists to replace dependence on Obsidian Sync for BRAIN synchronizat
 
 ### 2.1 Success Criterion
 
-The product is successful when the user can work normally in BRAIN on Windows and iPhone, including while temporarily offline, and the plugin safely converges legitimate changes through the user's Google Drive without silently losing, overwriting, corrupting, or mass-deleting valid vault data.
+The product is successful when the user can work normally in BRAIN on Windows and iPhone, including while temporarily offline, and the plugin safely converges legitimate changes through the user's Google Drive without silently losing, overwriting, corrupting, resurrecting, or mass-deleting valid vault data.
 
 Correctness, recoverability, and data preservation take priority over minimum code size, maximum throughput, or aggressive automatic convergence.
 
@@ -104,7 +128,7 @@ Correctness, recoverability, and data preservation take priority over minimum co
 
 **AUTH-005 — System-browser authorization.** Google authorization MUST use a secure external/system browser flow and MUST NOT rely on an embedded user-agent controlled by the plugin.
 
-**AUTH-006 — OAuth return path.** The authorization return mechanism MUST be compatible with both Windows and iOS. If Google requires an HTTPS redirect/callback, the preferred and approved callback host is a user-controlled Azure Static Web Apps Free deployment. That callback is authentication infrastructure only.
+**AUTH-006 — OAuth return path.** The authorization return mechanism MUST be compatible with both Windows and iOS. If an HTTPS redirect/callback is required, the approved preferred callback host is a user-controlled Azure Static Web Apps Free deployment. That callback is authentication infrastructure only.
 
 **AUTH-007 — Callback isolation.** Any hosted callback MUST NOT receive, inspect, persist, proxy, or synchronize vault content. It MUST minimize handling of authorization material, MUST NOT retain tokens, and MUST be designed so an intercepted authorization response cannot be redeemed by a party other than the initiating device/session. Exact code-exchange placement is engineering discretion subject to current Google OAuth requirements and this security contract.
 
@@ -138,6 +162,8 @@ Correctness, recoverability, and data preservation take priority over minimum co
 
 **REM-009 — Logical remote separation.** Vault-content representation, portable configuration representation, and synchronization/protocol metadata MUST be logically separated so that configuration/state operations cannot accidentally be interpreted as ordinary vault-content operations. Their exact physical layout is engineering discretion.
 
+**REM-010 — Supplementary Drive recovery history.** Google Drive trash/version history MAY be used as an additional recovery aid, but synchronization correctness MUST NOT depend on prior remote versions being available. Loss of version history cannot make an otherwise safe state transition unsafe or authorize destructive guesses.
+
 ### 3.4 Synchronization Initiation and Scheduling
 
 **SYNC-001 — Manual synchronization.** The product MUST provide an explicit `Sync now` operation.
@@ -163,6 +189,8 @@ Correctness, recoverability, and data preservation take priority over minimum co
 **SYNC-011 — iOS lifecycle.** The product MUST NOT promise unsupported true background synchronization on iOS. It MUST synchronize while Obsidian is active and on appropriate startup/resume opportunities, and it MUST tolerate suspension/termination at any point without corrupting data or state.
 
 **SYNC-012 — Mobile data controls.** Automatic synchronization behavior on mobile MUST include configurable cellular-data restrictions, including a Wi-Fi-only option for automatic synchronization and large transfers.
+
+**SYNC-013 — Bidirectional normal operation.** Normal synchronization MUST be bidirectional. Persistent push-only or pull-only operating modes are not part of v1. Preview/dry-run controls do not change this bidirectional product model.
 
 ### 3.5 Snapshot, Planning, and Execution
 
@@ -234,7 +262,7 @@ Correctness, recoverability, and data preservation take priority over minimum co
 
 **STATE-008 — Operational state separation.** Device-local operational state — including device ID, tokens, base state, file-ID mappings, hashes/caches where authoritative, change cursors, checkpoints/journal, tombstones, recovery state, and logs — MUST NOT be synchronized as ordinary vault content.
 
-**STATE-009 — Atomic durability.** Authoritative state updates MUST have crash-consistent persistence semantics. The persisted state MUST never claim an operation completed before the underlying content mutation and required integrity verification are durable.
+**STATE-009 — Atomic durability.** Authoritative state updates MUST have crash-consistent persistence semantics. Persisted state MUST never claim an operation completed before the underlying content mutation and required integrity verification are durable.
 
 **STATE-010 — Partial-operation classification.** Interrupted work MUST leave enough durable evidence to distinguish completed, pending, and uncertain operations. Restart MUST safely resume or recompute without silently duplicating or losing data.
 
@@ -336,9 +364,11 @@ Correctness, recoverability, and data preservation take priority over minimum co
 
 **FILE-014 — Per-path failure isolation.** A repeatedly failing individual file/path SHOULD be isolated as a surfaced error while unrelated safe work continues, unless the failure implies global state/identity uncertainty.
 
+**FILE-015 — Read/access failure is not deletion.** Failure to read/stat/access an expected local path MUST NOT be converted into deletion evidence. The affected path MUST be blocked/surfaced until its existence/change state can be established safely; unrelated safe paths MAY continue.
+
 ### 3.13 Deletion and Destructive-Operation Safety
 
-**DELETE-001 — Attested deletion.** A missing file/folder counts as an intentional deletion only when trustworthy prior synchronization state proves it previously existed on that side. Never-seen content and missing/untrusted state cannot authorize deletion.
+**DELETE-001 — Attested deletion.** A missing file/folder counts as an intentional deletion only when trustworthy prior synchronization state proves it previously existed on that side and the current absence is itself reliably observed. Never-seen content, access/read failures, and missing/untrusted state cannot authorize deletion.
 
 **DELETE-002 — Recoverable deletion.** Normal propagated deletions MUST use recoverable local/Obsidian trash and Google Drive trash where feasible, not immediate hard deletion.
 
@@ -360,23 +390,23 @@ Correctness, recoverability, and data preservation take priority over minimum co
 
 ### 3.14 Obsidian Configuration Synchronization
 
-The active Obsidian configuration directory is obtained from the runtime (for example through the vault's configuration-directory contract) and MUST NOT be assumed permanently to be named `.obsidian`.
+The active Obsidian configuration directory MUST be obtained from the runtime rather than assumed permanently to be named `.obsidian`.
 
 **CONFIG-001 — Separate boundary.** The active Obsidian configuration directory MUST be excluded from ordinary vault-content synchronization and handled only by the dedicated selective configuration-sync policy.
 
 **CONFIG-002 — Selective portable configuration.** The product MUST support synchronization of portable Obsidian configuration that is safe to share between Windows and iOS, rather than synchronizing the configuration directory wholesale.
 
-**CONFIG-003 — Default portable core set.** At minimum, the selective configuration policy SHOULD support portable core preferences represented by the active equivalents of `app.json`, `appearance.json`, `hotkeys.json`, `core-plugins.json`, `community-plugins.json`, and user `snippets/` and `themes/` content when those items exist and are compatible.
+**CONFIG-003 — Portable-configuration eligibility contract.** A configuration artifact is eligible for synchronization only when its semantics are known sufficiently to establish that it is portable across supported devices and does not contain authentication secrets, device identity, synchronization state, caches/runtime state, or platform-specific session/workspace state. The implementation MUST use an explicit allowlist or equivalently explicit classifier; unknown configuration artifacts are excluded by default until their portability/safety is established. Exact filenames and version-specific mappings are engineering-maintained details, not fixed product semantics.
 
-**CONFIG-004 — Workspace/local exclusion.** Workspace/layout/session-state files (including active equivalents of `workspace*.json`), caches, temporary/lock data, graph/session artifacts known to be device-specific, and platform-specific state MUST remain device-local by default.
+**CONFIG-004 — Device-local configuration.** Workspace/layout/session state, caches, temporary/lock data, platform-specific state, and other configuration known to represent a device's local runtime rather than portable user configuration MUST remain device-local by default.
 
-**CONFIG-005 — Authentication and sync-state exclusion.** OAuth secrets/tokens, SecretStorage values, device ID, synchronization base, Drive change cursors, checkpoints/journals, tombstones, recovery state, audit logs, caches, and other operational synchronization state MUST NEVER be synchronized through configuration sync.
+**CONFIG-005 — Authentication and sync-state exclusion.** OAuth secrets/tokens, secure-storage values, device ID, synchronization base, Drive change cursors, checkpoints/journals, tombstones, recovery state, audit logs, caches, and other operational synchronization state MUST NEVER be synchronized through configuration sync.
 
-**CONFIG-006 — This plugin's settings.** The plugin MAY synchronize a sanitized portable subset of its own nonsecret settings, but device-local controls, credentials, secret references that would expose secret values, device identity, pairing-sensitive operational state, and runtime state MUST remain local.
+**CONFIG-006 — This plugin's settings.** The plugin MAY synchronize a sanitized portable subset of its own nonsecret settings, but device-local controls, credentials, secret material/references that would expose secret values, device identity, pairing-sensitive operational state, and runtime state MUST remain local.
 
-**CONFIG-007 — Third-party plugin settings.** Arbitrary third-party plugin `data.json` files MUST NOT be blindly synchronized wholesale because their schema may contain secrets or device-specific state. Any third-party plugin-settings synchronization requires explicit opt-in plus a known-safe/explicitly selected representation. It is not necessary for v1 completion to support arbitrary third-party plugin settings.
+**CONFIG-007 — Third-party plugin settings.** Arbitrary third-party plugin settings MUST NOT be synchronized wholesale merely because they reside under the configuration directory. A third-party setting is eligible only if its representation satisfies CONFIG-003 or the user explicitly opts into a known-safe selection mechanism. Generic third-party settings synchronization is not required for v1.
 
-**CONFIG-008 — Visible policy.** The configuration items included/excluded by policy MUST be visible to the user. Secrets MUST remain non-synchronizable even if a broad inclusion would otherwise match them.
+**CONFIG-008 — Visible policy.** The effective configuration inclusion/exclusion policy MUST be visible to the user. Secrets and protected operational state remain non-synchronizable even when a broad path pattern would otherwise include them.
 
 **CONFIG-009 — Configuration conflicts.** Portable configuration conflicts MUST follow conservative conflict semantics appropriate to the configuration type; a device-specific or secret-bearing value MUST never be overwritten onto another device merely to achieve convergence.
 
@@ -442,9 +472,15 @@ The active Obsidian configuration directory is obtained from the runtime (for ex
 
 **ASSET-008 — Canonical asset immunity.** Propagating removal of the vault binary MUST NEVER be interpreted as permission to delete the separately externalized canonical asset in the BRAIN asset repository.
 
+### 3.19 Plugin Lifecycle and Disconnect Safety
+
+**LIFE-001 — Disable/uninstall safety.** Disabling or uninstalling the plugin MUST NOT automatically delete local vault content, the shared BRAIN Sync remote, conflict/recovery content, or recovery state needed to reconnect safely.
+
+**LIFE-002 — Device unlink is non-destructive.** Removing/deauthorizing this device MUST be logically distinct from deleting the shared synchronization remote. Device removal MUST NOT delete shared vault data or impair other valid devices.
+
 ## 4. Observable Behavior
 
-This section defines externally meaningful workflows that distinguish correct from incorrect operation. It does not prescribe private method or class sequences.
+This section defines externally meaningful workflows that distinguish correct from incorrect operation. It does not prescribe private method/class sequences.
 
 ### 4.1 Initial Setup on the First Device
 
@@ -455,7 +491,7 @@ This section defines externally meaningful workflows that distinguish correct fr
 5. The plugin establishes/validates the stable BRAIN synchronization identity and remote protocol/schema compatibility.
 6. The user sees the effective vault/configuration exclusions.
 7. The plugin scans local and accessible managed remote state and constructs a first-sync safe-union plan.
-8. No deletion is present merely because a side is empty or unknown.
+8. No deletion is present merely because a side is empty, unreadable, partially observed, or unknown.
 9. The user reviews the preview and explicitly executes it.
 10. Completed transfers are verified before trustworthy base state is committed.
 11. Automatic synchronization may then be enabled.
@@ -488,7 +524,7 @@ A proven local or remote rename/move preserves logical file identity and the Dri
 
 ### 4.8 Deletion
 
-A file missing from one side is propagated as a deletion only when trustworthy base/tombstone evidence establishes that it previously existed there and the other side did not independently modify it. Deletion uses recoverable trash. Delete-vs-modify preserves the modification and surfaces a conflict.
+A file missing from one side is propagated as a deletion only when trustworthy base/tombstone evidence establishes that it previously existed there, the current absence is reliably observed, and the other side did not independently modify it. Deletion uses recoverable trash. Delete-vs-modify preserves the modification and surfaces a conflict.
 
 ### 4.9 Suspicious Bulk Destruction
 
@@ -506,13 +542,17 @@ Corrupt state is not treated as an empty valid base. The user sees a recovery-re
 
 If ChatGPT Work converts a vault binary into an external Google Drive asset link and removes the vault binary, synchronization propagates only the vault-side file deletion. The external canonical asset remains untouched because its Drive domain is outside this plugin.
 
+### 4.13 Disable, Uninstall, or Device Removal
+
+Disabling/uninstalling stops plugin execution without erasing shared or local content. Removing a device identity/deauthorization does not delete the shared remote. Any future capability that destroys the shared BRAIN Sync remote must be a separate explicitly destructive operation and cannot be conflated with routine disconnect/uninstall behavior.
+
 ## 5. Responsibilities and Boundaries
 
 The following are **logical responsibilities**, not mandated class names or source-file layout.
 
 ### 5.1 Obsidian Plugin / User-Control Boundary
 
-Owns commands, settings, status, preview, conflict/recovery interaction, safe lifecycle integration, and platform capability detection. It must not contain hidden product policy that contradicts the planner/state contracts.
+Owns commands, settings, status, preview, conflict/recovery interaction, safe lifecycle integration, and platform capability detection. It must not contain hidden product policy that contradicts planner/state contracts.
 
 ### 5.2 Authentication Boundary
 
@@ -558,6 +598,7 @@ A synchronization decision is made against a bounded, internally coherent set of
 
 - current local existence/content identity;
 - current managed-remote existence/content identity;
+- whether a local path was successfully observed versus unreadable/inaccessible;
 - stable Drive object identity;
 - previous trustworthy base state;
 - deletion/tombstone history;
@@ -565,7 +606,7 @@ A synchronization decision is made against a bounded, internally coherent set of
 - whether local files were stable when observed;
 - whether any identity/path ambiguity exists.
 
-A snapshot that is partial or known stale cannot authorize destructive conclusions that require complete knowledge.
+A snapshot that is partial, inaccessible, or known stale cannot authorize destructive conclusions that require complete knowledge.
 
 ### 6.2 Plan Contract
 
@@ -573,7 +614,7 @@ A plan is a deterministic statement of intended synchronization effects from the
 
 ### 6.3 Operation Commit Contract
 
-For a content-changing operation, the logical order is constrained by durability semantics:
+For a content-changing operation, the logical authority order is:
 
 1. validate that the planned precondition remains true;
 2. perform the content/identity mutation using retry-safe semantics;
@@ -592,7 +633,7 @@ Conflict resolution cannot destroy evidence needed to recover either concurrent 
 
 ### 6.6 Recovery Contract
 
-Recovery begins from the presumption that uncertain state cannot authorize destruction. It uses actual local/remote observations and stable identity evidence to rebuild knowledge, produces a reviewable reconciliation result, and returns to normal mode only when a trustworthy base/protocol relationship is re-established.
+Recovery begins from the presumption that uncertain state cannot authorize destruction. It uses actual local/remote observations and stable identity evidence to rebuild knowledge, produces a reviewable reconciliation result, and returns to normal mode only when a trustworthy base/protocol relationship is re-established. Drive version/trash history may assist but cannot substitute for trustworthy state reasoning.
 
 ### 6.7 Authentication Contract
 
@@ -634,6 +675,7 @@ Configuration is split into:
 
 - portable safe configuration eligible for selective synchronization;
 - device-specific configuration that remains local;
+- unknown/unclassified configuration, which remains local by default;
 - secrets, which are always local and non-synchronizable;
 - plugin operational synchronization state, which is always local except for deliberately designed shared protocol metadata.
 
@@ -645,37 +687,41 @@ The following conditions MUST remain true regardless of implementation:
 
 **INV-002.** No partial/failed remote enumeration can be treated as a complete proof that remote content is absent.
 
-**INV-003.** No authoritative state entry may claim a content operation succeeded before the operation is durable and integrity-verified.
+**INV-003.** No local read/access failure can be treated as proof that a previously known path was intentionally deleted.
 
-**INV-004.** Concurrent content changes are never resolved solely by newest timestamp.
+**INV-004.** No authoritative state entry may claim a content operation succeeded before the operation is durable and integrity-verified.
 
-**INV-005.** A delete-vs-modify race never silently destroys the modified version.
+**INV-005.** Concurrent content changes are never resolved solely by newest timestamp.
 
-**INV-006.** A binary conflict never silently discards one version.
+**INV-006.** A delete-vs-modify race never silently destroys the modified version.
 
-**INV-007.** A true text conflict preserves complete recoverable versions until resolution.
+**INV-007.** A binary conflict never silently discards one version.
 
-**INV-008.** First synchronization cannot propagate deletion before a trustworthy base exists.
+**INV-008.** A true text conflict preserves complete recoverable versions until resolution.
 
-**INV-009.** Stable remote file identity is preserved across a proven rename/move whenever the Drive API supports that operation.
+**INV-009.** First synchronization cannot propagate deletion before a trustworthy base exists.
 
-**INV-010.** Authentication secrets and device-local operational state never enter vault/config synchronization payloads.
+**INV-010.** Stable remote file identity is preserved across a proven rename/move whenever the Drive API supports that operation.
 
-**INV-011.** The BRAIN asset repository is never inside the sync engine's management scope.
+**INV-011.** Authentication secrets and device-local operational state never enter vault/config synchronization payloads.
 
-**INV-012.** Offline/local editing remains available when remote synchronization is unavailable.
+**INV-012.** The BRAIN asset repository is never inside the sync engine's management scope.
 
-**INV-013.** iOS-required behavior never depends on desktop-only APIs.
+**INV-013.** Offline/local editing remains available when remote synchronization is unavailable.
 
-**INV-014.** Suspicious bulk deletion cannot execute automatically through the ordinary synchronization path.
+**INV-014.** iOS-required behavior never depends on desktop-only APIs.
 
-**INV-015.** A stale returning device cannot authorize destructive propagation before reconciliation.
+**INV-015.** Suspicious bulk deletion cannot execute automatically through the ordinary synchronization path.
 
-**INV-016.** Path/platform collisions are surfaced rather than silently normalized into data loss.
+**INV-016.** A stale returning device cannot authorize destructive propagation before reconciliation.
 
-**INV-017.** Unknown file types are preserved as opaque data rather than dropped because Obsidian does not recognize their extension.
+**INV-017.** Path/platform collisions are surfaced rather than silently normalized into data loss.
 
-**INV-018.** The same core planning semantics govern preview, automatic execution, diagnostics, and tests; a separate unsafe execution path is prohibited.
+**INV-018.** Unknown file types are preserved as opaque data rather than dropped because Obsidian does not recognize their extension.
+
+**INV-019.** The same core planning semantics govern preview, automatic execution, diagnostics, and tests; a separate unsafe execution path is prohibited.
+
+**INV-020.** Disable, uninstall, or device deauthorization cannot implicitly delete shared synchronization data.
 
 ## 9. Failure and Validation Behavior
 
@@ -687,6 +733,8 @@ The following conditions MUST remain true regardless of implementation:
 | Remote BRAIN Sync root missing/inaccessible | Critical recovery state; no silent recreate/repopulate. |
 | Sync state missing/corrupt/incompatible | Explicit untrusted/recovery state; no deletion inference; conservative rebuild. |
 | Change cursor unavailable/invalid | Full safe reconciliation; no deletion conclusion from cursor failure. |
+| Partial/failed remote listing | Do not infer missing remote objects as deletions. |
+| Local path unreadable/inaccessible | Block/surface affected path; do not infer deletion. |
 | Duplicate/ambiguous remote path or identity | Preserve content; block affected ambiguous operations; surface. |
 | Local file changes during upload | Invalidate planned version; do not mark synchronized; re-plan/retry. |
 | Remote changes during affected planned work | Invalidate/re-plan affected path. |
@@ -701,6 +749,7 @@ The following conditions MUST remain true regardless of implementation:
 | Suspicious mass deletion | Block before mutation; create/verify recovery checkpoint; require explicit review/approval. |
 | Unsupported symlink/junction/external target | Do not follow; surface/exclude safely. |
 | Individual repeated path failure | Isolate affected path when safe; continue unrelated safe work. |
+| Plugin disable/uninstall/device removal | Stop participation without deleting shared/local content as a side effect. |
 
 ## 10. Fixed Decisions — Implementation May Not Reinterpret
 
@@ -711,25 +760,29 @@ The following are fixed product/architecture constraints:
 - Local-first ordinary vault on every device.
 - User's Google Drive is the remote; no Obsidian Sync dependency.
 - One BRAIN vault, one personal Google Drive remote, one user in v1.
+- Normal synchronization is bidirectional; persistent push-only/pull-only modes are excluded from v1.
 - `drive.file` authorization scope.
 - User-owned Google OAuth project/client.
 - Same-device mobile authentication; no desktop token transfer requirement.
-- Azure Static Web Apps Free is the approved hosted callback platform if an HTTPS callback/bridge is required.
+- Azure Static Web Apps Free is the approved preferred hosted callback platform if an HTTPS callback/bridge is required.
 - Dedicated plugin-managed BRAIN Sync remote distinct from the existing BRAIN asset repository.
 - Google Drive Changes API for normal incremental remote detection after baseline, plus periodic/on-demand full integrity reconciliation.
 - Explicit dry-run/planning layer; manual Sync now previews before Execute.
 - Persistent trustworthy base/history is required; corrupt/missing state enters safe recovery.
 - Timestamps are advisory only, never overwrite authority.
+- Local read/access failure is never deletion evidence.
 - Three-way merge for concurrent recognized text changes.
 - True conflicts preserve complete versions.
 - Binary conflicts preserve complete versions.
 - Delete-vs-modify preserves the modification.
 - Identity-preserving renames/moves and Drive IDs where safely possible.
 - Recoverable trash-based normal deletion.
+- Drive version/trash history is supplementary recovery only, not a correctness dependency.
 - Mass-deletion/destructive circuit breaker and recoverable checkpoint.
 - Safe-union first synchronization and no first-sync deletion.
-- Selective portable Obsidian configuration synchronization with secrets/device state excluded.
-- Unknown files synchronize as opaque binary.
+- Selective portable Obsidian configuration synchronization with secrets/device state excluded and unknown config excluded until classified safe.
+- Unknown ordinary vault files synchronize as opaque binary.
+- Disable/uninstall/device unlink are non-destructive by default.
 - No external telemetry by default.
 - No custom plugin-controlled E2E encryption requirement in v1.
 - ChatGPT Work asset externalization remains separate; existing BRAIN asset repository is never managed by this plugin.
@@ -752,6 +805,7 @@ The following remain engineering choices provided all normative semantics above 
 - exact default tombstone retention durations, subject to stale-device safety;
 - exact secure secret-storage adapter and compatibility fallback consistent with AUTH-009/AUTH-010;
 - exact OAuth code-exchange topology required by the user's Google OAuth client type/current Google policy, provided same-device authentication, callback isolation, no vault-data handling, no token persistence by the callback, and other AUTH requirements remain true;
+- exact version-specific Obsidian configuration filenames included by the explicit portable-configuration classifier/allowlist, provided CONFIG requirements remain satisfied;
 - exact UI layout, naming, icons, and visual design;
 - exact internal log/audit serialization and retention implementation;
 - ordinary refactoring and helper choices necessary to cleanly adapt donor code.
@@ -765,6 +819,7 @@ Version 1 explicitly does not require:
 - multi-user collaboration or role-based permissions;
 - multiple independent vault sync targets;
 - Shared Drive support;
+- persistent push-only or pull-only modes;
 - a generic synchronization service for arbitrary folders outside BRAIN;
 - official Obsidian Community Plugin publication;
 - a developer-hosted synchronization backend;
@@ -792,7 +847,7 @@ At minimum, construction MUST leave objective evidence in the following dimensio
 ### 13.1 Build and Platform Evidence
 
 - reproducible TypeScript/build success;
-- plugin loads with `isDesktopOnly: false` or equivalent mobile-compatible manifest state;
+- plugin manifest/runtime state is mobile-compatible rather than desktop-only;
 - Windows Obsidian functional testing;
 - iPhone/iOS Obsidian functional testing for authentication, initial pairing, upload, download, conflict handling, interruption/resume, and UI-critical flows;
 - no mobile-required module imports that depend on Node/Electron/Windows-only APIs.
@@ -817,6 +872,7 @@ Automated deterministic tests MUST cover, at minimum:
 - delete-vs-modify in both directions → modification survives/conflict;
 - both deleted → stable tombstone/base transition;
 - no-base absence does not become deletion;
+- unreadable local path does not become deletion;
 - clock skew cannot change winner/conflict classification;
 - stale/offline device cannot resurrect deleted content or authorize unsafe deletion;
 - identity-preserving local and remote rename/move;
@@ -863,6 +919,7 @@ Tests MUST prove:
 
 - first-sync deletion cannot occur;
 - corrupt/missing base cannot authorize deletion;
+- local read/access failure cannot authorize deletion;
 - partial remote enumeration cannot authorize remote-absence deletion;
 - circuit breaker blocks suspicious destructive plans before mutation;
 - ordinary legitimate small deletions can still propagate;
@@ -880,13 +937,14 @@ Tests MUST prove:
 - credentials/tokens are absent from synchronized configuration, audit logs, exported diagnostics, and repository source;
 - revoked token behavior fails closed for remote mutation and preserves local use.
 
-### 13.7 Configuration and Asset-Boundary Evidence
+### 13.7 Configuration, Lifecycle, and Asset-Boundary Evidence
 
 - active Obsidian config directory is not hard-coded as `.obsidian` for policy enforcement;
 - ordinary vault sync cannot accidentally synchronize protected operational state;
-- portable config includes only the approved/safe policy;
-- workspace/device-local files remain local by default;
+- configuration synchronization uses an explicit safe portable policy and excludes unknown configuration by default;
+- workspace/device-local state remains local by default;
 - secrets never synchronize;
+- disable/uninstall/device unlink does not delete shared/local content as a side effect;
 - existing Google Drive BRAIN asset repository is never enumerated or mutated by the sync engine;
 - ChatGPT Work externalization followed by vault-file deletion removes only the vault/sync-remote representation, not the canonical external asset.
 
@@ -906,7 +964,7 @@ This specification consolidates the authoritative decision register rather than 
 
 | Specification family | Primary decision-register sources |
 | --- | --- |
-| Process / authority | DEC-001–DEC-008 |
+| Process / authority | DEC-001–DEC-008 plus current Workflow A process amendment |
 | Development environment / platform | DEC-010–DEC-019 |
 | Product scope / local-first | DEC-020–DEC-028 |
 | Donor/foundation strategy | DEC-030–DEC-035 |
@@ -925,16 +983,28 @@ This specification consolidates the authoritative decision register rather than 
 | Privacy / security | DEC-270–DEC-272 |
 | BRAIN asset boundary | DEC-280–DEC-289 |
 
-Where a deferred-engineering entry in the decision register is constrained further here, this document defines the required outcome while retaining implementation discretion over ordinary mechanics.
+Where a deferred-engineering entry in the decision register is constrained further here, this document defines the required **outcome/contract** while retaining implementation discretion over ordinary mechanics.
 
-## 15. Stage 1 Product-Decision Status
+## 15. Product-Decision Status
 
-No currently known unresolved **product-authority** decision prevents implementation of this target system.
+No currently known unresolved **product-authority** decision prevents decomposition or implementation of this target system.
 
-Matters remaining open are engineering determinations expressly bounded by this specification, including concrete persistence technology, donor-code adoption mechanics, merge implementation, batching/concurrency parameters, circuit-breaker numeric thresholds, tombstone duration defaults, and the exact OAuth code-exchange topology compatible with current Google policy.
+Matters remaining open are engineering determinations expressly bounded by this specification, including concrete persistence technology, donor-code adoption mechanics, merge implementation, batching/concurrency parameters, circuit-breaker numeric thresholds, tombstone duration defaults, version-specific configuration allowlist entries, and exact OAuth code-exchange topology compatible with current Google policy.
 
-If Stage 2B engineering work discovers a choice whose alternatives would materially change the product defined here, that choice must be returned to the user rather than silently resolved.
+If later engineering work discovers a choice whose alternatives would materially change the product defined here, that choice MUST be returned to the user rather than silently resolved.
 
-## 16. Workflow-B Boundary
+## 16. Workflow A Stage-1 Handoff and Completion Gate
 
-Per the user's selected Recommended Default Workflow B, this artifact completes the **target-system-definition** portion of Stage 1. It intentionally does **not** expose a detailed build decomposition or coding-session plan. Stage 2B may derive the minimum sound implementation decomposition internally, but that internal plan is subordinate to this specification and may not redefine it.
+The project now uses **Workflow A** because construction will use supervised, persisted decomposition and potentially parallel worker agents.
+
+This target-system specification is complete only as the **target-definition artifact**. Stage 1 as a whole is not complete until the supervisor also persists:
+
+1. the minimum sound ordered build decomposition required by the development manual;
+2. a complete requirement-to-build-phase coverage mapping using the requirement IDs in this specification;
+3. dependency and cross-phase contract definitions sufficient to prevent drift;
+4. any stable shared interfaces/contracts that must be frozen before parallel work can safely begin;
+5. a Stage 1 coverage/dependency check proving that all requirements are assigned, dependencies precede dependents, no phase exists only for organizational convenience, and completing all phases necessarily produces this target system.
+
+Under Workflow A, detailed coding-agent prompts MUST NOT be generated en masse from the Stage 1 repository snapshot. Each build-session prompt must be generated by a supervisor against the **actual repository state that exists when that session begins**, while consuming this specification and the persisted decomposition/coverage artifacts.
+
+Parallel worker agents may be used only where the decomposition establishes genuinely independent workstreams or frozen shared boundaries. Integration authority remains with the supervisor lineage, and no worker-agent implementation decision may redefine this target specification.
