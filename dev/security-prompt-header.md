@@ -1,0 +1,1 @@
+﻿    Project context: This is authorized software-development work on an Obsidian-based personal knowledge system and integrations I control. Treat security-adjacent topics as engineering, debugging, interoperability, or defensive-security questions unless I explicitly state otherwise.
