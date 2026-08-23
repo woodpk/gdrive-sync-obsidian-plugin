@@ -16,111 +16,144 @@ No donor source file is copied into Phase 1, so no donor source/license text is 
 
 ## Repository Foundation
 
-- `package.json` — pinned npm dependencies and build/test commands.
-- `tsconfig.json` — strict TypeScript checking.
-- `esbuild.config.mjs` — browser-targeted Obsidian bundle with `obsidian` externalized.
-- `manifest.json` — mobile-compatible private plugin manifest (`isDesktopOnly: false`).
-- `src/main.ts` — minimal loadable entry point with no Phase 2+ behavior.
-- `test/mobile-safety.test.ts` — manifest/import/secret architecture guard.
-- `.github/workflows/phase1-ci.yml` — clean install, typecheck, tests, and build verification.
+- `package.json` and `package-lock.json` — pinned/reproducible npm dependency graph and build/test commands.
+- `tsconfig.json` — strict repository TypeScript checking.
+- `tsconfig.build.json` — CommonJS Obsidian entry-point compilation.
+- `tsconfig.test.json` — isolated CommonJS contract-test compilation.
+- `scripts/finalize-build.mjs` — build-tooling-only finalization that places emitted `main.js` at the plugin root.
+- `manifest.json` — private Obsidian plugin manifest with `isDesktopOnly: false`.
+- `versions.json` — plugin/minimum-Obsidian compatibility mapping.
+- `src/main.ts` — minimal loadable entry point with no Phase 2+ synchronization behavior.
+- `test/mobile-safety.test.ts` — manifest/import/secret-contract architecture guard.
+- `.github/workflows/phase1-ci.yml` — clean install, typecheck, tests, and production-build verification.
 
-Node.js is build/test tooling only. Mobile-required runtime source is under `src/` and is guarded against Node/Electron/Windows-only imports.
+Node.js is used only by build/test tooling. Mobile-required runtime source is under `src/`; automated guards reject Node/Electron/Windows-only runtime imports.
 
 ## Frozen Contract Modules
 
 ### Shared Value Types
 
-**Location:** `src/contracts/common.ts`  
-**Public names:** `VaultPath`, `RemoteObjectId`, `VaultIdentity`, `DeviceIdentity`, `ChangeCursor`, `StateRevision`, `OperationId`, `PlanId`, `ConflictId`, `CheckpointId`, `ContentHash`, `ObservationToken`, `ProtocolVersion`, `EntityKind`, `SyncSide`, `ContentEvidence`, `VersionReference`.  
-`ContentEvidence.advisoryModifiedTimeMs` is advisory only; no contract makes a timestamp winner-selection authority.
+**Location:** `src/contracts/common.ts`
+
+**Public names:** `VaultPath`, `RemoteObjectId`, `VaultIdentity`, `DeviceIdentity`, `ChangeCursor`, `StateRevision`, `OperationId`, `PlanId`, `ConflictId`, `CheckpointId`, `ContentHash`, `ObservationToken`, `ProtocolVersion`, `EntityKind`, `SyncSide`, `ContentEvidence`, `VersionReference`.
+
+`ContentEvidence.advisoryModifiedTimeMs` is explicitly advisory; no contract makes a timestamp winner-selection authority.
 
 ### Snapshot and Observation Contract
 
-**Location:** `src/contracts/snapshot.ts`  
-**Public names:** `FileStability`, `Observation`, `LocalObservation`, `RemoteObservation`, `EnumerationCompleteness`, `IdentityAssessment`, `BaseEvidence`, `PathSnapshot`.  
-Represents confirmed absence separately from unreadable/inaccessible/unknown state, stability, remote identity, trusted/uninitialized/untrusted base, tombstone evidence, enumeration completeness, and identity ambiguity. Phase 2 owns planning; Phases 3/4 populate observations.
+**Location:** `src/contracts/snapshot.ts`
+
+**Public names:** `FileStability`, `Observation`, `LocalObservation`, `RemoteObservation`, `EnumerationCompleteness`, `IdentityAssessment`, `BaseEvidence`, `PathSnapshot`.
+
+Represents confirmed absence separately from unreadable/inaccessible/unknown state, file stability, stable remote identity evidence, trusted/uninitialized/untrusted base, tombstone evidence, remote-enumeration completeness, and identity/path ambiguity. Phase 2 consumes these semantics; Phases 3 and 4 populate remote/local observations behind their ports.
 
 ### Synchronization Plan Contract
 
-**Location:** `src/contracts/plan.ts`  
-**Public names:** `PLAN_OPERATION_KINDS`, `PlanOperationKind`, `OperationPrecondition`, `PlanReason`, `PlannedOperation`, `PlanExecutionDisposition`, `SynchronizationPlan`, `PlanningInput`, `SynchronizationPlanner`.  
-Frozen operation vocabulary: `noop`, `upload-create`, `upload-update`, `download-create`, `download-update`, `identity-preserving-move`, `clean-text-merge`, `unresolved-conflict`, `trash-local`, `trash-remote`, `blocked-unsafe`, `recovery-required`. Phase 2 owns implementation.
+**Location:** `src/contracts/plan.ts`
+
+**Public names:** `PLAN_OPERATION_KINDS`, `PlanOperationKind`, `OperationPrecondition`, `PlanReason`, `PlannedOperation`, `PlanExecutionDisposition`, `SynchronizationPlan`, `PlanningInput`, `SynchronizationPlanner`.
+
+Frozen operation vocabulary: `noop`, `upload-create`, `upload-update`, `download-create`, `download-update`, `identity-preserving-move`, `clean-text-merge`, `unresolved-conflict`, `trash-local`, `trash-remote`, `blocked-unsafe`, `recovery-required`. Operations can carry preconditions and reason/evidence metadata. Phase 2 owns implementation.
 
 ### Local Vault Boundary Contract
 
-**Location:** `src/contracts/local-vault.ts`  
-**Public names:** `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, `LocalLifecycleEvent`, `Unsubscribe`, `LocalVaultPort`.  
-Provides mobile-safe enumeration/observation/content access, create/replace/folder creation, move, recoverable trash, path validation, active configuration-directory discovery, configuration classification, and lifecycle/change observation. Phase 4 owns implementation.
+**Location:** `src/contracts/local-vault.ts`
+
+**Public names:** `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, `LocalLifecycleEvent`, `Unsubscribe`, `LocalVaultPort`.
+
+Provides mobile-safe enumeration/observation/content access, create/replace/folder creation, rename/move, recoverable trash, path validation, runtime active-configuration-directory discovery, selective configuration classification, and local change/lifecycle observation. Phase 4 owns implementation; Phase 2 consumes only this port.
 
 ### Google Drive Boundary Contract
 
-**Location:** `src/contracts/google-drive.ts`  
-**Public names:** `REQUIRED_DRIVE_SCOPE`, `DriveAuthenticationState`, `ManagedRemoteIdentity`, `ManagedRemoteValidation`, `RemoteProtocolInfo`, `DriveSignal`, `DriveResult`, `RemoteEntry`, `RemoteListing`, `RemoteChange`, `RemoteChangePage`, `RemoteDownload`, `RemoteMutationReceipt`, `RemoteCreateRequest`, `RemoteUpdateRequest`, `GoogleDrivePort`.  
-Freezes `drive.file`, separates authentication from managed-remote identity, represents stable Drive IDs, protocol info, complete/partial reconciliation listing, initial/incremental change cursors, transfers, CRUD, identity-preserving move, trash, and retry/quota/recovery signaling. Phase 3 owns implementation.
+**Location:** `src/contracts/google-drive.ts`
+
+**Public names:** `REQUIRED_DRIVE_SCOPE`, `DriveAuthenticationState`, `ManagedRemoteIdentity`, `ManagedRemoteValidation`, `RemoteProtocolInfo`, `DriveSignal`, `DriveResult`, `RemoteEntry`, `RemoteListing`, `RemoteChange`, `RemoteChangePage`, `RemoteDownload`, `RemoteMutationReceipt`, `RemoteCreateRequest`, `RemoteUpdateRequest`, `GoogleDrivePort`.
+
+Freezes `https://www.googleapis.com/auth/drive.file`, separates authentication/session availability from managed-remote identity validation, and represents stable Drive IDs, protocol/schema information, reconciliation listing with explicit completeness, initial/incremental change cursors, content transfer, CRUD, identity-preserving move, recoverable trash, and retry/rate-limit/quota/recovery signaling. Phase 3 owns implementation; synchronization policy does not belong in this adapter.
 
 ### Durable State Contract
 
-**Location:** `src/contracts/state.ts`  
-**Public names:** `BaseEntry`, `TombstoneEntry`, `RemoteObjectMapping`, `OperationJournalStatus`, `OperationJournalEntry`, `DeviceStateEntry`, `TrustedSynchronizationState`, `RecoveryReason`, `StateLoadResult`, `StateLoadContext`, `StateSaveResult`, `StateBackupReceipt`, `StateMigrationAssessment`, `SynchronizationStateStore`.  
-Represents base/history, vault/device identity, mappings, tombstones, cursor, pending/completed/uncertain operation state, stale devices, recovery, migration, backup, and diagnostic export. `StateLoadContext` distinguishes a true new installation from expected state that is missing/corrupt. Phase 2 owns implementation.
+**Location:** `src/contracts/state.ts`
+
+**Public names:** `BaseEntry`, `TombstoneEntry`, `RemoteObjectMapping`, `OperationJournalStatus`, `OperationJournalEntry`, `DeviceStateEntry`, `TrustedSynchronizationState`, `RecoveryReason`, `StateLoadResult`, `StateLoadContext`, `StateSaveResult`, `StateBackupReceipt`, `StateMigrationAssessment`, `SynchronizationStateStore`.
+
+Represents trustworthy base/history, stable vault/device identity, remote-object mappings, tombstones, Drive cursor, pending/completed/uncertain operation state, stale-device state, schema/version, recovery classification, migration assessment, recovery backup, and diagnostic export. `StateLoadContext` distinguishes a true new installation from an existing pairing whose expected state is missing; malformed/absent expected state cannot silently become a trusted empty base. Phase 2 owns implementation.
 
 ### Conflict and Merge Contract
 
-**Location:** `src/contracts/conflict.ts`  
-**Public names:** `ConflictProvenance`, `ConcurrentAlternates`, `ThreeWayProvenance`, `ConflictAssessment`, `ConflictResolution`, `ConflictResolver`.  
-Distinguishes no conflict, clean merge, unresolved text, opaque/binary, and delete-vs-modify while retaining concurrent-version provenance. No newest-timestamp-wins outcome exists. Phase 2 owns implementation.
+**Location:** `src/contracts/conflict.ts`
+
+**Public names:** `ConflictProvenance`, `ConcurrentAlternates`, `ThreeWayProvenance`, `ConflictAssessment`, `ConflictResolution`, `ConflictResolver`.
+
+Distinguishes no conflict, clean merge, unresolved text conflict, opaque/binary conflict, and delete-versus-modify conflict while retaining concurrent-version/provenance references. User outcomes include keep local, keep remote, keep both, accept clean merge, and manual resolution. No newest-timestamp-wins outcome exists. Phase 2 owns implementation.
 
 ### Execution Result and Commit Contract
 
-**Location:** `src/contracts/execution.ts`  
-**Public names:** `PreconditionValidationResult`, `VerifiedExecutionReceipt`, `ExecutionResult`, `SynchronizationExecutor`, `CommitResult`, `AuthoritativeSuccessCommitter`.  
-Distinguishes verified success, retryable/blocking failure, stale precondition, cancellation, uncertain outcome, and recovery. `AuthoritativeSuccessCommitter` accepts only a durable, integrity-verified receipt, preserving validate → mutate → verify → authoritative commit. Phase 2 owns execution/commit coordination.
+**Location:** `src/contracts/execution.ts`
+
+**Public names:** `PreconditionValidationResult`, `VerifiedExecutionReceipt`, `ExecutionResult`, `SynchronizationExecutor`, `CommitResult`, `AuthoritativeSuccessCommitter`.
+
+Distinguishes durable verified success, retryable failure, blocking failure, stale-precondition/re-plan, cancellation, uncertain outcome, and recovery-required outcome. `AuthoritativeSuccessCommitter` accepts only a receipt structurally marked `durable: true` and `integrityVerified: true`, preserving validate precondition → mutate → verify → authoritative commit. Phase 2 owns execution/commit coordination.
 
 ### Status, Audit, and User-Action Contract
 
-**Location:** `src/contracts/status-audit-actions.ts`  
-**Public names:** `SynchronizationStatus`, `AuditEventKind`, `AuditRecord`, `ProductSurfaceState`, `UserAction`, `UserActionResult`, `ProductControlPort`.  
-Exposes required status/preview/conflict/recovery state and Execute, conflict resolution, destructive approval with recovery checkpoint, pause/resume, Verify/Reconcile, and cancellation. Audit records are metadata-only. No force-sync action exists. Phase 5 consumes this surface; Phase 2 supplies policy state.
+**Location:** `src/contracts/status-audit-actions.ts`
+
+**Public names:** `SynchronizationStatus`, `AuditEventKind`, `AuditRecord`, `ProductSurfaceState`, `UserAction`, `UserActionResult`, `ProductControlPort`.
+
+Exposes idle/ready, planning, syncing, offline/deferred, authentication required, paused, conflict present, destructive-plan blocked, recovery required, and error states plus plan preview/conflict/recovery data. Actions include Execute, conflict resolution, destructive-plan approval with recovery checkpoint, pause/resume, Verify/Reconcile Vault, and cancellation. Audit records expose operation metadata only; no content payload or general destructive force-sync action exists. Phase 5 consumes this surface; Phase 2 supplies policy-derived state.
 
 ## Dependency Direction
 
 ```text
 UI / orchestration
         ↓
-Phase 1 contracts
+Phase 1 product/domain contracts
    ↙       ↓        ↘
 Phase 4   Phase 2   Phase 3
 Local     Core      Drive/OAuth
 adapter   semantics adapter
 ```
 
-Contracts may depend on other contract modules. Phase 2 may depend on Local Vault and Drive ports. Phases 3/4 implement their ports but must not depend on Phase 2 policy implementation. UI/product code submits actions through `ProductControlPort`, not directly to adapters.
+Contracts may depend on other contract modules. Phase 2 may depend on the Local Vault and Google Drive ports. Phases 3 and 4 implement their ports but must not depend on Phase 2 synchronization-policy implementation. UI/product code submits actions through `ProductControlPort` rather than directly mutating adapters.
 
 ## Test Doubles and Contract Seams
 
-**Location:** `src/testing/fakes.ts`  
+**Location:** `src/testing/fakes.ts`
+
 **Exports:** `createLocalVaultFake`, `createGoogleDriveFake`, `InMemorySynchronizationStateStore`, `FakeSynchronizationPlanner`, `RecordingSuccessCommitter`, `RecordingProductControl`.
 
-These let Phase 2 test without live Drive/Obsidian, Phase 3 test its Drive port without sync policy, Phase 4 test its local port without sync policy, and later UI/orchestration tests consume engine state/actions without bypassing policy. `test/contracts.test.ts` exercises every contract family.
+These let Phase 2 test synchronization/state semantics without live Drive or Obsidian, Phase 3 test `GoogleDrivePort` independently of synchronization policy, Phase 4 test `LocalVaultPort` independently of synchronization policy, and later UI/orchestration tests consume policy-derived status/actions without bypassing the engine. `test/contracts.test.ts` exercises every frozen contract family; `test/mobile-safety.test.ts` enforces the mobile/secret boundary.
 
 ## Parallel Ownership
 
-- **Phase 2:** planning, conflict/merge semantics, destructive safety, execution/commit coordination, durable synchronization-state implementation.
+- **Phase 2:** synchronization planning, conflict/merge semantics, destructive-safety policy, execution/commit coordination, and durable synchronization-state implementation.
 - **Phase 3:** Google OAuth and `GoogleDrivePort` implementation.
 - **Phase 4:** Obsidian local/platform/configuration and `LocalVaultPort` implementation.
-- **Supervisor lineage:** frozen-contract ownership, cross-workstream contract changes, integration order, and acceptance gates.
+- **Supervisor lineage:** frozen-contract ownership, cross-workstream contract changes, integration ordering, and acceptance gates.
+
+Phases 2, 3, and 4 may proceed concurrently only after supervisory acceptance of Phase 1.
 
 ## Frozen-Contract Change Procedure
 
-A Phase 2/3/4 worker must not change these contracts unilaterally. It must report the exact deficient type/member, target requirement blocked, smallest needed semantic change, and affected workstreams. The supervisor centrally evaluates and persists any accepted revision, communicates it to every affected worker, and dependent workers reconcile before continuing. Ordinary private implementation behind a frozen boundary does not require this process.
+A Phase 2/3/4 worker that finds a frozen contract insufficient must not edit it unilaterally.
+
+1. Report the exact contract/type/member that is insufficient and the target requirement that cannot be satisfied.
+2. Describe the smallest semantic change required and identify affected workstreams.
+3. Stop only dependent work; continue independent in-scope work when safe.
+4. The supervising lineage evaluates the change against higher-authority artifacts and all affected workstreams.
+5. The supervisor centrally approves/rejects and persists any contract revision, updates this handoff, and communicates the revision to every affected worker.
+6. Dependent workers reconcile to the accepted revision before continuing.
+
+Ordinary private implementation behind a frozen interface does not require this procedure.
 
 ## Donor Semantics Deliberately Rejected
 
-Phase 1 excludes newest-mtime conflict winners, full Drive authorization, desktop-generated token transfer, corrupt/missing state as trusted empty base, delete/recreate as the only rename semantic, full-tree polling as the only remote-detection contract, multi-target/Shared-Drive product semantics, mobile runtime Node/Electron/Windows dependencies, a global destructive force-sync bypass, and developer-controlled telemetry.
+Phase 1 excludes newest-mtime conflict winners, full Google Drive authorization, desktop-generated credential/token transfer, missing/corrupt persisted state as a trusted empty base, delete/recreate as the only rename semantic, full-tree polling as the only remote-detection contract, multi-target/Shared-Drive product semantics, Node/Electron/Windows-only dependencies in mobile runtime modules, a global destructive force-sync bypass, and developer-controlled telemetry.
 
 ## Verified Commands
 
-Final clean verification commands are:
+The repository verification gate is:
 
 ```bash
 npm ci
@@ -129,6 +162,8 @@ npm test
 npm run build
 ```
 
+GitHub Actions run `32662762609` successfully executed dependency generation/install, strict typecheck, all 14 Phase 1 contract/mobile-safety tests, and the production build. That run also generated the reproducible `package-lock.json`, which was persisted to branch commit `bb9f7b0b0da8cdd1a5017b7faf2bc401793b2afa`. This handoff update intentionally triggers one final clean CI pass using the already committed lockfile before Phase 1 is reported complete.
+
 ## Verification Status
 
-Pending clean GitHub Actions verification. This section must be updated before Phase 1 is reported complete.
+Phase 1 implementation is functionally green through build/test. Final post-lockfile clean-checkout verification is in progress and must pass before the implementation agent reports `COMPLETE`.
