@@ -1,5 +1,5 @@
 import type {
-  ChangeCursor, GoogleDrivePort, LocalVaultPort, ManagedRemoteIdentity,
+  BinaryContentSource, ChangeCursor, GoogleDrivePort, LocalVaultPort, ManagedRemoteIdentity,
   ObservationToken, ProductControlPort, ProductSurfaceState, ProtocolVersion,
   RemoteObjectId, StateBackupReceipt, StateLoadContext, StateLoadResult,
   StateMigrationAssessment, StateRevision, StateSaveResult, SynchronizationPlan,
@@ -26,7 +26,9 @@ export function createLocalVaultFake(h: LocalVaultFakeHandlers = {}): LocalVault
     enumerate: h.enumerate ?? (async () => ({ entries: [], completeness: { status: "complete" } })),
     observe: h.observe ?? (async path => ({ status: "unknown", side: "local", path, reason: "not-configured" })),
     readFile: h.readFile ?? (async path => { throw new Error(`readFile not configured: ${String(path)}`); }),
-    createFile: async path => ({ path }), replaceFile: async path => ({ path }), createFolder: async path => ({ path }),
+    createFile: async (path, _content: BinaryContentSource) => ({ path }),
+    replaceFile: async (path, _content: BinaryContentSource) => ({ path }),
+    createFolder: async path => ({ path }),
     move: async (_from, to) => ({ path: to }), trash: async () => undefined,
     validatePath: h.validatePath ?? (async () => ({ status: "compatible", normalizedComparisonPath: "" })),
     classifyConfiguration: h.classifyConfiguration ?? (async () => ({ classification: "unknown", reason: "not-classified" })),

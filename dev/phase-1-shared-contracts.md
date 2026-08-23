@@ -27,7 +27,7 @@ No donor source file is copied into Phase 1, so no donor source/license text is 
 - `test/mobile-safety.test.ts` — manifest/import/secret-contract architecture guard.
 - `.github/workflows/phase1-ci.yml` — clean install, typecheck, tests, and production-build verification.
 
-Node.js is used only by build/test tooling. Mobile-required runtime source is under `src/`; automated guards reject Node/Electron/Windows-only runtime imports.
+Node.js is used only by build/test tooling. Mobile-required runtime source is under `src/`; automated guards reject Node/Electron/Windows-only runtime imports. Frozen transfer boundaries use a platform-neutral lazy chunk source so large-file adapters can process content with bounded memory instead of requiring whole-file materialization.
 
 ## Frozen Contract Modules
 
@@ -35,9 +35,9 @@ Node.js is used only by build/test tooling. Mobile-required runtime source is un
 
 **Location:** `src/contracts/common.ts`
 
-**Public names:** `VaultPath`, `RemoteObjectId`, `VaultIdentity`, `DeviceIdentity`, `ChangeCursor`, `StateRevision`, `OperationId`, `PlanId`, `ConflictId`, `CheckpointId`, `ContentHash`, `ObservationToken`, `ProtocolVersion`, `EntityKind`, `SyncSide`, `ContentEvidence`, `VersionReference`.
+**Public names:** `VaultPath`, `RemoteObjectId`, `VaultIdentity`, `DeviceIdentity`, `ChangeCursor`, `StateRevision`, `OperationId`, `PlanId`, `ConflictId`, `CheckpointId`, `ContentHash`, `ObservationToken`, `ProtocolVersion`, `EntityKind`, `SyncSide`, `BinaryContentSource`, `ContentEvidence`, `VersionReference`.
 
-`ContentEvidence.advisoryModifiedTimeMs` is explicitly advisory; no contract makes a timestamp winner-selection authority.
+`BinaryContentSource` is the frozen platform-neutral binary-transfer abstraction. `openChunks()` returns an `AsyncIterable<Uint8Array>` so content may be produced and consumed incrementally; the contract does not require the complete file, or all chunks, to be accumulated in memory before consumption begins. Individual chunks remain portable `Uint8Array` values. `ContentEvidence.advisoryModifiedTimeMs` is explicitly advisory; no contract makes a timestamp winner-selection authority.
 
 ### Snapshot and Observation Contract
 
@@ -61,7 +61,7 @@ Frozen operation vocabulary: `noop`, `upload-create`, `upload-update`, `download
 
 **Public names:** `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, `LocalLifecycleEvent`, `Unsubscribe`, `LocalVaultPort`.
 
-Provides mobile-safe enumeration/observation/content access, create/replace/folder creation, rename/move, recoverable trash, path validation, runtime active-configuration-directory discovery, selective configuration classification, and local change/lifecycle observation. Phase 4 owns implementation; Phase 2 consumes only this port.
+Provides mobile-safe enumeration/observation/content access, create/replace/folder creation, rename/move, recoverable trash, path validation, runtime active-configuration-directory discovery, selective configuration classification, and local change/lifecycle observation. File reads expose `BinaryContentSource`, and create/replace accept `BinaryContentSource`, so the Phase 4 adapter boundary permits lazy incremental large-file transfer without a complete-file `Uint8Array` payload. Phase 4 owns implementation; Phase 2 consumes only this port.
 
 ### Google Drive Boundary Contract
 
@@ -69,7 +69,7 @@ Provides mobile-safe enumeration/observation/content access, create/replace/fold
 
 **Public names:** `REQUIRED_DRIVE_SCOPE`, `DriveAuthenticationState`, `ManagedRemoteIdentity`, `ManagedRemoteValidation`, `RemoteProtocolInfo`, `DriveSignal`, `DriveResult`, `RemoteEntry`, `RemoteListing`, `RemoteChange`, `RemoteChangePage`, `RemoteDownload`, `RemoteMutationReceipt`, `RemoteCreateRequest`, `RemoteUpdateRequest`, `GoogleDrivePort`.
 
-Freezes `https://www.googleapis.com/auth/drive.file`, separates authentication/session availability from managed-remote identity validation, and represents stable Drive IDs, protocol/schema information, reconciliation listing with explicit completeness, initial/incremental change cursors, content transfer, CRUD, identity-preserving move, recoverable trash, and retry/rate-limit/quota/recovery signaling. Phase 3 owns implementation; synchronization policy does not belong in this adapter.
+Freezes `https://www.googleapis.com/auth/drive.file`, separates authentication/session availability from managed-remote identity validation, and represents stable Drive IDs, protocol/schema information, reconciliation listing with explicit completeness, initial/incremental change cursors, content transfer, CRUD, identity-preserving move, recoverable trash, and retry/rate-limit/quota/recovery signaling. Downloads and create/update request content use `BinaryContentSource`, allowing the Phase 3 adapter boundary to consume or produce file content incrementally with bounded memory and without prescribing Node streams, filesystem handles, or another desktop-only mechanism. Phase 3 owns implementation; synchronization policy does not belong in this adapter.
 
 ### Durable State Contract
 
@@ -123,7 +123,7 @@ Contracts may depend on other contract modules. Phase 2 may depend on the Local 
 
 **Exports:** `createLocalVaultFake`, `createGoogleDriveFake`, `InMemorySynchronizationStateStore`, `FakeSynchronizationPlanner`, `RecordingSuccessCommitter`, `RecordingProductControl`.
 
-These let Phase 2 test synchronization/state semantics without live Drive or Obsidian, Phase 3 test `GoogleDrivePort` independently of synchronization policy, Phase 4 test `LocalVaultPort` independently of synchronization policy, and later UI/orchestration tests consume policy-derived status/actions without bypassing the engine. `test/contracts.test.ts` exercises every frozen contract family; `test/mobile-safety.test.ts` enforces the mobile/secret boundary.
+These let Phase 2 test synchronization/state semantics without live Drive or Obsidian, Phase 3 test `GoogleDrivePort` independently of synchronization policy, Phase 4 test `LocalVaultPort` independently of synchronization policy, and later UI/orchestration tests consume policy-derived status/actions without bypassing the engine. `test/contracts.test.ts` exercises every frozen contract family, including a multi-chunk lazy `BinaryContentSource` accepted by the local and Drive transfer types; `test/mobile-safety.test.ts` enforces the mobile/secret boundary.
 
 ## Parallel Ownership
 
@@ -168,4 +168,4 @@ GitHub Actions run `32662829150` then performed the final clean-checkout gate fr
 
 ## Verification Status
 
-**PASS.** Phase 1 repository foundation, frozen shared contracts, test seams, mobile-safety checks, reproducible dependency installation, and production build are objectively verified. No known Phase 1 blocker or unresolved product-authority decision remains. Supervisor acceptance is still required before starting the Phase 2/3/4 parallel wave.
+**PASS.** Phase 1 repository foundation, frozen shared contracts, test seams, mobile-safety checks, reproducible dependency installation, and production build were verified before C1 correction. The C1 large-file transfer correction must pass the same full gate before its evidence is finalized. Supervisor acceptance is still required before starting the Phase 2/3/4 parallel wave.
