@@ -6,9 +6,12 @@
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Repository URL: `https://github.com/woodpk/gdrive-sync-obsidian-plugin`
 - Verified Git clone URL / remote destination: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`
-- Branch/ref used for the build: `agt-stg-2a-phase-1-01`
-- Base commit SHA: `0f88f8f11d10caf492237b323aec1b550fc2b052`
-- Final pushed implementation commit SHA before this evidence-only commit: `40af4c2a73576f931868453f03857af25bd207d9`
+- Authoritative branch/ref used for the completed build: `master`
+- Base commit SHA from which the assignment began: `0f88f8f11d10caf492237b323aec1b550fc2b052`
+- Concurrent master commit preserved during correction: `b74ac80728970b8223f66d85c22a8d3bb6d53b36`
+- Phase 1 implementation head before integration: `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`
+- Merge/integration commit onto `master`: `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53`
+- CI-branch correction commit on `master`: `db7df8670abbf40df022497fedddae7239b6121a`
 - Additional substantive implementation commit SHAs:
   - `3ab40905f2041a1ef37bf2c1647b116550135f9f` — establish mobile-compatible plugin foundation
   - `c571ac14056c6ab558816a506ad665449bf67984` — freeze Phase 1 shared contracts
@@ -20,8 +23,9 @@
   - `bb9f7b0b0da8cdd1a5017b7faf2bc401793b2afa` — persist reproducible npm lockfile
   - `d699e3bc77509c7416642e8323822557b37be456` — update the Phase 1 handoff with verification evidence
   - `40af4c2a73576f931868453f03857af25bd207d9` — finalize Phase 1 verification status
+  - `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b` — add the initial coding-agent evidence handoff
 
-The concrete commit SHA that contains this evidence artifact is necessarily determined only after Git hashes this file and commit. Git commit IDs are hashes of the commit/tree contents, so a commit cannot truthfully embed its own SHA without an impossible self-referential hash fixed point. The supervising agent should use the verified remote branch head as the authoritative evidence-commit SHA; the final handoff response records that concrete SHA after push verification.
+The concrete SHA of the commit that contains the current revision of this evidence file is determined after Git hashes the file/commit. The verified remote `master` head after this update is therefore reported in the final handoff response rather than self-referentially embedded here.
 
 ## Implemented Scope
 
@@ -29,7 +33,7 @@ Phase 1 established the mobile-compatible Obsidian plugin repository foundation 
 
 ## Files Created
 
-The following inventory was derived from the actual Git compare from base commit `0f88f8f11d10caf492237b323aec1b550fc2b052` to the Phase 1 implementation head, plus this required evidence artifact. The implementation compare reported every implementation path as `added`.
+The following assignment files were derived from the actual Git change set from the assignment base. The later concurrent `master` prompt files were not part of this build and are intentionally excluded from this inventory.
 
 - `.github/workflows/phase1-ci.yml`
 - `.gitignore`
@@ -61,9 +65,10 @@ The following inventory was derived from the actual Git compare from base commit
 
 ## Files Modified
 
-- `dev/evidence/_ca-output.md` — included here as explicitly required by the evidence-handoff instructions; relative to the assignment base Git classifies it as `added`, not as modification of a pre-existing file.
+- `.github/workflows/phase1-ci.yml` — corrected after integration so push CI runs on the authoritative `master` branch rather than the mistakenly created construction branch.
+- `dev/evidence/_ca-output.md` — corrected to identify `master` as the authoritative branch and document the repository-history correction.
 
-No pre-existing repository file was modified relative to the assignment base.
+No other pre-existing assignment-base file was modified by the Phase 1 implementation.
 
 ## Files Deleted
 
@@ -77,11 +82,25 @@ None.
 - Result: `PASS`
 - Relevant result: repository clone URL resolved exactly to `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`; default branch is `master`; the connected GitHub identity has push/admin access.
 
-### Actual Assignment Change-Set Inspection
+### Assignment Change-Set Inspection
 
-- Validation operation: GitHub compare `0f88f8f11d10caf492237b323aec1b550fc2b052...40af4c2a73576f931868453f03857af25bd207d9` and PR changed-filename inspection.
+- Validation operation: GitHub compare from base `0f88f8f11d10caf492237b323aec1b550fc2b052` to the Phase 1 implementation/evidence head and PR changed-filename inspection.
 - Result: `PASS`
-- Relevant result: implementation head was 10 commits ahead, 0 behind; compare reported 26 implementation files, all `added`, with 0 modified/deleted paths. The file inventory above was reconciled against that result before the evidence artifact was added.
+- Relevant result: before integration, the Phase 1 line contained 27 assignment paths including this evidence artifact; the implementation itself comprised 26 files before evidence creation. No assignment file was deleted.
+
+### Master Preservation / Integration Verification
+
+- Validation operation: inspect `master` before integration.
+- Result: `PASS`
+- Relevant result: `master` had independently advanced to `b74ac80728970b8223f66d85c22a8d3bb6d53b36`, one commit after the assignment base, adding review/rejection prompt files. That work was preserved rather than overwritten.
+
+- Validation operation: merge the completed Phase 1 history into current `master` with expected source head `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`.
+- Result: `PASS`
+- Relevant result: GitHub created merge commit `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53` on `master`, preserving both histories.
+
+- Validation operation: correct `.github/workflows/phase1-ci.yml` push trigger from the unauthorized branch to `master`.
+- Result: `PASS`
+- Relevant result: correction committed on `master` as `db7df8670abbf40df022497fedddae7239b6121a`.
 
 ### CI Run `32662569481`
 
@@ -131,8 +150,6 @@ None.
 - Result: `PASS`
 - Relevant result: production plugin build completed successfully.
 
-The test suite includes contract-family checks and architecture/mobile-safety checks for required operation vocabulary, unsafe uncertainty vs confirmed absence, adapter test seams, `drive.file`, authentication/managed-root identity separation, partial remote enumeration, recovery-state distinction, absence of newest-wins conflict behavior, required execution outcomes, verified-success commit gating, required status/action surface without force-sync, mobile manifest compatibility, prohibited runtime imports, and exclusion of authentication secret fields from frozen payload contracts.
-
 No separate live Google Drive integration test or real-device Obsidian runtime test was part of the assigned Phase 1 scope and therefore was not executed.
 
 ## Acceptance-Criteria Status
@@ -148,7 +165,8 @@ Phase 1 acceptance criteria implemented and objectively verified within the codi
 - mobile-runtime architecture guards exist and pass;
 - contract tests pass;
 - production build passes;
-- shared-contract handoff is persisted.
+- shared-contract handoff is persisted;
+- completed build is integrated into the authoritative `master` branch.
 
 No assigned Phase 1 criterion is known to be unsatisfied. This is not a claim of supervisory approval; independent supervisor review remains required.
 
@@ -160,7 +178,8 @@ The implementation preserves the intended dependency direction: Phase 2 consumes
 
 ## Deviations
 
-- The initial test/build mechanics used a Vitest/esbuild-oriented dependency graph. Clean CI exposed an npm 10.9.8 dependency-resolution crash before product verification. The Phase 1 toolchain was reduced to TypeScript plus Node's built-in test runner and a minimal build-finalization script. The required end state—strict type checking, automated tests, reproducible clean install, mobile-compatible runtime boundary, and production plugin build—was preserved and subsequently passed clean CI.
+- A separate branch `agt-stg-2a-phase-1-01` was created without supervisor authorization. This was a process deviation. The completed build was subsequently integrated into the authoritative `master` branch while preserving an independently added master-only commit. The unauthorized branch is to be deleted as part of the repository cleanup.
+- The initial test/build mechanics used a Vitest/esbuild-oriented dependency graph. Clean CI exposed an npm 10.9.8 dependency-resolution crash before product verification. The Phase 1 toolchain was reduced to TypeScript plus Node's built-in test runner and a minimal build-finalization script. The required end state was preserved and subsequently passed clean CI.
 - The repository foundation used selective architectural adaptation from donor projects rather than a direct donor fork because directly forking would have imported later-phase implementation and explicitly incompatible product semantics. This does not change the required Phase 1 end state.
 
 ## Known Issues and Unverified Matters
@@ -171,13 +190,10 @@ The implementation preserves the intended dependency direction: Phase 2 consumes
 
 ## Evidence Integrity and Push Verification
 
-- Actual Git compare inspected before evidence creation: `0f88f8f11d10caf492237b323aec1b550fc2b052...40af4c2a73576f931868453f03857af25bd207d9`.
-- Pre-evidence compare status: `ahead`; 10 commits ahead, 0 behind.
-- Pre-evidence implementation paths: 26 total; all classified by GitHub as `added`; no modified or deleted paths.
-- PR changed-filename list reconciled against the compare inventory; no implementation path was omitted.
-- Verification statements above correspond to observed GitHub Actions runs and observed outcomes; failed intermediate validations are explicitly recorded as failures rather than rewritten as passes.
-- Base SHA verified: `0f88f8f11d10caf492237b323aec1b550fc2b052`.
-- Final pushed implementation SHA before evidence-only commit verified: `40af4c2a73576f931868453f03857af25bd207d9`.
+- Assignment base SHA verified: `0f88f8f11d10caf492237b323aec1b550fc2b052`.
 - Required remote verified: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`.
-- Required branch/ref: `agt-stg-2a-phase-1-01`.
-- This evidence artifact is committed directly to that designated remote branch/ref. The concrete evidence-commit SHA and final remote branch-head reachability are verified after this file is committed and are reported in the final coding-agent handoff; this unavoidable post-hash fact cannot be embedded into the same Git commit that determines it.
+- Authoritative branch/ref corrected to: `master`.
+- Concurrent master-only commit `b74ac80728970b8223f66d85c22a8d3bb6d53b36` was identified and preserved.
+- Phase 1 implementation/evidence history was integrated to `master` in merge commit `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53`.
+- CI branch trigger was corrected on `master` in `db7df8670abbf40df022497fedddae7239b6121a`.
+- Final remote `master` head reachability is verified after this evidence update and reported in the final coding-agent handoff.
