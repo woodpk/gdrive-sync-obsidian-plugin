@@ -2,73 +2,49 @@
 
 ## Build Identification
 
-- Build/session or phase identifier: `Stage 2A Build Session 01 / Phase 1 — Repository Foundation and Frozen Shared Contracts`
+- Correction/build-session identifier: `Stage 2A Phase 1 rejection correction — C1 large-file transfer contracts`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Repository URL: `https://github.com/woodpk/gdrive-sync-obsidian-plugin`
-- Verified Git clone URL / remote destination: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`
-- Authoritative branch/ref used for the completed build: `master`
-- Base commit SHA from which the assignment began: `0f88f8f11d10caf492237b323aec1b550fc2b052`
-- Concurrent master commit preserved during correction: `b74ac80728970b8223f66d85c22a8d3bb6d53b36`
-- Phase 1 implementation head before integration: `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`
-- Merge/integration commit onto `master`: `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53`
-- CI-branch correction commit on `master`: `db7df8670abbf40df022497fedddae7239b6121a`
-- Additional substantive implementation commit SHAs:
-  - `3ab40905f2041a1ef37bf2c1647b116550135f9f` — establish mobile-compatible plugin foundation
-  - `c571ac14056c6ab558816a506ad665449bf67984` — freeze Phase 1 shared contracts
-  - `f138f1e7b076c9a92c4055516c0707306e801d7a` — add Phase 1 contract tests and parallel handoff
-  - `359065c481b3a932b8987d6fb1bef4a47e951fcc` — simplify the test/build toolchain after npm resolver failure
-  - `a9204743fd69cefdbddbf474697de98a4a840896` — repair planner fake contract signature
-  - `bc42cf7c767acf8cbab3e584624acbdaf5eb644c` — repair Node test compiler interop
-  - `0ed7e578378df4d4e80f9338e96584dc01806120` — repair mobile-safety repository-root resolution
-  - `bb9f7b0b0da8cdd1a5017b7faf2bc401793b2afa` — persist reproducible npm lockfile
-  - `d699e3bc77509c7416642e8323822557b37be456` — update the Phase 1 handoff with verification evidence
-  - `40af4c2a73576f931868453f03857af25bd207d9` — finalize Phase 1 verification status
-  - `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b` — add the initial coding-agent evidence handoff
+- Verified Git remote destination: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`
+- Authoritative branch/ref: `master`
+- Initial correction grounding SHA: `5add350efa9a9ec5c725f72c0b153025df260d92`
+- Concurrent unrelated `master` commit preserved before the successful correction commit: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
+- Effective correction base/parent SHA: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
+- C1 implementation commit SHA: `ad4362e6ec27d5c804d656a667d9080b9f964132`
+- Final pushed evidence commit SHA: determined after this evidence update is committed; verify against remote `master` and report in the completion response.
 
-The concrete SHA of the commit that contains the current revision of this evidence file is determined after Git hashes the file/commit. The verified remote `master` head after this update is therefore reported in the final handoff response rather than self-referentially embedded here.
+The effective correction base is `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` because `master` advanced after initial grounding and before the first attempted ref update. The non-fast-forward update was rejected; the correction was reapplied on top of the new `master` head so unrelated repository work was preserved.
 
-## Implemented Scope
+## Corrections Implemented
 
-Phase 1 established the mobile-compatible Obsidian plugin repository foundation and froze the shared source-level contracts required before parallel Phase 2/3/4 work. It added the minimal plugin entry point, reproducible dependency/build/test configuration, mobile-safety guards, test doubles, contract tests, and the persisted `dev/phase-1-shared-contracts.md` parallel-work handoff. It did not implement reconciliation policy, live OAuth/Drive behavior, the production local adapter, merge execution, durable production persistence, or product UI.
+C1 was implemented at the contract level only, with directly necessary fake/test/documentation fallout:
+
+- added exported `BinaryContentSource` in `src/contracts/common.ts` with optional `sizeBytes` and lazy `openChunks(): AsyncIterable<Uint8Array>`;
+- changed `LocalReadResult` to expose `content: BinaryContentSource` instead of whole-file `bytes: Uint8Array`;
+- changed `LocalVaultPort.createFile` and `replaceFile` to accept `BinaryContentSource`;
+- changed `RemoteDownload` to expose `content: BinaryContentSource`;
+- changed `RemoteCreateRequest` and `RemoteUpdateRequest` content to `BinaryContentSource`;
+- updated local fake signatures to compile against the corrected frozen local boundary;
+- added a contract test that supplies one lazy `BinaryContentSource` whose async iterable yields two separate `Uint8Array` chunks and uses that source through local and Drive transfer types;
+- updated `dev/phase-1-shared-contracts.md` to document the lazy/chunked, platform-neutral, bounded-memory transfer boundary.
+
+No Phase 2, Phase 3, or Phase 4 production behavior was implemented. Synchronization, conflict, state, OAuth, and persistence semantics were not changed.
 
 ## Files Created
 
-The following assignment files were derived from the actual Git change set from the assignment base. The later concurrent `master` prompt files were not part of this build and are intentionally excluded from this inventory.
-
-- `.github/workflows/phase1-ci.yml`
-- `.gitignore`
-- `README.md`
-- `dev/evidence/_ca-output.md`
-- `dev/phase-1-shared-contracts.md`
-- `manifest.json`
-- `package-lock.json`
-- `package.json`
-- `scripts/finalize-build.mjs`
-- `src/contracts/common.ts`
-- `src/contracts/conflict.ts`
-- `src/contracts/execution.ts`
-- `src/contracts/google-drive.ts`
-- `src/contracts/index.ts`
-- `src/contracts/local-vault.ts`
-- `src/contracts/plan.ts`
-- `src/contracts/snapshot.ts`
-- `src/contracts/state.ts`
-- `src/contracts/status-audit-actions.ts`
-- `src/main.ts`
-- `src/testing/fakes.ts`
-- `test/contracts.test.ts`
-- `test/mobile-safety.test.ts`
-- `tsconfig.build.json`
-- `tsconfig.json`
-- `tsconfig.test.json`
-- `versions.json`
+None.
 
 ## Files Modified
 
-- `.github/workflows/phase1-ci.yml` — corrected after integration so push CI runs on the authoritative `master` branch rather than the mistakenly created construction branch.
-- `dev/evidence/_ca-output.md` — corrected to identify `master` as the authoritative branch and document the repository-history correction.
+The implementation inventory below is derived from GitHub compare `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b...ad4362e6ec27d5c804d656a667d9080b9f964132`, plus this mandatory evidence update:
 
-No other pre-existing assignment-base file was modified by the Phase 1 implementation.
+- `dev/evidence/_ca-output.md`
+- `dev/phase-1-shared-contracts.md`
+- `src/contracts/common.ts`
+- `src/contracts/google-drive.ts`
+- `src/contracts/local-vault.ts`
+- `src/testing/fakes.ts`
+- `test/contracts.test.ts`
 
 ## Files Deleted
 
@@ -76,124 +52,102 @@ None.
 
 ## Verification Performed
 
-### Repository / Push-Destination Verification
+### Actual Correction Change-Set Inspection
 
-- Validation operation: retrieve repository metadata for `woodpk/gdrive-sync-obsidian-plugin` and inspect `clone_url`, default branch, and push permission.
+- Validation operation: GitHub compare `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b...ad4362e6ec27d5c804d656a667d9080b9f964132`.
 - Result: `PASS`
-- Relevant result: repository clone URL resolved exactly to `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`; default branch is `master`; the connected GitHub identity has push/admin access.
+- Relevant result: one correction commit, 0 commits behind; exactly six pre-evidence modified paths and no created/deleted paths. The six paths were `dev/phase-1-shared-contracts.md`, `src/contracts/common.ts`, `src/contracts/google-drive.ts`, `src/contracts/local-vault.ts`, `src/testing/fakes.ts`, and `test/contracts.test.ts`.
 
-### Assignment Change-Set Inspection
+### Corrected Contract Inspection
 
-- Validation operation: GitHub compare from base `0f88f8f11d10caf492237b323aec1b550fc2b052` to the Phase 1 implementation/evidence head and PR changed-filename inspection.
+- Validation operation: retrieve the pushed C1 commit and inspect its exact GitHub diff.
 - Result: `PASS`
-- Relevant result: before integration, the Phase 1 line contained 27 assignment paths including this evidence artifact; the implementation itself comprised 26 files before evidence creation. No assignment file was deleted.
+- Relevant result: `BinaryContentSource` is exported by the shared contract; affected local/Drive transfer declarations use `BinaryContentSource`; the prior complete-file `bytes: Uint8Array` fields/parameters are removed from those affected signatures.
 
-### Master Preservation / Integration Verification
+### Supplemental Strict TypeScript Contract Compile
 
-- Validation operation: inspect `master` before integration.
+- Exact validation command:
+
+```text
+tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --lib DOM,DOM.Iterable,ES2022 common.ts state.ts snapshot.ts local-vault.ts google-drive.ts
+```
+
 - Result: `PASS`
-- Relevant result: `master` had independently advanced to `b74ac80728970b8223f66d85c22a8d3bb6d53b36`, one commit after the assignment base, adding review/rejection prompt files. That work was preserved rather than overwritten.
+- Relevant result: the corrected shared/local/Drive contract subset compiled successfully using the available TypeScript compiler.
+- Limitation: this is supplemental verification of the corrected contract surface, not a substitute for the repository's required full `npm run typecheck` gate.
 
-- Validation operation: merge the completed Phase 1 history into current `master` with expected source head `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`.
+### Supplemental Multi-Chunk Runtime Check
+
+- Validation operation: execute a Node check using a lazy content source whose `openChunks()` yielded `Uint8Array([1,2])` and `Uint8Array([3,4,5])` as separate iterations.
 - Result: `PASS`
-- Relevant result: GitHub created merge commit `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53` on `master`, preserving both histories.
+- Relevant result: both chunks were observed separately and the source was opened once; no complete-file buffer was constructed by the check.
+- Limitation: this supplements but does not replace execution of the repository test suite.
 
-- Validation operation: correct `.github/workflows/phase1-ci.yml` push trigger from the unauthorized branch to `master`.
-- Result: `PASS`
-- Relevant result: correction committed on `master` as `db7df8670abbf40df022497fedddae7239b6121a`.
+### Required Phase 1 Gate
 
-### CI Run `32662569481`
+- Exact command required: `npm ci`
+- Result: `NOT EXECUTED`
+- Reason: the available runtime cannot resolve `registry.npmjs.org`. A package-resolution attempt failed with `getaddrinfo EAI_AGAIN registry.npmjs.org`, so a clean dependency installation could not be established locally.
 
-- Validation operation: initial clean GitHub Actions Phase 1 gate.
-- Result: `FAIL`
-- Relevant result: checkout and Node setup passed; npm 10.9.8 failed during initial lockfile bootstrap with `Cannot read properties of null (reading 'edgesOut')`; install/typecheck/test/build were therefore not executed in that run. The test toolchain was simplified rather than treating this tooling failure as a product pass.
+- Exact command required: `npm run typecheck`
+- Result: `NOT EXECUTED`
+- Reason: the required clean repository dependency installation was unavailable; only the supplemental strict contract compile described above was executed.
 
-### CI Run `32662651224`
+- Exact command required: `npm test`
+- Result: `NOT EXECUTED`
+- Reason: the required clean repository dependency installation was unavailable. The new multi-chunk behavior was exercised only by the supplemental standalone runtime check described above.
 
-- Validation operation: lockfile generation, `npm ci`, `npm run typecheck`.
-- Result: `FAIL`
-- Relevant result: lockfile generation passed, `npm ci` passed with 0 vulnerabilities, but typecheck failed because `FakeSynchronizationPlanner.plan` did not accept the required `PlanningInput`; tests/build were skipped. The contract fake was repaired.
+- Exact command required: `npm run build`
+- Result: `NOT EXECUTED`
+- Reason: the required clean repository dependency installation was unavailable.
 
-### CI Run `32662691939`
+### GitHub Actions Visibility
 
-- Validation operation: clean dependency setup, `npm run typecheck`, `npm test`.
-- Result: `FAIL`
-- Relevant result: dependency setup and repository typecheck passed. Test compilation failed because Node built-in `assert`/`test` default imports required CommonJS interop; production build was skipped. `tsconfig.test.json` was repaired.
-
-### CI Run `32662723021`
-
-- Validation operation: clean dependency setup, `npm run typecheck`, `npm test`.
-- Result: `FAIL`
-- Relevant result: `npm ci` and typecheck passed; 13 of 14 tests passed. The sole failing mobile-safety test resolved `manifest.json` one directory too shallow from compiled test output. The repository-root calculation was repaired; production build was skipped in this run.
-
-### CI Run `32662762609`
-
-- Validation operation: clean dependency bootstrap/install, `npm run typecheck`, `npm test`, `npm run build`.
-- Result: `PASS`
-- Relevant result: dependency setup passed, strict TypeScript checking passed, all 14 Phase 1 contract/mobile-safety tests passed, and production build passed. The workflow generated and pushed the reproducible `package-lock.json` in commit `bb9f7b0b0da8cdd1a5017b7faf2bc401793b2afa`.
-
-### Final Post-Lockfile CI Run `32662829150`
-
-- Exact command: `npm ci`
-- Result: `PASS`
-- Relevant result: clean dependency installation succeeded from the committed lockfile.
-
-- Exact command: `npm run typecheck`
-- Result: `PASS`
-- Relevant result: strict TypeScript checking completed successfully.
-
-- Exact command: `npm test`
-- Result: `PASS`
-- Relevant result: all 14 Phase 1 contract/mobile-safety tests passed; 0 failed, 0 skipped.
-
-- Exact command: `npm run build`
-- Result: `PASS`
-- Relevant result: production plugin build completed successfully.
-
-No separate live Google Drive integration test or real-device Obsidian runtime test was part of the assigned Phase 1 scope and therefore was not executed.
+- Validation operation: query workflow runs associated with the pushed correction commit using the available GitHub connector.
+- Result: `NOT EXECUTED` as a usable full-gate verification source.
+- Reason: the connector action available in this session only surfaces pull-request-triggered workflow runs and returned no run for this direct `master` push. Generic workflow-run listing for push events is not exposed through the available connector, so no push-CI result was observed and none is claimed.
 
 ## Acceptance-Criteria Status
 
-`PASS`
+`PARTIAL`
 
-Phase 1 acceptance criteria implemented and objectively verified within the coding-agent assignment were:
+Implementation status by criterion:
 
-- repository foundation exists and is reproducibly installable/buildable;
-- plugin manifest is mobile-compatible;
-- all required shared contract families exist and compile;
-- Phase 2/3/4 test seams exist without requiring live adapters;
-- mobile-runtime architecture guards exist and pass;
-- contract tests pass;
-- production build passes;
-- shared-contract handoff is persisted;
-- completed build is integrated into the authoritative `master` branch.
+1. `BinaryContentSource` exists as an exported shared contract — `PASS`.
+2. Local file reads return `BinaryContentSource` — `PASS`.
+3. Local create/replace accept `BinaryContentSource` — `PASS`.
+4. Drive downloads return `BinaryContentSource` — `PASS`.
+5. Drive create/update content uses `BinaryContentSource` — `PASS`.
+6. Affected transfer signatures no longer require complete-file materialization — `PASS` by contract inspection.
+7. Fake/test seams updated for corrected contracts — `PASS` by source inspection; full repository compile remains unverified.
+8. Multi-chunk lazy `BinaryContentSource` test added — `PASS` by source inspection; repository test execution remains unverified.
+9. `dev/phase-1-shared-contracts.md` records corrected boundary — `PASS`.
+10. Complete Phase 1 test/build gate passes — `NOT VERIFIED`; required full gate could not be executed/observed in this environment.
 
-No assigned Phase 1 criterion is known to be unsatisfied. This is not a claim of supervisory approval; independent supervisor review remains required.
+Because criterion 10 is unverified, this evidence does not claim that C1 has reached final supervisory acceptance.
 
 ## Frozen-Contract / Architecture Status
 
-The build established the Phase 1 frozen shared contracts and preserved the higher-authority architectural boundaries used to define them. No previously frozen Phase 1 contract was unilaterally changed by a downstream worker, and no supervisor-approved exception was required during this build.
-
-The implementation preserves the intended dependency direction: Phase 2 consumes contract ports, Phase 3 implements the Google Drive boundary, Phase 4 implements the local-vault boundary, and UI/orchestration must act through the product-control surface rather than bypassing policy.
+The frozen transfer contract changed only under the explicit supervisor-issued C1 corrective instruction. The approved change is the introduction of `BinaryContentSource` and replacement of affected whole-file transfer payloads with that abstraction. No unrelated frozen contract or architectural boundary was changed.
 
 ## Deviations
 
-- A separate branch `agt-stg-2a-phase-1-01` was created without supervisor authorization. This was a process deviation. The completed build was subsequently integrated into the authoritative `master` branch while preserving an independently added master-only commit. The unauthorized branch is to be deleted as part of the repository cleanup.
-- The initial test/build mechanics used a Vitest/esbuild-oriented dependency graph. Clean CI exposed an npm 10.9.8 dependency-resolution crash before product verification. The Phase 1 toolchain was reduced to TypeScript plus Node's built-in test runner and a minimal build-finalization script. The required end state was preserved and subsequently passed clean CI.
-- The repository foundation used selective architectural adaptation from donor projects rather than a direct donor fork because directly forking would have imported later-phase implementation and explicitly incompatible product semantics. This does not change the required Phase 1 end state.
+- The first attempted correction commit was based on the initially observed `master` SHA `5add350efa9a9ec5c725f72c0b153025df260d92`; GitHub rejected the ref update as non-fast-forward after unrelated `master` work advanced the branch. No force push was used. The same scoped correction was rebuilt on top of `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` and then pushed successfully.
+- The required full npm verification mechanics could not be completed because of environment/network and connector visibility limitations. Supplemental checks were performed but are not represented as equivalent to the required gate.
 
 ## Known Issues and Unverified Matters
 
-- No known Phase 1 implementation defect remains after the final clean CI gate.
-- Live Google OAuth/Drive behavior, full local Obsidian adapter behavior, reconciliation semantics, conflict execution, durable production state, and product UI are intentionally unimplemented because they belong to later phases.
-- Independent supervisory inspection/acceptance has not yet occurred; this evidence artifact is only an inspection index.
+- The complete Phase 1 `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` gate for the C1 correction remains unverified in this session.
+- The new repository multi-chunk contract test has been added but its execution inside the repository test suite was not observed.
+- No known C1 source-level defect remains from inspection and supplemental validation; however, the missing full gate is a material verification blocker.
 
 ## Evidence Integrity and Push Verification
 
-- Assignment base SHA verified: `0f88f8f11d10caf492237b323aec1b550fc2b052`.
-- Required remote verified: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`.
-- Authoritative branch/ref corrected to: `master`.
-- Concurrent master-only commit `b74ac80728970b8223f66d85c22a8d3bb6d53b36` was identified and preserved.
-- Phase 1 implementation/evidence history was integrated to `master` in merge commit `89fca2c5a4cd52ee6ebad3da1a16e90893ac7b53`.
-- CI branch trigger was corrected on `master` in `db7df8670abbf40df022497fedddae7239b6121a`.
-- Final remote `master` head reachability is verified after this evidence update and reported in the final coding-agent handoff.
+- Required repository: `woodpk/gdrive-sync-obsidian-plugin`.
+- Required remote: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`.
+- Authoritative branch: `master`.
+- Effective correction base: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`.
+- C1 implementation commit: `ad4362e6ec27d5c804d656a667d9080b9f964132`.
+- GitHub compare confirmed the implementation commit is one commit ahead of the effective base and zero behind.
+- The mandatory evidence artifact is updated in this commit on `master`.
+- Final evidence commit reachability on remote `master` must be verified after this update is committed and is reported in the completion response.
