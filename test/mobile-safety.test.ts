@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import test from "node:test";
-const root = join(__dirname, "..");
+const root = join(__dirname, "..", "..");
 const sourceRoot = join(root, "src");
 function files(dir: string): string[] { return readdirSync(dir).flatMap(name => { const full = join(dir,name); return statSync(full).isDirectory() ? files(full) : full.endsWith(".ts") ? [full] : []; }); }
 const prohibited = ["fs","path","os","child_process","worker_threads","net","tls","electron","powershell"];
