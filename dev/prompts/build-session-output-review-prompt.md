@@ -17,7 +17,7 @@ The reviewer is responsible for:
 - determining the concrete code, contract, behavior, test, or evidence failure responsible for each rejection;
 - determining the concrete repair required for each confirmed blocker;
 - distinguishing approval blockers from optional improvements; and
-- either approving the build or issuing a deterministic corrective work order under `dev/rubrics/rejection-fix-prompt-spec.md`.
+- either approving the build or issuing a deterministic corrective work order under `dev/prompts/rejection-fix-prompt-spec.md`.
 
 The reviewer performs the diagnosis.
 
@@ -374,7 +374,7 @@ Do not include additional approval text.
 
 If the build is not approved:
 
-1. read `dev/rubrics/rejection-fix-prompt-spec.md` completely;
+1. read `dev/prompts/rejection-fix-prompt-spec.md` completely;
 2. convert the completed review findings into a corrective prompt strictly according to that specification;
 3. include only confirmed approval-blocking defects;
 4. prescribe the most deterministic safe repair the reviewer can establish;
@@ -382,6 +382,6 @@ If the build is not approved:
 6. do not delegate root-cause investigation or design rediscovery to the coding agent;
 7. do not include optional improvements;
 8. do not reproduce reviewer-only reasoning, review methodology, audit narrative, or generic governance boilerplate unless the corrective specification explicitly requires it;
-9. output only the finished corrective coding-agent prompt in the format required by `dev/rubrics/rejection-fix-prompt-spec.md`.
+9. output only the finished corrective coding-agent prompt in the format required by `dev/prompts/rejection-fix-prompt-spec.md`.
 
-If `dev/rubrics/rejection-fix-prompt-spec.md` is missing or unreadable, reject and issue only the smallest safe notice identifying that missing required rejection authority.
+If `dev/prompts/rejection-fix-prompt-spec.md` is missing or unreadable, reject and issue only the smallest safe notice identifying that missing required rejection authority.
