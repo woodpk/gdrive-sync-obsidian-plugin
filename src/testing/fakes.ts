@@ -5,10 +5,10 @@ import type {
   StateMigrationAssessment, StateRevision, StateSaveResult, SynchronizationPlan,
   SynchronizationPlanner, SynchronizationStateStore, TrustedSynchronizationState,
   UserAction, UserActionResult, VaultIdentity, VaultPath, VerifiedExecutionReceipt,
-  AuthoritativeSuccessCommitter, CommitResult, PlannedOperation, SynchronizationStatus,
-  AuditRecord
+  AuthoritativeSuccessCommitter, CommitResult, PlannedOperation, PlanningInput,
+  SynchronizationStatus, AuditRecord
 } from "../contracts";
-import type { ConfigurationClassification, LocalLifecycleEvent, LocalMutationReceipt, LocalReadResult, LocalVaultChange, LocalVaultListing, PathValidationResult } from "../contracts/local-vault";
+import type { ConfigurationClassification, LocalLifecycleEvent, LocalReadResult, LocalVaultChange, LocalVaultListing, PathValidationResult } from "../contracts/local-vault";
 import type { DriveAuthenticationState, DriveResult, ManagedRemoteValidation, RemoteChangePage, RemoteCreateRequest, RemoteDownload, RemoteListing, RemoteMutationReceipt, RemoteProtocolInfo, RemoteUpdateRequest } from "../contracts/google-drive";
 import type { LocalObservation, RemoteObservation } from "../contracts/snapshot";
 
@@ -70,7 +70,7 @@ export class InMemorySynchronizationStateStore implements SynchronizationStateSt
 }
 export class FakeSynchronizationPlanner implements SynchronizationPlanner {
   constructor(private readonly result: SynchronizationPlan) {}
-  async plan(): Promise<SynchronizationPlan> { return this.result; }
+  async plan(_input: PlanningInput): Promise<SynchronizationPlan> { return this.result; }
 }
 export class RecordingSuccessCommitter implements AuthoritativeSuccessCommitter {
   readonly commits: Array<{ operation: PlannedOperation; receipt: VerifiedExecutionReceipt }> = [];
