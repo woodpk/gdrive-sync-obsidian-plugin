@@ -25,6 +25,9 @@ import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
 function driveSignalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
+function exclusionsEqual(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
 
 export interface ProductRuntimeHost {
   readonly app: App;
@@ -82,7 +85,15 @@ export class Phase5ProductRuntime {
     };
     this.state = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
-    const snapshots = new ProductSnapshotAssembler(this.local, this.boundary.drive, this.state, stateContext, remoteIdentity, path => scope.isManagedLogical(path));
+    const snapshots = new ProductSnapshotAssembler(
+      this.local,
+      this.boundary.drive,
+      this.state,
+      stateContext,
+      remoteIdentity,
+      path => scope.isManagedLogical(path),
+      () => this.host.settings().scopeReconcileRequired,
+    );
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
       this.local,
@@ -122,6 +133,10 @@ export class Phase5ProductRuntime {
         await this.host.saveSettings(changed);
         this.scheduler?.refresh();
       },
+      onFullReconciliationCompleted: async () => {
+        const live = this.host.settings();
+        if (live.scopeReconcileRequired) await this.host.saveSettings({ ...live, scopeReconcileRequired: false });
+      },
       onTrustedBaselineEstablished: async () => {
         const live = this.host.settings();
         if (!live.firstSyncCompleted) {
@@ -153,7 +168,10 @@ export class Phase5ProductRuntime {
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
     if (previous.auditRetention !== next.auditRetention) await this.audit?.setLimit(next.auditRetention);
     if (previous.periodicEnabled !== next.periodicEnabled || previous.periodicIntervalMinutes !== next.periodicIntervalMinutes || previous.firstSyncCompleted !== next.firstSyncCompleted || previous.recoveryInProgress !== next.recoveryInProgress) this.scheduler?.refresh();
-    if (previous.userExclusionPatterns.join("\n") !== next.userExclusionPatterns.join("\n")) this.controller?.noteChangeDuringRun();
+    if (!exclusionsEqual(previous.userExclusionPatterns, next.userExclusionPatterns)) {
+      if (!next.scopeReconcileRequired) await this.host.saveSettings({ ...this.host.settings(), scopeReconcileRequired: true });
+      this.controller?.noteChangeDuringRun();
+    }
   }
 
   async exportDiagnosticStateText(): Promise<string> {
@@ -181,7 +199,7 @@ export class Phase5ProductRuntime {
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     await this.host.saveSettings({
       ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
-      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "",
+      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
       startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
     });
     await this.initialize();
@@ -198,7 +216,7 @@ export class Phase5ProductRuntime {
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    await this.host.saveSettings({ ...settings, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.saveSettings({ ...settings, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.initialize();
     return result.value.identity;
   }
@@ -206,7 +224,7 @@ export class Phase5ProductRuntime {
   async deauthorize(): Promise<void> {
     this.boundary?.oauth.clearTokens();
     const settings = this.host.settings();
-    await this.host.saveSettings({ ...settings, remoteRootId: "", firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.saveSettings({ ...settings, remoteRootId: "", firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.disposeProduct();
   }
 
