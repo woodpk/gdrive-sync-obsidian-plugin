@@ -13,33 +13,14 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private unsubscribeStatus?: () => void;
 
   async onload(): Promise<void> {
-    this.dataRepository = new PluginDataRepository({
-      loadData: () => this.loadData(),
-      saveData: data => this.saveData(data),
-    });
+    this.dataRepository = new PluginDataRepository({ loadData: () => this.loadData(), saveData: data => this.saveData(data) });
     this.currentSettings = await this.dataRepository.loadSettings();
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("BRAIN sync: setup required");
 
-    this.runtime = new Phase5ProductRuntime({
-      app: this.app,
-      plugin: this,
-      settings: () => this.currentSettings,
-      data: this.dataRepository,
-      saveSettings: settings => this.replaceSettings(settings),
-      notify: message => new Notice(message),
-    });
+    this.runtime = new Phase5ProductRuntime({ app: this.app, plugin: this, settings: () => this.currentSettings, data: this.dataRepository, saveSettings: settings => this.replaceSettings(settings), notify: message => new Notice(message) });
 
-    this.addSettingTab(new BrainSyncSettingsTab({
-      app: this.app,
-      plugin: this,
-      settings: () => this.currentSettings,
-      updateSettings: patch => this.updateSettings(patch),
-      authenticate: () => this.authenticate(),
-      createManagedRemote: () => this.createManagedRemote(),
-      pairManagedRemote: () => this.pairManagedRemote(),
-      clearAuthenticationAndPairing: () => this.deauthorize(),
-    }));
+    this.addSettingTab(new BrainSyncSettingsTab({ app: this.app, plugin: this, settings: () => this.currentSettings, updateSettings: patch => this.updateSettings(patch), authenticate: () => this.authenticate(), createManagedRemote: () => this.createManagedRemote(), pairManagedRemote: () => this.pairManagedRemote(), clearAuthenticationAndPairing: () => this.deauthorize() }));
 
     this.addCommand({ id: "sync-now", name: "Sync now", callback: () => void this.openManualPreview() });
     this.addCommand({ id: "verify-reconcile-vault", name: "Verify/Reconcile Vault", callback: () => void this.openVerifyPreview() });
@@ -50,71 +31,38 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "open-sync-attention", name: "Open conflicts and recovery", callback: () => this.openAttention() });
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
 
-    try {
-      await this.runtime.initialize();
-      this.bindStatus();
-      this.refreshStatus();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.statusEl.setText("BRAIN sync: blocked");
-      new Notice(`BRAIN sync initialization blocked: ${message}`);
-    }
+    try { await this.runtime.initialize(); this.bindStatus(); this.refreshStatus(); }
+    catch (error) { const message = error instanceof Error ? error.message : String(error); this.statusEl.setText("BRAIN sync: blocked"); new Notice(`BRAIN sync initialization blocked: ${message}`); }
   }
 
-  async onunload(): Promise<void> {
-    this.unsubscribeStatus?.();
-    this.unsubscribeStatus = undefined;
-    await this.runtime?.disposeProduct();
-  }
+  async onunload(): Promise<void> { this.unsubscribeStatus?.(); this.unsubscribeStatus = undefined; await this.runtime?.disposeProduct(); }
 
-  private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
-    this.currentSettings = { ...settings };
-    await this.dataRepository?.saveSettings(this.currentSettings);
-  }
+  private async replaceSettings(settings: BrainSyncSettings): Promise<void> { this.currentSettings = { ...settings }; await this.dataRepository?.saveSettings(this.currentSettings); }
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
     const next = { ...this.currentSettings, ...patch };
-    if (!next.firstSyncCompleted) {
-      next.startupResumeEnabled = false;
-      next.localChangeEnabled = false;
-      next.periodicEnabled = false;
-    }
+    if (!next.firstSyncCompleted) { next.startupResumeEnabled = false; next.localChangeEnabled = false; next.periodicEnabled = false; }
     await this.replaceSettings(next);
   }
 
   private async authenticate(): Promise<void> {
-    try {
-      await this.runtime?.initialize();
-      this.bindStatus();
-      await this.runtime?.authenticate();
-    } catch (error) { this.noticeError("Authentication could not start", error); }
+    try { await this.runtime?.initialize(); this.bindStatus(); await this.runtime?.authenticate(); }
+    catch (error) { this.noticeError("Authentication could not start", error); }
   }
 
   private async createManagedRemote(): Promise<void> {
-    try {
-      if (!this.runtime) return;
-      const identity = await this.runtime.createManagedRemote();
-      this.bindStatus();
-      new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`);
-    } catch (error) { this.noticeError("Managed remote creation failed", error); }
+    try { if (!this.runtime) return; const identity = await this.runtime.createManagedRemote(); this.bindStatus(); new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`); }
+    catch (error) { this.noticeError("Managed remote creation failed", error); }
   }
 
   private async pairManagedRemote(): Promise<void> {
-    try {
-      if (!this.runtime) return;
-      const identity = await this.runtime.pairManagedRemote();
-      this.bindStatus();
-      new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`);
-    } catch (error) { this.noticeError("Managed remote pairing failed", error); }
+    try { if (!this.runtime) return; const identity = await this.runtime.pairManagedRemote(); this.bindStatus(); new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`); }
+    catch (error) { this.noticeError("Managed remote pairing failed", error); }
   }
 
   private async deauthorize(): Promise<void> {
-    try {
-      await this.runtime?.deauthorize();
-      this.bindStatus();
-      this.refreshStatus();
-      new Notice("This device was deauthorized and unpaired locally. No local or shared vault content was deleted.");
-    } catch (error) { this.noticeError("Device deauthorization failed", error); }
+    try { await this.runtime?.deauthorize(); this.bindStatus(); this.refreshStatus(); new Notice("This device was deauthorized and unpaired locally. No local or shared vault content was deleted."); }
+    catch (error) { this.noticeError("Device deauthorization failed", error); }
   }
 
   private async openManualPreview(): Promise<void> {
@@ -140,7 +88,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private openAttention(): void {
     const controller = this.runtime?.productController();
     if (!controller) { new Notice("BRAIN synchronization is not currently configured."); return; }
-    new SyncAttentionModal(this.app, controller.currentSurface()).open();
+    new SyncAttentionModal(this.app, controller).open();
   }
 
   private openHistory(): void {
@@ -153,9 +101,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.unsubscribeStatus?.();
     const controller = this.runtime?.productController();
     if (!controller) { this.unsubscribeStatus = undefined; this.refreshStatus(); return; }
-    this.unsubscribeStatus = controller.onSurface(surface => {
-      this.statusEl?.setText(`BRAIN sync: ${surface.status.kind}`);
-    });
+    this.unsubscribeStatus = controller.onSurface(surface => { this.statusEl?.setText(`BRAIN sync: ${surface.status.kind}`); });
     this.refreshStatus();
   }
 
@@ -164,7 +110,5 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "integration blocked" : "setup required")}`);
   }
 
-  private noticeError(prefix: string, error: unknown): void {
-    new Notice(`${prefix}: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  private noticeError(prefix: string, error: unknown): void { new Notice(`${prefix}: ${error instanceof Error ? error.message : String(error)}`); }
 }
