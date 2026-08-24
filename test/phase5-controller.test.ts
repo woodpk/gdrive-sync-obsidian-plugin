@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type {
   BinaryContentSource, ConflictAssessment, ConflictId, ContentEvidence, ManagedRemoteIdentity,
-  PathSnapshot, PlannedOperation, SynchronizationPlan, VersionReference,
+  PathSnapshot, SynchronizationPlan, VersionReference,
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { IntegratedProductController } from "../src/product/product-controller";
@@ -31,7 +31,7 @@ function unresolvedPlan(path: ReturnType<typeof id<"VaultPath">>, conflictId: Co
   };
 }
 
-async function conflictHarness() {
+async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void>) {
   const path = id<"VaultPath">("note.bin"), remoteId = id<"RemoteObjectId">("remote:note"), conflict = id<"ConflictId">("conflict:note");
   const baseEvidence = hash("base"), localOriginal = hash("local"), remoteOriginal = hash("remote");
   let localEvidence = localOriginal, remoteEvidence = remoteOriginal, localText = "local", remoteText = "remote";
@@ -41,8 +41,8 @@ async function conflictHarness() {
   const assessment: ConflictAssessment = {
     kind: "opaque-binary", conflictId: conflict, path,
     preserved: {
-      local: { version: localVersion, observedBy: device, source: "local" },
-      remote: { version: remoteVersion, observedBy: device, source: "remote" },
+      local: { version: localVersion, deviceId: device, source: "local" },
+      remote: { version: remoteVersion, deviceId: device, source: "remote", remoteObjectId: remoteId },
     },
   };
   const local = {
@@ -82,7 +82,7 @@ async function conflictHarness() {
   controller = new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: trustedContext, stateStore: store, snapshotAssembler: assembler,
     executor, conflictResolver: { assess: async () => assessment }, plannerForTrigger: () => ({ plan: async () => unresolvedPlan(path, conflict) }), leasePort: lease,
-    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 100), holderId: "test",
+    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 100), holderId: "test", onTrustedBaselineEstablished,
   });
   return { controller, store, path, conflict, remoteId, localOriginal, remoteOriginal, copies, setRemoteStale: () => { remoteEvidence = hash("remote-stale"); } };
 }
@@ -102,11 +102,11 @@ test("Phase 5 successful reviewed first synchronization establishes the persiste
   const loaded = await store.load(newContext); assert.equal(loaded.status, "trusted"); if (loaded.status === "trusted") assert.equal(loaded.state.changeCursor, cursor);
 });
 
-test("Phase 5 unresolved first synchronization cannot open the completion gate", async () => {
-  const harness = await conflictHarness(); let completed = 0;
-  const controller = harness.controller as IntegratedProductController & { options?: unknown };
-  const preview = await controller.previewManual(); assert.ok(preview);
-  const result = await controller.request({ kind: "execute-plan", planId: preview.planId });
+test("Phase 5 unresolved reviewed synchronization cannot open the completion gate", async () => {
+  let completed = 0;
+  const harness = await conflictHarness(async () => { completed += 1; });
+  const preview = await harness.controller.previewManual(); assert.ok(preview);
+  const result = await harness.controller.request({ kind: "execute-plan", planId: preview.planId });
   assert.equal(result.status, "rejected"); assert.equal(completed, 0);
 });
 
