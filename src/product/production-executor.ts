@@ -105,14 +105,19 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     return { path: observed.path, entityKind: observed.entityKind, content: observed.content, observationToken: observed.observationToken };
   }
 
+  async localPathState(path: VaultPath): Promise<"absent" | "present" | "blocked"> {
+    const observed = await this.local.observe(path);
+    if (observed.status === "absent") return "absent";
+    if (observed.status === "present") return "present";
+    return "blocked";
+  }
+
   failureScope(_operation: PlannedOperation, reason: string): "path" | "global" {
     return reason.startsWith("path-local:") ? "path" : "global";
   }
 
   async execute(operation: PlannedOperation): Promise<ExecutionResult> {
     try {
-      // CrashSafeExecutionCoordinator has already persisted the pending journal at
-      // this point. Revalidate again immediately before crossing mutation authority.
       const boundary = await this.validatePreconditions(operation);
       if (boundary.status === "stale") return { status: "stale-precondition", reason: "planned versions changed after pending journal; mutation refused" };
       if (boundary.status === "blocked") return { status: "blocking-failure", reason: boundary.reason };
@@ -130,9 +135,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
         case "download-create": return await this.downloadCreate(operation);
         case "download-update": return await this.downloadUpdate(operation);
         case "identity-preserving-move": return await this.move(operation);
-        case "trash-local":
-          await this.local.trash(operation.path);
-          return success(operation, undefined, `local-trash:${String(operation.path)}`);
+        case "trash-local": await this.local.trash(operation.path); return success(operation, undefined, `local-trash:${String(operation.path)}`);
         case "trash-remote": {
           if (!operation.remoteObjectId) return { status: "blocking-failure", reason: "remote trash requires stable remote object identity" };
           const result = await this.drive.trash(operation.remoteObjectId);
@@ -154,11 +157,9 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     const value = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "path-observation" }> => precondition.kind === "path-observation" && precondition.side === "local" && precondition.path === path && precondition.expected === "present");
     return value?.observationToken as ObservationToken | undefined;
   }
-
   private expectedRemoteRevision(operation: PlannedOperation): string | undefined {
     return operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "remote-object" }> => precondition.kind === "remote-object" && (!operation.remoteObjectId || precondition.remoteObjectId === operation.remoteObjectId))?.expectedRevision;
   }
-
   private async ensureLocalTargetCompatible(path: VaultPath): Promise<ExecutionResult | undefined> {
     const compatibility = await this.local.validatePath(path);
     return compatibility.status === "blocked" ? { status: "blocking-failure", reason: `path-local:${compatibility.detail ?? compatibility.reason}` } : undefined;
@@ -263,7 +264,6 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     const sourceLocal = await this.textVersions.sourceForRetained(version);
     const sourceRemote = await this.textVersions.sourceForRetained(version);
     if (!sourceLocal || !sourceRemote) return { status: "blocking-failure", reason: "clean merge materialization is unavailable or corrupt under its exact canonical evidence" };
-
     try {
       await this.local.replaceFile(operation.path, sourceLocal, expectedLocalToken);
       const localAfter = await this.local.observe(operation.path);
@@ -304,7 +304,6 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signalMessage(signal) };
     return { status: "blocked", reason: signalMessage(signal) };
   }
-
   private mapDriveFailure(signal: DriveSignal): ExecutionResult {
     if (signal.kind === "transient-failure") return { status: "retryable-failure", reason: signalMessage(signal) };
     if (signal.kind === "rate-limited") return { status: "retryable-failure", reason: signal.kind, retryAfterMs: signal.retryAfterMs };
