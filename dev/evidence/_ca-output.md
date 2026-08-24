@@ -336,3 +336,101 @@ No file under `src/contracts/**` was changed.
 - Independent supervisory acceptance remains outside this worker's authority.
 
 Final worker status: `BLOCKED` — the implemented/testable Phase 4 boundary is green, but two explicit platform guarantees cannot truthfully be claimed complete with the currently supported public mobile API surface.
+
+---
+
+# Phase 4 C1 Rejection Correction — Fail-Closed External-Reference Capability
+
+## Correction Identification
+
+- Rejection/correction base SHA: `e577bf1366001de3871a868bd549630b1060f2df`
+- Correction implementation head verified before evidence updates: `4d06581fa91ba9643496a67296b5002925581ba2`
+- Branch: `stage-2a-phase-4-obsidian-local`
+- PR: `#4` — open, draft, unmerged
+- Verification workflow run: `32731187369`
+- Verification job: `97443556511`
+- Frozen `src/contracts/**`: `UNCHANGED`
+
+## C1 Implemented
+
+C1 corrected the Phase 4 mobile-neutral local adapter from fail-open to fail-closed when the runtime cannot prove containment against symlink/alias/junction/external filesystem references.
+
+In `src/local/obsidian-local-vault.ts`:
+
+- added a blocking `UnavailableExternalReferenceGuard` that throws `LocalPlatformCapabilityError("external-reference-detection", ...)`;
+- made the adapter's stored `externalReferenceGuard` required rather than optional;
+- constructor now installs the blocking guard whenever no platform-specific guard is supplied;
+- production observation and mutation source/target guard invocations are mandatory and no longer use optional chaining;
+- folder observations that cannot establish safe traversal now add an enumeration failure so the subtree yields `partial` completeness instead of a false `complete` result;
+- existing desktop construction still injects `DesktopExternalReferenceGuard` and remains available for contained desktop paths.
+
+No unsafe bypass flag, user override, syntactic-path substitute, mobile Node import, or frozen-contract change was added.
+
+## Directly Necessary Test Fallout
+
+Ordinary fake-filesystem tests now explicitly inject a permissive **test-only** guard representing a fixture known to contain no external references.
+
+Targeted C1 tests in `test/obsidian-local-vault.test.ts` execute and prove:
+
+- `generic adapter without an external-reference guard fails closed before ordinary path observation`;
+- `generic adapter without an external-reference guard blocks create replace move and trash`;
+- `blocked folder subtree makes enumeration partial rather than falsely complete`.
+
+The first test also verifies the underlying fake `exists/stat` operations are not reached for the blocked path. The mutation test verifies no write/rename/trash operation is performed and existing content remains intact. The subtree test verifies recursion does not enter the blocked folder.
+
+Existing desktop external-reference tests and mobile import-isolation tests remain part of the same required gate.
+
+## Verification Actually Performed
+
+GitHub Actions run `32731187369`, job `97443556511`, checked out PR #4 merge/test SHA `2dc01ff9ade1f8e9c935568f626770d7bd748f6d` and executed:
+
+- `npm ci` — `PASS`; 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm run typecheck` — `PASS`;
+- `npm test` — `PASS`; 52 tests executed, 52 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo;
+- `npm run build` — `PASS`.
+
+The logs explicitly show:
+
+- desktop external-reference tests as tests 13–16;
+- mobile-import isolation tests as tests 33–35;
+- C1 fail-closed tests as tests 48–50.
+
+## Git-Derived C1 Change Inventory Before Evidence Updates
+
+GitHub compare: `e577bf1366001de3871a868bd549630b1060f2df...4d06581fa91ba9643496a67296b5002925581ba2`
+
+Created:
+
+- none
+
+Modified:
+
+- `src/local/obsidian-local-vault.ts`
+- `test/local-failure-semantics.test.ts`
+- `test/obsidian-local-vault.test.ts`
+
+Deleted:
+
+- none
+
+The completed correction pass additionally modifies both required evidence files:
+
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-CA-P4.md`
+
+The final Git-derived correction-pass inventory including these evidence files is verified after both evidence updates and reported in the completion response.
+
+## Remaining Stock-iOS Platform Limitations
+
+C1 does not weaken or claim resolution of the two demonstrated stock-iOS platform gaps:
+
+1. strict bounded-memory arbitrary-file local reads remain unavailable on the current stock Obsidian Mobile host for non-media extensions because its documented Capacitor 5.x local-resource handler does not provide general byte-range semantics and its public filesystem generation lacks chunk/offset reads;
+2. supported mobile proof against symlink/alias/external-reference traversal remains unavailable because the public mobile boundary lacks link-aware/canonical-path metadata even though Obsidian permits externally resolving symlinks/junctions.
+
+C1 changes the second limitation's implementation behavior from unsafe omission of the check to explicit fail-closed blocking.
+
+## C1 Correction Status
+
+`IMPLEMENTED AND VERIFIED`
+
+The exact SHA of the evidence-bearing commit cannot be embedded in that commit's own contents. The final pushed branch SHA and the final evidence-bearing PR workflow run/job are verified after commit and reported in the completion response. Independent supervisory approval is not claimed.
