@@ -59,6 +59,12 @@ function compileGlob(pattern: string): RegExp {
   return new RegExp(`${out}$`, "i");
 }
 
+function directoryRootMatch(candidate: string, pattern: string): boolean {
+  if (!pattern.endsWith("/**")) return false;
+  const root = normalize(pattern.slice(0, -3));
+  return candidate.toLocaleLowerCase("en-US") === root.toLocaleLowerCase("en-US");
+}
+
 export class LocalExclusionPolicy {
   readonly rules: readonly ExclusionRule[];
   private readonly compiled: readonly { readonly rule: ExclusionRule; readonly matcher: RegExp }[];
@@ -88,7 +94,7 @@ export class LocalExclusionPolicy {
         }
       };
     }
-    const match = this.compiled.find(item => item.matcher.test(candidate));
+    const match = this.compiled.find(item => directoryRootMatch(candidate, item.rule.pattern) || item.matcher.test(candidate));
     return match ? { excluded: true, rule: match.rule } : { excluded: false };
   }
 }
