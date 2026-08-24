@@ -1,24 +1,33 @@
-# REJECTION / FIX PROMPT SPECIFICATION — DETERMINISTIC CORRECTIVE WORK ORDER
+# REJECTION / FIX PROMPT SPECIFICATION — OWNERSHIP-BASED REPAIR ORCHESTRATION
 
 ## Purpose
 
-This file defines how a reviewer must convert a rejected build into the corrective prompt sent to the coding agent.
+This specification defines how a reviewer/supervisor converts a rejected build into the repair package and coding-agent work orders used to restore the build to its governing contracts.
 
-The corrective prompt is **not a review report**.
+The corrective output is **not a review report** and is **not a second diagnostic assignment**.
 
-It is a **deterministic corrective work order** containing the smallest complete set of concrete edits necessary to repair the confirmed approval blockers.
+It is a **deterministic repair orchestration package** that:
+
+- carries forward the reviewer's completed diagnosis;
+- groups defects by shared invariants and code ownership;
+- isolates shared writable surfaces;
+- freezes interfaces between independent repair groups;
+- executes independent groups in parallel when safe;
+- serializes work that shares ownership or lifecycle authority;
+- integrates completed repairs in dependency order; and
+- performs acceptance/evidence closure only after implementation groups have integrated.
 
 The governing division of labor is:
 
-> **Reviewer diagnoses. Reviewer specifies the repair. Coding agent implements and verifies.**
+> **Reviewer diagnoses. Supervisor decomposes and freezes repair boundaries. Coding agents implement bounded repair groups. Integration/closure verifies the combined contract.**
 
-The reviewer must not ask the coding agent to rediscover defects, repeat root-cause analysis already completed during review, reinterpret established contracts, or independently redesign the correction.
+The objective is to reduce serial reject/fix cycles without creating merge conflicts, duplicated diagnosis, competing fixes, or architecture drift.
 
 ---
 
 ## Authority Relationship
 
-The corrective prompt is a **delta** over the authorities the coding agent already has, including:
+The repair package is a delta over authorities the coding agents already have, including:
 
 - the original governing build prompt;
 - authoritative project specifications;
@@ -26,67 +35,231 @@ The corrective prompt is a **delta** over the authorities the coding agent alrea
 - the coding-agent implementation bootstrap; and
 - the current repository.
 
-Do not reproduce those authorities unless a small excerpt or identifier is necessary to define a correction unambiguously.
+Do not reproduce those authorities unless a concise identifier or excerpt is necessary to make a correction unambiguous.
 
-The corrective prompt may narrow work to repair confirmed defects. It may not redefine the original build contract.
+A repair package may restore confirmed defects. It may not redefine the original build contract, add product requirements, or turn a rejection into open-ended redesign.
 
 ---
 
-## Core Output Doctrine
+## Core Repair Doctrine
 
-Generate the **shortest prompt that remains sufficient to produce a correct repair**.
+The repair process MUST follow these principles.
 
-There is no arbitrary word limit.
+1. **Diagnosis is completed before dispatch.** Do not send coding agents back to rediscover approval blockers already established by review.
+2. **Group by invariant and ownership, not by arbitrary error count.** Defects that share the same governing invariant, state lifecycle, orchestration owner, or tightly coupled code surface belong in one repair group.
+3. **Parallelize only independent writable surfaces.** Separate groups may run concurrently only when their write ownership and semantic contracts are sufficiently isolated.
+4. **Freeze boundaries before parallel work.** Shared interfaces, public contracts, data shapes, orchestration semantics, and cross-group assumptions must be fixed before dependent groups execute.
+5. **One owner per shared orchestration surface.** Two parallel agents MUST NOT independently modify the same controller lifecycle, orchestration authority, state transition owner, or other shared decision-making code.
+6. **Use waves when dependencies exist.** A group that consumes a contract another repair group must change waits until that contract is established and integrated.
+7. **Integrate before acceptance closure.** Acceptance/evidence work validates the combined repaired build. It does not redesign implementation or independently invent fixes.
+8. **Repair only what blocks approval.** Optional improvements and unrelated cleanup remain excluded.
 
-Every instruction included in the corrective prompt must be necessary to tell the coding agent at least one of the following:
+Generate the smallest repair package that completely restores conformance.
 
-1. **what code is wrong and where;**
-2. **what exact change must be made;**
-3. **what defect-specific constraint must be preserved while making that change;**
-4. **what objective check establishes that the correction is complete.**
+---
 
-If content does none of those things, exclude it.
+## Repair Orchestration Algorithm
 
-Reviewer-only reasoning, audit narrative, epistemic safeguards, general coding philosophy, and explanations of how the reviewer conducted the review do not belong in the corrective prompt.
+Before drafting coding-agent work orders, perform the following sequence.
 
-Verification instructions must also be executable in the coding agent's actual customer-facing ChatGPT environment. Do not assume conventional local development tooling that the session does not expose.
+### Step 1 — Normalize the Rejection Surface
+
+List every independent approval-blocking defect established by review.
+
+For each defect, identify:
+
+- exact file and code location;
+- violated contract, requirement, invariant, or acceptance condition;
+- required post-repair behavior;
+- directly affected call sites/tests;
+- likely writable code surface; and
+- any other defect that shares the same semantic cause or owner.
+
+Do not include optional improvements.
+
+### Step 2 — Consolidate Shared-Cause Defects
+
+When multiple observed failures are corrected by one coherent code change or one governing invariant, consolidate them.
+
+Do not create separate groups merely because the reviewer observed multiple symptoms.
+
+Do not combine genuinely independent defects merely to reduce group count.
+
+### Step 3 — Group by Shared Invariants and Code Ownership
+
+Partition the remaining defects into the minimum coherent repair groups.
+
+A repair group should normally own one tightly related semantic/code surface, such as:
+
+- one planner/execution authority;
+- one recovery/state lifecycle;
+- one content-integrity/materialization subsystem;
+- one synchronization-scope/configuration policy surface;
+- one external integration/error-semantics boundary; or
+- another similarly cohesive ownership area established by the actual repository.
+
+The current defect taxonomy is evidence for decomposition, not a permanent hard-coded architecture. Derive groups from the actual rejected build.
+
+### Step 4 — Build the Repair Dependency and Ownership Map
+
+For every group, determine:
+
+- files/types/modules it may modify;
+- contracts/invariants it owns for the repair;
+- shared files or orchestration surfaces it touches;
+- contracts it consumes from other groups;
+- contracts it changes for other groups;
+- whether it can execute independently;
+- whether it must precede or follow another group.
+
+If two proposed groups would independently modify the same shared orchestration/controller/state-lifecycle surface, they are not parallel-safe as currently defined.
+
+Resolve that conflict by one of:
+
+1. merging them into one repair group;
+2. assigning the shared surface to a single owner and freezing the interface consumed by the other group; or
+3. serializing the dependent group after the owning group integrates.
+
+Do not rely on later merge-conflict resolution to reconcile competing semantic ownership.
+
+### Step 5 — Freeze Cross-Group Boundaries
+
+Before dispatching parallel work, explicitly freeze every boundary required by more than one group.
+
+Freeze only what is necessary, such as:
+
+- public/interface signatures;
+- record/schema shapes;
+- state-machine transitions;
+- ownership of shared files;
+- event/result semantics;
+- IDs and enum meanings;
+- planner/executor handoff semantics;
+- persistence or cursor commit contracts;
+- other cross-group assumptions.
+
+A coding agent may implement behind a frozen boundary but may not redefine it locally.
+
+If a required boundary cannot be established from governing authority and repository inspection, do not parallelize the dependent work until it is resolved.
+
+### Step 6 — Classify Execution
+
+Assign each group one execution classification:
+
+- **PARALLEL-SAFE** — may run concurrently with the identified peer groups;
+- **SERIAL-PREREQUISITE** — must integrate before one or more dependent groups begin;
+- **SERIAL-SHARED-OWNER** — owns a shared orchestration/lifecycle surface and must not run concurrently with another group that would modify it;
+- **INTEGRATION/CLOSURE** — runs only after implementation groups are integrated.
+
+Parallelism is an optimization, not a requirement. Do not create parallel groups when the coordination overhead exceeds the repair benefit.
+
+### Step 7 — Generate One Bounded Work Order per Implementation Group
+
+Each work order must contain only the information its coding agent needs to implement its group correctly:
+
+- owned scope;
+- frozen boundaries it must preserve;
+- exact corrections;
+- directly necessary consequential edits;
+- available verification;
+- evidence/completion requirements;
+- stopping condition.
+
+Do not give a coding agent authority over another group's owned surface.
+
+### Step 8 — Execute in Dependency-Safe Waves
+
+Dispatch all PARALLEL-SAFE groups in the same wave.
+
+Wait for prerequisite/shared-owner groups to integrate before dispatching dependent groups.
+
+A later wave must consume the actual integrated repository state, not assumptions from the original rejection.
+
+### Step 9 — Integrate Repairs
+
+After a wave completes:
+
+- inspect the actual changed files;
+- reconcile work against frozen boundaries;
+- resolve only mechanical integration conflicts within established authority;
+- do not silently choose between competing semantic implementations;
+- return a semantic conflict to the responsible owner or supervisor if integration reveals the boundary was not actually frozen.
+
+### Step 10 — Acceptance and Evidence Closure
+
+Only after all implementation groups have integrated, perform acceptance/evidence closure.
+
+The closure owner must:
+
+- verify the integrated build against the rejected build's governing contracts;
+- verify that repair groups did not violate one another's frozen boundaries;
+- inspect directly affected acceptance tests/evidence;
+- perform the strongest verification actually available in the current ChatGPT environment;
+- identify any remaining approval blocker;
+- update the canonical `dev/evidence/_ca-output.md`.
+
+The closure function tests the contract. It MUST NOT redesign implementation merely because a different solution is preferred.
+
+If closure finds a concrete remaining defect, route it back to the owning repair group or create a new narrowly bounded repair group. Do not convert closure into an unbounded implementation pass.
+
+---
+
+## Parallelism Safety Rules
+
+Parallel repair is permitted only when all of the following are true:
+
+- each parallel group has distinct writable ownership, or shared access is read-only;
+- any shared contract is frozen before work begins;
+- no two groups independently own the same state transition or orchestration decision;
+- one group's implementation does not require guessing the result of another group's unfinished work;
+- integration order is defined where needed; and
+- the supervisor can identify which group owns any defect discovered at the boundary.
+
+Parallel repair is prohibited when two agents would independently modify:
+
+- the same controller lifecycle;
+- the same planner/executor policy decision;
+- the same authoritative state-transition owner;
+- the same persistence commit protocol;
+- the same public contract without a pre-frozen replacement; or
+- another shared semantic authority where competing edits could overwrite or reinterpret one another.
+
+When in doubt, prefer one coherent owner over unsafe parallelism.
 
 ---
 
 ## No Diagnostic Redelegation
 
-Do not instruct the coding agent to:
+Do not instruct coding agents to:
 
 - investigate why a confirmed defect exists;
-- determine the root cause of a defect already diagnosed;
-- review the subsystem again to discover what is wrong;
-- decide what invariant should apply when the authority already establishes it;
-- choose among materially different repairs when the reviewer can determine the required one;
-- identify affected call sites when the reviewer has already determined them and they are needed for the repair; or
-- repeat the review.
+- determine the root cause already established by review;
+- repeat a broad subsystem review to discover what is wrong;
+- decide which invariant applies when authority already establishes it;
+- choose among materially different product/architecture repairs when the reviewer can determine the required result;
+- rediscover known affected call sites merely to recreate reviewer work; or
+- redesign the solution.
 
-Use diagnostic language only when the reviewer genuinely cannot determine a necessary fact from available authority and repository evidence.
+The coding agent may inspect surrounding code as necessary to implement the prescribed repair and discover mechanical fallout.
 
-A rejected build should normally return to the coding agent as an **editing task**, not another analysis task.
+That inspection does not reopen the diagnosis or the repair boundary.
 
 ---
 
 ## Correction Specificity Hierarchy
 
-For each rejection item, use the highest level of determinism the reviewer can safely establish.
+For each correction, use the highest level of determinism the reviewer can safely establish.
 
 ### Level 1 — Exact Replacement or Patch
 
-Use this whenever:
+Use exact replacement code or a precise patch when:
 
 - the defect is localized;
-- the reviewer has inspected sufficient surrounding code;
+- sufficient surrounding code has been inspected;
 - the required implementation is unambiguous; and
-- prescribing the code does not force an unjustified decision outside the build contract.
+- prescribing the code does not invent an unauthorized decision.
 
-Provide exact replacement code, a direct diff, or an exact before/after patch.
-
-This is the preferred form because it minimizes interpretation variance.
+This is preferred because it minimizes interpretation variance.
 
 ### Level 2 — Exact Structural Repair
 
@@ -95,596 +268,412 @@ Use this when the required resulting structure and semantics are known but sever
 Specify:
 
 - exact affected file/member/contract;
-- exact invalid current state;
+- exact invalid state or behavior;
 - exact required resulting state;
-- all necessary invariant/enforcement boundaries;
+- invariant/enforcement boundary;
 - directly affected callers/tests; and
-- objective acceptance conditions.
+- objective acceptance condition.
 
-Leave only ordinary implementation mechanics to the coding agent.
+Leave only ordinary mechanics to the coding agent.
 
 ### Level 3 — Concrete Behavioral Repair
 
-Use this only when the reviewer can prove the current implementation is wrong and define the required behavior but cannot responsibly prescribe exact internal structure.
+Use this only when the reviewer can prove the current implementation is wrong and define the required behavior but cannot responsibly prescribe internal structure.
 
-Still identify:
+Still identify the defective code, required behavior, relevant constraints, verification, and stopping condition.
 
-- exact defective code location;
-- exact observed failure;
-- exact required behavior;
-- directly relevant constraints;
-- required tests/verification; and
-- stopping condition.
-
-Never fall back to vague instructions such as "fix this properly," "investigate," or "make it robust."
-
----
-
-## Correction Item Consolidation
-
-Each correction item should correspond to a concrete faulty implementation or contract.
-
-When several symptoms are all resolved by one concrete code change, do not create redundant correction items.
-
-When separate code defects require separate edits, list them separately.
-
-Do not hide multiple independent defects under one vague umbrella item merely to make the prompt shorter.
-
-The goal is **minimal complete repair scope**, not artificial brevity.
+Never use vague instructions such as "investigate", "fix properly", or "make robust".
 
 ---
 
 ## Mandatory Versus Consequential Edits
 
-The corrective prompt may distinguish:
+Each group work order may distinguish:
 
 ### Mandatory Edits
 
-The exact code or contract changes the reviewer has determined must occur.
+The exact code/contract changes the reviewer has determined must occur.
 
 ### Consequential Edits
 
-Only changes mechanically or semantically required because of the mandatory edits, such as:
+Only edits directly required because of the mandatory repair, such as:
 
 - compile-fallout call-site updates;
-- constructor/factory call changes;
-- interface implementation changes;
+- interface implementation updates;
+- serialization/mapping updates;
 - directly affected tests;
-- directly affected serialization/mapping code.
+- imports/types mechanically required by the change.
 
-Consequential edits do not authorize unrelated refactoring, cleanup, redesign, or speculative improvement.
+Consequential edits do not authorize unrelated refactoring, redesign, or speculative cleanup.
 
-If the reviewer can enumerate consequential locations reliably, enumerate them.
-
-If not, narrowly authorize only directly necessary consequential changes.
+If consequential edits would cross into another group's owned surface, the coding agent MUST NOT make them independently. Surface the dependency to the supervisor/owner instead.
 
 ---
 
-## Required Output Structure
+## Verification Capability Rule
 
-A rejection prompt must use the following flattened top-level sections in this order:
+Coding agents operate in customer-facing ChatGPT sessions.
 
-1. `REJECTION`
-2. `SCOPE`
-3. `CORRECTIONS`
-4. `VERIFICATION`
-5. `CHANGE_MANIFEST`
-6. `COMPLETION_RESPONSE`
-7. `STOP`
+Do not assume access to:
 
-Include `EVIDENCE_RECEIPT` only when another authoritative workflow, project convention, or explicit user instruction requires it.
+- a local developer shell;
+- Node/npm/npx;
+- package-manager commands;
+- PowerShell;
+- IDE task runners;
+- arbitrary process execution;
+- local build/typecheck/lint/test commands.
 
-Do not add process-oriented sections that are not needed to execute the repair.
+Require the strongest verification actually available in the specific session.
+
+Prefer, as applicable:
+
+1. direct inspection of modified code;
+2. repository search of affected call sites/contracts/imports/interfaces/schemas/tests;
+3. static semantic verification against the stated contract;
+4. structural repository checks proving rejected patterns are removed and required patterns are present;
+5. targeted execution only when an appropriate execution capability is actually exposed;
+6. inspection of accessible existing CI/build/test results.
+
+Do not order a command merely because it would be customary on a developer workstation.
+
+If a materially relevant dynamic check cannot be performed, record:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Do not label unavailable tooling as a failed repair, and do not obscure the limitation with a bare `NOT EXECUTED`.
 
 ---
 
-## Section Requirements
+## Evidence Ownership and `dev/evidence/_ca-output.md`
 
-### REJECTION
+`dev/evidence/_ca-output.md` remains the canonical build/correction evidence consumed by the next review.
 
-State plainly that the build is rejected.
+### Single-Group or Serial Repair
 
-Optionally list the correction IDs when more than one exists.
-
-Keep this section to one or two sentences.
-
-Example:
-
-```text
-REJECTION
-
-Build rejected for C1 and C2 below.
-```
-
-### SCOPE
-
-Define only the boundaries necessary to prevent correction drift.
-
-Normally this should state:
-
-- correct the listed rejection items;
-- make only directly necessary consequential edits;
-- do not perform unrelated refactoring or functionality changes.
-
-Do not restate the whole original build scope.
-
-Example:
-
-```text
-SCOPE
-
-Correct C1-C2 and only the directly necessary call-site/test fallout.
-Do not make unrelated behavioral, architectural, or cleanup changes.
-```
-
-### CORRECTIONS
-
-This is the substantive part of the work order.
-
-Every independent correction must have a stable identifier such as `C1`, `C2`, and so on.
-
-For each correction, include only the fields that materially help the coding agent execute it.
-
-#### Required per-correction fields
-
-- **FILE** — exact repository path.
-- **LOCATION** — exact member/type/function/schema region; include line numbers only when stable/useful.
-- **DEFECT** — concise factual description of what the current implementation does incorrectly.
-- **REQUIRED CHANGE** — concrete required post-repair state.
-- **ACCEPTANCE** — objective condition proving this correction is complete.
-
-#### Conditional per-correction fields
-
-Include only when applicable:
-
-- **REPLACEMENT** — exact replacement code or diff. Prefer this whenever safely determinable.
-- **RELATED CHANGES** — directly required call sites, interfaces, serializers, tests, or dependent code.
-- **CONSTRAINTS** — defect-specific prohibitions necessary to prevent a plausible but incorrect repair.
-- **AUTHORITY** — requirement ID/path when needed to anchor the correction. Prefer concise identifiers over copied specification prose.
-- **KNOWN TRAP** — only when a specific likely repair would repeat or create the identified defect.
-
-Do not mechanically include empty fields.
-
-#### Exact replacement code
-
-When replacement code is prescribed:
-
-- include enough surrounding context to place it correctly;
-- preserve repository language/style unless the governing contract requires otherwise;
-- do not provide pseudocode when exact code is known;
-- do not require the coding agent to redesign code the reviewer has already specified;
-- authorize only directly necessary consequential edits outside the shown replacement.
-
-Example shape:
-
-```text
-C1 — <short defect name>
-
-FILE
-src/.../Example.cs
-
-LOCATION
-Example.Create(...)
-
-DEFECT
-<precise defect>
-
-REQUIRED CHANGE
-<precise resulting contract>
-
-REPLACEMENT
-
-```csharp
-<exact replacement code>
-```
-
-RELATED CHANGES
-<only directly necessary fallout>
-
-ACCEPTANCE
-<objective pass condition>
-```
-
-### VERIFICATION
-
-Require only verification relevant to the listed corrections and actually accessible within the coding agent's customer-facing ChatGPT session.
-
-The default assumption is **not** that the coding agent has a local developer shell, Node/npm runtime, package-manager access, IDE task runner, or arbitrary process execution. Do not prescribe `npm`, `npx`, `node`, shell, PowerShell, build, typecheck, lint, or test commands as required verification unless the current coding-agent session demonstrably exposes a tool capable of executing them.
-
-Prefer the strongest available verification in this order, as applicable:
-
-1. direct inspection of every modified file and the exact corrected code;
-2. repository search/inspection of directly affected call sites, contracts, imports, interfaces, schemas, configuration, and tests;
-3. static semantic verification that the corrected implementation satisfies the stated contract and acceptance condition;
-4. structural checks available through repository/file tools, including confirming removed or replaced patterns are no longer present and required references are present;
-5. targeted execution only when the session actually provides an appropriate runtime/tool for the code being verified;
-6. inspection of already-available CI/build/test results when accessible to the coding agent.
-
-Do not require a verification mechanism that the coding agent cannot perform in its environment.
-
-If dynamic build/test/typecheck execution is unavailable, that unavailability is **not itself a correction failure** unless the governing build contract explicitly requires successful execution in an environment the coding agent can actually access. Require the coding agent to record the unavailable check accurately rather than fabricate or imply execution.
-
-When a check cannot be performed, report it as `NOT AVAILABLE IN THIS SESSION`, not merely `NOT EXECUTED`, and continue with the strongest available static/repository verification.
-
-Do not turn verification into a repeat of the whole review unless the correction legitimately affects the whole build.
-
-Do not ask the coding agent to declare approval.
-
-Example:
-
-```text
-VERIFICATION
-
-Perform the strongest checks available in the current ChatGPT session:
-
-- inspect the corrected implementation and directly affected call sites;
-- confirm repository searches show no remaining use of the rejected contract/pattern;
-- inspect the directly relevant tests and verify they assert the corrected behavior;
-- if an appropriate execution tool or accessible CI result is available, use it and report the observed result.
-
-Confirm:
-- the prohibited state in C1 is no longer representable through supported paths;
-- the directly affected code now satisfies the stated acceptance condition.
-
-If build/typecheck/test execution is unavailable, record those checks as `NOT AVAILABLE IN THIS SESSION`.
-```
-
-### CHANGE_MANIFEST
-
-Require a complete manifest of files actually created, modified, or deleted during the correction pass.
-
-Before completion, the coding agent MUST update `dev/evidence/_ca-output.md` so it reflects the correction pass rather than the rejected build state. The updated evidence file must contain, at minimum:
-
-- correction IDs implemented;
-- every file created, modified, or deleted during the correction pass;
-- verification checks actually performed and their observed results;
-- any materially relevant dynamic verification that was unavailable, labeled `NOT AVAILABLE IN THIS SESSION`; and
-- any remaining blocker or verification limitation.
-
-Because `dev/evidence/_ca-output.md` is itself modified by this required evidence update, it MUST appear in the correction-pass change manifest.
-
-Keep the instruction minimal.
-
-Example:
-
-```text
-CHANGE_MANIFEST
-
-Update `dev/evidence/_ca-output.md` with the correction-pass evidence and complete created/modified/deleted file manifest.
-Ensure `dev/evidence/_ca-output.md` itself is included in that manifest.
-```
-
-### COMPLETION_RESPONSE
-
-Require only the handoff information needed for re-review:
+When only one implementation group owns the correction pass, that coding agent MUST update `dev/evidence/_ca-output.md` before completion with:
 
 - corrections implemented;
+- complete created/modified/deleted file manifest;
 - verification actually performed and results;
-- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
-- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
-- change manifest;
-- any remaining blocker or verification limitation.
+- materially relevant unavailable dynamic checks labeled `NOT AVAILABLE IN THIS SESSION`;
+- remaining blockers or limitations.
 
-Do not require essays, rubric self-scoring, self-approval, or claims that the build is accepted.
+`dev/evidence/_ca-output.md` itself must appear in the manifest.
 
-Example:
+### Parallel Repair
 
-```text
-COMPLETION_RESPONSE
+Parallel implementation agents MUST NOT all edit `dev/evidence/_ca-output.md`.
 
-Return:
-- correction IDs completed;
-- verification checks actually performed and their results;
-- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
-- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
-- complete change manifest;
-- any remaining blocker or verification limitation.
-```
+For a multi-group repair run:
 
-### STOP
+- reserve `dev/evidence/_ca-output.md` to the designated integration/closure owner;
+- implementation groups report their own change manifests and verification in their completion responses;
+- no parallel group modifies `_ca-output.md` unless explicitly designated as its sole owner;
+- after integration, the closure owner reconstructs the actual integrated change set and updates `dev/evidence/_ca-output.md` once with the complete repair-run evidence.
 
-Give a clear stopping condition.
+The final canonical evidence must identify:
 
-Example:
+- repair groups completed;
+- integrated files created/modified/deleted;
+- verification actually performed and results;
+- materially relevant unavailable checks;
+- integration/closure findings;
+- remaining blockers or limitations.
 
-```text
-STOP
+This rule prevents a shared evidence file from becoming a parallel-write collision while preserving `_ca-output.md` as the authoritative review entry point.
 
-Stop after C1-C2 and their directly necessary consequential edits are implemented and verified.
-Do not continue into unrelated work.
-```
+---
+
+## Repair Work-Order Content Rule
+
+Every instruction in a coding-agent work order must help the agent do at least one of the following:
+
+1. identify the exact code/contract it owns;
+2. implement an exact correction;
+3. preserve a frozen boundary or defect-specific constraint;
+4. handle directly necessary fallout within its ownership;
+5. verify the correction using available capabilities;
+6. report completion/evidence needed for integration.
+
+If content does none of these things, exclude it.
+
+Do not include reviewer narrative, files that passed, optional improvements, generic coding advice, repeated specifications, or general explanations of the review process.
+
+---
+
+## Required Repair Package Structure
+
+A multi-group repair package must use these top-level sections in this order:
+
+1. `REJECTION`
+2. `REPAIR TOPOLOGY`
+3. `FROZEN BOUNDARIES`
+4. `GROUP WORK ORDERS`
+5. `INTEGRATION AND ACCEPTANCE CLOSURE`
+6. `FINAL STOP`
+
+For a single coherent repair group, the package may omit empty topology complexity, but it must preserve the same ownership, correction, verification, evidence, and stopping principles.
+
+---
+
+## Group Work-Order Requirements
+
+Each implementation group must have a stable ID such as `G1`, `G2`, etc.
+
+Each group work order must state:
+
+- **OWNERSHIP** — files/types/modules/semantic authority the group may modify;
+- **EXECUTION CLASS** — PARALLEL-SAFE, SERIAL-PREREQUISITE, or SERIAL-SHARED-OWNER;
+- **DEPENDENCIES** — groups/contracts that must exist first, if any;
+- **FROZEN BOUNDARIES** — interfaces/semantics the group consumes but may not redefine;
+- **CORRECTIONS** — concrete defects and required repairs;
+- **VERIFICATION** — strongest available group-specific checks;
+- **COMPLETION RESPONSE** — change manifest, checks/results, unavailable checks, blockers;
+- **STOP** — stop after the assigned group is complete.
+
+For each correction include:
+
+- exact file;
+- exact location;
+- defect;
+- violated authority/contract;
+- required change;
+- exact replacement/patch when safely determinable;
+- directly necessary related changes;
+- defect-specific constraints;
+- objective acceptance condition.
+
+Do not mechanically include empty optional fields.
+
+---
+
+## Integration and Acceptance Closure Requirements
+
+The integration/closure owner must have explicit ownership of the integration pass.
+
+It must:
+
+- consume the actual repository after repair groups complete;
+- verify frozen boundaries were preserved;
+- inspect all changed files across the repair run;
+- reconcile the integrated change manifest;
+- perform only mechanical integration edits unless separately authorized to repair a discovered semantic defect;
+- perform the strongest available acceptance verification;
+- inspect directly relevant acceptance tests/evidence;
+- update `dev/evidence/_ca-output.md`;
+- report any remaining blocker to the responsible group/owner.
+
+The closure owner MUST NOT:
+
+- redesign repaired subsystems;
+- replace a compliant implementation with a preferred one;
+- reopen optional improvements;
+- silently fix a semantic ownership conflict across groups; or
+- declare approval on behalf of the independent reviewer.
 
 ---
 
 ## Exact-Code Guidance
 
-Provide actual replacement code whenever doing so is safer and more deterministic than describing the same edit in prose.
+Provide actual replacement code whenever doing so is safer and more deterministic than prose.
 
-Exact code is especially appropriate for:
+Exact code is especially appropriate for localized defects involving:
 
-- incorrect conditionals;
-- invalid constructors/factories;
-- wrong enum or schema definitions;
-- incorrect mappings;
-- missing invariant enforcement;
-- wrong signatures;
-- erroneous offset/span calculations;
-- incorrect serialization rules;
-- malformed configuration;
-- small, localized algorithms; and
-- tests whose required assertion/setup is unambiguous.
+- conditionals;
+- constructors/factories;
+- signatures;
+- mappings;
+- schema/configuration definitions;
+- invariant enforcement;
+- serialization/deserialization;
+- state transitions;
+- cursor/checkpoint commit ordering;
+- identity mapping;
+- path/normalization logic;
+- merge/conflict classification;
+- deletion safeguards;
+- authorization checks;
+- unambiguous test setup/assertions.
 
-Do **not** force an exact patch when:
+Do not provide pseudocode when exact code is already known.
 
-- repository context is insufficient;
-- several implementations are legitimately equivalent and none is contractually required;
-- the patch would require speculative decisions;
-- the change spans broad architecture not fully inspected; or
-- exact code would unnecessarily freeze an implementation detail explicitly left to engineering discretion.
-
-In those cases, use Level 2 or Level 3 specificity.
+Do not force an exact patch when it would invent architecture, override legitimate engineering discretion, or cross an unfrozen group boundary.
 
 ---
 
 ## What Must Be Excluded
 
-Do not include any of the following unless a particular rejection genuinely requires it to execute the repair:
+Unless directly necessary to implement, constrain, integrate, or verify a confirmed repair, exclude:
 
-- a narrative of the review process;
-- descriptions of files that passed;
+- review-process narrative;
+- descriptions of passing code;
 - optional improvements;
 - speculative future work;
-- general architecture advice unrelated to the defect;
-- repeated copies of the original build prompt;
-- repeated copies of governing specifications;
-- generic reminders to be careful;
-- generic reminders that tests are not final approval;
-- statements that the reviewer will inspect files again;
-- reviewer confidence statements;
-- explanations of why adversarial review matters;
-- instructions to self-score against the review rubric;
-- instructions to self-approve or declare acceptance;
-- unrelated cleanup;
-- broad refactors;
-- stylistic preferences that are not approval requirements;
-- repeated symptoms already resolved by a listed concrete correction.
-
-The corrective prompt is not the place to preserve reviewer reasoning for posterity.
-
----
-
-## Defect-Specific Constraint Rule
-
-Do not fill the prompt with generic prohibitions.
-
-Include a constraint only when a plausible repair could otherwise violate a real requirement.
-
-Good:
-
-```text
-CONSTRAINTS
-
-Do not add a second independent eligibility flag. Eligibility must remain derived from Classification.
-```
-
-Bad:
-
-```text
-CONSTRAINTS
-
-Follow good engineering practices.
-Do not break anything.
-Preserve architecture.
-Be careful with tests.
-```
-
-Standing coding-agent governance belongs in the implementation bootstrap, not every rejection prompt.
-
----
-
-## Authority Citation Rule
-
-When the violated requirement is obvious from a stable requirement identifier, cite the identifier instead of paraphrasing paragraphs of authority.
-
-Prefer:
-
-```text
-AUTHORITY
-SYS-142; `full-system-spec.v2.md` §8.3
-```
-
-over reproducing the full requirement text.
-
-Explain the authority relationship only when the correction would otherwise be ambiguous.
-
----
-
-## Verification Capability and Evidence Rule
-
-The coding agent operates in a customer-facing ChatGPT session. Verification requirements MUST therefore be capability-aware.
-
-Do not assume access to a local shell, Node/npm, package-manager commands, IDE build tasks, operating-system process execution, or any other developer-workstation facility unless that capability is actually exposed in the current session.
-
-The coding agent must use the strongest verification tools it actually has and must report only verification it actually performed. Repository inspection, code/reference search, contract comparison, static semantic analysis, and inspection of accessible existing CI/build/test evidence are valid verification methods when executable tooling is unavailable.
-
-Unavailable dynamic checks must be reported as `NOT AVAILABLE IN THIS SESSION`. They must not be presented as failed checks, silently omitted, or described merely as `NOT EXECUTED` in a way that obscures the environment limitation.
-
-Before the correction pass ends, the coding agent MUST update `dev/evidence/_ca-output.md` with:
-
-- the current correction-pass implementation evidence;
-- the complete change manifest;
-- every verification check actually performed and its observed result;
-- any materially relevant verification that was unavailable, labeled `NOT AVAILABLE IN THIS SESSION`; and
-- any remaining blocker or limitation.
-
-The file must no longer describe the rejected build as though it were the current repository state.
-
-Do not require the corrective prompt to contain generalized reviewer epistemology.
-
-If dynamic execution is claimed, both `dev/evidence/_ca-output.md` and the completion response must identify the actual tool/command/check used and observed result sufficiently for the reviewer to validate it.
-
-Final approval remains a separate reviewer action and is not part of the coding agent's repair task.
+- generic architecture advice;
+- repeated copies of governing prompts/specifications;
+- generic cautionary language;
+- self-scoring or self-approval instructions;
+- unrelated cleanup/refactoring;
+- later-phase functionality;
+- duplicated symptoms already covered by one correction;
+- acceptance-suite redesign of implementation.
 
 ---
 
 ## Output Formatting
 
-The reviewer must output the finished corrective coding-agent prompt inside one outer four-backtick Markdown fence.
+The finished repair package must be a well-formed Markdown document inside one outer four-backtick Markdown fence.
 
-Inside that outer fence:
+Inside the package:
 
-- ordinary content is Markdown;
-- nested source-code replacements use three-backtick fences;
-- do not use another four-backtick nested fence.
-
-Do not place commentary outside the corrective prompt.
+- use exactly one level-1 `#` heading at the top;
+- use a consistent Markdown heading hierarchy;
+- use three-backtick fences only for nested replacement code;
+- do not place commentary outside the repair package.
 
 ---
 
-## Canonical Corrective Prompt Shape
+## Canonical Corrective Repair Package Shape
 
-Use the following fixed section order and correction-item shape. Omit only conditional correction fields that are not applicable. The corrective prompt itself must be a well-formed Markdown document with exactly one level-1 heading at the top and a consistent heading hierarchy beneath it.
+Use the following shape. Omit optional fields or unused groups, but preserve the hierarchy and ownership semantics.
 
 ````markdown
-# REJECTION / FIX CORRECTIVE WORK ORDER
+# REJECTION / FIX REPAIR PACKAGE
 
 ## REJECTION
 
-Build rejected for <correction IDs>.
+Build rejected for <correction/group IDs>.
 
-## SCOPE
+## REPAIR TOPOLOGY
 
-Correct <IDs> and only directly necessary consequential edits.
-Do not make unrelated behavioral, architectural, cleanup, or speculative changes.
+### G1 — <repair group name>
 
-## CORRECTIONS
+- **Execution class:** <PARALLEL-SAFE | SERIAL-PREREQUISITE | SERIAL-SHARED-OWNER>
+- **Owns:** <files/types/semantic surface>
+- **Depends on:** <group/contract or none>
+- **May run with:** <parallel-safe groups or none>
 
-### C1 — <short defect name>
+### G2 — <repair group name>
 
-#### FILE
+- **Execution class:** <...>
+- **Owns:** <...>
+- **Depends on:** <...>
+- **May run with:** <...>
 
-<exact path>
+## FROZEN BOUNDARIES
 
-#### LOCATION
+- <shared interface/contract/semantic boundary that no group may redefine>
+- <shared ownership rule>
+- <dependency boundary>
 
-<exact member/type/region>
+## GROUP WORK ORDERS
 
-#### DEFECT
+### G1 — <repair group name>
 
-<what the current code does incorrectly>
+#### Scope
 
-#### AUTHORITY
+Modify only <owned surface> and directly necessary fallout within that ownership.
 
-<requirement ID/path, only when useful>
+Do not modify another group's owned surface or redefine the frozen boundaries.
 
-#### REQUIRED CHANGE
+#### Corrections
 
-<exact post-repair contract>
+**C1 — <short defect name>**
 
-#### REPLACEMENT
+- **File:** <exact path>
+- **Location:** <exact member/type/region>
+- **Defect:** <what the current code does incorrectly>
+- **Violated contract:** <requirement/invariant/build contract>
+- **Required change:** <exact post-repair behavior/structure>
+- **Replacement:** <exact patch/code when safely determinable>
+- **Related changes:** <directly necessary fallout within this group>
+- **Constraints:** <defect-specific constraints only>
+- **Acceptance:** <objective completion condition>
 
-```<language>
-<exact replacement code when safely determinable>
-```
+#### Verification
 
-#### RELATED CHANGES
-
-<only directly necessary call sites/tests/dependencies, if any>
-
-#### CONSTRAINTS
-
-<only defect-specific constraints, if any>
-
-#### ACCEPTANCE
-
-<objective completion condition>
-
-### C2 — <next independent defect, if any>
-
-#### FILE
-
-...
-
-#### LOCATION
-
-...
-
-#### DEFECT
-
-...
-
-#### REQUIRED CHANGE
-
-...
-
-#### ACCEPTANCE
-
-...
-
-## VERIFICATION
-
-Perform the strongest correction-specific checks available in the current ChatGPT session. Prefer direct repository/code inspection and targeted static verification. Use dynamic build/typecheck/test execution only when the session actually provides an appropriate execution capability.
-
-Check:
+Perform the strongest correction-specific checks available in the current ChatGPT session:
 
 - <available targeted verification>
 - <available targeted verification>
 
-Confirm:
+For materially relevant dynamic checks that are unavailable, record `NOT AVAILABLE IN THIS SESSION`.
 
-- <correction-specific behavior>
-- <correction-specific behavior>
-
-For any materially relevant dynamic check that cannot be performed, record `NOT AVAILABLE IN THIS SESSION` rather than treating it as a failed or silently skipped check.
-
-## CHANGE_MANIFEST
-
-Update `dev/evidence/_ca-output.md` before completion so it records:
-
-- correction IDs implemented;
-- every file created, modified, or deleted during this correction pass;
-- verification actually performed and observed results;
-- any materially relevant unavailable dynamic verification, labeled `NOT AVAILABLE IN THIS SESSION`;
-- any remaining blocker or verification limitation.
-
-Include `dev/evidence/_ca-output.md` itself in the change manifest.
-
-## COMPLETION_RESPONSE
+#### Completion Response
 
 Return:
 
 - correction IDs completed;
+- complete files created/modified/deleted manifest for G1;
+- verification actually performed and observed results;
+- unavailable materially relevant checks;
+- any boundary dependency, blocker, or limitation.
+
+Do not modify `dev/evidence/_ca-output.md` during a parallel repair run unless G1 is explicitly designated as its sole owner.
+
+#### Stop
+
+Stop when G1 and directly necessary in-group fallout are complete and verified.
+
+### G2 — <repair group name>
+
+<same bounded work-order structure>
+
+## INTEGRATION AND ACCEPTANCE CLOSURE
+
+### Integration Ownership
+
+Run only after all prerequisite implementation groups are integrated.
+
+Do not redesign implementation. Resolve only mechanical integration issues within frozen contracts; return semantic defects to the responsible owner.
+
+### Closure Verification
+
+Verify the integrated correction against the rejected build's governing contracts and frozen boundaries using the strongest verification available in the current ChatGPT session.
+
+### Canonical Evidence
+
+Update `dev/evidence/_ca-output.md` with:
+
+- all repair groups completed;
+- complete integrated created/modified/deleted file manifest;
 - verification actually performed and results;
-- materially relevant unavailable dynamic verification labeled `NOT AVAILABLE IN THIS SESSION`;
-- confirmation that `dev/evidence/_ca-output.md` was updated with the current correction-pass evidence;
-- complete change manifest;
-- any remaining blocker or verification limitation.
+- materially relevant unavailable checks labeled `NOT AVAILABLE IN THIS SESSION`;
+- integration/closure findings;
+- any remaining blocker or limitation.
 
-## STOP
+Include `dev/evidence/_ca-output.md` itself in the final manifest.
 
-Stop after the listed corrections and directly necessary consequential edits are implemented and verified.
-Do not continue into unrelated work.
+## FINAL STOP
+
+Stop after implementation groups are integrated, closure verification is complete, and canonical evidence is updated.
+
+Do not continue into unrelated work or optional improvements.
 ````
 
 ---
 
-## Final Sufficiency Test
+## Final Sufficiency Gate
 
-Before emitting a corrective prompt, the reviewer must ask:
+Before emitting a repair package, verify all of the following:
 
-1. Does every correction identify specific faulty code or contract?
-2. Does every correction tell the coding agent exactly what must change?
-3. Where exact replacement code can safely be established, was it supplied?
-4. Are directly necessary consequential edits identified or narrowly authorized?
-5. Does every correction have an objective acceptance condition?
-6. Is verification limited to what materially proves these repairs and executable within the coding agent's actual ChatGPT-session capabilities?
-7. Does the work order avoid requiring shell/npm/build/typecheck/test execution unless that capability is demonstrably available?
-8. Does it require unavailable materially relevant dynamic checks to be labeled `NOT AVAILABLE IN THIS SESSION` rather than falsely treated as executed or failed?
-9. Has all optional improvement and reviewer-only narrative been removed?
-10. Could the coding agent implement the repair without repeating the reviewer's diagnostic work?
-11. Does the work order explicitly require `dev/evidence/_ca-output.md` to be updated with the correction-pass evidence and complete change manifest?
-12. Is anything still present that does not help implement, constrain, or verify the repair?
+1. Every approval blocker is assigned to exactly one repair owner.
+2. Defects sharing one invariant/ownership surface are grouped coherently.
+3. Independent groups are separated only when parallelism is actually safe and useful.
+4. No two parallel groups independently modify the same orchestration/controller/state-lifecycle authority.
+5. Shared interfaces/contracts required by multiple groups are frozen before dispatch.
+6. Group dependencies and execution waves are explicit.
+7. Every correction identifies exact defective code/contract and the required repair.
+8. Exact replacement code is supplied whenever safely determinable.
+9. Consequential edits cannot silently cross another group's ownership boundary.
+10. Verification requirements are executable within actual ChatGPT-session capabilities.
+11. Unavailable dynamic checks are labeled `NOT AVAILABLE IN THIS SESSION`.
+12. Acceptance/evidence closure occurs only after implementation groups integrate.
+13. Closure validates contracts and does not redesign implementation.
+14. `dev/evidence/_ca-output.md` has exactly one owner during parallel repair and is updated with final integrated evidence.
+15. Optional improvements and reviewer-only narrative are absent.
+16. Each coding agent can implement its assignment without repeating the reviewer's diagnosis.
+17. The package contains nothing that does not help implement, constrain, integrate, verify, or evidence the repair.
 
-If item 10 or item 11 is `no`, the prompt is under-specified.
-
-If item 12 is `yes`, remove that content unless it is required by another explicit authority.
+If any ownership or frozen-boundary condition cannot be established safely, reduce parallelism until the repair becomes deterministic.
