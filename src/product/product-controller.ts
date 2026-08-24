@@ -331,7 +331,7 @@ export class IntegratedProductController implements ProductControlPort {
               await this.options.onRecoveryGateChanged?.(false);
               await this.audit("recovery-completed");
             }
-            if (planned.assembly.mode === "full") await this.options.onFullReconciliationCompleted?.();
+            if (planned.assembly.mode === "full" && planned.assembly.nextCursor) await this.options.onFullReconciliationCompleted?.();
             if (planned.reviewed) await this.options.onTrustedBaselineEstablished?.();
           }
         }
