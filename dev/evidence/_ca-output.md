@@ -434,3 +434,74 @@ C1 changes the second limitation's implementation behavior from unsafe omission 
 `IMPLEMENTED AND VERIFIED`
 
 The exact SHA of the evidence-bearing commit cannot be embedded in that commit's own contents. The final pushed branch SHA and the final evidence-bearing PR workflow run/job are verified after commit and reported in the completion response. Independent supervisory approval is not claimed.
+
+---
+
+# C1 Evidence Correction Receipt — Authoritative Current Record
+
+## Correction Identity
+
+- Correction ID: `C1`
+- Worker: `agt-CA-P2-03`
+- Final executable implementation branch SHA: `4d06581fa91ba9643496a67296b5002925581ba2`
+- Verification workflow run: `32731187369`
+- Verification job: `97443556511`
+- Frozen `src/contracts/**`: `UNCHANGED`
+
+## Persisted C1 Behavior
+
+- Default external-reference handling is fail-closed through `UnavailableExternalReferenceGuard` when no proving platform guard is supplied.
+- Generic/mobile adapter path access without a proving guard is blocked instead of silently reaching underlying filesystem operations.
+- Existing desktop-specific safe guard behavior remains available through `DesktopExternalReferenceGuard`.
+- Blocked/unverifiable folder subtrees yield `partial` enumeration rather than a falsely `complete` listing.
+
+## Executable Verification Receipt
+
+GitHub Actions run `32731187369`, job `97443556511`:
+
+- `npm ci` — **PASS**.
+- `npm run typecheck` — **PASS**.
+- `npm test` — **PASS**.
+- Tests: **52 passed / 0 failed / 0 skipped / 0 cancelled**.
+- `npm run build` — **PASS**.
+
+The logs show the three new C1 tests executed and passed:
+
+- fail-closed ordinary observation;
+- fail-closed create/replace/move/trash mutation access;
+- blocked folder subtree returns partial enumeration.
+
+Existing desktop external-reference and mobile import-isolation tests also executed and passed in the same run.
+
+## Complete C1 Correction-Pass Change Manifest
+
+Git-derived implementation compare `e577bf1366001de3871a868bd549630b1060f2df...4d06581fa91ba9643496a67296b5002925581ba2` plus the required evidence-only updates yields:
+
+**Created**
+
+None.
+
+**Modified**
+
+- `src/local/obsidian-local-vault.ts`
+- `test/local-failure-semantics.test.ts`
+- `test/obsidian-local-vault.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-CA-P4.md`
+
+**Deleted**
+
+None.
+
+The two evidence files themselves are part of the final modified-file manifest. No production source or tests were changed during this evidence-only correction pass.
+
+## Remaining Stock-iOS Platform Limitations
+
+C1 does not resolve or weaken the demonstrated stock-iOS host limitations:
+
+1. strict bounded-memory arbitrary-file local reads remain unavailable/proven-unsatisfied on the current stock Obsidian Mobile host for non-media extensions because the documented Capacitor 5.x local-resource handler lacks general byte-range semantics and the public filesystem generation lacks supported chunk/offset reads;
+2. supported mobile proof against symlink/alias/external-reference traversal remains unavailable because the public mobile boundary lacks link-aware/canonical-path metadata even though Obsidian permits externally resolving references.
+
+The second limitation is now handled safely by fail-closed blocking when no proving guard exists.
+
+This authoritative receipt supersedes older Phase 4 verification identifiers only for the C1 correction pass. Historical evidence above is retained for auditability. Independent supervisory approval is not claimed.
