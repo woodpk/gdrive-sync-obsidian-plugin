@@ -20,7 +20,7 @@ function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentE
   if (expected.sizeBytes !== undefined) return actual?.sizeBytes === expected.sizeBytes;
   return true;
 }
-
+function signalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
 function success(operation: PlannedOperation, evidence?: ContentEvidence, ref?: string): ExecutionResult {
   const receipt: VerifiedExecutionReceipt = { operationId: operation.operationId, durable: true, integrityVerified: true, evidence, verificationEvidenceRef: ref };
   return { status: "durable-verified-success", receipt };
@@ -49,12 +49,11 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
       } else if (precondition.kind === "remote-enumeration-complete") {
         if (!this.runEvidence().remoteEnumerationComplete) return { status: "blocked", reason: "remote enumeration is not complete" };
       } else if (precondition.kind === "identity-unambiguous") {
-        // Identity ambiguity is encoded by the plan snapshot; current observations below protect mutation reality.
+        continue;
       } else if (precondition.kind === "path-observation") {
         if (precondition.side === "local") {
           const observed = await this.local.observe(precondition.path);
-          if (observed.status !== precondition.expected) failed.push(precondition);
-          else if (precondition.observationToken && observed.observationToken !== precondition.observationToken) failed.push(precondition);
+          if (observed.status !== precondition.expected || (precondition.observationToken && observed.status === "present" && observed.observationToken !== precondition.observationToken)) failed.push(precondition);
         } else {
           const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, precondition.path);
           if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
@@ -84,9 +83,9 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
   async execute(operation: PlannedOperation): Promise<ExecutionResult> {
     try {
       switch (operation.kind) {
-        case "noop":
-          return success(operation, operation.contentVersion?.content, `noop:${String(operation.operationId)}`);
-        case "upload-create": return await this.uploadCreate(operation);
+        case "noop": return success(operation, operation.contentVersion?.content, `noop:${String(operation.operationId)}`);
+        case "upload-create":
+          return { status: "blocking-failure", reason: "upload-create is fail-closed because the frozen VerifiedExecutionReceipt cannot carry the new Drive object ID into authoritative state" };
         case "upload-update": return await this.uploadUpdate(operation);
         case "download-create": return await this.downloadCreate(operation);
         case "download-update": return await this.downloadUpdate(operation);
@@ -110,22 +109,6 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     } catch (error) {
       return { status: "blocking-failure", reason: error instanceof Error ? error.message : String(error) };
     }
-  }
-
-  private async uploadCreate(operation: PlannedOperation): Promise<ExecutionResult> {
-    const version = operation.contentVersion;
-    if (!version) return { status: "blocking-failure", reason: "upload-create requires content version" };
-    if (version.entityKind === "folder") {
-      const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "folder" });
-      if (!result.ok) return this.mapDriveFailure(result.signal);
-      return success(operation, result.value.evidence, `remote:${String(result.value.remoteObjectId)}`);
-    }
-    const local = await this.local.readFile(operation.path, version.observationToken);
-    const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "file", content: local.content, expectedEvidence: local.evidence });
-    if (!result.ok) return this.mapDriveFailure(result.signal);
-    const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
-    if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== result.value.remoteObjectId) return { status: "uncertain", reason: "uploaded object could not be re-observed by stable identity" };
-    return success(operation, observed.value.content ?? result.value.evidence ?? local.evidence, `remote:${String(result.value.remoteObjectId)}`);
   }
 
   private async uploadUpdate(operation: PlannedOperation): Promise<ExecutionResult> {
@@ -181,15 +164,15 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
   }
 
   private mapDrivePreconditionFailure(signal: DriveSignal): PreconditionValidationResult {
-    if (signal.kind === "authentication-required") return { status: "blocked", reason: signal.detail ?? "authentication required" };
-    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signal.detail ?? signal.kind };
-    return { status: "blocked", reason: signal.detail ?? signal.kind };
+    if (signal.kind === "authentication-required") return { status: "blocked", reason: signalMessage(signal) };
+    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signalMessage(signal) };
+    return { status: "blocked", reason: signalMessage(signal) };
   }
 
   private mapDriveFailure(signal: DriveSignal): ExecutionResult {
-    if (signal.kind === "transient-failure") return { status: "retryable-failure", reason: signal.detail ?? signal.kind };
+    if (signal.kind === "transient-failure") return { status: "retryable-failure", reason: signalMessage(signal) };
     if (signal.kind === "rate-limited") return { status: "retryable-failure", reason: signal.kind, retryAfterMs: signal.retryAfterMs };
-    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signal.detail ?? signal.kind };
-    return { status: "blocking-failure", reason: signal.detail ?? signal.kind };
+    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signalMessage(signal) };
+    return { status: "blocking-failure", reason: signalMessage(signal) };
   }
 }
