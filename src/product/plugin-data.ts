@@ -8,6 +8,9 @@ export interface BrainSyncSettings {
   vaultIdentity: string;
   deviceIdentity: string;
   firstSyncCompleted: boolean;
+  recoveryInProgress: boolean;
+  recoveryBackupId: string;
+  userExclusionPatterns: string[];
   startupResumeEnabled: boolean;
   localChangeEnabled: boolean;
   periodicEnabled: boolean;
@@ -26,6 +29,9 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   vaultIdentity: "",
   deviceIdentity: "",
   firstSyncCompleted: false,
+  recoveryInProgress: false,
+  recoveryBackupId: "",
+  userExclusionPatterns: [],
   startupResumeEnabled: false,
   localChangeEnabled: false,
   periodicEnabled: false,
@@ -54,10 +60,13 @@ export class PluginDataRepository implements AuditPersistence {
 
   constructor(private readonly host: PluginDataHost) {}
 
-  async loadSettings(): Promise<BrainSyncSettings> { return { ...(await this.data()).settings }; }
+  async loadSettings(): Promise<BrainSyncSettings> {
+    const settings = (await this.data()).settings;
+    return { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
+  }
   async saveSettings(settings: BrainSyncSettings): Promise<void> {
     const data = await this.data();
-    data.settings = { ...settings };
+    data.settings = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
     await this.persist(data);
   }
   async load(): Promise<readonly AuditRecord[]> { return [...(await this.data()).audit]; }
@@ -70,7 +79,9 @@ export class PluginDataRepository implements AuditPersistence {
   private data(): Promise<{ settings: BrainSyncSettings; audit: AuditRecord[] }> {
     this.loaded ??= this.host.loadData().then(raw => {
       const value = raw && typeof raw === "object" ? raw as PersistedPluginData : {};
-      return { settings: { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) }, audit: Array.isArray(value.audit) ? [...value.audit] : [] };
+      const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
+      merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
+      return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [] };
     });
     return this.loaded;
   }
