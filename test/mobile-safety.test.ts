@@ -17,6 +17,7 @@ const desktopOnly = new Set([
   "src/local/desktop-external-reference-guard.ts",
   "src/local/desktop-local-vault.ts"
 ]);
+const guardedDesktopComposition = "src/product/runtime.ts";
 
 function hasProhibitedImport(text: string, spec: string): boolean {
   const patterns = [
@@ -38,9 +39,18 @@ test("mobile-required runtime source has no Node/Electron/Windows-only imports",
     if (desktopOnly.has(repoPath)) continue;
     const text = readFileSync(file, "utf8");
     for (const spec of prohibited) if (hasProhibitedImport(text, spec)) violations.push(`${repoPath} -> ${spec}`);
-    if (text.includes("./desktop-") || text.includes("../local/desktop-")) violations.push(`${repoPath} -> desktop-only module`);
+    if (text.includes("./desktop-") || text.includes("../local/desktop-")) {
+      if (repoPath !== guardedDesktopComposition) violations.push(`${repoPath} -> desktop-only module`);
+    }
   }
   assert.deepEqual(violations, []);
+});
+
+test("desktop local adapter is loaded only by a Platform-guarded dynamic import", () => {
+  const runtime = readFileSync(join(sourceRoot, "product", "runtime.ts"), "utf8");
+  assert.equal(runtime.includes('from "../local/desktop-local-vault"'), false);
+  assert.equal(runtime.includes("require(\"../local/desktop-local-vault\")"), false);
+  assert.match(runtime, /if \(Platform\.isDesktopApp\)[\s\S]*?await import\("\.\.\/local\/desktop-local-vault"\)/);
 });
 
 test("Node filesystem imports are confined to the declared desktop-only safety module", () => {
