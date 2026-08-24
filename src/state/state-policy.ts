@@ -1,4 +1,4 @@
-import type { DeviceIdentity, DeviceStateEntry, TombstoneEntry } from "../contracts";
+import type { DeviceIdentity, DeviceStateEntry, TombstoneEntry, TrustedSynchronizationState } from "../contracts";
 import { contractId } from "../contracts";
 
 export interface TombstoneRetentionSettings {
@@ -44,4 +44,13 @@ export function generateDeviceIdentity(randomBytes?: (target: Uint8Array) => voi
   const value = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
   if (/^0+$/.test(value)) throw new Error("device identity randomness produced an invalid all-zero identifier");
   return contractId<"DeviceIdentity">(`device:${value}`) as DeviceIdentity;
+}
+
+/**
+ * Removes a deauthorized device from device coordination state only. Shared base history,
+ * mappings, tombstones, and vault content evidence are deliberately preserved.
+ */
+export function removeKnownDevice(state: TrustedSynchronizationState, deviceId: DeviceIdentity): TrustedSynchronizationState {
+  if (deviceId === state.deviceIdentity) throw new Error("the active installation cannot remove its own device identity through this transition");
+  return { ...state, knownDevices: state.knownDevices.filter(device => device.deviceId !== deviceId) };
 }
