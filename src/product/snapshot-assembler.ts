@@ -19,6 +19,7 @@ import type {
   VaultPath,
 } from "../contracts";
 import { contractId } from "../contracts";
+import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
 
 export interface AssembledPlanningInput {
   readonly input: PlanningInput;
@@ -154,10 +155,16 @@ export class ProductSnapshotAssembler {
     const remoteIdCounts = new Map<string, number>();
     for (const entry of remoteEntries) remoteIdCounts.set(String(entry.remoteObjectId), (remoteIdCounts.get(String(entry.remoteObjectId)) ?? 0) + 1);
 
+    const namespaceCollision = localByPath.has(CONFIG_REMOTE_NAMESPACE) || remoteByPath.has(CONFIG_REMOTE_NAMESPACE);
+    const inCollisionScope = (raw: string) => namespaceCollision && (raw === CONFIG_REMOTE_NAMESPACE || raw.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`));
+
     return [...paths].sort().map(raw => {
       const p = path(raw);
       let local = localByPath.get(raw) ?? absentLocal(p);
       if (local.status === "absent" && localCompleteness.status !== "complete") local = { status: "unknown", side: "local", path: p, reason: localCompleteness.reason };
+      if (raw === CONFIG_REMOTE_NAMESPACE && namespaceCollision && local.status === "absent") {
+        local = { status: "unknown", side: "local", path: p, reason: "remote ordinary-vault content collides with the reserved portable-configuration namespace" };
+      }
       const remoteEntry = remoteByPath.get(raw);
       const remote = remoteEntry ? remoteObservation(remoteEntry) : absentRemote(p);
       let base: BaseEvidence = { status: "uninitialized" };
@@ -165,6 +172,13 @@ export class ProductSnapshotAssembler {
       if (loadedState.status === "trusted") base = { status: "trusted", entry: loadedState.state.base.find(entry => String(entry.path) === raw), tombstone: loadedState.state.tombstones.find(entry => String(entry.path) === raw) };
       let identity: IdentityAssessment = { status: "unambiguous" };
       if (remoteEntry && (remoteIdCounts.get(String(remoteEntry.remoteObjectId)) ?? 0) > 1) identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds: [remoteEntry.remoteObjectId] };
+      if (inCollisionScope(raw)) {
+        identity = {
+          status: "ambiguous",
+          reason: `reserved portable-configuration namespace collision isolates ${CONFIG_REMOTE_NAMESPACE} from ordinary vault synchronization`,
+          candidateRemoteIds: remoteEntry ? [remoteEntry.remoteObjectId] : [],
+        };
+      }
       return { path: p, local, remote, base, remoteEnumeration: remoteCompleteness, identity };
     });
   }
