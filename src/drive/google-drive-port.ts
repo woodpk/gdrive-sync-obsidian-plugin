@@ -227,7 +227,14 @@ export class GoogleDriveAdapter implements GoogleDrivePort {
     if (observedVault !== String(expected)) return { ok: true, value: { status: "identity-mismatch", observedVaultIdentity: contractId<"VaultIdentity">(observedVault) as VaultIdentity } };
     if (!observedProtocol) return { ok: true, value: { status: "ambiguous", reason: "managed-root-protocol-version-missing" } };
     const roots = await this.domainRoots(rootId);
-    if (!roots.ok) return roots.signal.kind === "recovery-required" || roots.signal.kind === "conflict" ? { ok: true, value: { status: "ambiguous", reason: "detail" in roots.signal ? roots.signal.detail : roots.signal.kind } } : roots;
+    if (!roots.ok) {
+      const signal = roots.signal;
+      if (signal.kind === "recovery-required" || signal.kind === "conflict") {
+        const reason = "detail" in signal ? signal.detail : "managed-remote-domain-ambiguous";
+        return { ok: true, value: { status: "ambiguous", reason } };
+      }
+      return roots;
+    }
     const version = pversion(observedProtocol);
     if (observedProtocol !== "1") return { ok: true, value: { status: "incompatible-protocol", observedVersion: version } };
     return { ok: true, value: { status: "valid", identity: { rootId, vaultIdentity: expected, protocolVersion: version } } };
