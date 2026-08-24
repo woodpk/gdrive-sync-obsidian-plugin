@@ -8,6 +8,8 @@ record:
   purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, and frozen shared contracts."
   supersedes_progress_metadata:
     - "decision-register.yaml record.stage_state when that metadata is stale"
+    - "phase-1-shared-contracts.md completion/verification status language when that progress language is stale"
+    - "stage-2a-phase-1-build-prompt.md completion-pending language after Phase 1 supervisory approval"
 
 stage_state:
   stage_0: complete
