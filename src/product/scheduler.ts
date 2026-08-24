@@ -11,8 +11,8 @@ export interface AutomaticSyncSettings {
 
 /** Obsidian lifecycle/change scheduling only; synchronization semantics remain in the product controller. */
 export class ProductSyncScheduler {
-  private changeTimer?: number;
-  private periodicTimer?: number;
+  private changeTimer?: ReturnType<typeof globalThis.setTimeout>;
+  private periodicTimer?: ReturnType<typeof globalThis.setInterval>;
   private readonly unsubscribers: Array<() => void> = [];
   private started = false;
 
