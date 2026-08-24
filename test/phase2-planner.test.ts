@@ -105,8 +105,8 @@ test("stable remote object ID proves an identity-preserving remote move", async 
 
 test("tombstone plus stale known device blocks resurrection", async () => {
   const p = path("gone.md"); const b = base(p, "B");
-  const state = trusted([b], true);
-  state.state.tombstones = [{ path: p, entityKind: "file", deletedOn: "both", sourceDeviceId: deviceId }];
+  const initial = trusted([b], true);
+  const state = { ...initial, state: { ...initial.state, tombstones: [{ path: p, entityKind: "file" as const, deletedOn: "both" as const, sourceDeviceId: deviceId }] } };
   const s = snap(p, "L", "R", b, { tombstone: true });
   assert.equal((await planner.plan({ snapshots: [s], state })).operations[0].kind, "blocked-unsafe");
 });
