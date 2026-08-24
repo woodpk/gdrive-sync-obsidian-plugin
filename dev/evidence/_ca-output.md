@@ -334,7 +334,7 @@ None.
 
 ---
 
-# Stage 2A Build Session 05 / Phase 5 Corrected Cumulative Evidence
+# Stage 2A Build Session 05 / Phase 5 — Current Corrective Session Evidence
 
 ## Build Identification
 
@@ -342,101 +342,223 @@ None.
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Required baseline: `master == 372f17f9c69d23feb9909aa08d7566a077a4163b`
 - Branch: `stage-2a-phase-5-integrated-product`
-- PR: `#7` — open and unmerged
-- Corrective-pass starting head: `d3d50850108bbcafc2f2188ed6d30da76313db37`
-- Final executable/documentation head verified before evidence-only commits: `0230c0450f8d7ddfac2f3e56ed3391107c243810`
-- GitHub Actions run: `32777527719`
-- Job: `97591913559`
-- PR merge/test SHA: `a310a2a9d33dceab141d519d491a345d4684c414`
+- Pull request: `#7` — required to remain open and unmerged
+- Corrective session began from the previously documented Phase 5 state and continued on the existing Phase 5 branch.
+- Latest pushed branch head before this evidence-consolidation commit: `eb9939ac6daf29d244a1c23e23e1d84bb080efd7`
+- Current corrective work order scope: C1–C9 plus directly necessary consequential Phase 5 repairs.
+- Current completion classification: `INCOMPLETE`.
 
-## C1–C7 Corrective Outcome
+This section supersedes the older Phase 5 section that previously described C1–C7 as final and green. The implementation has advanced beyond that older verified head; therefore the older `136/136` run is historical evidence only and is not the acceptance gate for the present corrective session.
 
-- **C1 COMPLETE:** supervisor-authorized `VerifiedExecutionReceipt.resultingRemoteObjectId?: RemoteObjectId` added; verified Drive create identity now reaches authoritative state commit; real file/folder `upload-create` implemented and the former global refusal removed.
-- **C2 COMPLETE:** device-local recognized-text materialization store added behind existing Phase 2 text seams; real BASE retrieval/materialization and two-sided verified clean merge implemented without adding content bytes to frozen plans/state or using whole-file `readBinary()`.
-- **C3 COMPLETE:** no-BASE identical first-sync `noop` carries stable remote version; commit establishes trusted BASE/mapping and recognized-text future BASE materialization without content mutation.
-- **C4 COMPLETE:** reviewed, fully accounted, trusted first synchronization persists `firstSyncCompleted: true`; conflicts, blocked/recovery/stale/partial executions cannot open the gate; automatic toggles are not auto-enabled.
-- **C5 COMPLETE:** full reconciliation acquires candidate Drive Changes cursor before full listing; cursor persistence remains deferred until all effects are durably accounted.
-- **C6 COMPLETE within available implementation environment:** real conflict assessments populate the product surface; keep-local, keep-remote, keep-both, supported manual and clean-merge resolution execute through ordinary planned operations, crash-safe journaling, verification, and authoritative commit; stale selections are rejected; conflict copies do not reuse the source Drive ID.
-- **C7 COMPLETE:** invalid `createdFrom` fixture removed; rejected blocker assertions replaced by positive integration tests; direct Phase 5 suite expanded.
+## Corrective Work Implemented in This Session
 
-The corrective verification also found and repaired a Web Locks release-ordering defect so `release()` waits for actual lock-manager completion.
+### C1 — Canonical SHA-256 content evidence
 
-## Supervisor-Authorized Frozen-Contract Revision
+Substantial implementation completed and pushed:
 
-Only `src/contracts/execution.ts` changed under `src/contracts/**` in the corrective pass. The authorized semantic change is the optional `VerifiedExecutionReceipt.resultingRemoteObjectId`, used only for a stable remote identity actually produced and verified during execution. It is not a general mutation payload and the Drive ID is not encoded in an unrelated evidence string.
+- added a dependency-free, incremental, mobile-safe SHA-256 implementation in `src/util/sha256.ts`;
+- canonical evidence representation is `sha256:<lowercase-hex>`;
+- hashing operates incrementally over `BinaryContentSource` chunks rather than requiring whole-file buffering;
+- local evidence computation was moved behind a production decorator/cache keyed by exact observation token;
+- Drive metadata/transfer evidence was aligned toward the same canonical SHA-256 representation;
+- recognized-text materialization now verifies retained content against canonical SHA-256 evidence and rejects corrupt/mismatched retained material instead of trusting a key alone.
 
-`dev/planning-and-building/phase-1-shared-contracts.md` records this narrow revision and its affected workstreams.
+No Node-only crypto dependency or whole-file mobile hashing fallback was introduced.
 
-## Final Available Acceptance Gate
+### C2 — Exact-version mutation preconditions and second validation boundary
 
-GitHub Actions run `32777527719`, job `97591913559`, executed on PR merge/test SHA `a310a2a9d33dceab141d519d491a345d4684c414` representing branch head `0230c0450f8d7ddfac2f3e56ed3391107c243810` over the exact required master baseline.
+Substantial implementation completed and pushed:
 
+- planner operations now carry exact LOCAL observation/content preconditions where applicable;
+- REMOTE mutation intent carries stable remote object identity plus revision/content evidence where available;
+- merge provenance, delete intent, and move endpoints are represented in mutation-relevant preconditions;
+- `ProductSynchronizationExecutor.execute()` revalidates preconditions again after pending-journal persistence and immediately before crossing mutation authority;
+- remote updates carry planned expected remote revision;
+- stale version/revision mismatches fail as stale/blocked/recovery outcomes instead of mutating newer reality;
+- conflict-resolution operations use the same exact-version revalidation discipline.
+
+### C3 — Recovery reconstruction and conservative destructive-authority gate
+
+Substantial implementation completed and pushed:
+
+- recovery can assemble a fresh LOCAL + REMOTE safe-union reconstruction candidate instead of feeding corrupt state back through ordinary destructive planning;
+- full recovery reconstruction uses a pre-list Drive Changes cursor candidate;
+- `PersistentSynchronizationStateStore` gained exact-byte backup/recovery replacement support with compare-and-swap protection;
+- a persistent recovery gate prevents automatic/destructive authority from silently returning while reconstruction is incomplete;
+- recovery entry/completion is surfaced through controller/audit/runtime diagnostics;
+- automatic synchronization refuses to execute a reconstruction without review.
+
+### C4 — Symmetric managed scope and portable configuration
+
+Substantial implementation completed and pushed:
+
+- user exclusions are persisted and applied through a symmetric managed-scope boundary rather than only on one side;
+- active Obsidian configuration directory is resolved at runtime;
+- only the explicit portable configuration allowlist is projected into synchronization scope;
+- portable configuration is mapped through a private reserved remote namespace rather than exposing unrelated device-local configuration;
+- unknown configuration, workspace/session state, secrets, sync operational state, and third-party settings remain excluded/device-local by default.
+
+### C5 — Live runtime settings
+
+Substantial implementation completed and pushed:
+
+- periodic scheduler configuration can be refreshed without plugin restart;
+- local debounce/periodic settings are read dynamically;
+- audit retention can be changed live and the bounded audit projection can trim to the new retention limit;
+- user exclusions/settings changes propagate into the live product runtime.
+
+### C6 — Conflict-resolution UX and provenance-safe copies
+
+Substantial implementation completed and pushed:
+
+- conflict attention UI exposes keep-local, keep-remote, keep-both, and manual-current-local resolution paths through the live controller;
+- manual resolution obtains a stable current local version rather than manufacturing a version reference;
+- conflict-copy naming carries attributable provenance information rather than a weak generic token;
+- copy allocation checks for collisions and chooses a free deterministic variant rather than overwriting an existing conflict copy;
+- preserved remote conflict content is validated against the original remote object/path before it is copied to a new local conflict-copy path;
+- stale conflict selections remain rejected before mutation.
+
+### C7 — Path-isolated execution progress
+
+Substantial implementation completed and pushed:
+
+- path-local blocked operations can be isolated so unrelated reviewed safe work can continue;
+- partial progress does not advance the Drive Changes cursor while unaccounted path work remains;
+- recovery-required, uncertain, authentication/global Drive failure, stale-state, and stale-precondition conditions still stop the run globally;
+- controller status communicates safe partial progress and remaining blocked paths rather than silently claiming full completion.
+
+One final disposition semantic is still being reconciled in tests: a plan whose only meaningful work is blocked must remain globally non-executable, while mixed safe+blocked plans may permit isolated safe progress.
+
+### C8 — Semantic plan and operation identifiers
+
+Substantial implementation completed and pushed:
+
+- deterministic SHA-based identifiers now fingerprint mutation intent rather than path/kind alone;
+- operation fingerprints incorporate content/version evidence, remote identity/revision, preconditions, move endpoints, conflict identity, destructive flag, and relevant reasons;
+- plan fingerprints incorporate trigger, disposition/checkpoint requirements, and ordered semantic operation identities;
+- conflict-resolution plans use the same semantic identifier machinery.
+
+### C9 — Required Phase 5 product-level acceptance suite
+
+`INCOMPLETE`.
+
+The exact Phase 5 acceptance scenarios were recovered and existing tests were being realigned to the corrected semantics, but the explicit product-level automated mapping for every required numbered scenario was not completed before this evidence update.
+
+Therefore this session does not claim C9 completion, a final acceptance count, or final Phase 5 completion.
+
+## Additional Defects Found and Repaired During This Session
+
+- A TypeScript union-narrowing defect in conflict-resolution audit handling was exposed by CI and repaired.
+- A missing executor `localPathState` integration method was exposed by CI and repaired.
+- Keep-both remote-version validation initially attempted to validate the preserved Drive object at the newly generated local copy path; this was corrected so the remote object is validated at its original remote path before local copy materialization.
+- Earlier Web Locks release-ordering hardening remains in the branch; this session did not weaken it.
+
+## Verification Chronology for This Corrective Session
+
+All results below are retained; failed runs are not hidden.
+
+### GitHub Actions run `32781708948`
+
+- Workflow: `Phase 1 CI`
+- Job: `97604998148`
+- `npm ci` — `PASS`; 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck` — `FAIL`.
+- Failure: `src/product/product-controller.ts` referenced `.path` on the `ConflictAssessment` union without preserving the `kind !== "none"` narrowing.
+- `npm test` — skipped because typecheck failed.
+- `npm run build` — skipped because typecheck failed.
+- The narrowing defect was repaired before subsequent runs.
+
+### GitHub Actions run `32782160842`
+
+- Workflow: `Phase 1 CI`
+- Job: `97606356328`
+- `npm ci` — `PASS`; 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck` — `FAIL`.
+- Failure: `IntegratedProductController` referenced `ProductSynchronizationExecutor.localPathState` before that integration helper existed.
+- `npm test` — skipped.
+- `npm run build` — skipped.
+- The missing helper/integration was repaired before the next run.
+
+### GitHub Actions run `32782473350` — latest completed run inspected before the final two corrective commits
+
+- Workflow: `Phase 1 CI`
+- Job: `97607301082`
+- PR merge/test SHA: `09c9f7ef226269c427aadde26666cfadca574bb0`
+- Branch head represented by that merge/test run: `20c9d3e507e34089bd5076c79f56451f5249237b`
 - `npm ci` — `PASS`; 14 packages added, 15 audited, 0 vulnerabilities.
 - `npm run typecheck` — `PASS`.
-- `npm test` — `PASS`; `136 passed / 0 failed / 0 cancelled / 0 skipped / 0 todo`.
-- `npm run build` — `PASS`.
+- `npm test` — `FAIL` with `137` total tests: `134 passed / 3 failed / 0 cancelled / 0 skipped / 0 todo`.
+- `npm run build` — skipped because tests failed.
 
-Final logs explicitly show Phase 5 tests passing for first-sync completion, unresolved-gate refusal, keep-local, keep-remote, keep-both/local-only conflict-copy state, stale-resolution rejection, Web Locks exclusion/release, authoritative `upload-create`, clean-text-merge materialization, identical first-sync BASE establishment, and pre-list Changes cursor acquisition.
+The three observed test failures were:
 
-## Corrective-Pass Created / Modified / Deleted Manifest
+1. stale current-device destructive planning still expected the historical whole-plan disposition `blocked`; the corrected path-isolation semantics changed that disposition and require the test/final semantic to distinguish all-blocked from mixed safe+blocked plans;
+2. unresolved reviewed synchronization expected request rejection, while the corrected controller treats unresolved work as safe partial/no-mutation progress; the required invariant is that it must not open the first-sync trusted-completion gate;
+3. keep-both conflict resolution was rejected because remote exact-version preconditions were evaluated at the new local copy path rather than the original remote source path.
 
-Git compare from pre-correction head `d3d50850108bbcafc2f2188ed6d30da76313db37` through verified executable/documentation head `0230c0450f8d7ddfac2f3e56ed3391107c243810` plus the required evidence-only updates yields this correction-pass manifest.
+After that completed run, corrective commits including `29a9318a518569a69d93293dea403d70421922d0` and current pre-evidence head `eb9939ac6daf29d244a1c23e23e1d84bb080efd7` were pushed to address the latter test/integration failures. A completed clean-checkout CI run validating those latest commits was not obtained before this evidence consolidation.
 
-### Created
+## Verification Status
 
-- `src/product/text-version-store.ts`
-- `test/phase5-controller.test.ts`
-- `dev/evidence/_ca-output-CA-P5.md`
+The authoritative status for the current branch is therefore:
 
-### Modified
+- current implementation work: **pushed**;
+- latest completed CI typecheck: **PASS** on the immediately prior tested head;
+- latest completed CI tests: **NOT GREEN** (`134/137` on run `32782473350`);
+- latest completed production build: **NOT EXECUTED** on that run because tests failed;
+- post-failure corrective commits: **pushed but not yet covered by a completed authoritative green gate**;
+- C9 full numbered acceptance mapping: **INCOMPLETE**.
 
-- `dev/planning-and-building/phase-1-shared-contracts.md`
-- `src/contracts/execution.ts`
-- `src/core/commit-coordinator.ts`
-- `src/core/planner.ts`
-- `src/main.ts`
-- `src/product/history-modal.ts`
-- `src/product/index.ts`
-- `src/product/product-controller.ts`
-- `src/product/production-executor.ts`
-- `src/product/runtime.ts`
-- `src/product/snapshot-assembler.ts`
-- `src/product/web-lock-run-lease.ts`
-- `test/phase5-product.test.ts`
-- `dev/evidence/_ca-blocker.md`
-- `dev/evidence/_ca-output.md`
-
-### Deleted
-
-None.
+The older Phase 5 run `32777527719` with `136/136` and a passing production build remains valid historical evidence for its older implementation head, but it is superseded as a current acceptance claim because substantial C1–C8 code changed afterward.
 
 ## Live / External Verification
 
-The following are **NOT AVAILABLE IN THIS SESSION**:
+The following remain `NOT AVAILABLE IN THIS SESSION`:
 
 - real Windows Obsidian OAuth and synchronization;
 - physical iPhone/iOS Obsidian OAuth and synchronization;
-- deployed Azure Static Web Apps callback round trip;
-- real user Google Drive first-sync/incremental sync;
-- physical network-transition tests;
+- deployed Azure Static Web Apps OAuth callback round trip;
+- real-user Google Drive first-sync/incremental synchronization;
+- physical-device network-transition testing;
 - actual multi-instance Obsidian Web Locks validation;
 - large-vault/large-file physical-device memory/stress validation.
 
-These are missing external/live environment or later validation items, not accepted frozen-contract blockers.
+These are separate from source/test defects and are not reported as successful.
 
-## Remaining Proven Platform Limitations
+## Proven Stock-iOS Platform Limitations Preserved
 
-Two Phase 4 limitations remain objectively unresolved and are intentionally fail-closed:
+The corrective work did not deliberately weaken the two previously established fail-closed limitations:
 
-1. stock Obsidian iOS cannot currently prove/support bounded-memory arbitrary-file local reads for every required BRAIN file type through a supported general-purpose chunk/offset boundary;
-2. stock Obsidian iOS cannot expose enough link-aware/canonical-path metadata to prove that vault operations cannot traverse a symlink/alias/external reference outside the vault.
+1. stock Obsidian iOS cannot currently provide/prove the required general bounded-memory arbitrary-file local-read mechanism for every required BRAIN file type;
+2. stock Obsidian iOS does not expose sufficient link-aware/canonical-path metadata to prove containment against symlink/alias/external-reference traversal.
 
-Phase 5 does not weaken either requirement, substitute whole-file reads, or add an unsafe external-reference bypass.
+No whole-file unsafe fallback, Node-only mobile dependency, or unproven external-reference bypass was intentionally introduced.
 
-## Current Blocker / Completion Status
+## Evidence Consolidation Directive
 
-No accepted C1/C2/C6 frozen-contract blocker remains after the corrective work order.
+Per the supervisor's current evidence directive, `dev/evidence/_ca-output.md` is the sole authoritative coding-agent evidence file for this branch/build session.
 
-`BLOCKED — PROVEN PLATFORM LIMITATION`
+The redundant Phase 5 evidence files are removed from the branch:
 
-The blocking requirements are solely the two stock-iOS platform limitations above. The complete repository gate available in this coding-agent environment is green. This evidence does not claim supervisory approval; PR #7 remains open and unmerged, and no Phase 6 or Stage 3 work was begun.
+- `dev/evidence/_ca-output-CA-P5.md` — delete;
+- `dev/evidence/_ca-blocker.md` — delete.
+
+All future material build output, blockers, non-blockers, verification results, and completion evidence for this session must be recorded in this `_ca-output.md` section rather than split across parallel evidence files.
+
+## Remaining Work Before Phase 5 Can Be Truthfully Closed
+
+- finish C9 with explicit automated/evidence mapping for every required Phase 5 numbered acceptance scenario;
+- reconcile the final all-blocked-versus-mixed-path-blocked execution-disposition semantics and corresponding tests without weakening path isolation;
+- run the complete clean-checkout gate on the final implementation head:
+  - `npm ci`
+  - `npm run typecheck`
+  - `npm test`
+  - `npm run build`
+- record the final tested branch head, PR merge/test SHA, workflow run/job IDs, test totals, and exact change manifest in this file;
+- keep PR #7 open and unmerged for supervisory review.
+
+## Completion Status
+
+`INCOMPLETE`
+
+C1–C8 contain substantial corrective implementation that has been pushed to GitHub, but C9 and the mandatory final clean verification/evidence pass remain unfinished. This session therefore does not claim `BLOCKED — PROVEN PLATFORM LIMITATION`, Phase 5 completion, or supervisory approval.
