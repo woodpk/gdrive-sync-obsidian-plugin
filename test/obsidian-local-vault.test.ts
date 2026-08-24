@@ -16,7 +16,7 @@ interface FakeRuntime {
 }
 
 const vp = (value: string): VaultPath => value as VaultPath;
-const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
+const bytes = (...values: number[]): Uint8Array<ArrayBuffer> => new Uint8Array(values);
 
 function content(chunks: readonly Uint8Array[]): BinaryContentSource {
   return {
@@ -164,7 +164,7 @@ function rangedFetch(runtime: FakeRuntime, streamUnitSize = 2, requestedRanges?:
     const value = runtime.entries.get(path)?.bytes;
     if (!value) return new Response(null, { status: 404 });
     const range = requestHeader(init, "Range");
-    if (!range) return new Response(value, { status: 200 });
+    if (!range) return new Response(new Uint8Array(value).buffer, { status: 200 });
     requestedRanges?.push(range);
     const match = /^bytes=(\d+)-(\d+)$/.exec(range);
     if (!match) return new Response(null, { status: 416 });
@@ -195,7 +195,7 @@ function ignoredRangeFetch(runtime: FakeRuntime): typeof fetch {
     const raw = typeof url === "string" ? url : url.toString();
     const path = decodeURIComponent(raw.slice("memory://".length));
     const value = runtime.entries.get(path)?.bytes;
-    return value ? new Response(value, { status: 200 }) : new Response(null, { status: 404 });
+    return value ? new Response(new Uint8Array(value).buffer, { status: 200 }) : new Response(null, { status: 404 });
   }) as typeof fetch;
 }
 
@@ -266,7 +266,7 @@ test("bounded read detects a runtime that ignores Range instead of accepting a w
 
 test("bounded read rejects malformed partial-content evidence", async () => {
   const runtime = fakeRuntime({ "bad.bin": { type: "file", bytes: bytes(1,2,3,4), mtime: 7, ctime: 1 } });
-  const badFetch = (async () => new Response(bytes(1,2), {
+  const badFetch = (async () => new Response(bytes(1,2).buffer, {
     status: 206,
     headers: { "Content-Range": "bytes 1-2/4", "Content-Length": "2" }
   })) as typeof fetch;
