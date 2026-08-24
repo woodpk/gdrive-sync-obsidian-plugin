@@ -50,7 +50,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
 
   async validatePreconditions(operation: PlannedOperation): Promise<PreconditionValidationResult> {
     const failed: OperationPrecondition[] = [];
-    const remoteObservationPath = operation.kind === "identity-preserving-move" && operation.targetSide === "remote" && operation.fromPath ? operation.fromPath : operation.path;
+    const moveRemoteObservationPath = operation.kind === "identity-preserving-move" && operation.targetSide === "remote" && operation.fromPath ? operation.fromPath : undefined;
     for (const precondition of operation.preconditions) {
       if (precondition.kind === "base-trusted") {
         const loaded = await this.state.load(this.stateContext);
@@ -73,8 +73,8 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
           const observed = await this.local.observe(precondition.path);
           if (observed.status !== "present" || !evidenceMatches(observed.content, precondition.expected)) failed.push(precondition);
         } else {
-          const path = operation.kind === "identity-preserving-move" && operation.targetSide === "remote" && precondition.path === operation.fromPath ? remoteObservationPath : precondition.path;
-          const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, path);
+          const remotePath = moveRemoteObservationPath && precondition.path === operation.fromPath ? moveRemoteObservationPath : precondition.path;
+          const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, remotePath);
           if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
           if (observed.value.status !== "present" || !evidenceMatches(observed.value.content, precondition.expected)) failed.push(precondition);
         }
@@ -82,7 +82,9 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
         const observed = await this.local.observe(precondition.path);
         if (observed.status !== "present" || observed.stability !== "stable") failed.push(precondition);
       } else if (precondition.kind === "remote-object") {
-        const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, remoteObservationPath);
+        const remoteObjectPath = moveRemoteObservationPath
+          ?? (operation.contentVersion?.remoteObjectId === precondition.remoteObjectId ? operation.contentVersion.path : operation.path);
+        const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, remoteObjectPath);
         if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
         if (observed.value.status !== "present" || observed.value.remoteObjectId !== precondition.remoteObjectId || (precondition.expectedRevision && observed.value.content?.revision !== precondition.expectedRevision)) failed.push(precondition);
       }
