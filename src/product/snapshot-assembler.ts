@@ -26,6 +26,8 @@ export interface AssembledPlanningInput {
   readonly remoteEnumeration: EnumerationCompleteness;
   readonly nextCursor?: ChangeCursor;
   readonly mode: "full" | "incremental";
+  readonly reconstruction?: boolean;
+  readonly recoveryReason?: string;
 }
 
 function path(value: string): VaultPath { return contractId<"VaultPath">(value) as VaultPath; }
@@ -48,6 +50,7 @@ export class ProductSnapshotAssembler {
     private readonly state: SynchronizationStateStore,
     private readonly stateContext: StateLoadContext,
     private readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>,
+    private readonly pathIncluded: (path: VaultPath) => boolean = () => true,
   ) {}
 
   async assemble(preferIncremental = true): Promise<AssembledPlanningInput> {
@@ -65,6 +68,21 @@ export class ProductSnapshotAssembler {
     return this.assembleFullWith(managedRemote, await this.state.load(this.stateContext));
   }
 
+  /** Recovery deliberately projects current reality as an uninitialized safe union, never an empty authoritative BASE. */
+  async assembleRecovery(reason?: string): Promise<AssembledPlanningInput> {
+    const managedRemote = await this.validatedRemote();
+    const cursorResult = await this.drive.getStartCursor(managedRemote.rootId);
+    if (!cursorResult.ok) throw new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "recovery cursor acquisition failed"));
+    const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
+    if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "recovery remote observation failed"));
+    if (localListing.completeness.status !== "complete" || remoteResult.value.completeness.status !== "complete") {
+      throw new SnapshotAssemblyError("recovery-required", `Recovery reconstruction requires complete LOCAL and REMOTE observation. LOCAL=${localListing.completeness.status}; REMOTE=${remoteResult.value.completeness.status}`);
+    }
+    const uninitialized: StateLoadResult = { status: "uninitialized" };
+    const snapshots = this.makeSnapshots(uninitialized, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
+    return { input: { snapshots, state: uninitialized }, managedRemote, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full", reconstruction: true, recoveryReason: reason };
+  }
+
   private async validatedRemote(): Promise<ManagedRemoteIdentity> {
     const managedRemote = await this.remoteIdentity();
     const validated = await this.drive.validateManagedRoot(managedRemote);
@@ -74,12 +92,11 @@ export class ProductSnapshotAssembler {
   }
 
   private async assembleFullWith(managedRemote: ManagedRemoteIdentity, loadedState: StateLoadResult): Promise<AssembledPlanningInput> {
-    // The cursor is acquired before the listing so no remote mutation can fall into a listing→cursor gap.
     const cursorResult = await this.drive.getStartCursor(managedRemote.rootId);
     if (!cursorResult.ok) throw new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "remote start cursor acquisition failed"));
     const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
     if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "remote reconciliation listing failed"));
-    const snapshots = this.makeSnapshots(loadedState, localListing.entries, localListing.completeness, remoteResult.value.entries.filter(entry => !entry.trashed), remoteResult.value.completeness);
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
     return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full" };
   }
 
@@ -95,22 +112,27 @@ export class ProductSnapshotAssembler {
 
     const reconstructed = this.remoteBaseline(loadedState.state);
     for (const change of changesResult.value.changes) {
-      if (change.kind === "upsert") reconstructed.set(String(change.entry.remoteObjectId), change.entry);
-      else reconstructed.delete(String(change.remoteObjectId));
+      if (change.kind === "upsert") {
+        if (this.pathIncluded(change.entry.path)) reconstructed.set(String(change.entry.remoteObjectId), change.entry);
+        else reconstructed.delete(String(change.entry.remoteObjectId));
+      } else reconstructed.delete(String(change.remoteObjectId));
     }
-    const remoteEntries = [...reconstructed.values()].filter(entry => !entry.trashed);
-    const snapshots = this.makeSnapshots(loadedState, localListing.entries, localListing.completeness, remoteEntries, changesResult.value.completeness);
+    const remoteEntries = this.filterRemote([...reconstructed.values()]);
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, remoteEntries, changesResult.value.completeness);
     return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
   }
 
   private remoteBaseline(state: TrustedSynchronizationState): Map<string, RemoteEntry> {
     const byId = new Map<string, RemoteEntry>();
     for (const base of state.base) {
-      if (!base.remoteExisted || !base.remoteObjectId) continue;
+      if (!this.pathIncluded(base.path) || !base.remoteExisted || !base.remoteObjectId) continue;
       byId.set(String(base.remoteObjectId), { path: base.path, entityKind: base.entityKind, remoteObjectId: base.remoteObjectId, content: base.content, trashed: false });
     }
     return byId;
   }
+
+  private filterLocal(entries: readonly LocalObservation[]): LocalObservation[] { return entries.filter(entry => this.pathIncluded(entry.path)); }
+  private filterRemote(entries: readonly RemoteEntry[]): RemoteEntry[] { return entries.filter(entry => !entry.trashed && this.pathIncluded(entry.path)); }
 
   private makeSnapshots(
     loadedState: StateLoadResult,
@@ -123,8 +145,8 @@ export class ProductSnapshotAssembler {
     const remoteByPath = new Map(remoteEntries.map(entry => [String(entry.path), entry]));
     const paths = new Set<string>([...localByPath.keys(), ...remoteByPath.keys()]);
     if (loadedState.status === "trusted") {
-      for (const entry of loadedState.state.base) paths.add(String(entry.path));
-      for (const tombstone of loadedState.state.tombstones) paths.add(String(tombstone.path));
+      for (const entry of loadedState.state.base) if (this.pathIncluded(entry.path)) paths.add(String(entry.path));
+      for (const tombstone of loadedState.state.tombstones) if (this.pathIncluded(tombstone.path)) paths.add(String(tombstone.path));
     }
 
     const remoteIdCounts = new Map<string, number>();
