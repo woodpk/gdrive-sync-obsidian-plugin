@@ -9,10 +9,14 @@
 - Authoritative branch/ref: `master`
 - Effective correction base SHA: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
 - C1 implementation commit SHA: `ad4362e6ec27d5c804d656a667d9080b9f964132`
-- Prior evidence commit SHA: `79a52df233f1d5d28f4c5e0e15e55cb361c9a774`
-- Current-master grounding immediately before this evidence reaffirmation: `4736447264ac8b51a2efc5fdf405acf1bf7c32f3`
+- Verified current-master baseline used for CI: `a0d8dc7b25368ae7aaf0f207afcd12711f3d671a`
+- Verification PR: `#2` — `C1 verification gate`
+- Verification branch head SHA: `745473f39fc5665b01bf4ba5889ca155617a3531`
+- GitHub PR merge/test SHA executed by Actions: `4f2e05205170d0bfbc90257a9308d8970ab37d9e`
+- GitHub Actions workflow run ID: `32675993586`
+- GitHub Actions verification job ID: `97284094328`
 
-The repository advanced on `master` after the C1 correction with unrelated supervisor/user work. This evidence update does not alter that unrelated work and does not alter the C1 implementation.
+Before verification, GitHub compare confirmed that C1 commit `ad4362e6ec27d5c804d656a667d9080b9f964132` is an ancestor of current `master`. From C1 through verification baseline `a0d8dc7b25368ae7aaf0f207afcd12711f3d671a`, only `dev/evidence/_ca-output.md` and `dev/prompts/rejection-fix-prompt-spec.md` changed. No product source, tests, package configuration, or `.github/workflows/phase1-ci.yml` changed after C1 and before verification.
 
 ## Corrections Implemented
 
@@ -31,11 +35,13 @@ No Phase 2, Phase 3, or Phase 4 production behavior was implemented. Synchroniza
 
 ## Files Created
 
-None.
+None in the permanent C1 `master` change set.
+
+The temporary verification-only branch contained `dev/evidence/_ci-verification-trigger.md`; PR #2 was closed without merge, so that artifact is not part of the permanent `master` change set.
 
 ## Files Modified
 
-Derived from the actual C1 Git change set plus the mandatory evidence artifact:
+Permanent C1 implementation/evidence files:
 
 - `dev/evidence/_ca-output.md`
 - `dev/phase-1-shared-contracts.md`
@@ -51,70 +57,79 @@ None.
 
 ## Verification Performed
 
-### Correction change-set inspection
+### Current-master grounding
 
-- Operation: GitHub compare from `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` through C1 implementation commit `ad4362e6ec27d5c804d656a667d9080b9f964132`.
+- Current `master` verification baseline: `a0d8dc7b25368ae7aaf0f207afcd12711f3d671a`.
+- C1 implementation commit `ad4362e6ec27d5c804d656a667d9080b9f964132` is an ancestor of that baseline.
+- Compare `ad4362e6ec27d5c804d656a667d9080b9f964132...a0d8dc7b25368ae7aaf0f207afcd12711f3d671a` showed only:
+  - `dev/evidence/_ca-output.md`
+  - `dev/prompts/rejection-fix-prompt-spec.md`
+- No executable product/test/package/workflow file changed post-C1 before verification.
+
+### Verification PR and GitHub Actions execution
+
+- Verification PR: `#2`.
+- PR base: `master` at `a0d8dc7b25368ae7aaf0f207afcd12711f3d671a`.
+- PR head: `ca-c1-verification` at `745473f39fc5665b01bf4ba5889ca155617a3531`.
+- GitHub merge/test SHA checked out by Actions: `4f2e05205170d0bfbc90257a9308d8970ab37d9e`.
+- Workflow: `Phase 1 CI`.
+- Workflow run ID: `32675993586`.
+- Verify job ID: `97284094328`.
+- PR #2 was closed without merging after successful verification.
+
+### Required Phase 1 gate — authoritative GitHub Actions results
+
+#### `npm ci`
+
 - Result: `PASS`.
-- Relevant result: exactly six pre-evidence modified implementation/test/documentation paths; no created or deleted paths.
+- Job step: `Install dependencies from lockfile`.
+- Log evidence: `npm ci` executed, added 14 packages, audited 15 packages, and reported `found 0 vulnerabilities`.
 
-### Corrected contract inspection
-
-- Operation: inspect pushed C1 contract diff.
-- Result: `PASS`.
-- Relevant result: `BinaryContentSource` is exported; affected local and Drive transfer signatures use it; the rejected complete-file `bytes: Uint8Array` fields/parameters are removed from the affected frozen transfer declarations.
-
-### Supplemental strict TypeScript contract compile
-
-- Command:
-
-```text
-tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --lib DOM,DOM.Iterable,ES2022 common.ts state.ts snapshot.ts local-vault.ts google-drive.ts
-```
+#### `npm run typecheck`
 
 - Result: `PASS`.
-- Relevant result: corrected shared/local/Drive contract subset compiled successfully using the TypeScript compiler available in the execution environment.
-- Limitation: this does not substitute for the repository's required full `npm run typecheck` gate.
+- Job step: `Typecheck`.
+- Log evidence: executed `tsc --noEmit` and completed successfully.
 
-### Supplemental multi-chunk runtime check
+#### `npm test`
 
-- Operation: execute a lazy content source whose `openChunks()` yielded two separate `Uint8Array` chunks.
 - Result: `PASS`.
-- Relevant result: both chunks were observed independently; no complete-file buffer was required by the check.
-- Limitation: this does not substitute for execution of the repository test suite.
+- Job step: `Test`.
+- Log evidence: executed `tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js`.
+- Tests discovered/executed: `15`.
+- Passed: `15`.
+- Failed: `0`.
+- Cancelled: `0`.
+- Skipped: `0`.
+- The new C1 test executed and passed explicitly as:
+  - `ok 5 - local and Drive transfer contracts accept lazy multi-chunk binary content`
 
-### Required Phase 1 gate
+#### `npm run build`
 
-- `npm ci` — `NOT EXECUTED`.
-  - Blocker: this execution environment could not resolve `registry.npmjs.org`; package resolution failed with `getaddrinfo EAI_AGAIN registry.npmjs.org`.
-- `npm run typecheck` — `NOT EXECUTED`.
-  - Blocker: clean dependency installation was unavailable. Only the supplemental contract compile above was executed.
-- `npm test` — `NOT EXECUTED`.
-  - Blocker: clean dependency installation was unavailable. The new multi-chunk behavior was exercised only by the supplemental standalone runtime check.
-- `npm run build` — `NOT EXECUTED`.
-  - Blocker: clean dependency installation was unavailable.
+- Result: `PASS`.
+- Job step: `Production build`.
+- Log evidence: executed `tsc -p tsconfig.build.json && node scripts/finalize-build.mjs` after the successful test step; the build step completed successfully and was not skipped.
 
-### GitHub Actions visibility
+### Historical local-execution limitation
 
-- Operation: query workflow information available through the connected GitHub tooling for the direct `master` push.
-- Result: `NOT EXECUTED` as a usable full-gate verification source.
-- Blocker: the available connector surfaced no push-triggered workflow run for the correction commit and did not expose a generic push-run listing suitable for independent observation.
+The ChatGPT-local execution environment previously could not resolve `registry.npmjs.org`, so the full npm gate could not be executed locally. That limitation is superseded by the successful authoritative GitHub Actions verification above and is not a remaining project blocker.
 
 ## Acceptance-Criteria Status
 
-`PARTIAL`
+`PASS`
 
 1. `BinaryContentSource` exported shared contract — `PASS`.
 2. Local reads return `BinaryContentSource` — `PASS`.
 3. Local create/replace accept `BinaryContentSource` — `PASS`.
 4. Drive downloads return `BinaryContentSource` — `PASS`.
 5. Drive create/update content uses `BinaryContentSource` — `PASS`.
-6. Affected frozen signatures do not require complete-file materialization — `PASS` by contract inspection.
-7. Fake/test seams updated — `PASS` by source inspection; full repository compile remains unverified.
-8. Multi-chunk lazy-source test added — `PASS` by source inspection; repository test execution remains unverified.
-9. `dev/phase-1-shared-contracts.md` updated — `PASS`.
-10. Complete Phase 1 npm test/build gate — `NOT VERIFIED`.
+6. Affected frozen signatures do not require complete-file materialization — `PASS`.
+7. Fake/test seams compile against corrected contracts — `PASS` via GitHub Actions typecheck/test compilation.
+8. Multi-chunk lazy-source test executes and passes — `PASS`; explicit test #5 in workflow logs.
+9. `dev/phase-1-shared-contracts.md` records corrected frozen boundary — `PASS`.
+10. Complete Phase 1 gate (`npm ci`, `npm run typecheck`, `npm test`, `npm run build`) passes — `PASS` via GitHub Actions run `32675993586`, job `97284094328`.
 
-This evidence does not claim supervisory approval or final C1 acceptance.
+This evidence does not claim supervisory approval.
 
 ## Frozen-Contract / Architecture Status
 
@@ -123,21 +138,26 @@ The transfer contract change was made under the explicit supervisor-issued C1 co
 ## Deviations
 
 - `master` advanced during the original correction attempt. A non-fast-forward ref update was rejected; no force push was used. The correction was reapplied on top of the then-current `master` to preserve unrelated work.
-- The complete npm gate could not be executed because of environment/network limitations. Supplemental checks were performed but are not represented as equivalent to the required gate.
+- A temporary verification branch and PR were created solely to trigger and observe the existing pull-request GitHub Actions workflow. The PR was closed without merge; the trigger artifact did not enter `master`.
 
 ## Known Issues and Unverified Matters
 
-- The complete Phase 1 `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` gate for C1 remains unverified in this session.
-- The new repository multi-chunk contract test exists but its execution inside the repository test suite was not observed.
-- No known C1 source-level defect remains from inspection and supplemental validation; the missing complete gate remains a material verification blocker.
+- No known C1 source-level or verification defect remains.
+- The GitHub Actions gate directly verified the current master-derived repository state containing C1.
+- Independent supervisory inspection/approval remains outside this coding-agent evidence record.
 
 ## Evidence Integrity and Push Verification
 
 - Required repository: `woodpk/gdrive-sync-obsidian-plugin`.
 - Required remote: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`.
 - Authoritative branch: `master`.
-- Effective correction base: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`.
 - C1 implementation commit: `ad4362e6ec27d5c804d656a667d9080b9f964132`.
-- Prior evidence commit: `79a52df233f1d5d28f4c5e0e15e55cb361c9a774`.
-- This revision reaffirms the blocker-bearing evidence artifact on the current `master` without changing the C1 implementation or unrelated subsequent repository work.
-- The concrete commit SHA created by this evidence update is verified after Git hashes and commits this file and is reported in the completion response.
+- Verified master baseline: `a0d8dc7b25368ae7aaf0f207afcd12711f3d671a`.
+- Verification PR: `#2`, closed without merge.
+- Verification merge/test SHA: `4f2e05205170d0bfbc90257a9308d8970ab37d9e`.
+- Workflow run: `32675993586`.
+- Verification job: `97284094328`.
+- Full required gate: `PASS`.
+- Test result: `15 passed / 0 failed`.
+- Multi-chunk C1 test: executed and `PASS`.
+- The concrete SHA of this evidence update is verified after Git commits this file and is reported in the completion response.
