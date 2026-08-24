@@ -262,3 +262,104 @@ No `src/contracts/**` file changed.
 The recovery resolved desktop external-reference detection and hardened local reads so they are objectively bounded whenever the host supplies correct byte-range semantics. The mandatory iOS guarantees remain unsatisfied because current stock Obsidian Mobile documents a Capacitor 5.x host that lacks arbitrary-extension resource ranges and public chunk/offset reads, while the same public mobile boundary also lacks link-aware/canonical-path metadata even though Obsidian permits vault symlinks to external content.
 
 Independent supervisory acceptance is not claimed.
+
+---
+
+## C1 Rejection Correction Pass — Fail-Closed External-Reference Capability
+
+### Rejection Basis
+
+- Rejection/correction base SHA: `e577bf1366001de3871a868bd549630b1060f2df`
+- Correction implementation head verified before evidence updates: `4d06581fa91ba9643496a67296b5002925581ba2`
+- Verification PR: `#4`, still open/draft/unmerged
+- Correction verification workflow run: `32731187369`
+- Correction verification job: `97443556511`
+- Frozen `src/contracts/**`: `UNCHANGED`
+
+### C1 Implemented
+
+`src/local/obsidian-local-vault.ts` was corrected so absence of external-reference proof capability is fail-closed rather than fail-open.
+
+- Added `UnavailableExternalReferenceGuard`, which throws `LocalPlatformCapabilityError("external-reference-detection", ...)` for attempted synchronization path access.
+- Changed the adapter's private `externalReferenceGuard` member from optional to required.
+- Constructor now installs `UnavailableExternalReferenceGuard` when no platform-specific guard is supplied.
+- Removed optional chaining from production guard checks; observation and mutation source/target checks are mandatory.
+- Existing desktop construction remains unchanged and still injects `DesktopExternalReferenceGuard` through `createDesktopLocalVaultAdapter()`.
+- Enumeration now records a failure when a listed folder cannot be safely observed/traversed; such a subtree therefore produces `LocalVaultListing.completeness.status === "partial"` instead of falsely claiming complete coverage.
+- No unsafe override, disable flag, path-syntax substitute, Node import in the mobile-neutral adapter, or frozen-contract change was introduced.
+
+The stock-iOS link-detection limitation therefore remains a platform blocker, but the implementation no longer traverses an unverified path merely because no guard exists.
+
+### Directly Necessary Test Fallout
+
+Existing fake-filesystem tests that intentionally model a filesystem with no external references now inject an explicit permissive **test-only** `ExternalReferenceGuard`. Production behavior remains fail-closed.
+
+Targeted C1 tests added/updated in `test/obsidian-local-vault.test.ts` prove:
+
+1. `generic adapter without an external-reference guard fails closed before ordinary path observation` — the observation becomes inaccessible and the underlying adapter never receives `exists/stat` for that path;
+2. `generic adapter without an external-reference guard blocks create replace move and trash` — all four mutations reject with `LocalPlatformCapabilityError("external-reference-detection")`, no write/rename/trash adapter operation occurs, and existing content remains intact;
+3. `blocked folder subtree makes enumeration partial rather than falsely complete` — recursion is not entered and completeness is explicitly `partial`.
+
+Existing desktop tests still execute and pass:
+
+- ordinary contained files/directories/new targets are permitted;
+- external symlink is blocked;
+- junction/reparse indication is blocked;
+- canonical resolution outside the vault is blocked.
+
+Existing mobile architecture tests still execute and pass:
+
+- mobile-required runtime source has no Node/Electron/Windows-only imports;
+- Node filesystem imports remain confined to the declared desktop-only safety module;
+- mobile-neutral adapter does not import desktop-only construction/guard modules.
+
+### Verification Actually Performed
+
+GitHub Actions run `32731187369`, job `97443556511`, checked out PR #4 merge/test SHA `2dc01ff9ade1f8e9c935568f626770d7bd748f6d` and executed the required gate:
+
+- `npm ci` — **PASS**; 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck` — **PASS**.
+- `npm test` — **PASS**; 52 tests executed, 52 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo.
+- `npm run build` — **PASS**.
+
+The workflow logs explicitly show the C1 tests as tests 48, 49, and 50; the desktop external-reference tests as tests 13–16; and the mobile-import isolation tests as tests 33–35.
+
+### Git-Derived C1 Change Inventory Before Evidence Updates
+
+GitHub compare: `e577bf1366001de3871a868bd549630b1060f2df...4d06581fa91ba9643496a67296b5002925581ba2`
+
+Created:
+
+- none
+
+Modified:
+
+- `src/local/obsidian-local-vault.ts`
+- `test/local-failure-semantics.test.ts`
+- `test/obsidian-local-vault.test.ts`
+
+Deleted:
+
+- none
+
+This correction evidence update additionally modifies:
+
+- `dev/evidence/_ca-output-CA-P4.md`
+- `dev/evidence/_ca-output.md`
+
+A final Git-derived correction-pass compare including both evidence files is performed after both evidence commits and reported in the completion response.
+
+### Remaining Stock-iOS Platform Limitations
+
+C1 does **not** claim either stock-iOS platform limitation is resolved:
+
+1. strict bounded-memory arbitrary-file local reads remain unavailable on the current stock Obsidian Mobile host for non-media extensions because its documented Capacitor 5.x local-resource handler does not provide general byte-range semantics and its public filesystem generation lacks chunk/offset reads;
+2. reliable mobile proof against symlink/alias/external-reference traversal remains unavailable because the supported mobile boundary lacks link-aware/canonical-path metadata even though Obsidian permits externally resolving symlinks/junctions.
+
+The implementation now fails closed for the second limitation when no supported guard is available.
+
+### C1 Correction Status
+
+`IMPLEMENTED AND VERIFIED`
+
+The evidence-bearing commit that contains this section necessarily has a SHA that cannot be embedded in its own content. Its exact pushed branch SHA and the final evidence-bearing PR workflow run/job are verified after commit and reported in the completion response. Independent supervisory approval is not claimed.
