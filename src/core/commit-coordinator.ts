@@ -58,6 +58,17 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
       remoteObjectId,
       sourceDeviceId: state.deviceIdentity,
     });
+  } else if (operation.kind === "noop" && operation.reasons.some(reason => reason.code === "both-deleted") && oldBase) {
+    base = base.filter(entry => entry.path !== operation.path);
+    mappings = mappings.filter(mapping => mapping.path !== operation.path);
+    tombstones = tombstones.filter(entry => entry.path !== operation.path);
+    tombstones.push({
+      path: operation.path,
+      entityKind,
+      deletedOn: "both",
+      remoteObjectId,
+      sourceDeviceId: state.deviceIdentity,
+    });
   } else if (operation.kind === "identity-preserving-move" && operation.fromPath && operation.toPath) {
     base = base.filter(entry => entry.path !== operation.fromPath && entry.path !== operation.toPath);
     base.push({
