@@ -1,5 +1,5 @@
 import { Notice, Platform, requestUrl, type App, type Plugin } from "obsidian";
-import type { DeviceIdentity, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
+import type { DeviceIdentity, DriveSignal, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
 import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
@@ -17,10 +17,14 @@ import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
 import { automaticNetworkDecision } from "./network-policy";
-import type { BrainSyncSettings } from "./plugin-data";
-import type { PluginDataRepository } from "./plugin-data";
+import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
+
+function driveSignalMessage(signal: DriveSignal): string {
+  if ("detail" in signal && signal.detail) return signal.detail;
+  return signal.kind;
+}
 
 export interface ProductRuntimeHost {
   readonly app: App;
@@ -61,7 +65,6 @@ export class Phase5ProductRuntime {
     });
     registerGoogleOAuthReturn(this.host.plugin, this.boundary.oauth, result => {
       this.host.notify(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`);
-      void this.initialize();
     });
 
     if (!current.vaultIdentity || !current.remoteRootId) return;
@@ -82,8 +85,8 @@ export class Phase5ProductRuntime {
     const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence());
     const audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
     const conflicts = new ThreeWayConflictResolver({
-      // The current frozen production contracts do not retain trustworthy BASE bytes.
-      // Returning undefined preserves both versions and prevents a fabricated clean merge.
+      // Frozen production state retains BASE evidence but not trustworthy BASE bytes.
+      // Missing BASE bytes force unresolved preservation rather than a fabricated clean merge.
       readText: async () => undefined,
     }, {
       evidenceFor: async (_path, mergedText) => ({ hash: fnv1aContentHash(mergedText), sizeBytes: new TextEncoder().encode(mergedText).byteLength }),
@@ -99,6 +102,10 @@ export class Phase5ProductRuntime {
       leasePort: new WebLocksRunLeasePort(),
       audit,
       holderId: `phase5:${String(deviceIdentity)}:${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+      automaticExecutionAllowed: plan => {
+        if (!this.host.settings().firstSyncCompleted) return { allowed: false, reason: "Automatic synchronization remains disabled until first synchronization establishes trustworthy state." };
+        return automaticNetworkDecision(plan, this.host.settings(), Platform.isMobile);
+      },
     });
     this.controller = controller;
     this.unsubscribeSurface = controller.onSurface(surface => {
@@ -109,20 +116,7 @@ export class Phase5ProductRuntime {
       else if (surface.status.kind === "error") this.host.notify(`BRAIN sync error: ${surface.status.message}`);
     });
 
-    const automaticController = {
-      runAutomatic: async (trigger: "startup-resume" | "local-change" | "periodic") => {
-        const settingsNow = this.host.settings();
-        if (!settingsNow.firstSyncCompleted) return;
-        const plan = await controller.previewAutomatic(trigger);
-        if (!plan) return;
-        const network = automaticNetworkDecision(plan, settingsNow, Platform.isMobile);
-        if (!network.allowed) { controller.deferAutomatic(network.reason ?? "automatic synchronization deferred by network policy"); return; }
-        await controller.executeAutomaticPreview(plan.planId);
-      },
-      request: controller.request.bind(controller),
-      noteChangeDuringRun: controller.noteChangeDuringRun.bind(controller),
-    };
-    this.scheduler = new ProductSyncScheduler(this.local, automaticController as IntegratedProductController, () => {
+    this.scheduler = new ProductSyncScheduler(this.local, controller, () => {
       const s = this.host.settings();
       return {
         startupResumeEnabled: s.firstSyncCompleted && s.startupResumeEnabled,
@@ -157,7 +151,7 @@ export class Phase5ProductRuntime {
       await this.host.saveSettings(settings);
     }
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
-    if (!result.ok) throw new Error(result.signal.detail ?? result.signal.kind);
+    if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     await this.host.saveSettings({ ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity), firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.initialize();
     return result.value;
@@ -171,7 +165,7 @@ export class Phase5ProductRuntime {
     const expected = contractId<"VaultIdentity">(settings.vaultIdentity) as VaultIdentity;
     const root = contractId<"RemoteObjectId">(settings.remoteRootId) as RemoteObjectId;
     const result = await boundary.drive.pairManagedRoot(root, expected);
-    if (!result.ok) throw new Error(result.signal.detail ?? result.signal.kind);
+    if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
     await this.host.saveSettings({ ...settings, firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.initialize();
@@ -192,7 +186,7 @@ export class Phase5ProductRuntime {
     this.unsubscribeSurface = undefined;
     await this.controller?.request({ kind: "cancel-active-sync" });
     this.controller = undefined;
-    const disposable = this.local as LocalVaultPort & { dispose?: () => void };
+    const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
     disposable?.dispose?.();
     this.local = undefined;
     this.boundary = undefined;
