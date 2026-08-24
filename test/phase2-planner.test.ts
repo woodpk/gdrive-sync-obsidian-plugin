@@ -103,12 +103,57 @@ test("stable remote object ID proves an identity-preserving remote move", async 
   assert.equal(plan.operations[0].toPath, moved);
 });
 
+test("ambiguous stable remote identity is blocked rather than reassigned", async () => {
+  const old = path("old-ambiguous.md"); const rid = remoteId("drive-ambiguous"); const b = base(old, "B", rid);
+  const plan = await planner.plan({
+    snapshots: [
+      snap(old, "B", "absent", b),
+      snap(path("candidate-a.md"), "absent", "B", undefined, { remoteRemoteId: rid }),
+      snap(path("candidate-b.md"), "absent", "B", undefined, { remoteRemoteId: rid }),
+    ],
+    state: trusted([b]),
+  });
+  assert.equal(plan.operations.length, 1);
+  assert.equal(plan.operations[0].kind, "blocked-unsafe");
+  assert.equal(plan.operations[0].reasons[0].code, "ambiguous-remote-move");
+});
+
+test("unique trusted content hash proves local move while duplicate candidates are blocked", async () => {
+  const old = path("old-local.md"); const rid = remoteId("drive-local"); const b = base(old, "B", rid);
+  const unique = await planner.plan({
+    snapshots: [snap(old, "absent", "B", b, { remoteRemoteId: rid }), snap(path("renamed.md"), "B", "absent")],
+    state: trusted([b]),
+  });
+  assert.equal(unique.operations[0].kind, "identity-preserving-move");
+  assert.equal(unique.operations[0].targetSide, "remote");
+
+  const ambiguous = await planner.plan({
+    snapshots: [
+      snap(old, "absent", "B", b, { remoteRemoteId: rid }),
+      snap(path("copy-a.md"), "B", "absent"),
+      snap(path("copy-b.md"), "B", "absent"),
+    ],
+    state: trusted([b]),
+  });
+  assert.equal(ambiguous.operations.length, 1);
+  assert.equal(ambiguous.operations[0].kind, "blocked-unsafe");
+  assert.equal(ambiguous.operations[0].reasons[0].code, "ambiguous-local-move");
+});
+
 test("tombstone plus stale known device blocks resurrection", async () => {
   const p = path("gone.md"); const b = base(p, "B");
   const initial = trusted([b], true);
   const state = { ...initial, state: { ...initial.state, tombstones: [{ path: p, entityKind: "file" as const, deletedOn: "both" as const, sourceDeviceId: deviceId }] } };
   const s = snap(p, "L", "R", b, { tombstone: true });
   assert.equal((await planner.plan({ snapshots: [s], state })).operations[0].kind, "blocked-unsafe");
+});
+
+test("current stale device cannot authorize destructive propagation", async () => {
+  const p = path("stale-delete.md"); const b = base(p, "B");
+  const result = await planner.plan({ snapshots: [snap(p, "absent", "B", b)], state: trusted([b], true) });
+  assert.equal(result.operations[0].kind, "blocked-unsafe");
+  assert.equal(result.operations[0].reasons[0].code, "stale-device-destructive-gate");
+  assert.equal(result.executionDisposition, "blocked");
 });
 
 test("ordinary deletion stays auto-eligible while suspicious deletion requires checkpoint", async () => {
