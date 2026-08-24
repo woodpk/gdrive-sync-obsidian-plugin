@@ -29,7 +29,8 @@ A rejection prompt must not delegate diagnostic work already completed by the re
 
 Before reviewing any implementation file, first open and read completely:
 
-`dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output<agent-name>.md`
 
 Treat this file as the coding agent's **primary build evidence and primary claimed change manifest** for the just-completed build.
 
