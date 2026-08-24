@@ -67,8 +67,6 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     await this.runtime?.disposeProduct();
   }
 
-  settings(): BrainSyncSettings { return this.currentSettings; }
-
   private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
     this.currentSettings = { ...settings };
     await this.dataRepository?.saveSettings(this.currentSettings);
@@ -76,7 +74,6 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
     const next = { ...this.currentSettings, ...patch };
-    // First-sync gate is authoritative: user toggles cannot turn automatic sync on before success.
     if (!next.firstSyncCompleted) {
       next.startupResumeEnabled = false;
       next.localChangeEnabled = false;
