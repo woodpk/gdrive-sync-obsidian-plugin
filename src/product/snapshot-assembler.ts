@@ -1,6 +1,7 @@
 import type {
   BaseEvidence,
   ChangeCursor,
+  DriveSignal,
   EnumerationCompleteness,
   GoogleDrivePort,
   IdentityAssessment,
@@ -23,24 +24,16 @@ export interface AssembledPlanningInput {
   readonly input: PlanningInput;
   readonly managedRemote: ManagedRemoteIdentity;
   readonly remoteEnumeration: EnumerationCompleteness;
-  /** Cursor may be committed only after all effects derived from this observation are durably accounted for. */
   readonly nextCursor?: ChangeCursor;
   readonly mode: "full" | "incremental";
 }
 
 function path(value: string): VaultPath { return contractId<"VaultPath">(value) as VaultPath; }
+function signalMessage(signal: DriveSignal, fallback: string): string { return "detail" in signal && signal.detail ? signal.detail : fallback; }
 function absentLocal(p: VaultPath): LocalObservation { return { status: "absent", side: "local", path: p }; }
 function absentRemote(p: VaultPath): RemoteObservation { return { status: "absent", side: "remote", path: p }; }
 function remoteObservation(entry: RemoteEntry): RemoteObservation {
-  return {
-    status: "present",
-    side: "remote",
-    path: entry.path,
-    entityKind: entry.entityKind,
-    remoteObjectId: entry.remoteObjectId,
-    content: entry.content,
-    stability: "stable",
-  };
+  return { status: "present", side: "remote", path: entry.path, entityKind: entry.entityKind, remoteObjectId: entry.remoteObjectId, content: entry.content, stability: "stable" };
 }
 
 export class SnapshotAssemblyError extends Error {
@@ -75,17 +68,14 @@ export class ProductSnapshotAssembler {
   private async validatedRemote(): Promise<ManagedRemoteIdentity> {
     const managedRemote = await this.remoteIdentity();
     const validated = await this.drive.validateManagedRoot(managedRemote);
-    if (!validated.ok) throw new SnapshotAssemblyError(validated.signal.kind, validated.signal.detail ?? "managed remote validation failed");
+    if (!validated.ok) throw new SnapshotAssemblyError(validated.signal.kind, signalMessage(validated.signal, "managed remote validation failed"));
     if (validated.value.status !== "valid") throw new SnapshotAssemblyError(validated.value.status, "managed BRAIN Sync remote is not valid for this vault");
     return managedRemote;
   }
 
   private async assembleFullWith(managedRemote: ManagedRemoteIdentity, loadedState: StateLoadResult): Promise<AssembledPlanningInput> {
-    const [localListing, remoteResult] = await Promise.all([
-      this.local.enumerate(),
-      this.drive.listForReconciliation(managedRemote.rootId),
-    ]);
-    if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, remoteResult.signal.detail ?? "remote reconciliation listing failed");
+    const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
+    if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "remote reconciliation listing failed"));
     const snapshots = this.makeSnapshots(loadedState, localListing.entries, localListing.completeness, remoteResult.value.entries.filter(entry => !entry.trashed), remoteResult.value.completeness);
     return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: remoteResult.value.completeness, mode: "full" };
   }
@@ -93,47 +83,28 @@ export class ProductSnapshotAssembler {
   private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>): Promise<AssembledPlanningInput | undefined> {
     const cursor = loadedState.state.changeCursor;
     if (!cursor) return undefined;
-    const [localListing, changesResult] = await Promise.all([
-      this.local.enumerate(),
-      this.drive.readChanges(managedRemote.rootId, cursor),
-    ]);
+    const [localListing, changesResult] = await Promise.all([this.local.enumerate(), this.drive.readChanges(managedRemote.rootId, cursor)]);
     if (!changesResult.ok) {
-      // Lost/invalid cursors require safe full reconciliation; authentication/recovery failures remain explicit.
       if (changesResult.signal.kind === "not-found" || changesResult.signal.kind === "conflict") return undefined;
-      throw new SnapshotAssemblyError(changesResult.signal.kind, changesResult.signal.detail ?? "incremental remote observation failed");
+      throw new SnapshotAssemblyError(changesResult.signal.kind, signalMessage(changesResult.signal, "incremental remote observation failed"));
     }
     if (changesResult.value.completeness.status !== "complete") return undefined;
 
     const reconstructed = this.remoteBaseline(loadedState.state);
     for (const change of changesResult.value.changes) {
-      if (change.kind === "upsert") {
-        reconstructed.set(String(change.entry.remoteObjectId), change.entry);
-      } else {
-        reconstructed.delete(String(change.remoteObjectId));
-      }
+      if (change.kind === "upsert") reconstructed.set(String(change.entry.remoteObjectId), change.entry);
+      else reconstructed.delete(String(change.remoteObjectId));
     }
     const remoteEntries = [...reconstructed.values()].filter(entry => !entry.trashed);
     const snapshots = this.makeSnapshots(loadedState, localListing.entries, localListing.completeness, remoteEntries, changesResult.value.completeness);
-    return {
-      input: { snapshots, state: loadedState },
-      managedRemote,
-      remoteEnumeration: changesResult.value.completeness,
-      nextCursor: changesResult.value.nextCursor,
-      mode: "incremental",
-    };
+    return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
   }
 
   private remoteBaseline(state: TrustedSynchronizationState): Map<string, RemoteEntry> {
     const byId = new Map<string, RemoteEntry>();
     for (const base of state.base) {
       if (!base.remoteExisted || !base.remoteObjectId) continue;
-      byId.set(String(base.remoteObjectId), {
-        path: base.path,
-        entityKind: base.entityKind,
-        remoteObjectId: base.remoteObjectId,
-        content: base.content,
-        trashed: false,
-      });
+      byId.set(String(base.remoteObjectId), { path: base.path, entityKind: base.entityKind, remoteObjectId: base.remoteObjectId, content: base.content, trashed: false });
     }
     return byId;
   }
@@ -159,24 +130,14 @@ export class ProductSnapshotAssembler {
     return [...paths].sort().map(raw => {
       const p = path(raw);
       let local = localByPath.get(raw) ?? absentLocal(p);
-      if (local.status === "absent" && localCompleteness.status !== "complete") {
-        local = { status: "unknown", side: "local", path: p, reason: localCompleteness.reason };
-      }
+      if (local.status === "absent" && localCompleteness.status !== "complete") local = { status: "unknown", side: "local", path: p, reason: localCompleteness.reason };
       const remoteEntry = remoteByPath.get(raw);
       const remote = remoteEntry ? remoteObservation(remoteEntry) : absentRemote(p);
       let base: BaseEvidence = { status: "uninitialized" };
       if (loadedState.status === "recovery-required") base = { status: "untrusted", reason: loadedState.detail ?? loadedState.reason };
-      if (loadedState.status === "trusted") {
-        base = {
-          status: "trusted",
-          entry: loadedState.state.base.find(entry => String(entry.path) === raw),
-          tombstone: loadedState.state.tombstones.find(entry => String(entry.path) === raw),
-        };
-      }
+      if (loadedState.status === "trusted") base = { status: "trusted", entry: loadedState.state.base.find(entry => String(entry.path) === raw), tombstone: loadedState.state.tombstones.find(entry => String(entry.path) === raw) };
       let identity: IdentityAssessment = { status: "unambiguous" };
-      if (remoteEntry && (remoteIdCounts.get(String(remoteEntry.remoteObjectId)) ?? 0) > 1) {
-        identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds: [remoteEntry.remoteObjectId] };
-      }
+      if (remoteEntry && (remoteIdCounts.get(String(remoteEntry.remoteObjectId)) ?? 0) > 1) identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds: [remoteEntry.remoteObjectId] };
       return { path: p, local, remote, base, remoteEnumeration: remoteCompleteness, identity };
     });
   }
