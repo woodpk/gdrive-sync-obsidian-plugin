@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { App } from "obsidian";
 import type { BinaryContentSource, VaultPath } from "../src/contracts/common";
-import { LocalPlatformCapabilityError, LocalStaleObservationError, ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
+import {
+  LocalPlatformCapabilityError,
+  LocalStaleObservationError,
+  ObsidianLocalVaultAdapter,
+  type ExternalReferenceGuard,
+  type LocalAdapterOptions
+} from "../src/local/obsidian-local-vault";
 
 interface Entry { type: "file" | "folder"; bytes?: Uint8Array; mtime: number; ctime: number; }
 interface FakeRuntime {
@@ -17,6 +23,11 @@ interface FakeRuntime {
 
 const vp = (value: string): VaultPath => value as VaultPath;
 const bytes = (...values: number[]): Uint8Array<ArrayBuffer> => new Uint8Array(values);
+const testExternalReferenceGuard: ExternalReferenceGuard = {
+  async assertSafe(): Promise<void> {
+    // The fake filesystem used by ordinary unit tests contains no external references.
+  }
+};
 
 function content(chunks: readonly Uint8Array[]): BinaryContentSource {
   return {
@@ -48,6 +59,7 @@ function fakeRuntime(initial: Record<string, Entry>): FakeRuntime {
   };
 
   const stat = async (path: string) => {
+    adapterCalls.push(`stat:${path}`);
     const entry = entries.get(path);
     if (!entry) return null;
     return { type: entry.type, ctime: entry.ctime, mtime: entry.mtime, size: entry.type === "file" ? (entry.bytes?.byteLength ?? 0) : 0 };
@@ -55,9 +67,10 @@ function fakeRuntime(initial: Record<string, Entry>): FakeRuntime {
 
   const adapter = {
     getName: () => "fake-mobile",
-    exists: async (path: string) => entries.has(path),
+    exists: async (path: string) => { adapterCalls.push(`exists:${path}`); return entries.has(path); },
     stat,
     list: async (folder: string) => {
+      adapterCalls.push(`list:${folder}`);
       if (!entries.has(folder)) throw new Error(`missing folder ${folder}`);
       const prefix = folder ? `${folder}/` : "";
       const files: string[] = [];
@@ -153,6 +166,10 @@ function fakeRuntime(initial: Record<string, Entry>): FakeRuntime {
   };
 }
 
+function safeLocal(runtime: FakeRuntime, options: Omit<LocalAdapterOptions, "externalReferenceGuard"> = {}): ObsidianLocalVaultAdapter {
+  return new ObsidianLocalVaultAdapter(runtime.app, { ...options, externalReferenceGuard: testExternalReferenceGuard });
+}
+
 function requestHeader(init: RequestInit | undefined, name: string): string | null {
   return new Headers(init?.headers).get(name);
 }
@@ -199,6 +216,10 @@ function ignoredRangeFetch(runtime: FakeRuntime): typeof fetch {
   }) as typeof fetch;
 }
 
+function isExternalCapabilityError(error: unknown): boolean {
+  return error instanceof LocalPlatformCapabilityError && error.capability === "external-reference-detection";
+}
+
 test("enumeration covers text binary hidden and empty folders while separating config/noise", async () => {
   const runtime = fakeRuntime({
     "10-Notes": { type: "folder", mtime: 1, ctime: 1 },
@@ -212,7 +233,7 @@ test("enumeration covers text binary hidden and empty folders while separating c
     ".cfg": { type: "folder", mtime: 1, ctime: 1 },
     ".cfg/app.json": { type: "file", bytes: bytes(6), mtime: 2, ctime: 1 }
   });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   const result = await local.enumerate();
   assert.equal(result.completeness.status, "complete");
   const paths = result.entries.filter(entry => entry.status === "present").map(entry => String(entry.path)).sort();
@@ -222,7 +243,7 @@ test("enumeration covers text binary hidden and empty folders while separating c
 
 test("active configuration directory is discovered from runtime rather than assumed .obsidian", async () => {
   const runtime = fakeRuntime({});
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   assert.equal(await local.activeConfigurationDirectory(), ".cfg");
   local.dispose();
 });
@@ -232,7 +253,7 @@ test("readFile is lazy and reconstructs exact bytes through bounded sequential r
   let fetchCalls = 0;
   const ranges: string[] = [];
   const baseFetch = rangedFetch(runtime, 2, ranges);
-  const local = new ObsidianLocalVaultAdapter(runtime.app, {
+  const local = safeLocal(runtime, {
     stabilityDelayMs: 0,
     readChunkSizeBytes: 4,
     fetchImpl: (async (...args: Parameters<typeof fetch>) => { fetchCalls += 1; return baseFetch(...args); }) as typeof fetch
@@ -255,7 +276,7 @@ test("readFile is lazy and reconstructs exact bytes through bounded sequential r
 
 test("bounded read detects a runtime that ignores Range instead of accepting a whole-file response", async () => {
   const runtime = fakeRuntime({ "ordinary.md": { type: "file", bytes: bytes(1,2,3,4,5,6), mtime: 7, ctime: 1 } });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl: ignoredRangeFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl: ignoredRangeFetch(runtime) });
   const read = await local.readFile(vp("ordinary.md"));
   await assert.rejects(async () => {
     for await (const _chunk of read.content.openChunks()) { /* consume */ }
@@ -270,7 +291,7 @@ test("bounded read rejects malformed partial-content evidence", async () => {
     status: 206,
     headers: { "Content-Range": "bytes 1-2/4", "Content-Length": "2" }
   })) as typeof fetch;
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl: badFetch });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl: badFetch });
   const read = await local.readFile(vp("bad.bin"));
   await assert.rejects(async () => {
     for await (const _chunk of read.content.openChunks()) { /* consume */ }
@@ -280,7 +301,7 @@ test("bounded read rejects malformed partial-content evidence", async () => {
 
 test("expected observation token rejects stale local versions before consumption", async () => {
   const runtime = fakeRuntime({ "a.bin": { type: "file", bytes: bytes(1), mtime: 7, ctime: 1 } });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   const first = await local.readFile(vp("a.bin"));
   runtime.entries.get("a.bin")!.mtime += 1;
   await assert.rejects(() => local.readFile(vp("a.bin"), first.observationToken), LocalStaleObservationError);
@@ -297,7 +318,7 @@ test("bounded read detects a source that becomes stale between ranges", async ()
     if (calls === 1) runtime.entries.get("changing.bin")!.mtime += 1;
     return response;
   }) as typeof fetch;
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl });
   const read = await local.readFile(vp("changing.bin"));
   await assert.rejects(async () => {
     for await (const _chunk of read.content.openChunks()) { /* consume */ }
@@ -308,7 +329,7 @@ test("bounded read detects a source that becomes stale between ranges", async ()
 
 test("create consumes multi-chunk content incrementally and preserves opaque bytes", async () => {
   const runtime = fakeRuntime({});
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   await local.createFile(vp("00-Inbox/new.opaque"), content([bytes(1,2), bytes(3), bytes(4,5)]));
   assert.deepEqual([...(runtime.entries.get("00-Inbox/new.opaque")?.bytes ?? [])], [1,2,3,4,5]);
   assert.equal(runtime.adapterCalls.filter(call => call.startsWith("appendBinary:")).length, 3);
@@ -317,7 +338,7 @@ test("create consumes multi-chunk content incrementally and preserves opaque byt
 
 test("replace stages content and restores prior valid content if final commit rename fails", async () => {
   const runtime = fakeRuntime({ "keep.bin": { type: "file", bytes: bytes(9,9), mtime: 7, ctime: 1 } });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   runtime.setRenameFailure((from, to) => from.includes("brain-sync-stage") && to === "keep.bin");
   await assert.rejects(() => local.replaceFile(vp("keep.bin"), content([bytes(1,2,3)])));
   assert.deepEqual([...(runtime.entries.get("keep.bin")?.bytes ?? [])], [9,9]);
@@ -326,7 +347,7 @@ test("replace stages content and restores prior valid content if final commit re
 
 test("createFolder preserves empty directory structure", async () => {
   const runtime = fakeRuntime({});
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   await local.createFolder(vp("empty-dir"));
   assert.equal(runtime.entries.get("empty-dir")?.type, "folder");
   local.dispose();
@@ -334,7 +355,7 @@ test("createFolder preserves empty directory structure", async () => {
 
 test("move and trash use Obsidian FileManager semantics", async () => {
   const runtime = fakeRuntime({ "a.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 } });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   await local.move(vp("a.md"), vp("renamed.md"));
   assert.deepEqual(runtime.fileManagerCalls, ["renameFile:a.md->renamed.md"]);
   await local.trash(vp("renamed.md"));
@@ -343,10 +364,37 @@ test("move and trash use Obsidian FileManager semantics", async () => {
   local.dispose();
 });
 
-test("external-reference guard blocks traversal before adapter observation or mutation", async () => {
-  const runtime = fakeRuntime({ "linked": { type: "folder", mtime: 1, ctime: 1 }, "safe.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 } });
+test("generic adapter without an external-reference guard fails closed before ordinary path observation", async () => {
+  const runtime = fakeRuntime({ "safe.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 } });
+  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const observation = await local.observe(vp("safe.md"));
+  assert.equal(observation.status, "inaccessible");
+  if (observation.status === "inaccessible") assert.match(observation.reason, /cannot prove.*external filesystem reference/i);
+  assert.equal(runtime.adapterCalls.some(call => call === "exists:safe.md" || call === "stat:safe.md"), false);
+  local.dispose();
+});
+
+test("generic adapter without an external-reference guard blocks create replace move and trash", async () => {
+  const runtime = fakeRuntime({ "existing.bin": { type: "file", bytes: bytes(9), mtime: 2, ctime: 1 } });
+  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  await assert.rejects(() => local.createFile(vp("new.bin"), content([bytes(1)])), isExternalCapabilityError);
+  await assert.rejects(() => local.replaceFile(vp("existing.bin"), content([bytes(2)])), isExternalCapabilityError);
+  await assert.rejects(() => local.move(vp("existing.bin"), vp("renamed.bin")), isExternalCapabilityError);
+  await assert.rejects(() => local.trash(vp("existing.bin")), isExternalCapabilityError);
+  assert.equal(runtime.adapterCalls.some(call => /writeBinary|appendBinary|rename:|trashLocal/.test(call)), false);
+  assert.deepEqual(runtime.fileManagerCalls, []);
+  assert.equal(runtime.entries.has("existing.bin"), true);
+  local.dispose();
+});
+
+test("blocked folder subtree makes enumeration partial rather than falsely complete", async () => {
+  const runtime = fakeRuntime({
+    "linked": { type: "folder", mtime: 1, ctime: 1 },
+    "linked/outside.md": { type: "file", bytes: bytes(7), mtime: 2, ctime: 1 },
+    "safe.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 }
+  });
   const checked: string[] = [];
-  const guard = {
+  const guard: ExternalReferenceGuard = {
     async assertSafe(path: VaultPath): Promise<void> {
       checked.push(String(path));
       if (String(path) === "linked") throw new Error("external reference blocked");
@@ -356,14 +404,17 @@ test("external-reference guard blocks traversal before adapter observation or mu
   const listing = await local.enumerate();
   const linked = listing.entries.find(entry => String(entry.path) === "linked");
   assert.equal(linked?.status, "inaccessible");
+  assert.equal(listing.completeness.status, "partial");
+  if (listing.completeness.status === "partial") assert.match(listing.completeness.reason, /linked: subtree not safely enumerable \(inaccessible\)/);
   assert.ok(checked.includes("linked"));
-  assert.equal(runtime.adapterCalls.some(call => call.includes("linked")), false);
+  assert.equal(runtime.adapterCalls.includes("list:linked"), false);
+  assert.equal(runtime.adapterCalls.some(call => call === "exists:linked" || call === "stat:linked"), false);
   local.dispose();
 });
 
 test("startup changes are suppressed until vault-ready and later create/rename events are truthful", async () => {
   const runtime = fakeRuntime({});
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   const changes: string[] = [];
   local.onChange(change => changes.push(change.kind));
   runtime.eventHandlers.get("create")?.[0]?.({ path: "startup.md" });
@@ -377,7 +428,7 @@ test("startup changes are suppressed until vault-ready and later create/rename e
 
 test("dispose emits unload without deleting local content", () => {
   const runtime = fakeRuntime({ "safe.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 } });
-  const local = new ObsidianLocalVaultAdapter(runtime.app, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
   const lifecycle: string[] = [];
   local.onLifecycle(event => lifecycle.push(event.kind));
   local.dispose();
