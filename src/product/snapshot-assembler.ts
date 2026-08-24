@@ -74,10 +74,13 @@ export class ProductSnapshotAssembler {
   }
 
   private async assembleFullWith(managedRemote: ManagedRemoteIdentity, loadedState: StateLoadResult): Promise<AssembledPlanningInput> {
+    // The cursor is acquired before the listing so no remote mutation can fall into a listing→cursor gap.
+    const cursorResult = await this.drive.getStartCursor(managedRemote.rootId);
+    if (!cursorResult.ok) throw new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "remote start cursor acquisition failed"));
     const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
     if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "remote reconciliation listing failed"));
     const snapshots = this.makeSnapshots(loadedState, localListing.entries, localListing.completeness, remoteResult.value.entries.filter(entry => !entry.trashed), remoteResult.value.completeness);
-    return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: remoteResult.value.completeness, mode: "full" };
+    return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full" };
   }
 
   private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>): Promise<AssembledPlanningInput | undefined> {
