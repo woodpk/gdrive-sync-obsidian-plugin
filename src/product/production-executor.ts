@@ -8,21 +8,27 @@ import type {
   OperationPrecondition,
   PlannedOperation,
   PreconditionValidationResult,
+  RemoteObjectId,
   StateLoadContext,
+  SyncSide,
   SynchronizationExecutor,
   SynchronizationStateStore,
   VerifiedExecutionReceipt,
+  VersionReference,
 } from "../contracts";
+import { isSafelyRecognizedTextPath } from "../core/conflict-resolver";
+import type { ProductTextVersionStore } from "./text-version-store";
 
-function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentEvidence): boolean {
+function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentEvidence | undefined): boolean {
+  if (!expected) return true;
   if (expected.hash) return actual?.hash === expected.hash;
   if (expected.revision) return actual?.revision === expected.revision;
   if (expected.sizeBytes !== undefined) return actual?.sizeBytes === expected.sizeBytes;
   return true;
 }
 function signalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
-function success(operation: PlannedOperation, evidence?: ContentEvidence, ref?: string): ExecutionResult {
-  const receipt: VerifiedExecutionReceipt = { operationId: operation.operationId, durable: true, integrityVerified: true, evidence, verificationEvidenceRef: ref };
+function success(operation: PlannedOperation, evidence?: ContentEvidence, ref?: string, resultingRemoteObjectId?: RemoteObjectId): ExecutionResult {
+  const receipt: VerifiedExecutionReceipt = { operationId: operation.operationId, durable: true, integrityVerified: true, evidence, resultingRemoteObjectId, verificationEvidenceRef: ref };
   return { status: "durable-verified-success", receipt };
 }
 
@@ -38,6 +44,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     private readonly state: SynchronizationStateStore,
     private readonly stateContext: StateLoadContext,
     private readonly runEvidence: () => ExecutorRunEvidence,
+    private readonly textVersions?: ProductTextVersionStore,
   ) {}
 
   async validatePreconditions(operation: PlannedOperation): Promise<PreconditionValidationResult> {
@@ -80,12 +87,25 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     return failed.length ? { status: "stale", failed } : { status: "valid" };
   }
 
+  async versionStillCurrent(side: SyncSide, version: VersionReference, remote: ManagedRemoteIdentity): Promise<boolean> {
+    if (side === "local") {
+      const observed = await this.local.observe(version.path);
+      return observed.status === "present" && observed.entityKind === version.entityKind && evidenceMatches(observed.content, version.content) && (!version.observationToken || observed.observationToken === version.observationToken);
+    }
+    const observed = await this.drive.observe(remote.rootId, version.path);
+    return observed.ok && observed.value.status === "present" && observed.value.entityKind === version.entityKind && (!version.remoteObjectId || observed.value.remoteObjectId === version.remoteObjectId) && evidenceMatches(observed.value.content, version.content);
+  }
+
   async execute(operation: PlannedOperation): Promise<ExecutionResult> {
     try {
       switch (operation.kind) {
-        case "noop": return success(operation, operation.contentVersion?.content, `noop:${String(operation.operationId)}`);
-        case "upload-create":
-          return { status: "blocking-failure", reason: "upload-create is fail-closed because the frozen VerifiedExecutionReceipt cannot carry the new Drive object ID into authoritative state" };
+        case "noop": {
+          if (operation.reasons.some(reason => reason.code === "safe-union-identical") && operation.contentVersion && this.textVersions && isSafelyRecognizedTextPath(operation.contentVersion.path)) {
+            if (!await this.textVersions.retainVersion(operation.contentVersion)) return { status: "blocking-failure", reason: "recognized-text first-sync BASE could not be materialized exactly" };
+          }
+          return success(operation, operation.contentVersion?.content, `noop:${String(operation.operationId)}`);
+        }
+        case "upload-create": return await this.uploadCreate(operation);
         case "upload-update": return await this.uploadUpdate(operation);
         case "download-create": return await this.downloadCreate(operation);
         case "download-update": return await this.downloadUpdate(operation);
@@ -98,8 +118,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
           const result = await this.drive.trash(operation.remoteObjectId);
           return result.ok ? success(operation, undefined, `remote-trash:${String(operation.remoteObjectId)}`) : this.mapDriveFailure(result.signal);
         }
-        case "clean-text-merge":
-          return { status: "blocking-failure", reason: "clean-text-merge content cannot be materialized from the frozen PlannedOperation contract; merged bytes are not carried by the Phase 2 plan" };
+        case "clean-text-merge": return await this.cleanTextMerge(operation);
         case "unresolved-conflict":
         case "blocked-unsafe":
           return { status: "blocking-failure", reason: `${operation.kind} cannot mutate content` };
@@ -111,42 +130,122 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     }
   }
 
+  private async uploadCreate(operation: PlannedOperation): Promise<ExecutionResult> {
+    const version = operation.contentVersion;
+    if (!version) return { status: "blocking-failure", reason: "upload-create requires a planned content version" };
+    if (version.entityKind === "folder") {
+      const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "folder" });
+      if (!result.ok) return this.mapDriveFailure(result.signal);
+      const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
+      if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== result.value.remoteObjectId || observed.value.entityKind !== "folder") return { status: "uncertain", reason: "created remote folder could not be re-observed by its allocated stable identity" };
+      return success(operation, observed.value.content ?? result.value.evidence, `remote-create:${String(result.value.remoteObjectId)}`, result.value.remoteObjectId);
+    }
+
+    const local = await this.local.readFile(version.path, version.observationToken);
+    if (!evidenceMatches(local.evidence, version.content)) return { status: "stale-precondition", reason: "planned local upload-create source content changed before transfer" };
+    const content = this.textVersions?.capture(version, local.content) ?? local.content;
+    const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "file", content, expectedEvidence: local.evidence });
+    if (!result.ok) return this.mapDriveFailure(result.signal);
+    const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
+    if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== result.value.remoteObjectId) return { status: "uncertain", reason: "created remote file could not be re-observed by its allocated stable identity" };
+    const finalEvidence = observed.value.content ?? result.value.evidence ?? local.evidence;
+    if (!evidenceMatches(finalEvidence, version.content)) return { status: "uncertain", reason: "created remote file evidence does not match the planned stable source" };
+    if (this.textVersions && isSafelyRecognizedTextPath(version.path)) {
+      const finalVersion: VersionReference = { path: operation.path, entityKind: "file", content: finalEvidence, remoteObjectId: result.value.remoteObjectId };
+      if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "created recognized-text version could not be retained as future BASE" };
+    }
+    return success(operation, finalEvidence, `remote-create:${String(result.value.remoteObjectId)}`, result.value.remoteObjectId);
+  }
+
   private async uploadUpdate(operation: PlannedOperation): Promise<ExecutionResult> {
     if (!operation.remoteObjectId || !operation.contentVersion) return { status: "blocking-failure", reason: "upload-update requires remote identity and content version" };
-    const local = await this.local.readFile(operation.path, operation.contentVersion.observationToken);
-    const result = await this.drive.update({ remoteObjectId: operation.remoteObjectId, path: operation.path, content: local.content, expectedEvidence: local.evidence });
+    const version = operation.contentVersion;
+    const local = await this.local.readFile(version.path, version.observationToken);
+    if (!evidenceMatches(local.evidence, version.content)) return { status: "stale-precondition", reason: "planned local upload-update source content changed before transfer" };
+    const content = this.textVersions?.capture(version, local.content) ?? local.content;
+    const result = await this.drive.update({ remoteObjectId: operation.remoteObjectId, path: operation.path, content, expectedEvidence: local.evidence });
     if (!result.ok) return this.mapDriveFailure(result.signal);
     const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
     if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== operation.remoteObjectId) return { status: "uncertain", reason: "updated object could not be re-observed by stable identity" };
-    return success(operation, observed.value.content ?? result.value.evidence ?? local.evidence, `remote:${String(operation.remoteObjectId)}`);
+    const finalEvidence = observed.value.content ?? result.value.evidence ?? local.evidence;
+    if (this.textVersions && isSafelyRecognizedTextPath(version.path)) {
+      const finalVersion: VersionReference = { path: operation.path, entityKind: "file", content: finalEvidence, remoteObjectId: operation.remoteObjectId };
+      if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "updated recognized-text version could not be retained as future BASE" };
+    }
+    return success(operation, finalEvidence, `remote:${String(operation.remoteObjectId)}`);
   }
 
   private async downloadCreate(operation: PlannedOperation): Promise<ExecutionResult> {
-    const remoteObjectId = operation.contentVersion?.remoteObjectId ?? operation.remoteObjectId;
-    if (!remoteObjectId || !operation.contentVersion) return { status: "blocking-failure", reason: "download-create requires remote identity and version" };
-    if (operation.contentVersion.entityKind === "folder") {
+    const version = operation.contentVersion;
+    const remoteObjectId = version?.remoteObjectId ?? operation.remoteObjectId;
+    if (!remoteObjectId || !version) return { status: "blocking-failure", reason: "download-create requires remote identity and version" };
+    if (version.entityKind === "folder") {
       const receipt = await this.local.createFolder(operation.path);
       return success(operation, receipt.evidence, `local:${String(operation.path)}`);
     }
     const downloaded = await this.drive.download(remoteObjectId);
     if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal);
-    const receipt = await this.local.createFile(operation.path, downloaded.value.content);
+    if (!evidenceMatches(downloaded.value.evidence, version.content)) return { status: "stale-precondition", reason: "planned remote download-create source content changed before transfer" };
+    const content = this.textVersions?.capture(version, downloaded.value.content) ?? downloaded.value.content;
+    const receipt = await this.local.createFile(operation.path, content);
     const observed = await this.local.observe(operation.path);
     if (observed.status !== "present") return { status: "uncertain", reason: "downloaded local file could not be re-observed" };
-    return success(operation, observed.content ?? receipt.evidence ?? downloaded.value.evidence, `local:${String(operation.path)}`);
+    const finalEvidence = observed.content ?? receipt.evidence ?? downloaded.value.evidence;
+    if (this.textVersions && isSafelyRecognizedTextPath(operation.path)) {
+      const finalVersion: VersionReference = { path: operation.path, entityKind: "file", content: finalEvidence, observationToken: observed.observationToken };
+      if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "downloaded recognized-text version could not be retained as future BASE" };
+    }
+    return success(operation, finalEvidence, `local:${String(operation.path)}`);
   }
 
   private async downloadUpdate(operation: PlannedOperation): Promise<ExecutionResult> {
-    const remoteObjectId = operation.contentVersion?.remoteObjectId ?? operation.remoteObjectId;
-    if (!remoteObjectId) return { status: "blocking-failure", reason: "download-update requires remote identity" };
+    const version = operation.contentVersion;
+    const remoteObjectId = version?.remoteObjectId ?? operation.remoteObjectId;
+    if (!remoteObjectId || !version) return { status: "blocking-failure", reason: "download-update requires remote identity and version" };
     const downloaded = await this.drive.download(remoteObjectId);
     if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal);
+    if (!evidenceMatches(downloaded.value.evidence, version.content)) return { status: "stale-precondition", reason: "planned remote download-update source content changed before transfer" };
     const existing = await this.local.observe(operation.path);
     const expectedToken = existing.status === "present" ? existing.observationToken : undefined;
-    const receipt = await this.local.replaceFile(operation.path, downloaded.value.content, expectedToken);
+    const content = this.textVersions?.capture(version, downloaded.value.content) ?? downloaded.value.content;
+    const receipt = await this.local.replaceFile(operation.path, content, expectedToken);
     const observed = await this.local.observe(operation.path);
     if (observed.status !== "present") return { status: "uncertain", reason: "replaced local file could not be re-observed" };
-    return success(operation, observed.content ?? receipt.evidence ?? downloaded.value.evidence, `local:${String(operation.path)}`);
+    const finalEvidence = observed.content ?? receipt.evidence ?? downloaded.value.evidence;
+    if (this.textVersions && isSafelyRecognizedTextPath(operation.path)) {
+      const finalVersion: VersionReference = { path: operation.path, entityKind: "file", content: finalEvidence, observationToken: observed.observationToken };
+      if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "replaced recognized-text version could not be retained as future BASE" };
+    }
+    return success(operation, finalEvidence, `local:${String(operation.path)}`);
+  }
+
+  private async cleanTextMerge(operation: PlannedOperation): Promise<ExecutionResult> {
+    const version = operation.contentVersion;
+    const remoteObjectId = operation.remoteObjectId ?? version?.remoteObjectId;
+    if (!version || !remoteObjectId || version.entityKind !== "file" || !this.textVersions) return { status: "blocking-failure", reason: "clean-text-merge requires a materialized recognized-text version and stable remote identity" };
+    const localBefore = await this.local.observe(operation.path);
+    if (localBefore.status !== "present") return { status: "stale-precondition", reason: "clean merge local target is no longer present" };
+    const sourceLocal = await this.textVersions.sourceForRetained(version);
+    const sourceRemote = await this.textVersions.sourceForRetained(version);
+    if (!sourceLocal || !sourceRemote) return { status: "blocking-failure", reason: "clean merge materialization is not available under its exact version evidence" };
+
+    try {
+      await this.local.replaceFile(operation.path, sourceLocal, localBefore.observationToken);
+      const localAfter = await this.local.observe(operation.path);
+      if (localAfter.status !== "present" || !evidenceMatches(localAfter.content, version.content)) return { status: "uncertain", reason: "clean merge local result could not be verified against merged evidence" };
+
+      const remoteResult = await this.drive.update({ remoteObjectId, path: operation.path, content: sourceRemote, expectedEvidence: version.content });
+      if (!remoteResult.ok) return { status: "uncertain", reason: `clean merge local side was written but remote outcome was not durably verified: ${signalMessage(remoteResult.signal)}` };
+      const remoteAfter = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
+      if (!remoteAfter.ok || remoteAfter.value.status !== "present" || remoteAfter.value.remoteObjectId !== remoteObjectId || !evidenceMatches(remoteAfter.value.content, version.content)) return { status: "uncertain", reason: "clean merge remote result could not be verified against merged evidence" };
+
+      const finalEvidence = version.content ?? localAfter.content ?? remoteAfter.value.content;
+      const finalVersion: VersionReference = { path: operation.path, entityKind: "file", content: finalEvidence, remoteObjectId };
+      if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "verified clean merge could not be retained as future BASE" };
+      return success(operation, finalEvidence, `clean-merge:${String(remoteObjectId)}`);
+    } catch (error) {
+      return { status: "uncertain", reason: `clean merge mutation may be partial: ${error instanceof Error ? error.message : String(error)}` };
+    }
   }
 
   private async move(operation: PlannedOperation): Promise<ExecutionResult> {
