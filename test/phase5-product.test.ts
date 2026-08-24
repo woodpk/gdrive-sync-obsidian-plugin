@@ -21,7 +21,12 @@ const plan = (sizeBytes = 0): SynchronizationPlan => ({
     destructive: false,
     preconditions: [],
     reasons: [{ code: "test", summary: "large transfer" }],
-    contentVersion: { source: "remote", entityKind: "file", content: { sizeBytes }, remoteObjectId: contractId<"RemoteObjectId">("rid:1") },
+    contentVersion: {
+      path: contractId<"VaultPath">("large.bin"),
+      entityKind: "file",
+      content: { sizeBytes },
+      remoteObjectId: contractId<"RemoteObjectId">("rid:1"),
+    },
   }] : [],
 });
 
@@ -56,7 +61,7 @@ test("Phase 5 plugin data repository serializes settings and audit without clobb
   });
   const settings = { ...DEFAULT_SETTINGS, vaultIdentity: "vault:test", deviceIdentity: "device:test" };
   await repository.saveSettings(settings);
-  await repository.save([{ id: "a", event: "plan-created" }]);
+  await repository.save([{ id: "a", event: "plan-created", advisoryAtMs: 1 }]);
   assert.equal((await repository.loadSettings()).vaultIdentity, "vault:test");
   assert.equal((await repository.load()).length, 1);
 });
@@ -85,14 +90,15 @@ test("Phase 5 Web Locks lease excludes a concurrent live writer and releases cle
 });
 
 function blockedOperation(kind: PlannedOperation["kind"]): PlannedOperation {
+  const path = contractId<"VaultPath">("note.md");
   return {
     operationId: contractId<"OperationId">(`op:${kind}`),
     kind,
-    path: contractId<"VaultPath">("note.md"),
+    path,
     destructive: false,
     preconditions: [],
     reasons: [{ code: "test", summary: "contract blocker" }],
-    ...(kind === "upload-create" ? { contentVersion: { source: "local" as const, entityKind: "file" as const, content: { hash: "h", sizeBytes: 1 } } } : {}),
+    ...(kind === "upload-create" ? { contentVersion: { path, entityKind: "file" as const, content: { hash: contractId<"ContentHash">("h"), sizeBytes: 1 } } } : {}),
   };
 }
 
