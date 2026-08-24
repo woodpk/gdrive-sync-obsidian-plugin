@@ -1,5 +1,6 @@
 import type {
   AuthoritativeSuccessCommitter,
+  CheckpointId,
   CommitResult,
   OperationJournalEntry,
   PlannedOperation,
@@ -87,12 +88,12 @@ export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
     private readonly context: StateLoadContext,
   ) {}
 
-  async markPending(operation: PlannedOperation, expectedStateRevision?: StateRevision): Promise<CommitResult> {
-    return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "pending" }, expectedStateRevision);
+  async markPending(operation: PlannedOperation, expectedStateRevision?: StateRevision, checkpointId?: CheckpointId): Promise<CommitResult> {
+    return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "pending", checkpointId }, expectedStateRevision);
   }
 
-  async markUncertain(operation: PlannedOperation, expectedStateRevision?: StateRevision): Promise<CommitResult> {
-    return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "uncertain" }, expectedStateRevision);
+  async markUncertain(operation: PlannedOperation, expectedStateRevision?: StateRevision, checkpointId?: CheckpointId): Promise<CommitResult> {
+    return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "uncertain", checkpointId }, expectedStateRevision);
   }
 
   async commitVerifiedSuccess(operation: PlannedOperation, receipt: VerifiedExecutionReceipt, expectedStateRevision?: StateRevision): Promise<CommitResult> {
@@ -102,6 +103,7 @@ export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `trusted state unavailable during success commit: ${loaded.status}` };
     if (expectedStateRevision && loaded.state.stateRevision !== expectedStateRevision) return { status: "stale-state", actualRevision: loaded.state.stateRevision };
 
+    const priorJournal = loaded.state.operations.find(item => item.operationId === operation.operationId);
     const updatedEffectState = applySuccessfulOperation(loaded.state, operation, receipt);
     const newStateRevision = nextRevision(loaded.state.stateRevision);
     const updated: TrustedSynchronizationState = {
@@ -112,6 +114,7 @@ export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
         path: operation.path,
         status: "completed",
         verificationEvidenceRef: receipt.verificationEvidenceRef,
+        checkpointId: priorJournal?.checkpointId,
       }),
     };
     const saved = await this.store.saveTrusted(updated, loaded.state.stateRevision);
