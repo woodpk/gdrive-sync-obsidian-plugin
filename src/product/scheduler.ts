@@ -16,6 +16,8 @@ export class ProductSyncScheduler {
   private readonly unsubscribers: Array<() => void> = [];
   private started = false;
   private startupOpportunityIssued = false;
+  private lifecycleRun?: Promise<void>;
+  private lifecycleRunPending = false;
 
   constructor(
     private readonly local: LocalVaultPort,
@@ -27,9 +29,10 @@ export class ProductSyncScheduler {
     if (this.started) return;
     this.started = true;
     this.startupOpportunityIssued = false;
+    this.lifecycleRunPending = false;
     this.unsubscribers.push(this.local.onLifecycle(event => {
       if (event.kind === "vault-ready") this.issueInitialStartupOpportunity();
-      if (event.kind === "resume" && this.settings().startupResumeEnabled) void this.controller.runAutomatic("startup-resume");
+      if (event.kind === "resume") this.requestLifecycleAutomaticRun();
       if (event.kind === "suspend" || event.kind === "unload") void this.controller.request({ kind: "cancel-active-sync" });
     }));
     this.unsubscribers.push(this.local.onChange(() => {
@@ -53,6 +56,7 @@ export class ProductSyncScheduler {
     if (!this.started) return;
     this.started = false;
     this.startupOpportunityIssued = false;
+    this.lifecycleRunPending = false;
     if (this.changeTimer !== undefined) globalThis.clearTimeout(this.changeTimer);
     this.changeTimer = undefined;
     this.clearPeriodic();
@@ -62,7 +66,24 @@ export class ProductSyncScheduler {
   private issueInitialStartupOpportunity(): void {
     if (this.startupOpportunityIssued || !this.settings().startupResumeEnabled) return;
     this.startupOpportunityIssued = true;
-    void this.controller.runAutomatic("startup-resume");
+    this.requestLifecycleAutomaticRun();
+  }
+
+  private requestLifecycleAutomaticRun(): void {
+    if (!this.started || !this.settings().startupResumeEnabled) return;
+    if (this.lifecycleRun) {
+      this.lifecycleRunPending = true;
+      return;
+    }
+    this.lifecycleRun = this.controller.runAutomatic("startup-resume").finally(() => {
+      this.lifecycleRun = undefined;
+      if (!this.started || !this.lifecycleRunPending) {
+        this.lifecycleRunPending = false;
+        return;
+      }
+      this.lifecycleRunPending = false;
+      this.requestLifecycleAutomaticRun();
+    });
   }
 
   private installPeriodic(): void {
