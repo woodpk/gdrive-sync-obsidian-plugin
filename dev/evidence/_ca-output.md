@@ -161,3 +161,173 @@ The transfer contract change was made under the explicit supervisor-issued C1 co
 - Test result: `15 passed / 0 failed`.
 - Multi-chunk C1 test: executed and `PASS`.
 - The concrete SHA of this evidence update is verified after Git commits this file and is reported in the completion response.
+
+---
+
+# Stage 2A Build Session 02 / Phase 2 Evidence
+
+## Build Identification
+
+- Build/session: `Stage 2A Build Session 02 / Phase 2 — Core Synchronization Semantics and Durable State`
+- Repository: `woodpk/gdrive-sync-obsidian-plugin`
+- Assigned branch: `stage-2a-phase-2-core-sync-state`
+- Exact supervisor-approved baseline SHA: `e16719196269b4b31f8f1a4997722cdd1c916058`
+- Final verified implementation head before evidence update: `5be0dca6eb97d2842c63b16540d9c938dd96ecb6`
+- Implementation range: `e16719196269b4b31f8f1a4997722cdd1c916058..5be0dca6eb97d2842c63b16540d9c938dd96ecb6`
+- Additional hardening commits made during final review include `1d6b5cb0e6cc0da2bdb4520a5b80161d13635269`, `8f54f62f5be3551611454d6d9870dde80dd0b8f4`, `cda4ea7039ab357068bfdf5644a861988226605e`, `ee12169d7a1da69cd263dc82a56e90acb178c1c0`, `0bb8947aa2118fc15a6ddf9387a12ae2475b3829`, `80737eb54c6a35eb570da1e1347c2176836f4594`, `3e080a5df1149dc993484506407e1526c0b53a20`, `965dd2cc539b4c7eafa6c9ebad732827cb090b08`, and `5be0dca6eb97d2842c63b16540d9c938dd96ecb6`.
+- Pull request: `#3` (open, unmerged)
+- Final implementation verification workflow run: `32712075905`
+- Verification job: `97385435543`
+- PR merge/test SHA executed by that run: `2274a4dfc832a7e3fc2fbb114751d74a00ebebad`
+- Frozen Phase 1 contracts: `unchanged`
+
+## Phase 2 Implementation
+
+Implemented only the Phase 2-owned synchronization/state boundary:
+
+- deterministic LOCAL + REMOTE + BASE reconciliation planning over the frozen `PlanningInput`/`SynchronizationPlan` contract;
+- safe-union first-sync semantics, including one-sided copy, equal no-base no-op, divergent no-base conflict, and no initialization deletion authority;
+- timestamp-independent content/change classification;
+- conservative blocking for unreadable/inaccessible/unknown local or remote observations, incomplete/failed/unknown remote absence, untrusted base, identity ambiguity, and stale-device/tombstone resurrection;
+- three-way text merge and unresolved conflict provenance behind the frozen `ConflictResolver` contract;
+- opaque/binary conflict and delete-vs-modify preservation semantics;
+- stable-ID and trusted-content/history-based identity-preserving move classification, including explicit refusal when multiple candidates make identity ambiguous;
+- trusted both-side deletion represented as an absence-guarded no-op state transition that removes prior base/mapping and records a durable `deletedOn: "both"` tombstone only after verified commit;
+- attested recoverable-delete planning plus mass-destruction circuit breaking;
+- default destructive thresholds: `25` destructive operations, `20%` affected paths, and `3x` recent destructive average, with state-integrity/rebuild as an independent breaker signal;
+- approval scoped to the exact plan and a concrete recovery checkpoint; no force-sync bypass;
+- stale returning-device guards that prevent destructive propagation until reconciliation clears staleness;
+- bounded/configurable tombstone retention with a 90-day default, while prohibiting expiry when any known device is stale and retaining undated tombstones conservatively;
+- stable random device-ID generation using Web Crypto or an injected secure random source rather than hardware fingerprinting;
+- non-destructive device-removal state transition that preserves shared content/base/tombstone evidence;
+- mobile-neutral persistent synchronization state using a UTF-8 JSON integrity envelope and injectable byte-storage abstraction;
+- production mobile-safe `IndexedDbStateByteStorage`, including transactionally atomic compare-and-swap for concurrent state-writer detection and atomic record replacement;
+- schema/version and checksum integrity validation, internal-consistency validation, clone/restore identity checks, stale-revision/concurrent-write detection, backup/export, and migration assessment/migration-with-backup behavior;
+- migration compare-and-swap refusal if state changes after assessment/backup;
+- durable Drive change-cursor and known/stale-device metadata persistence;
+- pending/completed/uncertain operation-journal semantics with checkpoint provenance;
+- `CrashSafeExecutionCoordinator` enforcing precondition validation → pending journal → mutation/verification → authoritative verified-success commit, with stale-precondition re-plan signaling and uncertain-result journaling;
+- verified-success-only authoritative commit ordering, preserving checkpoint provenance through completion;
+- in-process run serialization plus an injectable cross-instance lease boundary, cancellation semantics, pause/resume, and deferred reconciliation signaling.
+
+No Phase 3 Google Drive/OAuth production implementation, Phase 4 Obsidian local/platform/configuration adapter, Phase 5 UI/orchestration, or real-device testing was added.
+
+## Engineering Decisions
+
+- Three-way merge: deterministic line-oriented BASE/LOCAL/REMOTE LCS-derived edit hunks; only provably non-overlapping/equivalent edits auto-merge. Overlapping incompatible edits remain unresolved.
+- Text auto-merge classification is deliberately limited to `.md` and `.txt`; other formats remain opaque/binary at this phase.
+- State serialization uses a platform-neutral UTF-8 JSON envelope with explicit schema version and integrity checksum. Production bytes are persisted in IndexedDB rather than Node/Electron/Windows-only storage.
+- State writer coordination uses optimistic revision checks plus byte-level transactional compare-and-swap in the production IndexedDB store so a writer cannot successfully replace state if another writer changed the exact source state after it was read.
+- Destructive-safety defaults are 25 operations, 20% of managed paths, and 3x recent destructive activity, with state-integrity/rebuild as an independent signal. They are conservative Phase 2 parameters subject to later integrated/stress validation.
+- Tombstone retention defaults to 90 days but cannot expire while any known device is stale; timestamps remain advisory and are not synchronization winner authority.
+- Proven local rename/move may use unique stable identity or exact trusted content-hash evidence; duplicate candidates are blocked rather than guessed.
+- Trusted both-side deletion uses the frozen `noop` vocabulary with explicit absence/base/completeness preconditions and a private reason code to drive the durable tombstone transition, avoiding any frozen-contract change.
+- Cross-process run exclusion remains behind the Phase 2 `RunLeasePort` semantic boundary so Phase 4/5 can supply the platform-specific durable lease without coupling the core to a concrete local adapter.
+
+## Verification Performed
+
+GitHub Actions workflow `Phase 1 CI`, run `32712075905`, job `97385435543` executed the complete repository gate on PR #3 at implementation head `5be0dca6eb97d2842c63b16540d9c938dd96ecb6`:
+
+- `npm ci` — `PASS`; 14 packages installed, 0 vulnerabilities reported.
+- `npm run typecheck` — `PASS`; `tsc --noEmit` completed successfully.
+- `npm test` — `PASS`; `65` tests executed, `65` passed, `0` failed, `0` cancelled, `0` skipped, `0` todo.
+- `npm run build` — `PASS`; `tsc -p tsconfig.build.json && node scripts/finalize-build.mjs` completed successfully.
+
+The final logs explicitly show the new Phase 2 hardening tests executing and passing, including stale-precondition mutation refusal, verified-success ordering, uncertain-operation journaling, ambiguous remote/local move refusal, stale-device destructive blocking, atomic concurrent-write detection, and both-deleted tombstone transition.
+
+Historical correction runs are retained as evidence rather than hidden:
+
+- run `32686088720` exposed an earlier planner TypeScript narrowing defect; repaired before later green gates;
+- run `32711664922` exposed a TypeScript narrowing defect introduced during final stale-device hardening; repaired in `0bb8947aa2118fc15a6ddf9387a12ae2475b3829` before the final green gate;
+- successful run `32712075905` is the authoritative implementation gate recorded here.
+
+Direct local cloning/npm execution was not usable because the customer-facing container could not resolve `github.com`; this is not a remaining verification blocker because the required GitHub Actions gate executed all repository commands successfully.
+
+## Acceptance-Criteria Mapping
+
+- Reconciliation matrix / safe union / one-sided and divergent content — `PASS`.
+- Both-deleted and no-base both-absent semantics, including durable trusted-deletion tombstone transition — `PASS`.
+- Local-only, remote-only, and concurrent modification classification — `PASS`.
+- Clock skew/advisory timestamp changes cannot select a winner — `PASS`.
+- Three-way clean merge and true text conflict preservation — `PASS`.
+- Binary conflict preservation and delete-vs-modify preservation — `PASS`.
+- Attested local/remote deletion and no-base non-deletion — `PASS`.
+- Unreadable, inaccessible, and unknown local observations cannot authorize deletion — `PASS`.
+- Partial, failed, and unknown remote enumeration cannot authorize remote-absence deletion — `PASS`.
+- Recovery-required state disables destructive propagation — `PASS`.
+- Identity-preserving move, unique historical hash recognition, and ambiguous candidate refusal — `PASS`.
+- Empty-folder entity-kind semantics — `PASS`.
+- Tombstone + stale-device resurrection blocking — `PASS`.
+- Returning stale current device cannot authorize destructive propagation — `PASS`.
+- Bounded/configurable tombstone retention and stale-device retention safety — `PASS`.
+- Ordinary deletion auto-eligibility versus suspicious destructive-plan approval/checkpoint requirement — `PASS`.
+- Circuit-breaker absolute-count, percentage, abnormal-divergence, and state-integrity/rebuild signals — `PASS`.
+- Reviewed destructive approval is scoped to exact plan and concrete recovery checkpoint — `PASS`.
+- True new install versus missing expected state — `PASS`.
+- Malformed, truncated, internally inconsistent, integrity-failed, and incompatible state recovery — `PASS`.
+- Clone/restore suspicion and stale state-revision write detection — `PASS`.
+- Atomic concurrent state-write detection after read but before write — `PASS`.
+- Production mobile-safe IndexedDB state persistence compiles under the runtime/mobile architecture guard — `PASS`.
+- Stable random device identity without hardware fingerprinting — `PASS`.
+- Drive change cursor and known/stale-device state persistence — `PASS`.
+- Non-destructive device removal — `PASS`.
+- Migration assessment, backup-before-migration, unsafe downgrade refusal, and concurrent-change migration refusal semantics — `PASS` at the Phase 2 storage/policy level.
+- Diagnostic export excludes authentication secret/full-content categories by explicit projection — `PASS`.
+- Pending/uncertain/completed operation journal with checkpoint provenance — `PASS`.
+- Preconditions are validated before mutation; stale preconditions prevent execution and require re-plan — `PASS`.
+- Durable integrity-verified success ordering and checkpoint preservation — `PASS`.
+- Uncertain mutation outcome is journaled uncertain and never becomes authoritative synchronized state — `PASS`.
+- Run serialization, lease exclusion semantics, cancellation, pause, and later-reconciliation signal — `PASS`.
+- Mobile runtime import guard / no Node-Electron-Windows runtime dependency — `PASS` within the 65-test repository suite.
+- Frozen `src/contracts/**` remained unchanged — `PASS` by baseline-to-head Git compare.
+- No Phase 3/4 concrete adapter dependency was introduced — `PASS` by source/change-set inspection and compilation.
+- No credentials or external telemetry were introduced — `PASS` by source/change-set inspection and existing secret/mobile safety tests.
+
+The frozen `PlanningInput` contract contains no explicit exclusion/out-of-scope marker; therefore the acceptance phrase “excluded/out-of-scope signals when represented in the supplied planning input” is not independently applicable in Phase 2 beyond respecting the snapshots actually supplied by adapter boundaries. No frozen-contract revision was required.
+
+## Files Created
+
+Derived from Git compare `e16719196269b4b31f8f1a4997722cdd1c916058...5be0dca6eb97d2842c63b16540d9c938dd96ecb6`:
+
+- `src/core/commit-coordinator.ts`
+- `src/core/conflict-resolver.ts`
+- `src/core/destructive-safety.ts`
+- `src/core/execution-coordinator.ts`
+- `src/core/planner.ts`
+- `src/core/production-planner.ts`
+- `src/core/run-coordinator.ts`
+- `src/state/indexeddb-state-storage.ts`
+- `src/state/persistent-state-store.ts`
+- `src/state/state-policy.ts`
+- `test/phase2-conflict.test.ts`
+- `test/phase2-execution.test.ts`
+- `test/phase2-planner-edge.test.ts`
+- `test/phase2-planner.test.ts`
+- `test/phase2-safety-policy.test.ts`
+- `test/phase2-state-hardening.test.ts`
+- `test/phase2-state.test.ts`
+
+## Files Modified
+
+- `tsconfig.test.json`
+- `dev/evidence/_ca-output.md` (this Phase 2 evidence section)
+
+## Files Deleted
+
+None.
+
+## Frozen-Contract Status
+
+`UNCHANGED` — the baseline-to-head compare contains no file under `src/contracts/**`. No supervisor-approved contract revision was required.
+
+## Deviations / Limitations / Deferred Work
+
+- The assigned branch was discovered already containing Phase 2 work after creation; the implementation was therefore repository-grounded, reviewed, repaired, and hardened in place rather than discarded. No force reset or overwrite of unrelated branch work was performed.
+- CI-detected TypeScript defects encountered during implementation/hardening were repaired before the final green implementation gate; failed runs are recorded above.
+- Live Google Drive/OAuth, concrete Obsidian filesystem/configuration behavior, final product orchestration/UI, and Windows/iPhone real-device verification are intentionally deferred to their assigned later phases.
+- Numeric destructive thresholds, tombstone-retention duration, and the merge implementation are Phase 2 engineering decisions and remain subject to later integrated/stress validation; they do not weaken the fixed target semantics.
+- Cross-process/device run-lease durability depends on the Phase 4/5 host supplying the platform-specific production `RunLeasePort`; Phase 2 defines/tests the exclusion semantics and separately provides transactional IndexedDB durability for synchronization state itself.
+
+## Worker Status
+
+`COMPLETE` for Stage 2A Build Session 02 / Phase 2. The implementation head passed the required repository gate before this evidence-only `[skip ci]` commit. This is not whole-product completion and does not claim supervisory approval.
