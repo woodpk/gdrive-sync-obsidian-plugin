@@ -50,6 +50,7 @@ export interface ProductControllerOptions {
   readonly onTrustedBaselineEstablished?: () => Promise<void>;
   readonly recoveryActive?: () => boolean;
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
+  readonly onFullReconciliationCompleted?: () => Promise<void>;
 }
 interface PlannedRun {
   readonly plan: SynchronizationPlan;
@@ -130,6 +131,10 @@ function numbered(path: VaultPath, number: number): VaultPath {
   const dot = raw.lastIndexOf(".");
   return cid<"VaultPath">(`${dot > slash ? raw.slice(0, dot) : raw} (${number})${dot > slash ? raw.slice(dot) : ""}`) as VaultPath;
 }
+function authenticationReason(reason: string): string | undefined {
+  const prefix = "authentication-required:";
+  return reason.startsWith(prefix) ? reason.slice(prefix.length) || "authorization-required" : undefined;
+}
 
 export class IntegratedProductController implements ProductControlPort {
   private surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
@@ -158,7 +163,6 @@ export class IntegratedProductController implements ProductControlPort {
       return;
     }
     const plan = await this.createPlan(trigger, false, false);
-    // Recovery is always review-gated, even if its safe-union operations would otherwise be auto-eligible.
     if (!plan || this.planned?.assembly.reconstruction || plan.executionDisposition !== "safe-auto-eligible") return;
     const gate = this.options.automaticExecutionAllowed?.(plan) ?? { allowed: true };
     if (!gate.allowed) {
@@ -296,7 +300,11 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
-        if (result.status === "blocked" && this.options.executor.failureScope(operation, result.reason) === "path") { partial = true; continue; }
+        if (result.status === "blocked") {
+          const auth = authenticationReason(result.reason);
+          if (auth) { this.setStatus({ kind: "authentication-required", reason: auth }); globalFailure = true; break; }
+          if (this.options.executor.failureScope(operation, result.reason) === "path") { partial = true; continue; }
+        }
         if (result.status === "stale-precondition" || result.status === "stale-state") {
           needsReplan = true; globalFailure = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break;
         }
@@ -318,10 +326,12 @@ export class IntegratedProductController implements ProductControlPort {
           const trusted = await this.options.stateStore.load(this.options.stateContext);
           if (trusted.status === "trusted") {
             outcome = "complete";
-            if (planned.assembly.reconstruction) {
+            const completeReviewedRecovery = Boolean(planned.assembly.reconstruction && planned.reviewed && planned.assembly.nextCursor);
+            if (completeReviewedRecovery) {
               await this.options.onRecoveryGateChanged?.(false);
               await this.audit("recovery-completed");
             }
+            if (planned.assembly.mode === "full") await this.options.onFullReconciliationCompleted?.();
             if (planned.reviewed) await this.options.onTrustedBaselineEstablished?.();
           }
         }
@@ -329,7 +339,7 @@ export class IntegratedProductController implements ProductControlPort {
         outcome = "partial";
         const conflicts = this.surface.conflicts.length;
         const blocked = planned.plan.operations.filter(operation => operation.kind === "blocked-unsafe").length;
-        if (planned.assembly.reconstruction) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
+        if (planned.assembly.reconstruction || this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
         else if (conflicts) this.setStatus({ kind: "conflict-present", conflictCount: conflicts });
         else this.setStatus({ kind: "error", code: "path-blocked", message: `Synchronization made safe partial progress; ${blocked || 1} path(s) remain blocked and the Drive cursor was not advanced.` });
       }
@@ -337,7 +347,7 @@ export class IntegratedProductController implements ProductControlPort {
       this.runEvidence = undefined;
       const finished = await this.runs.finishRun();
       if (finished.reconcileAgain && !this.options.recoveryActive?.()) void this.runAutomatic("local-change");
-      else if (this.surface.status.kind === "syncing") this.setStatus({ kind: "idle-ready" });
+      else if (this.surface.status.kind === "syncing") this.setStatus(this.options.recoveryActive?.() ? { kind: "recovery-required", reason: "recovery reconstruction is incomplete" } : { kind: "idle-ready" });
     }
     return outcome;
   }
@@ -358,12 +368,14 @@ export class IntegratedProductController implements ProductControlPort {
       planId: semanticPlanId({ trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired }),
       trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired,
     };
-    this.planned = { plan: resolutionPlan, assembly: { ...current.assembly, nextCursor: undefined }, reviewed: false };
+    const resolutionAssembly: AssembledPlanningInput = { ...current.assembly, nextCursor: undefined, reconstruction: false };
+    this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false };
     if (await this.executePlanned(true) !== "complete") return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
     this.conflictRegistry.delete(String(id));
     this.surface = { ...this.surface, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
     await this.audit("conflict-resolved", { path: assessment.path, reasonCode: resolution.kind });
-    this.setStatus(this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
+    if (this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "conflict resolution was preserved; run a fresh reviewed Verify/Reconcile before recovery can complete" });
+    else this.setStatus(this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
     return { status: "accepted" };
   }
 
@@ -386,7 +398,7 @@ export class IntegratedProductController implements ProductControlPort {
     throw new Error("unable to allocate a collision-free conflict-copy path");
   }
 
-  private async resolutionOperations(id: ConflictId, assessment: Exclude<ConflictAssessment, { kind: "none" }>, resolution: ConflictResolution): Promise<readonly PlannedOperation[]> {
+  private async resolutionOperations(_id: ConflictId, assessment: Exclude<ConflictAssessment, { kind: "none" }>, resolution: ConflictResolution): Promise<readonly PlannedOperation[]> {
     const path = assessment.path;
     if (assessment.kind === "clean-merge") {
       if (resolution.kind !== "accept-clean-merge") return [];
