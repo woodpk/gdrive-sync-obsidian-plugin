@@ -5,6 +5,7 @@ export interface RetryPolicy { readonly maxAttempts: number; readonly baseDelayM
 export const DEFAULT_RETRY_POLICY: RetryPolicy = { maxAttempts: 5, baseDelayMs: 500, maxDelayMs: 15_000, maxConcurrency: 3 };
 export type Sleeper = (ms: number) => Promise<void>;
 export type Random = () => number;
+export type PortableRequestInit = Omit<RequestInit, "body"> & { readonly body?: BodyInit | Uint8Array };
 
 class Semaphore {
   private active = 0; private readonly waiting: Array<() => void> = [];
@@ -30,6 +31,10 @@ async function errorReason(response: Response): Promise<string> {
 }
 function quotaReason(reason: string): boolean { return /storageQuotaExceeded|quotaExceeded/i.test(reason) && !/rateLimit/i.test(reason); }
 function rateReason(reason: string): boolean { return /rateLimitExceeded|userRateLimitExceeded|sharingRateLimitExceeded/i.test(reason); }
+function portableBody(body: PortableRequestInit["body"]): BodyInit | null | undefined {
+  if (!(body instanceof Uint8Array)) return body;
+  return body.slice().buffer as ArrayBuffer;
+}
 
 export class GoogleHttpTransport {
   private readonly semaphore: Semaphore;
@@ -42,7 +47,7 @@ export class GoogleHttpTransport {
     private readonly now: () => number = () => Date.now(),
   ) { this.semaphore = new Semaphore(Math.max(1, policy.maxConcurrency)); }
 
-  request(url: string, init: RequestInit = {}, retry = true): Promise<DriveResult<Response>> {
+  request(url: string, init: PortableRequestInit = {}, retry = true): Promise<DriveResult<Response>> {
     return this.semaphore.run(async () => {
       for (let attempt = 0; attempt < this.policy.maxAttempts; attempt++) {
         const token = await this.oauth.accessToken();
@@ -50,7 +55,8 @@ export class GoogleHttpTransport {
         let response: Response;
         try {
           const headers = new Headers(init.headers); headers.set("authorization", `Bearer ${token}`);
-          response = await this.fetcher(url, { ...init, headers });
+          const { body, ...rest } = init;
+          response = await this.fetcher(url, { ...rest, headers, body: portableBody(body) });
         } catch {
           if (!retry || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "transient-failure", detail: "network-failure" } };
           await this.delay(attempt); continue;
