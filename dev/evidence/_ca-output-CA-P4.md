@@ -2,172 +2,263 @@
 
 ## Build Identification
 
-- Worker: `agt-CA-P2-03`
+- Worker: `agt-CA-P2-04`
 - Build/session: `Stage 2A Build Session 04 / Phase 4 — Obsidian Local, Platform, and Configuration Boundary`
+- Recovery directive: `CA-P4 RECOVERY DIRECTIVE — RESOLVE PHASE 4 PLATFORM BLOCKERS`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Assigned branch: `stage-2a-phase-4-obsidian-local`
-- Exact supervisor-approved baseline SHA: `e16719196269b4b31f8f1a4997722cdd1c916058`
-- Phase 4 branch head before creation of this dedicated evidence file: `eb9ecd71183fc54f4e731d8ed3aec6780a510f04`
-- Verification PR: `#4` — `Stage 2A Phase 4: Obsidian local platform boundary`
-- Latest successful verification workflow run before creation of this dedicated evidence file: `32712821933`
-- Latest successful verification job before creation of this dedicated evidence file: `97387694931`
-- Frozen shared contracts: `UNCHANGED`
+- Pull request: `#4` — open, draft, unmerged
+- Exact supervisor-approved Phase 4 baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`
+- Pre-recovery branch SHA: `6250d59832939859037578e0cea8bb4d9d329965`
+- Recovery implementation SHA verified before this evidence update: `39e8ade1961d3d1a8c12183a3f812c2e71ec81b9`
+- Recovery verification workflow run: `32722967354`
+- Recovery verification job: `97418107585`
+- Frozen `src/contracts/**`: `UNCHANGED`
 
-Creating this dedicated evidence file necessarily produces a later branch commit and may trigger a later PR CI run. The identifiers above record the final implementation/evidence state that existed immediately before this file was created rather than fabricating a future self-referential commit/run identifier.
+The evidence-file update itself creates a later branch commit and therefore may trigger a later PR workflow run. The identifiers above refer to the executable recovery implementation that was fully verified before this evidence text was committed; the final worker handoff records the later evidence-commit SHA and final branch/run state.
 
-## Implementation Summary
+## Authority Re-Ingestion
 
-Phase 4 production code provides the frozen `LocalVaultPort` behind an Obsidian-mobile-safe boundary without implementing Phase 2 synchronization policy, Phase 3 Drive/OAuth behavior, or Phase 5 orchestration.
+Before recovery changes, the worker re-read the current branch versions of:
 
-Implemented capabilities include:
+- `dev/planning-and-building/agent-led-software-product-construction-manual.md`
+- `dev/planning-and-building/target-system-specification.md`
+- `dev/planning-and-building/decision-register.yaml`
+- `dev/planning-and-building/stage-1-build-decomposition.md`
+- `dev/planning-and-building/phase-1-shared-contracts.md`
 
-- whole-vault raw `DataAdapter.list()` enumeration, including ordinary text, unknown/binary extensions, hidden files, and empty directories;
-- explicit complete/partial enumeration truthfulness;
-- explicit visible/configurable exclusion policy with conservative operational-noise defaults and a runtime-discovered active-configuration-directory boundary;
-- selective configuration classification with a deliberately small portable allowlist, unknown-by-default behavior, device-local workspace/cache/runtime handling, and protected secret/device/sync-state handling;
-- Windows/iOS comparison/path preflight for separators, Unicode NFC equivalence, case collisions, invalid/reserved Windows names, traversal/external references, component limits, and conservative path length;
-- local observation that distinguishes confirmed absence, present stable/unstable objects, unreadable, inaccessible, and unknown states;
-- opaque observation tokens for stale-precondition checking without treating timestamps as synchronization authority;
-- staged mobile-compatible create/replace using `writeBinary` + incremental `appendBinary`, with backup/rollback protection of a previously valid destination;
-- explicit folder creation for empty-directory preservation;
-- Obsidian `FileManager.renameFile()` for local moves so Obsidian link-update behavior remains available;
-- Obsidian `FileManager.trashFile()` for recoverable deletion according to user trash configuration;
-- local create/modify/delete/rename event seams with startup suppression until `workspace.onLayoutReady()`;
-- vault-ready, suspend, resume, and unload lifecycle seams;
-- non-destructive disposal and no remote/auth/network dependency for ordinary local enumeration/mutation behavior.
+PR #4 and the current Phase 4 implementation were then inspected directly. No frozen-contract defect was found. The existing `BinaryContentSource` and `LocalVaultPort` contracts already permit the required platform-specific implementation strategies behind the product boundary.
 
-## Current Obsidian API / Platform Basis
+## Former Blocker 1 — Strict Bounded-Memory iOS Local Reads
 
-The installed project package is Obsidian `1.13.1`; implementation choices were checked against the installed/current TypeScript definitions and current public Obsidian documentation.
+### Investigation Performed
 
-- `Vault.configDir` is used as the runtime source of the active configuration directory; policy does not assume `.obsidian`.
-- Mobile-required I/O stays on the platform-neutral `DataAdapter` and `FileManager` surfaces; no Node `fs`, Node streams, Electron, PowerShell, .NET, or Windows-only runtime import was introduced.
-- Current `DataAdapter` exposes `writeBinary` and `appendBinary`; Phase 4 consumes `BinaryContentSource` incrementally for writes.
-- `FileManager.renameFile()` is the Obsidian-supported rename surface intended to preserve link-management semantics.
-- `FileManager.trashFile()` applies Obsidian trash semantics rather than hard-deleting ordinary synchronized content.
-- The current public `Stat` contract exposes `type: 'file' | 'folder'` plus ordinary file metadata and does not expose a portable symlink/junction/alias discriminator.
+The recovery investigated the required strategies in order.
 
-## Large-File Read Evidence and Platform Blocker
+#### Strategy A — HTTP byte ranges
 
-The production `readFile()` intentionally does **not** call `DataAdapter.readBinary()`, because the mobile `CapacitorAdapter.readBinary()` contract returns a whole `ArrayBuffer` and therefore cannot prove bounded large-file memory use.
+The installed project package is Obsidian `1.13.1`. Current Obsidian Help credits identify the mobile host as using Capacitor `5.x`.
 
-Instead, production code lazily opens `fetch(adapter.getResourcePath(path))`, requires a `ReadableStream`, and yields stream chunks through the frozen `BinaryContentSource`. Automated tests prove that:
+The Capacitor iOS `WebViewAssetHandler.swift` source was inspected at relevant versions:
 
-- fetching does not begin merely by obtaining `LocalReadResult`;
-- production `readBinary()` is not invoked by the selected read path;
-- a streaming runtime can expose multiple incremental chunks through `BinaryContentSource`.
+- Capacitor `5.0.0` and `5.7.8`: the HTTP `Range`/`206 Partial Content` path is gated by `isMediaExtension(...)`; ordinary `.md`, `.json`, `.bin`, arbitrary unknown extensions, and many other BRAIN file types fall through to a complete-file `Data(contentsOf:)` response with HTTP `200`.
+- Capacitor `6.2.1`: the handler accepts a `Range` header independently of the media-extension whitelist and uses `FileHandle.seek` plus bounded `readData(ofLength:)`, returning HTTP `206`, `Content-Range`, and `Content-Length`.
 
-However, current public Obsidian mobile evidence reports that iOS may deliver a local resource fetch as one entire-file stream chunk. That means the selected public mobile-safe API does **not** establish the strict product guarantee of bounded memory for arbitrarily large iOS local reads. Wrapping that one large chunk in a lazy `AsyncIterable` would not change the actual memory behavior, so Phase 4 does not claim `XFER-006`/`XFER-007` complete.
+Therefore a correct plugin can use explicit byte ranges only when the actual host proves proper partial-content semantics. A generic `fetch(...).body` stream is not evidence of bounded memory.
 
-This is a concrete **platform blocker**, not a frozen-contract defect: the frozen `BinaryContentSource` is capable of incremental consumption, but the currently supported public iOS source API does not guarantee bounded incremental production. Resolving it requires a supervisor-approved platform approach that provides true ranged/chunked local read on iOS; no frozen-contract change is currently requested.
+### Implementation Chosen
 
-## External-Reference / Symlink Platform Limitation
+`src/local/obsidian-local-vault.ts` now implements `BinaryContentSource.openChunks()` as sequential explicit byte-range requests with a default maximum range of 256 KiB.
 
-`FILE-007` requires unsupported symlink/junction/alias/external references never to be followed outside the vault. Phase 4 blocks path traversal, absolute/URL/drive-path references, and other explicit external forms. The current mobile-safe public `DataAdapter.stat()`/`Stat` surface, however, exposes only `file` versus `folder` and provides no portable symlink/junction/alias discriminator. Therefore the worker cannot objectively prove raw-filesystem external-reference detection on both Windows and iOS using only the supported frozen mobile-safe boundary.
+For every range it:
 
-This is recorded as a second platform limitation requiring supervisory resolution or later platform evidence. The implementation does not add a desktop-only `FileSystemAdapter` escape hatch because doing so would violate the first-class iOS boundary.
+- checks the stale observation token before requesting bytes;
+- requests an exact `Range: bytes=start-end` interval;
+- requires HTTP `206`;
+- requires an exact matching `Content-Range` with the expected total file size;
+- validates `Content-Length` when present;
+- rejects an individual response/yield that exceeds the configured bound;
+- requires exactly the requested number of bytes;
+- re-checks stale-source evidence between ranges and after final consumption;
+- never falls back to `DataAdapter.readBinary()`.
 
-## Verification Performed
+A runtime that ignores `Range` and returns HTTP `200` is rejected with `LocalPlatformCapabilityError("bounded-local-read", ...)`. The implementation therefore no longer silently mistakes a whole-file WebView response for a bounded stream.
 
-Authoritative GitHub Actions run `32712821933`, job `97387694931`, executed the required repository gate against PR #4 and completed successfully:
+### Strategy B — Native/internal copy to a range-capable temporary resource
 
-- `npm ci` — `PASS`; 14 packages installed, 15 audited, 0 vulnerabilities reported.
-- `npm run typecheck` — `PASS`; `tsc --noEmit` completed successfully.
-- `npm test` — `PASS`; 40 tests discovered/executed, 40 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo.
-- `npm run build` — `PASS`; `tsc -p tsconfig.build.json && node scripts/finalize-build.mjs` completed successfully.
+Capacitor 5 Filesystem documentation exposes `copy(...)`, but the public Obsidian `DataAdapter.copy(...)` contract does not establish that the current Obsidian mobile adapter performs that operation as a native bounded copy rather than through another implementation path. No public Obsidian `CapacitorAdapter` implementation or stock-device evidence available to this worker proves the required memory behavior.
 
-Phase 4-specific executed tests include coverage for:
+Additionally, using an extension-masqueraded temporary media file would require proving crash-safe cleanup and that the temporary representation can never become synchronized or persistent user content. Those requirements cannot be established from the current public Obsidian adapter contract alone.
 
-- raw text/binary/unknown-extension/hidden/empty-folder enumeration and active-config/default-noise separation;
-- complete versus partial enumeration;
-- confirmed absent versus inaccessible/unreadable/unknown observations;
-- unstable mid-write file rejection;
-- stale observation tokens;
-- lazy resource streaming without production `readBinary()`;
-- multi-chunk incremental writes;
-- stage/backup rollback on replacement failure;
-- storage-exhaustion-style staging failure preserving the existing destination byte-for-byte;
-- empty-folder creation;
-- `FileManager` move/trash behavior;
-- startup event suppression, local change/rename events, suspend/resume seams, unload, and non-destructive disposal;
-- separator, reserved/invalid-name, external-reference, case-collision, Unicode-collision, and path-length validation;
-- configuration portable/unknown/device-local/protected classification;
-- existing repository mobile-import guard proving no Node/Electron/Windows-only runtime imports.
+Strategy B was therefore not implemented on speculation.
 
-## Acceptance-Criteria Mapping
+### Strategy C — Other existing mobile-native capability
 
-- Whole-vault enumeration and explicit completeness: `PASS` in automated tests for supported `DataAdapter` objects.
-- Unknown/binary files, hidden files, empty directories: `PASS`.
-- Explicit/configurable exclusions and runtime config-directory separation: `PASS`.
-- Selective config classifier and secret/device/sync-state protection: `PASS`.
-- Windows/iOS path comparison/collision/name preflight: `PASS` for representable path conditions.
-- Present/absent/unreadable/inaccessible/unknown distinction: `PASS`.
-- Stability/precondition token mechanics: `PASS`.
-- Incremental bounded write consumption: `PASS` using `appendBinary`.
-- Safe staged create/replace and rollback preservation: `PASS` in deterministic failure tests.
-- Recoverable trash and Obsidian-supported move: `PASS` at API-boundary tests.
-- Local change and lifecycle seams: `PASS` at automated boundary tests; real-device lifecycle behavior remains unverified.
-- Offline/local-first independence from Drive/auth: `PASS` architecturally; local adapter has no Drive/OAuth dependency.
-- Non-destructive unload: `PASS`.
-- BRAIN asset boundary: `PASS` architecturally; Phase 4 contains no remote asset repository integration or semantic/AI asset handling.
-- Strict bounded-memory iOS local read: `BLOCKED` by current public mobile API behavior described above.
-- Portable symlink/junction/alias detection sufficient to prove `FILE-007`: `BLOCKED` by the current public mobile-safe `Stat` surface described above.
+Capacitor 5 Filesystem's public `readFile(...)` API is whole-file and has no chunk size, byte offset, or byte length controls. Capacitor added native `readFileInChunks(...)` only in `7.1.0`, and offset/length partial reads only in `8.1.0`. Current Obsidian documents Capacitor `5.x`.
 
-## Real-Platform Evidence
+No supported Obsidian plugin API was found that exposes a stock-mobile native chunked/offset file primitive in the current host. No undocumented `window.Capacitor` global or arbitrary native plugin was assumed.
 
-No physical Windows Obsidian or iPhone/iOS Obsidian instance was available to this worker through the permitted tools. No device evidence is fabricated.
+### Tests Added / Updated
 
-Carry forward to Phase 5/6 real-device validation:
+`test/obsidian-local-vault.test.ts` now objectively proves:
 
-- Windows and iPhone startup/vault-ready/suspend/resume behavior;
-- actual Obsidian link-update behavior after a remote-requested local rename;
-- user-selected local trash behavior;
-- storage exhaustion behavior on physical platforms;
-- local-resource stream chunk behavior and memory profile on current iOS Obsidian;
-- any platform-native evidence capable of distinguishing symlink/junction/alias objects without a desktop-only dependency.
+- obtaining `LocalReadResult` performs no eager fetch;
+- sequential bounded ranges reconstruct exact original bytes;
+- each produced unit stays within the configured range bound;
+- the exact range progression is observable;
+- HTTP `200` / ignored Range is rejected rather than accepted;
+- malformed `Content-Range` evidence is rejected;
+- stale-source validation works before consumption and between ranges;
+- production `readBinary()` whole-file fallback is not invoked.
 
-## Actual Git Change Set
+### Blocker Status
 
-Created implementation/test files:
+**REMAINS — DEMONSTRATED STOCK-iOS PLATFORM LIMITATION.**
 
+The plugin-side implementation is now safe and fail-closed, but current stock Obsidian Mobile's documented Capacitor 5.x host cannot provide strict bounded reads for arbitrary BRAIN file extensions through `getResourcePath()`, and its public Filesystem generation lacks chunk/offset reads.
+
+The smallest platform decision required is one of:
+
+1. require a stock Obsidian Mobile host whose embedded Capacitor local-resource handler supports arbitrary-extension HTTP byte ranges (Capacitor 6.x behavior or later), and validate that behavior on the supported Obsidian release; or
+2. require Obsidian Mobile to expose a supported native chunked/offset local-read primitive equivalent to Capacitor Filesystem `readFileInChunks` / offset-length reads.
+
+Without one of those host capabilities, `XFER-006`/`XFER-007` cannot truthfully be satisfied for arbitrary large iOS files.
+
+## Former Blocker 2 — Symlink / Junction / Alias / External-Reference Safety
+
+### Investigation Performed — Desktop
+
+Current Obsidian API definitions expose the desktop `FileSystemAdapter` and `getBasePath()`. The recovery therefore split the low-level implementation by platform rather than forcing desktop through the mobile metadata surface.
+
+### Desktop Implementation Chosen
+
+New desktop-only modules:
+
+- `src/local/desktop-external-reference-guard.ts`
+- `src/local/desktop-local-vault.ts`
+
+The desktop guard uses isolated Node filesystem/path APIs and:
+
+- derives/canonicalizes the vault base path;
+- walks each existing path component with `lstat` before traversal;
+- rejects symbolic-link/junction components (`isSymbolicLink()`; Windows junctions are represented through the link/reparse filesystem surface);
+- resolves existing components with `realpath` and rejects canonical paths outside the canonical vault root, covering other filesystem indirection/reparse cases that resolve externally;
+- permits an uncreated mutation target only after every existing ancestor passes the same checks.
+
+`ObsidianLocalVaultAdapter` now has a private Phase-4-only `ExternalReferenceGuard` seam. Observation/traversal and mutation source/target paths consult this guard before following the path. This does not change any frozen contract.
+
+`src/local/desktop-local-vault.ts` constructs the local adapter with `DesktopExternalReferenceGuard` from the desktop adapter's `getBasePath()`.
+
+### Mobile Import Isolation
+
+`test/mobile-safety.test.ts` was strengthened so that:
+
+- Node/Electron/Windows-only imports remain prohibited in every mobile-required runtime source file;
+- Node filesystem imports are confined to the declared desktop-only guard module;
+- the mobile-neutral `obsidian-local-vault.ts` cannot import the desktop factory/guard;
+- frozen contract secret-field checks remain intact.
+
+### Desktop Tests Added
+
+`test/desktop-external-reference-guard.test.ts` proves:
+
+- ordinary files/directories and safe new targets are accepted;
+- a real filesystem symlink to an outside directory is blocked before traversal;
+- a Windows-style junction/reparse link indication is blocked;
+- non-link canonical resolution outside the vault is blocked.
+
+`test/obsidian-local-vault.test.ts` also proves the injected guard prevents folder traversal before adapter observation/mutation proceeds.
+
+### Investigation Performed — iOS/Mobile
+
+The current public Obsidian `DataAdapter.stat()`/`Stat` contract exposes ordinary `file`/`folder` metadata, not `lstat`, `readlink`, symlink/junction/alias metadata, or canonical resolved paths.
+
+Generic iOS sandboxing cannot establish the required invariant. Obsidian's current official help explicitly documents that symlinks and junctions can be placed in a vault specifically to store files outside the vault. Community reports also document symbolic links working on iPhone/iPad. Therefore Condition 2 (outside traversal is architecturally impossible) cannot be claimed.
+
+No supported stock-Obsidian-mobile plugin capability was found that supplies `lstat`/`readlink`/`realpath`-equivalent evidence sufficient for Condition 1. The current Capacitor 5 Filesystem `stat` surface likewise reports only file/directory metadata.
+
+### Blocker Status
+
+- **Windows/Desktop: RESOLVED** behind an isolated desktop-specific guard.
+- **iOS/Mobile: REMAINS — DEMONSTRATED STOCK-iOS PLATFORM LIMITATION.**
+
+The smallest platform/product decision required is one of:
+
+1. require Obsidian Mobile to expose a supported link-aware/canonical-path primitive (`lstat`/`readlink`/`realpath` equivalent) that allows the plugin to prove a vault object does not resolve outside the synchronization boundary; or
+2. change the supported iOS product environment so that the absence of externally resolving vault references is an enforceable and independently verifiable precondition before synchronization can run.
+
+Without one of those decisions/capabilities, `FILE-007` cannot truthfully be proved on current stock iOS.
+
+## Recovery Verification
+
+Authoritative GitHub Actions run `32722967354`, job `97418107585`, checked out PR #4 merge/test SHA `f7e3eb828722686327b251d6c606e391f37d0a9b` and executed the complete repository gate.
+
+- `npm ci` — **PASS**; 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck` — **PASS**; `tsc --noEmit` completed successfully.
+- `npm test` — **PASS**; 50 tests executed, 50 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo.
+- `npm run build` — **PASS**; `tsc -p tsconfig.build.json && node scripts/finalize-build.mjs` completed successfully.
+
+An earlier recovery CI run `32722833715` correctly failed typecheck on three new test-fixture `Response` body typings. Those test-only typing defects were repaired before the successful authoritative run above.
+
+## Actual Git-Derived Change Inventory
+
+The inventories below come from GitHub commit comparison, not recollection.
+
+### Recovery-Only Compare
+
+Comparison: `6250d59832939859037578e0cea8bb4d9d329965...39e8ade1961d3d1a8c12183a3f812c2e71ec81b9`
+
+Created:
+
+- `src/local/desktop-external-reference-guard.ts`
+- `src/local/desktop-local-vault.ts`
+- `test/desktop-external-reference-guard.test.ts`
+
+Modified:
+
+- `src/local/obsidian-local-vault.ts`
+- `test/mobile-safety.test.ts`
+- `test/obsidian-local-vault.test.ts`
+
+Deleted:
+
+- none
+
+This evidence file is additionally modified by the current evidence commit.
+
+### Complete Phase 4 Compare Against Supervisor Baseline
+
+Comparison: `e16719196269b4b31f8f1a4997722cdd1c916058...39e8ade1961d3d1a8c12183a3f812c2e71ec81b9`
+
+Created:
+
+- `dev/evidence/_ca-output-CA-P4.md`
 - `src/local/config-policy.ts`
+- `src/local/desktop-external-reference-guard.ts`
+- `src/local/desktop-local-vault.ts`
 - `src/local/exclusions.ts`
 - `src/local/obsidian-local-vault.ts`
 - `src/local/path-policy.ts`
+- `test/desktop-external-reference-guard.test.ts`
 - `test/local-failure-semantics.test.ts`
 - `test/local-policy.test.ts`
 - `test/obsidian-local-vault.test.ts`
 
-Evidence files:
+Modified:
 
-- `dev/evidence/_ca-output.md` was previously appended with Phase 4 evidence.
-- `dev/evidence/_ca-output-CA-P4.md` is this dedicated Phase 4 evidence artifact created at the user's direction.
+- `dev/evidence/_ca-output.md`
+- `test/mobile-safety.test.ts`
 
-Deleted: none.
+Deleted:
 
-No file under `src/contracts/**` was changed.
+- none
 
-## Implementation Commits
+No `src/contracts/**` file changed.
 
-- `65c9df245cfe309c2822de47ec653e29d9d66f1a`
-- `8c95c8f5731bb5c34fac8c792d3a5c77d43df056`
-- `e643a936d9b262c13f50aeaf3f777e5aa8259c0f`
-- `b89e7d5f11af90970648b21dcd578294464a54c3`
-- `16f8f1989b3bf5da59a010fc18826434df066e82`
-- `2e6702bcb80b4183d711d002f4d262e8315f074e`
-- `6d65a9ece37761fabffae937ff053233efa8b7ba`
-- `32772b118c5ada0244c92ea580291bdcda57f8ab`
-- `b3ea2a0fb136e8c31da520034b85e75eaba278d9`
-- `689b04089b391c913a8e201eec1447d6a3eb704e`
-- `eb9ecd71183fc54f4e731d8ed3aec6780a510f04`
+## Source / Runtime Evidence References
 
-## Deviations, Blockers, and Final Worker Status
+- Obsidian Help, Credits — current host credits list Capacitor `5.x`: `https://obsidian.md/help/credits`
+- Capacitor iOS `WebViewAssetHandler.swift`, `5.7.8` — range handling restricted to media extensions: `https://github.com/ionic-team/capacitor/blob/5.7.8/ios/Capacitor/Capacitor/WebViewAssetHandler.swift`
+- Capacitor iOS `WebViewAssetHandler.swift`, `6.2.1` — general Range handling via `FileHandle`: `https://github.com/ionic-team/capacitor/blob/6.2.1/ios/Capacitor/Capacitor/WebViewAssetHandler.swift`
+- Capacitor 5 Filesystem API — no chunk/offset read primitive: `https://capacitorjs.com/docs/v5/apis/filesystem` (also mirrored in the archived v5 documentation)
+- Current Capacitor Filesystem docs — `readFileInChunks` since `7.1.0`; offset/length since `8.1.0`: `https://github.com/ionic-team/capacitor-filesystem`
+- Obsidian Help, Symbolic links and junctions — explicitly permits vault symlinks/junctions whose targets are outside the vault: `https://obsidian.md/help/symlinks`
+- Obsidian forum mobile report — symbolic links working on iPhone/iPad: `https://forum.obsidian.md/t/integrating-microsoft-office-documents/32055/2`
 
-- The first PR CI run (`32712052644`) found four Phase 4 test failures in path/exclusion classification. Those defects were repaired before the successful final gates above.
-- No frozen-contract revision was made or requested.
-- No synchronization policy, Drive/OAuth behavior, final orchestration/UI, or external BRAIN asset management was introduced.
-- Strict iOS bounded local reads remain unproven/blocked by the current public mobile API behavior.
-- Portable symlink/junction/alias discrimination remains unproven/blocked by the current public mobile-safe metadata API.
-- Independent supervisory acceptance remains outside this worker's authority.
+## Scope / Architecture Integrity
 
-Final worker status: `BLOCKED` — the implemented/testable Phase 4 boundary is green, but two explicit platform guarantees cannot truthfully be claimed complete with the currently supported public mobile API surface.
+- Frozen contracts unchanged.
+- Phase 2 synchronization policy not implemented.
+- Phase 3 Drive/OAuth behavior not implemented.
+- Phase 5 orchestration/UI not implemented.
+- No external BRAIN asset repository behavior introduced.
+- Desktop Node imports are isolated from mobile-required modules and guarded by automated architecture tests.
+- The plugin now fails closed where current mobile host capabilities cannot establish a mandatory safety guarantee; no whole-file async-wrapper workaround or silent compliance claim is used.
+
+## Final Worker Status
+
+`BLOCKED — PROVEN PLATFORM LIMITATION`
+
+The recovery resolved desktop external-reference detection and hardened local reads so they are objectively bounded whenever the host supplies correct byte-range semantics. The mandatory iOS guarantees remain unsatisfied because current stock Obsidian Mobile documents a Capacitor 5.x host that lacks arbitrary-extension resource ranges and public chunk/offset reads, while the same public mobile boundary also lacks link-aware/canonical-path metadata even though Obsidian permits vault symlinks to external content.
+
+Independent supervisory acceptance is not claimed.
