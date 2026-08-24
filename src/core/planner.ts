@@ -140,7 +140,15 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       }
 
       if (!local && !remote) {
-        operations.push(makeOperation(snapshot.path, index++, "noop", { reasons: [{ code: baseEntry ? "both-deleted" : "both-absent", summary: "Neither side currently contains the path." }] }));
+        operations.push(makeOperation(snapshot.path, index++, "noop", baseEntry ? {
+          preconditions: [
+            { kind: "base-trusted" },
+            { kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" },
+            { kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" },
+            { kind: "remote-enumeration-complete" },
+          ],
+          reasons: [{ code: "both-deleted", summary: "Both sides are reliably absent from trusted prior state; record a durable tombstone transition." }],
+        } : { reasons: [{ code: "both-absent", summary: "Neither side currently contains the never-established path." }] }));
         continue;
       }
 
@@ -221,7 +229,8 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
     }
 
     if (input.state.status === "trusted") {
-      const currentDevice = input.state.state.knownDevices.find(device => device.deviceId === input.state.state.deviceIdentity);
+      const trustedState = input.state.state;
+      const currentDevice = trustedState.knownDevices.find(device => device.deviceId === trustedState.deviceIdentity);
       if (currentDevice?.stale) {
         for (let i = 0; i < operations.length; i += 1) {
           const operation = operations[i];
