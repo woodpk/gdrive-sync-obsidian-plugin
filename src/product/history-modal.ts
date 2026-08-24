@@ -1,6 +1,7 @@
 import { App, Modal } from "obsidian";
-import type { AuditRecord, ConflictAssessment, ConflictId, ProductControlPort } from "../contracts";
+import type { AuditRecord, ConflictAssessment, ConflictId } from "../contracts";
 import { contractId } from "../contracts";
+import type { IntegratedProductController } from "./product-controller";
 
 export class AuditHistoryModal extends Modal {
   constructor(app: App, private readonly load: () => Promise<readonly AuditRecord[]>) { super(app); }
@@ -24,9 +25,13 @@ function idFor(assessment: ConflictAssessment): ConflictId | undefined {
   return assessment.conflictId;
 }
 
-export class SyncAttentionModal extends Modal {
-  constructor(app: App, private readonly controller: ProductControlPort) { super(app); }
+export interface AttentionModalOptions {
+  readonly recoveryBackupId?: string;
+  readonly copyDiagnostics?: () => Promise<void>;
+}
 
+export class SyncAttentionModal extends Modal {
+  constructor(app: App, private readonly controller: IntegratedProductController, private readonly options: AttentionModalOptions = {}) { super(app); }
   onOpen(): void { this.render(); }
 
   private render(): void {
@@ -42,11 +47,14 @@ export class SyncAttentionModal extends Modal {
         if (!id) continue;
         const card = this.contentEl.createDiv();
         card.createEl("h3", { text: `${conflict.kind} — ${String(conflict.path)}` });
-        card.createEl("p", { text: "The preserved versions remain unchanged until you choose a resolution. The choice is revalidated immediately before execution." });
+        card.createEl("p", { text: "The preserved versions remain unchanged until you choose a resolution. Every choice is revalidated against the exact planned versions immediately before mutation." });
         for (const [label, kind] of [["Keep local", "keep-local"], ["Keep remote", "keep-remote"], ["Keep both", "keep-both"]] as const) {
           const button = card.createEl("button", { text: label });
           button.addEventListener("click", () => void this.resolve(id, kind));
         }
+        card.createEl("p", { text: "Manual resolution: edit the original local file in Obsidian until it contains the exact content you want to make authoritative, then use the action below. The controller—not this UI—captures and revalidates the current stable local version." });
+        const manual = card.createEl("button", { text: "Use current local file as manual resolution" });
+        manual.addEventListener("click", () => void this.resolveManual(id));
       }
     }
 
@@ -57,15 +65,26 @@ export class SyncAttentionModal extends Modal {
       }
     }
     if (surface.status.kind === "recovery-required") {
-      this.contentEl.createEl("p", { text: "Destructive propagation remains disabled. Use Verify/Reconcile Vault to obtain a fresh reviewable reconstruction plan. Never reset state or recreate a missing remote as a shortcut." });
+      this.contentEl.createEl("p", { text: "Destructive propagation and automatic synchronization remain disabled. Verify/Reconcile Vault produces a reviewable non-destructive safe-union reconstruction from current LOCAL + managed REMOTE reality; corrupt/missing prior state is never treated as an empty authoritative BASE." });
+      if (this.options.recoveryBackupId) this.contentEl.createEl("p", { text: `Device-local recovery backup: ${this.options.recoveryBackupId}` });
+      if (this.options.copyDiagnostics) {
+        const diagnostics = this.contentEl.createEl("button", { text: "Copy recovery diagnostics" });
+        diagnostics.addEventListener("click", () => void this.options.copyDiagnostics?.());
+      }
     } else if (surface.status.kind === "destructive-plan-blocked") {
-      this.contentEl.createEl("p", { text: "Review the exact manual plan and recovery checkpoint before approval. If reality changes, the plan must be regenerated." });
+      this.contentEl.createEl("p", { text: "Review the exact manual plan and recovery checkpoint before approval. If reality changes, the semantic plan identity changes and the old approval cannot execute it." });
     }
   }
 
   private async resolve(id: ConflictId, kind: "keep-local" | "keep-remote" | "keep-both"): Promise<void> {
     const result = await this.controller.request({ kind: "resolve-conflict", conflictId: id, resolution: { kind } });
     if (result.status === "rejected") this.contentEl.createEl("p", { text: `Resolution was not applied: ${result.reason}` });
+    else this.render();
+  }
+
+  private async resolveManual(id: ConflictId): Promise<void> {
+    const result = await this.controller.resolveWithCurrentLocal(id);
+    if (result.status === "rejected") this.contentEl.createEl("p", { text: `Manual resolution was not applied: ${result.reason}` });
     else this.render();
   }
 
