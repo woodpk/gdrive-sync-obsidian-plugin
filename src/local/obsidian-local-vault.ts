@@ -49,6 +49,15 @@ export class LocalPlatformCapabilityError extends Error {
   }
 }
 
+class UnavailableExternalReferenceGuard implements ExternalReferenceGuard {
+  async assertSafe(path: VaultPath, _access: LocalReferenceAccess): Promise<void> {
+    throw new LocalPlatformCapabilityError(
+      "external-reference-detection",
+      `This runtime cannot prove that ${String(path)} does not traverse an external filesystem reference. Synchronization access is blocked.`
+    );
+  }
+}
+
 export class LocalStaleObservationError extends Error {
   constructor(readonly path: VaultPath) {
     super(`Local observation became stale: ${String(path)}`);
@@ -242,7 +251,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly stabilityDelayMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly readChunkSizeBytes: number;
-  private readonly externalReferenceGuard?: ExternalReferenceGuard;
+  private readonly externalReferenceGuard: ExternalReferenceGuard;
   private readonly changeListeners = new Set<(change: LocalVaultChange) => void>();
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
@@ -260,7 +269,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     if (!Number.isSafeInteger(this.readChunkSizeBytes) || this.readChunkSizeBytes <= 0) {
       throw new Error("readChunkSizeBytes must be a positive safe integer");
     }
-    this.externalReferenceGuard = options.externalReferenceGuard;
+    this.externalReferenceGuard = options.externalReferenceGuard ?? new UnavailableExternalReferenceGuard();
     this.installVaultEvents();
     this.installLifecycleEvents();
   }
@@ -299,7 +308,11 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         if (this.exclusionPolicy.evaluate(path, configDir).excluded) continue;
         const observation = await this.observe(path);
         entries.push(observation);
-        if (observation.status === "present" && observation.entityKind === "folder") await visit(folderPath);
+        if (observation.status === "present" && observation.entityKind === "folder") {
+          await visit(folderPath);
+        } else if (observation.status !== "absent") {
+          failures.push(`${folderPath}: subtree not safely enumerable (${observation.status})`);
+        }
       }
       for (const filePath of listing.files) {
         const path = asPath(filePath);
@@ -318,7 +331,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   async observe(path: VaultPath): Promise<LocalObservation> {
     const normalized = asPath(String(path));
     try {
-      await this.externalReferenceGuard?.assertSafe(normalized, "observe");
+      await this.externalReferenceGuard.assertSafe(normalized, "observe");
       const exists = await this.adapter.exists(String(normalized), true);
       if (!exists) return { status: "absent", side: "local", path: normalized };
       const first = await this.adapter.stat(String(normalized));
@@ -420,7 +433,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async move(fromPath: VaultPath, toPath: VaultPath): Promise<LocalMutationReceipt> {
-    await this.externalReferenceGuard?.assertSafe(fromPath, "mutation-source");
+    await this.externalReferenceGuard.assertSafe(fromPath, "mutation-source");
     await this.assertCompatible(toPath);
     const file = this.app.vault.getAbstractFileByPath(String(fromPath));
     if (!file) throw new Error(`Cannot move missing local path: ${String(fromPath)}`);
@@ -429,7 +442,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async trash(path: VaultPath): Promise<void> {
-    await this.externalReferenceGuard?.assertSafe(path, "mutation-source");
+    await this.externalReferenceGuard.assertSafe(path, "mutation-source");
     const file = this.app.vault.getAbstractFileByPath(String(path));
     if (!file) throw new Error(`Cannot trash missing local path: ${String(path)}`);
     await this.app.fileManager.trashFile(file);
@@ -488,7 +501,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   private async assertCompatible(path: VaultPath): Promise<void> {
-    await this.externalReferenceGuard?.assertSafe(path, "mutation-target");
+    await this.externalReferenceGuard.assertSafe(path, "mutation-target");
     const result = await this.validatePath(path);
     if (result.status === "blocked") throw new Error(`Blocked local path (${result.reason}): ${String(path)}${result.detail ? ` — ${result.detail}` : ""}`);
   }
