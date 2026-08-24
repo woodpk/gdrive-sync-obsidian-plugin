@@ -56,7 +56,7 @@ test("a returning stale current device cannot authorize destructive propagation"
     schemaVersion: 1, stateRevision: revision, vaultIdentity: vault, deviceIdentity: device,
     base: [], remoteMappings: [], tombstones: [], operations: [], knownDevices: [{ deviceId: device, stale: true }],
   };
-  const unsafePlan: SynchronizationPlan = { planId: contractId<"PlanId">("delete-plan"), trigger: "automatic-local-change", operations: destructive(1), executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false };
+  const unsafePlan: SynchronizationPlan = { planId: contractId<"PlanId">("delete-plan"), trigger: "local-change", operations: destructive(1), executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false };
   const guarded = new ProductionSynchronizationPlanner({ plan: async () => unsafePlan });
   const result = await guarded.plan({ snapshots: [], state: { status: "trusted", state } });
   assert.equal(result.executionDisposition, "blocked");
