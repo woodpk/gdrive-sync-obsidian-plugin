@@ -4,13 +4,13 @@ import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultId
 import type { DriveResult } from "../src/contracts/google-drive";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
 import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport } from "../src/drive/transport";
+import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
 class MemorySecrets { readonly values=new Map<string,string>(); getSecret(id:string){return this.values.get(id)??null;} setSecret(id:string,v:string){this.values.set(id,v);} deleteSecret(id:string){this.values.delete(id);} }
-class StubTransport extends GoogleHttpTransport { constructor(private readonly handler:(url:string,init?:RequestInit)=>Promise<DriveResult<Response>>){ const m=new MemorySecrets(); super(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},new ObsidianSecretStore(m))); } override request(url:string,init:RequestInit={}):Promise<DriveResult<Response>>{ return this.handler(url,init); } }
+class StubTransport extends GoogleHttpTransport { constructor(private readonly handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){ const m=new MemorySecrets(); super(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},new ObsidianSecretStore(m))); } override request(url:string,init:PortableRequestInit={}):Promise<DriveResult<Response>>{ return this.handler(url,init); } }
 const ok=(body:unknown,status=200,headers:Record<string,string>={})=>Promise.resolve({ok:true,value:new Response(body===undefined?undefined:JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}})} as DriveResult<Response>);
 const root=(vault="vault-1",version="1")=>({id:"root",name:"BRAIN Sync",mimeType:"application/vnd.google-apps.folder",trashed:false,appProperties:{brainSyncRole:"brain-sync-root",brainVaultIdentity:vault,brainProtocolVersion:version}});
 const content=()=>({id:"content",name:"vault",mimeType:"application/vnd.google-apps.folder",parents:["root"],trashed:false,appProperties:{brainSyncRole:"brain-sync-content"}});
-function adapter(handler:(url:string,init?:RequestInit)=>Promise<DriveResult<Response>>){ const backing=new MemorySecrets(); backing.setSecret("brain-gdrive-paired-account","acct"); const store=new ObsidianSecretStore(backing); return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store); }
+function adapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){ const backing=new MemorySecrets(); backing.setSecret("brain-gdrive-paired-account","acct"); const store=new ObsidianSecretStore(backing); return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store); }
 const path=(s:string)=>contractId<"VaultPath">(s) as VaultPath; const id=(s:string)=>contractId<"RemoteObjectId">(s) as RemoteObjectId; const vault=(s:string)=>contractId<"VaultIdentity">(s) as VaultIdentity;
 
 test("managed-root validation detects identity and protocol mismatch", async()=>{
