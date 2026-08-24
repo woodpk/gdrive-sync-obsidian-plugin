@@ -1,5 +1,6 @@
 import type {
   ContentEvidence,
+  DriveSignal,
   ExecutionResult,
   GoogleDrivePort,
   LocalVaultPort,
@@ -48,7 +49,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
       } else if (precondition.kind === "remote-enumeration-complete") {
         if (!this.runEvidence().remoteEnumerationComplete) return { status: "blocked", reason: "remote enumeration is not complete" };
       } else if (precondition.kind === "identity-unambiguous") {
-        // Identity ambiguity is already encoded by the planning snapshot. Re-observation below protects mutation reality.
+        // Identity ambiguity is encoded by the plan snapshot; current observations below protect mutation reality.
       } else if (precondition.kind === "path-observation") {
         if (precondition.side === "local") {
           const observed = await this.local.observe(precondition.path);
@@ -56,7 +57,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
           else if (precondition.observationToken && observed.observationToken !== precondition.observationToken) failed.push(precondition);
         } else {
           const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, precondition.path);
-          if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal.kind, observed.signal.detail);
+          if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
           if (observed.value.status !== precondition.expected) failed.push(precondition);
         }
       } else if (precondition.kind === "content-evidence") {
@@ -65,7 +66,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
           if (observed.status !== "present" || !evidenceMatches(observed.content, precondition.expected)) failed.push(precondition);
         } else {
           const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, precondition.path);
-          if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal.kind, observed.signal.detail);
+          if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
           if (observed.value.status !== "present" || !evidenceMatches(observed.value.content, precondition.expected)) failed.push(precondition);
         }
       } else if (precondition.kind === "file-stable") {
@@ -73,7 +74,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
         if (observed.status !== "present" || observed.stability !== "stable") failed.push(precondition);
       } else if (precondition.kind === "remote-object") {
         const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
-        if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal.kind, observed.signal.detail);
+        if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
         if (observed.value.status !== "present" || observed.value.remoteObjectId !== precondition.remoteObjectId || (precondition.expectedRevision && observed.value.content?.revision !== precondition.expectedRevision)) failed.push(precondition);
       }
     }
@@ -96,7 +97,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
         case "trash-remote": {
           if (!operation.remoteObjectId) return { status: "blocking-failure", reason: "remote trash requires stable remote object identity" };
           const result = await this.drive.trash(operation.remoteObjectId);
-          return result.ok ? success(operation, undefined, `remote-trash:${String(operation.remoteObjectId)}`) : this.mapDriveFailure(result.signal.kind, result.signal.detail, result.signal.retryAfterMs);
+          return result.ok ? success(operation, undefined, `remote-trash:${String(operation.remoteObjectId)}`) : this.mapDriveFailure(result.signal);
         }
         case "clean-text-merge":
           return { status: "blocking-failure", reason: "clean-text-merge content cannot be materialized from the frozen PlannedOperation contract; merged bytes are not carried by the Phase 2 plan" };
@@ -116,12 +117,12 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     if (!version) return { status: "blocking-failure", reason: "upload-create requires content version" };
     if (version.entityKind === "folder") {
       const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "folder" });
-      if (!result.ok) return this.mapDriveFailure(result.signal.kind, result.signal.detail, result.signal.retryAfterMs);
+      if (!result.ok) return this.mapDriveFailure(result.signal);
       return success(operation, result.value.evidence, `remote:${String(result.value.remoteObjectId)}`);
     }
     const local = await this.local.readFile(operation.path, version.observationToken);
     const result = await this.drive.create(this.runEvidence().managedRemote.rootId, { path: operation.path, entityKind: "file", content: local.content, expectedEvidence: local.evidence });
-    if (!result.ok) return this.mapDriveFailure(result.signal.kind, result.signal.detail, result.signal.retryAfterMs);
+    if (!result.ok) return this.mapDriveFailure(result.signal);
     const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
     if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== result.value.remoteObjectId) return { status: "uncertain", reason: "uploaded object could not be re-observed by stable identity" };
     return success(operation, observed.value.content ?? result.value.evidence ?? local.evidence, `remote:${String(result.value.remoteObjectId)}`);
@@ -131,7 +132,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     if (!operation.remoteObjectId || !operation.contentVersion) return { status: "blocking-failure", reason: "upload-update requires remote identity and content version" };
     const local = await this.local.readFile(operation.path, operation.contentVersion.observationToken);
     const result = await this.drive.update({ remoteObjectId: operation.remoteObjectId, path: operation.path, content: local.content, expectedEvidence: local.evidence });
-    if (!result.ok) return this.mapDriveFailure(result.signal.kind, result.signal.detail, result.signal.retryAfterMs);
+    if (!result.ok) return this.mapDriveFailure(result.signal);
     const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, operation.path);
     if (!observed.ok || observed.value.status !== "present" || observed.value.remoteObjectId !== operation.remoteObjectId) return { status: "uncertain", reason: "updated object could not be re-observed by stable identity" };
     return success(operation, observed.value.content ?? result.value.evidence ?? local.evidence, `remote:${String(operation.remoteObjectId)}`);
@@ -145,7 +146,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
       return success(operation, receipt.evidence, `local:${String(operation.path)}`);
     }
     const downloaded = await this.drive.download(remoteObjectId);
-    if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal.kind, downloaded.signal.detail, downloaded.signal.retryAfterMs);
+    if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal);
     const receipt = await this.local.createFile(operation.path, downloaded.value.content);
     const observed = await this.local.observe(operation.path);
     if (observed.status !== "present") return { status: "uncertain", reason: "downloaded local file could not be re-observed" };
@@ -156,7 +157,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     const remoteObjectId = operation.contentVersion?.remoteObjectId ?? operation.remoteObjectId;
     if (!remoteObjectId) return { status: "blocking-failure", reason: "download-update requires remote identity" };
     const downloaded = await this.drive.download(remoteObjectId);
-    if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal.kind, downloaded.signal.detail, downloaded.signal.retryAfterMs);
+    if (!downloaded.ok) return this.mapDriveFailure(downloaded.signal);
     const existing = await this.local.observe(operation.path);
     const expectedToken = existing.status === "present" ? existing.observationToken : undefined;
     const receipt = await this.local.replaceFile(operation.path, downloaded.value.content, expectedToken);
@@ -175,20 +176,20 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     }
     if (!operation.remoteObjectId) return { status: "blocking-failure", reason: "remote move requires stable remote identity" };
     const result = await this.drive.move(operation.remoteObjectId, operation.fromPath, operation.toPath);
-    if (!result.ok) return this.mapDriveFailure(result.signal.kind, result.signal.detail, result.signal.retryAfterMs);
+    if (!result.ok) return this.mapDriveFailure(result.signal);
     return success(operation, result.value.evidence, `remote-move:${String(operation.remoteObjectId)}`);
   }
 
-  private mapDrivePreconditionFailure(kind: string, detail?: string): PreconditionValidationResult {
-    if (kind === "authentication-required") return { status: "blocked", reason: detail ?? "authentication required" };
-    if (kind === "recovery-required" || kind === "not-found") return { status: "recovery-required", reason: detail ?? kind };
-    return { status: "blocked", reason: detail ?? kind };
+  private mapDrivePreconditionFailure(signal: DriveSignal): PreconditionValidationResult {
+    if (signal.kind === "authentication-required") return { status: "blocked", reason: signal.detail ?? "authentication required" };
+    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signal.detail ?? signal.kind };
+    return { status: "blocked", reason: signal.detail ?? signal.kind };
   }
 
-  private mapDriveFailure(kind: string, detail?: string, retryAfterMs?: number): ExecutionResult {
-    if (kind === "transient-failure" || kind === "rate-limited") return { status: "retryable-failure", reason: detail ?? kind, retryAfterMs };
-    if (kind === "recovery-required" || kind === "not-found") return { status: "recovery-required", reason: detail ?? kind };
-    if (kind === "authentication-required" || kind === "permission-denied" || kind === "quota-exhausted" || kind === "conflict") return { status: "blocking-failure", reason: detail ?? kind };
-    return { status: "blocking-failure", reason: detail ?? kind };
+  private mapDriveFailure(signal: DriveSignal): ExecutionResult {
+    if (signal.kind === "transient-failure") return { status: "retryable-failure", reason: signal.detail ?? signal.kind };
+    if (signal.kind === "rate-limited") return { status: "retryable-failure", reason: signal.kind, retryAfterMs: signal.retryAfterMs };
+    if (signal.kind === "recovery-required" || signal.kind === "not-found") return { status: "recovery-required", reason: signal.detail ?? signal.kind };
+    return { status: "blocking-failure", reason: signal.detail ?? signal.kind };
   }
 }
