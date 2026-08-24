@@ -3,6 +3,7 @@ import type {
   ConflictAssessment,
   ConflictResolver,
   ContentEvidence,
+  OperationPrecondition,
   PathSnapshot,
   PlannedOperation,
   PlanExecutionDisposition,
@@ -15,6 +16,7 @@ import type {
 } from "../contracts";
 import { contractId } from "../contracts";
 import { DestructiveSafetyPolicy } from "./destructive-safety";
+import { semanticPlanId, withSemanticOperationId } from "./semantic-identifiers";
 
 export interface PlannerOptions {
   readonly trigger?: SynchronizationPlan["trigger"];
@@ -46,8 +48,8 @@ function sameVersion(a: VersionReference, b: VersionReference): boolean {
   return a.entityKind === b.entityKind && evidenceEqual(a.content, b.content, a.entityKind);
 }
 
-function makeOperation(path: VaultPath, index: number, kind: PlannedOperation["kind"], extra: Partial<PlannedOperation> = {}): PlannedOperation {
-  return { operationId: branded<"OperationId">(`op:${index}:${kind}:${String(path)}`), kind, path, destructive: false, preconditions: [], reasons: [], ...extra } as PlannedOperation;
+function makeOperation(path: VaultPath, index: number, kind: PlannedOperation["kind"], extra: Partial<Omit<PlannedOperation, "operationId" | "kind" | "path">> = {}): PlannedOperation {
+  return withSemanticOperationId({ kind, path, destructive: false, preconditions: [], reasons: [], ...extra }, index);
 }
 
 function blocked(path: VaultPath, index: number, code: string, summary: string, recovery = false): PlannedOperation {
@@ -63,8 +65,34 @@ function uncertainty(snapshot: PathSnapshot): { code: string; summary: string; r
   return undefined;
 }
 
+function localVersionPreconditions(version: VersionReference): OperationPrecondition[] {
+  const values: OperationPrecondition[] = [{ kind: "path-observation", side: "local", path: version.path, expected: "present", ...(version.observationToken ? { observationToken: String(version.observationToken) } : {}) }];
+  if (version.content) values.push({ kind: "content-evidence", side: "local", path: version.path, expected: version.content });
+  return values;
+}
+
+function remoteVersionPreconditions(version: VersionReference): OperationPrecondition[] {
+  const values: OperationPrecondition[] = [];
+  if (version.remoteObjectId) values.push({ kind: "remote-object", remoteObjectId: version.remoteObjectId, ...(version.content?.revision ? { expectedRevision: version.content.revision } : {}) });
+  if (version.content) values.push({ kind: "content-evidence", side: "remote", path: version.path, expected: version.content });
+  return values;
+}
+
 function conflictOperation(path: VaultPath, index: number, assessment: ConflictAssessment): PlannedOperation {
-  if (assessment.kind === "clean-merge") return makeOperation(path, index, "clean-text-merge", { contentVersion: assessment.mergedVersion, preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }], reasons: [{ code: "clean-three-way-merge", summary: "Concurrent text changes merge cleanly from the trusted base." }] });
+  if (assessment.kind === "clean-merge") {
+    const remote = assessment.provenance.remote.version;
+    return makeOperation(path, index, "clean-text-merge", {
+      remoteObjectId: remote.remoteObjectId,
+      contentVersion: assessment.mergedVersion,
+      preconditions: [
+        { kind: "base-trusted" },
+        { kind: "identity-unambiguous", path },
+        ...localVersionPreconditions(assessment.provenance.local.version),
+        ...remoteVersionPreconditions(remote),
+      ],
+      reasons: [{ code: "clean-three-way-merge", summary: "Concurrent text changes merge cleanly from the trusted base." }],
+    });
+  }
   if (assessment.kind === "none") return makeOperation(path, index, "noop", { reasons: [{ code: "no-conflict", summary: "No mutation is required." }] });
   return makeOperation(path, index, "unresolved-conflict", { conflictId: String(assessment.conflictId), reasons: [{ code: assessment.kind, summary: "Concurrent changes require preservation and explicit resolution." }] });
 }
@@ -113,11 +141,11 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
 
       if (!local && remote) {
         if (!baseEntry?.localExisted || !baseEntry.remoteExisted) {
-          operations.push(makeOperation(snapshot.path, index++, "download-create", { targetSide: "local", contentVersion: remote, preconditions: [{ kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }], reasons: [{ code: "safe-union-remote-only", summary: "Remote-only content is copied locally during safe union." }] }));
+          operations.push(makeOperation(snapshot.path, index++, "download-create", { targetSide: "local", contentVersion: remote, remoteObjectId: remote.remoteObjectId, preconditions: [{ kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, ...remoteVersionPreconditions(remote)], reasons: [{ code: "safe-union-remote-only", summary: "Remote-only content is copied locally during safe union." }] }));
         } else if (!evidenceEqual(remote.content, baseEntry.content, remote.entityKind)) {
           operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, undefined, remote)));
         } else {
-          operations.push(makeOperation(snapshot.path, index++, "trash-remote", { targetSide: "remote", remoteObjectId: remote.remoteObjectId ?? baseEntry.remoteObjectId, destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }], reasons: [{ code: "attested-local-deletion", summary: "Trusted prior existence plus reliable local absence authorizes recoverable remote trash." }] }));
+          operations.push(makeOperation(snapshot.path, index++, "trash-remote", { targetSide: "remote", remoteObjectId: remote.remoteObjectId ?? baseEntry.remoteObjectId, destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }, ...remoteVersionPreconditions(remote)], reasons: [{ code: "attested-local-deletion", summary: "Trusted prior existence plus reliable local absence authorizes recoverable remote trash." }] }));
         }
         continue;
       }
@@ -125,11 +153,11 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       if (local && !remote) {
         if (!baseEntry?.localExisted || !baseEntry.remoteExisted) {
           if (snapshot.local.status === "present" && snapshot.local.stability !== "stable") operations.push(blocked(snapshot.path, index++, "local-file-not-stable", "Local content is not stable enough to upload."));
-          else operations.push(makeOperation(snapshot.path, index++, "upload-create", { targetSide: "remote", contentVersion: local, preconditions: [{ kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, { kind: "file-stable", path: snapshot.path }], reasons: [{ code: "safe-union-local-only", summary: "Local-only content is copied remotely during safe union." }] }));
+          else operations.push(makeOperation(snapshot.path, index++, "upload-create", { targetSide: "remote", contentVersion: local, preconditions: [{ kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, ...localVersionPreconditions(local), { kind: "file-stable", path: snapshot.path }], reasons: [{ code: "safe-union-local-only", summary: "Local-only content is copied remotely during safe union." }] }));
         } else if (!evidenceEqual(local.content, baseEntry.content, local.entityKind)) {
           operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, local, undefined)));
         } else {
-          operations.push(makeOperation(snapshot.path, index++, "trash-local", { targetSide: "local", destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }], reasons: [{ code: "attested-remote-deletion", summary: "Trusted prior existence plus complete remote absence authorizes recoverable local trash." }] }));
+          operations.push(makeOperation(snapshot.path, index++, "trash-local", { targetSide: "local", destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }, ...localVersionPreconditions(local)], reasons: [{ code: "attested-remote-deletion", summary: "Trusted prior existence plus complete remote absence authorizes recoverable local trash." }] }));
         }
         continue;
       }
@@ -145,9 +173,10 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       if (!localChanged && !remoteChanged) operations.push(makeOperation(snapshot.path, index++, "noop", { reasons: [{ code: "unchanged-from-base", summary: "Both sides match the trusted base." }] }));
       else if (localChanged && !remoteChanged) {
         if (snapshot.local.status === "present" && snapshot.local.stability !== "stable") operations.push(blocked(snapshot.path, index++, "local-file-not-stable", "Local modification is not stable enough to upload."));
-        else operations.push(makeOperation(snapshot.path, index++, "upload-update", { targetSide: "remote", remoteObjectId: remote!.remoteObjectId ?? baseEntry.remoteObjectId, contentVersion: local, preconditions: [{ kind: "base-trusted" }, { kind: "content-evidence", side: "remote", path: snapshot.path, expected: baseEntry.content ?? {} }, { kind: "file-stable", path: snapshot.path }], reasons: [{ code: "local-only-modification", summary: "Only local content differs from the trusted base." }] }));
-      } else if (!localChanged && remoteChanged) operations.push(makeOperation(snapshot.path, index++, "download-update", { targetSide: "local", contentVersion: remote, preconditions: [{ kind: "base-trusted" }, { kind: "content-evidence", side: "local", path: snapshot.path, expected: baseEntry.content ?? {} }], reasons: [{ code: "remote-only-modification", summary: "Only remote content differs from the trusted base." }] }));
-      else operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, local, remote)));
+        else operations.push(makeOperation(snapshot.path, index++, "upload-update", { targetSide: "remote", remoteObjectId: remote!.remoteObjectId ?? baseEntry.remoteObjectId, contentVersion: local, preconditions: [{ kind: "base-trusted" }, ...localVersionPreconditions(local!), ...remoteVersionPreconditions(remote!), { kind: "file-stable", path: snapshot.path }], reasons: [{ code: "local-only-modification", summary: "Only local content differs from the trusted base." }] }));
+      } else if (!localChanged && remoteChanged) {
+        operations.push(makeOperation(snapshot.path, index++, "download-update", { targetSide: "local", remoteObjectId: remote!.remoteObjectId ?? baseEntry.remoteObjectId, contentVersion: remote, preconditions: [{ kind: "base-trusted" }, ...localVersionPreconditions(local!), ...remoteVersionPreconditions(remote!)], reasons: [{ code: "remote-only-modification", summary: "Only remote content differs from the trusted base." }] }));
+      } else operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, local, remote)));
     }
 
     if (input.state.status === "trusted") {
@@ -179,8 +208,8 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
           handled.add(String(prior.path)); for (const candidate of remoteCandidates) handled.add(String(candidate.path)); continue;
         }
         if (remoteCandidates.length === 1) {
-          const target = remoteCandidates[0];
-          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", { targetSide: "local", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId, preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }], reasons: [{ code: "proven-remote-move", summary: "Stable remote object identity proves a remote rename/move." }] }));
+          const target = remoteCandidates[0], targetRemote = observed(target, "remote")!;
+          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", { targetSide: "local", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId, preconditions: [{ kind: "base-trusted" }, ...localVersionPreconditions(observed(oldSnapshot, "local")!), ...remoteVersionPreconditions(targetRemote), { kind: "identity-unambiguous", path: target.path }], reasons: [{ code: "proven-remote-move", summary: "Stable remote object identity proves a remote rename/move." }] }));
           handled.add(String(prior.path)); handled.add(String(target.path)); continue;
         }
       }
@@ -190,8 +219,8 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
           handled.add(String(prior.path)); for (const candidate of localCandidates) handled.add(String(candidate.path)); continue;
         }
         if (localCandidates.length === 1) {
-          const target = localCandidates[0];
-          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", { targetSide: "remote", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId, preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }], reasons: [{ code: "proven-local-move", summary: "Unique stable identity or trusted content evidence proves a local rename/move." }] }));
+          const target = localCandidates[0], oldRemote = observed(oldSnapshot, "remote")!, targetLocal = observed(target, "local")!;
+          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", { targetSide: "remote", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId, preconditions: [{ kind: "base-trusted" }, ...remoteVersionPreconditions(oldRemote), ...localVersionPreconditions(targetLocal), { kind: "identity-unambiguous", path: target.path }], reasons: [{ code: "proven-local-move", summary: "Unique stable identity or trusted content evidence proves a local rename/move." }] }));
           handled.add(String(prior.path)); handled.add(String(target.path));
         }
       }
@@ -201,8 +230,10 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
   private finish(state: StateLoadResult, totalManagedPaths: number, operations: PlannedOperation[]): SynchronizationPlan {
     const safety = this.destructiveSafety.assess(operations, { totalManagedPaths, recentAverageDestructiveOperations: this.options.recentAverageDestructiveOperations, stateCondition: state.status === "trusted" ? "trusted" : state.status === "uninitialized" ? "reconstructed" : "untrusted" });
     let executionDisposition: PlanExecutionDisposition = "safe-auto-eligible";
-    if (operations.some(op => op.kind === "recovery-required" || op.kind === "blocked-unsafe")) executionDisposition = "blocked";
-    else if (operations.some(op => op.kind === "unresolved-conflict") || safety.requiresApproval) executionDisposition = "requires-user-approval";
-    return { planId: branded<"PlanId">(`plan:${operations.map(op => `${op.kind}:${String(op.path)}`).join("|")}`), trigger: this.options.trigger ?? "verify-reconcile", operations, executionDisposition, recoveryCheckpointRequired: safety.recoveryCheckpointRequired };
+    if (operations.some(op => op.kind === "recovery-required")) executionDisposition = "blocked";
+    else if (operations.some(op => op.kind === "blocked-unsafe" || op.kind === "unresolved-conflict") || safety.requiresApproval) executionDisposition = "requires-user-approval";
+    const trigger = this.options.trigger ?? "verify-reconcile";
+    const recoveryCheckpointRequired = safety.recoveryCheckpointRequired;
+    return { planId: semanticPlanId({ trigger, operations, executionDisposition, recoveryCheckpointRequired }), trigger, operations, executionDisposition, recoveryCheckpointRequired };
   }
 }
