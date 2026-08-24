@@ -5,19 +5,18 @@
 - Correction/build-session identifier: `Stage 2A Phase 1 rejection correction — C1 large-file transfer contracts`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Repository URL: `https://github.com/woodpk/gdrive-sync-obsidian-plugin`
-- Verified Git remote destination: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`
+- Git remote destination: `https://github.com/woodpk/gdrive-sync-obsidian-plugin.git`
 - Authoritative branch/ref: `master`
-- Initial correction grounding SHA: `5add350efa9a9ec5c725f72c0b153025df260d92`
-- Concurrent unrelated `master` commit preserved before the successful correction commit: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
-- Effective correction base/parent SHA: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
+- Effective correction base SHA: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`
 - C1 implementation commit SHA: `ad4362e6ec27d5c804d656a667d9080b9f964132`
-- Final pushed evidence commit SHA: determined after this evidence update is committed; verify against remote `master` and report in the completion response.
+- Prior evidence commit SHA: `79a52df233f1d5d28f4c5e0e15e55cb361c9a774`
+- Current-master grounding immediately before this evidence reaffirmation: `4736447264ac8b51a2efc5fdf405acf1bf7c32f3`
 
-The effective correction base is `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` because `master` advanced after initial grounding and before the first attempted ref update. The non-fast-forward update was rejected; the correction was reapplied on top of the new `master` head so unrelated repository work was preserved.
+The repository advanced on `master` after the C1 correction with unrelated supervisor/user work. This evidence update does not alter that unrelated work and does not alter the C1 implementation.
 
 ## Corrections Implemented
 
-C1 was implemented at the contract level only, with directly necessary fake/test/documentation fallout:
+C1 was implemented at the frozen-contract level only, with directly necessary fake/test/documentation fallout:
 
 - added exported `BinaryContentSource` in `src/contracts/common.ts` with optional `sizeBytes` and lazy `openChunks(): AsyncIterable<Uint8Array>`;
 - changed `LocalReadResult` to expose `content: BinaryContentSource` instead of whole-file `bytes: Uint8Array`;
@@ -25,10 +24,10 @@ C1 was implemented at the contract level only, with directly necessary fake/test
 - changed `RemoteDownload` to expose `content: BinaryContentSource`;
 - changed `RemoteCreateRequest` and `RemoteUpdateRequest` content to `BinaryContentSource`;
 - updated local fake signatures to compile against the corrected frozen local boundary;
-- added a contract test that supplies one lazy `BinaryContentSource` whose async iterable yields two separate `Uint8Array` chunks and uses that source through local and Drive transfer types;
-- updated `dev/phase-1-shared-contracts.md` to document the lazy/chunked, platform-neutral, bounded-memory transfer boundary.
+- added a contract test using a lazy `BinaryContentSource` whose async iterable yields multiple separate `Uint8Array` chunks;
+- updated `dev/phase-1-shared-contracts.md` to describe the lazy/chunked platform-neutral transfer boundary.
 
-No Phase 2, Phase 3, or Phase 4 production behavior was implemented. Synchronization, conflict, state, OAuth, and persistence semantics were not changed.
+No Phase 2, Phase 3, or Phase 4 production behavior was implemented. Synchronization, conflict, persistence, OAuth, and state semantics were not changed.
 
 ## Files Created
 
@@ -36,7 +35,7 @@ None.
 
 ## Files Modified
 
-The implementation inventory below is derived from GitHub compare `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b...ad4362e6ec27d5c804d656a667d9080b9f964132`, plus this mandatory evidence update:
+Derived from the actual C1 Git change set plus the mandatory evidence artifact:
 
 - `dev/evidence/_ca-output.md`
 - `dev/phase-1-shared-contracts.md`
@@ -52,94 +51,85 @@ None.
 
 ## Verification Performed
 
-### Actual Correction Change-Set Inspection
+### Correction change-set inspection
 
-- Validation operation: GitHub compare `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b...ad4362e6ec27d5c804d656a667d9080b9f964132`.
-- Result: `PASS`
-- Relevant result: one correction commit, 0 commits behind; exactly six pre-evidence modified paths and no created/deleted paths. The six paths were `dev/phase-1-shared-contracts.md`, `src/contracts/common.ts`, `src/contracts/google-drive.ts`, `src/contracts/local-vault.ts`, `src/testing/fakes.ts`, and `test/contracts.test.ts`.
+- Operation: GitHub compare from `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` through C1 implementation commit `ad4362e6ec27d5c804d656a667d9080b9f964132`.
+- Result: `PASS`.
+- Relevant result: exactly six pre-evidence modified implementation/test/documentation paths; no created or deleted paths.
 
-### Corrected Contract Inspection
+### Corrected contract inspection
 
-- Validation operation: retrieve the pushed C1 commit and inspect its exact GitHub diff.
-- Result: `PASS`
-- Relevant result: `BinaryContentSource` is exported by the shared contract; affected local/Drive transfer declarations use `BinaryContentSource`; the prior complete-file `bytes: Uint8Array` fields/parameters are removed from those affected signatures.
+- Operation: inspect pushed C1 contract diff.
+- Result: `PASS`.
+- Relevant result: `BinaryContentSource` is exported; affected local and Drive transfer signatures use it; the rejected complete-file `bytes: Uint8Array` fields/parameters are removed from the affected frozen transfer declarations.
 
-### Supplemental Strict TypeScript Contract Compile
+### Supplemental strict TypeScript contract compile
 
-- Exact validation command:
+- Command:
 
 ```text
 tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --lib DOM,DOM.Iterable,ES2022 common.ts state.ts snapshot.ts local-vault.ts google-drive.ts
 ```
 
-- Result: `PASS`
-- Relevant result: the corrected shared/local/Drive contract subset compiled successfully using the available TypeScript compiler.
-- Limitation: this is supplemental verification of the corrected contract surface, not a substitute for the repository's required full `npm run typecheck` gate.
+- Result: `PASS`.
+- Relevant result: corrected shared/local/Drive contract subset compiled successfully using the TypeScript compiler available in the execution environment.
+- Limitation: this does not substitute for the repository's required full `npm run typecheck` gate.
 
-### Supplemental Multi-Chunk Runtime Check
+### Supplemental multi-chunk runtime check
 
-- Validation operation: execute a Node check using a lazy content source whose `openChunks()` yielded `Uint8Array([1,2])` and `Uint8Array([3,4,5])` as separate iterations.
-- Result: `PASS`
-- Relevant result: both chunks were observed separately and the source was opened once; no complete-file buffer was constructed by the check.
-- Limitation: this supplements but does not replace execution of the repository test suite.
+- Operation: execute a lazy content source whose `openChunks()` yielded two separate `Uint8Array` chunks.
+- Result: `PASS`.
+- Relevant result: both chunks were observed independently; no complete-file buffer was required by the check.
+- Limitation: this does not substitute for execution of the repository test suite.
 
-### Required Phase 1 Gate
+### Required Phase 1 gate
 
-- Exact command required: `npm ci`
-- Result: `NOT EXECUTED`
-- Reason: the available runtime cannot resolve `registry.npmjs.org`. A package-resolution attempt failed with `getaddrinfo EAI_AGAIN registry.npmjs.org`, so a clean dependency installation could not be established locally.
+- `npm ci` — `NOT EXECUTED`.
+  - Blocker: this execution environment could not resolve `registry.npmjs.org`; package resolution failed with `getaddrinfo EAI_AGAIN registry.npmjs.org`.
+- `npm run typecheck` — `NOT EXECUTED`.
+  - Blocker: clean dependency installation was unavailable. Only the supplemental contract compile above was executed.
+- `npm test` — `NOT EXECUTED`.
+  - Blocker: clean dependency installation was unavailable. The new multi-chunk behavior was exercised only by the supplemental standalone runtime check.
+- `npm run build` — `NOT EXECUTED`.
+  - Blocker: clean dependency installation was unavailable.
 
-- Exact command required: `npm run typecheck`
-- Result: `NOT EXECUTED`
-- Reason: the required clean repository dependency installation was unavailable; only the supplemental strict contract compile described above was executed.
+### GitHub Actions visibility
 
-- Exact command required: `npm test`
-- Result: `NOT EXECUTED`
-- Reason: the required clean repository dependency installation was unavailable. The new multi-chunk behavior was exercised only by the supplemental standalone runtime check described above.
-
-- Exact command required: `npm run build`
-- Result: `NOT EXECUTED`
-- Reason: the required clean repository dependency installation was unavailable.
-
-### GitHub Actions Visibility
-
-- Validation operation: query workflow runs associated with the pushed correction commit using the available GitHub connector.
+- Operation: query workflow information available through the connected GitHub tooling for the direct `master` push.
 - Result: `NOT EXECUTED` as a usable full-gate verification source.
-- Reason: the connector action available in this session only surfaces pull-request-triggered workflow runs and returned no run for this direct `master` push. Generic workflow-run listing for push events is not exposed through the available connector, so no push-CI result was observed and none is claimed.
+- Blocker: the available connector surfaced no push-triggered workflow run for the correction commit and did not expose a generic push-run listing suitable for independent observation.
 
 ## Acceptance-Criteria Status
 
 `PARTIAL`
 
-Implementation status by criterion:
-
-1. `BinaryContentSource` exists as an exported shared contract — `PASS`.
-2. Local file reads return `BinaryContentSource` — `PASS`.
+1. `BinaryContentSource` exported shared contract — `PASS`.
+2. Local reads return `BinaryContentSource` — `PASS`.
 3. Local create/replace accept `BinaryContentSource` — `PASS`.
 4. Drive downloads return `BinaryContentSource` — `PASS`.
 5. Drive create/update content uses `BinaryContentSource` — `PASS`.
-6. Affected transfer signatures no longer require complete-file materialization — `PASS` by contract inspection.
-7. Fake/test seams updated for corrected contracts — `PASS` by source inspection; full repository compile remains unverified.
-8. Multi-chunk lazy `BinaryContentSource` test added — `PASS` by source inspection; repository test execution remains unverified.
-9. `dev/phase-1-shared-contracts.md` records corrected boundary — `PASS`.
-10. Complete Phase 1 test/build gate passes — `NOT VERIFIED`; required full gate could not be executed/observed in this environment.
+6. Affected frozen signatures do not require complete-file materialization — `PASS` by contract inspection.
+7. Fake/test seams updated — `PASS` by source inspection; full repository compile remains unverified.
+8. Multi-chunk lazy-source test added — `PASS` by source inspection; repository test execution remains unverified.
+9. `dev/phase-1-shared-contracts.md` updated — `PASS`.
+10. Complete Phase 1 npm test/build gate — `NOT VERIFIED`.
 
-Because criterion 10 is unverified, this evidence does not claim that C1 has reached final supervisory acceptance.
+This evidence does not claim supervisory approval or final C1 acceptance.
 
 ## Frozen-Contract / Architecture Status
 
-The frozen transfer contract changed only under the explicit supervisor-issued C1 corrective instruction. The approved change is the introduction of `BinaryContentSource` and replacement of affected whole-file transfer payloads with that abstraction. No unrelated frozen contract or architectural boundary was changed.
+The transfer contract change was made under the explicit supervisor-issued C1 correction. Only the affected transfer abstraction and directly necessary fake/test/documentation surfaces changed. No unrelated frozen contract or architectural boundary was changed.
 
 ## Deviations
 
-- The first attempted correction commit was based on the initially observed `master` SHA `5add350efa9a9ec5c725f72c0b153025df260d92`; GitHub rejected the ref update as non-fast-forward after unrelated `master` work advanced the branch. No force push was used. The same scoped correction was rebuilt on top of `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b` and then pushed successfully.
-- The required full npm verification mechanics could not be completed because of environment/network and connector visibility limitations. Supplemental checks were performed but are not represented as equivalent to the required gate.
+- `master` advanced during the original correction attempt. A non-fast-forward ref update was rejected; no force push was used. The correction was reapplied on top of the then-current `master` to preserve unrelated work.
+- The complete npm gate could not be executed because of environment/network limitations. Supplemental checks were performed but are not represented as equivalent to the required gate.
 
 ## Known Issues and Unverified Matters
 
-- The complete Phase 1 `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` gate for the C1 correction remains unverified in this session.
-- The new repository multi-chunk contract test has been added but its execution inside the repository test suite was not observed.
-- No known C1 source-level defect remains from inspection and supplemental validation; however, the missing full gate is a material verification blocker.
+- The complete Phase 1 `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` gate for C1 remains unverified in this session.
+- The new repository multi-chunk contract test exists but its execution inside the repository test suite was not observed.
+- No known C1 source-level defect remains from inspection and supplemental validation; the missing complete gate remains a material verification blocker.
 
 ## Evidence Integrity and Push Verification
 
@@ -148,6 +138,6 @@ The frozen transfer contract changed only under the explicit supervisor-issued C
 - Authoritative branch: `master`.
 - Effective correction base: `88b25f4fe2351af0ff1046ef0a9a3573241c0b3b`.
 - C1 implementation commit: `ad4362e6ec27d5c804d656a667d9080b9f964132`.
-- GitHub compare confirmed the implementation commit is one commit ahead of the effective base and zero behind.
-- The mandatory evidence artifact is updated in this commit on `master`.
-- Final evidence commit reachability on remote `master` must be verified after this update is committed and is reported in the completion response.
+- Prior evidence commit: `79a52df233f1d5d28f4c5e0e15e55cb361c9a774`.
+- This revision reaffirms the blocker-bearing evidence artifact on the current `master` without changing the C1 implementation or unrelated subsequent repository work.
+- The concrete commit SHA created by this evidence update is verified after Git hashes and commits this file and is reported in the completion response.
