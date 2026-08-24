@@ -68,15 +68,16 @@ function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentE
 }
 
 function versionKey(version: VersionReference): string | undefined {
-  if (version.entityKind !== "file" || !isSafelyRecognizedTextPath(version.path)) return undefined;
-  if (version.content?.hash) return `hash:${String(version.content.hash)}`;
-  if (version.content?.revision) return `revision:${version.remoteObjectId ? String(version.remoteObjectId) : String(version.path)}:${version.content.revision}`;
-  return undefined;
+  if (
+    version.entityKind !== "file" ||
+    !isSafelyRecognizedTextPath(version.path) ||
+    !isCanonicalSha256(version.content?.hash)
+  ) return undefined;
+  return `hash:${String(version.content.hash)}`;
 }
 
 function retainedMatches(version: VersionReference, text: string): boolean {
   const expected = version.content?.hash;
-  if (!expected) return Boolean(version.content?.revision);
   return isCanonicalSha256(expected) && sha256Text(text) === expected;
 }
 
