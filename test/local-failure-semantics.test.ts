@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, Stat } from "obsidian";
 import type { BinaryContentSource, VaultPath } from "../src/contracts/common";
-import { ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
+import { ObsidianLocalVaultAdapter, type ExternalReferenceGuard } from "../src/local/obsidian-local-vault";
 
 const vp = (value: string): VaultPath => value as VaultPath;
+const testExternalReferenceGuard: ExternalReferenceGuard = {
+  async assertSafe(): Promise<void> {
+    // This fixture models a filesystem with no external references.
+  }
+};
 
 interface MinimalAdapterState {
   readonly files: Map<string, Uint8Array>;
@@ -73,30 +78,34 @@ function source(...chunks: Uint8Array[]): BinaryContentSource {
   return { async *openChunks() { for (const chunk of chunks) yield chunk; } };
 }
 
+function safeLocal(app: App): ObsidianLocalVaultAdapter {
+  return new ObsidianLocalVaultAdapter(app, { stabilityDelayMs: 0, fetchImpl: noFetch(), externalReferenceGuard: testExternalReferenceGuard });
+}
+
 test("confirmed absence remains distinct from read/access failures", async () => {
-  const absent = new ObsidianLocalVaultAdapter(createApp({ files: new Map() }), { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const absent = safeLocal(createApp({ files: new Map() }));
   assert.equal((await absent.observe(vp("missing.md"))).status, "absent");
   absent.dispose();
 
   const inaccessibleApp = createApp({ files: new Map([["locked.md", new Uint8Array([1])]]), stat: async () => { throw new Error("permission denied"); } });
-  const inaccessible = new ObsidianLocalVaultAdapter(inaccessibleApp, { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const inaccessible = safeLocal(inaccessibleApp);
   assert.equal((await inaccessible.observe(vp("locked.md"))).status, "inaccessible");
   inaccessible.dispose();
 
   const unreadableApp = createApp({ files: new Map([["broken.md", new Uint8Array([1])]]), stat: async () => { throw new Error("I/O read failure"); } });
-  const unreadable = new ObsidianLocalVaultAdapter(unreadableApp, { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const unreadable = safeLocal(unreadableApp);
   assert.equal((await unreadable.observe(vp("broken.md"))).status, "unreadable");
   unreadable.dispose();
 
   const unknownApp = createApp({ files: new Map([["odd.md", new Uint8Array([1])]]), stat: async () => null });
-  const unknown = new ObsidianLocalVaultAdapter(unknownApp, { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const unknown = safeLocal(unknownApp);
   assert.equal((await unknown.observe(vp("odd.md"))).status, "unknown");
   unknown.dispose();
 });
 
 test("enumeration reports partial truthfully when a directory listing fails", async () => {
   const app = createApp({ files: new Map(), list: async () => { throw new Error("adapter listing interrupted"); } });
-  const local = new ObsidianLocalVaultAdapter(app, { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const local = safeLocal(app);
   const listing = await local.enumerate();
   assert.equal(listing.completeness.status, "partial");
   if (listing.completeness.status === "partial") assert.match(listing.completeness.reason, /interrupted/);
@@ -109,7 +118,7 @@ test("mid-write metadata change is observed as unstable and cannot be read as a 
     files: new Map([["moving.bin", new Uint8Array([1,2,3])]]),
     stat: async () => ({ type: "file", ctime: 1, mtime: ++call, size: 3 })
   });
-  const local = new ObsidianLocalVaultAdapter(app, { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const local = safeLocal(app);
   const observed = await local.observe(vp("moving.bin"));
   assert.equal(observed.status, "present");
   if (observed.status === "present") assert.equal(observed.stability, "unstable");
@@ -124,7 +133,7 @@ test("staging write failure leaves an existing destination byte-for-byte intact"
     files: new Map([["safe.bin", original.slice()]]),
     appendBinary: async () => { appendCalls += 1; throw new Error("No space left on device"); }
   };
-  const local = new ObsidianLocalVaultAdapter(createApp(state), { stabilityDelayMs: 0, fetchImpl: noFetch() });
+  const local = safeLocal(createApp(state));
   await assert.rejects(() => local.replaceFile(vp("safe.bin"), source(new Uint8Array([1,2,3]))), /No space left/);
   assert.equal(appendCalls, 1);
   assert.deepEqual([...(state.files.get("safe.bin") ?? [])], [7,8,9]);
@@ -147,7 +156,7 @@ test("visibility lifecycle emits suspend/resume without starting synchronization
   (globalThis as any).removeEventListener = (name: string) => pageListeners.delete(name);
   try {
     const state: MinimalAdapterState = { files: new Map([["safe.md", new Uint8Array([1])]]) };
-    const local = new ObsidianLocalVaultAdapter(createApp(state), { stabilityDelayMs: 0, fetchImpl: noFetch() });
+    const local = safeLocal(createApp(state));
     const events: string[] = [];
     local.onLifecycle(event => events.push(event.kind));
     (fakeDocument as any).visibilityState = "hidden";
