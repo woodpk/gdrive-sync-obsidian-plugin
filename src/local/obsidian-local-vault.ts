@@ -20,11 +20,26 @@ interface VaultWithConfigDir {
   readonly configDir: string;
 }
 
-interface LocalAdapterOptions {
+export type LocalReferenceAccess = "enumerate" | "observe" | "mutation-source" | "mutation-target";
+
+/**
+ * Private Phase 4 platform seam for proving that a syntactically valid vault
+ * path cannot traverse a symlink/junction/alias outside the synchronization
+ * boundary. Desktop supplies a Node-backed implementation in an isolated
+ * desktop-only module. Mobile has no truthful implementation yet on stock
+ * Obsidian and therefore remains a documented platform blocker.
+ */
+export interface ExternalReferenceGuard {
+  assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void>;
+}
+
+export interface LocalAdapterOptions {
   readonly exclusionPolicy?: LocalExclusionPolicy;
   readonly configurationPolicy?: SelectiveConfigurationPolicy;
   readonly stabilityDelayMs?: number;
   readonly fetchImpl?: typeof fetch;
+  readonly readChunkSizeBytes?: number;
+  readonly externalReferenceGuard?: ExternalReferenceGuard;
 }
 
 export class LocalPlatformCapabilityError extends Error {
@@ -63,7 +78,7 @@ function sameStat(left: Stat | null, right: Stat | null): boolean {
 function classifyFailure(path: VaultPath, error: unknown): LocalObservation {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLocaleLowerCase("en-US");
-  if (lower.includes("permission") || lower.includes("denied") || lower.includes("access")) {
+  if (lower.includes("permission") || lower.includes("denied") || lower.includes("access") || lower.includes("external reference")) {
     return { status: "inaccessible", side: "local", path, reason: message };
   }
   if (lower.includes("read") || lower.includes("io") || lower.includes("i/o")) {
@@ -95,6 +110,23 @@ function temporarySibling(path: string, purpose: "stage" | "backup"): string {
   return `${parent ? `${parent}/` : ""}.${leaf}.brain-sync-${purpose}-${id}`;
 }
 
+interface ParsedContentRange {
+  readonly start: number;
+  readonly end: number;
+  readonly total: number;
+}
+
+function parseContentRange(value: string | null): ParsedContentRange | undefined {
+  if (!value) return undefined;
+  const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(value.trim());
+  if (!match) return undefined;
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  const total = Number(match[3]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || !Number.isSafeInteger(total)) return undefined;
+  return { start, end, total };
+}
+
 class ResourceFetchContentSource implements BinaryContentSource {
   readonly sizeBytes?: number;
 
@@ -103,31 +135,94 @@ class ResourceFetchContentSource implements BinaryContentSource {
     private readonly path: VaultPath,
     private readonly expectedToken: ObservationToken,
     sizeBytes: number | undefined,
-    private readonly fetchImpl: typeof fetch
+    private readonly fetchImpl: typeof fetch,
+    private readonly maxChunkBytes: number
   ) {
     this.sizeBytes = sizeBytes;
   }
 
   async *openChunks(): AsyncIterable<Uint8Array> {
-    await this.owner.assertToken(this.path, this.expectedToken);
-    const resourceUrl = this.owner.adapter.getResourcePath(String(this.path));
-    const response = await this.fetchImpl(resourceUrl);
-    if (!response.ok) throw new Error(`Unable to open local resource ${String(this.path)}: HTTP ${response.status}`);
-    if (!response.body) {
+    if (this.sizeBytes === undefined || !Number.isSafeInteger(this.sizeBytes) || this.sizeBytes < 0) {
       throw new LocalPlatformCapabilityError(
-        "incremental-local-read",
-        "This runtime does not expose a ReadableStream for Obsidian local resources; whole-file readBinary fallback is intentionally prohibited for large-file safety."
+        "bounded-local-read",
+        `Cannot perform a bounded local read without a trustworthy byte size: ${String(this.path)}`
       );
     }
-    const reader = response.body.getReader();
-    try {
-      while (true) {
-        const result = await reader.read();
-        if (result.done) break;
-        if (result.value.byteLength > 0) yield result.value;
+    if (this.sizeBytes === 0) {
+      await this.owner.assertToken(this.path, this.expectedToken);
+      return;
+    }
+
+    const resourceUrl = this.owner.adapter.getResourcePath(String(this.path));
+    for (let start = 0; start < this.sizeBytes; start += this.maxChunkBytes) {
+      await this.owner.assertToken(this.path, this.expectedToken);
+      const requestedEnd = Math.min(start + this.maxChunkBytes - 1, this.sizeBytes - 1);
+      const expectedLength = requestedEnd - start + 1;
+      const response = await this.fetchImpl(resourceUrl, {
+        headers: { Range: `bytes=${start}-${requestedEnd}` }
+      });
+
+      if (response.status !== 206) {
+        try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
+        throw new LocalPlatformCapabilityError(
+          "bounded-local-read",
+          `Local resource runtime ignored a byte-range request for ${String(this.path)}: expected HTTP 206, received HTTP ${response.status}. Whole-file fallback is prohibited.`
+        );
       }
-    } finally {
-      reader.releaseLock();
+
+      const contentRange = parseContentRange(response.headers.get("Content-Range"));
+      if (!contentRange || contentRange.start !== start || contentRange.end !== requestedEnd || contentRange.total !== this.sizeBytes) {
+        try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
+        throw new LocalPlatformCapabilityError(
+          "bounded-local-read",
+          `Local resource returned an invalid Content-Range for ${String(this.path)}; expected bytes ${start}-${requestedEnd}/${this.sizeBytes}.`
+        );
+      }
+
+      const declaredLength = response.headers.get("Content-Length");
+      if (declaredLength !== null) {
+        const parsedLength = Number(declaredLength);
+        if (!Number.isSafeInteger(parsedLength) || parsedLength !== expectedLength || parsedLength > this.maxChunkBytes) {
+          try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
+          throw new LocalPlatformCapabilityError(
+            "bounded-local-read",
+            `Local resource returned an unsafe Content-Length for ${String(this.path)}: ${declaredLength}.`
+          );
+        }
+      }
+
+      if (!response.body) {
+        throw new LocalPlatformCapabilityError(
+          "bounded-local-read",
+          "This runtime does not expose a response body for a validated byte-range request. Whole-file readBinary fallback is intentionally prohibited."
+        );
+      }
+
+      const reader = response.body.getReader();
+      let received = 0;
+      try {
+        while (true) {
+          const result = await reader.read();
+          if (result.done) break;
+          if (result.value.byteLength === 0) continue;
+          received += result.value.byteLength;
+          if (received > expectedLength || result.value.byteLength > this.maxChunkBytes) {
+            throw new LocalPlatformCapabilityError(
+              "bounded-local-read",
+              `Local resource exceeded the requested bounded range for ${String(this.path)}.`
+            );
+          }
+          yield result.value;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      if (received !== expectedLength) {
+        throw new LocalPlatformCapabilityError(
+          "bounded-local-read",
+          `Local resource returned ${received} bytes for a ${expectedLength}-byte range of ${String(this.path)}.`
+        );
+      }
     }
     await this.owner.assertToken(this.path, this.expectedToken);
   }
@@ -136,9 +231,9 @@ class ResourceFetchContentSource implements BinaryContentSource {
 /**
  * Production Phase 4 implementation of the frozen LocalVaultPort.
  *
- * It uses only Obsidian's platform-neutral DataAdapter/FileManager surfaces
- * plus browser APIs available to desktop and mobile WebViews. It contains no
- * synchronization planning, remote access, or product scheduling policy.
+ * Mobile-required behavior uses Obsidian's platform-neutral DataAdapter and
+ * FileManager surfaces. Desktop-only safety may be injected through the private
+ * ExternalReferenceGuard seam without changing any frozen shared contract.
  */
 export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   readonly adapter: DataAdapter;
@@ -146,6 +241,8 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly configurationPolicy: SelectiveConfigurationPolicy;
   private readonly stabilityDelayMs: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly readChunkSizeBytes: number;
+  private readonly externalReferenceGuard?: ExternalReferenceGuard;
   private readonly changeListeners = new Set<(change: LocalVaultChange) => void>();
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
@@ -159,6 +256,11 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     this.configurationPolicy = options.configurationPolicy ?? new SelectiveConfigurationPolicy();
     this.stabilityDelayMs = options.stabilityDelayMs ?? 150;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    this.readChunkSizeBytes = options.readChunkSizeBytes ?? 256 * 1024;
+    if (!Number.isSafeInteger(this.readChunkSizeBytes) || this.readChunkSizeBytes <= 0) {
+      throw new Error("readChunkSizeBytes must be a positive safe integer");
+    }
+    this.externalReferenceGuard = options.externalReferenceGuard;
     this.installVaultEvents();
     this.installLifecycleEvents();
   }
@@ -216,6 +318,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   async observe(path: VaultPath): Promise<LocalObservation> {
     const normalized = asPath(String(path));
     try {
+      await this.externalReferenceGuard?.assertSafe(normalized, "observe");
       const exists = await this.adapter.exists(String(normalized), true);
       if (!exists) return { status: "absent", side: "local", path: normalized };
       const first = await this.adapter.stat(String(normalized));
@@ -259,7 +362,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     if (expectedToken && expectedToken !== observation.observationToken) throw new LocalStaleObservationError(path);
     const token = observation.observationToken;
     return {
-      content: new ResourceFetchContentSource(this, path, token, observation.content?.sizeBytes, this.fetchImpl),
+      content: new ResourceFetchContentSource(this, path, token, observation.content?.sizeBytes, this.fetchImpl, this.readChunkSizeBytes),
       evidence: observation.content ?? {},
       stability: "stable",
       observationToken: token
@@ -317,6 +420,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async move(fromPath: VaultPath, toPath: VaultPath): Promise<LocalMutationReceipt> {
+    await this.externalReferenceGuard?.assertSafe(fromPath, "mutation-source");
     await this.assertCompatible(toPath);
     const file = this.app.vault.getAbstractFileByPath(String(fromPath));
     if (!file) throw new Error(`Cannot move missing local path: ${String(fromPath)}`);
@@ -325,6 +429,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async trash(path: VaultPath): Promise<void> {
+    await this.externalReferenceGuard?.assertSafe(path, "mutation-source");
     const file = this.app.vault.getAbstractFileByPath(String(path));
     if (!file) throw new Error(`Cannot trash missing local path: ${String(path)}`);
     await this.app.fileManager.trashFile(file);
@@ -383,6 +488,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   private async assertCompatible(path: VaultPath): Promise<void> {
+    await this.externalReferenceGuard?.assertSafe(path, "mutation-target");
     const result = await this.validatePath(path);
     if (result.status === "blocked") throw new Error(`Blocked local path (${result.reason}): ${String(path)}${result.detail ? ` — ${result.detail}` : ""}`);
   }
