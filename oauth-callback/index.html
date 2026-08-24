@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>BRAIN Sync authorization return</title>
+</head>
+<body>
+  <p id="status">Returning authorization to Obsidian…</p>
+  <script>
+    (() => {
+      const query = new URLSearchParams(window.location.search);
+      const state = query.get("state");
+      const code = query.get("code");
+      const error = query.get("error");
+      history.replaceState(null, "", window.location.pathname);
+      if (!state || (!code && !error)) {
+        document.getElementById("status").textContent = "Authorization return is incomplete. Return to Obsidian and try again.";
+        return;
+      }
+      const target = new URL("obsidian://brain-gdrive-oauth");
+      target.searchParams.set("state", state);
+      if (code) target.searchParams.set("code", code);
+      if (error) target.searchParams.set("error", error);
+      window.location.replace(target.toString());
+    })();
+  </script>
+</body>
+</html>
