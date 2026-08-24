@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PLAN_OPERATION_KINDS, REQUIRED_DRIVE_SCOPE, contractId, type ConflictAssessment, type ExecutionResult, type ManagedRemoteIdentity, type PathSnapshot, type PlannedOperation, type StateLoadResult, type SynchronizationPlan, type SynchronizationStatus, type UserAction } from "../src/contracts";
+import { PLAN_OPERATION_KINDS, REQUIRED_DRIVE_SCOPE, contractId, type BinaryContentSource, type ConflictAssessment, type ExecutionResult, type LocalReadResult, type ManagedRemoteIdentity, type PathSnapshot, type PlannedOperation, type RemoteCreateRequest, type RemoteDownload, type RemoteUpdateRequest, type StateLoadResult, type SynchronizationPlan, type SynchronizationStatus, type UserAction } from "../src/contracts";
 import { FakeSynchronizationPlanner, InMemorySynchronizationStateStore, RecordingProductControl, RecordingSuccessCommitter, createGoogleDriveFake, createLocalVaultFake } from "../src/testing/fakes";
 
 const path = contractId<"VaultPath">("10-Notes/example.md");
@@ -21,6 +21,34 @@ test("snapshot keeps unsafe uncertainty distinct from confirmed absence", () => 
 test("plan freezes required operation vocabulary", () => assert.deepEqual(PLAN_OPERATION_KINDS, ["noop","upload-create","upload-update","download-create","download-update","identity-preserving-move","clean-text-merge","unresolved-conflict","trash-local","trash-remote","blocked-unsafe","recovery-required"]));
 test("Phase 2 can plan without live adapters", async () => assert.deepEqual(await new FakeSynchronizationPlanner(plan).plan({ snapshots: [], state: { status: "uninitialized" } as StateLoadResult }), plan));
 test("local port is consumable through mobile-safe fake", async () => { const local = createLocalVaultFake(); assert.equal((await local.classifyConfiguration(path)).classification, "unknown"); assert.equal((await local.enumerate()).completeness.status, "complete"); });
+test("local and Drive transfer contracts accept lazy multi-chunk binary content", async () => {
+  let openCount = 0;
+  const content: BinaryContentSource = {
+    sizeBytes: 5,
+    async *openChunks() {
+      openCount += 1;
+      yield new Uint8Array([1, 2]);
+      yield new Uint8Array([3, 4, 5]);
+    }
+  };
+  const localRead: LocalReadResult = { content, evidence: { sizeBytes: 5 }, stability: "stable" };
+  const remoteDownload: RemoteDownload = { content, remoteObjectId: remoteId, evidence: { sizeBytes: 5 } };
+  const remoteCreate: RemoteCreateRequest = { path, entityKind: "file", content, expectedEvidence: { sizeBytes: 5 } };
+  const remoteUpdate: RemoteUpdateRequest = { remoteObjectId: remoteId, path, content, expectedEvidence: { sizeBytes: 5 } };
+
+  const local = createLocalVaultFake();
+  await local.createFile(path, content);
+  await local.replaceFile(path, content);
+  const drive = createGoogleDriveFake();
+  await drive.create(remoteId, remoteCreate);
+  await drive.update(remoteUpdate);
+
+  const observedChunks: number[][] = [];
+  for await (const chunk of remoteDownload.content.openChunks()) observedChunks.push(Array.from(chunk));
+  assert.equal(localRead.content, content);
+  assert.deepEqual(observedChunks, [[1, 2], [3, 4, 5]]);
+  assert.equal(openCount, 1);
+});
 test("Drive contract freezes drive.file and separates auth from identity", async () => {
   assert.equal(REQUIRED_DRIVE_SCOPE, "https://www.googleapis.com/auth/drive.file");
   const identity: ManagedRemoteIdentity = { rootId: remoteId, vaultIdentity: vaultId, protocolVersion: protocol };

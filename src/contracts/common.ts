@@ -16,6 +16,17 @@ export type ProtocolVersion = Brand<string, "ProtocolVersion">;
 export type EntityKind = "file" | "folder";
 export type SyncSide = "local" | "remote";
 
+/**
+ * Platform-neutral binary content source.
+ *
+ * Implementations provide content incrementally and must not require the
+ * complete file to be materialized in memory before consumption begins.
+ */
+export interface BinaryContentSource {
+  readonly sizeBytes?: number;
+  openChunks(): AsyncIterable<Uint8Array>;
+}
+
 /** Timestamps are advisory metadata and never overwrite/conflict authority. */
 export interface ContentEvidence {
   readonly hash?: ContentHash;
