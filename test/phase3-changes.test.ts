@@ -11,6 +11,7 @@ const ok=(body:unknown,status=200)=>Promise.resolve({ok:true,value:new Response(
 const id=(s:string)=>contractId<"RemoteObjectId">(s) as RemoteObjectId; const vault=(s:string)=>contractId<"VaultIdentity">(s) as VaultIdentity; const version=(s:string)=>contractId<"ProtocolVersion">(s) as ProtocolVersion; const cursor=(s:string)=>contractId<"ChangeCursor">(s) as ChangeCursor;
 const root=()=>({id:"root",name:"BRAIN Sync",mimeType:"application/vnd.google-apps.folder",trashed:false,appProperties:{brainSyncRole:"brain-sync-root",brainVaultIdentity:"vault-1",brainProtocolVersion:"1"}});
 const content=()=>({id:"content",name:"vault",mimeType:"application/vnd.google-apps.folder",parents:["root"],trashed:false,appProperties:{brainSyncRole:"brain-sync-content"}});
+const isContentRootQuery=(url:string)=>url.includes("appProperties+has")||url.includes("appProperties%20has");
 function adapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>,paired=true){ const backing=new MemorySecrets(); if(paired) backing.setSecret("brain-gdrive-paired-account","acct"); const store=new ObsidianSecretStore(backing); return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store); }
 
 test("managed root creation stamps stable vault identity and protocol metadata",async()=>{
@@ -21,7 +22,7 @@ test("managed root creation stamps stable vault identity and protocol metadata",
 });
 
 test("start cursor and incremental change page retain Drive identity",async()=>{
-  const a=adapter(async url=>{ if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root()); if(url.includes("appProperties")) return ok({files:[content()]}); if(url.includes("/changes/startPageToken")) return ok({startPageToken:"start-1"}); if(url.includes("/changes?")) return ok({changes:[{fileId:"file-1",file:{id:"file-1",name:"note.md",mimeType:"text/plain",parents:["content"],trashed:false,size:"4",version:"2"}}],newStartPageToken:"next-2"}); throw new Error(url); });
+  const a=adapter(async url=>{ if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root()); if(isContentRootQuery(url)) return ok({files:[content()]}); if(url.includes("/changes/startPageToken")) return ok({startPageToken:"start-1"}); if(url.includes("/changes?")) return ok({changes:[{fileId:"file-1",file:{id:"file-1",name:"note.md",mimeType:"text/plain",parents:["content"],trashed:false,size:"4",version:"2"}}],newStartPageToken:"next-2"}); throw new Error(url); });
   const start=await a.getStartCursor(id("root")); assert.equal(start.ok,true); if(start.ok) assert.equal(String(start.value),"start-1");
   const page=await a.readChanges(id("root"),cursor("start-1")); assert.equal(page.ok,true); if(page.ok){ assert.equal(String(page.value.nextCursor),"next-2"); assert.equal(page.value.changes.length,1); const change=page.value.changes[0]; assert.equal(change.kind,"upsert"); if(change.kind==="upsert") assert.equal(String(change.entry.remoteObjectId),"file-1"); }
 });
