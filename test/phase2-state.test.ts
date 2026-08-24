@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type DeviceIdentity, type OperationId, type PlannedOperation, type StateRevision, type VaultIdentity, type VaultPath } from "../src/contracts";
+import { contractId, type ChangeCursor, type CheckpointId, type DeviceIdentity, type OperationId, type PlannedOperation, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
 import { StateCommitCoordinator } from "../src/core/commit-coordinator";
 import { CoreRunCoordinator, InMemoryRunLeasePort } from "../src/core/run-coordinator";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
+import { removeKnownDevice } from "../src/state/state-policy";
 
 const vault = contractId<"VaultIdentity">("vault") as VaultIdentity;
 const device = contractId<"DeviceIdentity">("device") as DeviceIdentity;
@@ -16,6 +17,15 @@ async function seeded() {
   const bytes = new MemoryStateByteStorage(); const store = new PersistentSynchronizationStateStore(bytes);
   await store.saveTrusted(createInitialTrustedState({ stateRevision: rev(1), vaultIdentity: vault, deviceIdentity: device }));
   return { bytes, store };
+}
+
+function envelopeChecksum(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `fnv1a32:${hash.toString(16).padStart(8, "0")}`;
 }
 
 test("true new install differs from missing expected state", async () => {
@@ -33,6 +43,20 @@ test("malformed and truncated state enter recovery", async () => {
   const b = await new PersistentSynchronizationStateStore(truncated).load({ expectation: "existing-pairing" });
   assert.equal(a.status, "recovery-required"); assert.equal(b.status, "recovery-required");
   if (b.status === "recovery-required") assert.equal(b.reason, "truncated");
+});
+
+test("internally inconsistent state is recovery-required even with a valid envelope checksum", async () => {
+  const inconsistent = {
+    schemaVersion: 1, stateRevision: "state-1", vaultIdentity: "vault", deviceIdentity: "device",
+    base: [{ path: "dup.md", entityKind: "file", localExisted: true, remoteExisted: true }, { path: "dup.md", entityKind: "file", localExisted: true, remoteExisted: true }],
+    remoteMappings: [], tombstones: [], operations: [], knownDevices: [{ deviceId: "device", stale: false }],
+  };
+  const payload = JSON.stringify(inconsistent);
+  const storage = new MemoryStateByteStorage();
+  storage.bytes = new TextEncoder().encode(JSON.stringify({ envelopeVersion: 1, checksum: envelopeChecksum(payload), state: inconsistent }));
+  const loaded = await new PersistentSynchronizationStateStore(storage).load({ expectation: "existing-pairing" });
+  assert.equal(loaded.status, "recovery-required");
+  if (loaded.status === "recovery-required") assert.equal(loaded.reason, "internally-inconsistent");
 });
 
 test("integrity failure and incompatible schema enter recovery", async () => {
@@ -67,6 +91,39 @@ test("stale revision prevents concurrent state overwrite", async () => {
   assert.equal(result.status, "stale-revision");
 });
 
+test("change cursor and stale-device metadata round-trip as durable synchronization state", async () => {
+  const storage = new MemoryStateByteStorage(); const store = new PersistentSynchronizationStateStore(storage);
+  const cursor = contractId<"ChangeCursor">("cursor-17") as ChangeCursor;
+  const other = contractId<"DeviceIdentity">("other-device") as DeviceIdentity;
+  const state: TrustedSynchronizationState = {
+    ...createInitialTrustedState({ stateRevision: rev(1), vaultIdentity: vault, deviceIdentity: device }),
+    changeCursor: cursor,
+    knownDevices: [{ deviceId: device, stale: false }, { deviceId: other, stale: true, advisoryLastReconciledAtMs: 100 }],
+  };
+  assert.equal((await store.saveTrusted(state)).status, "saved");
+  const loaded = await store.load({ expectation: "existing-pairing" });
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status === "trusted") {
+    assert.equal(loaded.state.changeCursor, cursor);
+    assert.equal(loaded.state.knownDevices[1].stale, true);
+  }
+});
+
+test("device removal changes only known-device coordination state", () => {
+  const other = contractId<"DeviceIdentity">("old-device") as DeviceIdentity;
+  const state: TrustedSynchronizationState = {
+    ...createInitialTrustedState({ stateRevision: rev(1), vaultIdentity: vault, deviceIdentity: device }),
+    base: [{ path: p, entityKind: "file", localExisted: true, remoteExisted: true }],
+    tombstones: [{ path: contractId<"VaultPath">("gone.md"), entityKind: "file", deletedOn: "both" }],
+    knownDevices: [{ deviceId: device, stale: false }, { deviceId: other, stale: true }],
+  };
+  const removed = removeKnownDevice(state, other);
+  assert.deepEqual(removed.base, state.base);
+  assert.deepEqual(removed.tombstones, state.tombstones);
+  assert.deepEqual(removed.knownDevices, [{ deviceId: device, stale: false }]);
+  assert.throws(() => removeKnownDevice(state, device));
+});
+
 test("migration assessment is backward-aware and migration creates backup first", async () => {
   const { bytes } = await seeded();
   const oldRuntime = new PersistentSynchronizationStateStore(bytes, 1);
@@ -85,27 +142,39 @@ test("diagnostic export is an explicit metadata projection", async () => {
   assert.doesNotMatch(text, /refreshToken|accessToken|fullNoteContent/);
 });
 
-test("operation journal records pending and uncertain without claiming success", async () => {
+test("operation journal records checkpointed pending and uncertain work without claiming success", async () => {
   const { store } = await seeded(); const coordinator = new StateCommitCoordinator(store, { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device });
-  assert.equal((await coordinator.markPending(op, rev(1))).status, "committed");
+  const checkpoint = contractId<"CheckpointId">("checkpoint-1") as CheckpointId;
+  assert.equal((await coordinator.markPending(op, rev(1), checkpoint)).status, "committed");
   let loaded = await store.load({ expectation: "existing-pairing" }); assert.equal(loaded.status, "trusted");
-  if (loaded.status === "trusted") assert.equal(loaded.state.operations[0].status, "pending");
+  if (loaded.status === "trusted") {
+    assert.equal(loaded.state.operations[0].status, "pending");
+    assert.equal(loaded.state.operations[0].checkpointId, checkpoint);
+  }
   const current = loaded.status === "trusted" ? loaded.state.stateRevision : undefined;
-  assert.equal((await coordinator.markUncertain(op, current)).status, "committed");
+  assert.equal((await coordinator.markUncertain(op, current, checkpoint)).status, "committed");
   loaded = await store.load({ expectation: "existing-pairing" });
-  if (loaded.status === "trusted") assert.equal(loaded.state.operations[0].status, "uncertain");
+  if (loaded.status === "trusted") {
+    assert.equal(loaded.state.operations[0].status, "uncertain");
+    assert.equal(loaded.state.operations[0].checkpointId, checkpoint);
+  }
 });
 
-test("verified success is committed only after a matching durable verified receipt", async () => {
+test("verified success is committed only after a matching durable verified receipt and preserves checkpoint provenance", async () => {
   const { store } = await seeded(); const coordinator = new StateCommitCoordinator(store, { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device });
   const wrong = contractId<"OperationId">("wrong") as OperationId;
   assert.equal((await coordinator.commitVerifiedSuccess(op, { operationId: wrong, durable: true, integrityVerified: true }, rev(1))).status, "recovery-required");
-  const result = await coordinator.commitVerifiedSuccess(op, { operationId: opId, durable: true, integrityVerified: true, evidence: { revision: "content-1" }, verificationEvidenceRef: "hash-ok" }, rev(1));
+  const checkpoint = contractId<"CheckpointId">("checkpoint-2") as CheckpointId;
+  assert.equal((await coordinator.markPending(op, rev(1), checkpoint)).status, "committed");
+  const pending = await store.load({ expectation: "existing-pairing" });
+  if (pending.status !== "trusted") throw new Error("expected trusted state");
+  const result = await coordinator.commitVerifiedSuccess(op, { operationId: opId, durable: true, integrityVerified: true, evidence: { revision: "content-1" }, verificationEvidenceRef: "hash-ok" }, pending.state.stateRevision);
   assert.equal(result.status, "committed");
   const loaded = await store.load({ expectation: "existing-pairing" });
   assert.equal(loaded.status, "trusted");
   if (loaded.status === "trusted") {
     assert.equal(loaded.state.operations[0].status, "completed");
+    assert.equal(loaded.state.operations[0].checkpointId, checkpoint);
     assert.equal(loaded.state.base[0].localExisted, true);
     assert.equal(loaded.state.base[0].remoteExisted, true);
   }
