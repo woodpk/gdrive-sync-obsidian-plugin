@@ -12,12 +12,14 @@ export class ProductionSynchronizationPlanner implements SynchronizationPlanner 
   async plan(input: PlanningInput): Promise<SynchronizationPlan> {
     const plan = await this.inner.plan(input);
     if (input.state.status !== "trusted") return plan;
-    const currentDevice = input.state.state.knownDevices.find(device => device.deviceId === input.state.state.deviceIdentity);
+
+    const trustedState = input.state.state;
+    const currentDevice = trustedState.knownDevices.find(device => device.deviceId === trustedState.deviceIdentity);
     if (!currentDevice?.stale || !plan.operations.some(operation => operation.destructive)) return plan;
 
     const path = (plan.operations.find(operation => operation.destructive)?.path ?? contractId<"VaultPath">("__stale_device__")) as VaultPath;
     const guard: PlannedOperation = {
-      operationId: contractId<"OperationId">(`stale-device-guard:${String(input.state.state.deviceIdentity)}:${String(plan.planId)}`),
+      operationId: contractId<"OperationId">(`stale-device-guard:${String(trustedState.deviceIdentity)}:${String(plan.planId)}`),
       kind: "blocked-unsafe",
       path,
       destructive: false,
