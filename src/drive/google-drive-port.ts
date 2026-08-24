@@ -110,8 +110,20 @@ export class GoogleDriveAdapter implements GoogleDrivePort {
     const guard = await this.guardPairedAccount(); if (!guard.ok) return guard;
     const roots = await this.domainRoots(rootId); if (!roots.ok) return roots;
     const entries: RemoteEntry[] = []; this.pathCache.clear();
-    const ordinary = await this.listDomain(roots.value.content.id, "", entries); if (!ordinary.ok) return ordinary;
-    const config = await this.listDomain(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, entries); if (!config.ok) return config;
+    const ordinary = await this.listDomain(roots.value.content.id, "", entries);
+    if (!ordinary.ok) {
+      if (ordinary.signal.kind === "transient-failure" || ordinary.signal.kind === "rate-limited") {
+        return { ok: true, value: { entries, completeness: { status: "partial", reason: signalMessage(ordinary.signal, "ordinary remote listing interrupted") } } };
+      }
+      return ordinary;
+    }
+    const config = await this.listDomain(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, entries);
+    if (!config.ok) {
+      if (config.signal.kind === "transient-failure" || config.signal.kind === "rate-limited") {
+        return { ok: true, value: { entries, completeness: { status: "partial", reason: signalMessage(config.signal, "portable configuration listing interrupted") } } };
+      }
+      return config;
+    }
     return { ok: true, value: { entries, completeness: { status: "complete" } } };
   }
 
