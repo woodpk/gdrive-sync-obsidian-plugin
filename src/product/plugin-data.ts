@@ -11,6 +11,7 @@ export interface BrainSyncSettings {
   recoveryInProgress: boolean;
   recoveryBackupId: string;
   userExclusionPatterns: string[];
+  scopeReconcileRequired: boolean;
   startupResumeEnabled: boolean;
   localChangeEnabled: boolean;
   periodicEnabled: boolean;
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   recoveryInProgress: false,
   recoveryBackupId: "",
   userExclusionPatterns: [],
+  scopeReconcileRequired: false,
   startupResumeEnabled: false,
   localChangeEnabled: false,
   periodicEnabled: false,
@@ -81,6 +83,7 @@ export class PluginDataRepository implements AuditPersistence {
       const value = raw && typeof raw === "object" ? raw as PersistedPluginData : {};
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
+      merged.scopeReconcileRequired = Boolean(merged.scopeReconcileRequired);
       return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [] };
     });
     return this.loaded;
