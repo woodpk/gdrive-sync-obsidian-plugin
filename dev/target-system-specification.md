@@ -11,14 +11,14 @@
 
 This document defines the required finished product. It is a **target-system specification**, not a coding recipe, build-session transcript, or substitute for the separate Stage 1 build decomposition.
 
-The specification is written at the level required by `../agent-led-software-product-construction-manual.md`: materially different implementations must not be able to produce materially different product behavior while still claiming conformance, but ordinary engineering mechanics remain available to implementation judgment.
+The specification is written at the level required by `dev/agent-led-software-product-construction-manual.md`: materially different implementations must not be able to produce materially different product behavior while still claiming conformance, but ordinary engineering mechanics remain available to implementation judgment.
 
 ### 1.1 Authority Rules
 
 The following authority rules govern this project:
 
 1. A later explicit user decision overrides earlier project artifacts.
-2. `../decision-register.yaml` records the accepted product/process decisions and their supersession history.
+2. `dev/decision-register.yaml` records the accepted product/process decisions and their supersession history.
 3. This target-system specification is the authoritative finished-system contract used by Stage 2 construction and Stage 3 validation.
 4. The Stage 1 build decomposition and coverage artifacts are implementation-planning authorities only; they may not redefine this target system.
 5. Build-session prompts are subordinate to this specification and the decomposition.
@@ -39,8 +39,8 @@ If this specification and the current decision register appear materially incons
 
 This specification was constructed from:
 
-- `../agent-led-software-product-construction-manual.md`, blob SHA `02adedab577f397d98fb9666166270358a581761`, fully re-read before the original specification and re-applied during this revision;
-- `../decision-register.yaml` and all accepted Stage 0 product decisions represented there;
+- `dev/agent-led-software-product-construction-manual.md`, blob SHA `02adedab577f397d98fb9666166270358a581761`, fully re-read before the original specification and re-applied during this revision;
+- `dev/decision-register.yaml` and all accepted Stage 0 product decisions represented there;
 - repository/source grounding performed against:
   - `woodpk/gdrive-sync-obsidian-plugin` — effectively pre-implementation at Stage 1 entry;
   - `laupas/google-drive-mirror` at commit `886f47a0e52e71a33cd2833b4a013f9b81d68464`;
