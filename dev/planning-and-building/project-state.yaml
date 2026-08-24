@@ -1,0 +1,70 @@
+schema_version: 1
+record:
+  title: "BRAIN Google Drive Sync Plugin — Current Project State"
+  status: authoritative_current_progress
+  as_of: "2026-08-23"
+  repository: "woodpk/gdrive-sync-obsidian-plugin"
+  workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
+  purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, and frozen shared contracts."
+  supersedes_progress_metadata:
+    - "decision-register.yaml record.stage_state when that metadata is stale"
+
+stage_state:
+  stage_0: complete
+  stage_1_target_system_specification: complete
+  stage_1_build_decomposition: complete
+  stage_2a: active
+  stage_3: pending
+
+stage_2a_phases:
+  phase_1:
+    name: "Repository Foundation and Frozen Shared Contracts"
+    status: complete_supervisor_approved
+    frozen_contract_handoff: "phase-1-shared-contracts.md"
+    coding_agent_evidence: "../evidence/_ca-output.md"
+    supervisor_review_result: "APPROVE"
+  phase_2:
+    name: "Core Synchronization Semantics and Durable State"
+    status: ready
+    depends_on: [phase_1]
+  phase_3:
+    name: "Google Drive and OAuth Boundary"
+    status: ready
+    depends_on: [phase_1]
+  phase_4:
+    name: "Obsidian Local, Platform, and Configuration Boundary"
+    status: ready
+    depends_on: [phase_1]
+  phase_5:
+    name: "Integrated Synchronization Product and User Workflows"
+    status: blocked
+    depends_on: [phase_2, phase_3, phase_4]
+  phase_6:
+    name: "Cross-Platform Hardening and Stage 3 Readiness"
+    status: blocked
+    depends_on: [phase_5]
+
+parallel_wave:
+  status: ready
+  worker_count: 3
+  supervisor: "current supervising agent and successor supervisor lineage"
+  assignments:
+    - worker: "CA-P2"
+      phase: phase_2
+      scope: "Core synchronization semantics and durable state"
+    - worker: "CA-P3"
+      phase: phase_3
+      scope: "Google Drive and OAuth boundary"
+    - worker: "CA-P4"
+      phase: phase_4
+      scope: "Obsidian local/platform/configuration boundary"
+  isolation_rule: "Each worker must use a supervisor-controlled branch/worktree or equivalent isolated ref."
+  contract_rule: "Workers consume Phase 1 frozen contracts and may not alter them unilaterally. Any required contract change returns to the supervisor for central reconciliation and propagation to all affected workers."
+  integration_rule: "Phase 5 does not begin until Phases 2, 3, and 4 independently pass supervisor review and are reconciled into one coherent repository state."
+
+next_action:
+  stage: "Stage 2A"
+  action: "Generate repository-grounded build-session prompts for Phases 2, 3, and 4 from the current master state, then launch the three coding agents in parallel on isolated refs."
+  governing_file: "stage-1-build-decomposition.md"
+  relevant_sections: ["6", "7", "8", "11", "17"]
+  build_prompt_method: "agent-led-software-product-construction-manual.md Stage 2A Build-Prompt Expansion Template"
