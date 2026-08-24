@@ -3,7 +3,7 @@ import type { DeviceIdentity, DriveSignal, LocalVaultPort, ManagedRemoteIdentity
 import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
-import { ThreeWayConflictResolver, fnv1aContentHash } from "../core/conflict-resolver";
+import { ThreeWayConflictResolver } from "../core/conflict-resolver";
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
 import { beginGoogleAuthorization, registerGoogleOAuthReturn } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
@@ -18,6 +18,7 @@ import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
 import { automaticNetworkDecision } from "./network-policy";
 import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
+import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
 
@@ -58,11 +59,7 @@ export class Phase5ProductRuntime {
     const current = this.host.settings();
     if (!current.oauthClientId || !current.oauthRedirectUri) return;
 
-    this.boundary = createObsidianGoogleDriveBoundary({
-      oauth: { clientId: current.oauthClientId, redirectUri: current.oauthRedirectUri },
-      secretStorage: this.host.app.secretStorage,
-      requestUrl,
-    });
+    this.boundary = createObsidianGoogleDriveBoundary({ oauth: { clientId: current.oauthClientId, redirectUri: current.oauthRedirectUri }, secretStorage: this.host.app.secretStorage, requestUrl });
     registerGoogleOAuthReturn(this.host.plugin, this.boundary.oauth, result => {
       this.host.notify(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`);
     });
@@ -72,25 +69,20 @@ export class Phase5ProductRuntime {
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
     const remoteRootId = contractId<"RemoteObjectId">(current.remoteRootId) as RemoteObjectId;
-    const stateContext: StateLoadContext = {
-      expectation: current.firstSyncCompleted ? "existing-pairing" : "new-installation",
-      expectedVaultIdentity: vaultIdentity,
-      expectedDeviceIdentity: deviceIdentity,
-    };
+    const stateContext: StateLoadContext = { expectation: current.firstSyncCompleted ? "existing-pairing" : "new-installation", expectedVaultIdentity: vaultIdentity, expectedDeviceIdentity: deviceIdentity };
     this.state = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
     const snapshots = new ProductSnapshotAssembler(this.local, this.boundary.drive, this.state, stateContext, remoteIdentity);
+    const textVersions = new ProductTextVersionStore(
+      new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
+      this.local,
+      this.boundary.drive,
+    );
+    const conflicts = new ThreeWayConflictResolver(textVersions, textVersions, deviceIdentity);
 
     let controller: IntegratedProductController;
-    const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence());
+    const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence(), textVersions);
     const audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
-    const conflicts = new ThreeWayConflictResolver({
-      // Frozen production state retains BASE evidence but not trustworthy BASE bytes.
-      // Missing BASE bytes force unresolved preservation rather than a fabricated clean merge.
-      readText: async () => undefined,
-    }, {
-      evidenceFor: async (_path, mergedText) => ({ hash: fnv1aContentHash(mergedText), sizeBytes: new TextEncoder().encode(mergedText).byteLength }),
-    }, deviceIdentity);
     controller = new IntegratedProductController({
       vaultIdentity,
       deviceIdentity,
@@ -98,6 +90,7 @@ export class Phase5ProductRuntime {
       stateStore: this.state,
       snapshotAssembler: snapshots,
       executor,
+      conflictResolver: conflicts,
       plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
       leasePort: new WebLocksRunLeasePort(),
       audit,
@@ -105,6 +98,10 @@ export class Phase5ProductRuntime {
       automaticExecutionAllowed: plan => {
         if (!this.host.settings().firstSyncCompleted) return { allowed: false, reason: "Automatic synchronization remains disabled until first synchronization establishes trustworthy state." };
         return automaticNetworkDecision(plan, this.host.settings(), Platform.isMobile);
+      },
+      onTrustedBaselineEstablished: async () => {
+        const settingsNow = this.host.settings();
+        if (!settingsNow.firstSyncCompleted) await this.host.saveSettings({ ...settingsNow, firstSyncCompleted: true });
       },
     });
     this.controller = controller;
@@ -132,12 +129,7 @@ export class Phase5ProductRuntime {
   async authenticate(): Promise<void> {
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure OAuth client ID and redirect URI first.");
-    await beginGoogleAuthorization(boundary.oauth, {
-      openExternal: url => {
-        const opened = globalThis.open(url, "_blank", "noopener,noreferrer");
-        if (!opened) throw new Error("The system browser could not be opened.");
-      },
-    });
+    await beginGoogleAuthorization(boundary.oauth, { openExternal: url => { const opened = globalThis.open(url, "_blank", "noopener,noreferrer"); if (!opened) throw new Error("The system browser could not be opened."); } });
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {
@@ -145,11 +137,7 @@ export class Phase5ProductRuntime {
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
     let settings = this.host.settings();
     let vaultIdentity = settings.vaultIdentity;
-    if (!vaultIdentity) {
-      vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
-      settings = { ...settings, vaultIdentity };
-      await this.host.saveSettings(settings);
-    }
+    if (!vaultIdentity) { vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`; settings = { ...settings, vaultIdentity }; await this.host.saveSettings(settings); }
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     await this.host.saveSettings({ ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity), firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
@@ -180,24 +168,15 @@ export class Phase5ProductRuntime {
   }
 
   async disposeProduct(): Promise<void> {
-    this.scheduler?.stop();
-    this.scheduler = undefined;
-    this.unsubscribeSurface?.();
-    this.unsubscribeSurface = undefined;
-    await this.controller?.request({ kind: "cancel-active-sync" });
-    this.controller = undefined;
+    this.scheduler?.stop(); this.scheduler = undefined;
+    this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
+    await this.controller?.request({ kind: "cancel-active-sync" }); this.controller = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
-    disposable?.dispose?.();
-    this.local = undefined;
-    this.boundary = undefined;
-    this.state = undefined;
+    disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined;
   }
 
   private async createLocalAdapter(): Promise<LocalVaultPort> {
-    if (Platform.isDesktopApp) {
-      const module = await import("../local/desktop-local-vault");
-      return module.createDesktopLocalVaultAdapter(this.host.app);
-    }
+    if (Platform.isDesktopApp) { const module = await import("../local/desktop-local-vault"); return module.createDesktopLocalVaultAdapter(this.host.app); }
     return new ObsidianLocalVaultAdapter(this.host.app);
   }
 }
