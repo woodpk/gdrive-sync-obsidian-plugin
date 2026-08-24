@@ -1,10 +1,10 @@
-import { Modal, Setting } from "obsidian";
+import { App, Modal, Setting } from "obsidian";
 import type { CheckpointId, SynchronizationPlan } from "../contracts";
 import type { IntegratedProductController } from "./product-controller";
 
 export class PlanPreviewModal extends Modal {
   constructor(
-    app: ConstructorParameters<typeof Modal>[0],
+    app: App,
     private readonly plan: SynchronizationPlan,
     private readonly controller: IntegratedProductController,
   ) { super(app); }
