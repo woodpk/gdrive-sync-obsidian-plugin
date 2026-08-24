@@ -51,12 +51,14 @@ export class ProductSnapshotAssembler {
     private readonly stateContext: StateLoadContext,
     private readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>,
     private readonly pathIncluded: (path: VaultPath) => boolean = () => true,
+    private readonly fullReconcileRequired: () => boolean = () => false,
   ) {}
 
   async assemble(preferIncremental = true): Promise<AssembledPlanningInput> {
     const managedRemote = await this.validatedRemote();
     const loadedState = await this.state.load(this.stateContext);
-    if (preferIncremental && loadedState.status === "trusted" && loadedState.state.changeCursor) {
+    const incrementalAllowed = preferIncremental && !this.fullReconcileRequired();
+    if (incrementalAllowed && loadedState.status === "trusted" && loadedState.state.changeCursor) {
       const incremental = await this.assembleIncremental(managedRemote, loadedState);
       if (incremental) return incremental;
     }
