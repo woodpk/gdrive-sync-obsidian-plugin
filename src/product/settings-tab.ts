@@ -1,10 +1,11 @@
-import { PluginSettingTab, Setting } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
 
 export interface Phase5SettingsHost {
-  readonly app: PluginSettingTab["app"];
+  readonly app: App;
+  readonly plugin: Plugin;
   settings(): BrainSyncSettings;
   updateSettings(patch: Partial<BrainSyncSettings>): Promise<void>;
   authenticate(): Promise<void>;
@@ -14,7 +15,7 @@ export interface Phase5SettingsHost {
 }
 
 export class BrainSyncSettingsTab extends PluginSettingTab {
-  constructor(private readonly host: Phase5SettingsHost) { super(host.app, host as never); }
+  constructor(private readonly host: Phase5SettingsHost) { super(host.app, host.plugin); }
 
   display(): void {
     const settings = this.host.settings();
