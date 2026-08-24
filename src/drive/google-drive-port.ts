@@ -48,6 +48,7 @@ function evidence(file: DriveFile): ContentEvidence {
 }
 function entry(path: VaultPath, file: DriveFile): RemoteEntry { return { path, entityKind: file.mimeType === FOLDER_MIME ? "folder" : "file", remoteObjectId: rid(file.id), content: file.mimeType === FOLDER_MIME ? undefined : evidence(file), trashed: Boolean(file.trashed) }; }
 async function json<T>(response: Response): Promise<T> { return await response.json() as T; }
+function partialReason(signal: { readonly kind: string; readonly detail?: string }, fallback: string): string { return signal.detail ?? signal.kind ?? fallback; }
 
 export class GoogleDriveAdapter implements GoogleDrivePort {
   private readonly pathCache = new Map<string, VaultPath>();
@@ -113,14 +114,14 @@ export class GoogleDriveAdapter implements GoogleDrivePort {
     const ordinary = await this.listDomain(roots.value.content.id, "", entries);
     if (!ordinary.ok) {
       if (ordinary.signal.kind === "transient-failure" || ordinary.signal.kind === "rate-limited") {
-        return { ok: true, value: { entries, completeness: { status: "partial", reason: signalMessage(ordinary.signal, "ordinary remote listing interrupted") } } };
+        return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(ordinary.signal, "ordinary remote listing interrupted") } } };
       }
       return ordinary;
     }
     const config = await this.listDomain(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, entries);
     if (!config.ok) {
       if (config.signal.kind === "transient-failure" || config.signal.kind === "rate-limited") {
-        return { ok: true, value: { entries, completeness: { status: "partial", reason: signalMessage(config.signal, "portable configuration listing interrupted") } } };
+        return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(config.signal, "portable configuration listing interrupted") } } };
       }
       return config;
     }
