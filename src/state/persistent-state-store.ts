@@ -11,10 +11,15 @@ import type {
   VaultIdentity,
 } from "../contracts";
 
+/**
+ * Mobile-neutral persisted byte boundary. Production storage SHOULD implement compareAndSwap
+ * so state revision validation and replacement occur as one atomic storage transaction.
+ */
 export interface StateByteStorage {
   read(): Promise<Uint8Array | undefined>;
   write(bytes: Uint8Array): Promise<void>;
   backup(bytes: Uint8Array): Promise<string>;
+  compareAndSwap?(expected: Uint8Array | undefined, replacement: Uint8Array): Promise<boolean>;
 }
 
 interface PersistedEnvelope {
@@ -37,6 +42,12 @@ function checksum(value: string): string {
 
 function isString(value: unknown): value is string { return typeof value === "string" && value.length > 0; }
 function unique(values: readonly string[]): boolean { return new Set(values).size === values.length; }
+function bytesEqual(a: Uint8Array | undefined, b: Uint8Array | undefined): boolean {
+  if (!a || !b) return a === b;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 function validateState(state: unknown): state is TrustedSynchronizationState {
   if (!state || typeof state !== "object") return false;
@@ -80,6 +91,11 @@ export class MemoryStateByteStorage implements StateByteStorage {
   readonly backups = new Map<string, Uint8Array>();
   async read(): Promise<Uint8Array | undefined> { return this.bytes ? this.bytes.slice() : undefined; }
   async write(bytes: Uint8Array): Promise<void> { this.bytes = bytes.slice(); }
+  async compareAndSwap(expected: Uint8Array | undefined, replacement: Uint8Array): Promise<boolean> {
+    if (!bytesEqual(this.bytes, expected)) return false;
+    this.bytes = replacement.slice();
+    return true;
+  }
   async backup(bytes: Uint8Array): Promise<string> {
     const id = `backup-${this.backups.size + 1}`;
     this.backups.set(id, bytes.slice());
@@ -131,7 +147,20 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     } else if (expectedRevision) {
       return { status: "stale-revision" };
     }
-    await this.storage.write(serialize(state));
+
+    const replacement = serialize(state);
+    if (this.storage.compareAndSwap) {
+      const saved = await this.storage.compareAndSwap(currentBytes, replacement);
+      if (!saved) {
+        const actual = await this.storage.read();
+        if (!actual) return { status: "stale-revision" };
+        const parsed = parseEnvelope(actual);
+        if (parsed.status !== "ok") return { status: "recovery-required", reason: `concurrently written state is ${parsed.status}` };
+        return { status: "stale-revision", actualRevision: parsed.envelope.state.stateRevision };
+      }
+    } else {
+      await this.storage.write(replacement);
+    }
     return { status: "saved", stateRevision: state.stateRevision };
   }
 
@@ -157,7 +186,7 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     return { status: "incompatible", fromVersion, toVersion: targetSchemaVersion };
   }
 
-  /** Safe migration helper: backup first, then transform and persist only a validated target schema. */
+  /** Safe migration helper: backup first, then atomically transform only the same validated source state. */
   async migrate(targetSchemaVersion: number, migration: StateMigration): Promise<{ status: "migrated"; backup: StateBackupReceipt } | { status: "incompatible" | "recovery-required"; reason: string }> {
     const assessment = await this.assessMigration(targetSchemaVersion);
     if (assessment.status === "incompatible") return { status: "incompatible", reason: "state cannot be safely migrated to the requested schema" };
@@ -169,7 +198,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     const backup = await this.createRecoveryBackup();
     const migrated = migration(parsed.envelope.state, targetSchemaVersion);
     if (!validateState(migrated) || migrated.schemaVersion !== targetSchemaVersion) return { status: "recovery-required", reason: "migration produced invalid target state" };
-    await this.storage.write(serialize(migrated));
+    const replacement = serialize(migrated);
+    if (this.storage.compareAndSwap) {
+      if (!await this.storage.compareAndSwap(loadedBytes, replacement)) return { status: "recovery-required", reason: "state changed concurrently during migration; migration was not committed" };
+    } else {
+      await this.storage.write(replacement);
+    }
     return { status: "migrated", backup };
   }
 
