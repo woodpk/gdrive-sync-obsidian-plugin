@@ -27,7 +27,10 @@ function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentE
   if (expected.revision) return actual?.revision === expected.revision;
   return false;
 }
-function signalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
+function signalMessage(signal: DriveSignal): string {
+  const detail = "detail" in signal && signal.detail ? signal.detail : signal.kind;
+  return signal.kind === "authentication-required" ? `authentication-required:${detail}` : detail;
+}
 function success(operation: PlannedOperation, evidence?: ContentEvidence, ref?: string, resultingRemoteObjectId?: RemoteObjectId): ExecutionResult {
   const receipt: VerifiedExecutionReceipt = { operationId: operation.operationId, durable: true, integrityVerified: true, evidence, resultingRemoteObjectId, verificationEvidenceRef: ref };
   return { status: "durable-verified-success", receipt };
