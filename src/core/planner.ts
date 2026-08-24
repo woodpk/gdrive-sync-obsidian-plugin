@@ -92,6 +92,13 @@ function conflictOperation(path: VaultPath, index: number, assessment: ConflictA
   });
 }
 
+function strongHistoricalMatch(prior: BaseEntry, snapshot: PathSnapshot): boolean {
+  if (snapshot.local.status !== "present" || snapshot.local.entityKind !== prior.entityKind) return false;
+  if (prior.remoteObjectId && snapshot.local.remoteObjectId === prior.remoteObjectId) return true;
+  if (prior.entityKind === "folder") return false;
+  return Boolean(prior.content?.hash && snapshot.local.content?.hash && prior.content.hash === snapshot.local.content.hash);
+}
+
 export class DeterministicSynchronizationPlanner implements SynchronizationPlanner {
   constructor(
     private readonly conflicts: ConflictResolver,
@@ -213,6 +220,17 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       }
     }
 
+    if (input.state.status === "trusted") {
+      const currentDevice = input.state.state.knownDevices.find(device => device.deviceId === input.state.state.deviceIdentity);
+      if (currentDevice?.stale) {
+        for (let i = 0; i < operations.length; i += 1) {
+          const operation = operations[i];
+          if (!operation.destructive) continue;
+          operations[i] = blocked(operation.path, i, "stale-device-destructive-gate", "This device is stale and must reconcile before it can authorize destructive propagation.");
+        }
+      }
+    }
+
     return this.finish(input.state, input.snapshots.length, operations);
   }
 
@@ -228,25 +246,47 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       if (!prior.remoteObjectId) continue;
       const oldSnapshot = byPath.get(String(prior.path));
       if (!oldSnapshot || oldSnapshot.identity.status !== "unambiguous") continue;
-      const candidates = snapshots.filter(snapshot => snapshot.path !== prior.path && snapshot.identity.status === "unambiguous" &&
-        ((snapshot.remote.status === "present" && snapshot.remote.remoteObjectId === prior.remoteObjectId) ||
-         (snapshot.local.status === "present" && snapshot.local.remoteObjectId === prior.remoteObjectId)));
-      if (candidates.length !== 1) continue;
-      const target = candidates[0];
-      if (target.remote.status === "present" && target.remote.remoteObjectId === prior.remoteObjectId && oldSnapshot.local.status === "present" && oldSnapshot.remote.status === "absent" && oldSnapshot.remoteEnumeration.status === "complete") {
-        operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", {
-          targetSide: "local", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId,
-          preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }],
-          reasons: [{ code: "proven-remote-move", summary: "Stable remote object identity proves a remote rename/move." }],
-        }));
-        handled.add(String(prior.path)); handled.add(String(target.path));
-      } else if (target.local.status === "present" && target.local.remoteObjectId === prior.remoteObjectId && oldSnapshot.remote.status === "present" && oldSnapshot.local.status === "absent") {
-        operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", {
-          targetSide: "remote", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId,
-          preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }],
-          reasons: [{ code: "proven-local-move", summary: "Stable identity/history proves a local rename/move." }],
-        }));
-        handled.add(String(prior.path)); handled.add(String(target.path));
+
+      const remoteCandidates = snapshots.filter(snapshot => snapshot.path !== prior.path && snapshot.identity.status === "unambiguous" && snapshot.remote.status === "present" && snapshot.remote.remoteObjectId === prior.remoteObjectId);
+      const localCandidates = snapshots.filter(snapshot => snapshot.path !== prior.path && snapshot.identity.status === "unambiguous" && strongHistoricalMatch(prior, snapshot));
+      const oldRemoteGone = oldSnapshot.remote.status === "absent" && oldSnapshot.remoteEnumeration.status === "complete";
+      const oldLocalGone = oldSnapshot.local.status === "absent";
+
+      if (oldRemoteGone && oldSnapshot.local.status === "present") {
+        if (remoteCandidates.length > 1) {
+          operations.push(blocked(prior.path, nextIndex(), "ambiguous-remote-move", "Multiple current paths claim the same stable remote identity; identity reassignment is prohibited."));
+          handled.add(String(prior.path));
+          for (const candidate of remoteCandidates) handled.add(String(candidate.path));
+          continue;
+        }
+        if (remoteCandidates.length === 1) {
+          const target = remoteCandidates[0];
+          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", {
+            targetSide: "local", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId,
+            preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }],
+            reasons: [{ code: "proven-remote-move", summary: "Stable remote object identity proves a remote rename/move." }],
+          }));
+          handled.add(String(prior.path)); handled.add(String(target.path));
+          continue;
+        }
+      }
+
+      if (oldLocalGone && oldSnapshot.remote.status === "present") {
+        if (localCandidates.length > 1) {
+          operations.push(blocked(prior.path, nextIndex(), "ambiguous-local-move", "Multiple local paths match the same trusted historical identity/content evidence; the rename is not guessed."));
+          handled.add(String(prior.path));
+          for (const candidate of localCandidates) handled.add(String(candidate.path));
+          continue;
+        }
+        if (localCandidates.length === 1) {
+          const target = localCandidates[0];
+          operations.push(makeOperation(target.path, nextIndex(), "identity-preserving-move", {
+            targetSide: "remote", fromPath: prior.path, toPath: target.path, remoteObjectId: prior.remoteObjectId,
+            preconditions: [{ kind: "base-trusted" }, { kind: "remote-object", remoteObjectId: prior.remoteObjectId }, { kind: "identity-unambiguous", path: target.path }],
+            reasons: [{ code: "proven-local-move", summary: "Unique stable identity or trusted content evidence proves a local rename/move." }],
+          }));
+          handled.add(String(prior.path)); handled.add(String(target.path));
+        }
       }
     }
   }
