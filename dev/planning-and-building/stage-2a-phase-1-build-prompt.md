@@ -10,11 +10,11 @@ Your job is to implement **only Phase 1 — Repository Foundation and Frozen Sha
 
 Before modifying the repository, completely read these repository files:
 
-1. `dev/agent-led-software-product-construction-manual.md`
-2. `dev/target-system-specification.md`
-3. `dev/decision-register.yaml`
-4. `dev/stage-1-build-decomposition.md`
-5. `dev/security-prompt-header.md`
+1. `agent-led-software-product-construction-manual.md`
+2. `target-system-specification.md`
+3. `decision-register.yaml`
+4. `stage-1-build-decomposition.md`
+5. `../security-prompt-header.md`
 
 Treat them according to the authority rules defined by the target-system specification and decision register.
 
@@ -28,7 +28,7 @@ The project repository is:
 
 `woodpk/gdrive-sync-obsidian-plugin`
 
-At the last supervisor inspection before this prompt was written, the repository root contained only `.idea/` and `dev/`; no product source tree, plugin manifest, package/build configuration, or automated test suite existed. **Verify this yourself before acting.**
+At the last supervisor inspection before this prompt was written, the repository root contained only `../../.idea` and `..`; no product source tree, plugin manifest, package/build configuration, or automated test suite existed. **Verify this yourself before acting.**
 
 The established donor strategy is:
 
@@ -69,7 +69,7 @@ When this session is complete, all of the following must be true.
 
 ### Frozen Shared Contracts
 
-Implement stable source-level contracts, types, and test seams for all shared concepts defined in `dev/stage-1-build-decomposition.md` Section 4.
+Implement stable source-level contracts, types, and test seams for all shared concepts defined in `stage-1-build-decomposition.md` Section 4.
 
 #### Snapshot and Observation Contract
 
@@ -229,7 +229,7 @@ Do not implement the final product UI in this phase.
 
 Create:
 
-`dev/phase-1-shared-contracts.md`
+`phase-1-shared-contracts.md`
 
 This document is not a duplicate target specification. It must record the **actual repository-grounded interfaces/contracts created by Phase 1** so successor supervisors and the Phase 2/3/4 agents can work without relying on chat history.
 
@@ -275,7 +275,7 @@ You may create or adapt:
 - test configuration, fakes, fixtures, and architecture/contract tests;
 - licensing/attribution files required by donor reuse;
 - concise developer documentation necessary to reproduce build/test behavior;
-- `dev/phase-1-shared-contracts.md`.
+- `phase-1-shared-contracts.md`.
 
 Do not create later-phase implementations merely to populate interfaces.
 
@@ -374,7 +374,7 @@ Explicitly inspect retained donor code for semantics that conflict with the targ
 
 ### Persisted Evidence
 
-`dev/phase-1-shared-contracts.md` must be complete and match the actual code committed by this session.
+`phase-1-shared-contracts.md` must be complete and match the actual code committed by this session.
 
 Document the exact commands run and their results. Do not claim a check passed unless you actually executed it.
 
@@ -416,7 +416,7 @@ When finished, report concisely:
 3. the exact shared contract modules/types frozen;
 4. the Phase 2/3/4 ownership boundaries established;
 5. tests/build commands executed and results;
-6. the path and contents status of `dev/phase-1-shared-contracts.md`;
+6. the path and contents status of `phase-1-shared-contracts.md`;
 7. any deviations, blockers, or unresolved product-authority decisions;
 8. the commit/branch or other repository evidence containing the completed work.
 

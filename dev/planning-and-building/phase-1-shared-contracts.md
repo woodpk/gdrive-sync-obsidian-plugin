@@ -16,24 +16,24 @@ No donor source file is copied into Phase 1, so no donor source/license text is 
 
 ## Repository Foundation
 
-- `package.json` and `package-lock.json` — pinned/reproducible npm dependency graph and build/test commands.
-- `tsconfig.json` — strict repository TypeScript checking.
-- `tsconfig.build.json` — CommonJS Obsidian entry-point compilation.
-- `tsconfig.test.json` — isolated CommonJS contract-test compilation.
-- `scripts/finalize-build.mjs` — build-tooling-only finalization that places emitted `main.js` at the plugin root.
-- `manifest.json` — private Obsidian plugin manifest with `isDesktopOnly: false`.
-- `versions.json` — plugin/minimum-Obsidian compatibility mapping.
-- `src/main.ts` — minimal loadable entry point with no Phase 2+ synchronization behavior.
-- `test/mobile-safety.test.ts` — manifest/import/secret-contract architecture guard.
-- `.github/workflows/phase1-ci.yml` — clean install, typecheck, tests, and production-build verification.
+- `../../package.json` and `../../package-lock.json` — pinned/reproducible npm dependency graph and build/test commands.
+- `../../tsconfig.json` — strict repository TypeScript checking.
+- `../../tsconfig.build.json` — CommonJS Obsidian entry-point compilation.
+- `../../tsconfig.test.json` — isolated CommonJS contract-test compilation.
+- `../../scripts/finalize-build.mjs` — build-tooling-only finalization that places emitted `main.js` at the plugin root.
+- `../../manifest.json` — private Obsidian plugin manifest with `isDesktopOnly: false`.
+- `../../versions.json` — plugin/minimum-Obsidian compatibility mapping.
+- `../../src/main.ts` — minimal loadable entry point with no Phase 2+ synchronization behavior.
+- `../../test/mobile-safety.test.ts` — manifest/import/secret-contract architecture guard.
+- `../../.github/workflows/phase1-ci.yml` — clean install, typecheck, tests, and production-build verification.
 
-Node.js is used only by build/test tooling. Mobile-required runtime source is under `src/`; automated guards reject Node/Electron/Windows-only runtime imports. Frozen transfer boundaries use a platform-neutral lazy chunk source so large-file adapters can process content with bounded memory instead of requiring whole-file materialization.
+Node.js is used only by build/test tooling. Mobile-required runtime source is under `../../src`; automated guards reject Node/Electron/Windows-only runtime imports. Frozen transfer boundaries use a platform-neutral lazy chunk source so large-file adapters can process content with bounded memory instead of requiring whole-file materialization.
 
 ## Frozen Contract Modules
 
 ### Shared Value Types
 
-**Location:** `src/contracts/common.ts`
+**Location:** `../../src/contracts/common.ts`
 
 **Public names:** `VaultPath`, `RemoteObjectId`, `VaultIdentity`, `DeviceIdentity`, `ChangeCursor`, `StateRevision`, `OperationId`, `PlanId`, `ConflictId`, `CheckpointId`, `ContentHash`, `ObservationToken`, `ProtocolVersion`, `EntityKind`, `SyncSide`, `BinaryContentSource`, `ContentEvidence`, `VersionReference`.
 
@@ -41,7 +41,7 @@ Node.js is used only by build/test tooling. Mobile-required runtime source is un
 
 ### Snapshot and Observation Contract
 
-**Location:** `src/contracts/snapshot.ts`
+**Location:** `../../src/contracts/snapshot.ts`
 
 **Public names:** `FileStability`, `Observation`, `LocalObservation`, `RemoteObservation`, `EnumerationCompleteness`, `IdentityAssessment`, `BaseEvidence`, `PathSnapshot`.
 
@@ -49,7 +49,7 @@ Represents confirmed absence separately from unreadable/inaccessible/unknown sta
 
 ### Synchronization Plan Contract
 
-**Location:** `src/contracts/plan.ts`
+**Location:** `../../src/contracts/plan.ts`
 
 **Public names:** `PLAN_OPERATION_KINDS`, `PlanOperationKind`, `OperationPrecondition`, `PlanReason`, `PlannedOperation`, `PlanExecutionDisposition`, `SynchronizationPlan`, `PlanningInput`, `SynchronizationPlanner`.
 
@@ -57,7 +57,7 @@ Frozen operation vocabulary: `noop`, `upload-create`, `upload-update`, `download
 
 ### Local Vault Boundary Contract
 
-**Location:** `src/contracts/local-vault.ts`
+**Location:** `../../src/contracts/local-vault.ts`
 
 **Public names:** `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, `LocalLifecycleEvent`, `Unsubscribe`, `LocalVaultPort`.
 
@@ -65,7 +65,7 @@ Provides mobile-safe enumeration/observation/content access, create/replace/fold
 
 ### Google Drive Boundary Contract
 
-**Location:** `src/contracts/google-drive.ts`
+**Location:** `../../src/contracts/google-drive.ts`
 
 **Public names:** `REQUIRED_DRIVE_SCOPE`, `DriveAuthenticationState`, `ManagedRemoteIdentity`, `ManagedRemoteValidation`, `RemoteProtocolInfo`, `DriveSignal`, `DriveResult`, `RemoteEntry`, `RemoteListing`, `RemoteChange`, `RemoteChangePage`, `RemoteDownload`, `RemoteMutationReceipt`, `RemoteCreateRequest`, `RemoteUpdateRequest`, `GoogleDrivePort`.
 
@@ -73,7 +73,7 @@ Freezes `https://www.googleapis.com/auth/drive.file`, separates authentication/s
 
 ### Durable State Contract
 
-**Location:** `src/contracts/state.ts`
+**Location:** `../../src/contracts/state.ts`
 
 **Public names:** `BaseEntry`, `TombstoneEntry`, `RemoteObjectMapping`, `OperationJournalStatus`, `OperationJournalEntry`, `DeviceStateEntry`, `TrustedSynchronizationState`, `RecoveryReason`, `StateLoadResult`, `StateLoadContext`, `StateSaveResult`, `StateBackupReceipt`, `StateMigrationAssessment`, `SynchronizationStateStore`.
 
@@ -81,7 +81,7 @@ Represents trustworthy base/history, stable vault/device identity, remote-object
 
 ### Conflict and Merge Contract
 
-**Location:** `src/contracts/conflict.ts`
+**Location:** `../../src/contracts/conflict.ts`
 
 **Public names:** `ConflictProvenance`, `ConcurrentAlternates`, `ThreeWayProvenance`, `ConflictAssessment`, `ConflictResolution`, `ConflictResolver`.
 
@@ -89,7 +89,7 @@ Distinguishes no conflict, clean merge, unresolved text conflict, opaque/binary 
 
 ### Execution Result and Commit Contract
 
-**Location:** `src/contracts/execution.ts`
+**Location:** `../../src/contracts/execution.ts`
 
 **Public names:** `PreconditionValidationResult`, `VerifiedExecutionReceipt`, `ExecutionResult`, `SynchronizationExecutor`, `CommitResult`, `AuthoritativeSuccessCommitter`.
 
@@ -97,7 +97,7 @@ Distinguishes durable verified success, retryable failure, blocking failure, sta
 
 ### Status, Audit, and User-Action Contract
 
-**Location:** `src/contracts/status-audit-actions.ts`
+**Location:** `../../src/contracts/status-audit-actions.ts`
 
 **Public names:** `SynchronizationStatus`, `AuditEventKind`, `AuditRecord`, `ProductSurfaceState`, `UserAction`, `UserActionResult`, `ProductControlPort`.
 
@@ -119,11 +119,11 @@ Contracts may depend on other contract modules. Phase 2 may depend on the Local 
 
 ## Test Doubles and Contract Seams
 
-**Location:** `src/testing/fakes.ts`
+**Location:** `../../src/testing/fakes.ts`
 
 **Exports:** `createLocalVaultFake`, `createGoogleDriveFake`, `InMemorySynchronizationStateStore`, `FakeSynchronizationPlanner`, `RecordingSuccessCommitter`, `RecordingProductControl`.
 
-These let Phase 2 test synchronization/state semantics without live Drive or Obsidian, Phase 3 test `GoogleDrivePort` independently of synchronization policy, Phase 4 test `LocalVaultPort` independently of synchronization policy, and later UI/orchestration tests consume policy-derived status/actions without bypassing the engine. `test/contracts.test.ts` exercises every frozen contract family, including a multi-chunk lazy `BinaryContentSource` accepted by the local and Drive transfer types; `test/mobile-safety.test.ts` enforces the mobile/secret boundary.
+These let Phase 2 test synchronization/state semantics without live Drive or Obsidian, Phase 3 test `GoogleDrivePort` independently of synchronization policy, Phase 4 test `LocalVaultPort` independently of synchronization policy, and later UI/orchestration tests consume policy-derived status/actions without bypassing the engine. `../../test/contracts.test.ts` exercises every frozen contract family, including a multi-chunk lazy `BinaryContentSource` accepted by the local and Drive transfer types; `../../test/mobile-safety.test.ts` enforces the mobile/secret boundary.
 
 ## Parallel Ownership
 

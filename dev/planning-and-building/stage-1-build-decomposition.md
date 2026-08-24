@@ -5,9 +5,9 @@
 **Status:** Authoritative Stage 1 build decomposition  
 **Project:** `woodpk/gdrive-sync-obsidian-plugin`  
 **Workflow:** Workflow A — Stage 0 → Stage 1 → Stage 2A → Stage 3  
-**Governing manual:** `dev/agent-led-software-product-construction-manual.md`  
-**Target-system authority:** `dev/target-system-specification.md`  
-**Decision authority:** `dev/decision-register.yaml`  
+**Governing manual:** `agent-led-software-product-construction-manual.md`  
+**Target-system authority:** `target-system-specification.md`  
+**Decision authority:** `decision-register.yaml`  
 **Date:** 2026-08-23
 
 This artifact is the compact persisted build decomposition required by Stage 1. It is subordinate to the target-system specification and may not redefine product behavior.
@@ -18,7 +18,7 @@ Detailed coding-agent prompts do not belong here. Under Stage 2A, each build-ses
 
 The governing manual requires the target system to be divided into the fewest build phases that can be implemented accurately, safely, and verifiably. A phase exists here only where separation is justified by dependency order, architectural sequencing, a stable boundary required before dependent work, independent testability, risk isolation, prerequisite validation, or a meaningful integration boundary.
 
-The repository is effectively pre-implementation at decomposition time: the root contains only `.idea/` and `dev/`. No application source tree, build configuration, manifest, runtime code, or automated test suite exists yet. Therefore this document defines logical phase responsibilities and contracts without inventing future concrete file paths or private types.
+The repository is effectively pre-implementation at decomposition time: the root contains only `../../.idea` and `..`. No application source tree, build configuration, manifest, runtime code, or automated test suite exists yet. Therefore this document defines logical phase responsibilities and contracts without inventing future concrete file paths or private types.
 
 ## 3. Ordered Dependency Model
 
@@ -598,4 +598,4 @@ The minimum sound build decomposition contains **six phases**.
 
 Phase 1 is the prerequisite contract/foundation gate. Phases 2, 3, and 4 form the safe parallel construction wave. Phase 5 is the required integration/product-workflow gate. Phase 6 is the integrated hardening and Stage 3 readiness gate.
 
-This decomposition, together with `dev/target-system-specification.md` and `dev/decision-register.yaml`, supplies the persisted Stage 1 authority needed for Workflow A supervised construction. Stage 2A may now expand Phase 1 against the actual repository state when authorized.
+This decomposition, together with `target-system-specification.md` and `decision-register.yaml`, supplies the persisted Stage 1 authority needed for Workflow A supervised construction. Stage 2A may now expand Phase 1 against the actual repository state when authorized.
