@@ -1,414 +1,159 @@
-# Phase 5 Build Output and Blocker Report
+# Phase 5 Current Blocker and Build-State Report
 
-## Report Purpose
+## Authority and Supersession
 
-This file is the authoritative coding-agent report for all material Stage 2A Phase 5 build output produced by agent `agt-CA-P5-01`, including successful implementation, verification failures, repairs, current unresolved verification defects, frozen-contract blockers, platform limitations, repository/PR state, and work that remains incomplete.
+This report supersedes the earlier Phase 5 blocker conclusions after the supervisor-issued corrective work order C1–C7.
 
-This report intentionally includes both blocker and non-blocker output. It does not claim supervisory acceptance or whole-product completion.
+The prior conclusions that newly allocated Drive identity, clean-merge/BASE materialization, and conflict-resolution execution were all frozen-contract blockers are no longer current authority.
 
-## Build Identification
+The corrective disposition is:
+
+- former B3 / newly allocated Drive identity — **RESOLVED** through the supervisor-authorized C1 frozen-contract revision to `VerifiedExecutionReceipt`;
+- former B1/B2 / clean-merge bytes and BASE text — **RESOLVED AS PHASE 5 IMPLEMENTATION WORK** through the existing Phase 2 `TextVersionProvider` and `MergeOutputEvidenceProvider` seams plus device-local text materialization;
+- former B4 / conflict-resolution mutation/commit path — **RESOLVED AS PHASE 5 IMPLEMENTATION WORK** through the existing conflict/action/ordinary-operation contracts and crash-safe journal/commit path;
+- stock-iOS bounded-memory arbitrary-file read limitation — **REMAINS A PROVEN PLATFORM LIMITATION**;
+- stock-iOS external-reference/symlink/alias containment proof limitation — **REMAINS A PROVEN PLATFORM LIMITATION**.
+
+This file does not claim supervisory approval.
+
+## Corrected Build Identification
 
 - Agent/session: `agt-CA-P5-01`
-- Build/session: `Stage 2A Phase 5 — Integrated Synchronization Product`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
-- Required baseline branch: `master`
-- Exact supervisor-approved baseline SHA: `372f17f9c69d23feb9909aa08d7566a077a4163b`
 - Phase 5 branch: `stage-2a-phase-5-integrated-product`
-- Current branch head before this report commit: `32a4814631d4f61ec000119c692894ccaa5ea4f1`
-- Pull request: `#7` — `Stage 2A Phase 5 — Integrated synchronization product`
-- PR base: `master`
-- PR base SHA: `372f17f9c69d23feb9909aa08d7566a077a4163b`
-- PR state before this report commit: `open`, `merged: false`, `draft: false`, `mergeable: true`
-- Frozen `src/contracts/**`: `UNCHANGED`
+- Required base: `master == 372f17f9c69d23feb9909aa08d7566a077a4163b`
+- PR: `#7`, open and unmerged
+- Corrective-pass pre-correction base: `d3d50850108bbcafc2f2188ed6d30da76313db37`
+- Final executable/documentation head verified before evidence-only commits: `0230c0450f8d7ddfac2f3e56ed3391107c243810`
+- Final clean-checkout verification run: `32777527719`
+- Verification job: `97591913559`
+- PR merge/test SHA: `a310a2a9d33dceab141d519d491a345d4684c414`
 
-## Baseline and Branch Construction
+## Former Blocker Resolution
 
-The Phase 5 branch was created directly from the required baseline SHA `372f17f9c69d23feb9909aa08d7566a077a4163b`.
+### C1 — Newly Allocated Drive Identity
 
-PR #7 was opened against `master` and has intentionally remained unmerged so GitHub Actions could provide clean-checkout verification while construction continued.
+The supervisor authorized one narrow frozen-contract revision in `src/contracts/execution.ts`:
 
-## Implemented Phase 5 Product Integration
+```ts
+readonly resultingRemoteObjectId?: RemoteObjectId;
+```
 
-The Phase 5 branch integrates the previously constructed Phase 2 synchronization/state core, Phase 3 Google Drive/OAuth boundary, and Phase 4 Obsidian local/platform boundary into a product-level Obsidian plugin runtime.
+The production executor now performs real `upload-create`, re-observes the created Drive object, verifies stable object identity/content evidence, and returns the verified new identity. `StateCommitCoordinator` gives the verified execution-produced identity precedence when establishing BASE and remote mapping.
 
-Implemented output includes:
+The previous whole-plan refusal of every `upload-create` was removed.
 
-- production Obsidian plugin entry point and commands;
-- plugin settings persistence;
-- Google OAuth configuration and authorization launch wiring;
-- Obsidian OAuth return-handler registration;
-- explicit managed remote creation;
-- explicit managed remote pairing by stable Drive root ID and expected vault identity;
-- deauthorization/disconnection behavior;
-- mobile-neutral Phase 5 runtime composition;
-- desktop-only local-vault adapter loading by `Platform.isDesktopApp` guarded dynamic import;
-- full reconciliation snapshot assembly from LOCAL + REMOTE + BASE;
-- incremental Drive Changes-based snapshot assembly when a trusted cursor exists;
-- conservative fallback from unusable/incomplete incremental observation to full reconciliation;
-- managed-root validation before synchronization planning;
-- remote identity/protocol mismatch mapping to recovery-required state;
-- production synchronization executor for supported ordinary operations;
-- precondition revalidation immediately before mutation;
-- crash-safe execution coordination through the Phase 2 operation journal and authoritative commit coordinator;
-- run serialization through Phase 2 `CoreRunCoordinator` plus a Web Locks-backed cross-instance lease;
-- pause/resume behavior;
-- cancellation of future operations;
-- stale/change-during-run invalidation signal and later reconciliation request;
-- startup/resume automatic scheduling;
-- debounced local-change automatic scheduling;
-- periodic automatic scheduling;
-- automatic synchronization first-sync gate;
-- manual full-reconciliation plan preview;
-- explicit Execute flow through the frozen product-control action surface;
-- destructive-plan checkpoint creation and exact-plan/exact-checkpoint approval path;
-- status mapping for idle, planning, syncing, paused, conflict, authentication-required, destructive-plan-blocked, recovery-required, offline/deferred, and error states;
-- settings/status/product user surfaces;
-- bounded metadata-only audit history;
-- audit/history display;
-- mobile Wi-Fi-only automatic synchronization policy that fails closed when Wi-Fi cannot be proven;
-- selective configuration-policy display and product controls;
-- mobile import-safety guard updated to permit only a `Platform.isDesktopApp`-guarded dynamic import of the desktop adapter;
-- production build finalization adjusted for the Phase 5 emitted entry-point shape.
+This is no longer a blocker.
 
-## Current Git-Derived Phase 5 Changed-File Inventory
+### C2 — BASE Text and Clean-Merge Materialization
 
-PR #7 currently reports 18 changed files relative to the required `master` baseline.
+`src/product/text-version-store.ts` now provides a device-local persistent recognized-text materialization store behind the existing Phase 2 text-provider seams.
 
-### Created / Phase 5 Product Modules
+It retains exact recognized-text versions by stable content/revision evidence, retains actual clean merged text under the merge evidence produced by `MergeOutputEvidenceProvider`, and supplies exact BASE/LOCAL/REMOTE text to `ThreeWayConflictResolver` when available.
 
-- `src/product/audit-history.ts`
-- `src/product/history-modal.ts`
-- `src/product/index.ts`
-- `src/product/network-policy.ts`
-- `src/product/plan-modal.ts`
-- `src/product/plugin-data.ts`
-- `src/product/product-controller.ts`
-- `src/product/production-executor.ts`
-- `src/product/runtime.ts`
-- `src/product/scheduler.ts`
-- `src/product/settings-tab.ts`
-- `src/product/snapshot-assembler.ts`
-- `src/product/web-lock-run-lease.ts`
-- `test/phase5-product.test.ts`
+`ProductSynchronizationExecutor` now materializes `clean-text-merge` to both LOCAL and REMOTE and verifies both sides before returning durable verified success. Required exact text unavailable from the materialization store remains an unresolved/fail-closed condition rather than fabricated content.
 
-### Modified Existing Files
+The former clean-merge/BASE frozen-contract blocker conclusion is superseded.
 
-- `scripts/finalize-build.mjs`
-- `src/main.ts`
-- `test/mobile-safety.test.ts`
-- `tsconfig.build.json`
+### C3 — First-Sync Identical BASE Establishment
 
-No file under `src/contracts/**` is in the PR changed-file list.
+A no-BASE same-path identical collision remains a non-mutating `noop`, but the plan now carries the identical remote `contentVersion` with stable remote identity. The commit coordinator records trustworthy BASE, remote mapping, and clears contradictory tombstones without pretending a content mutation occurred.
 
-## Frozen-Contract Blockers
+Recognized text is retained for future BASE use.
 
-### Blocker 1 — `clean-text-merge` plan does not carry merged bytes
+### C4 — First-Sync Lifecycle Gate
 
-Phase 2 can determine that concurrent text edits admit a clean three-way merge, but the frozen Phase 1/2 execution plan carries only a `VersionReference`/content evidence for the `clean-text-merge` operation. It does not carry the actual merged text bytes.
+A reviewed manual first synchronization can now persist `firstSyncCompleted: true` only after all executable operations are durably accounted for, no unresolved/blocked/recovery operation remains, no stale/replan condition remains, candidate cursor persistence succeeds, and synchronization state reloads as trusted.
 
-The Phase 5 executor therefore cannot materialize the merged file content from the frozen `PlannedOperation` contract.
+Completing first sync does not automatically enable any automatic-sync toggle; it only removes the prohibition.
 
-This cannot be repaired truthfully inside Phase 5 by guessing a hidden convention because:
+### C5 — Drive Changes Cursor
 
-- the executor must execute the plan it was given;
-- the plan does not contain the merged content;
-- content evidence/hash is not reversible into content bytes.
+Full reconciliation now acquires the Drive start cursor before the remote full listing, preventing a listing-to-cursor observation gap. The assembler returns only a candidate cursor. The controller commits it only after all plan effects are durably accounted for.
 
-Dependent Phase 5 behavior is intentionally fail-closed. `clean-text-merge` returns a blocking failure instead of writing fabricated or incomplete data.
+### C6 — Conflict Preservation and Resolution
 
-### Blocker 2 — production BASE does not retain BASE text bytes
+The controller retains current `ConflictAssessment` objects, exposes unresolved assessments in `ProductSurfaceState.conflicts`, and revalidates preserved versions immediately before applying a user choice.
 
-A second independent obstacle prevents reconstructing a clean merge later in Phase 5.
+Keep-local, keep-remote, keep-both, supported manual resolution, and clean-merge acceptance are translated into ordinary planned operations and execute through `CrashSafeExecutionCoordinator` and authoritative state commit.
 
-Persisted trusted synchronization BASE stores historical evidence and identity metadata, not the prior file content bytes required for a three-way BASE + LOCAL + REMOTE text merge.
+Keep-both creates a deterministic local conflict copy as local-only BASE state without assigning the source remote Drive ID to the distinct copy path; the next ordinary reconcile plans `upload-create` for that copy and C1 establishes its newly allocated remote identity.
 
-The current Google Drive port also does not expose a historical-version download operation capable of recovering the exact BASE bytes represented by the persisted evidence.
+The previous unconditional `resolve-conflict` rejection was removed.
 
-Phase 2 tests can inject BASE text directly into the resolver, but the integrated Phase 5 production runtime has no lawful source for those BASE bytes.
+### C7 — Phase 5 Tests
 
-The production conflict resolver is therefore wired conservatively so absent BASE text cannot become a fabricated clean merge.
+The invalid `SynchronizationPlan.createdFrom` fixture was removed. Blocker-behavior assertions were replaced by positive conformance coverage.
 
-### Blocker 3 — `upload-create` cannot persist the newly allocated Drive identity through the frozen execution receipt
+The current repository suite contains 136 tests and the final clean-checkout gate reports:
 
-`GoogleDrivePort.create()` returns the newly allocated stable Drive `RemoteObjectId`.
+- tests: `136`
+- passed: `136`
+- failed: `0`
+- cancelled: `0`
+- skipped: `0`
+- todo: `0`
 
-However, frozen `VerifiedExecutionReceipt` has no field for that newly allocated remote identity. The original `upload-create` operation cannot contain the remote ID because it does not exist until after Drive creation.
+## Final Available Verification
 
-`StateCommitCoordinator` therefore has no typed, authoritative channel through which the successful creation receipt can establish the new local-path-to-Drive-ID relationship in trusted state.
+GitHub Actions run `32777527719`, job `97591913559`, checked out PR merge/test SHA `a310a2a9d33dceab141d519d491a345d4684c414`, representing branch head `0230c0450f8d7ddfac2f3e56ed3391107c243810` over required master baseline `372f17f9c69d23feb9909aa08d7566a077a4163b`.
 
-Encoding the Drive ID inside an unrelated string field such as `verificationEvidenceRef` would create undocumented hidden semantics and violate the frozen contract boundary.
+Observed results:
 
-Phase 5 consequently blocks `upload-create` before Drive mutation. This avoids creating an untracked Drive object and then falsely recording synchronization success.
+- `npm ci` — **PASS**; 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm run typecheck` — **PASS**;
+- `npm test` — **PASS**; `136 passed / 0 failed / 0 cancelled / 0 skipped / 0 todo`;
+- `npm run build` — **PASS**; `tsc -p tsconfig.build.json && node scripts/finalize-build.mjs` completed.
 
-### Blocker 4 — conflict-resolution user action has no authoritative mutation/commit path
+The final logs explicitly show Phase 5 tests passing for first-sync completion, unresolved-gate refusal, keep-local, keep-remote, keep-both/local-only conflict-copy semantics, stale conflict-resolution rejection, Web Locks exclusion/release, verified upload-create identity commit, clean-text-merge materialization, identical first-sync BASE establishment, and pre-list Changes cursor acquisition.
 
-The frozen user-action surface exposes conflict-resolution requests such as keep local, keep remote, keep both, accept clean merge, or manual resolution.
+## Live / External Verification Availability
 
-The currently frozen Phase 1/2 contracts do not provide Phase 5 with a complete authoritative mutation + durable verification + state-commit pathway for applying those resolution actions as synchronization truth.
+The following materially required live checks are **NOT AVAILABLE IN THIS SESSION** because this ChatGPT coding-agent session does not have the user-controlled physical/runtime infrastructure required to perform them:
 
-Phase 5 therefore rejects the `resolve-conflict` action rather than mutating the local or remote adapters outside the synchronization engine and bypassing commit/journal semantics.
-
-### Required Supervisory Action for Frozen-Contract Blockers
-
-The dependent portions of Phase 5 cannot be completed without centrally resolving the contract deficiencies above. At minimum the supervising lineage must determine a frozen-contract-compatible authoritative way to represent:
-
-1. materialized clean-merge content and/or a retrievable authoritative BASE content source;
-2. the newly allocated remote identity resulting from `upload-create` so trusted state can commit it;
-3. conflict-resolution execution semantics and their authoritative state transition.
-
-Phase 5 has not modified the frozen contracts unilaterally.
-
-## Proven Stock-iOS Platform Limitations Carried Into Phase 5
-
-### Stock-iOS bounded-memory arbitrary-file local reads
-
-Phase 4 established that the current stock Obsidian Mobile host does not provide a supported general-purpose chunk/offset filesystem read API for arbitrary BRAIN file types, and the available local-resource path cannot be assumed to provide general arbitrary-extension byte-range semantics.
-
-The local adapter therefore cannot truthfully prove bounded-memory arbitrary-file reading for every required file type on stock iOS.
-
-Phase 5 does not hide or override this platform limitation.
-
-### Stock-iOS external-reference proof
-
-Phase 4 also established that the supported stock-iOS boundary does not expose the link-aware/canonical-path metadata necessary to prove that an apparent vault object does not resolve through a symlink/alias/external reference outside the vault.
-
-The production generic/mobile adapter fails closed when no proving external-reference guard exists.
-
-Phase 5 retains that fail-closed behavior and does not introduce an unsafe override.
-
-## Live-Platform Validation Not Available in This Session
-
-The implementation session did not have the user-controlled real Google OAuth credentials, deployed Azure Static Web Apps callback, Windows Obsidian interactive environment, or physical iPhone/iOS Obsidian environment required to execute real-device end-to-end validation.
-
-Therefore the following were **NOT EXECUTED** and are not claimed as passed:
-
-- real browser Google authorization from Windows Obsidian;
-- real browser Google authorization from iPhone Obsidian;
-- deployed hosted callback round trip;
-- actual managed-remote first synchronization against a real user Drive account;
-- actual Windows cross-instance sync behavior;
-- actual iPhone suspend/resume/background lifecycle behavior;
+- real Windows Obsidian interactive OAuth and synchronization;
+- physical iPhone/iOS Obsidian OAuth and synchronization;
+- deployed Azure Static Web Apps OAuth callback round trip;
+- real user Google Drive account first-sync/incremental sync;
 - physical-device network transition behavior;
-- large-file real-device bounded-memory behavior.
+- actual multi-instance Obsidian Web Locks behavior;
+- large-vault/large-file physical-device memory/stress validation.
 
-## Verification Chronology
+These are missing external/live environment or later validation items; they are not being reclassified as frozen-contract blockers.
 
-All verification claims below are from actual GitHub Actions clean-checkout execution. Failed runs are retained rather than omitted.
+## Remaining Proven Platform Limitation 1 — Stock-iOS Arbitrary-File Bounded Reads
 
-### Run 110 — initial integrated Phase 5 typecheck failure
+Phase 4 established that stock Obsidian iOS does not expose a supported general-purpose arbitrary-file chunk/offset read API for all BRAIN file types, and the available mobile local-resource boundary cannot be assumed to provide reliable byte-range semantics for every arbitrary extension.
 
-- Workflow: `Phase 1 CI`
-- Run ID: `32764936615`
-- Job ID: `97552170722`
-- Branch implementation head tested: `a94404d952350d53c7fcc04eae4de114c693e47a`
-- PR merge/test SHA observed: `9eed0c0c8f4546afb9f8988d5d341f2aeb77a605`
+The current local adapter therefore cannot truthfully guarantee the required bounded-memory arbitrary-file read behavior for every BRAIN file type on stock iOS.
 
-Results:
+Phase 5 preserves the established fail-closed behavior. It does not substitute whole-file `readBinary()`, Node filesystem access, or an unproven range assumption.
 
-- checkout/setup — PASS;
-- `npm ci` — PASS, 14 packages added, 15 audited, 0 vulnerabilities;
-- `npm run typecheck` — FAIL;
-- `npm test` — SKIPPED because typecheck failed;
-- `npm run build` — SKIPPED because typecheck failed.
+This remains an objectively demonstrated platform limitation.
 
-Compiler defects reported:
+## Remaining Proven Platform Limitation 2 — Stock-iOS External-Reference Containment Proof
 
-- `src/main.ts`: `BrainGoogleDriveSyncPlugin.settings()` collided with the inherited Obsidian `Plugin.settings` instance property;
-- `src/product/production-executor.ts`: unsafe access to `DriveSignal.detail` on union members that do not define `detail`;
-- `src/product/scheduler.ts`: `NodeJS.Timeout` versus DOM `number` timer typing mismatch;
-- `src/product/snapshot-assembler.ts`: unsafe access to `DriveSignal.detail` on union members without `detail`.
+Phase 4 established that the supported stock-iOS Obsidian boundary does not expose the link-aware/canonical-path metadata required to prove that a vault path is not a symlink/alias/external reference escaping the vault.
 
-These defects were repaired.
+The generic/mobile adapter continues to fail closed when no proving external-reference guard is available. Phase 5 does not add an unsafe bypass.
 
-### Run 114 — typecheck passed; mobile architecture test failed
+This remains an objectively demonstrated platform limitation.
 
-- Workflow: `Phase 1 CI`
-- Run ID: `32765165200`
-- Job ID: `97552875346`
-- Branch implementation head tested: `8e801bb058388e4963128a6c95d76b7044d293fc`
-- PR merge/test SHA observed: `634372a8c532af1a1cd08706533601a87d16f5b6`
+## Current Genuine Blocker Classification
 
-Results:
+No accepted C1/C2/C6 frozen-contract blocker remains after the corrective pass.
 
-- `npm ci` — PASS;
-- `npm run typecheck` — PASS;
-- `npm test` — FAIL;
-- `npm run build` — SKIPPED because tests failed.
+The current end-state blocker classification is:
 
-Test results:
+`BLOCKED — PROVEN PLATFORM LIMITATION`
 
-- 119 tests executed;
-- 118 passed;
-- 1 failed;
-- 0 skipped;
-- 0 cancelled.
+The exact unresolved requirements are the stock-iOS requirements for:
 
-Failed test:
+1. bounded-memory arbitrary-file local reads for all required BRAIN file types; and
+2. reliable proof that local vault operations cannot traverse symlink/alias/external-reference paths outside the vault.
 
-- `mobile-required runtime source has no Node/Electron/Windows-only imports`.
+The implementation remains deliberately fail-closed rather than weakening those safety requirements.
 
-Cause:
+## PR State
 
-- `src/product/runtime.ts` contained a desktop-adapter dynamic import guarded by `Platform.isDesktopApp`;
-- the inherited Phase 4 architecture test rejected the literal desktop-module reference without distinguishing guarded dynamic composition from a static mobile-load-time dependency.
-
-Repair:
-
-- the architecture test was strengthened to continue rejecting unguarded/static desktop dependencies while explicitly permitting only a `Platform.isDesktopApp`-guarded dynamic import;
-- a new direct architecture assertion was added: `desktop local adapter is loaded only by a Platform-guarded dynamic import`.
-
-### Run 115 — complete green integration gate
-
-- Workflow: `Phase 1 CI`
-- Run ID: `32765264802`
-- Job ID: `97553183301`
-- Branch implementation head tested: `cdaa2116d20180ca5b2492cb052c999de1385474`
-- PR merge/test SHA observed: `2707d31f6e4e1bb6e554117b33e81a615af15bd9`
-
-Results:
-
-- `npm ci` — PASS, 14 packages added, 15 audited, 0 vulnerabilities;
-- `npm run typecheck` — PASS;
-- `npm test` — PASS;
-- tests — `120 passed / 0 failed / 0 skipped / 0 cancelled / 0 todo`;
-- `npm run build` — PASS (`tsc -p tsconfig.build.json && node scripts/finalize-build.mjs`).
-
-This is the latest fully green complete repository gate for the integrated Phase 5 product implementation before direct Phase 5 product-level tests were added.
-
-### Run 116 — direct Phase 5 tests added; test-fixture typecheck failure
-
-- Workflow: `Phase 1 CI`
-- Run ID: `32765454621`
-- Job ID: `97553781960`
-- Branch head tested: `70c2240580dc9bba2dcd13f85c76ec464b14d17d`
-- PR merge/test SHA observed: `e06d5d539d24fb04e916c01cc9e111f8e22a942d`
-
-Results:
-
-- `npm ci` — PASS;
-- `npm run typecheck` — FAIL;
-- `npm test` — SKIPPED;
-- `npm run build` — SKIPPED.
-
-Compiler defects were confined to the newly added `test/phase5-product.test.ts` fixture:
-
-- invalid `contentVersion.source` property not present in frozen `VersionReference`;
-- a synthetic `AuditRecord` omitted required `advisoryAtMs`;
-- the same invalid VersionReference shape was reused by the upload-create test fixture.
-
-The fixture was repaired to use the actual frozen `VersionReference` shape and complete audit record fields.
-
-### Run 117 — one remaining Phase 5 test-fixture typecheck failure
-
-- Workflow: `Phase 1 CI`
-- Run ID: `32765589491`
-- Job ID: `97554206660`
-- Branch head tested: `32a4814631d4f61ec000119c692894ccaa5ea4f1`
-- PR merge/test SHA observed: `cd68712489ec07cc6ae794ed6ba0e3e4226eabac`
-
-Results:
-
-- `npm ci` — PASS, 14 packages added, 15 audited, 0 vulnerabilities;
-- `npm run typecheck` — FAIL;
-- `npm test` — SKIPPED;
-- `npm run build` — SKIPPED.
-
-Remaining compiler defect:
-
-- `test/phase5-product.test.ts(14,3)`: synthetic `SynchronizationPlan` specifies `createdFrom`, but the frozen `SynchronizationPlan` contract has no `createdFrom` property.
-
-This is the current unresolved executable verification defect at the moment this report is written. It is a Phase 5 test-fixture defect, not a newly observed production runtime failure, but the latest branch head is therefore **not** claimed to pass the full repository gate.
-
-## Direct Phase 5 Test Intent
-
-`test/phase5-product.test.ts` was added to provide direct integration-layer evidence rather than depending solely on inherited Phase 1–4 tests.
-
-The intended direct checks cover:
-
-- bounded audit retention and absence of credential/content payloads in audit records;
-- mobile Wi-Fi-only automatic policy failing closed when Wi-Fi cannot be proven;
-- desktop automatic policy not inventing a mobile network restriction;
-- plugin data persistence preserving settings and audit projections together;
-- Web Locks lease exclusion/release behavior;
-- `upload-create` failing closed before Drive mutation because the frozen receipt cannot persist the new Drive ID;
-- `clean-text-merge` failing closed rather than fabricating missing merged bytes;
-- unresolved-conflict and recovery-required operations not entering ordinary mutation paths.
-
-Because run 117 fails during TypeScript compilation of the test fixture, these direct Phase 5 tests have not yet executed successfully as a suite and are **not** claimed as passed.
-
-## Safety Behavior Deliberately Preserved
-
-The implementation does not:
-
-- use device clocks as synchronization winner authority;
-- force a newest-timestamp-wins decision;
-- infer deletion from unreadable/inaccessible/unknown state;
-- infer deletion from incomplete remote enumeration;
-- auto-delete preserved conflict copies;
-- hard-delete Drive content in the ordinary synchronization path;
-- bypass the destructive-plan approval/checkpoint gate;
-- silently recreate a missing managed remote;
-- silently adopt a same-name Drive folder;
-- put OAuth tokens into synchronized state;
-- add developer telemetry;
-- load Node/Electron/Windows-only filesystem dependencies into the mobile runtime path;
-- use an unsafe mobile external-reference bypass;
-- encode newly created Drive IDs into undocumented string conventions;
-- mutate adapters directly from the conflict-resolution UI outside authoritative journal/commit semantics.
-
-## Current Product-Level Incompleteness
-
-Even aside from physical-device validation, the complete requested Phase 5 target end state is not reached because the frozen-contract blockers prevent:
-
-- authoritative new-local-file upload creation with committed stable Drive identity;
-- production materialization of clean three-way text merges;
-- authoritative application/commit of user conflict-resolution selections.
-
-The current branch also has one unresolved direct-test fixture compile defect (`SynchronizationPlan.createdFrom`) that must be repaired and followed by a successful full repository gate before the latest branch head can be claimed verified.
-
-## Evidence Artifacts Not Yet Completed
-
-At the time this blocker/build-output report is created:
-
-- `dev/evidence/_ca-output-CA-P5.md` has not yet been created;
-- cumulative `dev/evidence/_ca-output.md` has not yet been updated for Phase 5;
-- no final evidence-only commit/final post-evidence verification cycle has been completed.
-
-This report does not pretend those required handoff artifacts already exist.
-
-## Pull Request State
-
-PR #7 remains the supervisory review vehicle:
-
-- URL: `https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/7`
-- base: `master` at required baseline `372f17f9c69d23feb9909aa08d7566a077a4163b`;
-- head before this report commit: `32a4814631d4f61ec000119c692894ccaa5ea4f1`;
-- open;
-- unmerged;
-- 18 changed files before this report file is added.
-
-The PR must remain unmerged until supervisory review/acceptance.
-
-## Required Next Actions
-
-1. Repair the remaining `test/phase5-product.test.ts` synthetic `SynchronizationPlan.createdFrom` fixture mismatch.
-2. Execute the full clean-checkout repository gate again and retain exact run/job/test/build evidence.
-3. Escalate the three frozen-contract deficiencies to the supervising lineage for centralized resolution; do not modify `src/contracts/**` unilaterally.
-4. Continue only dependent Phase 5 work after the accepted contract revision is persisted and communicated.
-5. Complete real Windows/iPhone OAuth/lifecycle/network/large-file validation when the user-controlled external infrastructure and devices are available.
-6. Create/update the required Phase 5 evidence artifacts after the actual final executable state is known.
-7. Keep PR #7 open and unmerged for supervisory review.
-
-## Current Completion Status
-
-`BLOCKED`
-
-Reason:
-
-- proven frozen-contract insufficiency for clean-merge materialization / BASE-content availability;
-- proven frozen-contract insufficiency for committing the newly allocated Drive ID produced by `upload-create`;
-- no complete authoritative conflict-resolution mutation/commit path through the frozen contracts;
-- carried-forward stock-iOS platform limitations for arbitrary-file bounded reads and external-reference proof;
-- latest branch head has an unresolved Phase 5 test-fixture TypeScript error and therefore has not passed the final full repository gate.
-
-A prior integrated implementation head (`cdaa2116d20180ca5b2492cb052c999de1385474`) did pass the complete repository gate with 120/120 tests and a successful production build, but later direct Phase 5 test additions changed the branch and their latest head is not green. That distinction is intentional and authoritative.
+PR #7 must remain open and unmerged for supervisory review. No Phase 6 or Stage 3 work is represented by this report.
