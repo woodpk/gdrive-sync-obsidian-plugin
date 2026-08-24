@@ -1,7 +1,13 @@
 import type {
   AuditRecord,
   CheckpointId,
+  ConflictAssessment,
+  ConflictId,
+  ConflictResolution,
+  ConflictResolver,
   DeviceIdentity,
+  PathSnapshot,
+  PlannedOperation,
   ProductControlPort,
   ProductSurfaceState,
   StateLoadContext,
@@ -12,6 +18,8 @@ import type {
   UserAction,
   UserActionResult,
   VaultIdentity,
+  VaultPath,
+  VersionReference,
 } from "../contracts";
 import { contractId } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
@@ -32,11 +40,13 @@ export interface ProductControllerOptions {
   readonly stateStore: SynchronizationStateStore;
   readonly snapshotAssembler: ProductSnapshotAssembler;
   readonly executor: ProductSynchronizationExecutor;
+  readonly conflictResolver: ConflictResolver;
   readonly plannerForTrigger: PlannerFactory;
   readonly leasePort: RunLeasePort;
   readonly audit: BoundedAuditHistory;
   readonly holderId: string;
   readonly automaticExecutionAllowed?: (plan: SynchronizationPlan) => AutomaticExecutionDecision;
+  readonly onTrustedBaselineEstablished?: () => Promise<void>;
 }
 
 interface PlannedRun {
@@ -48,12 +58,41 @@ interface PlannedRun {
 
 function auditId(): string { return globalThis.crypto?.randomUUID?.() ?? `audit-${Date.now()}-${Math.random()}`; }
 function revision(value: string) { return contractId<"StateRevision">(value); }
+function opId(value: string) { return contractId<"OperationId">(value); }
+function planId(value: string) { return contractId<"PlanId">(value); }
+function conflictId(value: string) { return contractId<"ConflictId">(value) as ConflictId; }
+
+function observedVersion(snapshot: PathSnapshot, side: "local" | "remote"): VersionReference | undefined {
+  const value = snapshot[side];
+  return value.status === "present" ? { path: value.path, entityKind: value.entityKind, content: value.content, remoteObjectId: value.remoteObjectId, observationToken: value.observationToken } : undefined;
+}
+function baseVersion(snapshot: PathSnapshot): VersionReference | undefined {
+  const entry = snapshot.base.status === "trusted" ? snapshot.base.entry : undefined;
+  return entry ? { path: entry.path, entityKind: entry.entityKind, content: entry.content, remoteObjectId: entry.remoteObjectId } : undefined;
+}
+function assessmentKey(assessment: ConflictAssessment): ConflictId | undefined {
+  if (assessment.kind === "none") return undefined;
+  if (assessment.kind === "clean-merge") return conflictId(`conflict:clean:${String(assessment.path)}`);
+  return assessment.conflictId;
+}
+function copyPath(path: VaultPath, id: ConflictId): VaultPath {
+  const raw = String(path);
+  const slash = raw.lastIndexOf("/");
+  const dir = slash >= 0 ? raw.slice(0, slash + 1) : "";
+  const name = slash >= 0 ? raw.slice(slash + 1) : raw;
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  const token = String(id).replace(/[^a-zA-Z0-9]+/g, "-").slice(-20);
+  return contractId<"VaultPath">(`${dir}${stem} (conflict ${token})${ext}`) as VaultPath;
+}
 
 /** Product-level orchestration. UI consumes this controller and never mutates local/Drive ports directly. */
 export class IntegratedProductController implements ProductControlPort {
   private surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
   private readonly runs: CoreRunCoordinator;
+  private readonly conflictRegistry = new Map<string, ConflictAssessment>();
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
 
@@ -77,10 +116,7 @@ export class IntegratedProductController implements ProductControlPort {
     const plan = await this.createPlan(trigger, false, false);
     if (!plan || plan.executionDisposition !== "safe-auto-eligible") return;
     const gate = this.options.automaticExecutionAllowed?.(plan) ?? { allowed: true };
-    if (!gate.allowed) {
-      this.setStatus({ kind: "offline-deferred", reason: gate.reason ?? "automatic synchronization deferred by device policy" });
-      return;
-    }
+    if (!gate.allowed) { this.setStatus({ kind: "offline-deferred", reason: gate.reason ?? "automatic synchronization deferred by device policy" }); return; }
     await this.executePlanned(false);
   }
 
@@ -88,31 +124,21 @@ export class IntegratedProductController implements ProductControlPort {
 
   async request(action: UserAction): Promise<UserActionResult> {
     switch (action.kind) {
-      case "pause":
-        this.runs.pause(); this.setStatus({ kind: "paused" }); return { status: "accepted" };
-      case "resume":
-        this.runs.resume(); this.setStatus({ kind: "idle-ready" }); return { status: "accepted" };
-      case "cancel-active-sync":
-        this.runs.requestCancellation();
-        await this.audit("sync-cancelled");
-        return { status: "accepted" };
-      case "verify-reconcile-vault":
-        await this.previewVerifyReconcile();
-        return { status: "accepted" };
+      case "pause": this.runs.pause(); this.setStatus({ kind: "paused" }); return { status: "accepted" };
+      case "resume": this.runs.resume(); this.setStatus({ kind: "idle-ready" }); return { status: "accepted" };
+      case "cancel-active-sync": this.runs.requestCancellation(); await this.audit("sync-cancelled"); return { status: "accepted" };
+      case "verify-reconcile-vault": await this.previewVerifyReconcile(); return { status: "accepted" };
       case "execute-plan":
         if (!this.planned || this.planned.plan.planId !== action.planId) return { status: "rejected", reason: "plan is stale or no longer current" };
         if (!this.planned.reviewed) return { status: "rejected", reason: "manual plan has not been reviewed" };
         if (this.planned.plan.recoveryCheckpointRequired) return { status: "rejected", reason: "destructive plan requires exact checkpoint approval" };
-        await this.executePlanned(true);
-        return { status: "accepted" };
+        return await this.executePlanned(true) ? { status: "accepted" } : { status: "rejected", reason: "reviewed plan did not complete authoritatively" };
       case "approve-destructive-plan":
         if (!this.planned || this.planned.plan.planId !== action.planId) return { status: "rejected", reason: "destructive plan is stale" };
         if (!this.planned.checkpointId || this.planned.checkpointId !== action.recoveryCheckpointId) return { status: "rejected", reason: "approval is not tied to the current recovery checkpoint" };
         await this.audit("destructive-plan-approved", { planId: action.planId });
-        await this.executePlanned(true, action.recoveryCheckpointId);
-        return { status: "accepted" };
-      case "resolve-conflict":
-        return { status: "rejected", reason: "frozen Phase 1/2 contracts do not provide an authoritative conflict-resolution mutation/commit path; resolution remains fail-closed" };
+        return await this.executePlanned(true, action.recoveryCheckpointId) ? { status: "accepted" } : { status: "rejected", reason: "approved destructive plan did not complete authoritatively" };
+      case "resolve-conflict": return this.resolveConflict(action.conflictId, action.resolution);
     }
   }
 
@@ -123,6 +149,7 @@ export class IntegratedProductController implements ProductControlPort {
       const assembly = full ? await this.options.snapshotAssembler.assembleFull() : await this.options.snapshotAssembler.assemble(true);
       const planner = this.options.plannerForTrigger(trigger);
       const plan = await planner.plan(assembly.input);
+      await this.refreshConflicts(plan, assembly);
       let checkpointId: CheckpointId | undefined;
       if (plan.recoveryCheckpointRequired) {
         const backup = await this.options.stateStore.createRecoveryBackup();
@@ -130,38 +157,40 @@ export class IntegratedProductController implements ProductControlPort {
       }
       this.planned = { plan, assembly, checkpointId, reviewed };
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
-      this.surface = { ...this.surface, planPreview: plan };
+      this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(item => item.kind !== "clean-merge") };
       if (plan.operations.some(operation => operation.kind === "recovery-required")) this.setStatus({ kind: "recovery-required", reason: "synchronization state or remote relationship requires recovery" });
-      else if (plan.operations.some(operation => operation.kind === "unresolved-conflict")) this.setStatus({ kind: "conflict-present", conflictCount: plan.operations.filter(operation => operation.kind === "unresolved-conflict").length });
+      else if (this.surface.conflicts.length) this.setStatus({ kind: "conflict-present", conflictCount: this.surface.conflicts.length });
       else if (plan.recoveryCheckpointRequired) this.setStatus({ kind: "destructive-plan-blocked", planId: plan.planId });
       else this.setStatus({ kind: "idle-ready" });
       return plan;
-    } catch (error) {
-      this.mapPlanningError(error);
-      return undefined;
-    }
+    } catch (error) { this.mapPlanningError(error); return undefined; }
   }
 
-  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId): Promise<void> {
+  private async refreshConflicts(plan: SynchronizationPlan, assembly: AssembledPlanningInput): Promise<void> {
+    const fresh = new Map<string, ConflictAssessment>();
+    for (const operation of plan.operations) {
+      if (operation.kind !== "unresolved-conflict" && operation.kind !== "clean-text-merge") continue;
+      const snapshot = assembly.input.snapshots.find(item => item.path === operation.path);
+      if (!snapshot) continue;
+      const assessment = await this.options.conflictResolver.assess(snapshot.path, baseVersion(snapshot), observedVersion(snapshot, "local"), observedVersion(snapshot, "remote"));
+      const key = assessmentKey(assessment);
+      if (key) fresh.set(String(key), assessment);
+      if (assessment.kind !== "none" && assessment.kind !== "clean-merge") await this.audit("conflict-created", { path: assessment.path, reasonCode: assessment.kind });
+    }
+    this.conflictRegistry.clear();
+    for (const [key, value] of fresh) this.conflictRegistry.set(key, value);
+  }
+
+  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId): Promise<boolean> {
     const planned = this.planned;
-    if (!planned) return;
-    if (!userInitiated && planned.plan.executionDisposition !== "safe-auto-eligible") return;
-    if (planned.plan.executionDisposition === "blocked") return;
-    if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return;
-
-    // A new Drive ID exists only after create(). The frozen VerifiedExecutionReceipt cannot carry it
-    // into StateCommitCoordinator, so mutating here would create an untracked remote object.
-    if (planned.plan.operations.some(operation => operation.kind === "upload-create")) {
-      this.setStatus({ kind: "error", code: "frozen-contract-upload-create-identity", message: "Upload-create is blocked because the frozen execution receipt cannot carry the newly created Drive object ID into authoritative state." });
-      return;
-    }
-
+    if (!planned) return false;
+    if (!userInitiated && planned.plan.executionDisposition !== "safe-auto-eligible") return false;
+    if (planned.plan.executionDisposition === "blocked") return false;
+    if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return false;
     const begun = await this.runs.beginRun();
-    if (begun.status !== "started") {
-      if (begun.status === "paused") this.setStatus({ kind: "paused" });
-      return;
-    }
+    if (begun.status !== "started") { if (begun.status === "paused") this.setStatus({ kind: "paused" }); return false; }
     this.setStatus({ kind: "syncing", planId: planned.plan.planId });
+    let completed = false;
     try {
       await this.ensureTrustedState(planned.assembly);
       this.runEvidence = { managedRemote: planned.assembly.managedRemote, remoteEnumerationComplete: planned.assembly.remoteEnumeration.status === "complete" };
@@ -174,10 +203,7 @@ export class IntegratedProductController implements ProductControlPort {
         if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe" || operation.kind === "recovery-required") { allAccounted = false; continue; }
         if (operation.destructive && planned.plan.recoveryCheckpointRequired && !approvedCheckpoint) { allAccounted = false; continue; }
         const result = await coordinator.executeOperation(operation);
-        if (result.status === "committed") {
-          await this.audit(operation.kind.startsWith("trash-") ? "trash-action" : "operation-completed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path });
-          continue;
-        }
+        if (result.status === "committed") { await this.audit(operation.kind.startsWith("trash-") ? "trash-action" : "operation-completed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path }); continue; }
         allAccounted = false;
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
         if (result.status === "stale-precondition" || result.status === "stale-state") { needsReplan = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break; }
@@ -185,13 +211,89 @@ export class IntegratedProductController implements ProductControlPort {
         if (result.status === "retryable-failure") { this.setStatus({ kind: "offline-deferred", reason: result.reason }); break; }
         if (result.status === "blocked") { this.setStatus({ kind: "error", code: "operation-blocked", message: result.reason }); break; }
       }
-      if (allAccounted && !needsReplan && planned.assembly.nextCursor) await this.commitCursor(planned.assembly.nextCursor);
+      if (allAccounted && !needsReplan) {
+        const cursorCommitted = planned.assembly.nextCursor ? await this.commitCursor(planned.assembly.nextCursor) : true;
+        if (cursorCommitted) {
+          const trusted = await this.options.stateStore.load(this.options.stateContext);
+          completed = trusted.status === "trusted";
+          if (completed && planned.reviewed && this.options.onTrustedBaselineEstablished) await this.options.onTrustedBaselineEstablished();
+        }
+      }
     } finally {
       this.runEvidence = undefined;
       const finished = await this.runs.finishRun();
       if (finished.reconcileAgain) void this.runAutomatic("local-change");
       else if (this.surface.status.kind === "syncing") this.setStatus({ kind: "idle-ready" });
     }
+    return completed;
+  }
+
+  private async resolveConflict(id: ConflictId, resolution: ConflictResolution): Promise<UserActionResult> {
+    const assessment = this.conflictRegistry.get(String(id));
+    const current = this.planned;
+    if (!assessment || !current) return { status: "rejected", reason: "conflict is stale or no longer present in the current plan" };
+    if (!await this.assessmentStillCurrent(assessment, current.assembly)) {
+      await this.createPlan("manual", true, true);
+      return { status: "rejected", reason: "conflict evidence changed; a fresh plan is required before resolution" };
+    }
+    const operations = await this.resolutionOperations(id, assessment, resolution);
+    if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
+    const resolutionPlan: SynchronizationPlan = { planId: planId(`plan:resolve:${String(id)}:${resolution.kind}`), trigger: "manual", operations, executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false };
+    this.planned = { plan: resolutionPlan, assembly: { ...current.assembly, nextCursor: undefined }, reviewed: false };
+    const completed = await this.executePlanned(true);
+    if (!completed) return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
+    this.conflictRegistry.delete(String(id));
+    this.surface = { ...this.surface, conflicts: [...this.conflictRegistry.values()].filter(item => item.kind !== "clean-merge") };
+    await this.audit("conflict-resolved", { path: assessment.kind === "none" ? undefined : assessment.path, reasonCode: resolution.kind });
+    this.setStatus(this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
+    return { status: "accepted" };
+  }
+
+  private async assessmentStillCurrent(assessment: ConflictAssessment, assembly: AssembledPlanningInput): Promise<boolean> {
+    if (assessment.kind === "none") return false;
+    if (assessment.kind === "clean-merge") {
+      return await this.options.executor.versionStillCurrent("local", assessment.provenance.local.version, assembly.managedRemote) && await this.options.executor.versionStillCurrent("remote", assessment.provenance.remote.version, assembly.managedRemote);
+    }
+    if (assessment.kind === "delete-vs-modify") return this.options.executor.versionStillCurrent(assessment.modifiedSide, assessment.modifiedVersion.version, assembly.managedRemote);
+    return await this.options.executor.versionStillCurrent("local", assessment.preserved.local.version, assembly.managedRemote) && await this.options.executor.versionStillCurrent("remote", assessment.preserved.remote.version, assembly.managedRemote);
+  }
+
+  private async resolutionOperations(id: ConflictId, assessment: ConflictAssessment, resolution: ConflictResolution): Promise<readonly PlannedOperation[]> {
+    const originalPath = assessment.kind === "none" ? undefined : assessment.path;
+    if (!originalPath) return [];
+    if (assessment.kind === "clean-merge") {
+      if (resolution.kind !== "accept-clean-merge") return [];
+      return [{ operationId: opId(`op:resolve:clean:${String(id)}`), kind: "clean-text-merge", path: originalPath, remoteObjectId: assessment.mergedVersion.remoteObjectId, contentVersion: assessment.mergedVersion, destructive: false, preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: originalPath }], reasons: [{ code: "user-accept-clean-merge", summary: "User accepted the materialized clean three-way merge." }] }];
+    }
+    if (assessment.kind === "delete-vs-modify") {
+      const modified = assessment.modifiedVersion.version;
+      const keepModified = (assessment.modifiedSide === "local" && resolution.kind === "keep-local") || (assessment.modifiedSide === "remote" && resolution.kind === "keep-remote") || resolution.kind === "keep-both";
+      if (keepModified) {
+        if (assessment.modifiedSide === "local") return [{ operationId: opId(`op:resolve:delete-modify:upload:${String(id)}`), kind: modified.remoteObjectId ? "upload-update" : "upload-create", path: originalPath, targetSide: "remote", remoteObjectId: modified.remoteObjectId, contentVersion: modified, destructive: false, preconditions: [{ kind: "base-trusted" }, { kind: "file-stable", path: modified.path }], reasons: [{ code: "user-preserve-modified", summary: "User chose to preserve the modified local version over the concurrent deletion." }] }];
+        return [{ operationId: opId(`op:resolve:delete-modify:download:${String(id)}`), kind: "download-create", path: originalPath, targetSide: "local", contentVersion: modified, destructive: false, preconditions: [{ kind: "path-observation", side: "local", path: originalPath, expected: "absent" }], reasons: [{ code: "user-preserve-modified", summary: "User chose to preserve the modified remote version over the concurrent deletion." }] }];
+      }
+      if (assessment.modifiedSide === "local" && resolution.kind === "keep-remote") return [{ operationId: opId(`op:resolve:delete:${String(id)}`), kind: "trash-local", path: originalPath, targetSide: "local", destructive: true, preconditions: [{ kind: "base-trusted" }], reasons: [{ code: "user-keep-deletion", summary: "User chose the remote deletion over the modified local version." }] }];
+      if (assessment.modifiedSide === "remote" && resolution.kind === "keep-local") return [{ operationId: opId(`op:resolve:delete:${String(id)}`), kind: "trash-remote", path: originalPath, targetSide: "remote", remoteObjectId: modified.remoteObjectId, destructive: true, preconditions: [{ kind: "base-trusted" }], reasons: [{ code: "user-keep-deletion", summary: "User chose the local deletion over the modified remote version." }] }];
+      return [];
+    }
+
+    const local = assessment.preserved.local.version;
+    const remote = assessment.preserved.remote.version;
+    const remoteId = remote.remoteObjectId;
+    if (!remoteId) return [];
+    const keepLocal: PlannedOperation = { operationId: opId(`op:resolve:local:${String(id)}`), kind: "upload-update", path: originalPath, targetSide: "remote", remoteObjectId: remoteId, contentVersion: local, destructive: false, preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: originalPath }, ...(remote.content ? [{ kind: "content-evidence" as const, side: "remote" as const, path: originalPath, expected: remote.content }] : []), { kind: "file-stable", path: local.path }], reasons: [{ code: "user-keep-local", summary: "User selected the preserved local version as authoritative." }] };
+    if (resolution.kind === "keep-local") return [keepLocal];
+    if (resolution.kind === "keep-remote") return [{ operationId: opId(`op:resolve:remote:${String(id)}`), kind: "download-update", path: originalPath, targetSide: "local", contentVersion: remote, destructive: false, preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: originalPath }, ...(local.content ? [{ kind: "content-evidence" as const, side: "local" as const, path: originalPath, expected: local.content }] : [])], reasons: [{ code: "user-keep-remote", summary: "User selected the preserved remote version as authoritative." }] }];
+    if (resolution.kind === "keep-both") {
+      const conflictCopy = copyPath(originalPath, id);
+      return [{ operationId: opId(`op:resolve:copy:${String(id)}`), kind: "download-create", path: conflictCopy, targetSide: "local", contentVersion: remote, destructive: false, preconditions: [{ kind: "path-observation", side: "local", path: conflictCopy, expected: "absent" }], reasons: [{ code: "user-keep-both-copy", summary: "Preserve the remote alternate as a deterministic local conflict copy." }] }, keepLocal];
+    }
+    if (resolution.kind === "manual") {
+      const resolved = resolution.resolvedVersion;
+      if (!await this.options.executor.versionStillCurrent("local", resolved, this.planned!.assembly.managedRemote)) return [];
+      return [{ operationId: opId(`op:resolve:manual:${String(id)}`), kind: "upload-update", path: originalPath, targetSide: "remote", remoteObjectId: remoteId, contentVersion: resolved, destructive: false, preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: originalPath }, { kind: "file-stable", path: resolved.path }], reasons: [{ code: "user-manual-resolution", summary: "User supplied a currently observable resolved local version." }] }];
+    }
+    return [];
   }
 
   private async ensureTrustedState(assembly: AssembledPlanningInput): Promise<void> {
@@ -202,15 +304,16 @@ export class IntegratedProductController implements ProductControlPort {
     if (saved.status !== "saved") throw new Error(`unable to establish initial trusted state: ${saved.status}`);
   }
 
-  private async commitCursor(cursor: AssembledPlanningInput["nextCursor"]): Promise<void> {
-    if (!cursor) return;
+  private async commitCursor(cursor: AssembledPlanningInput["nextCursor"]): Promise<boolean> {
+    if (!cursor) return true;
     const loaded = await this.options.stateStore.load(this.options.stateContext);
-    if (loaded.status !== "trusted") return;
+    if (loaded.status !== "trusted") return false;
     const current = String(loaded.state.stateRevision);
     const match = /^(.*?)(\d+)$/.exec(current);
     const next = revision(match ? `${match[1]}${Number(match[2]) + 1}` : `${current}:1`);
     const saved = await this.options.stateStore.saveTrusted({ ...loaded.state, stateRevision: next, changeCursor: cursor }, loaded.state.stateRevision);
-    if (saved.status !== "saved") this.setStatus({ kind: "recovery-required", reason: "incremental Drive cursor could not be committed atomically" });
+    if (saved.status !== "saved") { this.setStatus({ kind: "recovery-required", reason: "incremental Drive cursor could not be committed atomically" }); return false; }
+    return true;
   }
 
   private mapPlanningError(error: unknown): void {
