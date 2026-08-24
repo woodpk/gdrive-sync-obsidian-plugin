@@ -102,12 +102,12 @@ test("Phase 5 successful reviewed first synchronization establishes the persiste
   const loaded = await store.load(newContext); assert.equal(loaded.status, "trusted"); if (loaded.status === "trusted") assert.equal(loaded.state.changeCursor, cursor);
 });
 
-test("Phase 5 unresolved reviewed synchronization cannot open the completion gate", async () => {
+test("Phase 5 unresolved reviewed synchronization remains partial and cannot open the completion gate", async () => {
   let completed = 0;
   const harness = await conflictHarness(async () => { completed += 1; });
   const preview = await harness.controller.previewManual(); assert.ok(preview);
   const result = await harness.controller.request({ kind: "execute-plan", planId: preview.planId });
-  assert.equal(result.status, "rejected"); assert.equal(completed, 0);
+  assert.equal(result.status, "accepted"); assert.equal(completed, 0); assert.equal(harness.controller.currentSurface().status.kind, "conflict-present");
 });
 
 test("Phase 5 keep-local resolution revalidates and propagates local authority through journaled upload-update", async () => {
