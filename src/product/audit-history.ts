@@ -15,16 +15,16 @@ export class MemoryAuditPersistence implements AuditPersistence {
 export class BoundedAuditHistory {
   private records: AuditRecord[] = [];
   private loaded = false;
+  private limit: number;
 
-  constructor(private readonly persistence: AuditPersistence, private readonly limit = 500) {
-    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error("audit history limit must be positive");
+  constructor(private readonly persistence: AuditPersistence, limit = 500) {
+    this.assertLimit(limit); this.limit = limit;
   }
 
   async append(record: AuditRecord): Promise<void> {
     await this.ensureLoaded();
     this.records.push(record);
-    if (this.records.length > this.limit) this.records.splice(0, this.records.length - this.limit);
-    await this.persistence.save(this.records);
+    await this.trimAndPersist();
   }
 
   async read(): Promise<readonly AuditRecord[]> {
@@ -32,9 +32,25 @@ export class BoundedAuditHistory {
     return [...this.records];
   }
 
+  async setLimit(limit: number): Promise<void> {
+    this.assertLimit(limit);
+    await this.ensureLoaded();
+    this.limit = limit;
+    await this.trimAndPersist();
+  }
+
+  currentLimit(): number { return this.limit; }
+
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
     this.records = [...await this.persistence.load()].slice(-this.limit);
     this.loaded = true;
+  }
+  private async trimAndPersist(): Promise<void> {
+    if (this.records.length > this.limit) this.records.splice(0, this.records.length - this.limit);
+    await this.persistence.save(this.records);
+  }
+  private assertLimit(limit: number): void {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10000) throw new Error("audit history limit must be an integer from 1 through 10000");
   }
 }
