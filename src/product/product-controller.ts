@@ -2,8 +2,6 @@ import type {
   AuditRecord,
   CheckpointId,
   DeviceIdentity,
-  ManagedRemoteIdentity,
-  PlanId,
   ProductControlPort,
   ProductSurfaceState,
   StateLoadContext,
@@ -25,6 +23,7 @@ import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanning
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
 
 export type PlannerFactory = (trigger: SynchronizationPlan["trigger"]) => SynchronizationPlanner;
+export interface AutomaticExecutionDecision { readonly allowed: boolean; readonly reason?: string; }
 
 export interface ProductControllerOptions {
   readonly vaultIdentity: VaultIdentity;
@@ -37,6 +36,7 @@ export interface ProductControllerOptions {
   readonly leasePort: RunLeasePort;
   readonly audit: BoundedAuditHistory;
   readonly holderId: string;
+  readonly automaticExecutionAllowed?: (plan: SynchronizationPlan) => AutomaticExecutionDecision;
 }
 
 interface PlannedRun {
@@ -56,7 +56,6 @@ export class IntegratedProductController implements ProductControlPort {
   private readonly runs: CoreRunCoordinator;
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
-  private initializedOnce = false;
 
   constructor(private readonly options: ProductControllerOptions) {
     this.runs = new CoreRunCoordinator(options.vaultIdentity, options.deviceIdentity, options.leasePort, options.holderId);
@@ -72,9 +71,16 @@ export class IntegratedProductController implements ProductControlPort {
   pendingDestructiveCheckpoint(): CheckpointId | undefined { return this.planned?.checkpointId; }
 
   async previewManual(): Promise<SynchronizationPlan | undefined> { return this.createPlan("manual", true, true); }
+  async previewVerifyReconcile(): Promise<SynchronizationPlan | undefined> { return this.createPlan("verify-reconcile", true, true); }
+
   async runAutomatic(trigger: "startup-resume" | "local-change" | "periodic"): Promise<void> {
     const plan = await this.createPlan(trigger, false, false);
     if (!plan || plan.executionDisposition !== "safe-auto-eligible") return;
+    const gate = this.options.automaticExecutionAllowed?.(plan) ?? { allowed: true };
+    if (!gate.allowed) {
+      this.setStatus({ kind: "offline-deferred", reason: gate.reason ?? "automatic synchronization deferred by device policy" });
+      return;
+    }
     await this.executePlanned(false);
   }
 
@@ -91,7 +97,7 @@ export class IntegratedProductController implements ProductControlPort {
         await this.audit("sync-cancelled");
         return { status: "accepted" };
       case "verify-reconcile-vault":
-        await this.createPlan("verify-reconcile", true, true);
+        await this.previewVerifyReconcile();
         return { status: "accepted" };
       case "execute-plan":
         if (!this.planned || this.planned.plan.planId !== action.planId) return { status: "rejected", reason: "plan is stale or no longer current" };
@@ -106,7 +112,7 @@ export class IntegratedProductController implements ProductControlPort {
         await this.executePlanned(true, action.recoveryCheckpointId);
         return { status: "accepted" };
       case "resolve-conflict":
-        return { status: "rejected", reason: "frozen Phase 1/2 contracts do not provide an authoritative resolution mutation/commit path; conflict resolution is fail-closed" };
+        return { status: "rejected", reason: "frozen Phase 1/2 contracts do not provide an authoritative conflict-resolution mutation/commit path; resolution remains fail-closed" };
     }
   }
 
@@ -143,6 +149,13 @@ export class IntegratedProductController implements ProductControlPort {
     if (planned.plan.executionDisposition === "blocked") return;
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return;
 
+    // A new Drive ID exists only after create(). The frozen VerifiedExecutionReceipt cannot carry it
+    // into StateCommitCoordinator, so mutating here would create an untracked remote object.
+    if (planned.plan.operations.some(operation => operation.kind === "upload-create")) {
+      this.setStatus({ kind: "error", code: "frozen-contract-upload-create-identity", message: "Upload-create is blocked because the frozen execution receipt cannot carry the newly created Drive object ID into authoritative state." });
+      return;
+    }
+
     const begun = await this.runs.beginRun();
     if (begun.status !== "started") {
       if (begun.status === "paused") this.setStatus({ kind: "paused" });
@@ -155,22 +168,24 @@ export class IntegratedProductController implements ProductControlPort {
       const journal = new StateCommitCoordinator(this.options.stateStore, this.options.stateContext);
       const coordinator = new CrashSafeExecutionCoordinator(this.options.executor, journal);
       let needsReplan = false;
+      let allAccounted = true;
       for (const operation of planned.plan.operations) {
-        if (!this.runs.canStartNextOperation()) break;
-        if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe" || operation.kind === "recovery-required") continue;
-        if (operation.destructive && planned.plan.recoveryCheckpointRequired && !approvedCheckpoint) continue;
+        if (!this.runs.canStartNextOperation()) { allAccounted = false; break; }
+        if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe" || operation.kind === "recovery-required") { allAccounted = false; continue; }
+        if (operation.destructive && planned.plan.recoveryCheckpointRequired && !approvedCheckpoint) { allAccounted = false; continue; }
         const result = await coordinator.executeOperation(operation);
         if (result.status === "committed") {
-          await this.audit("operation-completed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, ...(operation.kind.startsWith("trash-") ? { event: "trash-action" as const } : {}) });
+          await this.audit(operation.kind.startsWith("trash-") ? "trash-action" : "operation-completed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path });
           continue;
         }
+        allAccounted = false;
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
         if (result.status === "stale-precondition" || result.status === "stale-state") { needsReplan = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break; }
         if (result.status === "recovery-required" || result.status === "uncertain") { this.setStatus({ kind: "recovery-required", reason: result.reason }); break; }
         if (result.status === "retryable-failure") { this.setStatus({ kind: "offline-deferred", reason: result.reason }); break; }
         if (result.status === "blocked") { this.setStatus({ kind: "error", code: "operation-blocked", message: result.reason }); break; }
       }
-      if (!needsReplan && planned.assembly.nextCursor) await this.commitCursor(planned.assembly.nextCursor);
+      if (allAccounted && !needsReplan && planned.assembly.nextCursor) await this.commitCursor(planned.assembly.nextCursor);
     } finally {
       this.runEvidence = undefined;
       const finished = await this.runs.finishRun();
@@ -185,7 +200,6 @@ export class IntegratedProductController implements ProductControlPort {
     const initial = createInitialTrustedState({ stateRevision: revision("state:0"), vaultIdentity: this.options.vaultIdentity, deviceIdentity: this.options.deviceIdentity });
     const saved = await this.options.stateStore.saveTrusted(initial);
     if (saved.status !== "saved") throw new Error(`unable to establish initial trusted state: ${saved.status}`);
-    this.initializedOnce = true;
   }
 
   private async commitCursor(cursor: AssembledPlanningInput["nextCursor"]): Promise<void> {
@@ -202,7 +216,7 @@ export class IntegratedProductController implements ProductControlPort {
   private mapPlanningError(error: unknown): void {
     if (error instanceof SnapshotAssemblyError) {
       if (error.code === "authentication-required") this.setStatus({ kind: "authentication-required", reason: error.message });
-      else if (error.code === "transient-failure" || error.code === "rate-limited" || error.code === "service-unavailable") this.setStatus({ kind: "offline-deferred", reason: error.message });
+      else if (error.code === "transient-failure" || error.code === "rate-limited") this.setStatus({ kind: "offline-deferred", reason: error.message });
       else if (["missing-root", "identity-mismatch", "incompatible-protocol", "ambiguous", "recovery-required", "not-found"].includes(error.code)) this.setStatus({ kind: "recovery-required", reason: error.message });
       else this.setStatus({ kind: "error", code: error.code, message: error.message });
       return;
@@ -215,7 +229,7 @@ export class IntegratedProductController implements ProductControlPort {
     for (const listener of this.listeners) listener(this.surface);
   }
 
-  private async audit(event: AuditRecord["event"], values: Partial<Omit<AuditRecord, "id" | "event" | "advisoryAtMs">> & { event?: AuditRecord["event"] } = {}): Promise<void> {
-    await this.options.audit.append({ id: auditId(), event: values.event ?? event, advisoryAtMs: Date.now(), ...values });
+  private async audit(event: AuditRecord["event"], values: Partial<Omit<AuditRecord, "id" | "event" | "advisoryAtMs">> = {}): Promise<void> {
+    await this.options.audit.append({ id: auditId(), event, advisoryAtMs: Date.now(), ...values });
   }
 }
