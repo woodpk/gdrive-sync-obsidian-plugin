@@ -16,6 +16,11 @@ export class ProductPathScope {
 
   constructor(private readonly configurationDirectory: VaultPath, private readonly settings: () => ScopeSettings) {}
 
+  isReservedLogical(path: VaultPath | string): boolean {
+    const logical = norm(String(path));
+    return logical === CONFIG_REMOTE_NAMESPACE || logical.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`);
+  }
+
   isManagedLogical(path: VaultPath | string): boolean {
     const logical = norm(String(path));
     if (logical === CONFIG_REMOTE_NAMESPACE) return false;
@@ -38,6 +43,10 @@ export class ProductPathScope {
       const classification = this.configurationPolicy.classify(vp(physical), this.configurationDirectory);
       return classification.classification === "portable" ? vp(`${CONFIG_REMOTE_NAMESPACE}/${relative}`) : undefined;
     }
+    // A physical vault object that happens to use the synthetic prefix is ordinary
+    // user content, never configuration. It is handled as an explicit collision by
+    // ScopedLocalVault rather than reclassified into the configuration domain.
+    if (this.isReservedLogical(physical)) return undefined;
     return this.isManagedLogical(physical) ? vp(physical) : undefined;
   }
 
@@ -56,9 +65,27 @@ export class ScopedLocalVault implements LocalVaultPort {
   constructor(private readonly inner: LocalVaultPort, readonly scope: ProductPathScope) {}
 
   activeConfigurationDirectory(): Promise<VaultPath> { return Promise.resolve(this.scope.activeConfigurationDirectory()); }
+
   async enumerate(): Promise<LocalVaultListing> {
     const ordinary = await this.inner.enumerate();
-    const entries: LocalObservation[] = ordinary.entries.filter(entry => this.scope.isManagedLogical(entry.path));
+    const ordinaryCollisions = ordinary.entries.filter(entry => this.scope.isReservedLogical(entry.path));
+    const entries: LocalObservation[] = ordinary.entries
+      .filter(entry => !this.scope.isReservedLogical(entry.path) && this.scope.isManagedLogical(entry.path));
+
+    if (ordinaryCollisions.length) {
+      for (const collision of ordinaryCollisions) {
+        entries.push({
+          status: "unknown",
+          side: "local",
+          path: collision.path,
+          reason: `ordinary vault content collides with reserved portable-configuration namespace ${CONFIG_REMOTE_NAMESPACE}; content was not reclassified or mutated`,
+        });
+      }
+      const reasons = ordinary.completeness.status === "complete" ? [] : [ordinary.completeness.reason];
+      reasons.push(`reserved portable-configuration namespace collision at ${ordinaryCollisions.map(entry => String(entry.path)).join(", ")}`);
+      return { entries, completeness: { status: "partial", reason: reasons.join("; ") } };
+    }
+
     const configFailures: string[] = [];
     for (const logical of this.scope.portableLogicalPaths()) {
       const physical = this.scope.logicalToPhysical(logical)!;
@@ -72,32 +99,39 @@ export class ScopedLocalVault implements LocalVaultPort {
   }
 
   async observe(path: VaultPath): Promise<LocalObservation> {
+    if (this.scope.isReservedLogical(path) && await this.hasOrdinaryNamespaceCollision()) return this.collisionObservation(path);
     const physical = this.scope.logicalToPhysical(path);
     if (!physical) return { status: "unknown", side: "local", path, reason: "path is outside the effective synchronization scope" };
     return mapObservation(await this.inner.observe(physical), path);
   }
+
   async readFile(path: VaultPath, expectedToken?: ObservationToken): Promise<LocalReadResult> {
-    const physical = this.requiredPhysical(path); return this.inner.readFile(physical, expectedToken);
+    return this.inner.readFile(await this.requiredPhysical(path), expectedToken);
   }
   async createFile(path: VaultPath, content: Parameters<LocalVaultPort["createFile"]>[1]): Promise<LocalMutationReceipt> {
-    const receipt = await this.inner.createFile(this.requiredPhysical(path), content); return { ...receipt, path };
+    const receipt = await this.inner.createFile(await this.requiredPhysical(path), content); return { ...receipt, path };
   }
   async replaceFile(path: VaultPath, content: Parameters<LocalVaultPort["replaceFile"]>[1], expectedToken?: ObservationToken): Promise<LocalMutationReceipt> {
-    const receipt = await this.inner.replaceFile(this.requiredPhysical(path), content, expectedToken); return { ...receipt, path };
+    const receipt = await this.inner.replaceFile(await this.requiredPhysical(path), content, expectedToken); return { ...receipt, path };
   }
   async createFolder(path: VaultPath): Promise<LocalMutationReceipt> {
-    const receipt = await this.inner.createFolder(this.requiredPhysical(path)); return { ...receipt, path };
+    const receipt = await this.inner.createFolder(await this.requiredPhysical(path)); return { ...receipt, path };
   }
   async move(fromPath: VaultPath, toPath: VaultPath): Promise<LocalMutationReceipt> {
-    const receipt = await this.inner.move(this.requiredPhysical(fromPath), this.requiredPhysical(toPath)); return { ...receipt, path: toPath };
+    const receipt = await this.inner.move(await this.requiredPhysical(fromPath), await this.requiredPhysical(toPath)); return { ...receipt, path: toPath };
   }
-  async trash(path: VaultPath): Promise<void> { await this.inner.trash(this.requiredPhysical(path)); }
+  async trash(path: VaultPath): Promise<void> { await this.inner.trash(await this.requiredPhysical(path)); }
+
   async validatePath(path: VaultPath): Promise<PathValidationResult> {
+    if (this.scope.isReservedLogical(path) && await this.hasOrdinaryNamespaceCollision()) {
+      return { status: "blocked", reason: "unsupported-object", detail: `ordinary vault content collides with reserved portable-configuration namespace ${CONFIG_REMOTE_NAMESPACE}` };
+    }
     const physical = this.scope.logicalToPhysical(path);
     if (!physical) return { status: "blocked", reason: "unsupported-object", detail: "path is outside the effective synchronization scope" };
     return this.inner.validatePath(physical);
   }
-  async classifyConfiguration(path: VaultPath): Promise<ConfigurationClassification> { return this.inner.classifyConfiguration(this.requiredPhysical(path)); }
+  async classifyConfiguration(path: VaultPath): Promise<ConfigurationClassification> { return this.inner.classifyConfiguration(await this.requiredPhysical(path)); }
+
   onChange(listener: (change: LocalVaultChange) => void): Unsubscribe {
     return this.inner.onChange(change => {
       if (change.kind === "renamed") {
@@ -112,7 +146,24 @@ export class ScopedLocalVault implements LocalVaultPort {
   }
   onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe { return this.inner.onLifecycle(listener); }
 
-  private requiredPhysical(path: VaultPath): VaultPath {
+  private async hasOrdinaryNamespaceCollision(): Promise<boolean> {
+    const observed = await this.inner.observe(vp(CONFIG_REMOTE_NAMESPACE));
+    return observed.status !== "absent";
+  }
+
+  private collisionObservation(path: VaultPath): LocalObservation {
+    return {
+      status: "unknown",
+      side: "local",
+      path,
+      reason: `ordinary vault content collides with reserved portable-configuration namespace ${CONFIG_REMOTE_NAMESPACE}; configuration mapping is disabled until the collision is resolved`,
+    };
+  }
+
+  private async requiredPhysical(path: VaultPath): Promise<VaultPath> {
+    if (this.scope.isReservedLogical(path) && await this.hasOrdinaryNamespaceCollision()) {
+      throw new Error(`Blocked local path (unsupported-object): ${String(path)} — ordinary vault content collides with reserved portable-configuration namespace`);
+    }
     const physical = this.scope.logicalToPhysical(path);
     if (!physical) throw new Error(`Blocked local path (unsupported-object): ${String(path)} — outside effective synchronization scope`);
     return physical;
