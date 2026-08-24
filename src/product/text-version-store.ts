@@ -6,7 +6,8 @@ import type {
   VaultPath,
   VersionReference,
 } from "../contracts";
-import { isSafelyRecognizedTextPath, fnv1aContentHash, type MergeOutputEvidenceProvider, type TextVersionProvider } from "../core/conflict-resolver";
+import { isSafelyRecognizedTextPath, type MergeOutputEvidenceProvider, type TextVersionProvider } from "../core/conflict-resolver";
+import { isCanonicalSha256, sha256Text } from "../util/sha256";
 
 export interface TextVersionPersistence {
   get(key: string): Promise<string | undefined>;
@@ -63,8 +64,7 @@ function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentE
   if (!expected) return true;
   if (expected.hash) return actual?.hash === expected.hash;
   if (expected.revision) return actual?.revision === expected.revision;
-  if (expected.sizeBytes !== undefined) return actual?.sizeBytes === expected.sizeBytes;
-  return true;
+  return false;
 }
 
 function versionKey(version: VersionReference): string | undefined {
@@ -72,6 +72,12 @@ function versionKey(version: VersionReference): string | undefined {
   if (version.content?.hash) return `hash:${String(version.content.hash)}`;
   if (version.content?.revision) return `revision:${version.remoteObjectId ? String(version.remoteObjectId) : String(version.path)}:${version.content.revision}`;
   return undefined;
+}
+
+function retainedMatches(version: VersionReference, text: string): boolean {
+  const expected = version.content?.hash;
+  if (!expected) return Boolean(version.content?.revision);
+  return isCanonicalSha256(expected) && sha256Text(text) === expected;
 }
 
 async function decodeUtf8(source: BinaryContentSource): Promise<string> {
@@ -94,10 +100,7 @@ function textSource(text: string): BinaryContentSource {
   };
 }
 
-/**
- * Device-local materialization behind the frozen Phase 2 text seams.
- * Content is keyed only by exact hash/revision evidence; size/timestamps alone never identify a version.
- */
+/** Device-local exact text materialization keyed by canonical content evidence. */
 export class ProductTextVersionStore implements TextVersionProvider, MergeOutputEvidenceProvider {
   constructor(
     private readonly persistence: TextVersionPersistence,
@@ -109,12 +112,13 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
     const key = versionKey(version);
     if (!key) return undefined;
     const retained = await this.persistence.get(key);
-    if (retained !== undefined) return retained;
+    if (retained !== undefined) return retainedMatches(version, retained) ? retained : undefined;
 
     if (version.observationToken) {
       const read = await this.local.readFile(version.path, version.observationToken);
       if (!evidenceMatches(read.evidence, version.content)) return undefined;
       const text = await decodeUtf8(read.content);
+      if (!retainedMatches(version, text)) return undefined;
       await this.persistence.put(key, text);
       return text;
     }
@@ -123,6 +127,7 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
       const downloaded = await this.drive.download(version.remoteObjectId);
       if (!downloaded.ok || !evidenceMatches(downloaded.value.evidence, version.content)) return undefined;
       const text = await decodeUtf8(downloaded.value.content);
+      if (!retainedMatches(version, text)) return undefined;
       await this.persistence.put(key, text);
       return text;
     }
@@ -132,7 +137,7 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
 
   async evidenceFor(path: VaultPath, mergedText: string): Promise<ContentEvidence> {
     const evidence: ContentEvidence = {
-      hash: fnv1aContentHash(mergedText),
+      hash: sha256Text(mergedText),
       sizeBytes: new TextEncoder().encode(mergedText).byteLength,
     };
     await this.persistText({ path, entityKind: "file", content: evidence }, mergedText);
@@ -141,7 +146,9 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
 
   async retainedText(version: VersionReference): Promise<string | undefined> {
     const key = versionKey(version);
-    return key ? this.persistence.get(key) : undefined;
+    if (!key) return undefined;
+    const text = await this.persistence.get(key);
+    return text !== undefined && retainedMatches(version, text) ? text : undefined;
   }
 
   async retainVersion(version: VersionReference): Promise<boolean> {
@@ -151,7 +158,7 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
 
   async persistText(version: VersionReference, text: string): Promise<boolean> {
     const key = versionKey(version);
-    if (!key) return false;
+    if (!key || !retainedMatches(version, text)) return false;
     await this.persistence.put(key, text);
     return true;
   }
@@ -176,6 +183,7 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
           yield chunk;
         }
         text += decoder.decode();
+        if (!retainedMatches(version, text)) throw new Error("captured recognized text does not match its canonical evidence");
         await persistence.put(key, text);
       },
     };
