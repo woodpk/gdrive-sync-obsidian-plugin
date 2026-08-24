@@ -2,7 +2,7 @@
   "id": "brain-google-drive-sync",
   "name": "BRAIN Google Drive Sync",
   "version": "0.1.0",
-  "minAppVersion": "1.6.6",
+  "minAppVersion": "1.11.4",
   "description": "Private local-first BRAIN vault synchronization through the user's Google Drive.",
   "author": "woodpk",
   "isDesktopOnly": false
