@@ -331,3 +331,112 @@ None.
 ## Worker Status
 
 `COMPLETE` for Stage 2A Build Session 02 / Phase 2. The implementation head passed the required repository gate before this evidence-only `[skip ci]` commit. This is not whole-product completion and does not claim supervisory approval.
+
+---
+
+# Stage 2A Build Session 05 / Phase 5 Corrected Cumulative Evidence
+
+## Build Identification
+
+- Agent/session: `agt-CA-P5-01`
+- Repository: `woodpk/gdrive-sync-obsidian-plugin`
+- Required baseline: `master == 372f17f9c69d23feb9909aa08d7566a077a4163b`
+- Branch: `stage-2a-phase-5-integrated-product`
+- PR: `#7` — open and unmerged
+- Corrective-pass starting head: `d3d50850108bbcafc2f2188ed6d30da76313db37`
+- Final executable/documentation head verified before evidence-only commits: `0230c0450f8d7ddfac2f3e56ed3391107c243810`
+- GitHub Actions run: `32777527719`
+- Job: `97591913559`
+- PR merge/test SHA: `a310a2a9d33dceab141d519d491a345d4684c414`
+
+## C1–C7 Corrective Outcome
+
+- **C1 COMPLETE:** supervisor-authorized `VerifiedExecutionReceipt.resultingRemoteObjectId?: RemoteObjectId` added; verified Drive create identity now reaches authoritative state commit; real file/folder `upload-create` implemented and the former global refusal removed.
+- **C2 COMPLETE:** device-local recognized-text materialization store added behind existing Phase 2 text seams; real BASE retrieval/materialization and two-sided verified clean merge implemented without adding content bytes to frozen plans/state or using whole-file `readBinary()`.
+- **C3 COMPLETE:** no-BASE identical first-sync `noop` carries stable remote version; commit establishes trusted BASE/mapping and recognized-text future BASE materialization without content mutation.
+- **C4 COMPLETE:** reviewed, fully accounted, trusted first synchronization persists `firstSyncCompleted: true`; conflicts, blocked/recovery/stale/partial executions cannot open the gate; automatic toggles are not auto-enabled.
+- **C5 COMPLETE:** full reconciliation acquires candidate Drive Changes cursor before full listing; cursor persistence remains deferred until all effects are durably accounted.
+- **C6 COMPLETE within available implementation environment:** real conflict assessments populate the product surface; keep-local, keep-remote, keep-both, supported manual and clean-merge resolution execute through ordinary planned operations, crash-safe journaling, verification, and authoritative commit; stale selections are rejected; conflict copies do not reuse the source Drive ID.
+- **C7 COMPLETE:** invalid `createdFrom` fixture removed; rejected blocker assertions replaced by positive integration tests; direct Phase 5 suite expanded.
+
+The corrective verification also found and repaired a Web Locks release-ordering defect so `release()` waits for actual lock-manager completion.
+
+## Supervisor-Authorized Frozen-Contract Revision
+
+Only `src/contracts/execution.ts` changed under `src/contracts/**` in the corrective pass. The authorized semantic change is the optional `VerifiedExecutionReceipt.resultingRemoteObjectId`, used only for a stable remote identity actually produced and verified during execution. It is not a general mutation payload and the Drive ID is not encoded in an unrelated evidence string.
+
+`dev/planning-and-building/phase-1-shared-contracts.md` records this narrow revision and its affected workstreams.
+
+## Final Available Acceptance Gate
+
+GitHub Actions run `32777527719`, job `97591913559`, executed on PR merge/test SHA `a310a2a9d33dceab141d519d491a345d4684c414` representing branch head `0230c0450f8d7ddfac2f3e56ed3391107c243810` over the exact required master baseline.
+
+- `npm ci` — `PASS`; 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck` — `PASS`.
+- `npm test` — `PASS`; `136 passed / 0 failed / 0 cancelled / 0 skipped / 0 todo`.
+- `npm run build` — `PASS`.
+
+Final logs explicitly show Phase 5 tests passing for first-sync completion, unresolved-gate refusal, keep-local, keep-remote, keep-both/local-only conflict-copy state, stale-resolution rejection, Web Locks exclusion/release, authoritative `upload-create`, clean-text-merge materialization, identical first-sync BASE establishment, and pre-list Changes cursor acquisition.
+
+## Corrective-Pass Created / Modified / Deleted Manifest
+
+Git compare from pre-correction head `d3d50850108bbcafc2f2188ed6d30da76313db37` through verified executable/documentation head `0230c0450f8d7ddfac2f3e56ed3391107c243810` plus the required evidence-only updates yields this correction-pass manifest.
+
+### Created
+
+- `src/product/text-version-store.ts`
+- `test/phase5-controller.test.ts`
+- `dev/evidence/_ca-output-CA-P5.md`
+
+### Modified
+
+- `dev/planning-and-building/phase-1-shared-contracts.md`
+- `src/contracts/execution.ts`
+- `src/core/commit-coordinator.ts`
+- `src/core/planner.ts`
+- `src/main.ts`
+- `src/product/history-modal.ts`
+- `src/product/index.ts`
+- `src/product/product-controller.ts`
+- `src/product/production-executor.ts`
+- `src/product/runtime.ts`
+- `src/product/snapshot-assembler.ts`
+- `src/product/web-lock-run-lease.ts`
+- `test/phase5-product.test.ts`
+- `dev/evidence/_ca-blocker.md`
+- `dev/evidence/_ca-output.md`
+
+### Deleted
+
+None.
+
+## Live / External Verification
+
+The following are **NOT AVAILABLE IN THIS SESSION**:
+
+- real Windows Obsidian OAuth and synchronization;
+- physical iPhone/iOS Obsidian OAuth and synchronization;
+- deployed Azure Static Web Apps callback round trip;
+- real user Google Drive first-sync/incremental sync;
+- physical network-transition tests;
+- actual multi-instance Obsidian Web Locks validation;
+- large-vault/large-file physical-device memory/stress validation.
+
+These are missing external/live environment or later validation items, not accepted frozen-contract blockers.
+
+## Remaining Proven Platform Limitations
+
+Two Phase 4 limitations remain objectively unresolved and are intentionally fail-closed:
+
+1. stock Obsidian iOS cannot currently prove/support bounded-memory arbitrary-file local reads for every required BRAIN file type through a supported general-purpose chunk/offset boundary;
+2. stock Obsidian iOS cannot expose enough link-aware/canonical-path metadata to prove that vault operations cannot traverse a symlink/alias/external reference outside the vault.
+
+Phase 5 does not weaken either requirement, substitute whole-file reads, or add an unsafe external-reference bypass.
+
+## Current Blocker / Completion Status
+
+No accepted C1/C2/C6 frozen-contract blocker remains after the corrective work order.
+
+`BLOCKED — PROVEN PLATFORM LIMITATION`
+
+The blocking requirements are solely the two stock-iOS platform limitations above. The complete repository gate available in this coding-agent environment is green. This evidence does not claim supervisory approval; PR #7 remains open and unmerged, and no Phase 6 or Stage 3 work was begun.
