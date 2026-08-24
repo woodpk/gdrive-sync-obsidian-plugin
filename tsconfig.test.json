@@ -9,5 +9,5 @@
     "declaration": false,
     "esModuleInterop": true
   },
-  "include": ["src/contracts/**/*.ts", "src/testing/**/*.ts", "test/**/*.ts"]
+  "include": ["src/contracts/**/*.ts", "src/drive/**/*.ts", "src/testing/**/*.ts", "test/**/*.ts"]
 }
