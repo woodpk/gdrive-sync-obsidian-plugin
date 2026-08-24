@@ -473,19 +473,21 @@ export class IntegratedProductController implements ProductControlPort {
   }
 
   private async ensureTrustedState(assembly: AssembledPlanningInput): Promise<void> {
+    const persisted = await this.options.stateStore.load(this.options.stateContext);
+    if (persisted.status === "trusted") return;
+
     if (assembly.reconstruction) {
-      const loaded = await this.options.stateStore.load(this.options.stateContext);
-      if (loaded.status === "trusted") return;
-      if (loaded.status !== "recovery-required") throw new Error("recovery replacement requires an objectively recovery-required source");
+      if (persisted.status !== "recovery-required") throw new Error("recovery replacement requires an objectively recovery-required source");
       const initial = createInitialTrustedState({ stateRevision: cid<"StateRevision">("state:recovery:0"), vaultIdentity: this.options.vaultIdentity, deviceIdentity: this.options.deviceIdentity });
       const replaced = await this.options.stateStore.replaceRecoveryState(initial, this.options.stateContext);
       if (replaced.status !== "replaced") throw new Error(`recovery state replacement refused: ${replaced.reason}`);
       await this.options.onRecoveryGateChanged?.(true, replaced.backup.backupId);
-      await this.audit("recovery-entered", { reasonCode: assembly.recoveryReason ?? loaded.reason });
+      await this.audit("recovery-entered", { reasonCode: assembly.recoveryReason ?? persisted.reason });
       return;
     }
-    if (assembly.input.state.status === "trusted") return;
-    if (assembly.input.state.status === "recovery-required") throw new Error("cannot initialize trusted state from recovery-required state");
+
+    if (persisted.status === "recovery-required") throw new Error("cannot initialize trusted state while persisted state requires recovery");
+    if (persisted.status !== "uninitialized") throw new Error(`cannot initialize trusted state from persisted status: ${persisted.status}`);
     const initial = createInitialTrustedState({ stateRevision: cid<"StateRevision">("state:0"), vaultIdentity: this.options.vaultIdentity, deviceIdentity: this.options.deviceIdentity });
     const saved = await this.options.stateStore.saveTrusted(initial);
     if (saved.status !== "saved") throw new Error(`unable to establish initial trusted state: ${saved.status}`);
