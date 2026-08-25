@@ -501,3 +501,116 @@ No defect requiring edits to `src/contracts/**`, `src/core/**`, `src/state/**`, 
 `COMPLETE WITH NON-BLOCKING FINDINGS`
 
 Agent C completed the assigned automatable Drive/OAuth/security/remote-failure hardening, repaired the owned exact-scope acceptance defect, strengthened callback isolation, passed the full clean repository gate, pushed the isolated branch, created draft PR #13, and stopped without merging or performing Stage 3.
+
+---
+
+## Phase 6 C — G1 Repair — OAuth Exact-Grant Refresh-Token Containment
+
+### Repair identification
+
+- Agent: `agt-CA-P6-C-01`.
+- Repair group: `G1 — OAuth exact-grant refresh-token containment`.
+- Repair branch: `phase6-c-drive-security`.
+- Starting branch head: `17c19e251ec16b757a700a806fb06a149298f697`.
+- Draft PR: `#13`; remains open, draft, and unmerged.
+- Dynamically tested correction head: `959f9c1c405c70975328d4c732b407b211b0b5ac`.
+- Production correction commit: `5afd564be9e239f971063b2a26f848feea56566b`.
+- Regression-test commit / tested branch head: `959f9c1c405c70975328d4c732b407b211b0b5ac`.
+- Stage 3: **NOT PERFORMED**.
+
+### C1 — defect corrected
+
+The rejected implementation could carry `previous.refreshToken` into a newly exact `drive.file` authorization-code result even when the previous stored authorization grant itself had broader Drive scope. If Google omitted a new `refresh_token`, this could relabel a broader refresh credential as though it belonged to the exact least-privilege grant.
+
+The correction in `GoogleOAuthSession.completeAuthorization()` now derives `previousRefreshToken` only when the previously stored token record itself passes `hasExactRequiredDriveScope(previous.scope)`. A prior broader-scope record contributes no refresh credential and is cleared before the new credential record is persisted. The existing exact-scope validation of the newly constructed token record remains unchanged and fail-closed.
+
+Observable consequence verified by regression test: after an exact reauthorization whose token response omits `refresh_token`, a prior broader-scope refresh token is not retained. The exact access token may operate until expiry; after expiry, absence of a refresh token causes `accessToken()` to clear the record and return `undefined` without making a refresh request.
+
+### Exact source-path verification
+
+Direct source inspection verified the changed `GoogleOAuthSession.completeAuthorization()` path and all materially relevant credential/scope uses in `src/drive/auth.ts`:
+
+- `previous.refreshToken` is now reachable only through `previousRefreshToken`, gated by `hasExactRequiredDriveScope(previous.scope)`;
+- a broader previous token is cleared during the new authorization-code completion path;
+- `tokens.scope` remains validated with `hasExactRequiredDriveScope()` before persistence;
+- persisted broader tokens remain cleared by `accessToken()` before remote use;
+- refresh requests use only the already-stored refresh token and do not send or request a broader OAuth scope;
+- refresh responses that broaden `refreshed.scope` remain rejected and cleared;
+- refresh responses omitting `scope` inherit only `current.scope`, which was already proven exact before refresh.
+
+No containment/subset check replaced the exact-scope predicate.
+
+### Regression tests
+
+Added one required regression test to `test/phase6-c-auth-security.test.ts`:
+
+`Phase 6 C: exact reauthorization never carries forward a broader-scope refresh token`
+
+It proves:
+
+1. a broader-scope stored record with `broader-refresh` exists before reauthorization;
+2. the new authorization-code response grants exact `drive.file` but omits `refresh_token`;
+3. authorization completes successfully;
+4. the new stored scope is exactly `drive.file`;
+5. the old broader refresh token is absent from the new stored record;
+6. after access-token expiry, `accessToken()` returns `undefined`;
+7. no refresh HTTP call occurs;
+8. the expired non-refreshable token record is cleared.
+
+The existing Agent-C tests were retained and also passed, proving: a new broader grant is rejected; a persisted broader grant is unusable and cleared; refresh-time broadening is rejected; and an already-exact grant may retain its valid refresh behavior when Google omits `scope`.
+
+### Exact G1 change manifest
+
+Modified:
+
+- `src/drive/auth.ts`;
+- `test/phase6-c-auth-security.test.ts`;
+- `dev/evidence/_ca-output.md` — this appended G1 correction evidence only.
+
+No other file was changed by the G1 repair pass.
+
+### Clean GitHub Actions verification
+
+Authoritative verification used draft PR #13 and the existing `Phase 1 CI` clean-checkout workflow.
+
+- workflow: `Phase 1 CI`;
+- run ID: `32883867101`;
+- job ID: `97919583317`;
+- tested branch head: `959f9c1c405c70975328d4c732b407b211b0b5ac`;
+- exact PR merge SHA checked out by Actions: `c7a23319e76f808af329707fa9c8f035a917b24b`;
+- dependency installation (`npm ci`) — **PASS**; 14 packages added, 15 audited, 0 vulnerabilities;
+- typecheck (`npm run typecheck`) — **PASS**;
+- complete test suite (`npm test`) — **PASS**; 216 tests, 216 pass, 0 fail, 0 cancelled, 0 skipped, 0 todo;
+- new G1 regression test — **PASS**, test 214;
+- existing Agent-C exact-scope tests — **PASS**, tests 210–213;
+- callback security tests — **PASS**, tests 215–216;
+- production build (`npm run build`) — **PASS**;
+- workflow/job conclusion — **SUCCESS**.
+
+No failed intermediate G1 CI run occurred. No failed run has been omitted.
+
+### Materially relevant unavailable live checks
+
+- Real Windows Obsidian OAuth authorization: `NOT AVAILABLE IN THIS SESSION`.
+- Real iPhone/iOS same-device OAuth authorization: `NOT AVAILABLE IN THIS SESSION`.
+- Deployed Azure Static Web Apps callback validation: `NOT AVAILABLE IN THIS SESSION`.
+- Live Google Drive synchronization: `NOT AVAILABLE IN THIS SESSION`.
+- Physical network interruption / ambiguous live remote mutation: `NOT AVAILABLE IN THIS SESSION`.
+- Live Drive rate/quota behavior: `NOT AVAILABLE IN THIS SESSION`.
+
+These unavailable checks are not represented as passes by fake, static, or CI evidence.
+
+### Remaining limitations
+
+The two previously established stock-iOS fail-closed limitations remain unchanged and outside this G1 OAuth repair:
+
+1. stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range local reading for every required file type; unsafe whole-file fallback remains prohibited;
+2. stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee; fail closed where proof is unavailable.
+
+No new cross-boundary repair requirement was discovered by G1.
+
+### Repair completion state
+
+`G1 COMPLETE — RETURN FOR SUPERVISORY RE-REVIEW`
+
+C1 is implemented, regression-tested, full-suite verified, production-built, evidenced, committed, and pushed to `phase6-c-drive-security`. Draft PR #13 remains unmerged. No unrelated OAuth cleanup or additional hardening was performed. Stage 3 was not performed.
