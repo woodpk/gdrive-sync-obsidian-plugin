@@ -22,6 +22,8 @@ const DEFAULT_RULES: readonly ExclusionRule[] = [
   { id: "temporary-suffix", pattern: "**/*.tmp", source: "default", description: "Temporary files" },
   { id: "temporary-tilde", pattern: "**/*~", source: "default", description: "Editor backup/temporary files" },
   { id: "lock-files", pattern: "**/*.lock", source: "default", description: "Runtime lock files" },
+  { id: "brain-sync-stage", pattern: "**/*.brain-sync-stage-*", source: "default", description: "BRAIN Sync incomplete local staging files" },
+  { id: "brain-sync-backup", pattern: "**/*.brain-sync-backup-*", source: "default", description: "BRAIN Sync local replacement backup artifacts" },
   { id: "obsidian-trash", pattern: ".trash/**", source: "default", description: "Local recoverable trash" }
 ] as const;
 
