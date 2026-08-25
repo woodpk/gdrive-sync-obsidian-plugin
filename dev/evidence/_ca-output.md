@@ -1,153 +1,241 @@
 # Cumulative Coding-Agent Evidence — Phases 1–5
 
-This is the cumulative construction-evidence ledger for `woodpk/gdrive-sync-obsidian-plugin`. Detailed retained phase evidence remains authoritative at the phase-specific evidence paths and immutable Git history. Phase 6 and Stage 3 have **not** begun.
+This file is the cumulative construction-evidence ledger for `woodpk/gdrive-sync-obsidian-plugin`. Earlier phase evidence is retained rather than declared superseded. Detailed phase records remain authoritative historical evidence at their preserved paths/commits; this ledger records their identity and carries the evidence chain forward into Phase 5.
+
+Phase 6 and Stage 3 have **not** begun.
+
+---
 
 ## Phase 1 — Repository Foundation and Frozen Shared Contracts
 
-Recovered historical evidence commit: `91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`.
+### Recovered historical evidence
 
+The original Phase 1 `_ca-output.md` was recovered from Git history at commit:
+
+`91f740bf3d6ad1a93524dc0a1ea77dfeba22eb9b`
+
+That historical record identifies:
+
+- build/session: `Stage 2A Build Session 01 / Phase 1 — Repository Foundation and Frozen Shared Contracts`;
 - baseline: `0f88f8f11d10caf492237b323aec1b550fc2b052`;
-- final pushed implementation SHA: `40af4c2a73576f931868453f03857af25bd207d9`;
+- final pushed implementation SHA before the Phase 1 evidence-only commit: `40af4c2a73576f931868453f03857af25bd207d9`;
 - final post-lockfile CI run: `32662829150`;
 - `npm ci`: PASS;
 - `npm run typecheck`: PASS;
-- `npm test`: PASS — 14/14;
+- `npm test`: PASS — 14/14 Phase 1 tests;
 - `npm run build`: PASS.
+
+Phase 1 established the mobile-compatible Obsidian plugin foundation, reproducible build/test tooling, frozen shared contracts under `src/contracts/**`, test fakes, architecture/mobile-safety checks, and `dev/phase-1-shared-contracts.md`.
+
+The complete recovered Phase 1 evidence remains available through the immutable historical Git object above; its prior failed intermediate CI attempts and corrective steps remain part of the record and are not rewritten here as passes.
+
+---
 
 ## Phase 2 — Core Synchronization Semantics and Durable State
 
-Detailed retained evidence: `dev/evidence/_ca-output-CA-P2.md`.
+Detailed retained evidence:
 
-- baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
-- verified implementation head: `5be0dca6eb97d2842c63b16540d9c938dd96ecb6`.
+`dev/evidence/_ca-output-CA-P2.md`
+
+That record identifies:
+
+- session: `Stage 2A Build Session 02 / Phase 2 — Core Synchronization Semantics and Durable State`;
+- supervisor-approved baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
+- final implementation head verified by Phase 2 CI: `5be0dca6eb97d2842c63b16540d9c938dd96ecb6`.
+
+Phase 2 established deterministic LOCAL/REMOTE/BASE planning, safe-union initialization, timestamp-independent truth, conservative deletion authority, conflict/three-way-merge semantics, identity-preserving move recognition, destructive safety policy, durable/versioned synchronization state, tombstones/stale-device protection, operation journaling, crash-safe verified commit order, run serialization, cancellation/pause/deferred reconciliation, and precondition validation.
+
+The full Phase 2 implementation inventory and verification history are preserved in `_ca-output-CA-P2.md`.
+
+---
 
 ## Phase 3 — Google Drive and OAuth Boundary
 
-Detailed retained evidence: `dev/evidence/_ca-output-CA-P3.md`.
+Detailed retained evidence:
 
-- baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
-- verified code head: `6e4621345809b30e8b4161f1e52f6344f7474c33`;
-- verification run/job: `32713423290` / `97389515202`.
+`dev/evidence/_ca-output-CA-P3.md`
+
+That record identifies:
+
+- session: `Stage 2A Build Session 03 / Phase 3 — Google Drive and OAuth Boundary`;
+- supervisor-approved baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
+- verified Phase 3 code head: `6e4621345809b30e8b4161f1e52f6344f7474c33`;
+- final code verification run: `32713423290`;
+- verification job: `97389515202`.
+
+Phase 3 established the `drive.file` OAuth/Drive implementation, PKCE/state transaction integrity, device-local secret storage, same-device authorization return seams, stable managed-root identity/protocol metadata, explicit pairing and account binding, Changes API support, complete/partial reconciliation semantics, lazy bounded downloads, resumable uploads, identity-preserving Drive moves, recoverable Drive trash, and structured bounded retry/error signaling.
+
+The full Phase 3 implementation, official-documentation basis, limitations, and verification record remain preserved in `_ca-output-CA-P3.md`.
+
+---
 
 ## Phase 4 — Obsidian Local, Platform, and Configuration Boundary
 
-Detailed retained evidence: `dev/evidence/_ca-output-CA-P4.md`.
+Detailed retained evidence:
 
-- baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
-- corrected implementation head: `4d06581fa91ba9643496a67296b5002925581ba2`;
-- verification run/job: `32731187369` / `97443556511`.
+`dev/evidence/_ca-output-CA-P4.md`
+
+That record identifies:
+
+- session: `Stage 2A Build Session 04 / Phase 4 — Obsidian Local, Platform, and Configuration Boundary`;
+- supervisor-approved baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
+- final corrected implementation head recorded in Phase 4 evidence: `4d06581fa91ba9643496a67296b5002925581ba2`;
+- verification run for the recorded correction: `32731187369`;
+- verification job: `97443556511`.
+
+Phase 4 established the production local-vault boundary, path/exclusion/configuration policy, atomic local replacement semantics, Obsidian FileManager move/trash behavior, startup/lifecycle event handling, desktop external-reference containment checks, and mobile-safe fail-closed behavior.
 
 ### Preserved stock-iOS platform limitations
 
-1. `BLOCKED — PROVEN PLATFORM LIMITATION`: stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range reading for every required file type. Unsafe whole-file `readBinary()` fallback remains prohibited.
-2. `BLOCKED — PROVEN PLATFORM LIMITATION`: stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee. The implementation remains fail-closed when proof capability is unavailable.
+The Phase 4 evidence established two limitations that remain authoritative and were not weakened during Phase 5:
 
-## Phase 5 — Integrated Product and Final Corrective Group D Closure
+1. stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range reading for every required file type; unsafe whole-file `readBinary()` fallback is prohibited;
+2. stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee; the implementation fails closed where proof capability is unavailable.
 
-### Baselines and accepted prerequisite
+The full Phase 4 evidence remains preserved in `_ca-output-CA-P4.md`.
+
+---
+
+## Phase 5 — Integrated Product, Accepted Repairs, Group D Acceptance, and G2R Closure
+
+### Integrated history and corrective baselines
 
 - original Group D baseline: `70b4952c82987e1de8a1455166b090b2a4f57918`;
-- accepted G1 trigger-semantics prerequisite: `c12350f0ad00a117a7116d529bc04ebedce09352`;
-- G2 corrective baseline: `c12350f0ad00a117a7116d529bc04ebedce09352`;
-- authoritative branch: `master`;
-- G2 changed no production source files.
+- accepted G1 trigger-semantics checkpoint: `c12350f0ad00a117a7116d529bc04ebedce09352`;
+- prior G2 evidence-only master: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`;
+- G2R correction-pass baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`;
+- G2R final dynamically tested implementation/test SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`.
 
-Accepted Group A/B/C evidence remains at:
+Retained Group repair evidence:
 
 - `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`;
 - `dev/evidence/_ca-output-agt-CA-P5-GROUP-B-01.md`;
-- `dev/evidence/_ca-output-agt-CA-P5-GROUP-C-01.md`.
-
-Corrective Group D agent-specific evidence:
-
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-C-01.md`;
 - `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`.
 
-### Final dynamically tested implementation/test checkpoint
+Phase 5-specific evidence:
 
-Exact SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`.
+`dev/evidence/_ca-output-CA-P5.md`
+
+Current blocker/limitation record:
+
+`dev/evidence/_ca-blocker.md`
+
+### Historical checkpoints retained, not current
+
+- original Group D dynamically tested checkpoint `ee431c408c64cddf3bcc8642c3015179fefb9b91`: 177/177 tests;
+- accepted G1 checkpoint `c12350f0ad00a117a7116d529bc04ebedce09352`: 178/178 tests;
+- prior G2 dynamically tested checkpoint `7aab9a90c885f33a371576ef602e7a5d352b1d07`: 209/209 tests, run `32811319438`, job `97691056148`.
+
+Those are historical only. The current authoritative G2R gate is below.
+
+### G2R corrections
+
+**C1 — Scenario 30 production cross-instance lease evidence**
+
+Scenario 30 now creates two distinct production `WebLocksRunLeasePort` instances over one controlled shared fake Web Locks manager. Two real `IntegratedProductController` runs prove that the first controller holds the production vault lock, the second cannot mutate while that lock is held, and the lock is released for later acquisition. `InMemoryRunLeasePort` is no longer Scenario 30 primary evidence.
+
+**C2 — Scenario 47 runtime-owned notification delivery evidence**
+
+Scenario 47 now initializes `Phase5ProductRuntime` with controlled external boundaries and exercises the runtime-owned controller surface subscription. Ordinary pause/resume surface transitions produce no host notification; a recovery-required transition traverses the runtime-owned `MeaningfulNotificationFilter` and reaches `ProductRuntimeHost.notify`. The primary acceptance path no longer reconstructs that listener/filter wiring in the test.
+
+**C3 — cumulative evidence preservation**
+
+The complete Phase 1–4 cumulative text from `c12350f0ad00a117a7116d529bc04ebedce09352:dev/evidence/_ca-output.md` is restored above without condensation or deletion. Phase 5 is updated after those preserved sections rather than replacing earlier phase evidence.
+
+### Acceptance map
+
+`test/phase5-acceptance-map.test.ts` retains exact scenarios 1 through 50 and source-verifies each primary executable test reference. Rows 30 and 47 now point to the corrected production-path tests described above. The acceptance-map self-check passed in the final G2R gate.
+
+### Final G2R dynamically tested implementation/test checkpoint
+
+Exact SHA:
+
+`3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 
 Authoritative GitHub Actions gate:
 
 - workflow: `Phase 1 CI`;
-- run ID: `32811319438`;
-- job ID: `97691056148`;
-- exact checkout: `7aab9a90c885f33a371576ef602e7a5d352b1d07`;
+- run ID: `32854213913`;
+- job ID: `97822114191`;
+- clean checkout confirmed exact SHA `3aab3647b57baad7df0b31cc40042325fcfa0e4f`;
 - `npm ci`: **PASS** — 14 packages installed, 0 vulnerabilities;
 - `npm run typecheck`: **PASS**;
 - `npm test`: **PASS** — 209 tests / 209 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
 - `npm run build`: **PASS**.
 
-The prior `ee431c408c64cddf3bcc8642c3015179fefb9b91` / 177-test gate and the accepted G1 `c12350f0ad00a117a7116d529bc04ebedce09352` / 178-test gate are historical checkpoints, not the final Phase 5 gate.
+The actual job log was inspected. Scenario 30 passed as test 169; corrected runtime-owned Scenario 47 passed as test 173; the acceptance-map self-check passed as test 121.
 
-### Executable acceptance closure
+No production source file changed during G2R.
 
-G2 added genuine Phase 5 orchestration evidence for the previously insufficient scenarios. The new tests execute real applicable production components, including `Phase5ProductRuntime`, `ProductSyncScheduler`, `IntegratedProductController`, `ProductSnapshotAssembler`, `ProductionSynchronizationPlanner` / `DeterministicSynchronizationPlanner`, `ProductSynchronizationExecutor`, crash-safe authoritative state commit, production path scoping, audit, and notification filtering. Controlled fakes remain at external boundaries.
+### G2R exact change manifest
 
-`test/phase5-acceptance-map.test.ts` now maps all scenarios 1–50 to semantically valid primary executable evidence. Its source-verification test passed in the authoritative 209-test gate.
+Correction-pass compare baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`.
 
-### Exact G2 change manifest
+### Created
 
-Git compare baseline: `c12350f0ad00a117a7116d529bc04ebedce09352`.
+- none.
 
-#### Created
+### Modified
 
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
-- `test/phase5-group-d-first-sync-integration.test.ts`
 - `test/phase5-group-d-recovery-coordination-integration.test.ts`
 - `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
-
-#### Modified
-
 - `test/phase5-acceptance-map.test.ts`
 - `dev/evidence/_ca-output.md`
 - `dev/evidence/_ca-output-CA-P5.md`
 - `dev/evidence/_ca-blocker.md`
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
 
-#### Deleted
+### Deleted
 
 - none.
 
-#### Remote Branches Deleted
+### Remote Branches Deleted
 
-Historical Group D cleanup, preserved in the record:
+No branches were created or deleted during G2R.
 
-- `agt-stg-2a-phase-1-01`
-- `ca-c1-verification`
-- `master-temp-should-fail`
-- `phase5-fix-group-a`
-- `phase5-fix-group-b`
-- `phase5-fix-group-c`
-- `stage-2a-integration-234`
-- `stage-2a-phase-2-core-sync-state`
-- `stage-2a-phase-3-drive-oauth`
-- `stage-2a-phase-4-obsidian-local`
-- `stage-2a-phase-5-integrated-product`
+Historical Group D cleanup deleted:
 
-Cleanup workflow/run/job: `Group D Branch Cleanup` / `32805742158` / `97675382231`.
+- `agt-stg-2a-phase-1-01`;
+- `ca-c1-verification`;
+- `master-temp-should-fail`;
+- `phase5-fix-group-a`;
+- `phase5-fix-group-b`;
+- `phase5-fix-group-c`;
+- `stage-2a-integration-234`;
+- `stage-2a-phase-2-core-sync-state`;
+- `stage-2a-phase-3-drive-oauth`;
+- `stage-2a-phase-4-obsidian-local`;
+- `stage-2a-phase-5-integrated-product`.
 
-No new non-`master` branch and no pull request were created during corrective G2.
+Historical cleanup evidence:
 
-### Evidence-only final head convention
+- workflow: `Group D Branch Cleanup`;
+- run ID: `32805742158`;
+- job ID: `97675382231`;
+- result: PASS.
 
-The SHA of a commit cannot be embedded in a file contained by that same commit because the file content participates in the Git hash. Therefore this ledger records the exact dynamically tested implementation/test SHA above; the exact post-evidence remote `master` SHA is reported in the final handoff and is independently fetchable from GitHub.
+Final remote branch enumeration is verified after the evidence-only commits and recorded in the agent handoff. Required state remains exactly `master`.
 
-## Live / Physical Validation
+---
 
-The following are **not** represented as passes:
+## Current Unavailable Live / Physical Validation
+
+These are **not** recorded as passes:
 
 - real Windows Obsidian synchronization — `NOT AVAILABLE IN THIS SESSION`;
 - real iPhone/iOS Obsidian synchronization — `NOT AVAILABLE IN THIS SESSION`;
 - real-user Google OAuth authentication — `NOT AVAILABLE IN THIS SESSION`;
 - deployed Azure callback validation — `NOT AVAILABLE IN THIS SESSION`;
 - live production Google Drive synchronization — `NOT AVAILABLE IN THIS SESSION`;
-- physical network interruption — `NOT AVAILABLE IN THIS SESSION`;
+- physical network interruption during transfer — `NOT AVAILABLE IN THIS SESSION`;
 - physical disk-full behavior — `NOT AVAILABLE IN THIS SESSION`;
 - physical large-vault / large-file stress testing — `NOT AVAILABLE IN THIS SESSION`.
+
+---
 
 ## Current Completion State
 
 `COMPLETE WITH NON-BLOCKING FINDINGS`
 
-The corrective G2 executable acceptance and evidence assignment is complete subject to independent supervisory review. The only retained findings are the two established stock-iOS fail-closed platform limitations and unavailable live/physical validations. No supervisory approval is claimed.
+G2R C1, C2, and C3 are dynamically verified at `3aab3647b57baad7df0b31cc40042325fcfa0e4f`. Phase 5 scenarios 1–50 retain primary executable evidence, including corrected Scenario 30 and Scenario 47 mappings. Remaining findings are the two explicitly preserved stock-iOS fail-closed platform limitations and the live/physical validations marked `NOT AVAILABLE IN THIS SESSION`. No supervisory approval is claimed.
