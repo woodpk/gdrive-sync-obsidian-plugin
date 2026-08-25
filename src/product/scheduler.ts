@@ -36,8 +36,8 @@ export class ProductSyncScheduler {
       if (event.kind === "suspend" || event.kind === "unload") void this.controller.request({ kind: "cancel-active-sync" });
     }));
     this.unsubscribers.push(this.local.onChange(() => {
-      this.controller.noteChangeDuringRun();
       if (!this.settings().localChangeEnabled) return;
+      this.controller.noteChangeDuringRun();
       if (this.changeTimer !== undefined) globalThis.clearTimeout(this.changeTimer);
       this.changeTimer = globalThis.setTimeout(() => { this.changeTimer = undefined; void this.controller.runAutomatic("local-change"); }, this.settings().localDebounceMs);
     }));

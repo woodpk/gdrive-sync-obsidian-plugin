@@ -224,7 +224,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
 
   const scheduler = new ProductSyncScheduler(local, controller, () => ({
     startupResumeEnabled: false,
-    localChangeEnabled: false,
+    localChangeEnabled: true,
     periodicEnabled: false,
     periodicIntervalMs: 60_000,
     localDebounceMs: 1_000,

@@ -9,6 +9,7 @@ interface Harness {
   emitLifecycle(event: LocalLifecycleEvent): void;
   calls: string[];
   requests: string[];
+  noteChangeCalls: number[];
 }
 
 function harness(
@@ -31,6 +32,7 @@ function harness(
   } as never;
   const calls: string[] = [];
   const requests: string[] = [];
+  const noteChangeCalls: number[] = [];
   const controller = {
     runAutomatic: async (trigger: string) => {
       calls.push(trigger);
@@ -40,7 +42,7 @@ function harness(
       requests.push(action.kind);
       return { status: "accepted" as const };
     },
-    noteChangeDuringRun: () => undefined,
+    noteChangeDuringRun: () => { noteChangeCalls.push(1); },
   } as never;
   return {
     scheduler: new ProductSyncScheduler(local, controller, settings),
@@ -48,6 +50,7 @@ function harness(
     emitLifecycle: event => lifecycleListener(event),
     calls,
     requests,
+    noteChangeCalls,
   };
 }
 
@@ -67,6 +70,29 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
+test("disabled local-change automatic synchronization ignores local events without deferring or scheduling a pass", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const callbacks = new Map<number, () => void>();
+  let next = 1;
+  globalThis.setTimeout = (((callback: (...args: unknown[]) => void, _delay?: number, ...args: unknown[]) => {
+    const timerId = next++;
+    callbacks.set(timerId, () => callback(...args));
+    return timerId;
+  }) as unknown) as typeof globalThis.setTimeout;
+  try {
+    const h = harness(() => settings({ startupResumeEnabled: false, localChangeEnabled: false }));
+    h.scheduler.start();
+    h.emitChange({ kind: "modified", path: "disabled.md" as never });
+    await flushMicrotasks();
+    assert.equal(h.noteChangeCalls.length, 0);
+    assert.equal(callbacks.size, 0);
+    assert.deepEqual(h.calls, []);
+    h.scheduler.stop();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
+
 test("Phase5 scenario 31 local-change debounce coalesces repeated events into one automatic pass", async () => {
   const originalSetTimeout = globalThis.setTimeout;
   const originalClearTimeout = globalThis.clearTimeout;
@@ -85,6 +111,7 @@ test("Phase5 scenario 31 local-change debounce coalesces repeated events into on
     h.scheduler.start();
     h.emitChange({ kind: "modified", path: "a.md" as never });
     h.emitChange({ kind: "modified", path: "a.md" as never });
+    assert.equal(h.noteChangeCalls.length, 2);
     assert.equal(callbacks.size, 1);
     const callback = [...callbacks.values()][0];
     assert.ok(callback);
