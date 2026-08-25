@@ -358,39 +358,70 @@ The public stock-iOS boundary does not expose sufficient link-aware/canonical-pa
 
 These limitations are candidates for a later final disposition of `BLOCKED — PROVEN PLATFORM LIMITATION` only after the implementation/test head itself passes the complete available verification gate.
 
-## NOT AVAILABLE IN THIS SESSION
+---
 
-The following validation remains unavailable in this customer-facing ChatGPT build environment and is not represented as executed:
+## Group A Corrective Work — `agt-CA-P5-GROUP-A-01`
 
-- real Windows Obsidian OAuth/synchronization;
-- physical iPhone/iOS Obsidian OAuth/synchronization;
-- deployed Azure callback validation;
-- real-user Google Drive first-sync/incremental synchronization;
-- physical network transition testing;
-- actual multi-instance Obsidian Web Locks validation across independent application instances;
-- physical-device large-vault / large-file stress testing.
+### Assignment and Branch
 
-These unavailable validations are not used to fabricate a PASS result and are not substituted for the automated repository gate.
+- Corrective group: `GROUP A — Recovery / Trusted-State Lifecycle`
+- Reviewed source baseline: `efa55df697e87dfddb10df5ff0bc5056e096c1d9`
+- Assigned branch: `phase5-fix-group-a`
+- Production implementation commit: `fd594e73958fcfb1c7eb13396a6d968ef3748af8`
+- Group A test commit before this evidence update: `e2a1ad9d597864cc1bcfa108f351459e45f51540`
 
-## Scope / Safety Statement
+### A1 Diagnosis
 
-- PR #7 remains open and unmerged.
-- No Phase 6 work was started.
-- No Stage 3 work was started.
-- The stock-iOS safety limitations remain fail-closed.
-- No force-sync or safety bypass was introduced.
-- The current build status is `INCOMPLETE` because the latest exact implementation/test head does not yet pass typecheck and therefore has not completed the required test/build gate.
+`IntegratedProductController.ensureTrustedState()` previously used the planning assembly's captured `assembly.input.state` to decide whether to initialize a new trusted state on the non-reconstruction path. A recovery-derived conflict-resolution subplan intentionally clears `reconstruction` and `nextCursor`, but retains the original reconstruction planning snapshot, which may still report `uninitialized`. If authoritative reconstruction work had already committed trusted BASE/mapping/journal state after that snapshot was taken, the stale planning snapshot could therefore authorize a fresh empty trusted-state initialization and discard that newer reconstruction progress.
 
-## Evidence Integrity
+The causal defect was the use of a stale planning projection as authority for a state replacement/initialization transition. The current persisted state must be authoritative immediately before such a transition.
 
-This evidence was fully rewritten to reflect the active Phase 5 build run rather than the stale earlier Phase 1/Phase 2 handoff content.
+### A1 Production Correction
 
-Authoritative current-state references used for this update:
+`src/product/product-controller.ts` was changed narrowly inside `ensureTrustedState()`:
 
-- required base: `372f17f9c69d23feb9909aa08d7566a077a4163b`;
-- pre-evidence head: `7c90f333976ec8f04c39ab794e7e0a901bac2584`;
-- PR: `#7`, open/unmerged;
-- latest green historical checkpoint: head `57b7b35bdd2facb8ed4c83bd44373a201656dbf3`, run `32787942959`, job `97623584566`, 137/137 tests and build pass;
-- latest attempted current-head gate: run `32788673978`, job `97625734968`, typecheck failure in scheduler acceptance-test timer stubs; tests/build skipped.
+- reload current persisted synchronization state before any initialization/replacement decision;
+- if the current persisted state is already `trusted`, preserve it and return immediately, regardless of a stale `uninitialized` planning projection;
+- permit ordinary new-install initialization only when the **current persisted state** is actually `uninitialized`;
+- refuse ordinary initialization when current persisted state is `recovery-required`;
+- preserve recovery replacement authority only for a current persisted `recovery-required` source through the existing `replaceRecoveryState(...)` backup/CAS path;
+- retain the existing rule that conflict-resolution subplans have no recovery-completion authority and that only a fresh complete reviewed reconstruction with a committed cursor may clear recovery.
 
-This file must be updated again every time this coding agent finishes a subsequent build run.
+No Group B, C, or D production semantics were changed.
+
+### Group A Regression Coverage Added
+
+Created `test/phase5-group-a-recovery-state.test.ts` to exercise the A1 lifecycle at product-controller/state-commit level. The test covers a recovery flow containing safe reconstruction work plus multiple conflicts and verifies the intended invariants across successive recovery conflict resolutions, including preservation of previously committed trusted BASE, remote mapping, and completed operation-journal state, continued recovery gating after each individual resolution, and final recovery clearance only after a fresh reviewed reconstruction commits its cursor.
+
+### Verification / Evidence Status
+
+- Git comparison from reviewed baseline `efa55df697e87dfddb10df5ff0bc5056e096c1d9` to pre-evidence Group A head `e2a1ad9d597864cc1bcfa108f351459e45f51540` showed exactly two Group A implementation/test changes:
+  - modified `src/product/product-controller.ts`;
+  - created `test/phase5-group-a-recovery-state.test.ts`.
+- Branch ancestry was preserved: the Group A branch was created directly from the reviewed Phase 5 head.
+- No cross-group production file was modified.
+- Targeted GitHub Actions CI for the Group A branch was **NOT AVAILABLE** at the pre-evidence head because the repository workflow is configured to run on pushes to `master` and pull requests targeting `master`; no workflow run was associated with the Group A branch head.
+- Therefore this evidence does **not** claim that `npm ci`, typecheck, tests, or build executed successfully for the Group A branch. The added regression coverage is committed, but CI execution remains unverified in this branch-only session.
+
+### Group A C/M/D Manifest
+
+Created:
+
+- `test/phase5-group-a-recovery-state.test.ts`
+
+Modified:
+
+- `src/product/product-controller.ts`
+- `dev/evidence/_ca-output.md` — this appended Group A evidence/status update
+
+Deleted:
+
+- none
+
+### Cross-Group Dependency / Blocker
+
+No required cross-group production change was identified. Group A remains bounded to recovery/trusted-state lifecycle ownership. The pre-existing scheduler typecheck failure belongs to Group C and was not modified here.
+
+### Group A Status
+
+`GROUP A CORRECTION IMPLEMENTED AND EVIDENCED ON ASSIGNED BRANCH; TARGETED CI NOT AVAILABLE IN THIS SESSION.`
