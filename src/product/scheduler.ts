@@ -42,12 +42,6 @@ export class ProductSyncScheduler {
       this.changeTimer = globalThis.setTimeout(() => { this.changeTimer = undefined; void this.controller.runAutomatic("local-change"); }, this.settings().localDebounceMs);
     }));
     this.installPeriodic();
-
-    // Runtime composition can complete after Obsidian's one-shot layout-ready
-    // callback has already fired. Scheduler startup itself is the final product-
-    // readiness boundary, so preserve exactly one initial startup opportunity
-    // even when no historical vault-ready event can be replayed.
-    this.issueInitialStartupOpportunity();
   }
 
   refresh(): void { this.clearPeriodic(); this.installPeriodic(); }
