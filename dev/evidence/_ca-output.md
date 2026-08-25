@@ -239,3 +239,167 @@ These are **not** recorded as passes:
 `COMPLETE WITH NON-BLOCKING FINDINGS`
 
 G2R C1, C2, and C3 are dynamically verified at `3aab3647b57baad7df0b31cc40042325fcfa0e4f`. Phase 5 scenarios 1–50 retain primary executable evidence, including corrected Scenario 30 and Scenario 47 mappings. Remaining findings are the two explicitly preserved stock-iOS fail-closed platform limitations and the live/physical validations marked `NOT AVAILABLE IN THIS SESSION`. No supervisory approval is claimed.
+
+---
+
+## Phase 6 — agt-CA-P6-A-01 — Platform / Local Runtime / Scale / Configuration
+
+### Assignment and baseline
+
+- agent: `agt-CA-P6-A-01`;
+- branch: `phase6-a-platform-scale`;
+- required Phase 6 supervisory baseline: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- baseline verification: `origin/master` was verified at exactly `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1` before branch creation;
+- dynamically tested Phase 5 implementation checkpoint carried forward: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`;
+- Stage 3: **NOT PERFORMED**.
+
+The execution environment could not resolve `github.com` for a direct local clone, so repository mutation/inspection used the connected GitHub repository boundary and clean dependency/build/test execution used the repository pull-request CI. This limitation is recorded rather than treating unavailable local execution as a pass.
+
+### Evidence-domain inventory and findings
+
+The current Phase 4/5 tests were inventoried before adding Phase 6 tests. Existing executable evidence already covered bounded range reads without whole-file fallback, malformed/ignored Range rejection, stale source detection between ranges, multi-chunk writes, write-failure preservation of the prior destination, partial enumeration, unreadable/inaccessible observations, hidden/unknown files, empty folders, FileManager move/trash semantics, runtime configuration-directory discovery, selective configuration classification, mobile import isolation, startup/lifecycle behavior, non-destructive disposal, and integrated managed-root/asset-domain scoping.
+
+One confirmed in-scope defect was found:
+
+- `ObsidianLocalVaultAdapter` creates temporary local replacement/staging objects named with `.brain-sync-stage-*` and `.brain-sync-backup-*` markers.
+- `LocalExclusionPolicy` did not explicitly exclude those adapter-owned operational artifacts.
+- If such an artifact survived interruption or best-effort cleanup, ordinary enumeration could treat it as vault content, contrary to FILE-006 / DEC-177 operational-noise exclusion and the operational-state separation intent.
+
+Repair:
+
+- added narrow default exclusions `**/*.brain-sync-stage-*` and `**/*.brain-sync-backup-*` in `src/local/exclusions.ts`;
+- did not add a broad wildcard that would swallow ordinary similarly named user files;
+- added `test/phase6-a-local-hardening.test.ts` regression evidence.
+
+No confirmed defect requiring modification of a frozen source surface was found. Therefore there is no `CROSS-BOUNDARY SUPERVISOR REPAIR REQUIRED` finding from Agent A in this wave.
+
+### Applicable target §13 evidence mapping
+
+#### §13.1 Build and platform
+
+- reproducible clean CI dependency installation/build gate: **PASS** in Phase 6 PR CI;
+- `manifest.json` declares `isDesktopOnly: false`: automated evidence retained;
+- mobile-required source excludes Node/Electron/Windows-only imports, with desktop-only filesystem logic isolated: automated `mobile-safety` evidence retained and passed;
+- stock mobile external-reference proof absence remains fail-closed: retained Phase 4 tests passed;
+- Windows/iOS path-policy behavior has automated platform-neutral evidence for separators, reserved/invalid names, path length, Unicode and case collisions;
+- real Windows Obsidian execution: **NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION**;
+- real iPhone/iOS Obsidian execution: **NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION**.
+
+#### §13.4 Local transfer / large vault
+
+- lazy bounded sequential local reads with validated byte ranges and no `readBinary()` fallback: existing production-path tests passed;
+- runtime that ignores Range and malformed partial-content evidence fail closed: existing tests passed;
+- file change during bounded transfer invalidates the read: existing stale-source test passed;
+- local create consumes multi-chunk content incrementally: existing test passed;
+- local replacement stages content and restores prior valid content on commit rename failure: existing test passed;
+- local write/disk-space-style staging failure leaves prior destination byte-for-byte intact: existing test passed;
+- physical disk-full behavior: **NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION**;
+- representative physical large-vault / large-file stress and iOS memory behavior: **NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION**.
+
+#### §13.7 Configuration / lifecycle / asset boundary
+
+- active configuration directory is obtained from runtime rather than hard-coded `.obsidian`: existing automated test passed;
+- ordinary vault enumeration excludes the active configuration directory: existing automated test passed;
+- portable configuration remains explicit allowlist/classifier behavior; unknown third-party configuration is excluded by classification; workspace/device-local data remains local: existing and new Phase 6 tests passed;
+- plugin sync operational/auth/device material is protected by configuration policy: existing and new Phase 6 tests passed;
+- local adapter disposal/lifecycle handling is non-destructive: existing automated tests passed;
+- integrated managed BRAIN Sync root/domain scoping evidence from Phase 5 remained green; Agent A made no product/Drive-scope changes;
+- real device unlink/uninstall behavior on supported Obsidian runtimes remains part of physical/live validation rather than being promoted from unit evidence.
+
+#### Path / filesystem safety
+
+Automated evidence passed for separator normalization, Unicode-equivalent collisions, case collisions, reserved/invalid names, path-length preflight, hidden files, empty directories, unknown/opaque extensions, unreadable/inaccessible paths, exclusions, desktop symlink/junction containment, mobile fail-closed containment, FileManager rename/trash semantics, and partial enumeration on unsafe/unavailable subtrees.
+
+The Phase 6 repair adds direct proof that adapter-owned stage/backup artifacts cannot become ordinary sync content after interrupted/best-effort cleanup, while similarly named ordinary user files remain in scope.
+
+### Preserved stock-iOS limitations
+
+Both frozen limitations remain preserved without weakening:
+
+1. stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range reading for every required file type. Production still has **no unsafe whole-file `readBinary()` fallback** and fails closed when valid bounded partial-content behavior is unavailable;
+2. stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required guarantee. Generic/mobile behavior still **fails closed** when containment cannot be proven.
+
+Neither limitation is marked resolved.
+
+### Tests added / changed
+
+Created:
+
+- `test/phase6-a-local-hardening.test.ts`
+
+New tests:
+
+1. adapter-owned `.brain-sync-stage-*` and `.brain-sync-backup-*` artifacts are excluded;
+2. the new exclusions do not broaden to ordinary similarly named user files;
+3. runtime-selected configuration directory retains portable/device-local/unknown/protected classification semantics;
+4. cross-platform preflight blocks Unicode/case/reserved/invalid hazards while allowing an opaque unknown extension.
+
+Existing tests were not modified.
+
+### Validation run — implementation/test SHA `57d7dfb417e559921dc83df793713cf0dc9bca49`
+
+Draft PR: `#12` — `phase6-a-platform-scale` -> `master`.
+
+GitHub Actions:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32878431422`;
+- job ID: `97901903093`;
+- PR head SHA: `57d7dfb417e559921dc83df793713cf0dc9bca49`;
+- checked-out PR merge SHA: `e64d3a50b67cf29ed8beb438bb2783a51ee31002`;
+- `npm ci`: **PASS** — 14 packages installed/audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 213 tests / 213 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- new Agent-A tests: tests 210–213, all **PASS**;
+- `npm run build`: **PASS**;
+- `npm run check`: **NOT SEPARATELY EXECUTED**; its three component scripts (`typecheck`, `test`, `build`) were each executed and passed in the clean CI job.
+
+No failed build/test run occurred after the Phase 6 code/test changes; therefore there was no failed-run repair cycle to record.
+
+### Physical / live validations
+
+Actually performed by Agent A in this session:
+
+- none.
+
+Not executed and not claimed as passes:
+
+- real Windows Obsidian synchronization — `NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION`;
+- real iPhone/iOS Obsidian synchronization — `NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION`;
+- physical disk-full behavior — `NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION`;
+- physical large-vault / large-file stress behavior and representative iOS memory measurement — `NOT EXECUTED — REQUIRES SUPPORTED RUNTIME / PHYSICAL VALIDATION`.
+
+Recommended physical validation captures for the supervisor/Stage 3 preparation: exact Obsidian/plugin versions and device/OS, vault corpus/file-size profile, operation/preview observed, interruption/failure injection method, resulting local bytes/paths and status, memory/disk observations where applicable, and pass/fail against the target requirement. No fabricated timings, screenshots, or resource measurements are recorded here.
+
+### Exact Agent-A change inventory through implementation/test checkpoint
+
+Created:
+
+- `test/phase6-a-local-hardening.test.ts`
+
+Modified:
+
+- `src/local/exclusions.ts`
+
+Deleted:
+
+- none.
+
+Frozen production surfaces were not modified.
+
+### Remaining findings / blockers
+
+- the two frozen stock-iOS limitations remain fail-closed and require no weakening repair;
+- real Windows/iPhone and physical stress/failure evidence remains outstanding as explicitly required physical validation;
+- no Agent-A cross-boundary production defect was confirmed during this assignment.
+
+### Branch / PR status
+
+- branch pushed through connected GitHub writes: `phase6-a-platform-scale`;
+- draft PR: `#12`, targeting `master`, intentionally unmerged;
+- evidence-bearing final branch SHA is recorded in the final worker handoff after this evidence commit and follow-up CI observation, avoiding a self-referential SHA claim inside the commit that creates that SHA;
+- Stage 3 was **NOT PERFORMED**.
+
+### Agent-A completion status
+
+`COMPLETE WITH NON-BLOCKING FINDINGS`
