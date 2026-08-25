@@ -79,7 +79,7 @@ That record identifies:
 
 - session: `Stage 2A Build Session 04 / Phase 4 — Obsidian Local, Platform, and Configuration Boundary`;
 - supervisor-approved baseline: `e16719196269b4b31f8f1a4997722cdd1c916058`;
-- final corrected implementation head recorded in the Phase 4 evidence: `4d06581fa91ba9643496a67296b5002925581ba2`;
+- final corrected implementation head recorded in Phase 4 evidence: `4d06581fa91ba9643496a67296b5002925581ba2`;
 - verification run for the recorded correction: `32731187369`;
 - verification job: `97443556511`.
 
@@ -122,12 +122,13 @@ Current blocker/limitation record:
 
 Group D:
 
-- created a genuine production-chain Scenario 26 integration test proving a local change during an active synchronization is deferred to a later reconciliation pass rather than mutating the active plan;
+- created a production-chain Scenario 26 integration test proving a local change during an active synchronization is deferred to a later reconciliation pass rather than mutating the active plan;
 - added executable acceptance evidence for meaningful-notification policy and canonical external BRAIN asset-repository isolation;
 - replaced the prior 1–50 free-text acceptance list with a structured map containing exact executable test files/names and orchestration/evidence descriptions;
 - made that map self-verifying by loading the referenced test source and failing when a mapped executable test is absent or renamed;
-- restored Phase 5-specific evidence and the blocker record;
-- recovered the original Phase 1 evidence identity from Git history and restored this cumulative Phase 1–5 ledger.
+- restored Phase 5-specific evidence and the blocker/limitation record;
+- recovered the original Phase 1 evidence identity from Git history and restored this cumulative Phase 1–5 ledger;
+- deleted all historical non-`master` remote branches and removed the one-shot cleanup workflow after use.
 
 ### Final dynamically tested implementation/test checkpoint
 
@@ -146,7 +147,7 @@ Authoritative GitHub Actions gate:
 - `npm test`: **PASS** — 177 tests / 177 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
 - `npm run build`: **PASS**.
 
-This is the authoritative dynamically tested implementation/test SHA. Later commits that change only evidence documentation are evidence-only heads and are not substituted for this tested SHA unless separately observed through CI.
+This is the authoritative dynamically tested implementation/test SHA. Later commits change evidence/repository hygiene only and do not alter the production/test acceptance implementation.
 
 ### Phase 5 acceptance-map status
 
@@ -176,6 +177,37 @@ The integrated passing suite includes evidence covering:
 
 No new production-contract defect was exposed by the final Group D automated acceptance gate.
 
+### Repository branch cleanup
+
+A one-shot `master` workflow with `GITHUB_TOKEN` `Contents: write` deleted the eleven historical non-`master` branches. The temporary workflow was then removed from `master`.
+
+Cleanup evidence:
+
+- workflow: `Group D Branch Cleanup`;
+- run ID: `32805742158`;
+- job ID: `97675382231`;
+- result: PASS.
+
+Deleted branches:
+
+- `agt-stg-2a-phase-1-01`;
+- `ca-c1-verification`;
+- `master-temp-should-fail`;
+- `phase5-fix-group-a`;
+- `phase5-fix-group-b`;
+- `phase5-fix-group-c`;
+- `stage-2a-integration-234`;
+- `stage-2a-phase-2-core-sync-state`;
+- `stage-2a-phase-3-drive-oauth`;
+- `stage-2a-phase-4-obsidian-local`;
+- `stage-2a-phase-5-integrated-product`.
+
+Post-cleanup remote branch enumeration returned exactly:
+
+```text
+master
+```
+
 ---
 
 ## Current Unavailable Live / Physical Validation
@@ -195,8 +227,6 @@ These are **not** recorded as passes:
 
 ## Current Completion State
 
-`BLOCKED`
+`COMPLETE WITH NON-BLOCKING FINDINGS`
 
-The Phase 5 implementation/test gate is green, but the Group D work order also requires remote GitHub branch enumeration to contain only `master`. The connected GitHub tool surface available in this session does not expose remote-ref/branch deletion. Actual enumeration still contains historical non-`master` branches. See `dev/evidence/_ca-blocker.md` for the exact branch list and blocker statement.
-
-No supervisory approval is claimed.
+All Group D executable acceptance, evidence-restoration, automated repository-gate, invariant-sweep, and sole-remote-branch requirements are satisfied. Remaining findings are the two explicitly preserved stock-iOS fail-closed platform limitations and the live/physical validations marked `NOT AVAILABLE IN THIS SESSION`. No supervisory approval is claimed.
