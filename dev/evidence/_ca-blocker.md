@@ -2,23 +2,31 @@
 
 ## Current Build / Product Blocker
 
-**None discovered in the assigned corrective G2 automated acceptance/evidence scope.**
+**None discovered in the assigned G2R automated acceptance/evidence scope.**
 
-The previously rejected executable-acceptance gaps have been closed by new Phase 5 orchestration tests. No production-contract defect requiring production modification was exposed by the final green gate.
+The three re-rejection blockers are closed: Scenario 30 now exercises the production `WebLocksRunLeasePort`, Scenario 47 now exercises `Phase5ProductRuntime` runtime-owned notification delivery, and the cumulative ledger restores the complete Phase 1–4 text from the specified `c12350f...` baseline. No production-contract defect requiring production modification was exposed.
 
-## Corrective G2 Verification
+## G2R Verification
 
-- corrective baseline: `c12350f0ad00a117a7116d529bc04ebedce09352`
-- final dynamically tested implementation/test SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`
+- correction-pass baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`
+- final dynamically tested implementation/test SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 - workflow: `Phase 1 CI`
-- run ID: `32811319438`
-- job ID: `97691056148`
-- `npm ci`: PASS
+- run ID: `32854213913`
+- job ID: `97822114191`
+- `npm ci`: PASS — 14 packages, 0 vulnerabilities
 - `npm run typecheck`: PASS
 - `npm test`: PASS — 209/209, 0 failed, 0 cancelled, 0 skipped, 0 todo
 - `npm run build`: PASS
 
-The job log confirms checkout of the exact SHA and execution of all required commands.
+The job log confirms checkout of the exact tested SHA and execution of all required commands. Scenario 30, Scenario 47, and the acceptance-map self-check all passed.
+
+## Historical Checkpoints
+
+- original Group D: `ee431c408c64cddf3bcc8642c3015179fefb9b91` — 177/177
+- accepted G1: `c12350f0ad00a117a7116d529bc04ebedce09352` — 178/178
+- prior G2: `7aab9a90c885f33a371576ef602e7a5d352b1d07` — 209/209, run `32811319438`, job `97691056148`
+
+These remain historical and are not represented as the current G2R gate.
 
 ## Repository Branch Cleanup — Historical Closed Record
 
@@ -36,18 +44,16 @@ Historical Group D branch cleanup used workflow `Group D Branch Cleanup`, run `3
 - `stage-2a-phase-4-obsidian-local`
 - `stage-2a-phase-5-integrated-product`
 
-Corrective G2 created no branch and no pull request. Final branch enumeration is verified after the evidence commit and reported in the final handoff.
+G2R created no branch and no pull request.
 
 ## Proven Stock-iOS Platform Limitations
 
 1. `BLOCKED — PROVEN PLATFORM LIMITATION` — stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range reading for every required file type. Unsafe whole-file `readBinary()` fallback remains prohibited.
 2. `BLOCKED — PROVEN PLATFORM LIMITATION` — stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee. The implementation remains fail-closed when proof capability is unavailable.
 
-Neither limitation was weakened during G2.
+Neither limitation was weakened during G2R.
 
 ## Live / Physical Validation Unavailable
-
-The following remain unavailable and are not represented as passes:
 
 - real Windows Obsidian synchronization — `NOT AVAILABLE IN THIS SESSION`
 - real iPhone/iOS Obsidian synchronization — `NOT AVAILABLE IN THIS SESSION`
@@ -60,6 +66,6 @@ The following remain unavailable and are not represented as passes:
 
 ## Completion Status
 
-`NO REMAINING G2 BLOCKER`
+`NO REMAINING G2R BLOCKER`
 
-This statement is limited to the assigned automated acceptance/evidence closure. Independent supervisory review remains required; no approval is claimed.
+This statement is limited to the assigned automated acceptance/evidence correction. Independent supervisory review remains required; no approval is claimed.
