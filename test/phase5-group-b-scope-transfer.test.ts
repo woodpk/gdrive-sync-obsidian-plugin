@@ -39,7 +39,7 @@ class StubTransport extends GoogleHttpTransport {
   }
   override request(url:string,init:PortableRequestInit={}):Promise<DriveResult<Response>>{return this.handler(url,init);}
 }
-const ok=(body:unknown,status=200)=>Promise.resolve({ok:true,value:new Response(body instanceof Uint8Array?body:JSON.stringify(body),{status,headers:{"content-type":body instanceof Uint8Array?"application/octet-stream":"application/json"}})} as DriveResult<Response>);
+const ok=(body:unknown,status=200)=>Promise.resolve({ok:true,value:new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json"}})} as DriveResult<Response>);
 function googleAdapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){
   const backing=new MemorySecrets(); backing.setSecret("brain-gdrive-paired-account","acct"); const store=new ObsidianSecretStore(backing);
   return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store);
@@ -103,7 +103,7 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
     if(url.includes("/files/remote-a?")&&!url.includes("alt=media")) return ok({id:"remote-a",name:"a.bin",mimeType:"application/octet-stream",parents:["content"],size:"300000",version:"7",appProperties:{brainManagedRootId:"root",brainSyncDomain:"content"}});
     if(url.includes("alt=media")){
       mediaCalls++;
-      if(mediaCalls===1) return Promise.resolve({ok:true,value:new Response(new Uint8Array(256*1024),{status:206})} as DriveResult<Response>);
+      if(mediaCalls===1) return Promise.resolve({ok:true,value:new Response(new Uint8Array(256*1024).slice().buffer,{status:206})} as DriveResult<Response>);
       return Promise.resolve({ok:false,signal} as DriveResult<Response>);
     }
     throw new Error(url);
@@ -119,10 +119,8 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
     validatePath:async(path:VaultPath)=>({status:"compatible" as const,normalizedComparisonPath:String(path).toLowerCase()}),
     replaceFile:async(path:VaultPath,source:BinaryContentSource)=>{
       replaceStarts++;
-      const pieces:Uint8Array[]=[]; let length=0;
-      for await(const chunk of source.openChunks()){ pieces.push(chunk); length+=chunk.length; }
-      // Commit only after complete source consumption: a mid-stream failure leaves
-      // the existing destination untouched, matching atomic local replacement.
+      let length=0;
+      for await(const chunk of source.openChunks()) length+=chunk.length;
       values.set(String(path),`replaced:${length}`); evidences.set(String(path),remoteEvidence);
       return {path,evidence:remoteEvidence,observationToken:id<"ObservationToken">(`tok:replaced:${String(path)}`)};
     },
