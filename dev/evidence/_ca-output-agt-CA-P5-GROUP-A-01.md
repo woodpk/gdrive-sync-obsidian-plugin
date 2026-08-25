@@ -6,57 +6,74 @@
 - Assigned group: `GROUP A — Recovery / Trusted-State Lifecycle`
 - Assigned branch: `phase5-fix-group-a`
 - Reviewed starting baseline: `efa55df697e87dfddb10df5ff0bc5056e096c1d9`
-- Re-rejection corrections completed: `A1`, `A2`
+- Re-rejection corrections completed: `A1`, `A2`, `A3`
 
 ## Group A Correction Implemented
 
-The previously accepted Group A production repair in `src/product/product-controller.ts` remains substantively unchanged by this re-rejection pass. That repair makes the current persisted synchronization state authoritative before trusted-state initialization/replacement, preserving already committed recovery reconstruction progress and restricting recovery replacement to the existing recovery-required backup/CAS path.
+The accepted Group A persisted-state authority repair remains semantically unchanged. Current persisted state remains authoritative before trusted-state initialization/replacement, already committed reconstruction progress is preserved, and recovery replacement remains restricted to current persisted `recovery-required` state through the existing replacement path.
 
-Re-rejection A1 corrected the Group A acceptance test contract defect in `test/phase5-group-a-recovery-state.test.ts` exactly as directed:
+A1 corrected `test/phase5-group-a-recovery-state.test.ts` from invalid remote observation `status: "missing"` to frozen-contract-valid `status: "absent"` without changing the recovery-state preservation assertions in substance.
 
-- changed the `localOnlySnapshot(...)` remote observation from invalid `status: "missing"` to frozen-contract-valid `status: "absent"`;
-- retained the existing recovery-state preservation assertions in substance.
+A3 corrected the directly necessary TypeScript compile fallout in `src/product/product-controller.ts` exactly as ordered by removing only the redundant impossible-state check:
 
-No Group B, Group C, or Group D correction was implemented here.
+```ts
+if (persisted.status !== "uninitialized") throw new Error(`cannot initialize trusted state from persisted status: ${persisted.status}`);
+```
 
-## Dynamic Verification Actually Performed
+No other `ensureTrustedState(...)` logic was changed. The frozen `StateLoadResult` union was directly inspected and remains exactly:
 
-A draft validation PR was opened solely to trigger the repository's available GitHub Actions workflow and remains open/unmerged:
+- `trusted`
+- `uninitialized`
+- `recovery-required`
 
-- Validation PR: `#10` — `Validation: Phase 5 Group A corrective re-review`
-- PR state: `DRAFT / OPEN / UNMERGED`
-- Dynamically tested Group A implementation/test head: `81a05dd6c967b37936dadaa806aba860f2263ddf`
-- PR merge/test SHA: `07e0878374c2e2f1532ecf9660c47e2abae2aeda`
-- GitHub Actions workflow: `Phase 1 CI`
-- Run ID: `32799571931`
-- Job ID: `97657644097`
+No Group B, Group C, or Group D correction was implemented.
 
-Observed results:
+## A3 Verification Actually Performed
+
+Pre-correction reviewed head:
+
+- `d9185e1f91f304954d399f58aeef94eae61cb57d`
+
+A3 implementation/test head:
+
+- `a0992205eabffe03333c584c3ea4fba655377b1c`
+
+Draft validation PR:
+
+- PR `#10` — `Validation: Phase 5 Group A corrective re-review`
+- State: `DRAFT / OPEN / UNMERGED`
+- PR merge/test SHA: `68c0f68674e8f5504aa9e22b03084091627e8c98`
+- Workflow: `Phase 1 CI`
+- Run ID: `32800654402`
+- Job ID: `97660661969`
+
+Observed results on the A3 implementation/test head:
 
 - `npm ci` — `PASS` (14 packages added; 15 audited; 0 vulnerabilities)
-- `npm run typecheck` — `FAIL`
-- `npm test` — `SKIPPED` because typecheck failed
-- `npm run build` — `SKIPPED` because typecheck failed
+- `npm run typecheck` — `FAIL`, but **the Group A TS2339 is absent**
+- Remaining typecheck failures are only the two inherited Group C errors outside Group A ownership:
+  - `test/phase5-scheduler-acceptance.test.ts(25,25)` — TS2352
+  - `test/phase5-scheduler-acceptance.test.ts(37,26)` — TS2352
+- `npm test` — `SKIPPED` because inherited Group C typecheck errors stop the workflow
+- `npm run build` — `SKIPPED` because inherited Group C typecheck errors stop the workflow
 
-Observed typecheck failures:
+The prior Group A failure:
 
-1. Group A-owned pre-existing accepted production repair compile fallout:
-   - `src/product/product-controller.ts(490,131)` — TS2339: `Property 'status' does not exist on type 'never'`.
-   - This re-rejection explicitly ordered: `Do not change the Group A production controller repair.` Therefore this validation finding is recorded as a remaining Group A blocker rather than silently reopening the accepted production correction.
-2. Inherited Group C timer-stub errors outside Group A ownership:
-   - `test/phase5-scheduler-acceptance.test.ts(25,25)` — TS2352 (`setTimeout` test-stub cast)
-   - `test/phase5-scheduler-acceptance.test.ts(37,26)` — TS2352 (`setInterval` test-stub cast)
-   - These were not modified by Group A.
+```text
+src/product/product-controller.ts(...): TS2339: Property 'status' does not exist on type 'never'
+```
 
-Direct repository inspection also confirmed after A1:
+is no longer present in the validation logs.
 
-- `localOnlySnapshot(...)` uses `status: "absent"`;
-- no `status: "missing"` remains in `test/phase5-group-a-recovery-state.test.ts`;
-- the recovery-state preservation assertions remain unchanged in substance.
+## Prior A1/A2 Validation History
+
+Earlier A1/A2 validation used implementation/test head `81a05dd6c967b37936dadaa806aba860f2263ddf`, run `32799571931`, job `97657644097`. That run exposed the now-corrected Group A TS2339 plus the same two inherited Group C TS2352 failures. A3 supersedes the Group A compile-fallout portion of that earlier result.
 
 ## NOT AVAILABLE IN THIS SESSION
 
-The following materially relevant validation was not available here and is not represented as passed:
+Because the isolated Group A validation branch still contains the inherited Group C timer-stub typecheck defects, tests and production build were not dynamically reachable on the corrected Group A implementation head.
+
+Also not available and not represented as passed:
 
 - real Windows Obsidian OAuth/synchronization;
 - physical iPhone/iOS Obsidian OAuth/synchronization;
@@ -65,30 +82,32 @@ The following materially relevant validation was not available here and is not r
 - physical network-transition testing;
 - physical-device large-vault/large-file stress testing.
 
-## Group A Correction-Pass Change Manifest
-
-Created:
-
-- `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`
+## A3 Correction-Pass Change Manifest
 
 Modified:
 
-- `test/phase5-group-a-recovery-state.test.ts`
-- `dev/evidence/_ca-output.md` (updated separately in this correction pass)
+- `src/product/product-controller.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`
+
+Created:
+
+- none
 
 Deleted:
 
 - none
 
-The previously accepted Group A production repair remains in `src/product/product-controller.ts`; it was not substantively changed during this re-rejection pass.
+No Group B or Group C file was modified. In particular, `test/phase5-scheduler-acceptance.test.ts` was not changed.
 
 ## Head Distinction
 
-- Last dynamically tested implementation/test head: `81a05dd6c967b37936dadaa806aba860f2263ddf`.
-- Evidence-only commits occur after that dynamically tested head. Those later evidence-only SHAs are not represented as dynamically tested implementation heads.
+- Dynamically validated A3 implementation/test head: `a0992205eabffe03333c584c3ea4fba655377b1c`.
+- Evidence-only commits after that implementation/test head are not represented as dynamically tested implementation SHAs.
 
 ## Remaining Blocker / Limitation
 
-- **Remaining Group A blocker:** the accessible validation run exposed TS2339 at `src/product/product-controller.ts(490,131)`. The current bounded re-rejection order simultaneously prohibits changing the accepted Group A production controller repair, so this compile fallout is recorded for supervisory disposition rather than repaired outside the explicit A1/A2 authorization.
-- The two scheduler timer-stub TS2352 failures are inherited Group C defects and are outside Group A ownership.
-- The established stock-iOS fail-closed platform limitations remain unchanged.
+- **No remaining Group A-owned TypeScript blocker was observed in A3 validation.**
+- The isolated Group A PR remains blocked at typecheck only by the two inherited Group C TS2352 timer-stub errors. Those are outside Group A ownership and were not modified.
+- Tests/build are therefore `NOT AVAILABLE IN THIS SESSION` for the corrected isolated Group A branch.
+- Existing stock-iOS fail-closed platform limitations remain unchanged.
