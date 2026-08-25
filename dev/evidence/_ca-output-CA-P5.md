@@ -1,43 +1,47 @@
-# Phase 5 Coding-Agent Evidence — Corrective Group D Closure
+# Phase 5 Coding-Agent Evidence — Group D G2R Closure
 
 ## Identification
 
 - Agent: `agt-CA-P5-GROUP-D-01`
-- Assignment: G2 Phase 5 executable acceptance and evidence closure
+- Assignment: `G2R — Final Phase 5 Acceptance Correction`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Branch: `master`
 - Original Group D baseline: `70b4952c82987e1de8a1455166b090b2a4f57918`
-- Corrective G2 starting SHA: `c12350f0ad00a117a7116d529bc04ebedce09352`
-- Accepted G1 prerequisite: `c12350f0ad00a117a7116d529bc04ebedce09352`
-- Final dynamically tested implementation/test SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`
+- Accepted G1 / G2 starting point: `c12350f0ad00a117a7116d529bc04ebedce09352`
+- G2R correction-pass baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`
+- Final dynamically tested implementation/test SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 - PR: `NOT APPLICABLE — DIRECT MASTER WORK; NO PR CREATED`
 - Phase 6: `NOT STARTED`
 - Stage 3: `NOT STARTED`
 
-G2 modified no production source files.
+G2R modified no production source files.
 
-## Corrective Executable Acceptance
+## G2R Corrections
 
-The rejected name-only/lower-layer substitutions were replaced with genuine Phase 5 orchestration evidence. New integration families cover:
+### C1 — Scenario 30
 
-- first synchronization, first-sync automatic gating, ordinary local and remote edits, offline/reconnect;
-- clean merge, text/binary conflict, identity-preserving move, ordinary deletion, delete-vs-modify, destructive breaker and exact checkpoint approval;
-- invalid Changes cursor full-reconcile fallback, incomplete evidence safety, stale-device deletion authority, missing managed root, cancellation, pause/resume, same-runtime serialization and cross-controller lease exclusion;
-- stale precondition and active-run remote-change replanning;
-- Phase5 runtime pairing/deauthorization, repeated path-local failure isolation, real audit production, production notification delivery, and selective portable configuration synchronization.
+Scenario 30 now exercises the production cross-instance lease implementation. It creates two distinct `WebLocksRunLeasePort` instances backed by one controlled shared fake Web Locks manager and runs two real `IntegratedProductController` synchronization paths. The first controller holds the shared vault lock; the second cannot mutate while it is held; release makes the lock available again. `InMemoryRunLeasePort` remains only for other tests and is not Scenario 30 primary evidence.
 
-The accepted post-G1 Scenario 26 remains enabled with `localChangeEnabled: true` and proves later serialized local-change reconciliation.
+### C2 — Scenario 47
 
-`test/phase5-acceptance-map.test.ts` maps scenarios 1–50 to semantically valid primary executable evidence; lower-layer tests are secondary/supporting only where applicable.
+Scenario 47 now initializes `Phase5ProductRuntime`, installs the runtime-owned controller-surface subscription, records `ProductRuntimeHost.notify`, proves ordinary pause/resume transitions do not notify, and proves a recovery-required transition traverses the runtime-owned notification filter and reaches the host notification delivery boundary. The test does not reconstruct a separate `MeaningfulNotificationFilter` listener as primary evidence.
+
+### C3 — cumulative evidence
+
+`dev/evidence/_ca-output.md` restores the complete Phase 1–4 cumulative text from `c12350f0ad00a117a7116d529bc04ebedce09352` before the updated Phase 5 material. Earlier cumulative phase evidence was not condensed or deleted.
+
+## Acceptance Map
+
+Rows 30 and 47 in `test/phase5-acceptance-map.test.ts` point to the corrected exact G2R tests. Scenarios 1–50 remain present, source-verified, and executable. The map self-check passed in the authoritative gate.
 
 ## Authoritative GitHub Actions Gate
 
 - workflow: `Phase 1 CI`
-- run ID: `32811319438`
-- job ID: `97691056148`
-- exact checked-out SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`
+- run ID: `32854213913`
+- job ID: `97822114191`
+- exact checked-out SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 - checkout: clean, fetch depth 1
-- `npm ci`: **PASS** — 14 packages, 0 vulnerabilities
+- `npm ci`: **PASS** — 14 packages installed, 0 vulnerabilities
 - `npm run typecheck`: **PASS**
 - `npm test`: **PASS**
   - tests: **209**
@@ -48,33 +52,39 @@ The accepted post-G1 Scenario 26 remains enabled with `localChangeEnabled: true`
   - todo: **0**
 - `npm run build`: **PASS**
 
-The job log was inspected directly. The prior 177-test and 178-test checkpoints remain historical only.
+The GitHub Actions job log was inspected directly. Corrected Scenario 30 passed as test 169, corrected Scenario 47 passed as test 173, and the acceptance-map self-check passed as test 121.
 
-## Exact G2 Change Manifest
+Historical checkpoints remain historical only:
 
-Compare baseline: `c12350f0ad00a117a7116d529bc04ebedce09352`.
+- `ee431c408c64cddf3bcc8642c3015179fefb9b91` — 177/177;
+- `c12350f0ad00a117a7116d529bc04ebedce09352` — 178/178;
+- `7aab9a90c885f33a371576ef602e7a5d352b1d07` — 209/209, run `32811319438`, job `97691056148`.
+
+## Exact G2R Change Manifest
+
+Compare baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`.
 
 ### Created
 
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
-- `test/phase5-group-d-first-sync-integration.test.ts`
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
+- none.
 
 ### Modified
 
+- `test/phase5-group-d-recovery-coordination-integration.test.ts`
+- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
 - `test/phase5-acceptance-map.test.ts`
 - `dev/evidence/_ca-output.md`
 - `dev/evidence/_ca-output-CA-P5.md`
 - `dev/evidence/_ca-blocker.md`
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
 
 ### Deleted
 
 - none.
 
 ### Remote Branches Deleted
+
+No branches were created or deleted by G2R.
 
 Historical Group D cleanup deleted:
 
@@ -90,23 +100,11 @@ Historical Group D cleanup deleted:
 - `stage-2a-phase-4-obsidian-local`
 - `stage-2a-phase-5-integrated-product`
 
-Cleanup evidence: workflow `Group D Branch Cleanup`, run `32805742158`, job `97675382231`.
+Historical cleanup evidence: workflow `Group D Branch Cleanup`, run `32805742158`, job `97675382231`.
 
-Corrective G2 created no branch and no PR.
+## Evidence-only Final Head Convention
 
-## Final Remote Master SHA Convention
-
-Because a Git commit SHA hashes the tree containing this file, this file cannot truthfully embed the SHA of the commit that contains its own final text. The exact final post-evidence `master` SHA is therefore recorded in the final agent handoff and is independently verifiable from the remote repository. The exact dynamically tested implementation/test SHA is fixed above.
-
-## Scenarios 1–50 Acceptance Status
-
-**AUTOMATED EXECUTABLE ACCEPTANCE COMPLETE.**
-
-All 50 rows exist in `PHASE5_ACCEPTANCE_EVIDENCE`, the map’s source-verification test passed, and the scenarios previously rejected for insufficient orchestration evidence now point primarily to the new Group D Phase 5 integration tests.
-
-## Remote Branch State
-
-Required final state: exactly `master`. Final remote enumeration is performed after this evidence write and recorded in the final handoff. No non-`master` branch was created by G2.
+The exact dynamically tested implementation/test SHA is fixed above. Evidence-only commits follow it. A file cannot embed the SHA of the commit that hashes that same file without self-reference, so the exact final remote `master` SHA is recorded in the final handoff after evidence commits complete and is independently verifiable from GitHub.
 
 ## Live / Physical Validation
 
@@ -121,11 +119,11 @@ Required final state: exactly `master`. Final remote enumeration is performed af
 
 ## Preserved Stock-iOS Limitations
 
-1. `BLOCKED — PROVEN PLATFORM LIMITATION`: no proven bounded arbitrary-file byte-range local read for every required file type on stock Obsidian iOS; unsafe whole-file fallback remains prohibited.
-2. `BLOCKED — PROVEN PLATFORM LIMITATION`: no proven stock-iOS symlink/alias/external-reference containment equivalent to the required safety guarantee; fail closed where proof is unavailable.
+1. `BLOCKED — PROVEN PLATFORM LIMITATION`: stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range local reading for every required file type; unsafe whole-file fallback remains prohibited.
+2. `BLOCKED — PROVEN PLATFORM LIMITATION`: stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee; fail closed where proof is unavailable.
 
 ## Remaining Blocker
 
-**None discovered in the assigned G2 automated acceptance/evidence scope.**
+**None discovered in the assigned G2R automated acceptance/evidence scope.**
 
 Independent supervisory review remains required. No supervisory approval is claimed.
