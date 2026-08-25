@@ -394,3 +394,101 @@ Authoritative current-state references used for this update:
 - latest attempted current-head gate: run `32788673978`, job `97625734968`, typecheck failure in scheduler acceptance-test timer stubs; tests/build skipped.
 
 This file must be updated again every time this coding agent finishes a subsequent build run.
+
+---
+
+# Group C Re-Rejection Correction-Pass Evidence — 2026-08-24
+
+## Identification
+
+- Agent: `agt-CA-P5-GROUP-C-01`
+- Assigned correction: `GROUP C / C1 — Group C build evidence is stale/missing`
+- Branch: `phase5-fix-group-c`
+- Reviewed starting baseline: `efa55df697e87dfddb10df5ff0bc5056e096c1d9`
+- Dynamically tested implementation/test head: `976aafb0880f4fb7f4e9b09be920418a172fc826`
+- First evidence-only commit in this re-rejection pass: `b457bbbcec2a4abd3e8cc9de7bdcdd789bd69daf`
+- Validation PR: `#8` — `DRAFT / OPEN / UNMERGED`
+- This correction pass is evidence-only. The already-reviewed Group C production and scheduler/lifecycle test implementation was not reopened.
+
+## Group C Corrections Previously Implemented and Accepted for Semantic Review
+
+- Group C C1: lifecycle readiness replay and scheduler startup/resume serialization/coalescing repair.
+- Group C C2: scheduler acceptance timer-stub typing correction eliminating the reported TS2352 compile defects.
+
+No production or test modification is authorized or performed by this re-rejection pass.
+
+## Actual Group C Implementation/Test Delta
+
+Direct GitHub comparison from reviewed baseline `efa55df697e87dfddb10df5ff0bc5056e096c1d9` to tested implementation head `976aafb0880f4fb7f4e9b09be920418a172fc826` identified exactly:
+
+### Created
+
+None.
+
+### Modified
+
+- `src/local/obsidian-local-vault.ts`
+- `src/product/scheduler.ts`
+- `test/phase5-scheduler-acceptance.test.ts`
+
+### Deleted
+
+None.
+
+## Re-Rejection Correction-Pass Manifest
+
+### Created
+
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-C-01.md`
+
+### Modified
+
+- `dev/evidence/_ca-output.md`
+
+### Deleted
+
+None.
+
+`test/phase5-acceptance-map.test.ts` remains outside Group C's correction pass and was not modified.
+
+## Verification Actually Performed
+
+Repository inspection during this evidence-only pass confirmed:
+
+- `phase5-fix-group-c` began this pass at exact tested head `976aafb0880f4fb7f4e9b09be920418a172fc826`;
+- PR #8 is draft, open, and unmerged;
+- baseline-to-tested-head Group C delta contains only the three implementation/test files listed above;
+- the mandatory Group C agent-specific evidence source was absent before C1 and has now been created;
+- no Group A, Group B, Group D, Phase 6, or Stage 3 work was performed.
+
+Previously observed GitHub Actions validation for implementation/test head `976aafb0880f4fb7f4e9b09be920418a172fc826`:
+
+- Run: `32792019642`
+- Job: `97635295239`
+- `npm ci`: `PASS`
+- `npm run typecheck`: `PASS`
+- `npm test`: `163` executed; `162` passed; `1` failed; `0` skipped.
+- Every Group C scheduler/lifecycle test passed.
+- Sole failing test: `Phase5 acceptance evidence maps every mandatory scenario 1 through 50`.
+- Exact assertion: `scenario 26 evidence` in `test/phase5-acceptance-map.test.ts`.
+- `npm run build`: `SKIPPED` because the unrelated test failure stopped the workflow first.
+
+The scenario-26 acceptance-map failure is the already-defined Group D acceptance/evidence closure issue. It is not a Group C scheduler/lifecycle failure and was not repaired on this branch.
+
+## NOT AVAILABLE IN THIS SESSION
+
+No new dynamic implementation validation was required or executed after the evidence-only commits because this re-rejection expressly prohibits modifying the accepted Group C implementation/test delta. Physical Windows/iOS Obsidian and live Google Drive end-to-end device validation were `NOT AVAILABLE IN THIS SESSION` and are not represented as executed.
+
+## Evidence Integrity / Head Distinction
+
+The exact dynamically tested implementation/test head remains `976aafb0880f4fb7f4e9b09be920418a172fc826`.
+
+The later branch commits in this pass modify evidence only. The first such commit is `b457bbbcec2a4abd3e8cc9de7bdcdd789bd69daf`; this cumulative evidence update is a later evidence-only commit. Its exact resulting SHA, and the final branch head after all evidence-only writes, are reported from repository history in the completion response rather than falsely attributing dynamic test execution to an evidence-only SHA.
+
+## Remaining Blocker / Limitation
+
+- Group C scheduler/lifecycle implementation and its scheduler/lifecycle tests passed the observed validation.
+- Full repository CI remains non-green only because of the pre-existing Group D-owned `scenario 26 evidence` acceptance-map assertion.
+- Production build was skipped in that run because the workflow stopped at the unrelated test failure.
+- PR #8 remains draft/open/unmerged.
+- No self-approval is claimed.
