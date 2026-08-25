@@ -40,6 +40,8 @@ function adapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveRe
 function common(url:string){
   if(url.includes("/about")) return ok({user:{permissionId:"acct"}});
   if(url.includes("/files/root?")) return ok(root());
+  if(url.includes("/files/content?")) return ok(content());
+  if(url.includes("/files/config?")) return ok(config());
   if(isContentRootQuery(url)) return ok({files:[content()]});
   if(isConfigRootQuery(url)) return ok({files:[config()]});
   return undefined;
