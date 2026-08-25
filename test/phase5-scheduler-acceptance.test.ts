@@ -14,6 +14,7 @@ interface Harness {
 function harness(
   settings: () => AutomaticSyncSettings,
   runAutomatic?: (trigger: string) => Promise<void>,
+  readyBeforeRegistration = false,
 ): Harness {
   let changeListener: (change: LocalVaultChange) => void = () => undefined;
   let lifecycleListener: (event: LocalLifecycleEvent) => void = () => undefined;
@@ -24,6 +25,7 @@ function harness(
     },
     onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe {
       lifecycleListener = listener;
+      if (readyBeforeRegistration) listener({ kind: "vault-ready" });
       return () => undefined;
     },
   } as never;
@@ -126,18 +128,22 @@ test("Phase5 scenario 33 refresh replaces periodic timer with live cadence", () 
   }
 });
 
-test("Phase5 scenario 32 preserves startup opportunity when vault-ready fired before scheduler registration", async () => {
-  const h = harness(() => settings());
+test("Phase5 scenario 32 replays startup opportunity when vault-ready fired before scheduler registration", async () => {
+  const h = harness(() => settings(), undefined, true);
   h.scheduler.start();
   await flushMicrotasks();
   assert.deepEqual(h.calls, ["startup-resume"]);
   h.scheduler.stop();
 });
 
-test("vault-ready after scheduler registration does not duplicate the initial startup opportunity", async () => {
+test("vault becoming ready after scheduler registration produces exactly one startup opportunity", async () => {
   const h = harness(() => settings());
   h.scheduler.start();
   await flushMicrotasks();
+  assert.deepEqual(h.calls, []);
+  h.emitLifecycle({ kind: "vault-ready" });
+  await flushMicrotasks();
+  assert.deepEqual(h.calls, ["startup-resume"]);
   h.emitLifecycle({ kind: "vault-ready" });
   await flushMicrotasks();
   assert.deepEqual(h.calls, ["startup-resume"]);
@@ -145,7 +151,7 @@ test("vault-ready after scheduler registration does not duplicate the initial st
 });
 
 test("startup automatic disabled produces no startup or resume synchronization opportunity", async () => {
-  const h = harness(() => settings({ startupResumeEnabled: false }));
+  const h = harness(() => settings({ startupResumeEnabled: false }), undefined, true);
   h.scheduler.start();
   h.emitLifecycle({ kind: "vault-ready" });
   h.emitLifecycle({ kind: "resume" });
@@ -157,7 +163,7 @@ test("startup automatic disabled produces no startup or resume synchronization o
 test("first sync incomplete keeps scheduler startup automatic ineligible", async () => {
   let firstSyncCompleted = false;
   const userStartupEnabled = true;
-  const h = harness(() => settings({ startupResumeEnabled: firstSyncCompleted && userStartupEnabled }));
+  const h = harness(() => settings({ startupResumeEnabled: firstSyncCompleted && userStartupEnabled }), undefined, true);
   h.scheduler.start();
   h.emitLifecycle({ kind: "vault-ready" });
   h.emitLifecycle({ kind: "resume" });
@@ -173,7 +179,7 @@ test("first sync incomplete keeps scheduler startup automatic ineligible", async
 test("active recovery keeps scheduler startup automatic ineligible", async () => {
   let recoveryActive = true;
   const userStartupEnabled = true;
-  const h = harness(() => settings({ startupResumeEnabled: userStartupEnabled && !recoveryActive }));
+  const h = harness(() => settings({ startupResumeEnabled: userStartupEnabled && !recoveryActive }), undefined, true);
   h.scheduler.start();
   h.emitLifecycle({ kind: "vault-ready" });
   h.emitLifecycle({ kind: "resume" });
@@ -201,6 +207,7 @@ test("duplicate ready and resume signals are coalesced and lifecycle runs stay s
         active -= 1;
       }
     },
+    true,
   );
 
   h.scheduler.start();
