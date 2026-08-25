@@ -108,9 +108,18 @@ export class GoogleOAuthSession {
       const parsed = await response.json() as TokenResponse;
       if (!response.ok || !parsed.access_token || !parsed.expires_in) return { ok: false, reason: "token-exchange-failed", detail: parsed.error ?? `http-${response.status}` };
       const previous = this.tokens();
+      const previousRefreshToken =
+        previous && hasExactRequiredDriveScope(previous.scope)
+          ? previous.refreshToken
+          : undefined;
+
+      if (previous && !hasExactRequiredDriveScope(previous.scope)) {
+        this.clearTokens();
+      }
+
       const tokens: OAuthTokens = {
         accessToken: parsed.access_token,
-        refreshToken: parsed.refresh_token ?? previous?.refreshToken,
+        refreshToken: parsed.refresh_token ?? previousRefreshToken,
         expiresAtMs: this.now() + parsed.expires_in * 1000,
         tokenType: parsed.token_type ?? "Bearer",
         scope: parsed.scope ?? REQUIRED_DRIVE_SCOPE,
