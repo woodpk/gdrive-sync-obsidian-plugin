@@ -467,6 +467,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
 
   onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe {
     this.lifecycleListeners.add(listener);
+    if (this.vaultReady && !this.disposed) listener({ kind: "vault-ready" });
     return () => this.lifecycleListeners.delete(listener);
   }
 

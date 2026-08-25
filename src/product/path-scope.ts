@@ -23,13 +23,16 @@ export class ProductPathScope {
 
   isManagedLogical(path: VaultPath | string): boolean {
     const logical = norm(String(path));
-    if (logical === CONFIG_REMOTE_NAMESPACE) return false;
+    // The exact synthetic namespace is retained in planning only as a collision
+    // sentinel. It can never be materialized through logicalToPhysical().
+    if (logical === CONFIG_REMOTE_NAMESPACE) return true;
     if (logical.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`)) return this.portable.has(logical.slice(CONFIG_REMOTE_NAMESPACE.length + 1));
     return !new LocalExclusionPolicy(this.settings().userExclusionPatterns).evaluate(logical, this.configurationDirectory).excluded;
   }
 
   logicalToPhysical(path: VaultPath): VaultPath | undefined {
     const logical = norm(String(path));
+    if (logical === CONFIG_REMOTE_NAMESPACE) return undefined;
     if (!this.isManagedLogical(logical)) return undefined;
     if (logical.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`)) return vp(`${norm(String(this.configurationDirectory))}/${logical.slice(CONFIG_REMOTE_NAMESPACE.length + 1)}`);
     return vp(logical);
@@ -72,27 +75,30 @@ export class ScopedLocalVault implements LocalVaultPort {
     const entries: LocalObservation[] = ordinary.entries
       .filter(entry => !this.scope.isReservedLogical(entry.path) && this.scope.isManagedLogical(entry.path));
 
-    if (ordinaryCollisions.length) {
-      for (const collision of ordinaryCollisions) {
-        entries.push({
-          status: "unknown",
-          side: "local",
-          path: collision.path,
-          reason: `ordinary vault content collides with reserved portable-configuration namespace ${CONFIG_REMOTE_NAMESPACE}; content was not reclassified or mutated`,
-        });
-      }
-      const reasons = ordinary.completeness.status === "complete" ? [] : [ordinary.completeness.reason];
-      reasons.push(`reserved portable-configuration namespace collision at ${ordinaryCollisions.map(entry => String(entry.path)).join(", ")}`);
-      return { entries, completeness: { status: "partial", reason: reasons.join("; ") } };
+    const collisionReason = ordinaryCollisions.length
+      ? `ordinary vault content collides with reserved portable-configuration namespace ${CONFIG_REMOTE_NAMESPACE} at ${ordinaryCollisions.map(entry => String(entry.path)).join(", ")}; configuration mapping is disabled until the collision is resolved`
+      : undefined;
+
+    if (collisionReason) {
+      // Represent the collision as one explicitly scoped unknown path. Do not turn
+      // a known namespace collision into global enumeration incompleteness: safe
+      // ordinary paths still have complete absence evidence when the underlying
+      // ordinary listing is complete.
+      entries.push({ status: "unknown", side: "local", path: vp(CONFIG_REMOTE_NAMESPACE), reason: collisionReason });
     }
 
     const configFailures: string[] = [];
     for (const logical of this.scope.portableLogicalPaths()) {
+      if (collisionReason) {
+        entries.push({ status: "unknown", side: "local", path: logical, reason: collisionReason });
+        continue;
+      }
       const physical = this.scope.logicalToPhysical(logical)!;
       const observed = mapObservation(await this.inner.observe(physical), logical);
       entries.push(observed);
       if (observed.status === "unreadable" || observed.status === "inaccessible" || observed.status === "unknown") configFailures.push(`${String(logical)}: ${observed.reason}`);
     }
+
     if (!configFailures.length) return { entries, completeness: ordinary.completeness };
     const prior = ordinary.completeness.status === "complete" ? [] : [ordinary.completeness.reason];
     return { entries, completeness: { status: "partial", reason: [...prior, ...configFailures].join("; ") } };

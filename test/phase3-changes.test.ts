@@ -12,6 +12,7 @@ const id=(s:string)=>contractId<"RemoteObjectId">(s) as RemoteObjectId; const va
 const root=()=>({id:"root",name:"BRAIN Sync",mimeType:"application/vnd.google-apps.folder",trashed:false,appProperties:{brainSyncRole:"brain-sync-root",brainVaultIdentity:"vault-1",brainProtocolVersion:"1"}});
 const content=()=>({id:"content",name:"vault",mimeType:"application/vnd.google-apps.folder",parents:["root"],trashed:false,appProperties:{brainSyncRole:"brain-sync-content"}});
 const config=()=>({id:"config",name:"__brain_sync_portable_config__",mimeType:"application/vnd.google-apps.folder",parents:["root"],trashed:false,appProperties:{brainSyncRole:"brain-sync-portable-config"}});
+const provenance=(domain:"content"|"portable-config")=>({brainManagedRootId:"root",brainSyncDomain:domain});
 const isContentRootQuery=(url:string)=>url.includes("appProperties+has")||url.includes("appProperties%20has");
 const isConfigRootQuery=(url:string)=>url.includes("__brain_sync_portable_config__")&&url.includes("%27root%27");
 const isOrdinaryCollisionQuery=(url:string)=>url.includes("__brain_sync_portable_config__")&&url.includes("%27content%27");
@@ -25,7 +26,7 @@ test("managed root creation stamps stable vault identity protocol and portable-c
 });
 
 test("start cursor and incremental change page retain Drive identity",async()=>{
-  const a=adapter(async url=>{ if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root()); if(isContentRootQuery(url)) return ok({files:[content()]}); if(isConfigRootQuery(url)) return ok({files:[config()]}); if(isOrdinaryCollisionQuery(url)) return ok({files:[]}); if(url.includes("/changes/startPageToken")) return ok({startPageToken:"start-1"}); if(url.includes("/files/content?")) return ok(content()); if(url.includes("/changes?")) return ok({changes:[{fileId:"file-1",file:{id:"file-1",name:"note.md",mimeType:"text/plain",parents:["content"],trashed:false,size:"4",version:"2"}}],newStartPageToken:"next-2"}); throw new Error(url); });
+  const a=adapter(async url=>{ if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root()); if(isContentRootQuery(url)) return ok({files:[content()]}); if(isConfigRootQuery(url)) return ok({files:[config()]}); if(isOrdinaryCollisionQuery(url)) return ok({files:[]}); if(url.includes("/changes/startPageToken")) return ok({startPageToken:"start-1"}); if(url.includes("/files/content?")) return ok(content()); if(url.includes("/changes?")) return ok({changes:[{fileId:"file-1",file:{id:"file-1",name:"note.md",mimeType:"text/plain",parents:["content"],trashed:false,size:"4",version:"2",appProperties:provenance("content")}}],newStartPageToken:"next-2"}); throw new Error(url); });
   const start=await a.getStartCursor(id("root")); assert.equal(start.ok,true); if(start.ok) assert.equal(String(start.value),"start-1");
   const page=await a.readChanges(id("root"),cursor("start-1")); assert.equal(page.ok,true); if(page.ok){ assert.equal(String(page.value.nextCursor),"next-2"); assert.equal(page.value.changes.length,1); const change=page.value.changes[0]; assert.equal(change.kind,"upsert"); if(change.kind==="upsert") assert.equal(String(change.entry.remoteObjectId),"file-1"); }
 });
