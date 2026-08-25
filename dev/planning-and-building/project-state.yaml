@@ -68,9 +68,55 @@ stage_2a_phases:
       - "../evidence/_ca-output-agt-CA-P5-GROUP-D-01.md"
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: ready
+    status: active_runtime_validation_required
     depends_on: [phase_5]
     supervisor_handoff: "phase-6-supervisor-handoff.md"
+    integration_branch: "phase6-integration"
+    integrated_tested_sha: "926147bea7adc567168154c00a1250f787980430"
+    integration_pr: 15
+    automated_integration_gate:
+      workflow: "Phase 1 CI"
+      run_id: 32887406318
+      job_id: 97930979816
+      pr_merge_sha: "6721bec00f4da268c971a714325e96c0ac13b9c2"
+      tests: 233
+      passed: 233
+      failed: 0
+      cancelled: 0
+      skipped: 0
+      todo: 0
+      typecheck: PASS
+      build: PASS
+    reviewed_workers:
+      - agent: "agt-CA-P6-A-01"
+        branch: "phase6-a-platform-scale"
+        reviewed_head: "88a60f538a3de6d66b2240473da25e1d25431009"
+        supervisor_review_result: "APPROVE"
+      - agent: "agt-CA-P6-B-01"
+        branch: "phase6-b-state-recovery"
+        reviewed_head: "1b0e1b09ccc770f9eb9d3a35e0a61dc944578595"
+        supervisor_review_result: "APPROVE"
+      - agent: "agt-CA-P6-C-01"
+        branch: "phase6-c-drive-security"
+        reviewed_head: "42116bf1eb14ad1bb4d9456cd06432a97c7d2328"
+        corrected_tested_head: "959f9c1c405c70975328d4c732b407b211b0b5ac"
+        supervisor_review_result: "APPROVE"
+    evidence:
+      - "../evidence/phase6-integration-manifest.md"
+      - "../evidence/phase6-agent-a-branch-output.md"
+      - "../evidence/phase6-agent-b-branch-output.md"
+      - "../evidence/phase6-agent-c-branch-output.md"
+    outstanding_required_validation:
+      - "real Windows Obsidian synchronization"
+      - "real iPhone/iOS Obsidian synchronization"
+      - "real-user Google OAuth on supported devices"
+      - "deployed Azure Static Web Apps callback validation"
+      - "live Google Drive synchronization/domain behavior"
+      - "physical network interruption / ambiguous remote mutation"
+      - "physical disk-full behavior"
+      - "representative physical large-vault / large-file constrained-resource testing"
+      - "live Drive rate/quota behavior where safely reproducible"
+    supervisor_review_result: pending_required_runtime_validation
 
 parallel_wave:
   status: complete
@@ -94,8 +140,8 @@ parallel_wave:
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Transfer Stage 2A Phase 6 supervision to a fresh supervisor session; perform supervisor re-entry from persisted repository authority; generate the Phase 6 build-session prompt against the actual current master; then execute Phase 6 Cross-Platform Hardening and Stage 3 Readiness."
+  action: "Use the integrated Phase 6 codebase for the required supported-runtime/live validation on Windows, iPhone/iOS, OAuth/Azure callback, live Google Drive, interruption/disk-full, and representative constrained-resource scenarios. Record objective evidence, repair and reverify any discovered defect, then perform final Phase 6 supervisor closure. Do not begin Stage 3 before Phase 6 acceptance criteria are satisfied."
   governing_file: "stage-1-build-decomposition.md"
   relevant_sections: ["10", "11", "17"]
-  build_prompt_method: "agent-led-software-product-construction-manual.md Stage 2A Build-Prompt Expansion Template and Re-Entry and Recovery procedures"
   handoff: "phase-6-supervisor-handoff.md"
+  integration_evidence: "../evidence/phase6-integration-manifest.md"
