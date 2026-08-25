@@ -80,7 +80,7 @@ function localOnlySnapshot(name: string): PathSnapshot {
       stability: "stable",
       observationToken: id<"ObservationToken">(`local-token-${name}`),
     },
-    remote: { status: "missing", side: "remote", path },
+    remote: { status: "absent", side: "remote", path },
     base: { status: "uninitialized" },
     remoteEnumeration: { status: "complete" },
     identity: { status: "unambiguous" },
