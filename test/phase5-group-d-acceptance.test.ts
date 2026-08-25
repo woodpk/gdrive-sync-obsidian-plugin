@@ -15,6 +15,7 @@ import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
+import { meaningfulNotification } from "../src/product/notification-policy";
 import { IntegratedProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSyncScheduler } from "../src/product/scheduler";
@@ -250,4 +251,56 @@ test("Phase5 scenario 26 local change during an active production run is deferre
 
   scheduler.stop();
   lifecycleListener({ kind: "unload" });
+});
+
+test("Phase5 scenario 47 notification policy emits only material user-actionable conditions", () => {
+  assert.equal(meaningfulNotification({ status: { kind: "idle-ready" }, conflicts: [] }), undefined);
+  assert.equal(meaningfulNotification({ status: { kind: "planning", trigger: "manual" }, conflicts: [] }), undefined);
+  assert.equal(meaningfulNotification({ status: { kind: "syncing", planId: id<"PlanId">("plan:notification") }, conflicts: [] }), undefined);
+  assert.match(meaningfulNotification({ status: { kind: "authentication-required", reason: "revoked" }, conflicts: [] })?.message ?? "", /authentication/i);
+  assert.match(meaningfulNotification({ status: { kind: "recovery-required", reason: "state untrusted" }, conflicts: [] })?.message ?? "", /recovery/i);
+  assert.match(meaningfulNotification({ status: { kind: "conflict-present", conflictCount: 2 }, conflicts: [] })?.message ?? "", /conflict/i);
+});
+
+test("Phase5 scenario 49 snapshot and planning domain is confined to the paired managed BRAIN Sync root", async () => {
+  const vault = id<"VaultIdentity">("vault:group-d:scenario-49");
+  const device = id<"DeviceIdentity">("device:group-d:scenario-49");
+  const managedRoot = remoteId("remote:managed-sync-root");
+  const externalAssetRoot = remoteId("remote:canonical-brain-asset-repository");
+  const managed: ManagedRemoteIdentity = { rootId: managedRoot, vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
+  const stateContext = { expectation: "new-installation" as const, expectedVaultIdentity: vault, expectedDeviceIdentity: device };
+  const touchedRoots: string[] = [];
+  const trashedObjects: string[] = [];
+  const local = {
+    enumerate: async () => ({ entries: [], completeness: { status: "complete" as const } }),
+  } as never;
+  const drive = {
+    validateManagedRoot: async (identity: ManagedRemoteIdentity) => {
+      touchedRoots.push(String(identity.rootId));
+      return { ok: true as const, value: { status: "valid" as const, identity: managed } };
+    },
+    getStartCursor: async (root: RemoteObjectId) => {
+      touchedRoots.push(String(root));
+      return { ok: true as const, value: cursor("cursor:scenario-49") };
+    },
+    listForReconciliation: async (root: RemoteObjectId) => {
+      touchedRoots.push(String(root));
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
+    },
+    trash: async (objectId: RemoteObjectId) => {
+      trashedObjects.push(String(objectId));
+      return { ok: true as const, value: undefined };
+    },
+  } as never;
+  const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const assembler = new ProductSnapshotAssembler(local, drive, store, stateContext, async () => managed);
+  const assembly = await assembler.assembleFull();
+  const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
+  const plan = await new DeterministicSynchronizationPlanner(resolver, undefined, { trigger: "verify-reconcile" }).plan(assembly.input);
+
+  assert.equal(plan.operations.length, 0);
+  assert.equal(touchedRoots.length > 0, true);
+  assert.equal(touchedRoots.every(value => value === String(managedRoot)), true);
+  assert.equal(touchedRoots.includes(String(externalAssetRoot)), false);
+  assert.deepEqual(trashedObjects, []);
 });
