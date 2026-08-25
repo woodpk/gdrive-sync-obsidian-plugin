@@ -1,0 +1,32 @@
+name: Group D Branch Cleanup
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Delete all obsolete remote branches
+        shell: bash
+        run: |
+          git push origin --delete \
+            agt-stg-2a-phase-1-01 \
+            ca-c1-verification \
+            master-temp-should-fail \
+            phase5-fix-group-a \
+            phase5-fix-group-b \
+            phase5-fix-group-c \
+            stage-2a-integration-234 \
+            stage-2a-phase-2-core-sync-state \
+            stage-2a-phase-3-drive-oauth \
+            stage-2a-phase-4-obsidian-local \
+            stage-2a-phase-5-integrated-product
