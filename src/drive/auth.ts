@@ -58,6 +58,10 @@ function decodeTokens(raw: string | undefined): OAuthTokens | undefined {
     return value as OAuthTokens;
   } catch { return undefined; }
 }
+function hasExactRequiredDriveScope(scope: string): boolean {
+  const granted = scope.trim().split(/\s+/).filter(Boolean);
+  return granted.length === 1 && granted[0] === REQUIRED_DRIVE_SCOPE;
+}
 
 export class GoogleOAuthSession {
   static readonly TOKEN_SECRET_ID = "brain-gdrive-oauth-tokens";
@@ -111,7 +115,7 @@ export class GoogleOAuthSession {
         tokenType: parsed.token_type ?? "Bearer",
         scope: parsed.scope ?? REQUIRED_DRIVE_SCOPE,
       };
-      if (!tokens.scope.split(/\s+/).includes(REQUIRED_DRIVE_SCOPE)) return { ok: false, reason: "token-exchange-failed", detail: "required-drive-file-scope-missing" };
+      if (!hasExactRequiredDriveScope(tokens.scope)) return { ok: false, reason: "token-exchange-failed", detail: "oauth-scope-grant-not-exact-drive-file" };
       this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(tokens));
       return { ok: true };
     } catch { return { ok: false, reason: "token-exchange-failed", detail: "network-or-service-failure" }; }
@@ -123,6 +127,7 @@ export class GoogleOAuthSession {
   async accessToken(): Promise<string | undefined> {
     const current = this.tokens();
     if (!current) return undefined;
+    if (!hasExactRequiredDriveScope(current.scope)) { this.clearTokens(); return undefined; }
     if (current.expiresAtMs - this.now() > 60_000) return current.accessToken;
     if (!current.refreshToken) { this.clearTokens(); return undefined; }
     const body = new URLSearchParams({ client_id: this.config.clientId, refresh_token: current.refreshToken, grant_type: "refresh_token" });
@@ -133,6 +138,7 @@ export class GoogleOAuthSession {
       const parsed = await response.json() as TokenResponse;
       if (!response.ok || !parsed.access_token || !parsed.expires_in) { this.clearTokens(); return undefined; }
       const refreshed: OAuthTokens = { accessToken: parsed.access_token, refreshToken: current.refreshToken, expiresAtMs: this.now() + parsed.expires_in * 1000, tokenType: parsed.token_type ?? current.tokenType, scope: parsed.scope ?? current.scope };
+      if (!hasExactRequiredDriveScope(refreshed.scope)) { this.clearTokens(); return undefined; }
       this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(refreshed));
       return refreshed.accessToken;
     } catch { return undefined; }
