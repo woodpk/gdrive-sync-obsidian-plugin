@@ -2,14 +2,15 @@ schema_version: 1
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-08-23"
+  as_of: "2026-08-25"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
-  purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, and frozen shared contracts."
+  purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, current repository state, accepted evidence, and later explicit user decisions."
   supersedes_progress_metadata:
     - "decision-register.yaml record.stage_state when that metadata is stale"
     - "phase-1-shared-contracts.md completion/verification status language when that progress language is stale"
     - "stage-2a-phase-1-build-prompt.md completion-pending language after Phase 1 supervisory approval"
+    - "earlier project-state.yaml readiness/blockage metadata superseded by completed Phase 1-5 supervisory approvals"
 
 stage_state:
   stage_0: complete
@@ -27,46 +28,74 @@ stage_2a_phases:
     supervisor_review_result: "APPROVE"
   phase_2:
     name: "Core Synchronization Semantics and Durable State"
-    status: ready
+    status: complete_supervisor_approved
     depends_on: [phase_1]
+    coding_agent_evidence: "../evidence/_ca-output-CA-P2.md"
+    supervisor_review_result: "APPROVE"
   phase_3:
     name: "Google Drive and OAuth Boundary"
-    status: ready
+    status: complete_supervisor_approved
     depends_on: [phase_1]
+    coding_agent_evidence: "../evidence/_ca-output-CA-P3.md"
+    supervisor_review_result: "APPROVE"
   phase_4:
     name: "Obsidian Local, Platform, and Configuration Boundary"
-    status: ready
+    status: complete_supervisor_approved
     depends_on: [phase_1]
+    coding_agent_evidence: "../evidence/_ca-output-CA-P4.md"
+    supervisor_review_result: "APPROVE"
   phase_5:
     name: "Integrated Synchronization Product and User Workflows"
-    status: blocked
+    status: complete_supervisor_approved
     depends_on: [phase_2, phase_3, phase_4]
+    dynamically_tested_implementation_sha: "3aab3647b57baad7df0b31cc40042325fcfa0e4f"
+    authoritative_ci:
+      workflow: "Phase 1 CI"
+      run_id: 32854213913
+      job_id: 97822114191
+      tests: 209
+      passed: 209
+      failed: 0
+      cancelled: 0
+      skipped: 0
+      todo: 0
+      build: PASS
+    supervisor_review_result: "APPROVE"
+    evidence:
+      - "../evidence/_ca-output.md"
+      - "../evidence/_ca-output-CA-P5.md"
+      - "../evidence/_ca-blocker.md"
+      - "../evidence/_ca-output-agt-CA-P5-GROUP-D-01.md"
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: blocked
+    status: ready
     depends_on: [phase_5]
+    supervisor_handoff: "phase-6-supervisor-handoff.md"
 
 parallel_wave:
-  status: ready
+  status: complete
+  historical: true
   worker_count: 3
-  supervisor: "current supervising agent and successor supervisor lineage"
   assignments:
     - worker: "CA-P2"
       phase: phase_2
       scope: "Core synchronization semantics and durable state"
+      result: complete_supervisor_approved
     - worker: "CA-P3"
       phase: phase_3
       scope: "Google Drive and OAuth boundary"
+      result: complete_supervisor_approved
     - worker: "CA-P4"
       phase: phase_4
       scope: "Obsidian local/platform/configuration boundary"
-  isolation_rule: "Each worker must use a supervisor-controlled branch/worktree or equivalent isolated ref."
-  contract_rule: "Workers consume Phase 1 frozen contracts and may not alter them unilaterally. Any required contract change returns to the supervisor for central reconciliation and propagation to all affected workers."
-  integration_rule: "Phase 5 does not begin until Phases 2, 3, and 4 independently pass supervisor review and are reconciled into one coherent repository state."
+      result: complete_supervisor_approved
+  integration_result: "Phase 5 completed and received independent supervisory APPROVE."
 
 next_action:
   stage: "Stage 2A"
-  action: "Generate repository-grounded build-session prompts for Phases 2, 3, and 4 from the current master state, then launch the three coding agents in parallel on isolated refs."
+  phase: phase_6
+  action: "Transfer Stage 2A Phase 6 supervision to a fresh supervisor session; perform supervisor re-entry from persisted repository authority; generate the Phase 6 build-session prompt against the actual current master; then execute Phase 6 Cross-Platform Hardening and Stage 3 Readiness."
   governing_file: "stage-1-build-decomposition.md"
-  relevant_sections: ["6", "7", "8", "11", "17"]
-  build_prompt_method: "agent-led-software-product-construction-manual.md Stage 2A Build-Prompt Expansion Template"
+  relevant_sections: ["10", "11", "17"]
+  build_prompt_method: "agent-led-software-product-construction-manual.md Stage 2A Build-Prompt Expansion Template and Re-Entry and Recovery procedures"
+  handoff: "phase-6-supervisor-handoff.md"
