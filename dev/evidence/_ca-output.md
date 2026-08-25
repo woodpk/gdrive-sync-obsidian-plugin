@@ -358,6 +358,43 @@ The public stock-iOS boundary does not expose sufficient link-aware/canonical-pa
 
 These limitations are candidates for a later final disposition of `BLOCKED — PROVEN PLATFORM LIMITATION` only after the implementation/test head itself passes the complete available verification gate.
 
+## NOT AVAILABLE IN THIS SESSION
+
+The following validation remains unavailable in this customer-facing ChatGPT build environment and is not represented as executed:
+
+- real Windows Obsidian OAuth/synchronization;
+- physical iPhone/iOS Obsidian OAuth/synchronization;
+- deployed Azure callback validation;
+- real-user Google Drive first-sync/incremental synchronization;
+- physical network transition testing;
+- actual multi-instance Obsidian Web Locks validation across independent application instances;
+- physical-device large-vault / large-file stress testing.
+
+These unavailable validations are not used to fabricate a PASS result and are not substituted for the automated repository gate.
+
+## Scope / Safety Statement
+
+- PR #7 remains open and unmerged.
+- No Phase 6 work was started.
+- No Stage 3 work was started.
+- The stock-iOS safety limitations remain fail-closed.
+- No force-sync or safety bypass was introduced.
+- The current build status is `INCOMPLETE` because the latest exact implementation/test head does not yet pass typecheck and therefore has not completed the required test/build gate.
+
+## Evidence Integrity
+
+This evidence was fully rewritten to reflect the active Phase 5 build run rather than the stale earlier Phase 1/Phase 2 handoff content.
+
+Authoritative current-state references used for this update:
+
+- required base: `372f17f9c69d23feb9909aa08d7566a077a4163b`;
+- pre-evidence head: `7c90f333976ec8f04c39ab794e7e0a901bac2584`;
+- PR: `#7`, open/unmerged;
+- latest green historical checkpoint: head `57b7b35bdd2facb8ed4c83bd44373a201656dbf3`, run `32787942959`, job `97623584566`, 137/137 tests and build pass;
+- latest attempted current-head gate: run `32788673978`, job `97625734968`, typecheck failure in scheduler acceptance-test timer stubs; tests/build skipped.
+
+This file must be updated again every time this coding agent finishes a subsequent build run.
+
 ---
 
 ## Group A Corrective Work — `agt-CA-P5-GROUP-A-01`
