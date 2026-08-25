@@ -462,3 +462,91 @@ No required cross-group production change was identified. Group A remains bounde
 ### Group A Status
 
 `GROUP A CORRECTION IMPLEMENTED AND EVIDENCED ON ASSIGNED BRANCH; TARGETED CI NOT AVAILABLE IN THIS SESSION.`
+
+---
+
+## Group A Re-Rejection Correction Pass — `agt-CA-P5-GROUP-A-01`
+
+### Assignment
+
+- Branch: `phase5-fix-group-a`
+- Reviewed starting baseline: `efa55df697e87dfddb10df5ff0bc5056e096c1d9`
+- Corrections executed: `A1`, `A2` only.
+- The accepted Group A persisted-state authority repair was not redesigned or substantively changed.
+
+### A1 — Frozen `RemoteObservation` test-state correction
+
+`test/phase5-group-a-recovery-state.test.ts` was corrected exactly as ordered in `localOnlySnapshot(...)`:
+
+- invalid `remote.status: "missing"` -> valid frozen-contract `remote.status: "absent"`.
+
+Direct inspection after the change confirmed no `status: "missing"` remains in the Group A test and the existing recovery-state preservation assertions remain unchanged in substance.
+
+### A2 — Agent-specific evidence handoff
+
+Created:
+
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`
+
+This cumulative file was preserved and appended rather than replaced.
+
+### Dynamic Validation
+
+A draft/open/unmerged validation PR #10 was created solely to trigger available GitHub Actions validation for the corrected Group A implementation/test head.
+
+- Dynamically tested implementation/test head: `81a05dd6c967b37936dadaa806aba860f2263ddf`
+- PR merge/test SHA: `07e0878374c2e2f1532ecf9660c47e2abae2aeda`
+- Workflow: `Phase 1 CI`
+- Run ID: `32799571931`
+- Job ID: `97657644097`
+
+Observed:
+
+- `npm ci` — `PASS` (14 packages added; 15 audited; 0 vulnerabilities)
+- `npm run typecheck` — `FAIL`
+- `npm test` — `SKIPPED`
+- `npm run build` — `SKIPPED`
+
+Typecheck failures observed:
+
+1. Group A-owned compile fallout in the accepted controller repair: `src/product/product-controller.ts(490,131)` — TS2339, `Property 'status' does not exist on type 'never'`.
+2. Inherited Group C timer-stub error: `test/phase5-scheduler-acceptance.test.ts(25,25)` — TS2352.
+3. Inherited Group C timer-stub error: `test/phase5-scheduler-acceptance.test.ts(37,26)` — TS2352.
+
+The bounded re-rejection order explicitly says `Do not change the Group A production controller repair.` Therefore the Group A-owned TS2339 discovered by validation is recorded as a remaining blocker for supervisory disposition rather than repaired outside A1/A2 authorization. The Group C errors were not modified.
+
+### Correction-Pass C/M/D Manifest
+
+Created:
+
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`
+
+Modified:
+
+- `test/phase5-group-a-recovery-state.test.ts`
+- `dev/evidence/_ca-output.md`
+
+Deleted:
+
+- none
+
+### Evidence Head Distinction
+
+- Last dynamically tested implementation/test head: `81a05dd6c967b37936dadaa806aba860f2263ddf`.
+- Agent-specific evidence creation commit: `d42f9ec1f27d54d6b0b6a34aa26e6b6a1c4b00b9`.
+- This cumulative evidence update occurs after the dynamically tested head and is evidence-only; it is not represented as dynamically tested implementation code.
+
+### NOT AVAILABLE IN THIS SESSION
+
+- real Windows Obsidian OAuth/synchronization;
+- physical iPhone/iOS Obsidian OAuth/synchronization;
+- deployed Azure callback validation;
+- real-user Google Drive synchronization;
+- physical network-transition testing;
+- physical-device large-vault/large-file stress testing.
+
+### Remaining Blocker / Limitation
+
+- Group A: TS2339 compile fallout at `src/product/product-controller.ts(490,131)` discovered by validation; current bounded order prohibits changing the accepted production controller repair.
+- Group C timer-stub TS2352 failures remain outside Group A ownership.
+- Existing stock-iOS fail-closed platform limitations remain unchanged.
