@@ -3,36 +3,39 @@
 ## Identification
 
 - Agent: `agt-CA-P5-GROUP-D-01`
-- Group: `G2 — Phase 5 Executable Acceptance and Evidence Closure`
+- Group: `G2R — Final Phase 5 Acceptance Correction`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Branch: `master`
 - Original Group D start: `70b4952c82987e1de8a1455166b090b2a4f57918`
 - Corrective G2 start: `c12350f0ad00a117a7116d529bc04ebedce09352`
-- Final dynamically tested implementation/test SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`
+- G2R correction-pass baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`
+- Final dynamically tested implementation/test SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 - Final remote `master` SHA: recorded in the final handoff after Git computes the evidence-only commit SHA; a file cannot embed the SHA of the commit that hashes that file without self-reference.
-- Production source modified by G2: **none**
+- Production source modified by G2R: **none**
 - Pull request created: **none**
 
-## Delivered Acceptance Work
+## Corrections Delivered
 
-G2 added real Phase 5 integration/orchestration acceptance for all scenarios previously rejected as insufficient. The tests use production decision/orchestration components and controlled fakes only at external boundaries.
+### C1 — Scenario 30
 
-Primary new integration files:
+The Scenario 30 primary acceptance test now imports and uses production `WebLocksRunLeasePort`. It constructs two distinct production lease objects over one controlled shared fake lock manager and drives two real `IntegratedProductController` synchronization runs. The test proves the first controller holds the vault lock, the second cannot mutate concurrently, and release clears the shared lock so later acquisition can proceed.
 
-- `test/phase5-group-d-first-sync-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+### C2 — Scenario 47
 
-The corrected `test/phase5-acceptance-map.test.ts` maps scenarios 1–50 to semantically valid primary executable tests. Scenario 26 retains the accepted G1 semantics and runs with local-change synchronization enabled.
+The Scenario 47 primary acceptance test now uses `Phase5ProductRuntime.initialize()` to install the actual runtime-owned product-surface notification subscription. A controlled `ProductRuntimeHost.notify` records delivered messages. Ordinary pause/resume transitions are suppressed; a recovery-required transition traverses the runtime-owned notification filter and reaches `host.notify`. No test-created replacement `MeaningfulNotificationFilter` listener is used for the primary path.
+
+### C3 — cumulative evidence
+
+`dev/evidence/_ca-output.md` restores without condensation or deletion the full Phase 1–4 cumulative sections from `c12350f0ad00a117a7116d529bc04ebedce09352`, then updates Phase 5 with current G2R evidence.
+
+Acceptance-map rows 30 and 47 point to the corrected exact tests, and the map continues to source-verify scenarios 1–50.
 
 ## Authoritative Dynamic Verification
 
 - workflow: `Phase 1 CI`
-- run ID: `32811319438`
-- job ID: `97691056148`
-- exact checked-out SHA: `7aab9a90c885f33a371576ef602e7a5d352b1d07`
+- run ID: `32854213913`
+- job ID: `97822114191`
+- exact checked-out SHA: `3aab3647b57baad7df0b31cc40042325fcfa0e4f`
 - `npm ci`: **PASS** — 14 packages installed; 0 vulnerabilities
 - `npm run typecheck`: **PASS**
 - `npm test`: **PASS**
@@ -44,39 +47,39 @@ The corrected `test/phase5-acceptance-map.test.ts` maps scenarios 1–50 to sema
   - todo: **0**
 - `npm run build`: **PASS**
 
-The GitHub Actions job log was inspected directly and confirms all values above.
+The GitHub Actions job log was inspected directly. Scenario 30 passed as test 169, Scenario 47 passed as test 173, and the acceptance-map self-check passed as test 121.
 
 ## Scenarios 1–50 Acceptance Status
 
 `COMPLETE — AUTOMATED EXECUTABLE EVIDENCE`
 
-The acceptance-map self-check executed and passed in the 209-test authoritative gate. All scenarios previously called out in the corrective assignment now use primary Phase 5 orchestration evidence rather than semantically adjacent lower-layer substitutes.
+All 50 acceptance-map scenarios retain primary executable evidence. The two re-rejected rows now point to the required production-path acceptance tests.
 
-## Exact G2 Change Manifest
+## Exact G2R Change Manifest
 
-Compare baseline: `c12350f0ad00a117a7116d529bc04ebedce09352`.
+Compare baseline: `4509df8ad95e4caa4af19928bfea1abb7cd2c7fa`.
 
 ### Created
 
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
-- `test/phase5-group-d-first-sync-integration.test.ts`
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
+- none.
 
 ### Modified
 
+- `test/phase5-group-d-recovery-coordination-integration.test.ts`
+- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
 - `test/phase5-acceptance-map.test.ts`
 - `dev/evidence/_ca-output.md`
 - `dev/evidence/_ca-output-CA-P5.md`
 - `dev/evidence/_ca-blocker.md`
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-D-01.md`
 
 ### Deleted
 
 - none.
 
 ### Remote Branches Deleted
+
+No branch was created or deleted during G2R.
 
 Historical Group D cleanup deleted eleven obsolete branches:
 
@@ -93,8 +96,6 @@ Historical Group D cleanup deleted eleven obsolete branches:
 - `stage-2a-phase-5-integrated-product`
 
 Historical cleanup evidence: workflow `Group D Branch Cleanup`, run `32805742158`, job `97675382231`.
-
-Corrective G2 created no non-`master` branch.
 
 ## Live / Physical Validation
 
@@ -114,6 +115,6 @@ Corrective G2 created no non-`master` branch.
 
 ## Remaining Blocker
 
-**None in the assigned G2 automated acceptance/evidence scope.**
+**None in the assigned G2R automated acceptance/evidence scope.**
 
 Independent supervisory review remains required. This evidence does not claim approval.
