@@ -487,7 +487,6 @@ export class IntegratedProductController implements ProductControlPort {
     }
 
     if (persisted.status === "recovery-required") throw new Error("cannot initialize trusted state while persisted state requires recovery");
-    if (persisted.status !== "uninitialized") throw new Error(`cannot initialize trusted state from persisted status: ${persisted.status}`);
     const initial = createInitialTrustedState({ stateRevision: cid<"StateRevision">("state:0"), vaultIdentity: this.options.vaultIdentity, deviceIdentity: this.options.deviceIdentity });
     const saved = await this.options.stateStore.saveTrusted(initial);
     if (saved.status !== "saved") throw new Error(`unable to establish initial trusted state: ${saved.status}`);
