@@ -394,3 +394,116 @@ Authoritative current-state references used for this update:
 - latest attempted current-head gate: run `32788673978`, job `97625734968`, typecheck failure in scheduler acceptance-test timer stubs; tests/build skipped.
 
 This file must be updated again every time this coding agent finishes a subsequent build run.
+
+---
+
+# Group B Re-Rejection Evidence Correction Pass — 2026-08-24
+
+## Identification
+
+- Agent: `agt-CA-P5-GROUP-B-01`
+- Assigned correction: `GROUP B / B1 ONLY — stale/missing build evidence`
+- Branch: `phase5-fix-group-b`
+- Reviewed starting baseline: `efa55df697e87dfddb10df5ff0bc5056e096c1d9`
+- Dynamically validated implementation/test head: `acd5ffe82671901592d40ecd6bc86d2e45ab9acc`
+- Validation PR: `#9`, `OPEN / DRAFT / UNMERGED`
+
+This correction pass is evidence-only. The accepted Group B production and test implementation was not redesigned, reopened, or modified.
+
+## Group B Corrections B1-B4 Already Implemented
+
+The existing branch retains the substantively reviewed Group B corrections:
+
+1. remote-domain provenance and cross-domain reclassification refusal;
+2. managed-object escape detection across full/incremental reconciliation and restart boundaries;
+3. reserved portable-configuration namespace collision isolation that does not poison unrelated path completeness;
+4. lazy Drive transfer failure taxonomy preservation through execution/controller handling.
+
+## Actual Group B Implementation/Test Delta
+
+GitHub compare from reviewed baseline `efa55df697e87dfddb10df5ff0bc5056e096c1d9` to implementation/test head `acd5ffe82671901592d40ecd6bc86d2e45ab9acc` shows 10 commits ahead, 0 behind.
+
+### Created
+
+- `test/phase5-group-b-drive-domain.test.ts`
+- `test/phase5-group-b-scope-transfer.test.ts`
+
+### Modified
+
+- `src/drive/google-drive-port.ts`
+- `src/product/path-scope.ts`
+- `src/product/production-executor.ts`
+- `src/product/snapshot-assembler.ts`
+- `test/phase3-changes.test.ts`
+- `test/phase3-drive.test.ts`
+
+### Deleted
+
+- None.
+
+`test/phase5-scheduler-acceptance.test.ts` is not part of this baseline-to-Group-B delta. No Group C scheduler/lifecycle implementation was copied into this branch.
+
+## Verification Actually Performed
+
+### Repository inspection in this evidence-only pass
+
+Confirmed:
+
+- the Group B production/test delta remains unchanged by this correction pass;
+- both required Group B evidence sources are being brought current;
+- PR #9 remains open, draft, and unmerged;
+- no Group C implementation appears in the Group B baseline-to-head delta.
+
+### Previously observed validation on the implementation/test head
+
+- Implementation/test head: `acd5ffe82671901592d40ecd6bc86d2e45ab9acc`
+- GitHub Actions run: `32792484425`
+- Job: `97636707625`
+- `npm ci`: `PASS` — 14 packages added, 15 audited, 0 vulnerabilities.
+- `npm run typecheck`: `FAIL`, blocked only by two inherited Group C timer-stub errors in `test/phase5-scheduler-acceptance.test.ts`:
+  - line 25, column 25 — TS2352 for the `setTimeout` stub cast;
+  - line 37, column 26 — TS2352 for the interval/timer stub cast.
+- `npm test`: `SKIPPED` because typecheck failed.
+- `npm run build`: `SKIPPED` because typecheck failed.
+
+The inherited Group C errors were not caused by Group B and remain outside Group B ownership. This pass does not repair or absorb Group C merely to make PR #9 green.
+
+## NOT AVAILABLE IN THIS SESSION
+
+A new green full-suite/build result for isolated Group B is `NOT AVAILABLE IN THIS SESSION` because the inherited Group C timer-stub typecheck errors stop CI before tests/build. No green result is fabricated.
+
+Physical Windows/iOS Obsidian and live-user Google Drive validation are also `NOT AVAILABLE IN THIS SESSION`.
+
+## Correction-Pass Change Manifest
+
+### Created
+
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-B-01.md`
+
+### Modified
+
+- `dev/evidence/_ca-output.md`
+
+### Deleted
+
+- None.
+
+No production or test file was changed in this re-rejection pass.
+
+## Evidence Integrity
+
+The dynamically tested implementation/test SHA remains `acd5ffe82671901592d40ecd6bc86d2e45ab9acc`. Evidence-only commits occur after that head and therefore are explicitly distinguished from the dynamically validated implementation head. The exact final post-correction branch head is reported in the completion response after the evidence commits are pushed; it is not falsely represented as dynamically tested.
+
+## Remaining Blocker / Limitation
+
+The only repository-gate blocker relevant to the isolated Group B branch is the inherited Group C timer-stub typecheck defect. It is outside Group B ownership. No Group B production blocker was identified during this evidence-only correction.
+
+## Stop Boundary
+
+- Group B correction B1 completed.
+- Group A untouched.
+- Group C untouched.
+- Group D not started.
+- PR #9 not merged.
+- Phase 6 not started.
+- Stage 3 not started.
