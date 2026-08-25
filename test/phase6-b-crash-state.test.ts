@@ -15,6 +15,7 @@ import {
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
 } from "../src/state/persistent-state-store";
+import { sha256Text } from "../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:phase6-b") as VaultIdentity;
@@ -38,7 +39,7 @@ function operation(name = "crash.md"): PlannedOperation {
     contentVersion: {
       path,
       entityKind: "file",
-      content: { hash: `hash:${name}`, sizeBytes: name.length },
+      content: { hash: sha256Text(name), sizeBytes: name.length },
     },
   };
 }
