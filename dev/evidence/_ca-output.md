@@ -550,3 +550,88 @@ Deleted:
 - Group A: TS2339 compile fallout at `src/product/product-controller.ts(490,131)` discovered by validation; current bounded order prohibits changing the accepted production controller repair.
 - Group C timer-stub TS2352 failures remain outside Group A ownership.
 - Existing stock-iOS fail-closed platform limitations remain unchanged.
+
+---
+
+## Group A A3 Correction Pass — `agt-CA-P5-GROUP-A-01`
+
+### Assignment
+
+- Correction: `A3` only.
+- Branch: `phase5-fix-group-a`.
+- Pre-correction reviewed head: `d9185e1f91f304954d399f58aeef94eae61cb57d`.
+- Authorized implementation scope: `src/product/product-controller.ts` plus directly necessary Group A evidence updates.
+
+### A3 Correction
+
+Applied the exact required correction in `IntegratedProductController.ensureTrustedState(...)`: removed only the redundant impossible-state check after the `trusted` early return and non-reconstruction `recovery-required` throw.
+
+The accepted Group A semantics remain unchanged:
+
+- current persisted `trusted` state is preserved and wins over stale planning projection;
+- reconstruction replacement is permitted only from current persisted `recovery-required` state;
+- non-reconstruction initialization refuses current persisted `recovery-required` state;
+- after `trusted` and `recovery-required` are eliminated, frozen `StateLoadResult` narrowing leaves only `uninitialized`, which may establish initial trusted state.
+
+Direct inspection of `src/contracts/state.ts` confirmed `StateLoadResult` still has exactly three variants: `trusted`, `uninitialized`, and `recovery-required`.
+
+### Dynamic Validation
+
+- A3 implementation/test head: `a0992205eabffe03333c584c3ea4fba655377b1c`.
+- Draft validation PR: `#10`, still open/draft/unmerged.
+- PR merge/test SHA: `68c0f68674e8f5504aa9e22b03084091627e8c98`.
+- Workflow: `Phase 1 CI`.
+- Run ID: `32800654402`.
+- Job ID: `97660661969`.
+
+Observed results:
+
+- `npm ci` — `PASS` (14 packages added; 15 audited; 0 vulnerabilities).
+- `npm run typecheck` — `FAIL`, but the Group A-owned TS2339 is gone.
+- The only remaining typecheck failures are inherited Group C TS2352 errors at:
+  - `test/phase5-scheduler-acceptance.test.ts(25,25)`;
+  - `test/phase5-scheduler-acceptance.test.ts(37,26)`.
+- `npm test` — `SKIPPED` because the inherited Group C typecheck errors stop the workflow.
+- `npm run build` — `SKIPPED` for the same reason.
+
+The prior Group A error `TS2339: Property 'status' does not exist on type 'never'` does not appear in the A3 validation log.
+
+### A3 Correction-Pass Change Manifest
+
+Modified:
+
+- `src/product/product-controller.ts`;
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/_ca-output-agt-CA-P5-GROUP-A-01.md`.
+
+Created:
+
+- none.
+
+Deleted:
+
+- none.
+
+No Group B or Group C file was modified. `test/phase5-scheduler-acceptance.test.ts` was not changed.
+
+### Evidence Head Distinction
+
+- Dynamically validated implementation/test head: `a0992205eabffe03333c584c3ea4fba655377b1c`.
+- Agent-specific A3 evidence update commit: `4ebe174acbd2dc9350f91d1737f1f1e845e5dff8`.
+- This cumulative evidence update is a later evidence-only commit and is not represented as dynamically tested implementation code.
+
+### NOT AVAILABLE IN THIS SESSION
+
+- tests/build on the isolated Group A branch after A3, because inherited Group C typecheck errors prevent those workflow steps from executing;
+- real Windows Obsidian OAuth/synchronization;
+- physical iPhone/iOS Obsidian OAuth/synchronization;
+- deployed Azure callback validation;
+- real-user Google Drive synchronization;
+- physical network-transition testing;
+- physical-device large-vault/large-file stress testing.
+
+### Remaining Blocker / Limitation
+
+- No remaining Group A-owned TypeScript blocker was observed in A3 validation.
+- The isolated Group A validation PR remains blocked only by the two inherited Group C TS2352 timer-stub errors, which are outside Group A ownership and were not modified.
+- Existing stock-iOS fail-closed platform limitations remain unchanged.
