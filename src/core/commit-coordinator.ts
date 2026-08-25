@@ -30,7 +30,8 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
   let tombstones = [...state.tombstones];
   const oldBase = base.find(entry => entry.path === operation.path || (operation.fromPath && entry.path === operation.fromPath));
   const entityKind = operation.contentVersion?.entityKind ?? oldBase?.entityKind ?? "file";
-  const remoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId ?? oldBase?.remoteObjectId;
+  const remoteObjectId = receipt.resultingRemoteObjectId ?? operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId ?? oldBase?.remoteObjectId;
+  const localOnlyConflictCopy = operation.kind === "download-create" && operation.contentVersion !== undefined && operation.path !== operation.contentVersion.path;
 
   if (["upload-create", "upload-update", "download-create", "download-update", "clean-text-merge"].includes(operation.kind)) {
     base = base.filter(entry => entry.path !== operation.path);
@@ -38,12 +39,12 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
       path: operation.path,
       entityKind,
       localExisted: true,
-      remoteExisted: true,
+      remoteExisted: !localOnlyConflictCopy,
       content: receipt.evidence ?? operation.contentVersion?.content,
-      remoteObjectId,
+      remoteObjectId: localOnlyConflictCopy ? undefined : remoteObjectId,
     });
     tombstones = tombstones.filter(entry => entry.path !== operation.path);
-    if (remoteObjectId) {
+    if (!localOnlyConflictCopy && remoteObjectId) {
       mappings = mappings.filter(mapping => mapping.remoteObjectId !== remoteObjectId && mapping.path !== operation.path);
       mappings.push({ path: operation.path, remoteObjectId, entityKind });
     }
@@ -69,6 +70,21 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
       remoteObjectId,
       sourceDeviceId: state.deviceIdentity,
     });
+  } else if (operation.kind === "noop" && operation.reasons.some(reason => reason.code === "safe-union-identical") && operation.contentVersion) {
+    base = base.filter(entry => entry.path !== operation.path);
+    base.push({
+      path: operation.path,
+      entityKind,
+      localExisted: true,
+      remoteExisted: true,
+      content: receipt.evidence ?? operation.contentVersion.content,
+      remoteObjectId,
+    });
+    tombstones = tombstones.filter(entry => entry.path !== operation.path);
+    if (remoteObjectId) {
+      mappings = mappings.filter(mapping => mapping.remoteObjectId !== remoteObjectId && mapping.path !== operation.path);
+      mappings.push({ path: operation.path, remoteObjectId, entityKind });
+    }
   } else if (operation.kind === "identity-preserving-move" && operation.fromPath && operation.toPath) {
     base = base.filter(entry => entry.path !== operation.fromPath && entry.path !== operation.toPath);
     base.push({
@@ -89,15 +105,9 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
   return { ...state, base, remoteMappings: mappings, tombstones };
 }
 
-/**
- * Coordinates durable operation journal state with verified effects. It cannot create a
- * successful authoritative entry without the frozen durable+integrity-verified receipt.
- */
+/** Coordinates durable operation journal state with verified effects. */
 export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
-  constructor(
-    private readonly store: SynchronizationStateStore,
-    private readonly context: StateLoadContext,
-  ) {}
+  constructor(private readonly store: SynchronizationStateStore, private readonly context: StateLoadContext) {}
 
   async markPending(operation: PlannedOperation, expectedStateRevision?: StateRevision, checkpointId?: CheckpointId): Promise<CommitResult> {
     return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "pending", checkpointId }, expectedStateRevision);

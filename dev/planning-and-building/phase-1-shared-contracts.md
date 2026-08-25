@@ -147,6 +147,22 @@ A Phase 2/3/4 worker that finds a frozen contract insufficient must not edit it 
 
 Ordinary private implementation behind a frozen interface does not require this procedure.
 
+## Supervisor-Authorized Phase 5 Frozen-Contract Revision — Resulting Remote Identity
+
+During the Stage 2A Phase 5 corrective pass, the supervising lineage explicitly authorized one narrow frozen-contract revision to `../../src/contracts/execution.ts`.
+
+`VerifiedExecutionReceipt` now includes the optional member:
+
+```ts
+readonly resultingRemoteObjectId?: RemoteObjectId;
+```
+
+The semantic purpose is limited to carrying a stable remote object identity that is newly allocated by an execution-time remote create operation and subsequently revalidated sufficiently for durable, integrity-verified success. This allows the authoritative commit coordinator to establish the new local-path-to-Drive-ID mapping without an undocumented string convention.
+
+The authoritative remote-ID selection order is execution-produced verified identity first, followed by pre-existing operation/content/base identity where applicable. The new member is not a general mutation payload; it must not carry arbitrary remote metadata, and the Drive ID must not be encoded in `verificationEvidenceRef` or another unrelated field.
+
+Affected workstreams are the execution contract, Phase 2 authoritative commit coordination, and Phase 5 production execution/integration. No other frozen contract member was authorized for revision by this corrective decision.
+
 ## Donor Semantics Deliberately Rejected
 
 Phase 1 excludes newest-mtime conflict winners, full Google Drive authorization, desktop-generated credential/token transfer, missing/corrupt persisted state as a trusted empty base, delete/recreate as the only rename semantic, full-tree polling as the only remote-detection contract, multi-target/Shared-Drive product semantics, Node/Electron/Windows-only dependencies in mobile runtime modules, a global destructive force-sync bypass, and developer-controlled telemetry.
@@ -166,6 +182,8 @@ GitHub Actions run `32662762609` first verified the complete Phase 1 implementat
 
 GitHub Actions run `32662829150` then performed the final clean-checkout gate from the committed lockfile: `npm ci` passed, strict TypeScript checking passed, all 14 Phase 1 contract/mobile-safety tests passed, and the production build passed.
 
+The supervisor-authorized Phase 5 receipt revision and its directly affected execution/commit behavior are verified by the Phase 5 clean-checkout evidence recorded in `../../dev/evidence/_ca-output-CA-P5.md` once that corrective evidence receipt is finalized.
+
 ## Verification Status
 
-**PASS.** Phase 1 repository foundation, frozen shared contracts, test seams, mobile-safety checks, reproducible dependency installation, and production build were verified before C1 correction. The C1 large-file transfer correction must pass the same full gate before its evidence is finalized. Supervisor acceptance is still required before starting the Phase 2/3/4 parallel wave.
+**PASS for the original Phase 1 frozen-contract baseline, with the above supervisor-authorized Phase 5 revision recorded.** The revision remains subject to the Phase 5 corrective gate and supervisory review; this handoff records the authorization and narrow semantics but does not itself constitute supervisor acceptance of the Phase 5 implementation.

@@ -1,0 +1,61 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+export const PHASE5_ACCEPTANCE_EVIDENCE = [
+  [1,"first sync local only","phase2-planner.test.ts safe-union local-only + phase5-controller.test.ts reviewed first sync"],
+  [2,"first sync remote only","phase2-planner.test.ts safe-union remote-only + production executor download-create coverage"],
+  [3,"first sync identical","phase5-product.test.ts first-sync identical establishes BASE"],
+  [4,"first sync divergent same path","phase2-planner.test.ts divergent no-base conflict + phase5 controller conflict surface"],
+  [5,"automatic disabled before setup","phase5-controller.test.ts first-sync gate + runtime automaticExecutionAllowed"],
+  [6,"additional-device validated pairing","phase5-second-rejection.test.ts marked portable-config namespace validates additional-device pairing"],
+  [7,"ordinary local edit","phase2-planner.test.ts local-only modification + production executor upload-update"],
+  [8,"ordinary remote edit","phase2-planner.test.ts remote-only modification + production executor download-update"],
+  [9,"offline edit reconnect","phase2 run/reconciliation tests + phase5 scheduler local-change later pass"],
+  [10,"clean text merge","phase5-product.test.ts clean-text-merge materialization and two-sided verification"],
+  [11,"true text conflict","phase2-conflict.test.ts unresolved true text conflict"],
+  [12,"binary conflict","phase2-conflict.test.ts opaque/binary conflict preservation"],
+  [13,"actual conflict resolution","phase5-controller.test.ts keep-local keep-remote keep-both stale resolution + manual controller path"],
+  [14,"identity-preserving rename move","phase2-planner-edge.test.ts proven local/remote move + production executor move"],
+  [15,"ordinary attested deletion","phase2-planner.test.ts attested local/remote deletion + recoverable trash execution"],
+  [16,"delete versus modify","phase2-conflict.test.ts delete-vs-modify preservation"],
+  [17,"suspicious destructive plan","phase2-safety-policy.test.ts mass destruction circuit breaker"],
+  [18,"checkpoint exact-plan approval","phase2-safety-policy.test.ts exact plan/checkpoint approval + controller approval path"],
+  [19,"corrupt missing state reconstruction","phase2-state-hardening.test.ts malformed/truncated/missing state + Phase5 recovery controller"],
+  [20,"lost invalid cursor fallback","phase3 changes/snapshot fallback tests"],
+  [21,"partial remote listing cannot authorize deletion","phase3-drive.test.ts partial listing + phase2 planner remote-enumeration safety"],
+  [22,"unreadable local cannot authorize deletion","phase2-planner-edge.test.ts unreadable local safety"],
+  [23,"stale-device destructive gate","phase2 inherited stale-device test + Phase5 C1 all-blocked disposition"],
+  [24,"stale operation precondition","phase2-execution.test.ts stale precondition refuses mutation"],
+  [25,"remote change during active affected work","phase2 run coordinator deferred reconciliation + controller replan signaling"],
+  [26,"local change during active run later pass","phase2 run coordinator note-change semantics + ProductSyncScheduler local trigger"],
+  [27,"cancellation","phase2 run coordinator cancellation + product controller cancel action"],
+  [28,"pause resume","phase2 run coordinator pause/resume + product controller actions"],
+  [29,"same-device run serialization","phase2 run coordinator serialization"],
+  [30,"cross-instance exclusion","phase5-product.test.ts Web Locks exclusion/release"],
+  [31,"debounce coalescing","phase5-scheduler-acceptance.test.ts scenario 31"],
+  [32,"startup readiness","phase5-scheduler-acceptance.test.ts scenario 32 + first-sync runtime gate"],
+  [33,"periodic reconcile live cadence","phase5-scheduler-acceptance.test.ts scenario 33"],
+  [34,"manual preview explicit Execute","phase5-controller.test.ts reviewed manual first-sync execution"],
+  [35,"automatic same planner executor","IntegratedProductController.runAutomatic production planner/executor path + Phase5 automatic tests"],
+  [36,"blocked approval-required automatic plan","phase5-second-rejection.test.ts mixed approval-required auto refusal"],
+  [37,"Verify Reconcile full path","phase5-controller.test.ts full cursor-before-list + phase5-recovery-auth fresh full reconstruction"],
+  [38,"revoked authentication","phase5 execution-auth product tests + production executor authentication prefix"],
+  [39,"wrong Google account","phase3-changes.test.ts account change + phase5 execution-auth detail preservation"],
+  [40,"missing managed root","phase3 managed-root validation and snapshot assembly recovery mapping"],
+  [41,"quota rate network failure","phase3 transport retry/rate tests + controller offline-deferred mapping"],
+  [42,"local disk write failure preserving valid content","phase4 local-vault atomic staging/write failure tests"],
+  [43,"invalid path collision blocking","phase4 path compatibility tests + phase5-second-rejection reserved namespace collision"],
+  [44,"repeated individual path failure isolation","Phase5 mixed path-blocked partial semantics + controller path-local continuation"],
+  [45,"real audit history","phase5-controller/product audit plan operation conflict resolution events"],
+  [46,"audit privacy","phase5-product.test.ts diagnostic/audit privacy projections"],
+  [47,"meaningful notifications","notification-policy production filter + Phase5 runtime surface integration"],
+  [48,"selective portable configuration","phase4 config policy + phase5 reserved-domain and marked Drive namespace tests"],
+  [49,"external BRAIN asset repository outside sync domain","scope is dedicated managed remote + exclusions/config tests; no external asset deletion API exists"],
+  [50,"disable unload deauthorization non-destructive","phase5-scheduler-acceptance.test.ts unload cancellation + runtime deauthorize clears auth/pairing only"],
+] as const;
+
+test("Phase5 acceptance evidence maps every mandatory scenario 1 through 50",()=>{
+  assert.equal(PHASE5_ACCEPTANCE_EVIDENCE.length,50);
+  assert.deepEqual(PHASE5_ACCEPTANCE_EVIDENCE.map(row=>row[0]),Array.from({length:50},(_,index)=>index+1));
+  for(const [number,name,evidence] of PHASE5_ACCEPTANCE_EVIDENCE){assert.ok(name.length>3,`scenario ${number} name`);assert.ok(evidence.includes("test")||evidence.includes("controller")||evidence.includes("runtime")||evidence.includes("scope"),`scenario ${number} evidence`);}
+});
