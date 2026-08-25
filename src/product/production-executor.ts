@@ -31,6 +31,12 @@ function signalMessage(signal: DriveSignal): string {
   const detail = "detail" in signal && signal.detail ? signal.detail : signal.kind;
   return signal.kind === "authentication-required" ? `authentication-required:${detail}` : detail;
 }
+function thrownDriveSignal(error: unknown): DriveSignal | undefined {
+  if (!error || typeof error !== "object" || !("driveSignal" in error)) return undefined;
+  const signal = (error as { readonly driveSignal?: unknown }).driveSignal;
+  if (!signal || typeof signal !== "object" || !("kind" in signal)) return undefined;
+  return signal as DriveSignal;
+}
 function success(operation: PlannedOperation, evidence?: ContentEvidence, ref?: string, resultingRemoteObjectId?: RemoteObjectId): ExecutionResult {
   const receipt: VerifiedExecutionReceipt = { operationId: operation.operationId, durable: true, integrityVerified: true, evidence, resultingRemoteObjectId, verificationEvidenceRef: ref };
   return { status: "durable-verified-success", receipt };
@@ -152,6 +158,12 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
         case "recovery-required": return { status: "recovery-required", reason: "recovery-required operation cannot mutate content" };
       }
     } catch (error) {
+      // A Drive download is intentionally lazy. Failures can therefore occur only
+      // when LOCAL starts consuming the BinaryContentSource. Preserve the original
+      // Drive taxonomy instead of collapsing authentication/rate/transient signals
+      // into a generic exception merely because they happened mid-stream.
+      const driveSignal = thrownDriveSignal(error);
+      if (driveSignal) return this.mapDriveFailure(driveSignal);
       const message = error instanceof Error ? error.message : String(error);
       const pathLocal = /Blocked local path|invalid-name|reserved-name|case-collision|unicode-collision|path-too-long|unsupported-object/i.test(message);
       return { status: "blocking-failure", reason: pathLocal ? `path-local:${message}` : message };
@@ -282,6 +294,8 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
       if (!await this.textVersions.aliasText(version, finalVersion)) return { status: "uncertain", reason: "verified clean merge could not be retained as future BASE" };
       return success(operation, finalEvidence, `clean-merge:${String(remoteObjectId)}`);
     } catch (error) {
+      const driveSignal = thrownDriveSignal(error);
+      if (driveSignal) return this.mapDriveFailure(driveSignal);
       return { status: "uncertain", reason: `clean merge mutation may be partial: ${error instanceof Error ? error.message : String(error)}` };
     }
   }
