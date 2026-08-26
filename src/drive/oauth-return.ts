@@ -1,16 +1,17 @@
-import type { OAuthCompletion, GoogleOAuthSession } from "./auth";
+import type { OAuthCallbackInput, OAuthCompletion, GoogleOAuthSession } from "./auth";
 
 export const OBSIDIAN_OAUTH_ACTION = "brain-gdrive-oauth";
 export interface ObsidianProtocolRegistrar {
   registerObsidianProtocolHandler(action: string, handler: (params: Record<string, string>) => void | Promise<void>): void;
 }
+export type GoogleOAuthCompletionDelegate = (input: OAuthCallbackInput) => Promise<OAuthCompletion>;
 export function registerGoogleOAuthReturn(
   registrar: ObsidianProtocolRegistrar,
-  oauth: GoogleOAuthSession,
+  completeAuthorization: GoogleOAuthCompletionDelegate,
   onComplete?: (result: OAuthCompletion) => void,
 ): void {
   registrar.registerObsidianProtocolHandler(OBSIDIAN_OAUTH_ACTION, async params => {
-    const result = await oauth.completeAuthorization({ code: params.code, state: params.state, error: params.error });
+    const result = await completeAuthorization({ code: params.code, state: params.state, error: params.error });
     onComplete?.(result);
   });
 }
