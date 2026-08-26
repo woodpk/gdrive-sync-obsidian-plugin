@@ -17,6 +17,16 @@ export function registerGoogleOAuthReturn(
 }
 
 export interface AuthorizationBrowserLauncher { openExternal(url: string): void | Promise<void>; }
+export type AuthorizationWindowOpen = (url: string, target: string, features: string) => unknown;
+
+export function openAuthorizationInSystemBrowser(url: string, openWindow?: AuthorizationWindowOpen): void {
+  const launcher = openWindow ?? (typeof globalThis.open === "function"
+    ? (value: string, target: string, features: string) => { globalThis.open(value, target, features); }
+    : undefined);
+  if (!launcher) throw new Error("The system browser could not be opened because no browser launch mechanism is available.");
+  launcher(url, "_blank", "noopener,noreferrer");
+}
+
 export async function beginGoogleAuthorization(oauth: GoogleOAuthSession, browser: AuthorizationBrowserLauncher): Promise<{ readonly state: string; readonly expiresAtMs: number }> {
   const request = await oauth.beginAuthorization();
   await browser.openExternal(request.url);

@@ -506,3 +506,32 @@ The fresh combined build reproduced the approved artifact identity exactly. Alph
 - PR `#15` remains unmerged;
 - Stage 3 has not begun;
 - no supervisory approval is claimed.
+
+---
+
+## Phase 6 Alpha Live OAuth Debugging and Repair
+
+This append-only record supersedes the earlier statement that Alpha Bug #2 was unresolved; historical evidence above remains unchanged.
+
+- agent: `codex-P6-ALPHA-OAUTH-LIVE-01`;
+- starting integration SHA: `8a0ec575f808c610c29ee4e307deb8194ae451c9`;
+- repair branch: `phase6-alpha-oauth-live-fix`;
+- starting-tree exception: pre-existing user scratch/prompt and unrelated untracked files were preserved after the user explicitly directed the agent to ignore the scratch files and continue;
+- false browser-launch failure repaired: a falsy/null `globalThis.open` return is no longer treated as proof of failure, while unavailable launchers and thrown errors still surface;
+- diagnostic gap repaired: safe structured token-exchange phase, HTTP status, OAuth error, sanitized description, and generic transport/service classifications are retained and copyable without raw bodies or secrets;
+- Obsidian bridge repaired: `requestUrl` now uses `throw: false`, preserving Google 4xx responses for safe parsing;
+- conclusive pre-root-fix live result: HTTP `400`, OAuth `invalid_request`, sanitized description `client_secret is missing.`;
+- confirmed root cause: the Azure HTTPS callback requires the configured Google Web application client, but production did not wire the already-supported client-secret SecretStorage key;
+- root-cause repair: added a masked local-only Obsidian SecretStorage control and production runtime wiring; the user entered the value locally and the value was never exposed to the agent or persisted in plugin data;
+- final clean verification: `npm ci` PASS (16 added, 17 audited, 0 vulnerabilities), typecheck PASS, 248/248 tests PASS, build PASS, and all five build-verifier checks PASS;
+- verified build: 286,740-byte `main.js`, SHA-256 `ed3a0bc41236b6fb988e3018b928fca36fc6e8fcacb05507eebf10c905ab4993`;
+- installed artifact: exact same size/hash; `data.json` preserved; plugin enabled and settings loaded;
+- final live result: `Google authentication completed.`; presence-only checks confirmed local client-secret and OAuth-token records without reading either value;
+- exact `drive.file` scope invariant remains enforced and tested;
+- Alpha Bug #3 remains intact: one plugin-lifetime handler, no runtime registration, current-session dispatch, no duplicate-action error across repeated attempts, lifecycle regressions passing;
+- no managed remote was created or paired, no manual verification/sync action ran, all automatic sync triggers remained disabled, and no vault synchronization occurred;
+- no OAuth secret, credential, token, authorization code, PKCE verifier, cookie, or vault content was recorded;
+- iOS physical validation was not performed;
+- Stage 3 did not begin.
+
+Detailed evidence: `dev/evidence/_codex-P6-ALPHA-OAUTH-LIVE-01.md`.

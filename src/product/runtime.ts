@@ -4,9 +4,9 @@ import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
-import type { OAuthCallbackInput, OAuthCompletion } from "../drive/auth";
+import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompletion } from "../drive/auth";
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
-import { beginGoogleAuthorization } from "../drive/oauth-return";
+import { beginGoogleAuthorization, openAuthorizationInSystemBrowser } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
@@ -64,7 +64,15 @@ export class Phase5ProductRuntime {
     const current = this.host.settings();
     if (!current.oauthClientId || !current.oauthRedirectUri) return;
 
-    this.boundary = createObsidianGoogleDriveBoundary({ oauth: { clientId: current.oauthClientId, redirectUri: current.oauthRedirectUri }, secretStorage: this.host.app.secretStorage, requestUrl });
+    this.boundary = createObsidianGoogleDriveBoundary({
+      oauth: {
+        clientId: current.oauthClientId,
+        redirectUri: current.oauthRedirectUri,
+        clientSecretStorageKey: GOOGLE_OAUTH_CLIENT_SECRET_ID,
+      },
+      secretStorage: this.host.app.secretStorage,
+      requestUrl,
+    });
     if (!current.vaultIdentity || !current.remoteRootId) return;
 
     const rawLocal = await this.createLocalAdapter();
@@ -186,7 +194,7 @@ export class Phase5ProductRuntime {
   async authenticate(): Promise<void> {
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure OAuth client ID and redirect URI first.");
-    await beginGoogleAuthorization(boundary.oauth, { openExternal: url => { const opened = globalThis.open(url, "_blank", "noopener,noreferrer"); if (!opened) throw new Error("The system browser could not be opened."); } });
+    await beginGoogleAuthorization(boundary.oauth, { openExternal: openAuthorizationInSystemBrowser });
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {

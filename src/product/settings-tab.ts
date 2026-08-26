@@ -1,4 +1,5 @@
-import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { GOOGLE_OAUTH_CLIENT_SECRET_ID } from "../drive/auth";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
@@ -29,6 +30,35 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
     if (settings.recoveryInProgress) containerEl.createEl("p", { text: `Recovery reconstruction is active. Automatic/destructive authority remains gated. Backup: ${settings.recoveryBackupId || "created when reconstruction executes"}` });
 
     new Setting(containerEl).setName("Google OAuth client ID").setDesc("Client ID from your own Google Cloud project.").addText(text => text.setValue(settings.oauthClientId).onChange(async value => this.host.updateSettings({ oauthClientId: value.trim() })));
+    let pendingClientSecret = "";
+    const clientSecretConfigured = Boolean(this.host.app.secretStorage.getSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID));
+    new Setting(containerEl)
+      .setName("Google OAuth client secret")
+      .setDesc(clientSecretConfigured
+        ? "Saved in this device's Obsidian SecretStorage. Enter a value only to replace it."
+        : "Required by the configured Web application client. Saved only in this device's Obsidian SecretStorage.")
+      .addText(text => {
+        text.inputEl.type = "password";
+        text.setPlaceholder(clientSecretConfigured ? "Saved locally" : "Enter client secret");
+        text.onChange(value => { pendingClientSecret = value; });
+      })
+      .addButton(button => button.setButtonText("Save").onClick(() => {
+        const secret = pendingClientSecret.trim();
+        if (!secret) { new Notice("Enter a Google OAuth client secret before saving."); return; }
+        this.host.app.secretStorage.setSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID, secret);
+        pendingClientSecret = "";
+        new Notice("Google OAuth client secret saved in this device's Obsidian SecretStorage.");
+        this.display();
+      }))
+      .addExtraButton(button => button
+        .setIcon("trash-2")
+        .setTooltip("Clear saved Google OAuth client secret")
+        .onClick(() => {
+          this.host.app.secretStorage.setSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID, "");
+          pendingClientSecret = "";
+          new Notice("Saved Google OAuth client secret cleared from this device.");
+          this.display();
+        }));
     new Setting(containerEl).setName("OAuth redirect URI").setDesc("HTTPS callback URL or supported return URI configured in the same Google OAuth client.").addText(text => text.setValue(settings.oauthRedirectUri).onChange(async value => this.host.updateSettings({ oauthRedirectUri: value.trim() })));
     new Setting(containerEl).setName("Authenticate / reauthenticate").setDesc("Authorization opens outside the plugin and returns to this device.").addButton(button => button.setButtonText("Authenticate").onClick(() => this.host.authenticate()));
     new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Additional devices must deliberately confirm the same identity when pairing.").addText(text => text.setValue(settings.vaultIdentity).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));

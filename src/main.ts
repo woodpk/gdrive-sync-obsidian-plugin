@@ -1,4 +1,5 @@
 import { Notice, Plugin } from "obsidian";
+import { formatOAuthDiagnosticSuffix } from "./drive/auth";
 import { registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
@@ -12,6 +13,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private runtime?: Phase5ProductRuntime;
   private statusEl?: HTMLElement;
   private unsubscribeStatus?: () => void;
+  private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
 
   async onload(): Promise<void> {
     this.dataRepository = new PluginDataRepository({ loadData: () => this.loadData(), saveData: data => this.saveData(data) });
@@ -32,7 +34,12 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       async input => this.runtime
         ? this.runtime.completeGoogleAuthorization(input)
         : { ok: false as const, reason: "missing-transaction" as const },
-      result => new Notice(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`),
+      result => {
+        this.lastOAuthDiagnosticText = result.ok
+          ? "Google authentication completed."
+          : `Google authentication failed: ${result.reason}${formatOAuthDiagnosticSuffix(result)}`;
+        new Notice(this.lastOAuthDiagnosticText, result.ok ? 5_000 : 30_000);
+      },
     );
 
     this.addSettingTab(new BrainSyncSettingsTab({
@@ -52,6 +59,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "resume-sync", name: "Resume synchronization", callback: () => void this.control({ kind: "resume" }) });
     this.addCommand({ id: "cancel-active-sync", name: "Cancel active synchronization", callback: () => void this.control({ kind: "cancel-active-sync" }) });
     this.addCommand({ id: "authenticate-google", name: "Authenticate with Google", callback: () => void this.authenticate() });
+    this.addCommand({ id: "copy-last-oauth-diagnostic", name: "Copy last Google authentication diagnostic", callback: () => void this.copyLastOAuthDiagnostic() });
     this.addCommand({ id: "open-sync-attention", name: "Open conflicts and recovery", callback: () => this.openAttention() });
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
     this.addCommand({ id: "copy-sync-diagnostics", name: "Copy synchronization diagnostics", callback: () => void this.copyDiagnostics() });
@@ -137,6 +145,13 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       await globalThis.navigator.clipboard.writeText(text);
       new Notice("BRAIN synchronization diagnostic state copied. It contains metadata only, not OAuth secrets or vault content.");
     } catch (error) { this.noticeError("Diagnostics could not be copied", error); }
+  }
+  private async copyLastOAuthDiagnostic(): Promise<void> {
+    try {
+      if (!globalThis.navigator?.clipboard?.writeText) throw new Error("clipboard API is unavailable on this device");
+      await globalThis.navigator.clipboard.writeText(this.lastOAuthDiagnosticText);
+      new Notice("Last Google authentication diagnostic copied. It contains sanitized metadata only.");
+    } catch (error) { this.noticeError("Google authentication diagnostic could not be copied", error); }
   }
 
   private bindStatus(): void {

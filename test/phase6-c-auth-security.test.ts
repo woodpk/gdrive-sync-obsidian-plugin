@@ -31,7 +31,12 @@ test("Phase 6 C: authorization rejects a token grant broader than exact drive.fi
   );
   const request = await oauth.beginAuthorization();
   const result = await oauth.completeAuthorization({ code:"code", state:request.state });
-  assert.deepEqual(result, { ok:false, reason:"token-exchange-failed", detail:"oauth-scope-grant-not-exact-drive-file" });
+  assert.deepEqual(result, {
+    ok:false,
+    reason:"token-exchange-failed",
+    detail:"oauth-scope-grant-not-exact-drive-file",
+    diagnostic:{ phase:"token-exchange", classification:"scope-grant-not-exact-drive-file", httpStatus:200 },
+  });
   assert.equal(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID), null);
 });
 
