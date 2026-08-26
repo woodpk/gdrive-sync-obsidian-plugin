@@ -1,4 +1,5 @@
 import { Notice, Plugin } from "obsidian";
+import { registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -26,6 +27,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       saveSettings: settings => this.replaceSettings(settings),
       notify: message => new Notice(message),
     });
+    registerGoogleOAuthReturn(
+      this,
+      input => this.runtime?.completeGoogleAuthorization(input) ?? Promise.resolve({ ok: false, reason: "missing-transaction" }),
+      result => new Notice(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`),
+    );
 
     this.addSettingTab(new BrainSyncSettingsTab({
       app: this.app,
