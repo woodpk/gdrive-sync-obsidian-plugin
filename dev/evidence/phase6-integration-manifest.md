@@ -157,3 +157,109 @@ The fresh combined build reproduced the approved artifact identity exactly. Alph
 - PR `#15` remains unmerged;
 - Stage 3 has not begun;
 - no supervisory approval is claimed by this integration evidence.
+
+---
+
+## Alpha Bug #2 — Live OAuth Root-Cause Repair and Approved Integration
+
+This append-only record establishes the approved live OAuth repair while preserving all earlier historical statements above.
+
+### Approved repair integrated
+
+- repair agent: `codex-P6-ALPHA-OAUTH-LIVE-01`;
+- repair branch: `phase6-alpha-oauth-live-fix`;
+- required repair base: `phase6-integration` @ `8a0ec575f808c610c29ee4e307deb8194ae451c9`;
+- approved repair head: `c9b2583b9b4ad29905ea35cca1203f4bf7851a86`;
+- approved repair head parent: `8a0ec575f808c610c29ee4e307deb8194ae451c9`;
+- integration method: **fast-forward only**;
+- dynamically tested integration tree: `c9b2583b9b4ad29905ea35cca1203f4bf7851a86`;
+- a later unrelated user commit on the repair branch was intentionally excluded from integration;
+- `master` remained unchanged and PR `#15` remained open/draft/unmerged.
+
+Detailed live-repair evidence is preserved in:
+
+- `dev/evidence/_codex-P6-ALPHA-OAUTH-LIVE-01.md`;
+- `dev/evidence/phase6-alpha-oauth-live-integration.md`.
+
+### Live supported-runtime finding and root cause
+
+Real Windows Obsidian OAuth reached the Google token endpoint and, after sanitized diagnostics were added, produced:
+
+- phase: `token-exchange`;
+- HTTP status: `400`;
+- OAuth error: `invalid_request`;
+- sanitized description: `client_secret is missing.`
+
+The root cause was therefore confirmed: the configured Google OAuth client is a Web application client using the Azure HTTPS callback, and production did not wire the client-secret storage key into the Web-client token exchange.
+
+The approved repair:
+
+- removed the false browser-launch failure caused by treating a falsy/null `window.open` return as proof of failure;
+- preserved actual thrown browser-launch errors;
+- set the Obsidian `requestUrl` bridge to preserve Google HTTP 4xx responses for safe parsing;
+- added structured, sanitized OAuth diagnostics without raw request/response logging;
+- wired the Web client secret only through Obsidian SecretStorage;
+- added masked device-local Save/Clear controls for that secret;
+- preserved exact `https://www.googleapis.com/auth/drive.file` scope enforcement;
+- preserved Alpha Bug #3's single plugin-lifetime protocol-handler lifecycle.
+
+After the secret was entered directly into Obsidian SecretStorage on the Windows device, the live flow completed successfully:
+
+- system-browser authorization: **PASS**;
+- Google authorization/consent: **PASS**;
+- deployed Azure callback: **PASS**;
+- Obsidian protocol return: **PASS**;
+- Google token exchange: **PASS**;
+- exact `drive.file` scope enforcement: **PASS**;
+- final Obsidian notice: `Google authentication completed.`
+
+No authorization code, PKCE verifier, access token, refresh token, client-secret value, password, MFA value, cookie, or vault content was recorded. No managed remote was created or paired and no synchronization was performed during the OAuth repair validation.
+
+### Fresh combined automated integration verification
+
+After the approved repair was fast-forwarded into `phase6-integration`, PR `#15` generated a fresh clean-checkout combined gate:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32995246926`;
+- job ID: `98262611241`;
+- PR head: `phase6-integration` @ `c9b2583b9b4ad29905ea35cca1203f4bf7851a86`;
+- unchanged `master` base: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- exact generated PR merge SHA checked out by Actions: `cde66410a9efc5086741dc53859cd8e150aade9e`;
+- checkout: `Merge c9b2583b9b4ad29905ea35cca1203f4bf7851a86 into 54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- Node: `v22.23.2`;
+- npm: `10.9.8`;
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 248 tests / 248 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- `npm run build`: **PASS**;
+- `BUILD_VERIFY_ENTRYPOINT=PASS`;
+- `BUILD_VERIFY_SYNTAX=PASS`;
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`;
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`;
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`;
+- generated `main.js` size: `286740` bytes;
+- generated `main.js` SHA-256: `ed3a0bc41236b6fb988e3018b928fca36fc6e8fcacb05507eebf10c905ab4993`;
+- workflow/job conclusion: **SUCCESS**;
+- actual job steps and complete job log were inspected.
+
+The integration artifact exactly reproduced the Windows artifact that was installed and used for successful live Google authentication.
+
+### Updated supported-runtime state
+
+Now established in Windows supported-runtime validation:
+
+- Alpha Bug #1 packaging/install/load: **PASS**;
+- Alpha Bug #2 OAuth token-exchange root cause: **CONFIRMED AND REPAIRED**;
+- real-user Google OAuth on Windows: **PASS**;
+- deployed Azure callback return on Windows: **PASS**;
+- Alpha Bug #3 protocol-handler lifecycle: **PASS**.
+
+Still outstanding and not represented as passes by this section:
+
+- managed remote creation/pairing and live Drive-domain validation;
+- first synchronization preview/execute;
+- broader Windows synchronization scenarios;
+- real iPhone/iOS Obsidian validation;
+- remaining physical interruption, disk-full, constrained-resource/large-vault, and other Phase 6 acceptance work.
+
+Stage 3 remains unauthorized and has not begun.
