@@ -7,13 +7,15 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js",
-    "build": "tsc -p tsconfig.build.json && node scripts/finalize-build.mjs",
+    "build": "node scripts/build.mjs && node scripts/verify-build.mjs",
+    "verify:build": "node scripts/verify-build.mjs",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "keywords": ["obsidian", "plugin", "google-drive", "sync"],
   "license": "UNLICENSED",
   "devDependencies": {
     "@types/node": "20.19.43",
+    "esbuild": "0.28.2",
     "obsidian": "1.13.1",
     "typescript": "5.9.3"
   }
