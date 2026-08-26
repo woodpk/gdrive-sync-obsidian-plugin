@@ -452,3 +452,57 @@ Evidence additions after the implementation head: `dev/evidence/_ca-output-agt-C
 Local-shell npm/typecheck/test/build execution was `NOT AVAILABLE IN THIS SESSION`; no local PASS is claimed. Real Windows Obsidian installation/load of this committed repair and real iPhone/iOS validation were also `NOT AVAILABLE IN THIS SESSION` and are not represented as PASS. The two established stock-iOS fail-closed limitations remain unresolved.
 
 Draft PR `#17` was temporarily based on `master` solely to obtain the existing PR CI, then retargeted to `phase6-integration`; it is to remain draft/open/unmerged for supervisor review. Alpha Bug #2 was not diagnosed or modified. PR `#15` was not merged. `master` was not modified. Stage 3 was not begun. No supervisory approval is claimed.
+
+---
+
+## Phase 6 Alpha Integration — Approved Packaging Repair (Alpha Bug #1)
+
+This append-only record establishes the approved packaging repair integration without rewriting earlier Phase 6 or Alpha debugging evidence.
+
+### Integration identity and ancestry
+
+- repair agent: `agt-CA-P6-ALPHA-PACKAGING-01`;
+- approved repair branch: `phase6-alpha-packaging-fix`;
+- approved repair head: `b256c3c05b5f2c9536856bf32a9556066990e3b6`;
+- production/build implementation head within that history: `9e3ee932548954a60324b06ebccc82303a1d46b2`;
+- pre-integration `phase6-integration` head: `11b7bddbe71d2dbfb6eb0d6d6b703442f0967d8c`;
+- integration method: **fast-forward only**; no merge commit, rebase, cherry-pick, squash, conflict resolution, force-push, or history rewrite was used;
+- immediately after the fast-forward and before this evidence-only commit, `phase6-integration` resolved exactly to `b256c3c05b5f2c9536856bf32a9556066990e3b6`;
+- dynamically tested integration tree: `b256c3c05b5f2c9536856bf32a9556066990e3b6`.
+
+### Fresh combined integration verification
+
+Draft integration PR `#15` was updated by the fast-forward and triggered the repository's normal PR verification.
+
+GitHub Actions:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32932878480`;
+- job ID: `98068347964`;
+- PR head: `phase6-integration` @ `b256c3c05b5f2c9536856bf32a9556066990e3b6`;
+- exact generated PR merge SHA checked out by Actions: `bc9b396709160dcb63d9f38a734f9c5dfa73c74e`;
+- checkout log confirms the merge ref combined `b256c3c05b5f2c9536856bf32a9556066990e3b6` into unchanged `master` base `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- `npm run build`: **PASS**;
+- `BUILD_VERIFY_ENTRYPOINT=PASS`;
+- `BUILD_VERIFY_SYNTAX=PASS`;
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`;
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`;
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`;
+- generated `main.js` size: `279758` bytes;
+- generated `main.js` SHA-256: `fce84d639c71375f06a03c9b600b8c1869b599e697627d28c85056d3d8eb1cf0`;
+- workflow/job conclusion: **SUCCESS**;
+- actual job steps and complete job log were inspected.
+
+The fresh combined build reproduced the approved artifact identity exactly. Alpha Bug #1 is now **repository/build repaired**, but real Windows Obsidian installation/load validation of the integrated packaging remains outstanding and is not represented as PASS by CI. Real iPhone/iOS validation also remains outstanding.
+
+### Current boundaries after integration
+
+- Alpha Bug #2 remains unresolved and untouched: `token-exchange-failed` has not yet been diagnosed from sanitized live token-endpoint evidence;
+- real Windows Obsidian installation/load validation remains outstanding;
+- real iPhone/iOS validation remains outstanding;
+- PR `#15` remains unmerged;
+- Stage 3 has not begun;
+- no supervisory approval is claimed.
