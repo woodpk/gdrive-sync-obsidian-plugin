@@ -405,3 +405,50 @@ The `npm run build` result proves only that the repository's existing automated 
 - PR `#15` remains unmerged.
 
 This integration evidence commit is evidence-only; the dynamically tested integration tree is the approved repair head `ca245e2198f1b8311b3edc3e419379c8c982ede6` as exercised through generated PR merge SHA `2433141fb106d72b4a71e61c8be5d83893d37620`.
+
+---
+
+## Phase 6 Alpha Repair — Obsidian Plugin Packaging / Build Output (Alpha Bug #1)
+
+This append-only record establishes the newer packaging-repair state without rewriting the historical records above.
+
+- agent ID: `agt-CA-P6-ALPHA-PACKAGING-01`;
+- branch: `phase6-alpha-packaging-fix`;
+- exact verified base: `11b7bddbe71d2dbfb6eb0d6d6b703442f0967d8c`;
+- exact production/test implementation head: `9e3ee932548954a60324b06ebccc82303a1d46b2`;
+- bundler: `esbuild` `0.28.2`;
+- production build command: `node scripts/build.mjs && node scripts/verify-build.mjs`.
+
+The supervisor-confirmed defect was repaired without rediagnosis: the old TypeScript CommonJS module-tree packaging was replaced by a reproducible esbuild bundle from `src/main.ts` to one CommonJS `main.js`, with `obsidian`, `electron`, and `node:*` retained as externals and the existing guarded desktop-only runtime boundary preserved. `scripts/finalize-build.mjs` and `tsconfig.build.json` were retired. No production source or test source file changed.
+
+Mandatory manual re-ingestion used current repository files. Construction-manual verification: exact title `Agent-Led Software Product Construction Manual`; first sentence `This manual defines an agent-led process for moving from an initial software idea or partially developed concept through product definition, build planning, implementation, and independent validation.`; last sentence `The appropriate entry stage should always be determined from the actual project state rather than from an assumption that the manual must be followed from the beginning.`; heading counts H1=1, H2=11, H3=38, H4=13, H5+=0; H2 sequence Purpose, Operating Principles, Navigation and Entry, Stage 0, Stage 1, Stage 2A, Stage 2B, Stage 3, Cross-Stage Handoff Rules, Re-Entry and Recovery, Recommended Default Workflow; embedded prompt inventory: Stage 0 Agent Prompt, Stage 1 Agent Prompt, Stage 2A Build-Prompt Expansion Template, Autonomous Build Prompt, Stage 3 Validation Prompt.
+
+Authoritative GitHub Actions verification:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32931277140`;
+- job ID: `98063871872`;
+- generated PR merge SHA actually checked out: `0bb7c443b75e7fca68dbdaeb11a045235b93e820`;
+- merge ref contained implementation head `9e3ee932548954a60324b06ebccc82303a1d46b2` over unchanged master `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 239/239 pass, 0 fail/cancelled/skipped/todo;
+- `npm run build`: **PASS**;
+- artifact size: 279,758 bytes;
+- artifact SHA-256: `fce84d639c71375f06a03c9b600b8c1869b599e697627d28c85056d3d8eb1cf0`;
+- focused artifact checks: entrypoint PASS; `node --check` syntax PASS; unresolved local runtime dependencies PASS; mobile-path evaluation without Node/Electron/Windows-only requests PASS; clean package shape/no old generated runtime tree PASS;
+- existing source-level mobile-isolation tests remained PASS, including tests 32–36;
+- approved OAuth lifecycle tests 214–219 remained PASS;
+- actual CI job log was inspected.
+
+Exact implementation manifest before evidence-only records:
+
+Created: `scripts/build.mjs`, `scripts/verify-build.mjs`.
+Modified: `package.json`, `package-lock.json`.
+Deleted: `scripts/finalize-build.mjs`, `tsconfig.build.json`.
+
+Evidence additions after the implementation head: `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PACKAGING-01.md` created and this canonical `dev/evidence/_ca-output.md` appended.
+
+Local-shell npm/typecheck/test/build execution was `NOT AVAILABLE IN THIS SESSION`; no local PASS is claimed. Real Windows Obsidian installation/load of this committed repair and real iPhone/iOS validation were also `NOT AVAILABLE IN THIS SESSION` and are not represented as PASS. The two established stock-iOS fail-closed limitations remain unresolved.
+
+Draft PR `#17` was temporarily based on `master` solely to obtain the existing PR CI, then retargeted to `phase6-integration`; it is to remain draft/open/unmerged for supervisor review. Alpha Bug #2 was not diagnosed or modified. PR `#15` was not merged. `master` was not modified. Stage 3 was not begun. No supervisory approval is claimed.
