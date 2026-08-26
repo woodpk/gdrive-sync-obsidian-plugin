@@ -66,6 +66,28 @@ test("Phase 6 Alpha portable collision: permission uncertainty is not converted 
   await assert.rejects(() => guard.resolveSafePath(vp("locked.md"), "observe"), error => error === denied);
 });
 
+test("Phase 6 Alpha portable collision: canonical-resolution failure on an existing component remains fail-closed", async () => {
+  const base = "/vault";
+
+  for (const code of ["ENOENT", "ENOTDIR"] as const) {
+    const failure = missing(code);
+    const guard = new DesktopExternalReferenceGuard(base, {
+      async lstat() {
+        return { isSymbolicLink: () => false };
+      },
+      async realpath(path: string) {
+        if (path === base) return path;
+        throw failure;
+      }
+    });
+
+    await assert.rejects(
+      () => guard.resolveSafePath(vp("existing-but-unresolved"), "observe"),
+      error => error === failure
+    );
+  }
+});
+
 test("Phase 6 Alpha portable collision: lexical and external-reference containment remain fail-closed", async () => {
   const base = "/vault";
   const guard = new DesktopExternalReferenceGuard(base, containedOps(() => false));
