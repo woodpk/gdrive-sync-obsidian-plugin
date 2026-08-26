@@ -535,3 +535,83 @@ This append-only record supersedes the earlier statement that Alpha Bug #2 was u
 - Stage 3 did not begin.
 
 Detailed evidence: `dev/evidence/_codex-P6-ALPHA-OAUTH-LIVE-01.md`.
+
+## Phase 6 Alpha correction — Windows first-sync portable-config collision
+
+- agent: `agt-CA-P6-ALPHA-PORTABLE-COLLISION-01`
+- construction mode: Stage 2A controlled correction
+- starting repair SHA: `69e2a0053bae695655784ddedb8ae8e7c460734b`
+- repair branch: `phase6-alpha-windows-bounded-read-fix`
+- tested implementation SHA: `b9207fb6a7836f462386c14bfbb4018fafca9218`
+- authoritative integration branch remained `phase6-integration` at `0a5f3a277fba2e80962dbfd27dd4cdb1e0136705` during implementation
+- prior Windows bounded-read repair status: retained; supervisor/user supplied runtime evidence shows the former HTTP 206/200 blockers fell from `263` to `0` and the preview became `271 upload-create` / `4 blocked-unsafe` out of `275` total
+
+### Manual re-ingestion proof
+
+The required current authorities were re-ingested before implementation: construction manual, target-system specification, decision register, Phase 6 supervisor handoff, project state, `_ca-output.md`, Phase 6 integration manifest, OAuth live integration evidence, and Windows bounded-read evidence. Manual blob `02adedab577f397d98fb9666166270358a581761` matched title `Agent-Led Software Product Construction Manual`; supplied first and last sentences; headings H1 `1`, H2 `11`, H3 `67`, H4 `43`, H5+ `0`, total `122`; the required 11-item H2 sequence; and embedded prompt headings `Stage 0 Agent Prompt`, `Stage 1 Agent Prompt`, `Stage 2A Build-Prompt Expansion Template`, `Autonomous Build Prompt`, and `Stage 3 Validation Prompt`. Re-entry conclusion: continue the active Stage 2A correction without restarting Stage 0/1 or beginning Stage 3.
+
+### Isolated defect and causal chain
+
+The four remaining blocked logical portable-config paths were false collisions. `ProductPathScope` correctly reserves `__brain_sync_portable_config__` as a synthetic namespace and maps allowlisted `.obsidian` files into it. `ScopedLocalVault.hasOrdinaryNamespaceCollision()` correctly fails closed for any underlying namespace observation other than confirmed `absent`. The Windows desktop guard, however, propagated a direct-child `ENOENT`/`ENOTDIR` during `observe`; `ObsidianLocalVaultAdapter.observe()` therefore classified a provably missing reserved root as `unknown`, which the scope correctly treated as a collision. Supervisor/user supplied `Test-Path=False` evidence established that no physical root collision existed in the real BRAIN vault.
+
+### Files inspected
+
+- `src/local/desktop-external-reference-guard.ts`
+- `src/local/desktop-local-vault.ts`
+- `src/local/obsidian-local-vault.ts`
+- `src/local/config-policy.ts`
+- `src/product/path-scope.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/snapshot-assembler.ts` and planner behavior as exercised by focused tests
+- `test/desktop-external-reference-guard.test.ts`
+- `test/local-failure-semantics.test.ts`
+- `test/local-policy.test.ts`
+- `test/mobile-safety.test.ts`
+- `test/phase5-group-b-scope-transfer.test.ts`
+- `test/phase6-a-local-hardening.test.ts`
+- prior bounded-read regression coverage and the mandatory authority/evidence files
+
+### Exact semantic correction
+
+`DesktopExternalReferenceGuard.resolveSafePath()` now treats only ordinary filesystem nonexistence (`ENOENT` or `ENOTDIR`) as a successful containment termination after the target has been proven lexically inside the canonical vault root and every existing traversed ancestor has passed `lstat` + `realpath` containment checks. This allows the ordinary adapter existence check to return truthful `status: absent`. Permission/access errors, I/O errors, symlink/junction detection, canonical resolution outside the vault, lexical escape, and all other uncertainty still propagate fail-closed. `ScopedLocalVault.hasOrdinaryNamespaceCollision()` was not weakened and still treats every non-`absent` observation as collision evidence.
+
+### Files changed by the completed repair
+
+- `src/local/desktop-external-reference-guard.ts` — minimal missing-path containment correction only.
+- `test/phase6-alpha-portable-collision.test.ts` — seven focused regressions covering direct/nested/intermediate missing paths, permission uncertainty, lexical/external-reference blocking, production desktop `absent` observation, fail-closed unknown/inaccessible/unreadable/occupied namespace behavior, exact portable mappings, and first-sync safe-union planner uploads.
+- `dev/evidence/phase6-alpha-windows-bounded-read-output.md` — corrected the physical-validation sequencing and recorded supervisor/user supplied runtime evidence separately from repository/build evidence.
+- `dev/evidence/_ca-output.md` — this append-only cumulative record.
+- no production synchronization architecture, OAuth code, config allowlist, planner safety rule, generic HTTP-range reader, mobile boundary, or frozen contract was changed.
+
+### Clean-environment automated verification
+
+Because the repository's normal `Phase 1 CI` workflow triggers only for `master` / PRs targeting `master`, it does not run for the authorized PR base `phase6-integration`. The repair was **not** retargeted. A temporary branch-scoped verification workflow was used solely to execute the required commands against a clean GitHub Actions checkout of implementation SHA `b9207fb6a7836f462386c14bfbb4018fafca9218`; it is removed from the final repair tree.
+
+- workflow run: `33021180627`
+- job: `98351653267`
+- checkout HEAD: `b9207fb6a7836f462386c14bfbb4018fafca9218`
+- `npm ci`: PASS — 16 packages added, 17 audited, 0 vulnerabilities
+- `npm run typecheck`: PASS
+- `npm test`: PASS — 264 tests, 264 pass, 0 fail, 0 cancelled, 0 skipped, 0 todo
+- new focused regressions: tests 238–244, all PASS
+- `npm run build`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- generated `main.js` size: `291248` bytes
+- generated `main.js` SHA-256: `64a5f0274fce550656a45d0ad44203c58685d888a9b62eb10fc644b6ce889711`
+
+The same 264-test run retained the prior bounded Node filesystem reader regressions, generic HTTP `206` acceptance, HTTP `200` fail-closed behavior, mobile Node/Electron isolation, planner destructive-safety/recovery behavior, and OAuth lifecycle/security tests.
+
+### Completion boundary
+
+- physical installation of the **new** `291248`-byte artifact remains pending supervisor/user;
+- a post-fix real Windows first-sync preview remains pending supervisor/user;
+- this cloud CA did not access the real BRAIN vault or `.obsidian` directory;
+- no OAuth secret, token, authorization code, PKCE material, SecretStorage content, or vault-note body was requested or accessed;
+- no first synchronization was executed or authorized by this correction session;
+- stock-iOS bounded local reading is not claimed solved by this Windows correction;
+- Stage 3 did not begin.
+

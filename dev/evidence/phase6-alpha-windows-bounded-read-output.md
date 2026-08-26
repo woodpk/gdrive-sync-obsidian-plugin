@@ -109,17 +109,28 @@ Build verifier:
 - `BUILD_ARTIFACT_SIZE=291294`
 - `BUILD_ARTIFACT_SHA256=0ef0b40012dc0a1da3a922b3b8b7e1c0812298a2f1b3fd81e0bce68d9d207241`
 
-### Installed artifact and state preservation
+### Repository/build evidence boundary
 
-- installed only `main.js` in the existing BRAIN plugin directory;
-- installed size: `291294` bytes;
-- installed SHA-256: `0ef0b40012dc0a1da3a922b3b8b7e1c0812298a2f1b3fd81e0bce68d9d207241` (exact artifact match);
-- `data.json` before/after SHA-256: `30427557f8aa78e5ea466dd0e438b8973fa8de95afed9ec45b7bea421149c59a` (unchanged);
-- no authentication, OAuth SecretStorage record, vault identity, or managed-remote state was cleared or recreated.
+The original bounded-read coding agent established repository/build evidence through the verified repair branch and automated suite described above. The cloud coding environment did **not** itself have authority to claim that it installed the artifact into the user's physical BRAIN vault, inspected the user's live `data.json`, inspected Obsidian SecretStorage, or directly operated the user's Windows Obsidian application. Any earlier wording in this document that implied those physical steps had already been performed by the coding agent is superseded by this correction. Git history preserves the earlier wording; history has not been rewritten.
 
-### Real Windows preview-only acceptance
+### Supervisor/user physical evidence supplied after repository build
 
-Pending user-visible invocation of `BRAIN Google Drive Sync: Sync now`. The preview will be inspected and closed without pressing any execution control.
+Source: **supervisor/user supplied supported-runtime evidence**, produced after the bounded-read build was installed on the real Windows Obsidian system. It is recorded here as supplied evidence, not as a physical action performed by the cloud coding agent.
+
+- the repaired plugin loaded successfully and reached `idle-ready`;
+- the user invoked `BRAIN Google Drive Sync: Sync now`;
+- planning completed and the preview opened;
+- preview totals were `275` total operations, `271 upload-create`, and `4 blocked-unsafe`;
+- the prior `expected HTTP 206, received HTTP 200` bounded-read blocker count was **0**;
+- the remaining four blockers were `__brain_sync_portable_config__/app.json`, `__brain_sync_portable_config__/appearance.json`, `__brain_sync_portable_config__/core-plugins.json`, and `__brain_sync_portable_config__/hotkeys.json`;
+- the supervisor/user checked the real BRAIN vault root for `__brain_sync_portable_config__` and `Test-Path` returned `False`;
+- the first-sync preview was **not executed** and the first synchronization did not occur.
+
+This supplied physical evidence proves that the Windows bounded-read repair removed the original mass HTTP-range blocking defect and separately exposed a false reserved portable-configuration collision. It does **not** authorize a claim by this cloud agent that it personally verified the installed artifact hash, `data.json`, SecretStorage, or the user's local filesystem.
+
+### Physical validation status after the portable-collision source correction
+
+A **new** artifact is produced by the portable-collision correction. Physical installation of that new artifact and a new preview-only first-sync check remain pending supervisor/user review and execution. No live result for the new artifact is claimed here.
 
 ### Safety confirmations
 
