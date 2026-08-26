@@ -21,7 +21,7 @@ Construction-manual re-ingestion verification:
 - exact title: `Agent-Led Software Product Construction Manual`;
 - first sentence: `This manual defines an agent-led process for moving from an initial software idea or partially developed concept through product definition, build planning, implementation, and independent validation.`;
 - last sentence: `The appropriate entry stage should always be determined from the actual project state rather than from an assumption that the manual must be followed from the beginning.`;
-- heading counts: H1 = 1, H2 = 11, H3 = 38, H4 = 13, H5+ = 0;
+- heading counts: H1 = 1, H2 = 11, H3 = 67, H4 = 43, H5+ = 0; total headings = 122;
 - H2 sequence: Purpose; Operating Principles; Navigation and Entry; Stage 0 — Product Discovery and Requirements Elicitation; Stage 1 — Target-System Specification and Minimum Sound Build Decomposition; Stage 2A — Controlled Session-Based Construction; Stage 2B — Autonomous Product Construction; Stage 3 — Independent Product and System Validation; Cross-Stage Handoff Rules; Re-Entry and Recovery; Recommended Default Workflow;
 - embedded agent prompts: Stage 0 Agent Prompt; Stage 1 Agent Prompt; Stage 2A Build-Prompt Expansion Template; Autonomous Build Prompt; Stage 3 Validation Prompt.
 
