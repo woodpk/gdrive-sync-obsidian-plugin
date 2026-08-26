@@ -4,8 +4,9 @@ import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
+import type { OAuthCallbackInput, OAuthCompletion } from "../drive/auth";
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
-import { beginGoogleAuthorization, registerGoogleOAuthReturn } from "../drive/oauth-return";
+import { beginGoogleAuthorization } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
@@ -64,9 +65,6 @@ export class Phase5ProductRuntime {
     if (!current.oauthClientId || !current.oauthRedirectUri) return;
 
     this.boundary = createObsidianGoogleDriveBoundary({ oauth: { clientId: current.oauthClientId, redirectUri: current.oauthRedirectUri }, secretStorage: this.host.app.secretStorage, requestUrl });
-    registerGoogleOAuthReturn(this.host.plugin, this.boundary.oauth, result => {
-      this.host.notify(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`);
-    });
     if (!current.vaultIdentity || !current.remoteRootId) return;
 
     const rawLocal = await this.createLocalAdapter();
@@ -177,6 +175,12 @@ export class Phase5ProductRuntime {
   async exportDiagnosticStateText(): Promise<string> {
     if (!this.state) return JSON.stringify({ status: "unavailable", reason: "synchronization state is not initialized" });
     return new TextDecoder().decode(await this.state.exportDiagnosticState());
+  }
+
+  async completeGoogleAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
+    const oauth = this.boundary?.oauth;
+    if (!oauth) return { ok: false, reason: "missing-transaction" };
+    return oauth.completeAuthorization(input);
   }
 
   async authenticate(): Promise<void> {
