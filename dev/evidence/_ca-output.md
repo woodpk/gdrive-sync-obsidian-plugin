@@ -356,3 +356,52 @@ The current `npm run build` PASS is recorded only as the repository's existing a
 No automated lifecycle-repair blocker remains in the inspected branch and CI evidence. Physical Windows Obsidian confirmation of repeated Authenticate/callback behavior remains unavailable and must be performed by the supervising/user environment after review, bundling, and installation. Alpha Bug #2 (`token-exchange-failed`) and Alpha Bug #1 (production packaging/runtime loadability) remain explicitly outside this repair and were not modified or diagnosed here.
 
 No supervisory approval is claimed.
+
+---
+
+## Phase 6 Alpha Integration — Approved OAuth Lifecycle Repair
+
+This record establishes the newer integration state and does not rewrite the historical Alpha Bug #3 repair record above.
+
+### Integration identity and ancestry
+
+- agent ID: `agt-CA-P6-ALPHA-OAUTH-LIFECYCLE-01`;
+- approved repair branch: `phase6-alpha-oauth-lifecycle-fix`;
+- approved repair head: `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
+- production/test implementation head within that history: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- pre-integration `phase6-integration` head: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
+- integration method: **fast-forward only**; no merge commit, rebase, cherry-pick, squash, conflict resolution, or force-push was used;
+- after the fast-forward and before this evidence-only commit, `phase6-integration` resolved exactly to `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
+- the complete approved Alpha Bug #3 repair history is therefore contained in `phase6-integration`.
+
+### Fresh combined integration verification
+
+Draft integration PR `#15` was updated by the fast-forward and triggered the repository's normal PR verification.
+
+GitHub Actions:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32929111162`;
+- job ID: `98057781846`;
+- PR head metadata: `phase6-integration` @ `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
+- exact generated PR merge SHA checked out by Actions: `2433141fb106d72b4a71e61c8be5d83893d37620`;
+- checkout log: merge ref combined `ca245e2198f1b8311b3edc3e419379c8c982ede6` into unchanged `master` base `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- `npm ci`: **PASS** — 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- lifecycle repair tests 214–219 all passed in the combined integration run;
+- `npm run build`: **PASS**;
+- workflow/job conclusion: **SUCCESS**;
+- actual job steps and complete job log were inspected.
+
+The `npm run build` result proves only that the repository's existing automated build command completed. It does **not** establish correct real Obsidian plugin packaging and does **not** close Alpha Bug #1.
+
+### Current boundaries after integration
+
+- Alpha Bug #1 remains unresolved: plugin packaging/build output is not yet formally repaired for real Obsidian runtime installation.
+- Alpha Bug #2 remains unresolved and outside this task: `token-exchange-failed` has not yet been diagnosed from sanitized live token-endpoint evidence.
+- required live/physical Phase 6 validation remains incomplete and is not represented as PASS by this automated integration gate;
+- Stage 3 has **not** begun;
+- PR `#15` remains unmerged.
+
+This integration evidence commit is evidence-only; the dynamically tested integration tree is the approved repair head `ca245e2198f1b8311b3edc3e419379c8c982ede6` as exercised through generated PR merge SHA `2433141fb106d72b4a71e61c8be5d83893d37620`.

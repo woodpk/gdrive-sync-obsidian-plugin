@@ -60,3 +60,48 @@ The two established stock-iOS fail-closed limitations remain unchanged: bounded 
 ## Stop boundary
 
 Stage 3 has not been performed and is not authorized from this evidence alone. The next Phase 6 action is supported-runtime/live validation against the integrated codebase. Phase 6 may receive final supervisor closure only after the required runtime evidence is recorded and any defects discovered there are repaired and reverified.
+
+---
+
+## Alpha Bug #3 — Supported-Runtime Discovery and Approved Repair Integration
+
+Alpha Bug #3 was discovered during supported-runtime alpha debugging: repeated Google Authenticate attempts in real Windows Obsidian exposed incorrect lifecycle ownership of the `brain-gdrive-oauth` protocol handler. The separately reviewed repair moved protocol registration to plugin lifetime and dynamically delegates callbacks to the current runtime/OAuth session.
+
+### Approved repair integrated
+
+- repair agent: `agt-CA-P6-ALPHA-OAUTH-LIFECYCLE-01`;
+- approved repair branch: `phase6-alpha-oauth-lifecycle-fix`;
+- approved repair head: `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
+- production/test implementation head within that history: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- pre-integration `phase6-integration` head: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
+- integration method: fast-forward only;
+- dynamically tested integration head before the subsequent evidence-only commit: `ca245e2198f1b8311b3edc3e419379c8c982ede6`.
+
+The complete approved repair history is now contained in `phase6-integration`. No production or test change was introduced by the integration operation itself beyond the already approved repair history.
+
+### Fresh combined automated integration verification
+
+PR `#15` generated a fresh combined integration gate after the fast-forward:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32929111162`;
+- job ID: `98057781846`;
+- PR head metadata: `phase6-integration` @ `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
+- exact generated PR merge SHA checked out by Actions: `2433141fb106d72b4a71e61c8be5d83893d37620`;
+- `npm ci`: **PASS** — 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- Alpha Bug #3 lifecycle coverage executed as tests 214–219 and all passed;
+- `npm run build`: **PASS**;
+- workflow/job conclusion: **SUCCESS**;
+- actual job steps and full job log inspected.
+
+The integration suite therefore now contains the approved 239-test lifecycle coverage. The automated build PASS remains only evidence that the repository's existing build command completed; it does not establish real Obsidian plugin packaging correctness.
+
+### Remaining Phase 6 / debugging state
+
+- live/physical Phase 6 validation remains incomplete; prior unavailable checks are not converted into PASS by this integration CI;
+- Alpha Bug #1 remains unresolved: packaging/build output is not yet formally repaired for real Obsidian runtime installation;
+- Alpha Bug #2 remains unresolved: `token-exchange-failed` has not yet been diagnosed from sanitized live token-endpoint evidence;
+- PR `#15` remains open/draft/unmerged pending further Phase 6 work;
+- Stage 3 remains unauthorized and has not begun.
