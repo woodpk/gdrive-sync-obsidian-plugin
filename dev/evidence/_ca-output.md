@@ -239,3 +239,119 @@ These are **not** recorded as passes:
 `COMPLETE WITH NON-BLOCKING FINDINGS`
 
 G2R C1, C2, and C3 are dynamically verified at `3aab3647b57baad7df0b31cc40042325fcfa0e4f`. Phase 5 scenarios 1–50 retain primary executable evidence, including corrected Scenario 30 and Scenario 47 mappings. Remaining findings are the two explicitly preserved stock-iOS fail-closed platform limitations and the live/physical validations marked `NOT AVAILABLE IN THIS SESSION`. No supervisory approval is claimed.
+
+---
+
+## Phase 6 Alpha Repair — OAuth Protocol-Handler Lifecycle (Alpha Bug #3)
+
+This record is an append-only repair record. Earlier statements above about Phase 6 not yet having begun describe the historical state at the time those records were written and are not rewritten here.
+
+### Identity and branch control
+
+- agent ID: `agt-CA-P6-ALPHA-OAUTH-LIFECYCLE-01`;
+- repair branch: `phase6-alpha-oauth-lifecycle-fix`;
+- verified integration base branch: `phase6-integration`;
+- exact verified base SHA: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
+- exact final implementation/test SHA before this evidence-only commit: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- draft review PR: `#16`, retargeted to `phase6-integration`, unmerged;
+- `master` was not modified;
+- Phase 6 integration PR `#15` was not merged;
+- this repair branch was not merged into `phase6-integration`.
+
+### Corrections completed
+
+**C1 — plugin-lifetime protocol-handler ownership**
+
+`src/main.ts` now registers `brain-gdrive-oauth` once from `BrainGoogleDriveSyncPlugin.onload()` through Obsidian's supported `registerObsidianProtocolHandler` lifecycle API. The stable callback dynamically dereferences the plugin's current runtime and forwards completion to that runtime. Existing success/failure Notice semantics are preserved and failure notices expose only the safe completion reason.
+
+**C2 — runtime initialization no longer owns protocol registration**
+
+`src/product/runtime.ts` no longer imports or calls `registerGoogleOAuthReturn(...)` from `Phase5ProductRuntime.initialize()`. Repeated runtime initialization may reconstruct mutable Google/OAuth runtime resources without attempting to register the plugin-global protocol action. A minimal `completeGoogleAuthorization(input)` seam dereferences `this.boundary?.oauth` at callback execution time.
+
+**C3 — OAuth return helper is lifetime-safe**
+
+`src/drive/oauth-return.ts` now accepts a `GoogleOAuthCompletionDelegate` rather than a concrete `GoogleOAuthSession` for protocol-return completion. The registered callback therefore does not inherently capture the OAuth session that existed when registration occurred. `beginGoogleAuthorization(...)` and the existing OAuth session security/token behavior are unchanged.
+
+**C4 — Authenticate after initialization is safe**
+
+`src/main.ts` retains the existing Authenticate path that reruns `runtime.initialize()` before `runtime.authenticate()`. Because runtime initialization no longer performs protocol registration and the stable plugin handler resolves the current runtime/session dynamically, Authenticate-triggered reinitialization no longer creates duplicate action registration or stale-session callback routing.
+
+### Exact change manifest
+
+#### Created
+
+- `test/phase6-alpha-oauth-lifecycle.test.ts`
+
+#### Modified
+
+- `src/main.ts`
+- `src/product/runtime.ts`
+- `src/drive/oauth-return.ts`
+- `dev/evidence/_ca-output.md`
+
+#### Deleted
+
+- none.
+
+### Targeted regression coverage
+
+`test/phase6-alpha-oauth-lifecycle.test.ts` adds six executable tests covering the required T1–T7 matrix:
+
+- T1: repeated `Phase5ProductRuntime.initialize()` calls produce zero protocol registrations;
+- T2: a capturing registrar proves one stable `brain-gdrive-oauth` registration for one plugin lifetime, with separate plugin lifetimes able to register normally;
+- T3: the production Authenticate-after-initialization path retains runtime initialization/authentication while neither that path nor runtime initialization contains registration;
+- T4: stable delegation after session replacement routes the callback to the current completion target, and the runtime completion seam dereferences the current `boundary.oauth` at callback time;
+- T5: both routing tests explicitly assert the prior session receives zero callback invocations;
+- T6: independent plugin-lifetime registrar fakes each register normally and production sources contain no manual unregister/registry manipulation seam;
+- T7: changed lifecycle sources/tests contain no new console logging or secret-bearing token/verifier/client-secret diagnostics, while safe success/failure Notice text remains present.
+
+The pre-existing OAuth security tests remain intact, including exact `drive.file` scope, PKCE S256/high-entropy state, state-mismatch rejection, secret storage, and Phase 6 C exact-scope enforcement.
+
+### Commands and observed verification
+
+Local shell execution against a repository checkout was not available in this agent environment. The requested command sequence was executed by GitHub Actions on the pushed repair branch through draft PR `#16`:
+
+- `npm ci`: **PASS** — 14 packages installed; 0 vulnerabilities;
+- `npm run typecheck`: **PASS**;
+- `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
+- `npm run build`: **PASS**.
+
+Focused lifecycle tests appeared as tests 214–219 in the inspected CI job log and all passed:
+
+- 214 — T1 repeated runtime initialization;
+- 215 — T2/T4/T5 stable registration/current completion target;
+- 216 — T4/T5 runtime current-session dereference;
+- 217 — T3 Authenticate-after-initialization;
+- 218 — T2/T6 per-plugin-lifetime registration/lifecycle cleanup;
+- 219 — T7 diagnostics/security and completion notices.
+
+GitHub Actions evidence:
+
+- workflow: `Phase 1 CI`;
+- run ID: `32925172932`;
+- job ID: `98046517476`;
+- workflow head SHA metadata: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- workflow conclusion: **success**;
+- actual job log inspected.
+
+CI checkout qualification: because the repository workflow is configured only for pushes to `master` and pull requests targeting `master`, the CI trigger was a draft PR and `actions/checkout` tested GitHub's generated PR merge ref `33f014e27e76c6a97f03f4a2c352470cb5dce18c`, which merged repair head `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951` into the then-current `master` base. The repair head was therefore present in the tested tree, but an Actions clean checkout of the repair head SHA itself was not performed. The PR was then retargeted to `phase6-integration` for supervisor review and remains unmerged.
+
+A separate focused-test-only shell command was not executed; the focused lifecycle file executed successfully as part of the complete 239-test CI suite.
+
+The current `npm run build` PASS is recorded only as the repository's existing automated compilation/build check. It is **not** real Obsidian runtime packaging acceptance and does not close Alpha Bug #1.
+
+### Unavailable validation
+
+- exact-head-SHA GitHub Actions clean checkout (as distinct from the successful PR merge-ref checkout containing that head) — `NOT AVAILABLE IN THIS SESSION`;
+- local-shell `npm ci` / typecheck / test / build execution — `NOT AVAILABLE IN THIS SESSION`;
+- separate focused-test-only command — `NOT AVAILABLE IN THIS SESSION`;
+- real Windows Obsidian OAuth retry validation — `NOT AVAILABLE IN THIS SESSION`;
+- real Windows Obsidian protocol-handler reload/unload validation — `NOT AVAILABLE IN THIS SESSION`;
+- live Google OAuth token exchange / Alpha Bug #2 diagnosis — `NOT AVAILABLE IN THIS SESSION`;
+- real-runtime packaging validation / Alpha Bug #1 repair — `NOT AVAILABLE IN THIS SESSION`.
+
+### Remaining blockers / limitations
+
+No automated lifecycle-repair blocker remains in the inspected branch and CI evidence. Physical Windows Obsidian confirmation of repeated Authenticate/callback behavior remains unavailable and must be performed by the supervising/user environment after review, bundling, and installation. Alpha Bug #2 (`token-exchange-failed`) and Alpha Bug #1 (production packaging/runtime loadability) remain explicitly outside this repair and were not modified or diagnosed here.
+
+No supervisory approval is claimed.
