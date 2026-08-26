@@ -46,7 +46,7 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
    * Returns the same lexically-contained path whose components were checked by
    * this guard, so desktop readers do not introduce a second unchecked resolver.
    */
-  async resolveSafePath(path: VaultPath, access: LocalReferenceAccess): Promise<string> {
+  async resolveSafePath(path: VaultPath, _access: LocalReferenceAccess): Promise<string> {
     const canonicalBase = await (this.canonicalBase ??= this.ops.realpath(this.basePath));
     const lexicalTarget = resolve(this.basePath, String(path));
     if (!isWithin(resolve(this.basePath), lexicalTarget)) {
@@ -70,9 +70,13 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
         if (error instanceof ExternalFilesystemReferenceError) throw error;
         const code = (error as { code?: string } | undefined)?.code;
         const isMissing = code === "ENOENT" || code === "ENOTDIR";
-        if (isMissing && (access === "mutation-target" || index > 0)) {
-          // A not-yet-created target is safe only after every existing ancestor
-          // has already passed lstat + realpath containment checks.
+        if (isMissing) {
+          // The target is already lexically inside the vault, the canonical vault
+          // root is known, and every existing ancestor traversed so far has passed
+          // lstat + realpath containment checks. Ordinary ENOENT/ENOTDIR therefore
+          // proves the remaining path cannot currently traverse an external object.
+          // Returning the checked target lets the adapter establish truthful absence;
+          // permission, I/O, and all other uncertainty still propagate fail-closed.
           return lexicalTarget;
         }
         throw error;
