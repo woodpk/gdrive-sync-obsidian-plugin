@@ -615,3 +615,13 @@ The same 264-test run retained the prior bounded Node filesystem reader regressi
 - stock-iOS bounded local reading is not claimed solved by this Windows correction;
 - Stage 3 did not begin.
 
+---
+
+## Phase 6 Alpha portable-collision evidence-review closure
+
+- mandatory agent-specific evidence created: `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PORTABLE-COLLISION-01.md`;
+- agent-specific evidence creation commit: `85f3e25bd83218980f0858aee5878534ed801ed9`;
+- this addition is review-evidence-only and does not change production behavior or previously verified implementation semantics;
+- no production source, test source, build configuration, dependency, or workflow file changed during this corrective evidence pass;
+- this canonical entry is append-only and closes only the missing mandatory-source review gate;
+- Stage 3 remains not begun.
