@@ -252,7 +252,7 @@ This record is an append-only repair record. Earlier statements above about Phas
 - repair branch: `phase6-alpha-oauth-lifecycle-fix`;
 - verified integration base branch: `phase6-integration`;
 - exact verified base SHA: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
-- exact final implementation/test SHA before this evidence-only commit: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- exact production/test implementation head: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`; subsequent branch commits are evidence-only unless otherwise stated;
 - draft review PR: `#16`, retargeted to `phase6-integration`, unmerged;
 - `master` was not modified;
 - Phase 6 integration PR `#15` was not merged;
@@ -281,6 +281,7 @@ This record is an append-only repair record. Earlier statements above about Phas
 #### Created
 
 - `test/phase6-alpha-oauth-lifecycle.test.ts`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-OAUTH-LIFECYCLE-01.md`
 
 #### Modified
 
