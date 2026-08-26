@@ -29,7 +29,9 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     });
     registerGoogleOAuthReturn(
       this,
-      input => this.runtime?.completeGoogleAuthorization(input) ?? Promise.resolve({ ok: false, reason: "missing-transaction" }),
+      async input => this.runtime
+        ? this.runtime.completeGoogleAuthorization(input)
+        : { ok: false as const, reason: "missing-transaction" as const },
       result => new Notice(result.ok ? "Google authentication completed." : `Google authentication failed: ${result.reason}`),
     );
 
