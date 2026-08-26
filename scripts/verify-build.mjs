@@ -105,29 +105,3 @@ console.log("BUILD_VERIFY_MOBILE_EVALUATION=PASS");
 console.log("BUILD_VERIFY_PACKAGE_SHAPE=PASS");
 console.log(`BUILD_ARTIFACT_SIZE=${size}`);
 console.log(`BUILD_ARTIFACT_SHA256=${sha256}`);
-
-// Temporary CI-only lockfile persistence diagnostic. This exists only because
-// the connected agent cannot run npm locally. It creates a normal fast-forward
-// commit on the repair branch containing npm's generated lockfile; the next
-// agent commit removes this block before authoritative verification.
-if (process.env.GITHUB_ACTIONS === "true" && process.env.GITHUB_HEAD_REF && existsSync("package-lock.json")) {
-  const head = process.env.GITHUB_HEAD_REF;
-  const script = `set -euo pipefail
-rm -rf /tmp/brain-packaging-lock
-mkdir -p /tmp/brain-packaging-lock
-git fetch origin ${head}
-git worktree add --detach /tmp/brain-packaging-lock FETCH_HEAD
-cp package-lock.json /tmp/brain-packaging-lock/package-lock.json
-cd /tmp/brain-packaging-lock
-git config user.name "github-actions[bot]"
-git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add package-lock.json
-if ! git diff --cached --quiet; then
-  git commit -m "build: add reproducible esbuild lockfile"
-  git push origin HEAD:${head}
-fi
-`;
-  const persist = spawnSync("bash", ["-lc", script], { encoding: "utf8" });
-  if (persist.status !== 0) fail(`temporary lockfile persistence failed: ${persist.stderr || persist.stdout}`);
-  console.log("BOOTSTRAPPED_PACKAGE_LOCK_PERSISTED=PASS");
-}
