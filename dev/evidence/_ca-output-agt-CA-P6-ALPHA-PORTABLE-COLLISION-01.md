@@ -103,3 +103,67 @@ This file itself is created during a later evidence-only repair because the inde
 - none
 
 No production source, test source, build configuration, dependency file, workflow, secret, or user-vault content is modified by this evidence-only repair.
+
+---
+
+## Rejection correction — canonical-resolution failures remain fail-closed
+
+### Rejected head and defect
+
+- rejected branch head: `a1049fafef5a655dd6a32091ed2c62c3ae9cb643`
+- rejected tested implementation: `b9207fb6a7836f462386c14bfbb4018fafca9218`
+- rejection ID: C1 — unresolved canonical-path failures were incorrectly converted into safe absence
+
+The rejected implementation placed both `lstat(current)` and `realpath(current)` inside one missing-path `try/catch`. As a result, `ENOENT` or `ENOTDIR` from `realpath()` after a successful `lstat()` was incorrectly accepted as evidence that the component was safely missing. That violated fail-closed canonical containment: once `lstat()` proves the component exists, `realpath()` must also succeed and resolve inside the canonical vault root.
+
+### Exact C1/C2 source and test correction
+
+- `src/local/desktop-external-reference-guard.ts` now catches `ENOENT`/`ENOTDIR` only around `lstat(current)`. A genuinely missing component may terminate containment as a safe absence candidate after all previously existing ancestors have passed `lstat` plus `realpath` containment.
+- after `lstat(current)` succeeds, symbolic-link/junction detection and `realpath(current)` occur outside the missing-path catch. Any `realpath` failure now propagates unchanged, including `ENOENT` and `ENOTDIR`.
+- outside-vault canonical resolution remains blocked by `ExternalFilesystemReferenceError`.
+- `test/phase6-alpha-portable-collision.test.ts` adds a focused regression proving that an existing component whose `realpath()` fails with either `ENOENT` or `ENOTDIR` remains fail-closed.
+- all previous portable-collision regressions remain present; `ScopedLocalVault.hasOrdinaryNamespaceCollision()`, the synthetic namespace, the portable allowlist, Windows bounded reader, generic HTTP-range reader, mobile isolation, and frozen/public contracts were not modified.
+
+### Clean verification of corrected implementation
+
+A temporary branch-scoped workflow was used without retargeting PR #19. GitHub Actions performed a clean checkout of exact SHA:
+
+`8b7f320b0a9af86a933b200245694ee9c47ee854`
+
+Verification identity:
+
+- workflow: `Phase 6 Alpha Portable Collision CI`
+- run ID: `33023650014`
+- job ID: `98359805718`
+- checkout HEAD: `8b7f320b0a9af86a933b200245694ee9c47ee854`
+- runner: Ubuntu 24.04
+- Node: `v22.23.2`
+- npm: `10.9.8`
+
+Commands/results:
+
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities
+- `npm run typecheck`: **PASS**
+- `npm test`: **PASS** — 265 tests, 265 pass, 0 fail, 0 cancelled, 0 skipped, 0 todo
+- new canonical-resolution regression: test 241, **PASS**
+- portable-collision regressions: tests 238–245, all **PASS**
+- `npm run build`: **PASS**
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- generated `main.js` size: `291213` bytes
+- generated `main.js` SHA-256: `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`
+
+The inspected full test log also confirms the existing desktop bounded-read tests remain PASS, the generic HTTP range path still accepts valid partial-content behavior and rejects whole-file `HTTP 200` fallback, mobile Node/Electron isolation remains PASS, and planner destructive-safety/recovery coverage remains PASS.
+
+### Post-verification cleanup and boundaries
+
+- temporary verification workflow removal commit: `e3505cedf4f4ee61639de2488bdc079eb8908d37`
+- no production or test file changed after the dynamically tested implementation tree `8b7f320b0a9af86a933b200245694ee9c47ee854`; subsequent changes are workflow cleanup and evidence only
+- final physical installation of the newly built artifact remains pending supervisor/user
+- final preview-only Windows validation remains pending supervisor/user
+- no synchronization was executed
+- no OAuth secret/token or real BRAIN vault content was accessed
+- Stage 3 has not begun
