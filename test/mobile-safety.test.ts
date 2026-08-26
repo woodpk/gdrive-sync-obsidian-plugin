@@ -22,7 +22,9 @@ const guardedDesktopComposition = "src/product/runtime.ts";
 function hasProhibitedImport(text: string, spec: string): boolean {
   const patterns = [
     `from \"${spec}\"`, `from '${spec}'`, `from \"node:${spec}\"`, `from 'node:${spec}'`,
-    `require(\"${spec}\")`, `require('${spec}')`, `require(\"node:${spec}\")`, `require('node:${spec}')`
+    `from \"${spec}/`, `from '${spec}/`, `from \"node:${spec}/`, `from 'node:${spec}/`,
+    `require(\"${spec}\")`, `require('${spec}')`, `require(\"node:${spec}\")`, `require('node:${spec}')`,
+    `require(\"${spec}/`, `require('${spec}/`, `require(\"node:${spec}/`, `require('node:${spec}/`
   ];
   return patterns.some(pattern => text.includes(pattern));
 }
@@ -53,12 +55,15 @@ test("desktop local adapter is loaded only by a Platform-guarded dynamic import"
   assert.match(runtime, /if \(Platform\.isDesktopApp\)[\s\S]*?await import\("\.\.\/local\/desktop-local-vault"\)/);
 });
 
-test("Node filesystem imports are confined to the declared desktop-only safety module", () => {
+test("Node filesystem imports are confined to the declared desktop-only modules", () => {
   const nodeImportFiles = files(sourceRoot)
     .filter(file => prohibited.some(spec => hasProhibitedImport(readFileSync(file, "utf8"), spec)))
     .map(file => relative(root, file).replaceAll("\\", "/"))
     .sort();
-  assert.deepEqual(nodeImportFiles, ["src/local/desktop-external-reference-guard.ts"]);
+  assert.deepEqual(nodeImportFiles, [
+    "src/local/desktop-external-reference-guard.ts",
+    "src/local/desktop-local-vault.ts"
+  ]);
 });
 
 test("desktop local construction is not imported by the mobile-neutral adapter", () => {

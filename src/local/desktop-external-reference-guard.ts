@@ -39,6 +39,14 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
   ) {}
 
   async assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void> {
+    await this.resolveSafePath(path, access);
+  }
+
+  /**
+   * Returns the same lexically-contained path whose components were checked by
+   * this guard, so desktop readers do not introduce a second unchecked resolver.
+   */
+  async resolveSafePath(path: VaultPath, access: LocalReferenceAccess): Promise<string> {
     const canonicalBase = await (this.canonicalBase ??= this.ops.realpath(this.basePath));
     const lexicalTarget = resolve(this.basePath, String(path));
     if (!isWithin(resolve(this.basePath), lexicalTarget)) {
@@ -65,10 +73,11 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
         if (isMissing && (access === "mutation-target" || index > 0)) {
           // A not-yet-created target is safe only after every existing ancestor
           // has already passed lstat + realpath containment checks.
-          return;
+          return lexicalTarget;
         }
         throw error;
       }
     }
+    return lexicalTarget;
   }
 }
