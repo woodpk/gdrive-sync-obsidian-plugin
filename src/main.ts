@@ -1,6 +1,6 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Platform, Plugin } from "obsidian";
 import { formatOAuthDiagnosticSuffix } from "./drive/auth";
-import { registerGoogleOAuthReturn } from "./drive/oauth-return";
+import { registerGoogleOAuthReturn, reserveAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "./drive/oauth-return";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -91,8 +91,18 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async authenticate(): Promise<void> {
-    try { await this.runtime?.initialize(); this.bindStatus(); await this.runtime?.authenticate(); }
-    catch (error) { this.noticeError("Authentication could not start", error); }
+    let mobileBrowser: AuthorizationBrowserLauncher | undefined;
+    try {
+      if (!this.runtime) throw new Error("The synchronization runtime is unavailable.");
+      if (!this.currentSettings.oauthClientId || !this.currentSettings.oauthRedirectUri) throw new Error("Configure OAuth client ID and redirect URI first.");
+      mobileBrowser = Platform.isMobileApp ? reserveAuthorizationInSystemBrowser() : undefined;
+      await this.runtime?.initialize();
+      this.bindStatus();
+      await this.runtime?.authenticate(mobileBrowser);
+    } catch (error) {
+      mobileBrowser?.cancel?.();
+      this.noticeError("Authentication could not start", error);
+    }
   }
   private async createManagedRemote(): Promise<void> {
     try { if (!this.runtime) return; const identity = await this.runtime.createManagedRemote(); this.bindStatus(); new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`); }

@@ -826,3 +826,29 @@ Repository ancestry shows the approved repair head itself became contained in `p
 No `.github` workflow or helper-script path was created or modified by this evidence-correction pass. No production/test/build/package/dependency/persistent-workflow file was changed. The preserved combined gate remains run `33031435312`, job `98384624285`, with 265/265 tests PASS, typecheck PASS, build PASS, all five build-verifier checks PASS, `main.js` size `291213` bytes, and SHA-256 `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`.
 
 No synchronization was executed. Stage 3 has not begun.
+
+---
+
+## Phase 6 Alpha — iOS OAuth Browser-Launch Repair
+
+Agent `codex-P6-ALPHA-IOS-OAUTH-LAUNCH-01` started from the required clean `phase6-integration` SHA `73453011c54abdca9ff2548803c025fae9886e74` and worked on `phase6-alpha-ios-oauth-launch-fix`.
+
+The human-provided physical reproduction was: on stock iPhone Obsidian, tapping Authenticate produced no visible browser/web-authentication handoff and no Google authorization flow. The coding agent did not operate the iPhone and does not claim a physical reproduction.
+
+Diagnosis: the previous code called `window.open` only after async runtime initialization and PKCE/Web Crypto preparation. WebKit gates `window.open` on transient user activation and normally does not propagate that activation across asynchronous execution, allowing the host to suppress the late popup without throwing. Windows tolerated the existing timing; stock iOS did not.
+
+Repair: on `Platform.isMobileApp`, reserve a detached blank authorization window synchronously before the Authenticate handler's first `await`; after exactly one PKCE transaction is prepared and stored, navigate that same reservation exactly once. Cancel the reservation and propagate safe preparation/launch errors. Desktop retains the existing direct `noopener,noreferrer` launcher. Callback lifecycle, token processing, device-local SecretStorage, and the exact `https://www.googleapis.com/auth/drive.file` scope remain unchanged.
+
+Verification:
+
+- `npm run typecheck`: PASS;
+- focused iOS launch + live OAuth + lifecycle + mobile-safety gate: 25/25 PASS;
+- `npm test`: 268/270 PASS, with only two Windows drive-qualified portable-collision path assertions that already failed in the clean pre-change baseline (263/265); no unrelated change was made to bypass them;
+- `npm run build`: PASS;
+- all five build-verifier checks: PASS;
+- `main.js`: `292679` bytes;
+- SHA-256: `beb7fad248761eafc97c62bbcfb65c1a1b2f31fa7e1c31e67c28daaf95fcad4b`.
+
+Complete detailed evidence and manifest: `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-LAUNCH-01.md`.
+
+Physical iPhone Authenticate-button validation remains required after independent review and a later supervisor-controlled BRAT prerelease. No iPhone pairing/synchronization, release operation, integration merge, `master` change, or Stage 3 work occurred.

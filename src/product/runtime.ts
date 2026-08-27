@@ -6,7 +6,7 @@ import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
 import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompletion } from "../drive/auth";
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
-import { beginGoogleAuthorization, openAuthorizationInSystemBrowser } from "../drive/oauth-return";
+import { beginGoogleAuthorization, openAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
@@ -191,10 +191,10 @@ export class Phase5ProductRuntime {
     return oauth.completeAuthorization(input);
   }
 
-  async authenticate(): Promise<void> {
+  async authenticate(browser: AuthorizationBrowserLauncher = { openExternal: openAuthorizationInSystemBrowser }): Promise<void> {
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure OAuth client ID and redirect URI first.");
-    await beginGoogleAuthorization(boundary.oauth, { openExternal: openAuthorizationInSystemBrowser });
+    await beginGoogleAuthorization(boundary.oauth, browser);
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {

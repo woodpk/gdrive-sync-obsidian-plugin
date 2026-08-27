@@ -140,7 +140,7 @@ test("T3 Authenticate-after-initialization path cannot register the OAuth action
 
   assert.ok(authenticateStart >= 0 && createRemoteStart > authenticateStart);
   assert.match(authenticateSource, /runtime\?\.initialize\(\)/);
-  assert.match(authenticateSource, /runtime\?\.authenticate\(\)/);
+  assert.match(authenticateSource, /runtime\?\.authenticate\(mobileBrowser\)/);
   assert.doesNotMatch(authenticateSource, /registerGoogleOAuthReturn/);
   assert.doesNotMatch(runtimeSource, /registerGoogleOAuthReturn\s*\(/);
 });
