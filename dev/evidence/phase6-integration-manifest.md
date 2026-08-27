@@ -263,3 +263,78 @@ Still outstanding and not represented as passes by this section:
 - remaining physical interruption, disk-full, constrained-resource/large-vault, and other Phase 6 acceptance work.
 
 Stage 3 remains unauthorized and has not begun.
+
+---
+
+## Approved Windows First-Sync Repair Integration — Bounded Read + Portable Configuration
+
+### Approved repair
+
+- integration agent: `agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01`;
+- repair branch: `phase6-alpha-windows-bounded-read-fix`;
+- approved repair head: `bcdcf935de0fb49b518d90d7f886b932175f0015`;
+- independently reviewed result: `APPROVE`;
+- dynamically tested production/test tree: `8b7f320b0a9af86a933b200245694ee9c47ee854`;
+- pre-integration `phase6-integration`: `0a5f3a277fba2e80962dbfd27dd4cdb1e0136705`;
+- integration method: **fast-forward only**;
+- fast-forwarded integration tree before evidence-only commits: `bcdcf935de0fb49b518d90d7f886b932175f0015`;
+- no merge commit, rebase, cherry-pick, squash, conflict resolution, or force-push.
+
+The approved repair integrates the Windows desktop bounded local-file reader, the portable-config false-collision correction, and the final fail-closed canonical-resolution correction. Missing-path acceptance is restricted to `lstat` `ENOENT`/`ENOTDIR`; after successful `lstat`, `realpath` must succeed and remain inside the canonical vault root. Reserved-namespace occupancy/uncertainty remains blocked and mobile isolation remains unchanged.
+
+### Prior approved clean repair verification
+
+- workflow: `Phase 6 Alpha Portable Collision CI`;
+- run: `33023650014`;
+- job: `98359805718`;
+- exact checkout: `8b7f320b0a9af86a933b200245694ee9c47ee854`;
+- tests: `265/265 PASS`;
+- typecheck/build: PASS;
+- all five build-verifier checks: PASS;
+- `main.js`: `291213` bytes;
+- SHA-256: `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`;
+- later repair-branch commits through `bcdcf935...` were workflow cleanup/evidence only; no production/test file changed after the tested tree.
+
+### Physical Windows acceptance
+
+Recorded from **supervisor/user-supplied physical supported-runtime evidence**:
+
+- local branch head: `bcdcf935de0fb49b518d90d7f886b932175f0015`;
+- local `npm ci` and build: PASS;
+- local/installed artifact: `291213` bytes, SHA-256 `EC8F4A572EB14ADDDAADB0D0656CED5A3761E373FC6A0A1C78F383D6CF667391`;
+- plugin load status: `idle-ready`;
+- preview: `275` planned operations, disposition `safe-auto-eligible`;
+- `274 upload-create`, `1 noop`, `0 blocked-unsafe`;
+- no conflicts, deletes, trash, or destructive operation category;
+- no-op path: `__brain_sync_portable_config__/hotkeys.json`;
+- no-op reason: `Neither side currently contains the never-established path.`;
+- preview closed without Execute; no synchronization occurred.
+
+**PHYSICAL WINDOWS REPAIR ACCEPTANCE: PASS**
+
+### Fresh combined integration gate
+
+- PR: `#15` — `phase6-integration` -> `master`;
+- workflow: `Phase 1 CI`;
+- run: `33031435312`;
+- job: `98384624285`;
+- tested generated PR merge SHA: `44ebd6add7fe80f2233bffa2861e7f7d9be73043`;
+- merge contained integration head `bcdcf935de0fb49b518d90d7f886b932175f0015` over unchanged master `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- `npm ci`: PASS;
+- typecheck: PASS;
+- tests: `265/265 PASS`, 0 fail/cancelled/skipped/todo;
+- build: PASS;
+- all five build-verifier checks: PASS;
+- integrated `main.js`: `291213` bytes;
+- SHA-256: `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`.
+
+### Remaining Phase 6 boundary
+
+- first-sync Execute has not occurred and first synchronization remains outstanding;
+- physical iPhone/iOS validation remains outstanding;
+- accepted stock-iOS fail-closed limitations remain unresolved;
+- PR `#15` remains open/unmerged;
+- `master` remains unchanged;
+- Stage 3 has not begun.
+
+Any subsequent commits after `bcdcf935de0fb49b518d90d7f886b932175f0015` in this integration session are evidence/documentation-only and must not change production/test/build behavior.
