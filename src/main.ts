@@ -3,7 +3,7 @@ import { formatOAuthDiagnosticSuffix, type OAuthCallbackInput, type OAuthComplet
 import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
 import { DiagnosticLogger, normalizeDiagnosticError, type DiagnosticSummary } from "./diagnostics/diagnostic-logger";
-import { shareDiagnosticLogText } from "./diagnostics/share-export";
+import { copyDiagnosticLogText, shareDiagnosticLogText } from "./diagnostics/share-export";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -279,14 +279,23 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     } catch (error) { this.noticeError("Google authentication diagnostic could not be copied", error); }
   }
   private diagnosticsSummary(): DiagnosticSummary { return this.diagnostics?.summary() ?? { count: 0 }; }
-  private async copyDiagnosticLog(): Promise<void> {
+  private copyDiagnosticLog(): Promise<void> {
+    if (!this.diagnostics) {
+      new Notice("Diagnostic logger is unavailable.");
+      return Promise.resolve();
+    }
     try {
-      if (!this.diagnostics) throw new Error("diagnostic logger is unavailable");
-      await this.diagnostics.flush();
-      if (!globalThis.navigator?.clipboard?.writeText) throw new Error("clipboard API is unavailable on this device");
-      await globalThis.navigator.clipboard.writeText(this.diagnostics.renderText());
-      new Notice("Device diagnostic log copied. The export contains sanitized metadata only.");
-    } catch (error) { this.noticeError("Diagnostic log could not be copied", error); }
+      const pending = copyDiagnosticLogText(this.diagnostics.renderText());
+      return pending
+        .then(async () => {
+          await this.diagnostics?.flush();
+          new Notice("Device diagnostic log copied. The export contains sanitized metadata only.");
+        })
+        .catch(error => { this.noticeError("Diagnostic log could not be copied", error); });
+    } catch (error) {
+      this.noticeError("Diagnostic log could not be copied", error);
+      return Promise.resolve();
+    }
   }
   private shareDiagnosticLog(): Promise<void> {
     if (!this.diagnostics) {
