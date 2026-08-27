@@ -1,6 +1,6 @@
 import { Notice, Platform, Plugin } from "obsidian";
 import { formatOAuthDiagnosticSuffix } from "./drive/auth";
-import { registerGoogleOAuthReturn, reserveAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "./drive/oauth-return";
+import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -91,16 +91,13 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async authenticate(): Promise<void> {
-    let mobileBrowser: AuthorizationBrowserLauncher | undefined;
     try {
       if (!this.runtime) throw new Error("The synchronization runtime is unavailable.");
       if (!this.currentSettings.oauthClientId || !this.currentSettings.oauthRedirectUri) throw new Error("Configure OAuth client ID and redirect URI first.");
-      mobileBrowser = Platform.isMobileApp ? reserveAuthorizationInSystemBrowser() : undefined;
       await this.runtime?.initialize();
       this.bindStatus();
-      await this.runtime?.authenticate(mobileBrowser);
+      await this.runtime?.authenticate(Platform.isMobileApp ? { openExternal: openAuthorizationInExternalBrowser } : undefined);
     } catch (error) {
-      mobileBrowser?.cancel?.();
       this.noticeError("Authentication could not start", error);
     }
   }

@@ -18,16 +18,9 @@ export function registerGoogleOAuthReturn(
 
 export interface AuthorizationBrowserLauncher {
   openExternal(url: string): void | Promise<void>;
-  cancel?(): void;
 }
 export type AuthorizationWindowOpen = (url: string, target: string, features: string) => unknown;
-
-export interface ReservedAuthorizationWindow {
-  opener: unknown;
-  readonly location: { replace(url: string): void };
-  close(): void;
-}
-export type AuthorizationWindowReservation = (url: string, target: string) => ReservedAuthorizationWindow | null;
+export type AuthorizationExternalOpen = (url: string, target: string) => unknown;
 
 export function openAuthorizationInSystemBrowser(url: string, openWindow?: AuthorizationWindowOpen): void {
   const launcher = openWindow ?? (typeof globalThis.open === "function"
@@ -37,42 +30,16 @@ export function openAuthorizationInSystemBrowser(url: string, openWindow?: Autho
   launcher(url, "_blank", "noopener,noreferrer");
 }
 
-export function reserveAuthorizationInSystemBrowser(openWindow?: AuthorizationWindowReservation): AuthorizationBrowserLauncher {
-  const reserve = openWindow ?? (typeof globalThis.open === "function"
-    ? (value: string, target: string) => globalThis.open(value, target) as ReservedAuthorizationWindow | null
+export function openAuthorizationInExternalBrowser(url: string, openWindow?: AuthorizationExternalOpen): void {
+  const launcher = openWindow ?? (typeof globalThis.open === "function"
+    ? (value: string, target: string) => { globalThis.open(value, target); }
     : undefined);
-  if (!reserve) throw new Error("The system browser could not be opened because no browser launch mechanism is available.");
-
-  const reserved = reserve("about:blank", "_blank");
-  if (!reserved) throw new Error("The system browser blocked the authorization window. Try Authenticate again and allow the browser window to open.");
-  try { reserved.opener = null; }
-  catch (error) {
-    reserved.close();
-    throw error;
-  }
-
-  let settled = false;
-  return {
-    openExternal(url: string): void {
-      if (settled) throw new Error("The reserved authorization window has already been used.");
-      reserved.location.replace(url);
-      settled = true;
-    },
-    cancel(): void {
-      if (settled) return;
-      settled = true;
-      reserved.close();
-    },
-  };
+  if (!launcher) throw new Error("The external browser could not be opened because no browser launch mechanism is available.");
+  launcher(url, "_external");
 }
 
 export async function beginGoogleAuthorization(oauth: GoogleOAuthSession, browser: AuthorizationBrowserLauncher): Promise<{ readonly state: string; readonly expiresAtMs: number }> {
-  try {
-    const request = await oauth.beginAuthorization();
-    await browser.openExternal(request.url);
-    return { state: request.state, expiresAtMs: request.expiresAtMs };
-  } catch (error) {
-    browser.cancel?.();
-    throw error;
-  }
+  const request = await oauth.beginAuthorization();
+  await browser.openExternal(request.url);
+  return { state: request.state, expiresAtMs: request.expiresAtMs };
 }

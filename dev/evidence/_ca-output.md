@@ -852,3 +852,64 @@ Verification:
 Complete detailed evidence and manifest: `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-LAUNCH-01.md`.
 
 Physical iPhone Authenticate-button validation remains required after independent review and a later supervisor-controlled BRAT prerelease. No iPhone pairing/synchronization, release operation, integration merge, `master` change, or Stage 3 work occurred.
+
+---
+
+## G1 / C1–C3 Rejection Correction — Supported iOS External-Browser Handoff
+
+This correction supersedes the rejected browser-reservation design and causal characterization in the immediately preceding iOS OAuth repair entry.
+
+### Proven fact and corrected diagnosis
+
+The human-provided physical fact remains: the prior stock-iPhone build produced no visible OAuth browser handoff after tapping Authenticate. Physical testing was not performed by this coding session.
+
+The rejected repair's static defect was its use of `_blank` plus `about:blank` plus later mutation of a returned window-like object. That did not establish the required external/default-browser boundary. The evidence does not establish that asynchronous work inherently destroyed WebKit user activation, and this correction makes no such causal claim.
+
+Obsidian 1.9.10 documents `window.open(url, "_external")` as bypassing Web Viewer and opening the URL in the user's default browser. The plugin's `minAppVersion: 1.11.4` is newer than that documented capability.
+
+### C1–C3 completed
+
+- C1: removed the blank reservation, mutable returned-window dependency, and cancellation wrapper; added an injectable launcher that sends the final authorization URL directly to `_external` and surfaces missing capability safely.
+- C2: `Platform.isMobileApp` selects the external launcher; desktop retains its validated `_blank` plus `noopener,noreferrer` default. One OAuth transaction is created before one launch; state, PKCE, callback/current-session delegation, token exchange, SecretStorage, and exact `drive.file` scope are unchanged.
+- C3: replaced reservation-confirming tests with external-browser contract, transaction-count/order, error propagation, desktop preservation, callback lifecycle, exact-scope, and mobile-dependency-isolation coverage. Corrected both evidence files to distinguish static proof from pending physical validation.
+
+### Complete correction-pass manifest
+
+Created:
+
+- none.
+
+Modified:
+
+- `src/drive/oauth-return.ts`;
+- `src/main.ts`;
+- `test/phase6-alpha-ios-oauth-launch.test.ts`;
+- `test/phase6-alpha-oauth-lifecycle.test.ts`;
+- `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-LAUNCH-01.md`;
+- `dev/evidence/_ca-output.md`.
+
+Deleted:
+
+- none.
+
+`src/product/runtime.ts` required no correction-pass edit because its injected-launcher/default-desktop seam was already mechanically suitable. The ignored `main.js` was regenerated only as a verification artifact.
+
+### Verification
+
+- `npm run typecheck`: PASS;
+- focused OAuth launch/live/lifecycle/mobile-safety gate: 25/25 PASS;
+- `npm test`: 268/270 PASS, with only the same two pre-existing Windows drive-qualified portable-collision assertions;
+- `npm run build`: PASS;
+- `npm run check`: typecheck PASS, then 268/270 tests with the same two baseline failures; aggregate exits before its build step;
+- `git diff --check`: PASS apart from informational LF-to-CRLF working-copy warnings;
+- `BUILD_VERIFY_ENTRYPOINT=PASS`;
+- `BUILD_VERIFY_SYNTAX=PASS`;
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`;
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`;
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`;
+- generated `main.js`: `291948` bytes;
+- SHA-256: `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`.
+
+### Remaining limitation
+
+Physical iPhone OAuth launch is **NOT AVAILABLE IN THIS SESSION**. It remains a supervisor-controlled post-review test of the corrected BRAT artifact. No iPhone pairing/synchronization, release/tag operation, integration merge, `master` modification, performance work, or Stage 3 work occurred.
