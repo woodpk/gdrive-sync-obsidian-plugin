@@ -3,6 +3,12 @@ export interface DiagnosticShareNavigator {
   readonly canShare?: (data?: ShareData) => boolean;
 }
 
+export interface DiagnosticClipboardNavigator {
+  readonly clipboard?: {
+    readonly writeText?: (text: string) => Promise<void>;
+  };
+}
+
 export const DIAGNOSTIC_LOG_FILENAME = "brain-sync-diagnostic-log.txt";
 
 export function createDiagnosticLogFile(text: string): File {
@@ -19,6 +25,22 @@ export function canShareDiagnosticLogFile(
   } catch {
     return false;
   }
+}
+
+/**
+ * Writes diagnostic text to the Clipboard API immediately. The protected
+ * writeText() call occurs before this function returns its Promise, so callers
+ * can invoke it directly from a user gesture without an intervening await.
+ */
+export function copyDiagnosticLogText(
+  text: string,
+  navigatorLike: DiagnosticClipboardNavigator | undefined = globalThis.navigator,
+): Promise<void> {
+  const clipboard = navigatorLike?.clipboard;
+  if (!clipboard?.writeText) {
+    return Promise.reject(new Error("clipboard API is unavailable on this device"));
+  }
+  return clipboard.writeText(text);
 }
 
 /**
