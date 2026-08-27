@@ -7,6 +7,7 @@ import {
   type DiagnosticLogLevel,
   type DiagnosticSummary,
 } from "../diagnostics/diagnostic-logger";
+import { canShareDiagnosticLogFile } from "../diagnostics/share-export";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
@@ -23,6 +24,7 @@ export interface Phase5SettingsHost {
   clearAuthenticationAndPairing(): Promise<void>;
   diagnosticsSummary(): DiagnosticSummary;
   copyDiagnosticLog(): Promise<void>;
+  shareDiagnosticLog(): Promise<void>;
   clearDiagnosticLog(): Promise<void>;
   testExternalBrowser(): void;
   testDelayedExternalBrowser(): Promise<void>;
@@ -139,10 +141,13 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
     containerEl.createEl("p", { text: `Oldest retained record: ${summary.oldest ? `#${summary.oldest.sequence} (${summary.oldest.timestamp})` : "none"}` });
     containerEl.createEl("p", { text: `Newest retained record: ${summary.newest ? `#${summary.newest.sequence} (${summary.newest.timestamp})` : "none"}` });
     new Setting(containerEl).setName("Copy log to clipboard").setDesc("Copies the complete current bounded log as deterministic plaintext records.").addButton(button => button.setButtonText("Copy log").onClick(() => this.host.copyDiagnosticLog()));
+    const shareSupported = canShareDiagnosticLogFile();
     new Setting(containerEl)
-      .setName("Export log as text")
-      .setDesc("Not safely supported by the current cross-platform Obsidian API without writing into the vault. Use clipboard export on iPhone.")
-      .addButton(button => button.setButtonText("Export .txt").setDisabled(true));
+      .setName("Share / export log as .txt")
+      .setDesc(shareSupported
+        ? "Opens the system share sheet with a real text file. On iPhone, choose Save to Files to place the log in the Files app."
+        : "File sharing is not exposed by this runtime. Clipboard export remains available above.")
+      .addButton(button => button.setButtonText("Share .txt").setDisabled(!shareSupported).onClick(() => this.host.shareDiagnosticLog()));
     new Setting(containerEl).setName("Clear log").setDesc("Clears diagnostic records on this device only; audit, OAuth credentials, pairing, and sync state are unchanged.").addButton(button => button.setButtonText("Clear").setWarning().onClick(async () => {
       await this.host.clearDiagnosticLog();
       this.display();

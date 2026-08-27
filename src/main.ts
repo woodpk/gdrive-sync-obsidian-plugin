@@ -3,6 +3,7 @@ import { formatOAuthDiagnosticSuffix, type OAuthCallbackInput, type OAuthComplet
 import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
 import { DiagnosticLogger, normalizeDiagnosticError, type DiagnosticSummary } from "./diagnostics/diagnostic-logger";
+import { shareDiagnosticLogText } from "./diagnostics/share-export";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -65,6 +66,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       clearAuthenticationAndPairing: () => this.deauthorize(),
       diagnosticsSummary: () => this.diagnosticsSummary(),
       copyDiagnosticLog: () => this.copyDiagnosticLog(),
+      shareDiagnosticLog: () => this.shareDiagnosticLog(),
       clearDiagnosticLog: () => this.clearDiagnosticLog(),
       testExternalBrowser: () => this.testExternalBrowser(),
       testDelayedExternalBrowser: () => this.testDelayedExternalBrowser(),
@@ -285,6 +287,24 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       await globalThis.navigator.clipboard.writeText(this.diagnostics.renderText());
       new Notice("Device diagnostic log copied. The export contains sanitized metadata only.");
     } catch (error) { this.noticeError("Diagnostic log could not be copied", error); }
+  }
+  private shareDiagnosticLog(): Promise<void> {
+    if (!this.diagnostics) {
+      new Notice("Diagnostic logger is unavailable.");
+      return Promise.resolve();
+    }
+    try {
+      const pending = shareDiagnosticLogText(this.diagnostics.renderText());
+      return pending
+        .then(() => { new Notice("Device diagnostic log handed to the system share sheet as a sanitized .txt file."); })
+        .catch(error => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          this.noticeError("Diagnostic log could not be shared", error);
+        });
+    } catch (error) {
+      this.noticeError("Diagnostic log could not be shared", error);
+      return Promise.resolve();
+    }
   }
   private async clearDiagnosticLog(): Promise<void> {
     if (!this.diagnostics) { new Notice("Diagnostic logger is unavailable."); return; }
