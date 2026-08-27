@@ -108,7 +108,7 @@ test("iOS OAuth launch: mobile selects _external while desktop retains its valid
     readFile(join(root, "src", "main.ts"), "utf8"),
     readFile(join(root, "src", "product", "runtime.ts"), "utf8"),
   ]);
-  const authenticateStart = mainSource.indexOf("private async authenticate(): Promise<void>");
+  const authenticateStart = mainSource.indexOf("private async authenticate(attemptId: number): Promise<void>");
   const authenticateEnd = mainSource.indexOf("private async createManagedRemote", authenticateStart);
   const authenticateSource = mainSource.slice(authenticateStart, authenticateEnd);
 

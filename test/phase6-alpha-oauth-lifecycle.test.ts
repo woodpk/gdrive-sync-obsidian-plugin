@@ -134,13 +134,13 @@ test("T3 Authenticate-after-initialization path cannot register the OAuth action
   const root = join(__dirname, "..", "..");
   const mainSource = await readFile(join(root, "src", "main.ts"), "utf8");
   const runtimeSource = await readFile(join(root, "src", "product", "runtime.ts"), "utf8");
-  const authenticateStart = mainSource.indexOf("private async authenticate(): Promise<void>");
+  const authenticateStart = mainSource.indexOf("private async authenticate(attemptId: number): Promise<void>");
   const createRemoteStart = mainSource.indexOf("private async createManagedRemote", authenticateStart);
   const authenticateSource = mainSource.slice(authenticateStart, createRemoteStart);
 
   assert.ok(authenticateStart >= 0 && createRemoteStart > authenticateStart);
-  assert.match(authenticateSource, /runtime\?\.initialize\(\)/);
-  assert.match(authenticateSource, /runtime\?\.authenticate\(Platform\.isMobileApp/);
+  assert.match(authenticateSource, /await this\.runtime\.initialize\(\)/);
+  assert.match(authenticateSource, /await this\.runtime\.authenticate\(Platform\.isMobileApp/);
   assert.doesNotMatch(authenticateSource, /registerGoogleOAuthReturn/);
   assert.doesNotMatch(runtimeSource, /registerGoogleOAuthReturn\s*\(/);
 });

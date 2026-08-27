@@ -1,6 +1,8 @@
 import { Notice, Platform, Plugin } from "obsidian";
-import { formatOAuthDiagnosticSuffix } from "./drive/auth";
+import { formatOAuthDiagnosticSuffix, type OAuthCallbackInput, type OAuthCompletion } from "./drive/auth";
 import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
+import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
+import { DiagnosticLogger, normalizeDiagnosticError, type DiagnosticSummary } from "./diagnostics/diagnostic-logger";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -10,6 +12,7 @@ import { BrainSyncSettingsTab } from "./product/settings-tab";
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
   private dataRepository?: PluginDataRepository;
+  private diagnostics?: DiagnosticLogger;
   private runtime?: Phase5ProductRuntime;
   private statusEl?: HTMLElement;
   private unsubscribeStatus?: () => void;
@@ -18,12 +21,21 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   async onload(): Promise<void> {
     this.dataRepository = new PluginDataRepository({ loadData: () => this.loadData(), saveData: data => this.saveData(data) });
     this.currentSettings = await this.dataRepository.loadSettings();
+    this.diagnostics = new DiagnosticLogger({
+      persistence: this.dataRepository,
+      level: this.currentSettings.diagnosticLogLevel,
+      retentionLimit: this.currentSettings.diagnosticRetention,
+      consoleMirror: this.currentSettings.diagnosticConsoleMirror,
+      platform: Platform.isMobileApp ? "mobile" : Platform.isDesktopApp ? "desktop" : "unknown",
+    });
+    await this.diagnostics.initialize();
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("BRAIN sync: setup required");
 
     this.runtime = new Phase5ProductRuntime({
       app: this.app,
       plugin: this,
+      diagnostics: this.diagnostics,
       settings: () => this.currentSettings,
       data: this.dataRepository,
       saveSettings: settings => this.replaceSettings(settings),
@@ -31,9 +43,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     });
     registerGoogleOAuthReturn(
       this,
-      async input => this.runtime
-        ? this.runtime.completeGoogleAuthorization(input)
-        : { ok: false as const, reason: "missing-transaction" as const },
+      input => this.completeGoogleAuthorizationWithDiagnostics(input),
       result => {
         this.lastOAuthDiagnosticText = result.ok
           ? "Google authentication completed."
@@ -41,16 +51,23 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
         new Notice(this.lastOAuthDiagnosticText, result.ok ? 5_000 : 30_000);
       },
     );
+    this.diagnostics.debug("oauth.callback", "callback-registration-active", { callbackRegistrationActive: true });
 
     this.addSettingTab(new BrainSyncSettingsTab({
       app: this.app,
       plugin: this,
       settings: () => this.currentSettings,
       updateSettings: patch => this.updateSettings(patch),
-      authenticate: () => this.authenticate(),
+      authenticationButtonPressed: () => this.authenticationButtonPressed(),
+      authenticate: attemptId => this.authenticate(attemptId),
       createManagedRemote: () => this.createManagedRemote(),
       pairManagedRemote: () => this.pairManagedRemote(),
       clearAuthenticationAndPairing: () => this.deauthorize(),
+      diagnosticsSummary: () => this.diagnosticsSummary(),
+      copyDiagnosticLog: () => this.copyDiagnosticLog(),
+      clearDiagnosticLog: () => this.clearDiagnosticLog(),
+      testExternalBrowser: () => this.testExternalBrowser(),
+      testDelayedExternalBrowser: () => this.testDelayedExternalBrowser(),
     }));
 
     this.addCommand({ id: "sync-now", name: "Sync now", callback: () => void this.openManualPreview() });
@@ -58,19 +75,36 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "pause-sync", name: "Pause synchronization", callback: () => void this.control({ kind: "pause" }) });
     this.addCommand({ id: "resume-sync", name: "Resume synchronization", callback: () => void this.control({ kind: "resume" }) });
     this.addCommand({ id: "cancel-active-sync", name: "Cancel active synchronization", callback: () => void this.control({ kind: "cancel-active-sync" }) });
-    this.addCommand({ id: "authenticate-google", name: "Authenticate with Google", callback: () => void this.authenticate() });
+    this.addCommand({ id: "authenticate-google", name: "Authenticate with Google", callback: () => { const attemptId = this.beginAuthenticationAttempt("command"); void this.authenticate(attemptId); } });
     this.addCommand({ id: "copy-last-oauth-diagnostic", name: "Copy last Google authentication diagnostic", callback: () => void this.copyLastOAuthDiagnostic() });
     this.addCommand({ id: "open-sync-attention", name: "Open conflicts and recovery", callback: () => this.openAttention() });
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
     this.addCommand({ id: "copy-sync-diagnostics", name: "Copy synchronization diagnostics", callback: () => void this.copyDiagnostics() });
+    this.addCommand({ id: "copy-device-diagnostic-log", name: "Copy device diagnostic log", callback: () => void this.copyDiagnosticLog() });
 
-    try { await this.runtime.initialize(); this.bindStatus(); this.refreshStatus(); }
-    catch (error) { const message = error instanceof Error ? error.message : String(error); this.statusEl.setText("BRAIN sync: blocked"); new Notice(`BRAIN sync initialization blocked: ${message}`); }
+    try {
+      await this.runtime.initialize();
+      this.bindStatus();
+      this.refreshStatus();
+    } catch (error) {
+      this.diagnostics.failure("runtime", "initialization-failed", error, {
+        operation: "initialize",
+        stage: "plugin-onload",
+        classification: "runtime-initialization-failure",
+        retryable: true,
+        recoveryIntended: true,
+        runtimeInitialized: false,
+      });
+      const safe = normalizeDiagnosticError(error).safeMessage ?? "Initialization failed.";
+      this.statusEl.setText("BRAIN sync: blocked");
+      new Notice(`BRAIN sync initialization blocked: ${safe}`);
+    }
   }
 
   async onunload(): Promise<void> {
     this.unsubscribeStatus?.(); this.unsubscribeStatus = undefined;
     await this.runtime?.disposeProduct();
+    await this.diagnostics?.flush();
   }
 
   private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
@@ -87,20 +121,102 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       next.periodicEnabled = false;
     }
     await this.replaceSettings(next);
+    this.diagnostics?.configure({
+      level: this.currentSettings.diagnosticLogLevel,
+      retentionLimit: this.currentSettings.diagnosticRetention,
+      consoleMirror: this.currentSettings.diagnosticConsoleMirror,
+    });
     await this.runtime?.applySettingsChange(previous, this.currentSettings);
   }
 
-  private async authenticate(): Promise<void> {
+  private authenticationButtonPressed(): number {
+    const attemptId = this.beginAuthenticationAttempt("settings-button");
+    this.diagnostics?.trace("oauth.settings", "authenticate-click-handler-enter", { source: "settings-button" }, attemptId);
+    return attemptId;
+  }
+
+  private beginAuthenticationAttempt(source: string): number {
+    if (!this.diagnostics) return 1;
+    return this.diagnostics.beginAttempt(source);
+  }
+
+  private async authenticate(attemptId: number): Promise<void> {
+    const diagnostics = this.diagnostics;
+    diagnostics?.activateAttempt(attemptId);
+    diagnostics?.trace("oauth.plugin", "plugin-authenticate-enter", { stage: "plugin-authenticate" }, attemptId);
+    diagnostics?.debug("oauth.plugin", "authentication-preconditions", {
+      operation: "authenticate",
+      clientIdConfigured: Boolean(this.currentSettings.oauthClientId),
+      redirectUriConfigured: Boolean(this.currentSettings.oauthRedirectUri),
+      clientSecretConfigured: Boolean(this.app.secretStorage.getSecret("brain-google-client-secret")),
+      runtimeInitialized: Boolean(this.runtime),
+      callbackRegistrationActive: true,
+      browserApiPresent: typeof globalThis.open === "function",
+      launcher: Platform.isMobileApp ? "external-browser" : "system-browser",
+      target: Platform.isMobileApp ? "_external" : "_blank",
+    }, attemptId);
     try {
       if (!this.runtime) throw new Error("The synchronization runtime is unavailable.");
       if (!this.currentSettings.oauthClientId || !this.currentSettings.oauthRedirectUri) throw new Error("Configure OAuth client ID and redirect URI first.");
-      await this.runtime?.initialize();
+      diagnostics?.trace("oauth.plugin", "runtime-initialize-start", { stage: "runtime-initialize" }, attemptId);
+      await this.runtime.initialize();
+      diagnostics?.trace("oauth.plugin", "runtime-initialize-complete", { stage: "runtime-initialize", runtimeInitialized: true }, attemptId);
       this.bindStatus();
-      await this.runtime?.authenticate(Platform.isMobileApp ? { openExternal: openAuthorizationInExternalBrowser } : undefined);
+      diagnostics?.trace("oauth.plugin", "runtime-authenticate-call-start", { stage: "runtime-authenticate" }, attemptId);
+      await this.runtime.authenticate(Platform.isMobileApp ? { openExternal: openAuthorizationInExternalBrowser } : undefined);
+      diagnostics?.trace("oauth.plugin", "runtime-authenticate-call-return", { stage: "runtime-authenticate", result: "authorization-launch-call-returned" }, attemptId);
+      diagnostics?.info("oauth.plugin", "authentication-method-returned", { result: "authorization-launch-call-returned" }, attemptId);
+      diagnostics?.trace("oauth.plugin", "plugin-authenticate-exit", { stage: "plugin-authenticate", result: "awaiting-callback" }, attemptId);
     } catch (error) {
-      this.noticeError("Authentication could not start", error);
+      diagnostics?.failure("oauth.plugin", "authentication-attempt-failed", error, {
+        operation: "authenticate",
+        stage: "initiation",
+        classification: "authentication-initiation-failure",
+        retryable: true,
+        recoveryIntended: true,
+        runtimeInitialized: Boolean(this.runtime),
+      }, attemptId);
+      const safe = normalizeDiagnosticError(error).safeMessage ?? "Authentication initiation failed.";
+      new Notice(`Authentication could not start: ${safe}`);
+      diagnostics?.endAttempt(attemptId);
     }
   }
+
+  private async completeGoogleAuthorizationWithDiagnostics(input: OAuthCallbackInput): Promise<OAuthCompletion> {
+    const diagnostics = this.diagnostics;
+    const attemptId = diagnostics?.currentAttemptId();
+    diagnostics?.info("oauth.callback", "callback-received", undefined, attemptId);
+    diagnostics?.debug("oauth.callback", "callback-context", {
+      operation: "complete-authorization",
+      codePresent: Boolean(input.code),
+      statePresent: Boolean(input.state),
+      errorPresent: Boolean(input.error),
+      callbackRegistrationActive: true,
+      runtimeInitialized: Boolean(this.runtime),
+    }, attemptId);
+    diagnostics?.trace("oauth.callback", "callback-processing-start", { stage: "callback-processing" }, attemptId);
+    const result = this.runtime
+      ? await this.runtime.completeGoogleAuthorization(input)
+      : { ok: false as const, reason: "missing-transaction" as const };
+    if (result.ok) {
+      diagnostics?.trace("oauth.callback", "callback-processing-complete", { stage: "callback-processing", result: "completed" }, attemptId);
+      diagnostics?.info("oauth.callback", "authentication-attempt-completed", { result: "authenticated" }, attemptId);
+    } else {
+      diagnostics?.error("oauth.callback", "authentication-attempt-failed", {
+        operation: "complete-authorization",
+        stage: "callback-processing",
+        classification: `oauth-${result.reason}`,
+        reason: result.reason,
+        safeMessage: result.detail ?? result.reason,
+        retryable: true,
+        recoveryIntended: true,
+        runtimeInitialized: Boolean(this.runtime),
+      }, attemptId);
+    }
+    if (attemptId !== undefined) diagnostics?.endAttempt(attemptId);
+    return result;
+  }
+
   private async createManagedRemote(): Promise<void> {
     try { if (!this.runtime) return; const identity = await this.runtime.createManagedRemote(); this.bindStatus(); new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`); }
     catch (error) { this.noticeError("Managed remote creation failed", error); }
@@ -160,6 +276,36 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       new Notice("Last Google authentication diagnostic copied. It contains sanitized metadata only.");
     } catch (error) { this.noticeError("Google authentication diagnostic could not be copied", error); }
   }
+  private diagnosticsSummary(): DiagnosticSummary { return this.diagnostics?.summary() ?? { count: 0 }; }
+  private async copyDiagnosticLog(): Promise<void> {
+    try {
+      if (!this.diagnostics) throw new Error("diagnostic logger is unavailable");
+      await this.diagnostics.flush();
+      if (!globalThis.navigator?.clipboard?.writeText) throw new Error("clipboard API is unavailable on this device");
+      await globalThis.navigator.clipboard.writeText(this.diagnostics.renderText());
+      new Notice("Device diagnostic log copied. The export contains sanitized metadata only.");
+    } catch (error) { this.noticeError("Diagnostic log could not be copied", error); }
+  }
+  private async clearDiagnosticLog(): Promise<void> {
+    if (!this.diagnostics) { new Notice("Diagnostic logger is unavailable."); return; }
+    this.diagnostics.clear();
+    await this.diagnostics.flush();
+    new Notice("Device diagnostic log cleared. Synchronization history, credentials, pairing, and sync state were not changed.");
+  }
+  private testExternalBrowser(): void {
+    if (!this.diagnostics) { new Notice("Diagnostic logger is unavailable."); return; }
+    try {
+      runDirectExternalBrowserProbe(this.diagnostics);
+      new Notice("External-browser test call returned. This does not prove the browser became visible; inspect the physical result and copied log.");
+    } catch (error) { this.noticeError("External-browser test failed", error); }
+  }
+  private async testDelayedExternalBrowser(): Promise<void> {
+    if (!this.diagnostics) { new Notice("Diagnostic logger is unavailable."); return; }
+    try {
+      await runDelayedExternalBrowserProbe(this.diagnostics);
+      new Notice("Delayed external-browser test call returned. This does not prove the browser became visible; inspect the physical result and copied log.");
+    } catch (error) { this.noticeError("Delayed external-browser test failed", error); }
+  }
 
   private bindStatus(): void {
     this.unsubscribeStatus?.();
@@ -172,5 +318,8 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     const status = this.runtime?.productController()?.currentSurface().status.kind;
     this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "integration blocked" : "setup required")}`);
   }
-  private noticeError(prefix: string, error: unknown): void { new Notice(`${prefix}: ${error instanceof Error ? error.message : String(error)}`); }
+  private noticeError(prefix: string, error: unknown): void {
+    const safe = normalizeDiagnosticError(error).safeMessage ?? "An error occurred.";
+    new Notice(`${prefix}: ${safe}`);
+  }
 }

@@ -1,4 +1,6 @@
 import type { AuditRecord } from "../contracts";
+import type { DiagnosticLogLevel, DiagnosticPersistence, DiagnosticStoreState } from "../diagnostics/diagnostic-logger";
+import { DEFAULT_DIAGNOSTIC_RETENTION } from "../diagnostics/diagnostic-logger";
 import type { AuditPersistence } from "./audit-history";
 
 export interface BrainSyncSettings {
@@ -21,6 +23,9 @@ export interface BrainSyncSettings {
   wifiOnlyLargeTransfers: boolean;
   largeTransferThresholdBytes: number;
   auditRetention: number;
+  diagnosticLogLevel: DiagnosticLogLevel;
+  diagnosticConsoleMirror: boolean;
+  diagnosticRetention: number;
 }
 
 export const DEFAULT_SETTINGS: BrainSyncSettings = {
@@ -43,11 +48,20 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   wifiOnlyLargeTransfers: true,
   largeTransferThresholdBytes: 25 * 1024 * 1024,
   auditRetention: 500,
+  diagnosticLogLevel: "info",
+  diagnosticConsoleMirror: false,
+  diagnosticRetention: DEFAULT_DIAGNOSTIC_RETENTION,
 };
 
 interface PersistedPluginData {
   readonly settings?: Partial<BrainSyncSettings>;
   readonly audit?: readonly AuditRecord[];
+  readonly diagnostics?: unknown;
+}
+interface MutablePluginData {
+  settings: BrainSyncSettings;
+  audit: AuditRecord[];
+  diagnostics?: unknown;
 }
 
 export interface PluginDataHost {
@@ -55,9 +69,9 @@ export interface PluginDataHost {
   saveData(data: unknown): Promise<void>;
 }
 
-/** One serialized device-local persistence owner prevents settings/audit writers from clobbering each other. */
-export class PluginDataRepository implements AuditPersistence {
-  private loaded?: Promise<{ settings: BrainSyncSettings; audit: AuditRecord[] }>;
+/** One serialized device-local persistence owner prevents settings/audit/diagnostic writers from clobbering each other. */
+export class PluginDataRepository implements AuditPersistence, DiagnosticPersistence {
+  private loaded?: Promise<MutablePluginData>;
   private saveChain = Promise.resolve();
 
   constructor(private readonly host: PluginDataHost) {}
@@ -77,20 +91,33 @@ export class PluginDataRepository implements AuditPersistence {
     data.audit = [...records];
     await this.persist(data);
   }
+  async loadDiagnostics(): Promise<unknown> { return (await this.data()).diagnostics; }
+  async saveDiagnostics(state: DiagnosticStoreState): Promise<void> {
+    const data = await this.data();
+    data.diagnostics = {
+      records: state.records.map(record => ({ ...record, ...(record.fields ? { fields: { ...record.fields } } : {}) })),
+      nextSequence: state.nextSequence,
+      nextAttemptId: state.nextAttemptId,
+    };
+    await this.persist(data);
+  }
 
-  private data(): Promise<{ settings: BrainSyncSettings; audit: AuditRecord[] }> {
+  private data(): Promise<MutablePluginData> {
     this.loaded ??= this.host.loadData().then(raw => {
       const value = raw && typeof raw === "object" ? raw as PersistedPluginData : {};
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
       merged.scopeReconcileRequired = Boolean(merged.scopeReconcileRequired);
-      return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [] };
+      if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
+      merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);
+      if (!Number.isSafeInteger(merged.diagnosticRetention)) merged.diagnosticRetention = DEFAULT_DIAGNOSTIC_RETENTION;
+      return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [], diagnostics: value.diagnostics };
     });
     return this.loaded;
   }
 
-  private async persist(data: { settings: BrainSyncSettings; audit: AuditRecord[] }): Promise<void> {
-    this.saveChain = this.saveChain.then(() => this.host.saveData({ settings: data.settings, audit: data.audit }));
+  private async persist(data: MutablePluginData): Promise<void> {
+    this.saveChain = this.saveChain.then(() => this.host.saveData({ settings: data.settings, audit: data.audit, diagnostics: data.diagnostics }));
     await this.saveChain;
   }
 }

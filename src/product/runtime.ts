@@ -4,6 +4,8 @@ import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import { instrumentAuthorizationBrowserLauncher } from "../diagnostics/oauth-diagnostics";
 import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompletion } from "../drive/auth";
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
 import { beginGoogleAuthorization, openAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "../drive/oauth-return";
@@ -25,6 +27,13 @@ import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
 import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
+const NOOP_DIAGNOSTICS = {
+  trace: () => undefined,
+  debug: () => undefined,
+  info: () => undefined,
+  error: () => undefined,
+  failure: () => undefined,
+} as unknown as DiagnosticLogger;
 function driveSignalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
 function exclusionsEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
@@ -33,6 +42,7 @@ function exclusionsEqual(a: readonly string[], b: readonly string[]): boolean {
 export interface ProductRuntimeHost {
   readonly app: App;
   readonly plugin: Plugin;
+  readonly diagnostics?: DiagnosticLogger;
   settings(): BrainSyncSettings;
   data: PluginDataRepository;
   saveSettings(settings: BrainSyncSettings): Promise<void>;
@@ -54,16 +64,37 @@ export class Phase5ProductRuntime {
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
   async initialize(): Promise<void> {
-    await this.disposeProduct();
+    const diagnostics = this.host.diagnostics ?? NOOP_DIAGNOSTICS;
+    diagnostics.trace("runtime", "initialize-enter", { stage: "runtime-initialize" });
     let settings = this.host.settings();
+    diagnostics.debug("runtime", "initialize-context", {
+      operation: "initialize",
+      clientIdConfigured: Boolean(settings.oauthClientId),
+      redirectUriConfigured: Boolean(settings.oauthRedirectUri),
+      clientSecretConfigured: Boolean(this.host.app.secretStorage.getSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID)),
+      deviceIdentityPresent: Boolean(settings.deviceIdentity),
+      vaultIdentityPresent: Boolean(settings.vaultIdentity),
+      remoteRootPresent: Boolean(settings.remoteRootId),
+    });
+    await this.disposeProduct();
+    diagnostics.trace("runtime", "initialize-dispose-complete", { stage: "dispose-previous-runtime" });
     if (!settings.deviceIdentity) {
+      diagnostics.trace("runtime", "device-identity-generation-start", { stage: "device-identity" });
       const generated = generateDeviceIdentity();
       settings = { ...settings, deviceIdentity: String(generated) };
       await this.host.saveSettings(settings);
+      diagnostics.trace("runtime", "device-identity-generation-complete", { stage: "device-identity", deviceIdentityPresent: true });
+    } else {
+      diagnostics.trace("runtime", "device-identity-ready", { stage: "device-identity", deviceIdentityPresent: true });
     }
     const current = this.host.settings();
-    if (!current.oauthClientId || !current.oauthRedirectUri) return;
+    if (!current.oauthClientId || !current.oauthRedirectUri) {
+      diagnostics.debug("runtime", "initialize-deferred", { reason: "oauth-configuration-incomplete", runtimeInitialized: false });
+      diagnostics.trace("runtime", "initialize-exit", { result: "oauth-configuration-incomplete" });
+      return;
+    }
 
+    diagnostics.trace("runtime", "oauth-boundary-create-enter", { stage: "oauth-boundary" });
     this.boundary = createObsidianGoogleDriveBoundary({
       oauth: {
         clientId: current.oauthClientId,
@@ -73,10 +104,19 @@ export class Phase5ProductRuntime {
       secretStorage: this.host.app.secretStorage,
       requestUrl,
     });
-    if (!current.vaultIdentity || !current.remoteRootId) return;
+    this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
+    diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });
+    if (!current.vaultIdentity || !current.remoteRootId) {
+      diagnostics.info("runtime", "runtime-initialized", { result: "oauth-ready" });
+      diagnostics.trace("runtime", "initialize-exit", { result: "oauth-ready" });
+      return;
+    }
 
+    diagnostics.trace("runtime", "local-adapter-create-enter", { stage: "local-adapter" });
     const rawLocal = await this.createLocalAdapter();
+    diagnostics.trace("runtime", "local-adapter-create-exit", { stage: "local-adapter", result: Platform.isDesktopApp ? "desktop-adapter" : "mobile-adapter" });
     const configurationDirectory = await rawLocal.activeConfigurationDirectory();
+    diagnostics.trace("runtime", "configuration-directory-ready", { stage: "path-scope" });
     const scope = new ProductPathScope(configurationDirectory, () => ({ userExclusionPatterns: this.host.settings().userExclusionPatterns }));
     const scopedLocal = new ScopedLocalVault(rawLocal, scope);
     this.local = new CanonicalEvidenceLocalVault(scopedLocal);
@@ -90,6 +130,7 @@ export class Phase5ProductRuntime {
       expectedDeviceIdentity: deviceIdentity,
     };
     this.state = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
+    diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
     const snapshots = new ProductSnapshotAssembler(
       this.local,
@@ -107,6 +148,7 @@ export class Phase5ProductRuntime {
     );
     const conflicts = new ThreeWayConflictResolver(textVersions, textVersions, deviceIdentity);
     this.audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
+    diagnostics.trace("runtime", "audit-store-ready", { stage: "audit-store", storeReady: true });
 
     let controller: IntegratedProductController;
     const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence(), textVersions);
@@ -169,6 +211,9 @@ export class Phase5ProductRuntime {
       };
     });
     this.scheduler.start();
+    diagnostics.trace("runtime", "scheduler-started", { stage: "scheduler" });
+    diagnostics.info("runtime", "runtime-initialized", { result: "product-ready" });
+    diagnostics.trace("runtime", "initialize-exit", { result: "product-ready" });
   }
 
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
@@ -186,15 +231,62 @@ export class Phase5ProductRuntime {
   }
 
   async completeGoogleAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
+    const diagnostics = this.host.diagnostics ?? NOOP_DIAGNOSTICS;
+    diagnostics.trace("oauth.callback", "runtime-callback-enter", { stage: "callback-processing" });
     const oauth = this.boundary?.oauth;
-    if (!oauth) return { ok: false, reason: "missing-transaction" };
-    return oauth.completeAuthorization(input);
+    if (!oauth) {
+      diagnostics.error("oauth.callback", "runtime-callback-unavailable", {
+        operation: "complete-authorization",
+        stage: "callback-processing",
+        classification: "missing-oauth-runtime",
+        retryable: true,
+        recoveryIntended: true,
+        runtimeInitialized: false,
+      });
+      return { ok: false, reason: "missing-transaction" };
+    }
+    const result = await oauth.completeAuthorization(input);
+    diagnostics.trace("oauth.callback", "runtime-callback-exit", { stage: "callback-processing", result: result.ok ? "completed" : result.reason });
+    return result;
   }
 
   async authenticate(browser: AuthorizationBrowserLauncher = { openExternal: openAuthorizationInSystemBrowser }): Promise<void> {
+    const diagnostics = this.host.diagnostics ?? NOOP_DIAGNOSTICS;
+    diagnostics.trace("oauth.runtime", "runtime-authenticate-enter", { stage: "runtime-authenticate" });
     const boundary = this.boundary;
-    if (!boundary) throw new Error("Configure OAuth client ID and redirect URI first.");
-    await beginGoogleAuthorization(boundary.oauth, browser);
+    if (!boundary) {
+      const error = new Error("Configure OAuth client ID and redirect URI first.");
+      diagnostics.failure("oauth.runtime", "runtime-authenticate-failed", error, {
+        operation: "authenticate",
+        stage: "precondition",
+        classification: "oauth-runtime-unavailable",
+        retryable: true,
+        recoveryIntended: true,
+        runtimeInitialized: false,
+      });
+      throw error;
+    }
+    const mobile = Platform.isMobileApp;
+    diagnostics.debug("oauth.runtime", "authentication-context", {
+      operation: "authenticate",
+      runtimeInitialized: true,
+      clientIdConfigured: Boolean(boundary.oauth.config.clientId),
+      redirectUriConfigured: Boolean(boundary.oauth.config.redirectUri),
+      clientSecretConfigured: Boolean(this.host.app.secretStorage.getSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID)),
+      callbackRegistrationActive: true,
+      browserApiPresent: typeof globalThis.open === "function",
+      launcher: mobile ? "external-browser" : "system-browser",
+      target: mobile ? "_external" : "_blank",
+      transactionPrepared: false,
+      scopeExact: true,
+    });
+    const instrumentedBrowser = instrumentAuthorizationBrowserLauncher(diagnostics, browser, {
+      target: mobile ? "_external" : "_blank",
+      launcher: mobile ? "external-browser" : "system-browser",
+      browserApiPresent: typeof globalThis.open === "function",
+    });
+    await beginGoogleAuthorization(boundary.oauth, instrumentedBrowser);
+    diagnostics.trace("oauth.runtime", "runtime-authenticate-exit", { stage: "runtime-authenticate", result: "authorization-launch-call-returned" });
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {
