@@ -392,3 +392,67 @@ From approved repair head `bcdcf935de0fb49b518d90d7f886b932175f0015` through rej
 - `.github/phase6-alpha-windows-evidence-finalize.sh`.
 
 The preserved combined production/test gate remains run `33031435312`, job `98384624285`, with 265/265 tests PASS, typecheck PASS, build PASS, all five build-verifier checks PASS, `main.js` size `291213` bytes, and SHA-256 `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`. No production/test rerun is required for this evidence-only correction.
+
+---
+
+## iOS OAuth repair fast-forward integration - 2026-08-27
+
+Integration agent: `codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01`.
+
+### Topology
+
+- integration branch: `phase6-integration`;
+- pre-integration SHA: `73453011c54abdca9ff2548803c025fae9886e74`;
+- approved repair branch: `phase6-alpha-ios-oauth-launch-fix`;
+- approved repair head and post-fast-forward source SHA: `d499bb504e7b1092b4dc6d4fba5bf2523151d248`;
+- implementation correction: `11212541b663d2953fd0c1f405a60be4fd57243e`;
+- method: fast-forward only;
+- approved head ancestry: verified;
+- push: pending the separate authorized push step.
+
+### Approved repair net change relative to the integration base
+
+**Created**
+
+- `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-LAUNCH-01.md`;
+- `test/phase6-alpha-ios-oauth-launch.test.ts`.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `src/drive/oauth-return.ts`;
+- `src/main.ts`;
+- `src/product/runtime.ts`;
+- `test/phase6-alpha-oauth-lifecycle.test.ts`.
+
+**Deleted**
+
+- none.
+
+### Integration verification
+
+- typecheck: PASS;
+- focused OAuth/mobile gate: 25/25 PASS;
+- full suite: qualified PASS, 268/270, with only the two known pre-existing Windows drive-qualified assertions;
+- build: PASS;
+- all five build verifiers: PASS;
+- `main.js`: `291948` bytes;
+- SHA-256: `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`;
+- `git diff --check`: PASS.
+
+### Integration evidence-pass net change
+
+**Created**
+
+- `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01.md`.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+**Deleted**
+
+- none.
+
+Physical iPhone OAuth validation remains pending. No iPhone pairing or synchronization, performance work, Stage 3 work, release mutation, `master` modification, or PR `#15` merge occurred.

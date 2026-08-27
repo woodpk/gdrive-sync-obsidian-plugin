@@ -915,3 +915,13 @@ Deleted:
 Physical iPhone OAuth launch is **NOT AVAILABLE IN THIS SESSION**. It remains a supervisor-controlled post-review test of the corrected BRAT artifact. No iPhone pairing/synchronization, release/tag operation, integration merge, `master` modification, performance work, or Stage 3 work occurred.
 
 PR `#20` updated in place with correction source commit `11212541b663d2953fd0c1f405a60be4fd57243e`, remained open/unmerged, and retained base `phase6-integration`. Automatic Azure Static Web Apps run `33082926371`, job `98554720139`, failed because the app already had the maximum number of staging environments. That deployment-capacity failure did not provide a plugin typecheck/test/build result. No Azure configuration or staging environment was changed by this correction.
+
+---
+
+## Phase 6 Alpha iOS OAuth Repair Integration - `codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01`
+
+On `2026-08-27`, the independently approved repair head `d499bb504e7b1092b4dc6d4fba5bf2523151d248` was fast-forwarded into local `phase6-integration` from base `73453011c54abdca9ff2548803c025fae9886e74` using `git merge --ff-only origin/phase6-alpha-ios-oauth-launch-fix`. The approved head was verified as an ancestor of the result. No merge commit, squash, rebase, cherry-pick, conflict resolution, force push, or `master` change occurred.
+
+Local gates passed: typecheck; 25/25 focused OAuth/mobile tests; build; all five build-verifier checks; and `git diff --check`. The full suite produced 268/270 PASS with only the two qualified, pre-existing Windows drive-path assertions. `npm run check` reproduced the same qualified test result after its typecheck and stopped before its build stage. The independently run build was green and reproduced `main.js` at `291948` bytes with SHA-256 `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`.
+
+Dedicated integration evidence is preserved in `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01.md`. This evidence pass creates that record and modifies this cumulative output plus `dev/evidence/phase6-integration-manifest.md`; it deletes nothing. Physical iPhone OAuth validation remains pending. No iPhone pairing/sync, performance work, Stage 3 work, release/version change, Google Cloud change, Azure change, PR `#15` merge, or `master` modification occurred.
