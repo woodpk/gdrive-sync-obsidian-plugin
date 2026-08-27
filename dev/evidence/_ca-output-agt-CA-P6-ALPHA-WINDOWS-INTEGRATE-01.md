@@ -175,3 +175,83 @@ The fresh combined integration build reproduced the approved artifact identity e
 - PR #15 remains required to stay open and unmerged;
 - `master` must remain unchanged;
 - Stage 3 has not begun.
+
+---
+
+## Evidence provenance correction — C1/C3 closure
+
+This append-only correction supersedes only the earlier incomplete integration-session change-manifest and resulting branch/PR-state characterization. It does not alter the approved implementation, physical Windows acceptance, or automated verification above.
+
+### Rejected-review starting state
+
+Direct repository inspection before this correction verified:
+
+- `phase6-integration` = `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`;
+- `master` = `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`.
+
+The approved repair head `bcdcf935de0fb49b518d90d7f886b932175f0015` is the merge base and direct ancestor of that rejected-review integration head. GitHub compare reports exactly six commits ahead and zero behind.
+
+### Complete committed integration-session history after the approved repair head
+
+The actual post-fast-forward committed history from `bcdcf935de0fb49b518d90d7f886b932175f0015` through rejected-review head `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90` is:
+
+1. `fb6e4f1d0d8a2932ae8c671e8891aeacf641212b` — `docs: add Windows repair integration evidence`
+   - created `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+2. `9668bead31e8cac300528319abf2322da6f2ab36` — `ci: finalize Windows repair integration evidence`
+   - created the initial temporary revision of `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+3. `14b2fb1b7134364976b806eb7a156e9241a3e524` — `ci: remove invalid Windows integration evidence finalizer`
+   - deleted that initial temporary workflow revision.
+4. `3da2b67345a26d76e1c3ce8b476ef208db66b807` — `ci: stage Windows integration evidence finalizer`
+   - created `.github/phase6-alpha-windows-evidence-finalize.sh`.
+5. `8f85afa7aef5eb4befee671fe5f23ff7f12d8455` — `ci: run Windows integration evidence finalizer`
+   - created a subsequent temporary revision of `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+6. `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90` — `docs: record approved Windows first-sync repair integration`
+   - modified `dev/evidence/_ca-output.md`;
+   - modified `dev/evidence/phase6-integration-manifest.md`;
+   - deleted `.github/phase6-alpha-windows-evidence-finalize.sh`;
+   - deleted `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+
+The temporary workflow/script changes above were actual committed repository changes during the integration/evidence-finalization session and therefore belong in the historical change manifest even though they do not survive in the final rejected tree.
+
+### Final net repository change from approved repair head through rejected-review head
+
+For compare `bcdcf935de0fb49b518d90d7f886b932175f0015...cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`, GitHub reports only these persistent net changes:
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+**Deleted in final net tree**
+
+- none.
+
+### Session-transient created/deleted paths
+
+The complete historical manifest additionally includes these paths, both of which were created and later deleted within the six-commit session:
+
+- `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`;
+- `.github/phase6-alpha-windows-evidence-finalize.sh`.
+
+Direct final-tree lookup at the rejected-review head returned `404 Not Found` for both paths, confirming both are absent from that tree.
+
+### Resulting GitHub state at rejected review
+
+Direct GitHub inspection established:
+
+- `phase6-integration`: `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`;
+- `master`: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- PR #15: open, draft, unmerged; head = `phase6-integration`; base = `master`;
+- PR #19: closed; GitHub `merged = true`; head SHA = `bcdcf935de0fb49b518d90d7f886b932175f0015`; `merge_commit_sha = bcdcf935de0fb49b518d90d7f886b932175f0015`.
+
+Repository ancestry shows the approved repair head itself became contained in `phase6-integration`; no separate production merge commit was introduced for PR #19. PR #19 was not reopened, reclosed, retargeted, or otherwise modified merely to change its displayed state.
+
+### Preserved verification boundary
+
+No production/test rerun is required for this evidence-only correction. The preserved combined gate remains run `33031435312`, job `98384624285`, with 265/265 tests PASS, typecheck PASS, build PASS, all five build-verifier checks PASS, `main.js` size `291213` bytes, and SHA-256 `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`.
+
+No production source, test source, package/dependency file, build configuration, or persistent workflow file is authorized to change in this correction. No synchronization is executed, and Stage 3 remains not begun.
