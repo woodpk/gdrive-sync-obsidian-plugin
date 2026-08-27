@@ -2,10 +2,42 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canShareDiagnosticLogFile,
+  copyDiagnosticLogText,
   DIAGNOSTIC_LOG_FILENAME,
   shareDiagnosticLogText,
+  type DiagnosticClipboardNavigator,
   type DiagnosticShareNavigator,
 } from "../src/diagnostics/share-export";
+
+test("diagnostic clipboard export invokes writeText synchronously with the exact rendered text", async () => {
+  let writeCalled = false;
+  let capturedText: string | undefined;
+  let resolveWrite: (() => void) | undefined;
+  const writeCompletion = new Promise<void>(resolve => { resolveWrite = resolve; });
+  const navigatorLike: DiagnosticClipboardNavigator = {
+    clipboard: {
+      writeText(text) {
+        writeCalled = true;
+        capturedText = text;
+        return writeCompletion;
+      },
+    },
+  };
+
+  const rendered = "{\"sequence\":1,\"message\":\"sanitized\"}\n";
+  const pending = copyDiagnosticLogText(rendered, navigatorLike);
+
+  assert.equal(writeCalled, true, "clipboard.writeText must execute before the caller can await the returned Promise");
+  assert.equal(capturedText, rendered);
+
+  resolveWrite?.();
+  await pending;
+});
+
+test("diagnostic clipboard export reports unavailable without performing any vault write", async () => {
+  const navigatorLike: DiagnosticClipboardNavigator = {};
+  await assert.rejects(() => copyDiagnosticLogText("diagnostics", navigatorLike), /clipboard API is unavailable/i);
+});
 
 test("diagnostic .txt share invokes navigator.share synchronously with only one real text file", async () => {
   let shareCalled = false;
