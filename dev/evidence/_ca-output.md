@@ -1073,3 +1073,95 @@ Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deplo
 - no Stage 3 work begun;
 - no `master` modification;
 - PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.
+
+---
+
+## Phase 6 Alpha — iOS HTTPS Callback to Obsidian Handoff Repair — `agt-CODEX-P6-IOS-CALLBACK-HANDOFF-01`
+
+### Authority and provenance
+
+- date: `2026-08-27`;
+- repair branch: `phase6-alpha-ios-callback-handoff-fix`;
+- required source branch: `phase6-alpha-ios-diagnostic-logging`;
+- verified starting/source SHA: `a0fc805b5d93b056d6699fc48633e11782bd0bde`;
+- production/test repair commit: `4268efed443b099319dfe7f99d23e94add39765e`;
+- no merge, rebase, squash, cherry-pick, force push, release, or tag operation was performed.
+
+### Localized repair
+
+The hosted HTTPS OAuth callback page now keeps the existing automatic `obsidian://brain-gdrive-oauth` navigation attempt and also prepares a direct, visible `Open Obsidian to finish authentication` link before that attempt. The direct link supplies a user-gesture fallback when automatic custom-scheme navigation does not open Obsidian. A thrown automatic-navigation error is caught so the already-prepared fallback remains usable.
+
+The page reads the required callback fields before replacing browser history with the query-free pathname. It prepares or launches no handoff unless `state` and either `code` or `error` are present. Valid authorization-code and OAuth-error returns use the same exact custom-scheme boundary. Visible progress, incomplete, post-attempt, and fallback messages do not contain OAuth values.
+
+The repair does not establish that automatic iOS custom-scheme navigation was the root cause; it adds observability and a direct user-gesture fallback at the localized boundary.
+
+### Complete repair-pass manifest
+
+Created:
+
+- none.
+
+Modified:
+
+- `oauth-callback/index.html`;
+- `test/phase3-callback.test.ts`;
+- `dev/evidence/_ca-output.md`.
+
+Deleted:
+
+- none.
+
+`oauth-callback/staticwebapp.config.json`, plugin OAuth/runtime source, synchronization source, version metadata, workflows, and release assets were not modified.
+
+### Verification
+
+- clean dependency install: PASS — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: PASS;
+- focused hosted-callback executable tests: **5/5 PASS**;
+- `npm test`: **294/296 PASS**, with only the two authorized pre-existing Windows drive-qualified assertions listed below;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- `npm run check`: typecheck PASS, then the same qualified 294/296 Windows result; the chained command stopped before its redundant build step;
+- `git diff --check`: PASS apart from informational LF-to-CRLF working-copy warnings.
+
+The two qualified Windows-only failures were unchanged:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`.
+
+Both remain the previously documented drive-prefix expectation difference (`D:\\vault\\...` actual versus `\\vault\\...` expected). No additional test failed.
+
+Five build verifiers:
+
+```text
+BUILD_VERIFY_ENTRYPOINT=PASS
+BUILD_VERIFY_SYNTAX=PASS
+BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS
+BUILD_VERIFY_MOBILE_EVALUATION=PASS
+BUILD_VERIFY_PACKAGE_SHAPE=PASS
+```
+
+Build artifact:
+
+- `main.js` size: `329013` bytes;
+- SHA-256: `1225e9b1798d5238d7fd0e0a2241a40080b02b8c0e7d92970828ac1fa98726c6`;
+- the bundle is byte-identical to the diagnostic source branch artifact, as expected because the repair changes only the hosted callback page and its tests.
+
+During test development, the first focused TypeScript compile identified a nullable regular-expression capture in the test harness. The harness was corrected to fail explicitly when the inline script is absent; the final focused, typecheck, and full-suite results above include that correction.
+
+### Security and preserved boundaries
+
+- exact Google Drive scope remains `https://www.googleapis.com/auth/drive.file`;
+- no token, authorization code, state, PKCE verifier/challenge, client secret, complete OAuth URL, callback value, or vault content is logged, persisted, rendered, or copied into evidence;
+- callback query parameters are removed from browser history before validation or navigation;
+- no telemetry, network request, local/session storage, token exchange, OAuth transaction, SecretStorage, plugin callback-lifecycle, mobile dependency, or synchronization behavior was added or changed;
+- the callback deployment policy remains no-store, no-referrer, and CSP-restricted, and was inspected but not modified;
+- no `master`, `phase6-integration`, or source-branch modification occurred;
+- no Google Cloud or Azure configuration change occurred;
+- no performance work or Stage 3 work occurred.
+
+### Physical acceptance and limitation
+
+Physical iPhone callback acceptance: NOT PERFORMED BY THIS AGENT
+
+No physical OAuth attempt, iPhone pairing, or synchronization was performed. After independent review and deployment of this branch's callback page, one controlled iPhone authentication attempt must classify the result as: automatic handoff succeeded, manual `Open Obsidian` fallback succeeded, or neither path succeeded.
