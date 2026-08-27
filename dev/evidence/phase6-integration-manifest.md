@@ -338,3 +338,57 @@ Recorded from **supervisor/user-supplied physical supported-runtime evidence**:
 - Stage 3 has not begun.
 
 Any subsequent commits after `bcdcf935de0fb49b518d90d7f886b932175f0015` in this integration session are evidence/documentation-only and must not change production/test/build behavior.
+
+---
+
+## Evidence provenance correction — C1/C2 closure
+
+This append-only correction explicitly supersedes the final characterization immediately above that all post-`bcdcf935...` commits were ordinary evidence/documentation-only changes. Production and test immutability remains true, but the complete committed session history also contained temporary CI finalization files that were later removed.
+
+### Complete post-fast-forward committed history through rejected review
+
+From approved repair head `bcdcf935de0fb49b518d90d7f886b932175f0015` through rejected-review head `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`, the committed history is exactly:
+
+1. `fb6e4f1d0d8a2932ae8c671e8891aeacf641212b` — `docs: add Windows repair integration evidence`
+   - created `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+2. `9668bead31e8cac300528319abf2322da6f2ab36` — `ci: finalize Windows repair integration evidence`
+   - created an initial temporary revision of `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+3. `14b2fb1b7134364976b806eb7a156e9241a3e524` — `ci: remove invalid Windows integration evidence finalizer`
+   - deleted that initial temporary workflow revision.
+4. `3da2b67345a26d76e1c3ce8b476ef208db66b807` — `ci: stage Windows integration evidence finalizer`
+   - created `.github/phase6-alpha-windows-evidence-finalize.sh`.
+5. `8f85afa7aef5eb4befee671fe5f23ff7f12d8455` — `ci: run Windows integration evidence finalizer`
+   - created a subsequent temporary revision of `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+6. `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90` — `docs: record approved Windows first-sync repair integration`
+   - modified `dev/evidence/_ca-output.md` and `dev/evidence/phase6-integration-manifest.md`;
+   - deleted `.github/phase6-alpha-windows-evidence-finalize.sh` and `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+
+### Corrected history characterization
+
+- Production and test source did not change after approved repair head `bcdcf935de0fb49b518d90d7f886b932175f0015`.
+- The final net repository state at rejected-review head `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90` differs from `bcdcf935...` only by three evidence-document paths: agent evidence created, cumulative evidence modified, and this integration manifest modified.
+- However, the intermediate committed history contained the temporary CI workflow/script files listed above. Those paths were real repository changes during the integration/evidence-finalization session.
+- Both temporary paths were fully removed before the rejected-review head and are absent from its final tree.
+- Therefore the intermediate workflow/script commits must not be characterized as ordinary evidence-document edits. The earlier blanket “evidence/documentation-only” characterization is superseded by this distinction.
+
+### Final net repository change at rejected review
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+**Deleted in final net tree**
+
+- none.
+
+### Session-transient created/deleted paths
+
+- `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`;
+- `.github/phase6-alpha-windows-evidence-finalize.sh`.
+
+The preserved combined production/test gate remains run `33031435312`, job `98384624285`, with 265/265 tests PASS, typecheck PASS, build PASS, all five build-verifier checks PASS, `main.js` size `291213` bytes, and SHA-256 `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`. No production/test rerun is required for this evidence-only correction.
