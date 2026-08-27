@@ -742,3 +742,87 @@ The artifact identity exactly reproduced the approved repair artifact. The combi
 - PR `#15` remains required to stay open/unmerged;
 - `master` remains unchanged;
 - Stage 3 has not begun.
+
+---
+
+## Evidence provenance correction — C1/C3 closure
+
+This append-only correction reconciles the rejected Windows integration evidence with the complete committed repository history. Earlier sections remain historical and are not rewritten.
+
+### Rejected-review starting state
+
+- `phase6-integration` = `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`;
+- `master` = `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`.
+
+The approved repair head `bcdcf935de0fb49b518d90d7f886b932175f0015` is the merge base and ancestor of the rejected-review integration head. The compare is six commits ahead and zero behind.
+
+### Complete six-commit integration-session history
+
+1. `fb6e4f1d0d8a2932ae8c671e8891aeacf641212b` — `docs: add Windows repair integration evidence`
+   - created `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+2. `9668bead31e8cac300528319abf2322da6f2ab36` — `ci: finalize Windows repair integration evidence`
+   - created an initial temporary `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+3. `14b2fb1b7134364976b806eb7a156e9241a3e524` — `ci: remove invalid Windows integration evidence finalizer`
+   - deleted that initial temporary workflow revision.
+4. `3da2b67345a26d76e1c3ce8b476ef208db66b807` — `ci: stage Windows integration evidence finalizer`
+   - created `.github/phase6-alpha-windows-evidence-finalize.sh`.
+5. `8f85afa7aef5eb4befee671fe5f23ff7f12d8455` — `ci: run Windows integration evidence finalizer`
+   - created a subsequent temporary `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml` revision.
+6. `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90` — `docs: record approved Windows first-sync repair integration`
+   - modified `dev/evidence/_ca-output.md`;
+   - modified `dev/evidence/phase6-integration-manifest.md`;
+   - deleted `.github/phase6-alpha-windows-evidence-finalize.sh`;
+   - deleted `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`.
+
+The two temporary `.github` paths were actual committed changes during the integration/evidence-finalization session and belong in the complete historical manifest even though they were removed before rejected review.
+
+### Final net repository change from `bcdcf935...` through rejected-review head
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+**Deleted in final net tree**
+
+- none.
+
+**Session-transient created/deleted paths**
+
+- `.github/workflows/phase6-alpha-windows-integration-evidence-finalize.yml`;
+- `.github/phase6-alpha-windows-evidence-finalize.sh`.
+
+Both transient paths were directly verified absent from the rejected-review final tree.
+
+### Resulting branch and PR state at rejected review
+
+- `phase6-integration`: `cdbf75c2f6ca271fe58bedcdbd8c3e53e7395d90`;
+- `master`: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
+- PR #15: open, draft, unmerged; head = `phase6-integration`; base = `master`;
+- PR #19: closed; GitHub merged = true; head SHA = `bcdcf935de0fb49b518d90d7f886b932175f0015`; `merge_commit_sha = bcdcf935de0fb49b518d90d7f886b932175f0015`.
+
+Repository ancestry shows the approved repair head itself became contained in `phase6-integration`; no separate production merge commit was introduced for PR #19.
+
+### This evidence-correction pass manifest
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-WINDOWS-INTEGRATE-01.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+**Deleted**
+
+- none.
+
+No `.github` workflow or helper-script path was created or modified by this evidence-correction pass. No production/test/build/package/dependency/persistent-workflow file was changed. The preserved combined gate remains run `33031435312`, job `98384624285`, with 265/265 tests PASS, typecheck PASS, build PASS, all five build-verifier checks PASS, `main.js` size `291213` bytes, and SHA-256 `ec8f4a572eb14adddaadb0d0656ced5a3761e373fc6a0a1c78f383d6cf667391`.
+
+No synchronization was executed. Stage 3 has not begun.
