@@ -1165,3 +1165,23 @@ During test development, the first focused TypeScript compile identified a nulla
 Physical iPhone callback acceptance: NOT PERFORMED BY THIS AGENT
 
 No physical OAuth attempt, iPhone pairing, or synchronization was performed. After independent review and deployment of this branch's callback page, one controlled iPhone authentication attempt must classify the result as: automatic handoff succeeded, manual `Open Obsidian` fallback succeeded, or neither path succeeded.
+
+### Authorized production deployment follow-up
+
+After the repair pass, the human supplied HS authorization to deploy the callback fix to the Azure Static Web App through GitHub. The production callback and test change from repair commit `4268efed443b099319dfe7f99d23e94add39765e` was applied alone to `phase6-integration`; none of the diagnostic branch's unrelated changes were included by that operation.
+
+- production integration/deployment commit: `b8734bbbc571d40d23e1b9870a4b13b67136cd68`;
+- Azure Static Web Apps workflow run: `33125226203`;
+- Azure deployment job: `98701642078`;
+- Azure workflow conclusion: **SUCCESS**;
+- companion Phase 1 CI run: `33125229901` — **SUCCESS**;
+- production endpoint: `https://witty-water-08743b310.7.azurestaticapps.net/`;
+- parameter-free live HTTP check: `200`;
+- live fallback label, automatic-attempt message, and neutral initial status: PRESENT;
+- live `Cache-Control`: `no-store`;
+- live `Referrer-Policy`: `no-referrer`;
+- live CSP: `default-src 'none'; script-src 'unsafe-inline'; navigate-to obsidian:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`.
+
+Before the production push, the isolated integration content was verified identical to the reviewed repair files. Typecheck passed; the focused callback suite passed 5/5; a clean full-suite compilation passed 272/274 with only the same two qualified Windows drive-prefix assertions; build and all five artifact verifiers passed; and `git diff --check` passed. The integration build remained `291948` bytes with SHA-256 `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`.
+
+The production deployment changed no release/tag, version metadata, `master`, Google Cloud configuration, Azure configuration, OAuth scope, token handling, synchronization behavior, performance work, or Stage 3 state. Physical iPhone callback acceptance remains not performed by this agent.
