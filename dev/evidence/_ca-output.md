@@ -913,3 +913,5 @@ Deleted:
 ### Remaining limitation
 
 Physical iPhone OAuth launch is **NOT AVAILABLE IN THIS SESSION**. It remains a supervisor-controlled post-review test of the corrected BRAT artifact. No iPhone pairing/synchronization, release/tag operation, integration merge, `master` modification, performance work, or Stage 3 work occurred.
+
+PR `#20` updated in place with correction source commit `11212541b663d2953fd0c1f405a60be4fd57243e`, remained open/unmerged, and retained base `phase6-integration`. Automatic Azure Static Web Apps run `33082926371`, job `98554720139`, failed because the app already had the maximum number of staging environments. That deployment-capacity failure did not provide a plugin typecheck/test/build result. No Azure configuration or staging environment was changed by this correction.

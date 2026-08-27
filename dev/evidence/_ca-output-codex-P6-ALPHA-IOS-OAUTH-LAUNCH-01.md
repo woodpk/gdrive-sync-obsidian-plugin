@@ -162,3 +162,9 @@ Relevant corrected test names:
 ## Remaining validation
 
 Physical iPhone OAuth launch is **NOT AVAILABLE IN THIS SESSION**. After independent approval and a supervisor-controlled BRAT prerelease, a human must confirm that tapping Authenticate on stock iPhone Obsidian opens the final Google authorization request in the external/default browser, the human flow completes, and the existing callback returns to the same iPhone Obsidian session. No iPhone pairing or synchronization is authorized as part of this correction.
+
+## PR #20 correction check
+
+PR `#20` updated in place with correction source commit `11212541b663d2953fd0c1f405a60be4fd57243e`, remained open/unmerged, and retained head `phase6-alpha-ios-oauth-launch-fix` with base `phase6-integration`.
+
+The automatic Azure Static Web Apps workflow run `33082926371`, job `98554720139`, failed during deployment because the Static Web App already had the maximum number of staging environments. It did not provide a plugin typecheck/test/build result. This is an external deployment-capacity limitation, not a failure produced by the corrected OAuth tests or local build verifier. No Azure configuration or staging environment was modified or removed by this task.
