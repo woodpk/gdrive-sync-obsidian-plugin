@@ -821,6 +821,10 @@ decisions:
     category: performance_optimization
     implementation_status: planned_not_implemented
     decision: "Introduce bounded concurrency for independent non-destructive uploads/downloads rather than strictly serial file transfer, using configurable/platform-aware limits, Drive rate/quota backpressure, and tighter iOS resource limits. This does not permit overlapping whole synchronization runs."
+  - id: DEC-299
+    status: locked
+    category: platform_containment
+    decision: "Local-vault containment is platform-specific while preserving one safety outcome. Windows retains desktop-only physical external-reference inspection using lstat and canonical realpath containment. On iOS, the active Obsidian mobile DataAdapter namespace plus strict vault-relative path validation and enumeration-child provenance is the approved filesystem capability boundary. Mobile code must not bypass that boundary into arbitrary native filesystem paths or Node/Electron APIs; malformed, escaping, unsupported, or unprovable individual paths remain blocked and produce incomplete evidence. The absence of desktop lstat/realpath on iOS is not grounds to disable all normal iOS vault synchronization."
 
 superseded_decisions:
   - id: SUP-001
@@ -870,6 +874,11 @@ superseded_decisions:
     earlier: "Use Workflow B / Stage 2B autonomous construction without persisted user-facing decomposition."
     superseded_by:
       - DEC-009
+  - id: SUP-007
+    status: superseded
+    earlier: "Because stock iOS cannot reproduce desktop lstat/realpath physical-containment proof, every mobile vault path must remain blocked by the unavailable external-reference guard."
+    superseded_by:
+      - DEC-299
 
 deferred_engineering:
   - "Whether to fork Google Drive Mirror directly, substantially adapt it, or selectively transplant architecture/code."

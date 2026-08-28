@@ -140,7 +140,7 @@ export class DesktopBoundedContentSourceFactory implements LocalContentSourceFac
 
 export function createDesktopLocalVaultAdapter(
   app: App,
-  options: Omit<LocalAdapterOptions, "externalReferenceGuard" | "contentSourceFactory"> = {}
+  options: Omit<LocalAdapterOptions, "accessBoundary" | "externalReferenceGuard" | "contentSourceFactory" | "adapterMutationFallback"> = {}
 ): ObsidianLocalVaultAdapter {
   const adapter = app.vault.adapter;
   if (!isDesktopDataAdapter(adapter)) {
@@ -152,7 +152,7 @@ export function createDesktopLocalVaultAdapter(
   const guard = new DesktopExternalReferenceGuard(adapter.getBasePath());
   return new ObsidianLocalVaultAdapter(app, {
     ...options,
-    externalReferenceGuard: guard,
+    accessBoundary: guard,
     contentSourceFactory: new DesktopBoundedContentSourceFactory(guard)
   });
 }

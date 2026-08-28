@@ -10,6 +10,7 @@ import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompl
 import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
 import { beginGoogleAuthorization, openAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
+import { MobileVaultAccessBoundary } from "../local/mobile-vault-access-boundary";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { generateDeviceIdentity } from "../state/state-policy";
@@ -347,7 +348,11 @@ export class Phase5ProductRuntime {
       const module = await import("../local/desktop-local-vault");
       return module.createDesktopLocalVaultAdapter(this.host.app);
     }
-    return new ObsidianLocalVaultAdapter(this.host.app);
+    this.host.diagnostics?.info("runtime", "mobile-vault-boundary-selected", { result: "mobile-adapter" });
+    return new ObsidianLocalVaultAdapter(this.host.app, {
+      accessBoundary: new MobileVaultAccessBoundary(),
+      adapterMutationFallback: true,
+    });
   }
 }
 
