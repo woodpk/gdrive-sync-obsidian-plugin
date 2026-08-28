@@ -1,0 +1,32 @@
+name: Phase 6 OAuth Evidence Finalize
+
+on:
+  push:
+    branches: [phase6-oauth-housekeeping]
+
+permissions:
+  contents: write
+
+jobs:
+  append-evidence:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append cumulative closure and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          marker='## Phase 6 OAuth Housekeeping — `agt-CA-P6-OAUTH-HOUSEKEEPING-01`'
+          if ! grep -Fq "$marker" dev/evidence/_ca-output.md; then
+            printf '\n\n---\n\n' >> dev/evidence/_ca-output.md
+            sed '1s/^# /## /' dev/evidence/_ca-output-agt-CA-P6-OAUTH-HOUSEKEEPING-01.md >> dev/evidence/_ca-output.md
+          fi
+          git rm .github/workflows/phase6-oauth-evidence-finalize.yml
+          git diff --check
+          git config user.name 'phase6-oauth-housekeeping-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dev/evidence/_ca-output.md dev/evidence/_ca-output-agt-CA-P6-OAUTH-HOUSEKEEPING-01.md
+          git commit -m 'docs: append Phase 6 OAuth housekeeping closure'
+          git push origin HEAD:phase6-oauth-housekeeping
