@@ -274,13 +274,18 @@ test("readFile is lazy and reconstructs exact bytes through bounded sequential r
   local.dispose();
 });
 
-test("bounded read detects a runtime that ignores Range instead of accepting a whole-file response", async () => {
+test("incremental resource read accepts a streamed HTTP 200 response when the runtime ignores Range", async () => {
   const runtime = fakeRuntime({ "ordinary.md": { type: "file", bytes: bytes(1,2,3,4,5,6), mtime: 7, ctime: 1 } });
   const local = safeLocal(runtime, { stabilityDelayMs: 0, readChunkSizeBytes: 2, fetchImpl: ignoredRangeFetch(runtime) });
   const read = await local.readFile(vp("ordinary.md"));
-  await assert.rejects(async () => {
-    for await (const _chunk of read.content.openChunks()) { /* consume */ }
-  }, (error: unknown) => error instanceof LocalPlatformCapabilityError && error.capability === "bounded-local-read");
+  const reconstructed: number[] = [];
+  let largestYield = 0;
+  for await (const chunk of read.content.openChunks()) {
+    largestYield = Math.max(largestYield, chunk.byteLength);
+    reconstructed.push(...chunk);
+  }
+  assert.deepEqual(reconstructed, [1,2,3,4,5,6]);
+  assert.ok(largestYield <= 2);
   assert.equal(runtime.adapterCalls.some(call => call.startsWith("readBinary:")), false);
   local.dispose();
 });

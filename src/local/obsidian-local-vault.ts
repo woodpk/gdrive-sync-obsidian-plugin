@@ -194,69 +194,115 @@ class ResourceFetchContentSource implements BinaryContentSource {
         headers: { Range: `bytes=${start}-${requestedEnd}` }
       });
 
+      if (response.status === 200 && start === 0) {
+        await this.assertContentLength(response, this.sizeBytes, false);
+        yield* this.readResponseBody(response, this.sizeBytes);
+        return;
+      }
+
       if (response.status !== 206) {
-        try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
+        await this.cancelResponse(response);
         throw new LocalPlatformCapabilityError(
           "bounded-local-read",
-          `Local resource runtime ignored a byte-range request for ${String(this.path)}: expected HTTP 206, received HTTP ${response.status}. Whole-file fallback is prohibited.`
+          `Local resource runtime returned unsupported HTTP ${response.status} for ${String(this.path)}.`
         );
       }
 
       const contentRange = parseContentRange(response.headers.get("Content-Range"));
       if (!contentRange || contentRange.start !== start || contentRange.end !== requestedEnd || contentRange.total !== this.sizeBytes) {
-        try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
+        await this.cancelResponse(response);
         throw new LocalPlatformCapabilityError(
           "bounded-local-read",
           `Local resource returned an invalid Content-Range for ${String(this.path)}; expected bytes ${start}-${requestedEnd}/${this.sizeBytes}.`
         );
       }
 
-      const declaredLength = response.headers.get("Content-Length");
-      if (declaredLength !== null) {
-        const parsedLength = Number(declaredLength);
-        if (!Number.isSafeInteger(parsedLength) || parsedLength !== expectedLength || parsedLength > this.maxChunkBytes) {
-          try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
-          throw new LocalPlatformCapabilityError(
-            "bounded-local-read",
-            `Local resource returned an unsafe Content-Length for ${String(this.path)}: ${declaredLength}.`
-          );
-        }
-      }
-
-      if (!response.body) {
-        throw new LocalPlatformCapabilityError(
-          "bounded-local-read",
-          "This runtime does not expose a response body for a validated byte-range request. Whole-file readBinary fallback is intentionally prohibited."
-        );
-      }
-
-      const reader = response.body.getReader();
-      let received = 0;
-      try {
-        while (true) {
-          const result = await reader.read();
-          if (result.done) break;
-          if (result.value.byteLength === 0) continue;
-          received += result.value.byteLength;
-          if (received > expectedLength || result.value.byteLength > this.maxChunkBytes) {
-            throw new LocalPlatformCapabilityError(
-              "bounded-local-read",
-              `Local resource exceeded the requested bounded range for ${String(this.path)}.`
-            );
-          }
-          yield result.value;
-        }
-      } finally {
-        reader.releaseLock();
-      }
-      if (received !== expectedLength) {
-        throw new LocalPlatformCapabilityError(
-          "bounded-local-read",
-          `Local resource returned ${received} bytes for a ${expectedLength}-byte range of ${String(this.path)}.`
-        );
-      }
+      await this.assertContentLength(response, expectedLength, true);
+      yield* this.readResponseBody(response, expectedLength);
     }
     await this.owner.assertToken(this.path, this.expectedToken);
+  }
+
+  private async assertContentLength(response: Response, expectedLength: number, boundedRange: boolean): Promise<void> {
+    const declaredLength = response.headers.get("Content-Length");
+    if (declaredLength === null) return;
+    const parsedLength = /^\d+$/.test(declaredLength) ? Number(declaredLength) : Number.NaN;
+    if (
+      !Number.isSafeInteger(parsedLength) ||
+      parsedLength !== expectedLength ||
+      (boundedRange && parsedLength > this.maxChunkBytes)
+    ) {
+      await this.cancelResponse(response);
+      throw new LocalPlatformCapabilityError(
+        "bounded-local-read",
+        `Local resource returned an unsafe Content-Length for ${String(this.path)}: ${declaredLength}.`
+      );
+    }
+  }
+
+  private async *readResponseBody(response: Response, expectedLength: number): AsyncIterable<Uint8Array> {
+    if (!response.body) {
+      throw new LocalPlatformCapabilityError(
+        "bounded-local-read",
+        "This runtime does not expose a readable response body for incremental local-file processing."
+      );
+    }
+
+    const reader = response.body.getReader();
+    let received = 0;
+    let bytesSinceStaleCheck = 0;
+    let completed = false;
+    try {
+      await this.owner.assertToken(this.path, this.expectedToken);
+      while (true) {
+        if (bytesSinceStaleCheck === this.maxChunkBytes) {
+          await this.owner.assertToken(this.path, this.expectedToken);
+          bytesSinceStaleCheck = 0;
+        }
+        const result = await reader.read();
+        if (result.done) { completed = true; break; }
+        let offset = 0;
+        while (offset < result.value.byteLength) {
+          if (bytesSinceStaleCheck === this.maxChunkBytes) {
+            await this.owner.assertToken(this.path, this.expectedToken);
+            bytesSinceStaleCheck = 0;
+          }
+          const remainingExpected = expectedLength - received;
+          if (remainingExpected <= 0) {
+            throw new LocalPlatformCapabilityError(
+              "bounded-local-read",
+              `Local resource returned more than the observed ${expectedLength} bytes for ${String(this.path)}.`
+            );
+          }
+          const take = Math.min(
+            result.value.byteLength - offset,
+            this.maxChunkBytes - bytesSinceStaleCheck,
+            remainingExpected
+          );
+          const chunk = result.value.subarray(offset, offset + take);
+          offset += take;
+          received += take;
+          bytesSinceStaleCheck += take;
+          yield chunk;
+        }
+      }
+    } finally {
+      if (!completed) {
+        try { await reader.cancel(); } catch { /* best-effort cancellation */ }
+      }
+      reader.releaseLock();
+    }
+    if (received !== expectedLength) {
+      throw new LocalPlatformCapabilityError(
+        "bounded-local-read",
+        `Local resource returned ${received} bytes for an observed ${expectedLength}-byte file at ${String(this.path)}.`
+      );
+    }
+    await this.owner.assertToken(this.path, this.expectedToken);
+  }
+
+  private async cancelResponse(response: Response): Promise<void> {
+    try { await response.body?.cancel(); } catch { /* best-effort cancellation */ }
   }
 }
 
