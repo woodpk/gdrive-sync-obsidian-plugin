@@ -7,23 +7,35 @@
   <title>BRAIN Sync authorization return</title>
 </head>
 <body>
-  <p id="status">Returning authorization to Obsidian…</p>
+  <p id="status">Processing authorization return…</p>
+  <a id="open-obsidian" hidden>Open Obsidian to finish authentication</a>
   <script>
     (() => {
+      const status = document.getElementById("status");
+      const fallback = document.getElementById("open-obsidian");
       const query = new URLSearchParams(window.location.search);
       const state = query.get("state");
       const code = query.get("code");
       const error = query.get("error");
       history.replaceState(null, "", window.location.pathname);
       if (!state || (!code && !error)) {
-        document.getElementById("status").textContent = "Authorization return is incomplete. Return to Obsidian and try again.";
+        status.textContent = "Authorization return is incomplete. Return to Obsidian and try again.";
         return;
       }
       const target = new URL("obsidian://brain-gdrive-oauth");
       target.searchParams.set("state", state);
       if (code) target.searchParams.set("code", code);
-      if (error) target.searchParams.set("error", error);
-      window.location.replace(target.toString());
+      else if (error) target.searchParams.set("error", error);
+      const targetUrl = target.toString();
+      fallback.href = targetUrl;
+      fallback.hidden = false;
+      status.textContent = "Authorization response received. Attempting to return to Obsidian…";
+      try {
+        window.location.replace(targetUrl);
+        status.textContent = "Automatic return attempted. If Obsidian did not open, tap the button below.";
+      } catch {
+        status.textContent = "Automatic return could not be completed. Tap the button below.";
+      }
     })();
   </script>
 </body>
