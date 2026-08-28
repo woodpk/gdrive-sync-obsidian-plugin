@@ -1,7 +1,7 @@
 import { lstat, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { VaultPath } from "../contracts/common";
-import type { ExternalReferenceGuard, LocalReferenceAccess } from "./obsidian-local-vault";
+import type { LocalVaultAccess, LocalVaultAccessBoundary } from "./local-vault-access-boundary";
 
 interface FileStatusLike {
   isSymbolicLink(): boolean;
@@ -30,7 +30,8 @@ function isWithin(basePath: string, candidatePath: string): boolean {
  * Desktop-only guard. This module deliberately owns all Node filesystem/path
  * imports used by Phase 4 and MUST NOT be imported by a mobile-required module.
  */
-export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
+export class DesktopExternalReferenceGuard implements LocalVaultAccessBoundary {
+  readonly kind = "desktop-physical" as const;
   private canonicalBase?: Promise<string>;
 
   constructor(
@@ -38,7 +39,7 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
     private readonly ops: DesktopFilesystemOps = defaultOps
   ) {}
 
-  async assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void> {
+  async assertSafe(path: VaultPath, access: LocalVaultAccess): Promise<void> {
     await this.resolveSafePath(path, access);
   }
 
@@ -46,7 +47,7 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
    * Returns the same lexically-contained path whose components were checked by
    * this guard, so desktop readers do not introduce a second unchecked resolver.
    */
-  async resolveSafePath(path: VaultPath, _access: LocalReferenceAccess): Promise<string> {
+  async resolveSafePath(path: VaultPath, _access: LocalVaultAccess): Promise<string> {
     const canonicalBase = await (this.canonicalBase ??= this.ops.realpath(this.basePath));
     const lexicalTarget = resolve(this.basePath, String(path));
     if (!isWithin(resolve(this.basePath), lexicalTarget)) {

@@ -14,24 +14,16 @@ import type {
 import type { LocalObservation } from "../contracts/snapshot";
 import { SelectiveConfigurationPolicy } from "./config-policy";
 import { LocalExclusionPolicy } from "./exclusions";
-import { normalizeVaultPath, validateCrossPlatformPath } from "./path-policy";
+import type { LocalVaultAccess, LocalVaultAccessBoundary } from "./local-vault-access-boundary";
+import { normalizeVaultPath, normalizedComparisonPath, validateCrossPlatformPath } from "./path-policy";
 
 interface VaultWithConfigDir {
   readonly configDir: string;
 }
 
-export type LocalReferenceAccess = "enumerate" | "observe" | "mutation-source" | "mutation-target";
-
-/**
- * Private Phase 4 platform seam for proving that a syntactically valid vault
- * path cannot traverse a symlink/junction/alias outside the synchronization
- * boundary. Desktop supplies a Node-backed implementation in an isolated
- * desktop-only module. Mobile has no truthful implementation yet on stock
- * Obsidian and therefore remains a documented platform blocker.
- */
-export interface ExternalReferenceGuard {
-  assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void>;
-}
+/** Backward-compatible private aliases retained for existing focused tests. */
+export type LocalReferenceAccess = LocalVaultAccess;
+export type ExternalReferenceGuard = LocalVaultAccessBoundary;
 
 /** Private platform seam for selecting a bounded, incremental content reader. */
 export interface LocalContentSourceContext {
@@ -51,8 +43,11 @@ export interface LocalAdapterOptions {
   readonly stabilityDelayMs?: number;
   readonly fetchImpl?: typeof fetch;
   readonly readChunkSizeBytes?: number;
+  readonly accessBoundary?: LocalVaultAccessBoundary;
+  /** @deprecated Use accessBoundary. */
   readonly externalReferenceGuard?: ExternalReferenceGuard;
   readonly contentSourceFactory?: LocalContentSourceFactory;
+  readonly adapterMutationFallback?: boolean;
 }
 
 export class LocalPlatformCapabilityError extends Error {
@@ -62,7 +57,9 @@ export class LocalPlatformCapabilityError extends Error {
   }
 }
 
-class UnavailableExternalReferenceGuard implements ExternalReferenceGuard {
+class UnavailableVaultAccessBoundary implements LocalVaultAccessBoundary {
+  readonly kind = "unavailable" as const;
+
   async assertSafe(path: VaultPath, _access: LocalReferenceAccess): Promise<void> {
     throw new LocalPlatformCapabilityError(
       "external-reference-detection",
@@ -130,6 +127,19 @@ function temporarySibling(path: string, purpose: "stage" | "backup"): string {
   const leaf = baseName(path);
   const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `${parent ? `${parent}/` : ""}.${leaf}.brain-sync-${purpose}-${id}`;
+}
+
+function validateEnumeratedChild(parent: string, child: unknown): { readonly path?: VaultPath; readonly reason?: string } {
+  if (typeof child !== "string") return { reason: "Adapter returned a non-string child path" };
+  const normalized = normalizeVaultPath(child);
+  const validation = validateCrossPlatformPath(child);
+  if (validation.status === "blocked") return { reason: `Adapter child path is blocked by ${validation.reason}` };
+  if (normalized !== child) return { reason: "Adapter returned a non-normalized child path" };
+  const prefix = parent ? `${parent}/` : "";
+  if (!normalized.startsWith(prefix)) return { reason: "Adapter child is outside the requested parent" };
+  const remainder = normalized.slice(prefix.length);
+  if (!remainder || remainder.includes("/")) return { reason: "Adapter child is not an immediate descendant of the requested parent" };
+  return { path: normalized as VaultPath };
 }
 
 interface ParsedContentRange {
@@ -264,8 +274,9 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly stabilityDelayMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly readChunkSizeBytes: number;
-  private readonly externalReferenceGuard: ExternalReferenceGuard;
+  private readonly accessBoundary: LocalVaultAccessBoundary;
   private readonly contentSourceFactory?: LocalContentSourceFactory;
+  private readonly adapterMutationFallback: boolean;
   private readonly changeListeners = new Set<(change: LocalVaultChange) => void>();
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
@@ -283,8 +294,9 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     if (!Number.isSafeInteger(this.readChunkSizeBytes) || this.readChunkSizeBytes <= 0) {
       throw new Error("readChunkSizeBytes must be a positive safe integer");
     }
-    this.externalReferenceGuard = options.externalReferenceGuard ?? new UnavailableExternalReferenceGuard();
+    this.accessBoundary = options.accessBoundary ?? options.externalReferenceGuard ?? new UnavailableVaultAccessBoundary();
     this.contentSourceFactory = options.contentSourceFactory;
+    this.adapterMutationFallback = options.adapterMutationFallback ?? false;
     this.installVaultEvents();
     this.installLifecycleEvents();
   }
@@ -293,6 +305,10 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     const value = (this.app.vault as unknown as VaultWithConfigDir).configDir;
     if (!value || typeof value !== "string") {
       throw new LocalPlatformCapabilityError("active-configuration-directory", "Obsidian runtime did not expose vault.configDir");
+    }
+    const validation = validateCrossPlatformPath(value);
+    if (validation.status === "blocked") {
+      throw new LocalPlatformCapabilityError("active-configuration-directory", `Obsidian exposed an unsafe configuration directory (${validation.reason})`);
     }
     return asPath(value);
   }
@@ -310,6 +326,14 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         return;
       }
       visited.add(normalizedFolder);
+      if (normalizedFolder) {
+        try {
+          await this.accessBoundary.assertSafe(normalizedFolder as VaultPath, "enumerate");
+        } catch (error) {
+          failures.push(`${normalizedFolder}: directory access boundary rejected enumeration (${error instanceof Error ? error.message : String(error)})`);
+          return;
+        }
+      }
       let listing: Awaited<ReturnType<DataAdapter["list"]>>;
       try {
         listing = await this.adapter.list(normalizedFolder);
@@ -317,23 +341,47 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         failures.push(`${normalizedFolder || "/"}: ${error instanceof Error ? error.message : String(error)}`);
         return;
       }
+      if (!Array.isArray(listing?.folders) || !Array.isArray(listing?.files)) {
+        failures.push(`${normalizedFolder || "/"}: adapter returned a malformed directory listing`);
+        return;
+      }
 
-      for (const folderPath of listing.folders) {
-        const path = asPath(folderPath);
-        if (this.exclusionPolicy.evaluate(path, configDir).excluded) continue;
+      const seenChildren = new Set<string>();
+      const inspectChild = async (rawChild: unknown, expectedKind: "folder" | "file"): Promise<void> => {
+        const validated = validateEnumeratedChild(normalizedFolder, rawChild);
+        if (!validated.path) {
+          failures.push(`${normalizedFolder || "/"}: enumeration child rejected (${validated.reason ?? "invalid child"})`);
+          return;
+        }
+        const comparison = normalizedComparisonPath(String(validated.path));
+        if (seenChildren.has(comparison)) {
+          failures.push(`${normalizedFolder || "/"}: duplicate or colliding enumeration child rejected`);
+          return;
+        }
+        seenChildren.add(comparison);
+        const path = validated.path;
+        if (this.exclusionPolicy.evaluate(path, configDir).excluded) return;
+        try {
+          await this.accessBoundary.assertSafe(path, "enumerate");
+        } catch (error) {
+          const failure = classifyFailure(path, error);
+          entries.push(failure);
+          failures.push(expectedKind === "folder"
+            ? `${String(path)}: subtree not safely enumerable (${failure.status})`
+            : `${String(path)}: listed file was rejected by the access boundary (${failure.status})`);
+          return;
+        }
         const observation = await this.observe(path);
         entries.push(observation);
-        if (observation.status === "present" && observation.entityKind === "folder") {
-          await visit(folderPath);
-        } else if (observation.status !== "absent") {
-          failures.push(`${folderPath}: subtree not safely enumerable (${observation.status})`);
+        if (observation.status !== "present" || observation.entityKind !== expectedKind) {
+          failures.push(`${String(path)}: listed ${expectedKind} was not truthfully observed as ${expectedKind} (${observation.status})`);
+          return;
         }
-      }
-      for (const filePath of listing.files) {
-        const path = asPath(filePath);
-        if (this.exclusionPolicy.evaluate(path, configDir).excluded) continue;
-        entries.push(await this.observe(path));
-      }
+        if (expectedKind === "folder") await visit(String(path));
+      };
+
+      for (const folderPath of listing.folders) await inspectChild(folderPath, "folder");
+      for (const filePath of listing.files) await inspectChild(filePath, "file");
     };
 
     await visit("");
@@ -346,33 +394,40 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   async observe(path: VaultPath): Promise<LocalObservation> {
     const normalized = asPath(String(path));
     try {
-      await this.externalReferenceGuard.assertSafe(normalized, "observe");
-      const exists = await this.adapter.exists(String(normalized), true);
-      if (!exists) return { status: "absent", side: "local", path: normalized };
-      const first = await this.adapter.stat(String(normalized));
-      if (!first) return { status: "unknown", side: "local", path: normalized, reason: "Path exists but adapter.stat returned no metadata" };
+      const safe = await this.safePath(path, "observe");
+      const safeRaw = String(safe);
+      const exists = await this.adapter.exists(safeRaw, true);
+      if (!exists) return { status: "absent", side: "local", path: safe };
+      const first = await this.adapter.stat(safeRaw);
+      if (!first) return { status: "unknown", side: "local", path: safe, reason: "Path exists but adapter.stat returned no metadata" };
       if (first.type === "folder") {
         return {
           status: "present",
           side: "local",
-          path: normalized,
+          path: safe,
           entityKind: "folder",
           stability: "stable",
-          observationToken: statToken(String(normalized), first, this.generationFor(normalized))
+          observationToken: statToken(safeRaw, first, this.generationFor(safe))
         };
       }
+      if (first.type !== "file") {
+        return { status: "unknown", side: "local", path: safe, reason: "Adapter exposed an unsupported local filesystem object" };
+      }
       await sleep(this.stabilityDelayMs);
-      const second = await this.adapter.stat(String(normalized));
+      const second = await this.adapter.stat(safeRaw);
       const stable = sameStat(first, second);
       const finalStat = second ?? first;
+      if (finalStat.type !== "file") {
+        return { status: "unknown", side: "local", path: safe, reason: "Local object kind changed during observation" };
+      }
       return {
         status: "present",
         side: "local",
-        path: normalized,
+        path: safe,
         entityKind: "file",
         content: { sizeBytes: finalStat.size, advisoryModifiedTimeMs: finalStat.mtime },
         stability: stable ? "stable" : "unstable",
-        observationToken: statToken(String(normalized), finalStat, this.generationFor(normalized))
+        observationToken: statToken(safeRaw, finalStat, this.generationFor(safe))
       };
     } catch (error) {
       return classifyFailure(normalized, error);
@@ -388,14 +443,15 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       throw new Error(`Local file is not stable: ${String(path)}`);
     }
     if (expectedToken && expectedToken !== observation.observationToken) throw new LocalStaleObservationError(path);
+    const observedPath = observation.path;
     const token = observation.observationToken;
     const sizeBytes = observation.content?.sizeBytes;
     const content = this.contentSourceFactory?.create({
-      path,
+      path: observedPath,
       sizeBytes,
       maxChunkBytes: this.readChunkSizeBytes,
-      assertUnchanged: () => this.assertToken(path, token)
-    }) ?? new ResourceFetchContentSource(this, path, token, sizeBytes, this.fetchImpl, this.readChunkSizeBytes);
+      assertUnchanged: () => this.assertToken(observedPath, token)
+    }) ?? new ResourceFetchContentSource(this, observedPath, token, sizeBytes, this.fetchImpl, this.readChunkSizeBytes);
     return {
       content,
       evidence: observation.content ?? {},
@@ -405,14 +461,14 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async createFile(path: VaultPath, content: BinaryContentSource): Promise<LocalMutationReceipt> {
-    await this.assertCompatible(path);
-    if (await this.adapter.exists(String(path), true)) throw new Error(`Cannot create existing local path: ${String(path)}`);
-    const stage = temporarySibling(String(path), "stage");
+    const target = await this.assertCompatible(path);
+    if (await this.adapter.exists(String(target), true)) throw new Error(`Cannot create existing local path: ${String(target)}`);
+    const stage = await this.safePath(temporarySibling(String(target), "stage") as VaultPath, "mutation-target");
     try {
       await this.writeIncremental(stage, content);
-      await this.adapter.rename(stage, String(path));
-      await this.waitForPath(path);
-      return this.receipt(path);
+      await this.adapter.rename(String(stage), String(target));
+      await this.waitForPath(target);
+      return this.receipt(target);
     } catch (error) {
       await this.removeIfExists(stage);
       throw error;
@@ -420,28 +476,28 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async replaceFile(path: VaultPath, content: BinaryContentSource, expectedToken?: ObservationToken): Promise<LocalMutationReceipt> {
-    await this.assertCompatible(path);
-    if (expectedToken) await this.assertToken(path, expectedToken);
-    const stage = temporarySibling(String(path), "stage");
-    const backup = temporarySibling(String(path), "backup");
+    const target = await this.assertCompatible(path);
+    if (expectedToken) await this.assertToken(target, expectedToken);
+    const stage = await this.safePath(temporarySibling(String(target), "stage") as VaultPath, "mutation-target");
+    const backup = await this.safePath(temporarySibling(String(target), "backup") as VaultPath, "mutation-target");
     let backupCreated = false;
     try {
       await this.writeIncremental(stage, content);
-      if (expectedToken) await this.assertToken(path, expectedToken);
-      const exists = await this.adapter.exists(String(path), true);
+      if (expectedToken) await this.assertToken(target, expectedToken);
+      const exists = await this.adapter.exists(String(target), true);
       if (exists) {
-        await this.adapter.rename(String(path), backup);
+        await this.adapter.rename(String(target), String(backup));
         backupCreated = true;
       }
       try {
-        await this.adapter.rename(stage, String(path));
+        await this.adapter.rename(String(stage), String(target));
       } catch (error) {
-        if (backupCreated) await this.adapter.rename(backup, String(path)).catch(() => undefined);
+        if (backupCreated) await this.adapter.rename(String(backup), String(target)).catch(() => undefined);
         throw error;
       }
-      await this.waitForPath(path);
-      if (backupCreated) await this.adapter.trashLocal(backup).catch(() => undefined);
-      return this.receipt(path);
+      await this.waitForPath(target);
+      if (backupCreated) await this.adapter.trashLocal(String(backup)).catch(() => undefined);
+      return this.receipt(target);
     } catch (error) {
       await this.removeIfExists(stage);
       throw error;
@@ -449,28 +505,37 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async createFolder(path: VaultPath): Promise<LocalMutationReceipt> {
-    await this.assertCompatible(path);
-    if (!(await this.adapter.exists(String(path), true))) await this.app.vault.createFolder(String(path));
-    return this.receipt(path);
+    const target = await this.assertCompatible(path);
+    if (!(await this.adapter.exists(String(target), true))) {
+      if (this.adapterMutationFallback) await this.adapter.mkdir(String(target));
+      else await this.app.vault.createFolder(String(target));
+    }
+    return this.receipt(target);
   }
 
   async move(fromPath: VaultPath, toPath: VaultPath): Promise<LocalMutationReceipt> {
-    await this.externalReferenceGuard.assertSafe(fromPath, "mutation-source");
-    await this.assertCompatible(toPath);
-    const file = this.app.vault.getAbstractFileByPath(String(fromPath));
-    if (!file) throw new Error(`Cannot move missing local path: ${String(fromPath)}`);
-    await this.app.fileManager.renameFile(file, String(toPath));
-    return this.receipt(toPath);
+    const source = await this.safePath(fromPath, "mutation-source");
+    const target = await this.assertCompatible(toPath);
+    const file = this.app.vault.getAbstractFileByPath(String(source));
+    if (file) await this.app.fileManager.renameFile(file, String(target));
+    else if (this.adapterMutationFallback && await this.adapter.exists(String(source), true)) {
+      await this.adapter.rename(String(source), String(target));
+    } else throw new Error(`Cannot move missing local path: ${String(source)}`);
+    return this.receipt(target);
   }
 
   async trash(path: VaultPath): Promise<void> {
-    await this.externalReferenceGuard.assertSafe(path, "mutation-source");
-    const file = this.app.vault.getAbstractFileByPath(String(path));
-    if (!file) throw new Error(`Cannot trash missing local path: ${String(path)}`);
-    await this.app.fileManager.trashFile(file);
+    const source = await this.safePath(path, "mutation-source");
+    const file = this.app.vault.getAbstractFileByPath(String(source));
+    if (file) await this.app.fileManager.trashFile(file);
+    else if (this.adapterMutationFallback && await this.adapter.exists(String(source), true)) {
+      await this.adapter.trashLocal(String(source));
+    } else throw new Error(`Cannot trash missing local path: ${String(source)}`);
   }
 
   async validatePath(path: VaultPath): Promise<PathValidationResult> {
+    const preliminary = validateCrossPlatformPath(path);
+    if (preliminary.status === "blocked") return preliminary;
     const listing = await this.enumerate();
     const existing = listing.entries
       .filter(entry => entry.status === "present")
@@ -510,23 +575,25 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     }
   }
 
-  private async writeIncremental(path: string, content: BinaryContentSource): Promise<void> {
-    await this.adapter.writeBinary(path, new ArrayBuffer(0));
+  private async writeIncremental(path: VaultPath, content: BinaryContentSource): Promise<void> {
+    const target = await this.safePath(path, "mutation-target");
+    await this.adapter.writeBinary(String(target), new ArrayBuffer(0));
     try {
       for await (const chunk of content.openChunks()) {
         if (chunk.byteLength === 0) continue;
-        await this.adapter.appendBinary(path, chunkArrayBuffer(chunk));
+        await this.adapter.appendBinary(String(target), chunkArrayBuffer(chunk));
       }
     } catch (error) {
-      await this.removeIfExists(path);
+      await this.removeIfExists(target);
       throw error;
     }
   }
 
-  private async assertCompatible(path: VaultPath): Promise<void> {
-    await this.externalReferenceGuard.assertSafe(path, "mutation-target");
-    const result = await this.validatePath(path);
-    if (result.status === "blocked") throw new Error(`Blocked local path (${result.reason}): ${String(path)}${result.detail ? ` — ${result.detail}` : ""}`);
+  private async assertCompatible(path: VaultPath): Promise<VaultPath> {
+    const target = await this.safePath(path, "mutation-target");
+    const result = await this.validatePath(target);
+    if (result.status === "blocked") throw new Error(`Blocked local path (${result.reason}): ${String(target)}${result.detail ? ` — ${result.detail}` : ""}`);
+    return target;
   }
 
   private async receipt(path: VaultPath): Promise<LocalMutationReceipt> {
@@ -536,20 +603,32 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       : { path };
   }
 
-  private async removeIfExists(path: string): Promise<void> {
+  private async removeIfExists(path: VaultPath): Promise<void> {
     try {
-      if (await this.adapter.exists(path, true)) await this.adapter.remove(path);
+      const target = await this.safePath(path, "mutation-target");
+      if (await this.adapter.exists(String(target), true)) await this.adapter.remove(String(target));
     } catch {
       // Cleanup failure is deliberately non-destructive to any destination file.
     }
   }
 
   private async waitForPath(path: VaultPath): Promise<void> {
+    const target = await this.safePath(path, "observe");
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      if (this.app.vault.getAbstractFileByPath(String(path)) || await this.adapter.exists(String(path), true)) return;
+      if (this.app.vault.getAbstractFileByPath(String(target)) || await this.adapter.exists(String(target), true)) return;
       await sleep(25);
     }
-    throw new Error(`Local mutation completed but path was not observable: ${String(path)}`);
+    throw new Error(`Local mutation completed but path was not observable: ${String(target)}`);
+  }
+
+  private async safePath(path: VaultPath, access: LocalVaultAccess): Promise<VaultPath> {
+    const validation = validateCrossPlatformPath(path);
+    if (validation.status === "blocked") {
+      throw new Error(`Vault access boundary blocked ${validation.reason}${validation.detail ? `: ${validation.detail}` : ""}`);
+    }
+    const normalized = asPath(String(path));
+    await this.accessBoundary.assertSafe(normalized, access);
+    return normalized;
   }
 
   private generationFor(path: VaultPath): number {

@@ -2,7 +2,7 @@ schema_version: 1
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-08-26"
+  as_of: "2026-08-28"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
   purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, current repository state, accepted evidence, and later explicit user decisions."
@@ -106,6 +106,13 @@ stage_2a_phases:
       - "../evidence/phase6-agent-a-branch-output.md"
       - "../evidence/phase6-agent-b-branch-output.md"
       - "../evidence/phase6-agent-c-branch-output.md"
+    active_ios_local_repair:
+      status: "adapter_boundary_refactor_in_progress_physical_validation_pending"
+      branch: "phase6-alpha-ios-adapter-boundary-refactor"
+      base_sha: "523ba96cc6e975645cfd319fa7bb62b9c1399176"
+      decision: "DEC-299"
+      supersedes: "PR #26 Outcome B blanket mobile unavailable-guard architecture; PR #26 remains evidence and must not be merged or released as the solution."
+      physical_iphone_validation: pending
     outstanding_required_validation:
       - "real Windows Obsidian synchronization"
       - "real iPhone/iOS Obsidian synchronization"
