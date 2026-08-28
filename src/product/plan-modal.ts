@@ -3,7 +3,8 @@ import type { CheckpointId, SynchronizationPlan } from "../contracts";
 import type { IntegratedProductController } from "./product-controller";
 
 export class PlanPreviewModal extends Modal {
-  private executionRequested = false;
+  private executionPending = false;
+  private executionAccepted = false;
   constructor(
     app: App,
     private readonly plan: SynchronizationPlan,
@@ -34,17 +35,18 @@ export class PlanPreviewModal extends Modal {
       .setButtonText(this.plan.recoveryCheckpointRequired ? "Approve checkpoint and execute" : "Execute")
       .setCta()
       .onClick(async () => {
-        this.executionRequested = true;
         this.controller.recordExecuteClick(this.plan.planId);
+        this.executionPending = true;
         const result = this.plan.recoveryCheckpointRequired && checkpoint
           ? await this.controller.request({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId })
           : await this.controller.request({ kind: "execute-plan", planId: this.plan.planId });
-        if (result.status === "accepted") this.close();
+        this.executionPending = false;
+        if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
         else contentEl.createEl("p", { text: result.reason });
       }));
   }
   onClose(): void {
-    if (!this.executionRequested) this.controller.recordPreviewDismissed(this.plan.planId);
+    if (!this.executionPending && !this.executionAccepted) this.controller.recordPreviewDismissed(this.plan.planId);
     this.contentEl.empty();
   }
 }

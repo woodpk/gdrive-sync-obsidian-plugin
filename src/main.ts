@@ -4,7 +4,7 @@ import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from ".
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
 import { DiagnosticLogger, normalizeDiagnosticError, type DiagnosticSummary } from "./diagnostics/diagnostic-logger";
 import { copyDiagnosticLogText, shareDiagnosticLogText } from "./diagnostics/share-export";
-import { beginManualSyncDiagnostics } from "./diagnostics/sync-diagnostics";
+import { beginManualSyncDiagnostics, presentManualSyncPreview } from "./diagnostics/sync-diagnostics";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -247,8 +247,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     if (runId !== undefined) this.diagnostics?.syncDebug("sync.controller", "manual-sync-runtime-ready", runId, { stage: "runtime-precondition", runtimeInitialized: true });
     const plan = await controller.previewManual(runId);
     if (plan) {
-      new PlanPreviewModal(this.app, plan, controller).open();
-      controller.recordPreviewPresented(plan.planId);
+      presentManualSyncPreview(
+        () => new PlanPreviewModal(this.app, plan, controller).open(),
+        () => controller.recordPreviewPresented(plan.planId),
+        error => controller.recordPreviewPresentationFailure(plan.planId, error, runId),
+      );
     }
   }
   private async openVerifyPreview(): Promise<void> {

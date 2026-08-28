@@ -1087,3 +1087,61 @@ Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deplo
 - no Stage 3 work begun;
 - no `master` modification;
 - PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.
+
+---
+
+## Phase 6 Alpha — PR #24 Manual-Sync Failure-Boundary Correction — `agt-CA-P6-IOS-SYNC-DIAG-01`
+
+PR #24's rejected head `86f8850aeb6f56018700b489d863320f12248ae3` was verified unchanged before repair. The existing branch `phase6-alpha-ios-sync-diagnostic-logging` was corrected in place; PR #24 remains the intended review vehicle and independent rereview is still required.
+
+### C1/C2/C3 correction
+
+- C1: preview-presentation exceptions now emit a sanitized Error-level `sync-run-failed` event at fixed stage `preview-presentation`, close the original diagnostic run, and preserve the exception.
+- C2: Execute and destructive-approval request rejections now emit Error-level `execute-request-rejected` evidence under the original manual `runId` with fixed safe classifications. Plan/run correlation survives stale-plan replacement. A returned rejection resets modal suppression, preserves the visible rejection, and permits later preview dismissal to record cancellation and close the run.
+- C3: run-lease acquisition and operation precondition, pending-journal, content-mutation, uncertain-journal, and authoritative state-commit failures now emit Error evidence naming the exact stage. Returned mutation failure is no longer Trace-only; thrown errors flow only through sanitized `syncFailure` and preserve existing throws. Successful Trace ordering, including verified receipt before authoritative state commit, is unchanged. Observer failures remain isolated from synchronization.
+
+### Correction-pass manifest
+
+Created: none.
+
+Modified:
+
+- `src/core/execution-coordinator.ts`;
+- `src/diagnostics/sync-diagnostics.ts`;
+- `src/main.ts`;
+- `src/product/plan-modal.ts`;
+- `src/product/product-controller.ts`;
+- `test/phase6-alpha-ios-sync-diagnostics.test.ts`;
+- `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`;
+- `dev/evidence/_ca-output.md`.
+
+Deleted: none.
+
+`main.js` was regenerated only as an ignored verification artifact. No version metadata, OAuth behavior/scope, synchronization semantics, release, tag, integration branch, or `master` state was changed.
+
+### Verification
+
+- typecheck: PASS;
+- focused iOS manual-sync diagnostics: **12/12 PASS**;
+- full suite: **302/304 PASS**, with exactly the same two qualified pre-existing Windows drive-prefix portable-collision assertions and no additional failure;
+- build: PASS;
+- build verification: PASS;
+- `git diff --check`: PASS, with informational LF-to-CRLF working-copy warnings only;
+- `BUILD_VERIFY_ENTRYPOINT=PASS`;
+- `BUILD_VERIFY_SYNTAX=PASS`;
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`;
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`;
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`;
+- generated `main.js`: `351383` bytes;
+- SHA-256: `46e8331738395e669ea7d6fb3a22f0a098129d892e7100a2e28c012c39a0ef55`.
+
+Qualified Windows assertions:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\vault\__brain_sync_portable_config__`, expected `\vault\__brain_sync_portable_config__`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\vault\notes\missing.md`, expected `\vault\notes\missing.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+`Synchronization root cause: NOT YET ESTABLISHED`
+
+PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
