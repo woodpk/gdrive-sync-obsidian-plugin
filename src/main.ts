@@ -4,6 +4,7 @@ import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from ".
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
 import { DiagnosticLogger, normalizeDiagnosticError, type DiagnosticSummary } from "./diagnostics/diagnostic-logger";
 import { copyDiagnosticLogText, shareDiagnosticLogText } from "./diagnostics/share-export";
+import { beginManualSyncDiagnostics, presentManualSyncPreview } from "./diagnostics/sync-diagnostics";
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
@@ -233,10 +234,25 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async openManualPreview(): Promise<void> {
+    const runId = beginManualSyncDiagnostics(this.diagnostics);
     const controller = this.runtime?.productController();
-    if (!controller) { new Notice("Complete Google authentication and explicit BRAIN remote pairing first."); return; }
-    const plan = await controller.previewManual();
-    if (plan) new PlanPreviewModal(this.app, plan, controller).open();
+    if (!controller) {
+      if (runId !== undefined) {
+        this.diagnostics?.syncInfo("sync.controller", "sync-run-deferred", runId, { stage: "runtime-precondition", result: "runtime-unavailable", runtimeInitialized: false });
+        this.diagnostics?.endSyncRun(runId);
+      }
+      new Notice("Complete Google authentication and explicit BRAIN remote pairing first.");
+      return;
+    }
+    if (runId !== undefined) this.diagnostics?.syncDebug("sync.controller", "manual-sync-runtime-ready", runId, { stage: "runtime-precondition", runtimeInitialized: true });
+    const plan = await controller.previewManual(runId);
+    if (plan) {
+      presentManualSyncPreview(
+        () => new PlanPreviewModal(this.app, plan, controller, runId).open(),
+        () => controller.recordPreviewPresented(plan.planId, runId),
+        error => controller.recordPreviewPresentationFailure(plan.planId, error, runId),
+      );
+    }
   }
   private async openVerifyPreview(): Promise<void> {
     const controller = this.runtime?.productController();

@@ -3,10 +3,13 @@ import type { CheckpointId, SynchronizationPlan } from "../contracts";
 import type { IntegratedProductController } from "./product-controller";
 
 export class PlanPreviewModal extends Modal {
+  private executionPending = false;
+  private executionAccepted = false;
   constructor(
     app: App,
     private readonly plan: SynchronizationPlan,
     private readonly controller: IntegratedProductController,
+    private readonly diagnosticRunId?: number,
   ) { super(app); }
 
   onOpen(): void {
@@ -33,12 +36,18 @@ export class PlanPreviewModal extends Modal {
       .setButtonText(this.plan.recoveryCheckpointRequired ? "Approve checkpoint and execute" : "Execute")
       .setCta()
       .onClick(async () => {
+        this.controller.recordExecuteClick(this.plan.planId, this.diagnosticRunId);
+        this.executionPending = true;
         const result = this.plan.recoveryCheckpointRequired && checkpoint
-          ? await this.controller.request({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId })
-          : await this.controller.request({ kind: "execute-plan", planId: this.plan.planId });
-        if (result.status === "accepted") this.close();
+          ? await this.controller.requestPreviewAction({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId }, this.diagnosticRunId)
+          : await this.controller.requestPreviewAction({ kind: "execute-plan", planId: this.plan.planId }, this.diagnosticRunId);
+        this.executionPending = false;
+        if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
         else contentEl.createEl("p", { text: result.reason });
       }));
   }
-  onClose(): void { this.contentEl.empty(); }
+  onClose(): void {
+    if (!this.executionPending && !this.executionAccepted) this.controller.recordPreviewDismissed(this.plan.planId, this.diagnosticRunId);
+    this.contentEl.empty();
+  }
 }

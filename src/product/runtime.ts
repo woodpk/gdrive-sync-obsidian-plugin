@@ -140,6 +140,7 @@ export class Phase5ProductRuntime {
       remoteIdentity,
       path => scope.isManagedLogical(path),
       () => this.host.settings().scopeReconcileRequired,
+      this.host.diagnostics,
     );
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
@@ -192,6 +193,7 @@ export class Phase5ProductRuntime {
           this.scheduler?.refresh();
         }
       },
+      diagnostics: this.host.diagnostics,
     });
     this.controller = controller;
     this.unsubscribeSurface = controller.onSurface(surface => {
