@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branches=(
+  phase6-alpha-ios-diagnostic-logging
+  phase6-alpha-ios-callback-handoff-fix
+  phase6-alpha-ios-oauth-diagnostic
+  phase6-oauth-housekeeping
+)
+
+git fetch origin master phase6-integration "${branches[@]}"
+git merge-base --is-ancestor f02db659710e17383c17312553ec087d2d0b7d50 origin/master
+test "$(git rev-parse origin/phase6-integration)" = "3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea"
+for branch in "${branches[@]}"; do
+  git merge-base --is-ancestor "origin/$branch" origin/master
+done
+
+git push origin --delete "${branches[@]}"
+for branch in "${branches[@]}"; do
+  if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+    echo "Branch still exists after deletion: $branch" >&2
+    exit 1
+  fi
+done
+
+cat >> dev/evidence/_ca-output-agt-CA-P6-OAUTH-HOUSEKEEPING-01.md <<'EOF'
+
+## Final master integration and branch retirement
+
+- pre-merge `phase6-integration` SHA: `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`
+- PR `#15` merge mechanism: normal GitHub merge commit; history preserved; no squash/rebase/force-push
+- master integration merge SHA: `f02db659710e17383c17312553ec087d2d0b7d50`
+- initial master parent: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`
+- integrated Phase 6 parent: `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`
+- expected diagnostic head `a0fc805b5d93b056d6699fc48633e11782bd0bde`: reachable from master
+- expected callback repair/evidence head `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`: reachable from master
+- housekeeping head `cd8497d61f75980cc3a949c70ff37e4cf993306a`: reachable from master
+- `phase6-alpha-ios-diagnostic-logging` final SHA `a0fc805b5d93b056d6699fc48633e11782bd0bde`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-callback-handoff-fix` final SHA `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-oauth-diagnostic` final SHA `d799e0139c36b629769a917f2d328de6ab84f44d`: **DELETED — fully merged/ancestor-only after explicit rollback and obsolete**
+- `phase6-oauth-housekeeping` final SHA `cd8497d61f75980cc3a949c70ff37e4cf993306a`: **DELETED — fully merged and obsolete**
+- `phase6-integration` SHA `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`: **RETAINED** because the repository's authoritative project-state still marks broader Phase 6 work active and the production Azure callback workflow is branch-scoped to `phase6-integration`.
+- open PR enumeration immediately before retirement: none.
+- `NEW GITHUB PLUGIN RELEASE: NOT CREATED`.
+- Stage 3 was not begun.
+- remaining Phase 6 work is limited to the broader non-OAuth runtime/fault/resource validation and planned post-iPhone performance block already recorded by the authoritative project-state; OAuth physical acceptance itself is closed as PASS.
+
+The master integration merge SHA above is the production integration point. This branch-retirement/evidence finalization is documentation/repository housekeeping only and introduces no production-code change.
+EOF
+
+cat >> dev/evidence/_ca-output.md <<'EOF'
+
+---
+
+## Phase 6 OAuth Housekeeping — final master integration and branch retirement
+
+- agent: `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
+- pre-merge `phase6-integration`: `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`
+- master integration merge: `f02db659710e17383c17312553ec087d2d0b7d50`, normal merge commit through PR `#15`; no squash/rebase/force-push
+- diagnostic head `a0fc805b5d93b056d6699fc48633e11782bd0bde`, callback branch head `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`, and housekeeping head `cd8497d61f75980cc3a949c70ff37e4cf993306a` were proven ancestors of master before retirement
+- `phase6-alpha-ios-diagnostic-logging` @ `a0fc805b5d93b056d6699fc48633e11782bd0bde`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-callback-handoff-fix` @ `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-oauth-diagnostic` @ `d799e0139c36b629769a917f2d328de6ab84f44d`: **DELETED — fully merged/ancestor-only after explicit rollback and obsolete**
+- `phase6-oauth-housekeeping` @ `cd8497d61f75980cc3a949c70ff37e4cf993306a`: **DELETED — fully merged and obsolete**
+- `phase6-integration` @ `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`: **RETAINED** because broader Phase 6 work remains active and the production Azure callback workflow is branch-scoped to it
+- open PRs before retirement: none
+- `NEW GITHUB PLUGIN RELEASE: NOT CREATED`
+- Stage 3 not begun
+- remaining Phase 6 scope: broader non-OAuth runtime/fault/resource validation and planned post-iPhone performance work already recorded in project state; physical iPhone OAuth acceptance is closed as PASS
+
+This finalization is evidence/branch housekeeping only and changes no production OAuth or synchronization behavior.
+EOF
+
+git rm .github/workflows/phase6-oauth-branch-retirement.yml .github/phase6-oauth-retire.sh
+git diff --check
+git config user.name 'phase6-oauth-housekeeping-ci'
+git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+git add dev/evidence/_ca-output.md dev/evidence/_ca-output-agt-CA-P6-OAUTH-HOUSEKEEPING-01.md
+git commit -m 'docs: finalize Phase 6 OAuth branch retirement evidence'
+git push origin HEAD:master
