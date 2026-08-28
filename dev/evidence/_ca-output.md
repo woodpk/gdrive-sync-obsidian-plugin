@@ -10,6 +10,8 @@ The existing device-local structured logger now assigns one persisted monotonic 
 
 Focused behavioral coverage is **13/13 PASS**. Typecheck and build pass; all five package verifiers pass. The final integrated Windows full suite is **307/309 PASS** with only the two qualified pre-existing drive-prefix portable-collision assertions. Generated `main.js`: `351475` bytes; SHA-256 `32500b28f1f8e730f3ea17a43a93a8f79bf028365c0324fa03767db035bb586f`.
 
+After push of evidence head `24c3b08e51032d29bf13535ee06ba8a8435513d9`, GitHub reported PR #24 OPEN and UNMERGED, base `phase6-integration`, head `phase6-alpha-ios-sync-diagnostic-logging`, `mergeable=MERGEABLE`, `mergeStateStatus=UNSTABLE` rather than dirty, and compare state `behind_by=0`, `ahead_by=7`. The PR body was updated to the same current verification values.
+
 Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

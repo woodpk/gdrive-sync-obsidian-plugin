@@ -223,7 +223,19 @@ Deleted: none.
 
 Final post-merge verification: typecheck PASS; focused **13/13 PASS**; full **307/309 PASS** with only the exact two qualified Windows assertions; build and all five package verifiers PASS; `git diff --check` PASS. Final artifact: `351475` bytes, SHA-256 `32500b28f1f8e730f3ea17a43a93a8f79bf028365c0324fa03767db035bb586f`.
 
-GitHub mergeability is to be recorded after the evidence commit is pushed and GitHub finishes recalculation. PR #24 must remain open and unmerged.
+After push of evidence head `24c3b08e51032d29bf13535ee06ba8a8435513d9`, GitHub resolved PR #24 as:
+
+- base: `phase6-integration`
+- head: `phase6-alpha-ios-sync-diagnostic-logging`
+- state: OPEN
+- merged: no
+- mergeable: `MERGEABLE`
+- merge-state status: `UNSTABLE`, not `DIRTY`
+- compare status: ahead
+- `behind_by=0`
+- `ahead_by=7`
+
+The PR body was updated to the same 13/13 focused, 307/309 qualified full-suite, and final artifact facts. PR #24 remains open and unmerged for independent rereview.
 
 ## Limitations and non-actions
 
