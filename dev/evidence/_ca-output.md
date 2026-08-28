@@ -1073,3 +1073,254 @@ Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deplo
 - no Stage 3 work begun;
 - no `master` modification;
 - PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.
+
+---
+
+## Phase 6 Alpha — iOS HTTPS Callback to Obsidian Handoff Repair — `agt-CODEX-P6-IOS-CALLBACK-HANDOFF-01`
+
+### Authority and provenance
+
+- date: `2026-08-27`;
+- repair branch: `phase6-alpha-ios-callback-handoff-fix`;
+- required source branch: `phase6-alpha-ios-diagnostic-logging`;
+- verified starting/source SHA: `a0fc805b5d93b056d6699fc48633e11782bd0bde`;
+- production/test repair commit: `4268efed443b099319dfe7f99d23e94add39765e`;
+- no merge, rebase, squash, cherry-pick, force push, release, or tag operation was performed.
+
+### Localized repair
+
+The hosted HTTPS OAuth callback page now keeps the existing automatic `obsidian://brain-gdrive-oauth` navigation attempt and also prepares a direct, visible `Open Obsidian to finish authentication` link before that attempt. The direct link supplies a user-gesture fallback when automatic custom-scheme navigation does not open Obsidian. A thrown automatic-navigation error is caught so the already-prepared fallback remains usable.
+
+The page reads the required callback fields before replacing browser history with the query-free pathname. It prepares or launches no handoff unless `state` and either `code` or `error` are present. Valid authorization-code and OAuth-error returns use the same exact custom-scheme boundary. Visible progress, incomplete, post-attempt, and fallback messages do not contain OAuth values.
+
+The repair does not establish that automatic iOS custom-scheme navigation was the root cause; it adds observability and a direct user-gesture fallback at the localized boundary.
+
+### Complete repair-pass manifest
+
+Created:
+
+- none.
+
+Modified:
+
+- `oauth-callback/index.html`;
+- `test/phase3-callback.test.ts`;
+- `dev/evidence/_ca-output.md`.
+
+Deleted:
+
+- none.
+
+`oauth-callback/staticwebapp.config.json`, plugin OAuth/runtime source, synchronization source, version metadata, workflows, and release assets were not modified.
+
+### Verification
+
+- clean dependency install: PASS — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: PASS;
+- focused hosted-callback executable tests: **5/5 PASS**;
+- `npm test`: **294/296 PASS**, with only the two authorized pre-existing Windows drive-qualified assertions listed below;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- `npm run check`: typecheck PASS, then the same qualified 294/296 Windows result; the chained command stopped before its redundant build step;
+- `git diff --check`: PASS apart from informational LF-to-CRLF working-copy warnings.
+
+The two qualified Windows-only failures were unchanged:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`.
+
+Both remain the previously documented drive-prefix expectation difference (`D:\\vault\\...` actual versus `\\vault\\...` expected). No additional test failed.
+
+Five build verifiers:
+
+```text
+BUILD_VERIFY_ENTRYPOINT=PASS
+BUILD_VERIFY_SYNTAX=PASS
+BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS
+BUILD_VERIFY_MOBILE_EVALUATION=PASS
+BUILD_VERIFY_PACKAGE_SHAPE=PASS
+```
+
+Build artifact:
+
+- `main.js` size: `329013` bytes;
+- SHA-256: `1225e9b1798d5238d7fd0e0a2241a40080b02b8c0e7d92970828ac1fa98726c6`;
+- the bundle is byte-identical to the diagnostic source branch artifact, as expected because the repair changes only the hosted callback page and its tests.
+
+During test development, the first focused TypeScript compile identified a nullable regular-expression capture in the test harness. The harness was corrected to fail explicitly when the inline script is absent; the final focused, typecheck, and full-suite results above include that correction.
+
+### Security and preserved boundaries
+
+- exact Google Drive scope remains `https://www.googleapis.com/auth/drive.file`;
+- no token, authorization code, state, PKCE verifier/challenge, client secret, complete OAuth URL, callback value, or vault content is logged, persisted, rendered, or copied into evidence;
+- callback query parameters are removed from browser history before validation or navigation;
+- no telemetry, network request, local/session storage, token exchange, OAuth transaction, SecretStorage, plugin callback-lifecycle, mobile dependency, or synchronization behavior was added or changed;
+- the callback deployment policy remains no-store, no-referrer, and CSP-restricted, and was inspected but not modified;
+- no `master`, `phase6-integration`, or source-branch modification occurred;
+- no Google Cloud or Azure configuration change occurred;
+- no performance work or Stage 3 work occurred.
+
+### Physical acceptance and limitation
+
+Physical iPhone callback acceptance: NOT PERFORMED BY THIS AGENT
+
+No physical OAuth attempt, iPhone pairing, or synchronization was performed. After independent review and deployment of this branch's callback page, one controlled iPhone authentication attempt must classify the result as: automatic handoff succeeded, manual `Open Obsidian` fallback succeeded, or neither path succeeded.
+
+### Authorized production deployment follow-up
+
+After the repair pass, the human supplied HS authorization to deploy the callback fix to the Azure Static Web App through GitHub. The production callback and test change from repair commit `4268efed443b099319dfe7f99d23e94add39765e` was applied alone to `phase6-integration`; none of the diagnostic branch's unrelated changes were included by that operation.
+
+- production integration/deployment commit: `b8734bbbc571d40d23e1b9870a4b13b67136cd68`;
+- Azure Static Web Apps workflow run: `33125226203`;
+- Azure deployment job: `98701642078`;
+- Azure workflow conclusion: **SUCCESS**;
+- companion Phase 1 CI run: `33125229901` — **SUCCESS**;
+- production endpoint: `https://witty-water-08743b310.7.azurestaticapps.net/`;
+- parameter-free live HTTP check: `200`;
+- live fallback label, automatic-attempt message, and neutral initial status: PRESENT;
+- live `Cache-Control`: `no-store`;
+- live `Referrer-Policy`: `no-referrer`;
+- live CSP: `default-src 'none'; script-src 'unsafe-inline'; navigate-to obsidian:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`.
+
+Before the production push, the isolated integration content was verified identical to the reviewed repair files. Typecheck passed; the focused callback suite passed 5/5; a clean full-suite compilation passed 272/274 with only the same two qualified Windows drive-prefix assertions; build and all five artifact verifiers passed; and `git diff --check` passed. The integration build remained `291948` bytes with SHA-256 `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`.
+
+The production deployment changed no release/tag, version metadata, `master`, Google Cloud configuration, Azure configuration, OAuth scope, token handling, synchronization behavior, performance work, or Stage 3 state. Physical iPhone callback acceptance remains not performed by this agent.
+
+
+---
+
+## Phase 6 OAuth Housekeeping — `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
+
+Date: `2026-08-27`
+
+## Initial repository state
+
+- initial `master`: `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`
+- initial `phase6-integration`: `b8734bbbc571d40d23e1b9870a4b13b67136cd68`
+- initial `phase6-alpha-ios-diagnostic-logging`: `a0fc805b5d93b056d6699fc48633e11782bd0bde`
+- initial `phase6-alpha-ios-callback-handoff-fix`: `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`
+- housekeeping branch: `phase6-oauth-housekeeping`, created from `b8734bbbc571d40d23e1b9870a4b13b67136cd68`
+- PR `#15`: open/draft/unmerged at initial inspection, `phase6-integration` -> `master`
+- PR `#21`: open/unmerged at initial inspection, diagnostic branch -> `phase6-integration`
+
+The validated callback repair was already present on `phase6-integration` through production integration/deployment commit `b8734bbbc571d40d23e1b9870a4b13b67136cd68`. Its callback HTML and callback regression test were verified byte-identical to the reviewed callback branch copies, so the production repair was not duplicated or redesigned.
+
+## Housekeeping integration performed
+
+PR `#21` was merged using a normal merge commit after the supplied physical iPhone acceptance satisfied its recorded physical-validation hold. Resulting `phase6-integration` merge commit: `315710a8458f5fc981de13065fbfffb3eb848f41`, with parents `b8734bbbc571d40d23e1b9870a4b13b67136cd68` and `a0fc805b5d93b056d6699fc48633e11782bd0bde`.
+
+The callback-repair branch still carried unique append-only repair/deployment evidence even though its production HTML/test content was already integrated. That ancestry was preserved without rewriting by PR `#22` / merge commit `4a118d46aa3a3c4bd8901114ccbf2f163d513a9a`, with callback branch head `967f9bbfb7d3989bce1949230caf6e7b20a46d8b` as the additional parent. No OAuth production behavior was altered by that evidence-preservation merge.
+
+The bounded diagnostic subsystem was retained. It remains device-local, structurally allow-listed, bounded-retention, and sanitizes/excludes authorization codes, OAuth state values, PKCE material, access/refresh tokens, client secrets, query-bearing authorization URLs, and vault content from diagnostic records.
+
+The Phase 6 focused CI command was expanded to include the hosted callback regression file so the combined verification gate explicitly exercises callback + diagnostic + OAuth + export tests.
+
+## Callback evidence wording clarification
+
+An earlier repair entry stated categorically that OAuth values were not "rendered." That wording is clarified, not erased:
+
+> OAuth code/state are not displayed as user-visible diagnostic text, logged, or persisted by the hosted callback page. They exist transiently only as required components of the constructed Obsidian callback URI.
+
+The fallback anchor's `href` and the automatic navigation use the same transiently constructed callback target. This does not expose the values as visible diagnostic text.
+
+## Supervisor-supplied physical iPhone OAuth acceptance
+
+Platform: `mobile / iPhone / Obsidian`
+
+Attempt: `attemptId: 7`
+
+Authentication attempt began: `2026-08-27T23:17:34.749Z`
+
+Observed sequence:
+
+- authentication attempt started;
+- PKCE/state transaction prepared;
+- external browser authorization launched;
+- plugin entered `result: "awaiting-callback"`;
+- callback received at `2026-08-27T23:17:53.498Z` as `oauth.callback / callback-received`;
+- `callbackRegistrationActive: true`;
+- `runtimeInitialized: true`;
+- `statePresent: true`;
+- `codePresent: true`;
+- `errorPresent: false`;
+- `runtime-callback-exit` completed with `result: "completed"`;
+- `callback-processing-complete` completed with `result: "completed"`;
+- `authentication-attempt-completed` completed with `result: "authenticated"`.
+
+**PHYSICAL IPHONE OAUTH ACCEPTANCE: PASS**
+
+Demonstrated chain:
+
+`Obsidian → Google OAuth → hosted Azure callback → Obsidian protocol callback → OAuth completion`
+
+Evidence limitation: plugin diagnostics do not independently establish whether the successful return used the callback page's automatic `window.location.replace(...)` path or the manual `Open Obsidian to finish authentication` user-gesture fallback. No stronger causal claim is made.
+
+Historical statements that physical iPhone acceptance had not yet been performed, callbacks had not yet arrived, or OAuth remained incomplete were correct for those earlier sessions and are retained as chronology. The supplied successful attempt above supersedes them for current OAuth acceptance status.
+
+## Later mobile product-ready evidence
+
+On the same mobile installation, later runtime initialization showed:
+
+- `remoteRootPresent: true`;
+- `vaultIdentityPresent: true`;
+- OAuth boundary creation completed;
+- mobile local-adapter creation completed;
+- configuration-directory initialization completed;
+- state-store initialization completed;
+- audit-store initialization completed;
+- scheduler startup completed;
+- runtime reached `result: "product-ready"`.
+
+The supplied runtime observation also states that plugin status showed a managed remote and completed first synchronization. No additional synchronization values, timestamps, counts, or content are inferred beyond the supplied evidence.
+
+## Azure deployment mechanics
+
+The inspected Azure Static Web Apps workflow deploys on pushes to `phase6-integration` and uses `./oauth-callback` as its application source. The repaired `oauth-callback/index.html` is present on that production-deploying branch.
+
+Established production deployment evidence retained from the callback repair:
+
+- production integration/deployment commit: `b8734bbbc571d40d23e1b9870a4b13b67136cd68`;
+- Azure Static Web Apps run: `33125226203`;
+- deployment job: `98701642078`;
+- conclusion: `SUCCESS`;
+- companion Phase 1 CI run: `33125229901` — `SUCCESS`.
+
+That prior evidence also recorded a parameter-free live endpoint HTTP `200`, the repaired fallback label/automatic-attempt/neutral initial status, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and the restricted callback CSP.
+
+The housekeeping PR's Azure preview runs are not used as production-deployment proof. Run `33129820326` failed specifically at the `Build And Deploy` step; the connector-visible job metadata does not expose a more specific failure message, so no unsupported cause is asserted. This does not negate the earlier successful production deployment of the unchanged callback page.
+
+## Combined housekeeping verification
+
+Exact verified housekeeping head: `8118707af62ec33890cf599912a880d56001e323`
+
+Workflow: `Phase 6 Alpha Diagnostic Verification`
+
+- run ID: `33129820333`
+- job ID: `98716461301`
+- conclusion: `SUCCESS`
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- `npm test`: **296/296 PASS**, 0 fail, 0 cancelled, 0 skipped, 0 todo
+- focused callback + diagnostic + OAuth + export suite: **38/38 PASS**, 0 fail, 0 cancelled, 0 skipped, 0 todo
+- `npm run build`: PASS
+- `npm run check`: PASS; repeated full suite **296/296 PASS** and all five build verifiers passed
+- `git diff --check`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- `main.js`: `329013` bytes
+- SHA-256: `1225e9b1798d5238d7fd0e0a2241a40080b02b8c0e7d92970828ac1fa98726c6`
+- workflow artifact ID: `9669805685`
+- artifact digest: `sha256:f00d6e61bd1618b57246e937e679f9946af0a38f647f3d9d3bb4e4b3831d3954`
+
+The previously observed two Windows drive-prefix test failures did **not** reproduce in this Ubuntu GitHub Actions environment; all 296 tests passed.
+
+## Current boundary before master integration
+
+- exact OAuth scope remains `https://www.googleapis.com/auth/drive.file`.
+- no new plugin release was created.
+- no OAuth redesign, token-exchange change, Drive pairing change, synchronization semantic change, or Stage 3 work was performed.
+- `phase6-integration` is intentionally expected to remain after master integration because `dev/planning-and-building/project-state.yaml` still marks Phase 6 active and lists broader non-OAuth runtime/fault/resource validation plus the planned post-iPhone performance block.
+- final master integration SHA and branch-retirement dispositions are to be appended after those operations complete.
