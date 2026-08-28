@@ -1417,3 +1417,19 @@ Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-
 `Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
 
 PR #26 was not merged or released. No tag/release, `master`/integration modification, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
+
+---
+
+## Phase 6 Alpha — iOS Canonical Content Reader Repair — `agt-CA-P6-IOS-CONTENT-READER-01`
+
+Physical iPhone `0.1.4` testing established that the active mobile adapter boundary was working but non-empty ordinary and portable-configuration files failed canonical hashing because `ResourceFetchContentSource` required HTTP `206` while the iOS resource runtime returned a readable streamed HTTP `200`. The resulting unknown canonical evidence truthfully made LOCAL partial and produced `blocked-unsafe` planning.
+
+On the existing PR #27 branch, starting evidence head `50ab9d4a5e112c33f0e9b070c2158c33e73a480d`, final verified implementation SHA `7fba7fbc568c4512e54740f549d44c434b7b2a79` retains exact validated `206` range reads and adds an incremental full-stream `200` path. The reader enforces observed `stat.size`, exact optional `Content-Length`, premature-EOF/excess-byte rejection, bounded yielded chunks, stale checks before/during/after reading, response cancellation on failure, and zero-byte no-fetch behavior. It does not call whole-file `readBinary()`. Desktop composition and all synchronization safety semantics remain unchanged. Version metadata is prepared consistently at `0.1.5`; no tag or release was created.
+
+Verification: `npm run typecheck` PASS; focused iOS content-reader suite **6/6 PASS**; `npm test` **321/323 PASS** with only the two established Windows drive-prefix assertions; `npm run build` PASS; `npm run verify:build` PASS; all five package verifiers PASS; `git diff --check` PASS. The production regression follows `ObsidianLocalVaultAdapter → ScopedLocalVault → CanonicalEvidenceLocalVault`, proves canonical SHA-256 for non-empty ordinary and portable configuration content, proves `localCompleteness=complete`, and proves no HTTP-200-induced `blocked-unsafe` first-sync operations. `main.js`: `358620` bytes; SHA-256 `e467de6c96c76c1006897926a98f63e0dec0acc67354553560b00b4edf3cb478`.
+
+Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-CONTENT-READER-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+PR #27 and PR #26 remain open/unmerged. No `master`/integration modification, tag/release, Drive/OAuth change, synchronization redesign, performance work, Phase 6 closure, or Stage 3 work occurred.
