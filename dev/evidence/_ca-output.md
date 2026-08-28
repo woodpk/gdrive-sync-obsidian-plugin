@@ -2,7 +2,21 @@
 
 This file is the cumulative construction-evidence ledger for `woodpk/gdrive-sync-obsidian-plugin`. Earlier phase evidence is retained rather than declared superseded. Detailed phase records remain authoritative historical evidence at their preserved paths/commits; this ledger records their identity and carries the evidence chain forward into Phase 5.
 
-Phase 6 and Stage 3 have **not** begun.
+## Latest Phase 6 Alpha diagnostic work — iPhone `Sync now`
+
+Agent `agt-CA-P6-IOS-SYNC-DIAG-01` created `phase6-alpha-ios-sync-diagnostic-logging` directly from immutable release `0.1.2` at `9a6b5ffa52d11f699a839214b7fdcb3c4c4701e6`. Version metadata was minimally advanced to `0.1.3` so a future independently approved physical diagnostic build can be distinguished from installed `0.1.2`; no tag or release was created.
+
+The existing device-local structured logger now assigns one persisted monotonic `runId` across the actual `Sync now` handler, manual request, BASE/LOCAL/REMOTE planning observations, safe plan summary, preview preparation/presentation, separate Execute gesture, per-operation execution/verification/authoritative-commit stages, and explicit complete/failed/cancelled/deferred terminal outcomes. Safe ordinals, categories, counts, and statuses are recorded without paths, note/binary content, Drive IDs, OAuth credentials/state/PKCE/code, or complete URLs. Diagnostics cannot affect synchronization decisions.
+
+Focused behavioral coverage is 3/3 PASS. Typecheck and build pass; all five package verifiers pass. The Windows full suite is 293/295 PASS with only the two qualified pre-existing drive-prefix portable-collision assertions. Generated `main.js`: `345938` bytes; SHA-256 `dfe7ab4e0f35317f82234846456babfd4ff1b7cd329e91e1245675c724f23099`.
+
+Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Synchronization root cause: NOT YET ESTABLISHED
+
+Historical ledger statement retained from the earlier construction stage: Phase 6 and Stage 3 had **not** begun at that point.
 
 ---
 
@@ -1073,21 +1087,3 @@ Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deplo
 - no Stage 3 work begun;
 - no `master` modification;
 - PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.
-
----
-
-## Phase 6 Alpha — iPhone `Sync now` Diagnostic Logging — `agt-CA-P6-IOS-SYNC-DIAG-01`
-
-This diagnostic-only branch was created directly from immutable release `0.1.2` at `9a6b5ffa52d11f699a839214b7fdcb3c4c4701e6`. Branch: `phase6-alpha-ios-sync-diagnostic-logging`. Version metadata was minimally advanced to `0.1.3` so a future independently approved physical diagnostic build can be distinguished from installed `0.1.2`. No `master` or `phase6-integration` modification/merge, tag, or release occurred.
-
-The existing device-local structured logger now assigns each manual synchronization attempt a persisted monotonic `runId`. That correlation spans the actual `Sync now` handler, manual request, trusted BASE/state load, LOCAL and REMOTE observation, plan construction and safe summary, preview preparation/presentation, separate Execute gesture, execution, per-operation precondition/journal/mutation/verified-receipt/authoritative-commit boundaries, and explicit complete/failed/cancelled/deferred terminal outcomes. The implementation logs safe ordinals/categories/counts/statuses only; it does not log paths, note/binary content, Drive IDs, OAuth credentials/state/PKCE/code, or complete URLs. Diagnostics remain device-local and diagnostic callbacks cannot affect synchronization decisions.
-
-Focused behavioral coverage is 3/3 PASS. It proves single-run correlation, lifecycle ordering, distinct preview/Execute boundaries, verification before authoritative commit, explicit sanitized failure, protected-data exclusion, and unchanged plan/state semantics. Typecheck and build pass. Both `npm run build` and `npm run verify:build` report all five package verifier checks PASS. The full suite is 293/295 PASS with only the two qualified pre-existing Windows drive-prefix portable-collision assertions and no new failure. `git diff --check` passes apart from informational line-ending warnings.
-
-Generated `main.js`: `345938` bytes; SHA-256 `dfe7ab4e0f35317f82234846456babfd4ff1b7cd329e91e1245675c724f23099`.
-
-Complete evidence and changed-file manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`.
-
-Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
-
-Synchronization root cause: NOT YET ESTABLISHED
