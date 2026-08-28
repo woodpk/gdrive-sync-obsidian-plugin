@@ -22,8 +22,8 @@ jobs:
         run: npm run typecheck
       - name: Full tests
         run: npm test
-      - name: Focused diagnostic, OAuth, and export tests
-        run: node --test .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js
+      - name: Focused callback, diagnostic, OAuth, and export tests
+        run: node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js
       - name: Production build
         run: npm run build
       - name: Full repository check
