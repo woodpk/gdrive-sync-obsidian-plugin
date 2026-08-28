@@ -39,6 +39,14 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
   ) {}
 
   async assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void> {
+    await this.resolveSafePath(path, access);
+  }
+
+  /**
+   * Returns the same lexically-contained path whose components were checked by
+   * this guard, so desktop readers do not introduce a second unchecked resolver.
+   */
+  async resolveSafePath(path: VaultPath, _access: LocalReferenceAccess): Promise<string> {
     const canonicalBase = await (this.canonicalBase ??= this.ops.realpath(this.basePath));
     const lexicalTarget = resolve(this.basePath, String(path));
     if (!isWithin(resolve(this.basePath), lexicalTarget)) {
@@ -47,28 +55,41 @@ export class DesktopExternalReferenceGuard implements ExternalReferenceGuard {
 
     const relativeParts = String(path).split("/").filter(Boolean);
     let current = resolve(this.basePath);
+
     for (let index = 0; index < relativeParts.length; index += 1) {
       current = resolve(current, relativeParts[index]);
+
+      let status: FileStatusLike;
       try {
-        const status = await this.ops.lstat(current);
-        if (status.isSymbolicLink()) {
-          throw new ExternalFilesystemReferenceError(path, `External reference blocked at symbolic-link/junction component: ${relativeParts.slice(0, index + 1).join("/")}`);
-        }
-        const canonicalCurrent = await this.ops.realpath(current);
-        if (!isWithin(canonicalBase, canonicalCurrent)) {
-          throw new ExternalFilesystemReferenceError(path, `External reference resolved outside vault at: ${relativeParts.slice(0, index + 1).join("/")}`);
-        }
+        status = await this.ops.lstat(current);
       } catch (error) {
-        if (error instanceof ExternalFilesystemReferenceError) throw error;
         const code = (error as { code?: string } | undefined)?.code;
-        const isMissing = code === "ENOENT" || code === "ENOTDIR";
-        if (isMissing && (access === "mutation-target" || index > 0)) {
-          // A not-yet-created target is safe only after every existing ancestor
-          // has already passed lstat + realpath containment checks.
-          return;
+        if (code === "ENOENT" || code === "ENOTDIR") {
+          // A genuinely missing component is a safe absence candidate only after
+          // every existing ancestor has already passed lstat + realpath containment.
+          return lexicalTarget;
         }
         throw error;
       }
+
+      if (status.isSymbolicLink()) {
+        throw new ExternalFilesystemReferenceError(
+          path,
+          `External reference blocked at symbolic-link/junction component: ${relativeParts.slice(0, index + 1).join("/")}`
+        );
+      }
+
+      // This component exists. Canonical resolution is therefore mandatory.
+      // Any realpath failure is containment uncertainty and must remain fail-closed.
+      const canonicalCurrent = await this.ops.realpath(current);
+      if (!isWithin(canonicalBase, canonicalCurrent)) {
+        throw new ExternalFilesystemReferenceError(
+          path,
+          `External reference resolved outside vault at: ${relativeParts.slice(0, index + 1).join("/")}`
+        );
+      }
     }
+
+    return lexicalTarget;
   }
 }

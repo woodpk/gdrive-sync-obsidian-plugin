@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-08-23"
+  as_of: "2026-08-26"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -774,6 +774,53 @@ decisions:
     status: locked
     category: brain_asset_boundary
     decision: "The Google Drive BRAIN asset repository and the plugin's Google Drive BRAIN Sync remote are logically distinct storage domains even if both exist in the same Google account."
+
+  - id: DEC-290
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    scheduled_after: "iPhone integration/setup is complete and the iPhone client is working correctly"
+    decision: "The synchronization performance optimization program is explicitly planned but NOT YET IMPLEMENTED. It must begin immediately after iPhone integration/setup completes and the iPhone client is working correctly, before final Phase 6 closure and before Stage 3. Correctness, crash safety, provenance, integrity verification, recovery semantics, fail-closed uncertainty handling, and mobile resource safety may not be weakened to obtain speed."
+  - id: DEC-291
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Add per-run caching/reuse of invariant Google account/pairing validation and managed-root/content-domain/portable-config-domain discovery, with explicit invalidation/revalidation boundaries whenever relevant remote state can have changed."
+  - id: DEC-292
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Cache Drive folder IDs, resolved logical paths, parent chains, and parent-folder lookup/creation results within a run so sibling files do not repeatedly traverse or query the same remote directory hierarchy."
+  - id: DEC-293
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Batch or consolidate Drive metadata/path queries where the Drive API permits, eliminating avoidable N+1 child lookups and repeated parent traversal without weakening identity/provenance validation."
+  - id: DEC-294
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Use the Google Drive Changes API/change cursor and persistent synchronization state as the ordinary steady-state discovery path; reserve full remote-tree reconciliation for required startup, recovery, integrity, configured periodic, or explicit Verify/Reconcile cases."
+  - id: DEC-295
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Reuse canonical local hash/content evidence when an unchanged stable observation token proves cached evidence remains valid, avoiding unnecessary rereads/rehashes while preserving required transfer integrity verification."
+  - id: DEC-296
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Remove or coalesce provably redundant duplicate precondition validation when a validated result can safely remain authoritative across the journal/mutation boundary; stale-plan rejection must remain whenever evidence may have changed."
+  - id: DEC-297
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Pipeline independent metadata and transfer-preparation work where safe while preserving per-operation crash-safe journaling, deterministic state commits, retry/idempotency behavior, and cancellation semantics."
+  - id: DEC-298
+    status: locked
+    category: performance_optimization
+    implementation_status: planned_not_implemented
+    decision: "Introduce bounded concurrency for independent non-destructive uploads/downloads rather than strictly serial file transfer, using configurable/platform-aware limits, Drive rate/quota backpressure, and tighter iOS resource limits. This does not permit overlapping whole synchronization runs."
 
 superseded_decisions:
   - id: SUP-001

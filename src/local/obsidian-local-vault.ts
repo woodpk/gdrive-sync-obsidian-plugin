@@ -33,6 +33,18 @@ export interface ExternalReferenceGuard {
   assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void>;
 }
 
+/** Private platform seam for selecting a bounded, incremental content reader. */
+export interface LocalContentSourceContext {
+  readonly path: VaultPath;
+  readonly sizeBytes: number | undefined;
+  readonly maxChunkBytes: number;
+  assertUnchanged(): Promise<void>;
+}
+
+export interface LocalContentSourceFactory {
+  create(context: LocalContentSourceContext): BinaryContentSource;
+}
+
 export interface LocalAdapterOptions {
   readonly exclusionPolicy?: LocalExclusionPolicy;
   readonly configurationPolicy?: SelectiveConfigurationPolicy;
@@ -40,6 +52,7 @@ export interface LocalAdapterOptions {
   readonly fetchImpl?: typeof fetch;
   readonly readChunkSizeBytes?: number;
   readonly externalReferenceGuard?: ExternalReferenceGuard;
+  readonly contentSourceFactory?: LocalContentSourceFactory;
 }
 
 export class LocalPlatformCapabilityError extends Error {
@@ -252,6 +265,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly fetchImpl: typeof fetch;
   private readonly readChunkSizeBytes: number;
   private readonly externalReferenceGuard: ExternalReferenceGuard;
+  private readonly contentSourceFactory?: LocalContentSourceFactory;
   private readonly changeListeners = new Set<(change: LocalVaultChange) => void>();
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
@@ -270,6 +284,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       throw new Error("readChunkSizeBytes must be a positive safe integer");
     }
     this.externalReferenceGuard = options.externalReferenceGuard ?? new UnavailableExternalReferenceGuard();
+    this.contentSourceFactory = options.contentSourceFactory;
     this.installVaultEvents();
     this.installLifecycleEvents();
   }
@@ -374,8 +389,15 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     }
     if (expectedToken && expectedToken !== observation.observationToken) throw new LocalStaleObservationError(path);
     const token = observation.observationToken;
+    const sizeBytes = observation.content?.sizeBytes;
+    const content = this.contentSourceFactory?.create({
+      path,
+      sizeBytes,
+      maxChunkBytes: this.readChunkSizeBytes,
+      assertUnchanged: () => this.assertToken(path, token)
+    }) ?? new ResourceFetchContentSource(this, path, token, sizeBytes, this.fetchImpl, this.readChunkSizeBytes);
     return {
-      content: new ResourceFetchContentSource(this, path, token, observation.content?.sizeBytes, this.fetchImpl, this.readChunkSizeBytes),
+      content,
       evidence: observation.content ?? {},
       stability: "stable",
       observationToken: token

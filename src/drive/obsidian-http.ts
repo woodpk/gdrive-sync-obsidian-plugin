@@ -6,7 +6,7 @@ export interface ObsidianRequestUrlResponseLike {
   readonly arrayBuffer: ArrayBuffer;
 }
 export interface ObsidianRequestUrlLike {
-  (request: { readonly url: string; readonly method?: string; readonly headers?: Record<string,string>; readonly body?: string | ArrayBuffer }): Promise<ObsidianRequestUrlResponseLike>;
+  (request: { readonly url: string; readonly method?: string; readonly headers?: Record<string,string>; readonly body?: string | ArrayBuffer; readonly throw?: boolean }): Promise<ObsidianRequestUrlResponseLike>;
 }
 
 function headerRecord(headers: HeadersInit | undefined): Record<string,string> {
@@ -26,7 +26,7 @@ function requestBody(body: BodyInit | null | undefined): string | ArrayBuffer | 
 export function createObsidianRequestUrlFetcher(requestUrl: ObsidianRequestUrlLike): FetchLike {
   return async (input, init = {}) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    const result = await requestUrl({ url, method: init.method, headers: headerRecord(init.headers), body: requestBody(init.body) });
+    const result = await requestUrl({ url, method: init.method, headers: headerRecord(init.headers), body: requestBody(init.body), throw: false });
     return new Response(result.arrayBuffer, { status: result.status, headers: result.headers });
   };
 }
