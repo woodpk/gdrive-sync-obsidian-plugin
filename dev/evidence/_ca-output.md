@@ -1397,3 +1397,19 @@ The previously observed two Windows drive-prefix test failures did **not** repro
 - no OAuth redesign, token-exchange change, Drive pairing change, synchronization semantic change, or Stage 3 work was performed.
 - `phase6-integration` is intentionally expected to remain after master integration because `dev/planning-and-building/project-state.yaml` still marks Phase 6 active and lists broader non-OAuth runtime/fault/resource validation plus the planned post-iPhone performance block.
 - final master integration SHA and branch-retirement dispositions are to be appended after those operations complete.
+
+---
+
+## Phase 6 Alpha — iOS Local-Enumeration Safety Repair — `agt-CA-P6-IOS-LOCAL-SAFETY-01`
+
+The repair branch `phase6-alpha-ios-local-safety-fix` began at the verified `phase6-integration` SHA `523ba96cc6e975645cfd319fa7bb62b9c1399176` and prepares version metadata `0.1.4` without creating a tag or release.
+
+The physical `0.1.3` failure was traced to mobile construction of `ObsidianLocalVaultAdapter` without an external-reference guard. Its generic fail-closed guard therefore made legitimate folder observations inaccessible, stopped recursion, and produced truthful `localCompleteness=partial` evidence.
+
+The non-desktop runtime now injects a mobile-only guard that validates vault-relative path form, adapter/tree agreement, exact logical path, current-vault identity, and an acyclic consistent parent chain terminating at the exact current Obsidian vault root. Missing targets require adapter/tree absence agreement plus a rooted nearest ancestor. Any disagreement or inability to establish the invariant remains fail-closed. Desktop retains its isolated Node-backed guard; generic composition remains fail-closed; no planner, deletion, recovery, OAuth, or transfer semantic changed.
+
+Verification: typecheck PASS; focused mobile-local-safety **7/7 PASS**; full suite **314/316 PASS** with only the two established Windows drive-prefix assertions; build PASS; all five package verifiers PASS; `git diff --check` PASS. Generated `main.js` is `355163` bytes with SHA-256 `0158096224f372126b800d4c66265ef52d3877b8c3a04d866ed365b99895c8ca`.
+
+Complete evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-LOCAL-SAFETY-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
