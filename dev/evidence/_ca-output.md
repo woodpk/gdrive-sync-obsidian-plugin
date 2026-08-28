@@ -1453,3 +1453,21 @@ PR #27 and PR #26 remain open/unmerged. No `master`/integration modification, ta
 - remaining Phase 6 scope: broader non-OAuth runtime/fault/resource validation and planned post-iPhone performance work already recorded in project state; physical iPhone OAuth acceptance is closed as PASS
 
 This finalization is evidence/branch housekeeping only and changes no production OAuth or synchronization behavior.
+
+---
+
+## Phase 6 Alpha — `0.1.5` integration and master promotion — `agt-CA-P6-IOS-015-INTEGRATE-01`
+
+PR #26 was closed without merging as superseded by PR #27. PR #27 metadata was corrected to its approved final state and guarded-merged normally at exact evidence head `5e4b328ff31682060035ab199d95aa3712c1ee12` into `phase6-integration`; merge commit `91c0c12f06b397f25b5dad115b437c6db49bb8d3`.
+
+Post-merge verification passed: typecheck; focused iOS canonical-content-reader **6/6**; full Windows **321/323** with only the two established drive-prefix assertions; build; all five package verifiers; diff check; consistent `0.1.5` version metadata. Artifact remained exactly `358620` bytes with SHA-256 `e467de6c96c76c1006897926a98f63e0dec0acc67354553560b00b4edf3cb478`.
+
+Promotion PR [#28](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/28) was opened from `phase6-integration` to unchanged `master` at `4454d153980d0e80b1697c7d4a4e1dccc7cb8529`. Its sole initial conflict was the append-only cumulative evidence ledger. Both histories were preserved by evidence-only reconciliation commit `ca9436632da3039c580cfdc070ab8a1838697fbe`; the full local verification was repeated unchanged. PR #28 then became mergeable. `Phase 1 CI` run `33212472938` tested that SHA and passed **323/323**, with the same verifier and artifact identity.
+
+PR #26/#27 close-preview runs `33211857228` and `33211929861` failed because the Azure deployment token was unavailable; integration deployment run `33212471617` passed but does not prove those previews were retired.
+
+`AZURE STAGING HOUSEKEEPING: MANUAL AZURE-SIDE CLEANUP STILL REQUIRED`
+
+No `0.1.5` tag or release was created. PR #28 is intentionally open/unmerged, and `master` is unchanged. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-015-INTEGRATE-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
