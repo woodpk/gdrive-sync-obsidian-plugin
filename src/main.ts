@@ -248,8 +248,8 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     const plan = await controller.previewManual(runId);
     if (plan) {
       presentManualSyncPreview(
-        () => new PlanPreviewModal(this.app, plan, controller).open(),
-        () => controller.recordPreviewPresented(plan.planId),
+        () => new PlanPreviewModal(this.app, plan, controller, runId).open(),
+        () => controller.recordPreviewPresented(plan.planId, runId),
         error => controller.recordPreviewPresentationFailure(plan.planId, error, runId),
       );
     }

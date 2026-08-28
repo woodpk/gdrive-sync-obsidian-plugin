@@ -184,7 +184,6 @@ export class IntegratedProductController implements ProductControlPort {
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
   private readonly runs: CoreRunCoordinator;
   private readonly conflictRegistry = new Map<string, ConflictAssessment>();
-  private readonly diagnosticRunByPlanId = new Map<string, number>();
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
 
@@ -203,24 +202,22 @@ export class IntegratedProductController implements ProductControlPort {
   }
   async previewVerifyReconcile(): Promise<SynchronizationPlan | undefined> { return this.createPlan("verify-reconcile", true, true); }
   noteChangeDuringRun(): void { this.runs.noteLocalOrRemoteChangeDuringRun(); }
-  recordPreviewPresented(planId: SynchronizationPlan["planId"]): void {
+  recordPreviewPresented(planId: SynchronizationPlan["planId"], diagnosticRunId?: number): void {
     const planned = this.planned;
-    if (planned?.plan.planId === planId) this.syncInfo(this.diagnosticRunIdForPlan(planId), "plan-preview-presented", { stage: "preview-presented", ...planDiagnosticFields(planned.plan, planned.assembly) });
+    if (planned?.plan.planId === planId) this.syncInfo(diagnosticRunId, "plan-preview-presented", { stage: "preview-presented", ...planDiagnosticFields(planned.plan, planned.assembly) });
   }
-  recordPreviewPresentationFailure(planId: SynchronizationPlan["planId"], error: unknown, fallbackRunId?: number): void {
-    const runId = this.diagnosticRunIdForPlan(planId) ?? fallbackRunId;
-    this.syncFailure(runId, "sync-run-failed", error, { stage: "preview-presentation", classification: "preview-presentation-failure", result: "failed" });
-    this.endDiagnosticRun(runId);
+  recordPreviewPresentationFailure(_planId: SynchronizationPlan["planId"], error: unknown, diagnosticRunId?: number): void {
+    this.syncFailure(diagnosticRunId, "sync-run-failed", error, { stage: "preview-presentation", classification: "preview-presentation-failure", result: "failed" });
+    this.endDiagnosticRun(diagnosticRunId);
   }
-  recordExecuteClick(planId: SynchronizationPlan["planId"]): void {
+  recordExecuteClick(planId: SynchronizationPlan["planId"], diagnosticRunId?: number): void {
     const planned = this.planned;
-    this.syncInfo(this.diagnosticRunIdForPlan(planId), "execute-click-handler-enter", { stage: "execute-click", ...(planned?.plan.planId === planId ? { operationCount: planned.plan.operations.length } : {}) });
+    this.syncInfo(diagnosticRunId, "execute-click-handler-enter", { stage: "execute-click", ...(planned?.plan.planId === planId ? { operationCount: planned.plan.operations.length } : {}) });
   }
-  recordPreviewDismissed(planId: SynchronizationPlan["planId"]): void {
-    const runId = this.diagnosticRunIdForPlan(planId);
-    if (runId === undefined) return;
-    this.syncInfo(runId, "sync-run-cancelled", { stage: "preview-dismissed", result: "cancelled" });
-    this.endDiagnosticRun(runId);
+  recordPreviewDismissed(_planId: SynchronizationPlan["planId"], diagnosticRunId?: number): void {
+    if (diagnosticRunId === undefined) return;
+    this.syncInfo(diagnosticRunId, "sync-run-cancelled", { stage: "preview-dismissed", result: "cancelled" });
+    this.endDiagnosticRun(diagnosticRunId);
   }
 
   async runAutomatic(trigger: "startup-resume" | "local-change" | "periodic"): Promise<void> {
@@ -238,7 +235,13 @@ export class IntegratedProductController implements ProductControlPort {
     await this.executePlanned(false);
   }
 
-  async request(action: UserAction): Promise<UserActionResult> {
+  async request(action: UserAction): Promise<UserActionResult> { return this.requestWithDiagnosticRun(action); }
+  async requestPreviewAction(
+    action: Extract<UserAction, { readonly kind: "execute-plan" | "approve-destructive-plan" }>,
+    diagnosticRunId?: number,
+  ): Promise<UserActionResult> { return this.requestWithDiagnosticRun(action, diagnosticRunId); }
+
+  private async requestWithDiagnosticRun(action: UserAction, diagnosticRunId?: number): Promise<UserActionResult> {
     switch (action.kind) {
       case "pause":
         this.runs.pause(); this.setStatus({ kind: "paused" }); return { status: "accepted" };
@@ -251,20 +254,20 @@ export class IntegratedProductController implements ProductControlPort {
       case "verify-reconcile-vault":
         await this.previewVerifyReconcile(); return { status: "accepted" };
       case "execute-plan": {
-        const runId = this.diagnosticRunIdForPlan(action.planId);
-        if (!this.planned || this.planned.plan.planId !== action.planId) return this.rejectExecute(action.planId, "plan is stale or no longer current", "stale-plan", runId);
-        if (!this.planned.reviewed) return this.rejectExecute(action.planId, "manual plan has not been reviewed", "unreviewed-plan", runId);
-        if (this.planned.plan.recoveryCheckpointRequired) return this.rejectExecute(action.planId, "destructive plan requires exact checkpoint approval", "checkpoint-approval-required", runId);
-        const outcome = await this.executePlanned(true);
-        return outcome !== "failed" ? { status: "accepted" } : this.rejectExecute(action.planId, "reviewed plan failed before safe progress could complete", "execution-failed", runId);
+        const runId = diagnosticRunId ?? this.planned?.diagnosticRunId;
+        if (!this.planned || this.planned.plan.planId !== action.planId) return this.rejectExecute("plan is stale or no longer current", "stale-plan", runId);
+        if (!this.planned.reviewed) return this.rejectExecute("manual plan has not been reviewed", "unreviewed-plan", runId);
+        if (this.planned.plan.recoveryCheckpointRequired) return this.rejectExecute("destructive plan requires exact checkpoint approval", "checkpoint-approval-required", runId);
+        const outcome = await this.executePlanned(true, undefined, runId);
+        return outcome !== "failed" ? { status: "accepted" } : this.rejectExecute("reviewed plan failed before safe progress could complete", "execution-failed", runId);
       }
       case "approve-destructive-plan": {
-        const runId = this.diagnosticRunIdForPlan(action.planId);
-        if (!this.planned || this.planned.plan.planId !== action.planId) return this.rejectExecute(action.planId, "destructive plan is stale", "stale-destructive-plan", runId);
-        if (!this.planned.checkpointId || this.planned.checkpointId !== action.recoveryCheckpointId) return this.rejectExecute(action.planId, "approval is not tied to the current recovery checkpoint", "checkpoint-mismatch", runId);
+        const runId = diagnosticRunId ?? this.planned?.diagnosticRunId;
+        if (!this.planned || this.planned.plan.planId !== action.planId) return this.rejectExecute("destructive plan is stale", "stale-destructive-plan", runId);
+        if (!this.planned.checkpointId || this.planned.checkpointId !== action.recoveryCheckpointId) return this.rejectExecute("approval is not tied to the current recovery checkpoint", "checkpoint-mismatch", runId);
         await this.audit("destructive-plan-approved", { planId: action.planId });
-        const outcome = await this.executePlanned(true, action.recoveryCheckpointId);
-        return outcome !== "failed" ? { status: "accepted" } : this.rejectExecute(action.planId, "approved destructive plan failed", "execution-failed", runId);
+        const outcome = await this.executePlanned(true, action.recoveryCheckpointId, runId);
+        return outcome !== "failed" ? { status: "accepted" } : this.rejectExecute("approved destructive plan failed", "execution-failed", runId);
       }
       case "resolve-conflict":
         return this.resolveConflict(action.conflictId, action.resolution);
@@ -312,7 +315,6 @@ export class IntegratedProductController implements ProductControlPort {
         checkpointId = cid<"CheckpointId">(backup.backupId) as CheckpointId;
       }
       this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId };
-      if (diagnosticRunId !== undefined) this.diagnosticRunByPlanId.set(String(plan.planId), diagnosticRunId);
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
       this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
 
@@ -348,13 +350,13 @@ export class IntegratedProductController implements ProductControlPort {
     for (const [key, value] of fresh) this.conflictRegistry.set(key, value);
   }
 
-  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId): Promise<RunOutcome> {
+  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number): Promise<RunOutcome> {
     const planned = this.planned;
     if (!planned) return "failed";
     if (!userInitiated && planned.plan.executionDisposition !== "safe-auto-eligible") return "failed";
     if (planned.plan.executionDisposition === "blocked") return "failed";
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
-    const runId = planned.diagnosticRunId;
+    const runId = diagnosticRunId ?? planned.diagnosticRunId;
     this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
     let begun: Awaited<ReturnType<CoreRunCoordinator["beginRun"]>>;
     try { begun = await this.runs.beginRun(); }
@@ -669,17 +671,13 @@ export class IntegratedProductController implements ProductControlPort {
   private syncFailure(runId: number | undefined, event: string, error: unknown, fields?: SafeDiagnosticFields): void {
     if (runId !== undefined) this.options.diagnostics?.syncFailure("sync.execute", event, runId, error, fields);
   }
-  private diagnosticRunIdForPlan(planId: SynchronizationPlan["planId"]): number | undefined {
-    return this.diagnosticRunByPlanId.get(String(planId));
-  }
-  private rejectExecute(planId: SynchronizationPlan["planId"], reason: string, classification: string, runId = this.diagnosticRunIdForPlan(planId)): UserActionResult {
+  private rejectExecute(reason: string, classification: string, runId?: number): UserActionResult {
     this.syncError(runId, "execute-request-rejected", { stage: "execute-request", classification, result: "rejected" });
     return { status: "rejected", reason };
   }
   private endDiagnosticRun(runId?: number): void {
     if (runId === undefined) return;
     this.options.diagnostics?.endSyncRun(runId);
-    for (const [planId, candidate] of this.diagnosticRunByPlanId) if (candidate === runId) this.diagnosticRunByPlanId.delete(planId);
   }
   private setStatus(status: SynchronizationStatus): void {
     this.surface = { ...this.surface, status };

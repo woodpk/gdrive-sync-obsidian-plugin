@@ -22,6 +22,8 @@ const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:ios-sync-diagnostics");
 const device = id<"DeviceIdentity">("device:ios-sync-diagnostics");
 const filePath = id<"VaultPath">("SENTINEL_PRIVATE_NOTE_PATH.md") as VaultPath;
+const protectedFailureMessage = "SENTINEL_PRIVATE_NOTE_PATH.md SENTINEL_NOTE_BODY_FRAGMENT SENTINEL_DRIVE_OBJECT_ID access_token=SENTINEL_TOKEN https://example.invalid/private?state=SENTINEL_STATE";
+const protectedFailurePattern = /SENTINEL_PRIVATE_NOTE_PATH|SENTINEL_NOTE_BODY_FRAGMENT|SENTINEL_DRIVE_OBJECT_ID|SENTINEL_TOKEN|SENTINEL_STATE|example\.invalid/i;
 const evidence: ContentEvidence = { hash: id<"ContentHash">("sha256:fixture"), sizeBytes: 23 };
 const managed: ManagedRemoteIdentity = {
   rootId: id<"RemoteObjectId">("root:ios-sync-diagnostics"),
@@ -96,9 +98,9 @@ async function successfulManualRun() {
   const plan = await controller.previewManual(runId);
   assert.ok(plan);
   const semanticPlan = structuredClone(plan);
-  controller.recordPreviewPresented(plan.planId);
-  controller.recordExecuteClick(plan.planId);
-  const request = await controller.request({ kind: "execute-plan", planId: plan.planId });
+  controller.recordPreviewPresented(plan.planId, runId);
+  controller.recordExecuteClick(plan.planId, runId);
+  const request = await controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId }, runId);
   await diagnostics.flush();
   return { diagnostics, persistence, controller, store, runId, plan, semanticPlan, request };
 }
@@ -114,19 +116,26 @@ function assertRunClosed(diagnostics: DiagnosticLogger, runId: number): void {
   assert.equal(diagnostics.snapshot().at(-1)?.elapsedMs, undefined);
 }
 
-async function planningOnlyController(diagnostics: DiagnosticLogger) {
+async function planningOnlyController(diagnostics: DiagnosticLogger, samePlanEveryTime = false) {
   const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  await store.saveTrusted(createInitialTrustedState({ stateRevision: id<"StateRevision">("state:planning-only:0"), vaultIdentity: vault, deviceIdentity: device }));
+  const trusted = await store.load(context);
+  assert.equal(trusted.status, "trusted");
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
   let planNumber = 0;
-  const assembly = { input: { snapshots: [], state: { status: "uninitialized" as const } }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
+  const assembly = { input: { snapshots: [], state: trusted }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
   const controller = new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor: {} as never,
     conflictResolver: conflicts,
-    plannerForTrigger: trigger => ({ plan: async (): Promise<SynchronizationPlan> => ({
-      planId: id<"PlanId">(`plan:diagnostic:${++planNumber}`), trigger, operations: [], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false,
-    }) }),
+    plannerForTrigger: trigger => ({ plan: async (): Promise<SynchronizationPlan> => {
+      planNumber += 1;
+      return {
+        planId: id<"PlanId">(samePlanEveryTime ? "plan:diagnostic:same-semantic-plan" : `plan:diagnostic:${planNumber}`),
+        trigger, operations: [], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false,
+      };
+    } }),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) },
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20), holderId: "planning-only", diagnostics,
   });
@@ -167,7 +176,7 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
       return { status: "valid" as const };
     },
     execute: async (candidate: PlannedOperation) => {
-      if (failurePoint === "mutation") throw new Error("client_secret=SENTINEL_MUTATION");
+      if (failurePoint === "mutation") throw new Error(protectedFailureMessage);
       if (failurePoint === "uncertain-journal") return { status: "uncertain" as const, reason: "transport uncertain" };
       if (failurePoint === "returned-mutation") return { status: "blocking-failure" as const, reason: "fixed fixture failure" };
       return { status: "durable-verified-success" as const, receipt: { operationId: candidate.operationId, durable: true as const, integrityVerified: true as const, verificationEvidenceRef: "fixture" } };
@@ -189,11 +198,11 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
   const runId = beginManualSyncDiagnostics(diagnostics, `test-${failurePoint}`)!;
   const preview = await controller.previewManual(runId);
   assert.ok(preview);
-  controller.recordPreviewPresented(preview.planId);
-  controller.recordExecuteClick(preview.planId);
+  controller.recordPreviewPresented(preview.planId, runId);
+  controller.recordExecuteClick(preview.planId, runId);
   let request: Awaited<ReturnType<IntegratedProductController["request"]>> | undefined;
   let thrown: unknown;
-  try { request = await controller.request({ kind: "execute-plan", planId: preview.planId }); }
+  try { request = await controller.requestPreviewAction({ kind: "execute-plan", planId: preview.planId }, runId); }
   catch (error) { thrown = error; }
   return { diagnostics, controller, runId, request, thrown };
 }
@@ -260,7 +269,7 @@ test("sync diagnostics preserve plan/execution semantics and never export vault 
   assert.doesNotMatch(exported, /SENTINEL_PRIVATE_NOTE_PATH|private note body|access_token|refresh_token|client_secret/i);
 });
 
-test("manual sync planning failure is terminal, correlated, and credential-sanitized", async () => {
+test("manual sync planning failure is terminal, correlated, and metadata-only", async () => {
   const { diagnostics } = await makeLogger();
   const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
@@ -269,7 +278,7 @@ test("manual sync planning failure is terminal, correlated, and credential-sanit
     deviceIdentity: device,
     stateContext: context,
     stateStore: store,
-    snapshotAssembler: { assembleFull: async () => { throw new Error("access_token=SENTINEL_ACCESS client_secret=SENTINEL_SECRET"); } } as never,
+    snapshotAssembler: { assembleFull: async () => { throw new Error(protectedFailureMessage); } } as never,
     executor: {} as never,
     conflictResolver: conflicts,
     plannerForTrigger: trigger => new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger }),
@@ -282,9 +291,12 @@ test("manual sync planning failure is terminal, correlated, and credential-sanit
   assert.equal(await controller.previewManual(runId), undefined);
   const failure = diagnostics.snapshot().find(event => event.event === "sync-run-failed");
   assert.equal(failure?.runId, runId);
+  assert.equal(failure?.level, "error");
   assert.equal(failure?.fields?.stage, "planning");
   assert.equal(failure?.fields?.classification, "planning-failure");
-  assert.doesNotMatch(diagnostics.renderText(), /SENTINEL_ACCESS|SENTINEL_SECRET/);
+  assert.equal(failure?.fields?.errorName, "Error");
+  assert.equal(failure?.fields?.safeMessage, "Synchronization failure details suppressed.");
+  assert.doesNotMatch(diagnostics.renderText(), protectedFailurePattern);
   const nextRunId = beginManualSyncDiagnostics(diagnostics, "next-attempt")!;
   assert.equal(nextRunId, runId + 1);
 });
@@ -297,7 +309,7 @@ test("preview-presentation exception is sanitized at the preview stage and close
   assert.ok(plan);
   assert.throws(() => presentManualSyncPreview(
     () => { throw new Error("access_token=SENTINEL_PREVIEW"); },
-    () => controller.recordPreviewPresented(plan.planId),
+    () => controller.recordPreviewPresented(plan.planId, runId),
     error => controller.recordPreviewPresentationFailure(plan.planId, error, runId),
   ));
   const failure = diagnostics.snapshot().find(event => event.level === "error" && event.fields?.stage === "preview-presentation");
@@ -313,20 +325,51 @@ test("stale Execute rejection is Error-level under the original run and later di
   const firstRunId = beginManualSyncDiagnostics(diagnostics, "first-preview")!;
   const first = await controller.previewManual(firstRunId);
   assert.ok(first);
-  controller.recordPreviewPresented(first.planId);
-  controller.recordExecuteClick(first.planId);
+  controller.recordPreviewPresented(first.planId, firstRunId);
+  controller.recordExecuteClick(first.planId, firstRunId);
   const secondRunId = beginManualSyncDiagnostics(diagnostics, "replacement-preview")!;
   const second = await controller.previewManual(secondRunId);
   assert.ok(second);
-  const rejected = await controller.request({ kind: "execute-plan", planId: first.planId });
+  const rejected = await controller.requestPreviewAction({ kind: "execute-plan", planId: first.planId }, firstRunId);
   assert.equal(rejected.status, "rejected");
   const failure = diagnostics.snapshot().find(event => event.level === "error" && event.fields?.stage === "execute-request" && event.runId === firstRunId);
   assert.equal(failure?.event, "execute-request-rejected");
   assert.equal(failure?.fields?.classification, "stale-plan");
-  controller.recordPreviewDismissed(first.planId);
+  controller.recordPreviewDismissed(first.planId, firstRunId);
   assert.ok(diagnostics.snapshot().some(event => event.event === "sync-run-cancelled" && event.runId === firstRunId));
   assertRunClosed(diagnostics, firstRunId);
-  controller.recordPreviewDismissed(second.planId);
+  controller.recordPreviewDismissed(second.planId, secondRunId);
+});
+
+test("identical semantic plans retain independent explicit diagnostic run ownership", async () => {
+  const { diagnostics } = await makeLogger();
+  const controller = await planningOnlyController(diagnostics, true);
+  const run1 = beginManualSyncDiagnostics(diagnostics, "same-plan-first")!;
+  const plan1 = await controller.previewManual(run1);
+  assert.ok(plan1);
+  controller.recordPreviewPresented(plan1.planId, run1);
+
+  const run2 = beginManualSyncDiagnostics(diagnostics, "same-plan-second")!;
+  const plan2 = await controller.previewManual(run2);
+  assert.ok(plan2);
+  controller.recordPreviewPresented(plan2.planId, run2);
+
+  assert.notEqual(run1, run2);
+  assert.equal(plan1.planId, plan2.planId);
+  const presented = diagnostics.snapshot().filter(event => event.event === "plan-preview-presented");
+  assert.deepEqual(presented.map(event => event.runId), [run1, run2]);
+
+  controller.recordExecuteClick(plan1.planId, run1);
+  const firstResult = await controller.requestPreviewAction({ kind: "execute-plan", planId: plan1.planId }, run1);
+  assert.equal(firstResult.status, "accepted");
+  assert.ok(diagnostics.snapshot().some(event => event.event === "execute-click-handler-enter" && event.runId === run1));
+  assertRunClosed(diagnostics, run1);
+
+  diagnostics.syncInfo("sync.controller", "second-run-still-open-probe", run2, { stage: "test-probe" });
+  assert.equal(typeof diagnostics.snapshot().at(-1)?.elapsedMs, "number");
+  controller.recordPreviewDismissed(plan2.planId, run2);
+  assert.ok(diagnostics.snapshot().some(event => event.event === "sync-run-cancelled" && event.runId === run2));
+  assertRunClosed(diagnostics, run2);
 });
 
 for (const [failurePoint, expectedStage] of [
@@ -343,6 +386,12 @@ for (const [failurePoint, expectedStage] of [
     assert.equal(failure?.runId, run.runId);
     assert.equal(failure?.component, "sync.execute");
     assert.doesNotMatch(run.diagnostics.renderText(), /SENTINEL_PRECONDITION|SENTINEL_PENDING|SENTINEL_MUTATION|SENTINEL_UNCERTAIN|SENTINEL_COMMIT/);
+    if (failurePoint === "mutation") {
+      assert.equal(failure?.fields?.classification, "content-mutation-failure");
+      assert.equal(failure?.fields?.errorName, "Error");
+      assert.equal(failure?.fields?.safeMessage, "Synchronization failure details suppressed.");
+      assert.doesNotMatch(run.diagnostics.renderText(), protectedFailurePattern);
+    }
     assertRunClosed(run.diagnostics, run.runId);
   });
 }

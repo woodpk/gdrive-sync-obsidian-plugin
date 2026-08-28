@@ -324,7 +324,13 @@ export class DiagnosticLogger {
   syncDebug(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("debug", component, event, fields, undefined, runId); }
   syncTrace(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("trace", component, event, fields, undefined, runId); }
   syncFailure(component: DiagnosticComponent, event: string, runId: number, error: unknown, context: SafeDiagnosticFields = {}): void {
-    this.syncError(component, event, runId, { ...context, ...normalizeDiagnosticError(error, typeof context.classification === "string" ? context.classification : undefined) });
+    const classification = typeof context.classification === "string" ? context.classification : "synchronization-failure";
+    this.syncError(component, event, runId, {
+      ...context,
+      classification,
+      errorName: error instanceof Error ? "Error" : "NonErrorFailure",
+      safeMessage: "Synchronization failure details suppressed.",
+    });
   }
 
   error(component: DiagnosticComponent, event: string, fields?: SafeDiagnosticFields, attemptId = this.activeAttemptId): void { this.record("error", component, event, fields, attemptId); }
