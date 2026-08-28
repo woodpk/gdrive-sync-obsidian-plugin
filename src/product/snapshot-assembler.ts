@@ -19,12 +19,14 @@ import type {
   VaultPath,
 } from "../contracts";
 import { contractId } from "../contracts";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
 
 export interface AssembledPlanningInput {
   readonly input: PlanningInput;
   readonly managedRemote: ManagedRemoteIdentity;
   readonly remoteEnumeration: EnumerationCompleteness;
+  readonly localEnumeration?: EnumerationCompleteness;
   readonly nextCursor?: ChangeCursor;
   readonly mode: "full" | "incremental";
   readonly reconstruction?: boolean;
@@ -53,60 +55,93 @@ export class ProductSnapshotAssembler {
     private readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>,
     private readonly pathIncluded: (path: VaultPath) => boolean = () => true,
     private readonly fullReconcileRequired: () => boolean = () => false,
+    private readonly diagnostics?: DiagnosticLogger,
   ) {}
 
-  async assemble(preferIncremental = true): Promise<AssembledPlanningInput> {
-    const managedRemote = await this.validatedRemote();
-    const loadedState = await this.state.load(this.stateContext);
+  async assemble(preferIncremental = true, runId?: number): Promise<AssembledPlanningInput> {
+    const managedRemote = await this.validatedRemote(runId);
+    const loadedState = await this.loadState(runId);
     const incrementalAllowed = preferIncremental && !this.fullReconcileRequired();
     if (incrementalAllowed && loadedState.status === "trusted" && loadedState.state.changeCursor) {
-      const incremental = await this.assembleIncremental(managedRemote, loadedState);
+      const incremental = await this.assembleIncremental(managedRemote, loadedState, runId);
       if (incremental) return incremental;
     }
-    return this.assembleFullWith(managedRemote, loadedState);
+    return this.assembleFullWith(managedRemote, loadedState, runId);
   }
 
-  async assembleFull(): Promise<AssembledPlanningInput> {
-    const managedRemote = await this.validatedRemote();
-    return this.assembleFullWith(managedRemote, await this.state.load(this.stateContext));
+  async assembleFull(runId?: number): Promise<AssembledPlanningInput> {
+    const managedRemote = await this.validatedRemote(runId);
+    return this.assembleFullWith(managedRemote, await this.loadState(runId), runId);
   }
 
   /** Recovery deliberately projects current reality as an uninitialized safe union, never an empty authoritative BASE. */
-  async assembleRecovery(reason?: string): Promise<AssembledPlanningInput> {
-    const managedRemote = await this.validatedRemote();
+  async assembleRecovery(reason?: string, runId?: number): Promise<AssembledPlanningInput> {
+    const managedRemote = await this.validatedRemote(runId);
+    this.trace(runId, "remote-cursor-observation-start", { stage: "remote-observation", runMode: "full-recovery" });
     const cursorResult = await this.drive.getStartCursor(managedRemote.rootId);
-    if (!cursorResult.ok) throw new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "recovery cursor acquisition failed"));
-    const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
+    if (!cursorResult.ok) {
+      const error = new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "recovery cursor acquisition failed"));
+      this.failure(runId, "remote-observation-failed", error, "remote-observation");
+      throw error;
+    }
+    this.trace(runId, "local-observation-start", { stage: "local-observation", runMode: "full-recovery" });
+    this.trace(runId, "remote-observation-start", { stage: "remote-observation", runMode: "full-recovery" });
+    const [localListing, remoteResult] = await Promise.all([
+      this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; }),
+      this.drive.listForReconciliation(managedRemote.rootId).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.entries.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "remote observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
+    ]);
     if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "recovery remote observation failed"));
     if (localListing.completeness.status !== "complete" || remoteResult.value.completeness.status !== "complete") {
       throw new SnapshotAssemblyError("recovery-required", `Recovery reconstruction requires complete LOCAL and REMOTE observation. LOCAL=${localListing.completeness.status}; REMOTE=${remoteResult.value.completeness.status}`);
     }
     const uninitialized: StateLoadResult = { status: "uninitialized" };
     const snapshots = this.makeSnapshots(uninitialized, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
-    return { input: { snapshots, state: uninitialized }, managedRemote, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full", reconstruction: true, recoveryReason: reason };
+    return { input: { snapshots, state: uninitialized }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full", reconstruction: true, recoveryReason: reason };
   }
 
-  private async validatedRemote(): Promise<ManagedRemoteIdentity> {
-    const managedRemote = await this.remoteIdentity();
-    const validated = await this.drive.validateManagedRoot(managedRemote);
-    if (!validated.ok) throw new SnapshotAssemblyError(validated.signal.kind, signalMessage(validated.signal, "managed remote validation failed"));
-    if (validated.value.status !== "valid") throw new SnapshotAssemblyError(validated.value.status, "managed BRAIN Sync remote is not valid for this vault");
-    return managedRemote;
+  private async validatedRemote(runId?: number): Promise<ManagedRemoteIdentity> {
+    this.trace(runId, "managed-remote-validation-start", { stage: "remote-precondition" });
+    try {
+      const managedRemote = await this.remoteIdentity();
+      const validated = await this.drive.validateManagedRoot(managedRemote);
+      if (!validated.ok) throw new SnapshotAssemblyError(validated.signal.kind, signalMessage(validated.signal, "managed remote validation failed"));
+      if (validated.value.status !== "valid") throw new SnapshotAssemblyError(validated.value.status, "managed BRAIN Sync remote is not valid for this vault");
+      this.trace(runId, "managed-remote-validation-complete", { stage: "remote-precondition", result: "valid" });
+      return managedRemote;
+    } catch (error) {
+      this.failure(runId, "managed-remote-validation-failed", error, "remote-precondition");
+      throw error;
+    }
   }
 
-  private async assembleFullWith(managedRemote: ManagedRemoteIdentity, loadedState: StateLoadResult): Promise<AssembledPlanningInput> {
+  private async assembleFullWith(managedRemote: ManagedRemoteIdentity, loadedState: StateLoadResult, runId?: number): Promise<AssembledPlanningInput> {
+    this.trace(runId, "remote-cursor-observation-start", { stage: "remote-observation", runMode: "full" });
     const cursorResult = await this.drive.getStartCursor(managedRemote.rootId);
-    if (!cursorResult.ok) throw new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "remote start cursor acquisition failed"));
-    const [localListing, remoteResult] = await Promise.all([this.local.enumerate(), this.drive.listForReconciliation(managedRemote.rootId)]);
+    if (!cursorResult.ok) {
+      const error = new SnapshotAssemblyError(cursorResult.signal.kind, signalMessage(cursorResult.signal, "remote start cursor acquisition failed"));
+      this.failure(runId, "remote-observation-failed", error, "remote-observation");
+      throw error;
+    }
+    this.trace(runId, "local-observation-start", { stage: "local-observation", runMode: "full" });
+    this.trace(runId, "remote-observation-start", { stage: "remote-observation", runMode: "full" });
+    const [localListing, remoteResult] = await Promise.all([
+      this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; }),
+      this.drive.listForReconciliation(managedRemote.rootId).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.entries.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "remote observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
+    ]);
     if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "remote reconciliation listing failed"));
     const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
-    return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full" };
+    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full" };
   }
 
-  private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>): Promise<AssembledPlanningInput | undefined> {
+  private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>, runId?: number): Promise<AssembledPlanningInput | undefined> {
     const cursor = loadedState.state.changeCursor;
     if (!cursor) return undefined;
-    const [localListing, changesResult] = await Promise.all([this.local.enumerate(), this.drive.readChanges(managedRemote.rootId, cursor)]);
+    this.trace(runId, "local-observation-start", { stage: "local-observation", runMode: "incremental" });
+    this.trace(runId, "remote-observation-start", { stage: "remote-observation", runMode: "incremental" });
+    const [localListing, changesResult] = await Promise.all([
+      this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; }),
+      this.drive.readChanges(managedRemote.rootId, cursor).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.changes.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "incremental observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
+    ]);
     if (!changesResult.ok) {
       if (changesResult.signal.kind === "not-found" || changesResult.signal.kind === "conflict") return undefined;
       throw new SnapshotAssemblyError(changesResult.signal.kind, signalMessage(changesResult.signal, "incremental remote observation failed"));
@@ -122,7 +157,31 @@ export class ProductSnapshotAssembler {
     }
     const remoteEntries = this.filterRemote([...reconstructed.values()]);
     const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, remoteEntries, changesResult.value.completeness);
-    return { input: { snapshots, state: loadedState }, managedRemote, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
+    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
+  }
+
+  private async loadState(runId?: number): Promise<StateLoadResult> {
+    this.trace(runId, "base-state-load-start", { stage: "base-load" });
+    let loaded: StateLoadResult;
+    try { loaded = await this.state.load(this.stateContext); }
+    catch (error) { this.failure(runId, "base-state-load-failed", error, "base-load"); throw error; }
+    this.debug(runId, "base-state-load-complete", {
+      stage: "base-load",
+      stateStatus: loaded.status,
+      count: loaded.status === "trusted" ? loaded.state.base.length : 0,
+      cursorPresent: loaded.status === "trusted" && Boolean(loaded.state.changeCursor),
+    });
+    return loaded;
+  }
+
+  private trace(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncTrace"]>[3]): void {
+    if (runId !== undefined) this.diagnostics?.syncTrace("sync.plan", event, runId, fields);
+  }
+  private debug(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncDebug"]>[3]): void {
+    if (runId !== undefined) this.diagnostics?.syncDebug("sync.plan", event, runId, fields);
+  }
+  private failure(runId: number | undefined, event: string, error: unknown, stage: string): void {
+    if (runId !== undefined) this.diagnostics?.syncFailure("sync.plan", event, runId, error, { stage, classification: "planning-boundary-failure", result: "failed" });
   }
 
   private remoteBaseline(state: TrustedSynchronizationState): Map<string, RemoteEntry> {

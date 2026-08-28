@@ -55,6 +55,31 @@ export type DiagnosticFieldKey =
   | "statePresent"
   | "errorPresent"
   | "count"
+  | "runMode"
+  | "trigger"
+  | "planDisposition"
+  | "stateStatus"
+  | "localCount"
+  | "remoteCount"
+  | "snapshotCount"
+  | "operationCount"
+  | "operationIndex"
+  | "operationKind"
+  | "direction"
+  | "preconditionCount"
+  | "conflictCount"
+  | "blockedCount"
+  | "destructiveCount"
+  | "uploadCount"
+  | "downloadCount"
+  | "moveCount"
+  | "trashCount"
+  | "noopCount"
+  | "localCompleteness"
+  | "remoteCompleteness"
+  | "reviewed"
+  | "reconstruction"
+  | "cursorPresent"
   | "retentionLimit"
   | "enabled";
 export type DiagnosticFieldValue = string | number | boolean | null;
@@ -67,6 +92,7 @@ export interface DiagnosticEvent {
   readonly component: DiagnosticComponent;
   readonly event: string;
   readonly attemptId?: number;
+  readonly runId?: number;
   readonly platform: DiagnosticPlatform;
   readonly elapsedMs?: number;
   readonly fields?: SafeDiagnosticFields;
@@ -76,6 +102,7 @@ export interface DiagnosticStoreState {
   readonly records: readonly DiagnosticEvent[];
   readonly nextSequence: number;
   readonly nextAttemptId: number;
+  readonly nextRunId?: number;
 }
 
 export interface DiagnosticPersistence {
@@ -114,6 +141,10 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "redirectUriConfigured", "clientSecretConfigured", "callbackRegistrationActive", "browserApiPresent",
   "transactionPrepared", "scopeExact", "deviceIdentityPresent", "vaultIdentityPresent", "remoteRootPresent",
   "storeReady", "asyncBoundary", "codePresent", "statePresent", "errorPresent", "count", "retentionLimit", "enabled",
+  "runMode", "trigger", "planDisposition", "stateStatus", "localCount", "remoteCount", "snapshotCount",
+  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "conflictCount", "blockedCount",
+  "destructiveCount", "uploadCount", "downloadCount", "moveCount", "trashCount", "noopCount",
+  "localCompleteness", "remoteCompleteness", "reviewed", "reconstruction", "cursorPresent",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
 const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
@@ -179,6 +210,7 @@ function parsePersistedEvent(value: unknown): DiagnosticEvent | undefined {
   if (typeof record.component !== "string" || typeof record.event !== "string") return undefined;
   const platform: DiagnosticPlatform = record.platform === "desktop" || record.platform === "mobile" ? record.platform : "unknown";
   const attemptId = Number.isSafeInteger(record.attemptId) && Number(record.attemptId) >= 1 ? Number(record.attemptId) : undefined;
+  const runId = Number.isSafeInteger(record.runId) && Number(record.runId) >= 1 ? Number(record.runId) : undefined;
   const elapsedMs = typeof record.elapsedMs === "number" && Number.isFinite(record.elapsedMs) && record.elapsedMs >= 0 ? record.elapsedMs : undefined;
   return {
     timestamp: record.timestamp,
@@ -187,6 +219,7 @@ function parsePersistedEvent(value: unknown): DiagnosticEvent | undefined {
     component: record.component as DiagnosticComponent,
     event: sanitizeDiagnosticText(record.event) ?? "invalid-event",
     ...(attemptId !== undefined ? { attemptId } : {}),
+    ...(runId !== undefined ? { runId } : {}),
     platform,
     ...(elapsedMs !== undefined ? { elapsedMs } : {}),
     ...(record.fields && typeof record.fields === "object" && !Array.isArray(record.fields)
@@ -209,6 +242,7 @@ export function renderDiagnosticEvent(event: DiagnosticEvent): string {
     component: event.component,
     event: event.event,
     ...(event.attemptId !== undefined ? { attemptId: event.attemptId } : {}),
+    ...(event.runId !== undefined ? { runId: event.runId } : {}),
     platform: event.platform,
     ...(event.elapsedMs !== undefined ? { elapsedMs: event.elapsedMs } : {}),
     ...(event.fields ? { fields: sortedFields(event.fields) } : {}),
@@ -219,8 +253,10 @@ export class DiagnosticLogger {
   private records: DiagnosticEvent[] = [];
   private nextSequence = 1;
   private nextAttemptId = 1;
+  private nextRunId = 1;
   private activeAttemptId?: number;
   private readonly attemptStarted = new Map<number, number>();
+  private readonly runStarted = new Map<number, number>();
   private level: DiagnosticLogLevel;
   private retentionLimit: number;
   private consoleMirror: boolean;
@@ -242,6 +278,7 @@ export class DiagnosticLogger {
     const highestSequence = this.records.reduce((max, event) => Math.max(max, event.sequence), 0);
     this.nextSequence = Math.max(safeInteger(state.nextSequence, highestSequence + 1), highestSequence + 1);
     this.nextAttemptId = safeInteger(state.nextAttemptId, 1);
+    this.nextRunId = safeInteger(state.nextRunId, 1);
   }
 
   configure(input: { readonly level: DiagnosticLogLevel; readonly retentionLimit: number; readonly consoleMirror: boolean }): void {
@@ -270,6 +307,30 @@ export class DiagnosticLogger {
     if (attemptId === undefined) return;
     this.attemptStarted.delete(attemptId);
     if (this.activeAttemptId === attemptId) this.activeAttemptId = undefined;
+  }
+
+  beginSyncRun(source = "manual-sync"): number {
+    const runId = this.nextRunId++;
+    this.runStarted.set(runId, this.monotonicNow());
+    this.queuePersist();
+    this.syncInfo("sync.controller", "manual-sync-attempt-started", runId, { source });
+    return runId;
+  }
+  endSyncRun(runId: number): void { this.runStarted.delete(runId); }
+
+  syncError(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("error", component, event, fields, undefined, runId); }
+  syncWarn(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("warn", component, event, fields, undefined, runId); }
+  syncInfo(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("info", component, event, fields, undefined, runId); }
+  syncDebug(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("debug", component, event, fields, undefined, runId); }
+  syncTrace(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("trace", component, event, fields, undefined, runId); }
+  syncFailure(component: DiagnosticComponent, event: string, runId: number, error: unknown, context: SafeDiagnosticFields = {}): void {
+    const classification = typeof context.classification === "string" ? context.classification : "synchronization-failure";
+    this.syncError(component, event, runId, {
+      ...context,
+      classification,
+      errorName: error instanceof Error ? "Error" : "NonErrorFailure",
+      safeMessage: "Synchronization failure details suppressed.",
+    });
   }
 
   error(component: DiagnosticComponent, event: string, fields?: SafeDiagnosticFields, attemptId = this.activeAttemptId): void { this.record("error", component, event, fields, attemptId); }
@@ -305,11 +366,11 @@ export class DiagnosticLogger {
   renderText(): string { return this.records.map(renderDiagnosticEvent).join("\n"); }
   async flush(): Promise<void> { await this.persistChain; }
 
-  private record(level: RetainedDiagnosticLevel, component: DiagnosticComponent, event: string, fields?: SafeDiagnosticFields, attemptId?: number): void {
+  private record(level: RetainedDiagnosticLevel, component: DiagnosticComponent, event: string, fields?: SafeDiagnosticFields, attemptId?: number, runId?: number): void {
     if (this.level === "off" || LEVEL_RANK[level] > LEVEL_RANK[this.level]) return;
     const sanitizedEvent = sanitizeDiagnosticText(event) ?? "invalid-event";
     const safeFields = sanitizeFields(fields);
-    const elapsedMs = attemptId !== undefined ? this.elapsedMs(attemptId) : undefined;
+    const elapsedMs = attemptId !== undefined ? this.elapsedMs(attemptId) : runId !== undefined ? this.runElapsedMs(runId) : undefined;
     const retained: DiagnosticEvent = {
       timestamp: this.now().toISOString(),
       sequence: this.nextSequence++,
@@ -317,6 +378,7 @@ export class DiagnosticLogger {
       component,
       event: sanitizedEvent,
       ...(attemptId !== undefined ? { attemptId } : {}),
+      ...(runId !== undefined ? { runId } : {}),
       platform: this.options.platform,
       ...(elapsedMs !== undefined ? { elapsedMs } : {}),
       ...(safeFields ? { fields: safeFields } : {}),
@@ -332,6 +394,11 @@ export class DiagnosticLogger {
     if (started === undefined) return undefined;
     return Math.max(0, Math.round((this.monotonicNow() - started) * 1000) / 1000);
   }
+  private runElapsedMs(runId: number): number | undefined {
+    const started = this.runStarted.get(runId);
+    if (started === undefined) return undefined;
+    return Math.max(0, Math.round((this.monotonicNow() - started) * 1000) / 1000);
+  }
   private now(): Date { return this.options.now?.() ?? new Date(); }
   private monotonicNow(): number { return this.options.monotonicNow?.() ?? globalThis.performance?.now?.() ?? Date.now(); }
   private queuePersist(): void {
@@ -339,6 +406,7 @@ export class DiagnosticLogger {
       records: this.snapshot(),
       nextSequence: this.nextSequence,
       nextAttemptId: this.nextAttemptId,
+      nextRunId: this.nextRunId,
     };
     this.persistChain = this.persistChain
       .then(() => this.options.persistence.saveDiagnostics(state))

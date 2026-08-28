@@ -2,7 +2,23 @@
 
 This file is the cumulative construction-evidence ledger for `woodpk/gdrive-sync-obsidian-plugin`. Earlier phase evidence is retained rather than declared superseded. Detailed phase records remain authoritative historical evidence at their preserved paths/commits; this ledger records their identity and carries the evidence chain forward into Phase 5.
 
-Phase 6 and Stage 3 have **not** begun.
+## Latest Phase 6 Alpha diagnostic work — iPhone `Sync now`
+
+Agent `agt-CA-P6-IOS-SYNC-DIAG-01` created `phase6-alpha-ios-sync-diagnostic-logging` directly from immutable release `0.1.2` at `9a6b5ffa52d11f699a839214b7fdcb3c4c4701e6`. Version metadata was minimally advanced to `0.1.3` so a future independently approved physical diagnostic build can be distinguished from installed `0.1.2`; no tag or release was created. The branch now incorporates the reviewed integration target `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea` through merge commit `36bfc416851b84858e335028ccb601aeffbfc9b3`; `phase6-integration` itself was not modified.
+
+The existing device-local structured logger now assigns one persisted monotonic `runId` across the actual `Sync now` handler, manual request, BASE/LOCAL/REMOTE planning observations, safe plan summary, preview preparation/presentation, separate Execute gesture, per-operation execution/verification/authoritative-commit stages, and explicit complete/failed/cancelled/deferred terminal outcomes. Each preview/modal carries its originating run explicitly, so identical deterministic semantic `PlanId` values cannot overwrite diagnostic ownership. Synchronization failures export only fixed metadata (`Error`/`NonErrorFailure` plus `Synchronization failure details suppressed.`), never arbitrary thrown messages. Safe ordinals, categories, counts, and statuses are recorded without paths, filenames, note/binary content, Drive IDs, OAuth credentials/state/PKCE/code, or complete URLs. Diagnostics cannot affect synchronization decisions.
+
+Focused behavioral coverage is **13/13 PASS**. Typecheck and build pass; all five package verifiers pass. The final integrated Windows full suite is **307/309 PASS** with only the two qualified pre-existing drive-prefix portable-collision assertions. Generated `main.js`: `351475` bytes; SHA-256 `32500b28f1f8e730f3ea17a43a93a8f79bf028365c0324fa03767db035bb586f`.
+
+After push of evidence head `24c3b08e51032d29bf13535ee06ba8a8435513d9`, GitHub reported PR #24 OPEN and UNMERGED, base `phase6-integration`, head `phase6-alpha-ios-sync-diagnostic-logging`, `mergeable=MERGEABLE`, `mergeStateStatus=UNSTABLE` rather than dirty, and compare state `behind_by=0`, `ahead_by=7`. The PR body was updated to the same current verification values.
+
+Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Synchronization root cause: NOT YET ESTABLISHED
+
+Historical ledger statement retained from the earlier construction stage: Phase 6 and Stage 3 had **not** begun at that point.
 
 ---
 
@@ -1074,6 +1090,63 @@ Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deplo
 - no `master` modification;
 - PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.
 
+---
+
+## Phase 6 Alpha — PR #24 Manual-Sync Failure-Boundary Correction — `agt-CA-P6-IOS-SYNC-DIAG-01`
+
+PR #24's rejected head `86f8850aeb6f56018700b489d863320f12248ae3` was verified unchanged before repair. The existing branch `phase6-alpha-ios-sync-diagnostic-logging` was corrected in place; PR #24 remains the intended review vehicle and independent rereview is still required.
+
+### C1/C2/C3 correction
+
+- C1: preview-presentation exceptions now emit a sanitized Error-level `sync-run-failed` event at fixed stage `preview-presentation`, close the original diagnostic run, and preserve the exception.
+- C2: Execute and destructive-approval request rejections now emit Error-level `execute-request-rejected` evidence under the original manual `runId` with fixed safe classifications. Plan/run correlation survives stale-plan replacement. A returned rejection resets modal suppression, preserves the visible rejection, and permits later preview dismissal to record cancellation and close the run.
+- C3: run-lease acquisition and operation precondition, pending-journal, content-mutation, uncertain-journal, and authoritative state-commit failures now emit Error evidence naming the exact stage. Returned mutation failure is no longer Trace-only; thrown errors flow only through sanitized `syncFailure` and preserve existing throws. Successful Trace ordering, including verified receipt before authoritative state commit, is unchanged. Observer failures remain isolated from synchronization.
+
+### Correction-pass manifest
+
+Created: none.
+
+Modified:
+
+- `src/core/execution-coordinator.ts`;
+- `src/diagnostics/sync-diagnostics.ts`;
+- `src/main.ts`;
+- `src/product/plan-modal.ts`;
+- `src/product/product-controller.ts`;
+- `test/phase6-alpha-ios-sync-diagnostics.test.ts`;
+- `dev/evidence/_ca-output-agt-CA-P6-IOS-SYNC-DIAG-01.md`;
+- `dev/evidence/_ca-output.md`.
+
+Deleted: none.
+
+`main.js` was regenerated only as an ignored verification artifact. No version metadata, OAuth behavior/scope, synchronization semantics, release, tag, integration branch, or `master` state was changed.
+
+### Verification
+
+- typecheck: PASS;
+- focused iOS manual-sync diagnostics: **12/12 PASS**;
+- full suite: **302/304 PASS**, with exactly the same two qualified pre-existing Windows drive-prefix portable-collision assertions and no additional failure;
+- build: PASS;
+- build verification: PASS;
+- `git diff --check`: PASS, with informational LF-to-CRLF working-copy warnings only;
+- `BUILD_VERIFY_ENTRYPOINT=PASS`;
+- `BUILD_VERIFY_SYNTAX=PASS`;
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`;
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`;
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`;
+- generated `main.js`: `351383` bytes;
+- SHA-256: `46e8331738395e669ea7d6fb3a22f0a098129d892e7100a2e28c012c39a0ef55`.
+
+Qualified Windows assertions:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\vault\__brain_sync_portable_config__`, expected `\vault\__brain_sync_portable_config__`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\vault\notes\missing.md`, expected `\vault\notes\missing.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+`Synchronization root cause: NOT YET ESTABLISHED`
+
+PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
 ---
 
 ## Phase 6 Alpha — iOS HTTPS Callback to Obsidian Handoff Repair — `agt-CODEX-P6-IOS-CALLBACK-HANDOFF-01`
