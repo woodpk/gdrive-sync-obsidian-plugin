@@ -1400,6 +1400,42 @@ The previously observed two Windows drive-prefix test failures did **not** repro
 
 ---
 
+## Phase 6 Alpha — iOS Adapter-Boundary Vault Access Refactor — `agt-CA-P6-IOS-ADAPTER-BOUNDARY-01`
+
+Later explicit product authority supersedes PR #26's blanket mobile unavailable-guard architecture while retaining its correct finding that iOS does not expose Windows `lstat`/canonical-`realpath` proof. New locked decision `DEC-299` establishes the active Obsidian mobile `DataAdapter` namespace plus strict vault-relative validation and enumeration provenance as the approved iOS filesystem capability boundary; Windows retains its stronger physical guard.
+
+Branch `phase6-alpha-ios-adapter-boundary-refactor` began exactly at `phase6-integration` SHA `523ba96cc6e975645cfd319fa7bb62b9c1399176`. Dynamically verified implementation/governance SHA: `410f252bf5fa35e4abfb12fc47df5db1e710066c`. Version metadata is consistently prepared at `0.1.4`; no tag or release was created.
+
+Production mobile composition now explicitly installs `MobileVaultAccessBoundary`. Valid visible and non-excluded hidden paths reach only the active Obsidian adapter. All operation paths and temporary stage/backup paths are normalized and validated before I/O. Every adapter-listed child must be a valid normalized immediate descendant of its requested parent; malformed, duplicate/colliding, cyclic, escaping, or kind-mismatched entries are isolated without unsafe access, safe siblings continue, and completeness becomes truthful `partial`. Visible moves/trash retain FileManager semantics; hidden objects absent from the Vault tree use supported adapter rename/trash fallback. Desktop Node-backed external-reference protection is unchanged.
+
+Official Obsidian API/documentation and the requested Remotely Save and Self-hosted LiveSync implementations were inspected as engineering evidence. The architecture does not claim physical iOS alias inspection and does not import Node/Electron on the mobile path.
+
+Verification: `npm run typecheck` PASS; focused iOS adapter-boundary suite **8/8 PASS**; `npm test` **315/317 PASS** with only the two established Windows drive-prefix assertions; `npm run build` PASS; `npm run verify:build` PASS; all five package verifiers PASS; `git diff --check` PASS. `main.js`: `357076` bytes; SHA-256 `047dd456a6ed2894bbbf8bd921572d38695fbe85790ca9c7a15260900572e8d8`.
+
+Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-ADAPTER-BOUNDARY-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+PR #26 was not merged or released. No tag/release, `master`/integration modification, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
+
+---
+
+## Phase 6 Alpha — iOS Canonical Content Reader Repair — `agt-CA-P6-IOS-CONTENT-READER-01`
+
+Physical iPhone `0.1.4` testing established that the active mobile adapter boundary was working but non-empty ordinary and portable-configuration files failed canonical hashing because `ResourceFetchContentSource` required HTTP `206` while the iOS resource runtime returned a readable streamed HTTP `200`. The resulting unknown canonical evidence truthfully made LOCAL partial and produced `blocked-unsafe` planning.
+
+On the existing PR #27 branch, starting evidence head `50ab9d4a5e112c33f0e9b070c2158c33e73a480d`, final verified implementation SHA `7fba7fbc568c4512e54740f549d44c434b7b2a79` retains exact validated `206` range reads and adds an incremental full-stream `200` path. The reader enforces observed `stat.size`, exact optional `Content-Length`, premature-EOF/excess-byte rejection, bounded yielded chunks, stale checks before/during/after reading, response cancellation on failure, and zero-byte no-fetch behavior. It does not call whole-file `readBinary()`. Desktop composition and all synchronization safety semantics remain unchanged. Version metadata is prepared consistently at `0.1.5`; no tag or release was created.
+
+Verification: `npm run typecheck` PASS; focused iOS content-reader suite **6/6 PASS**; `npm test` **321/323 PASS** with only the two established Windows drive-prefix assertions; `npm run build` PASS; `npm run verify:build` PASS; all five package verifiers PASS; `git diff --check` PASS. The production regression follows `ObsidianLocalVaultAdapter → ScopedLocalVault → CanonicalEvidenceLocalVault`, proves canonical SHA-256 for non-empty ordinary and portable configuration content, proves `localCompleteness=complete`, and proves no HTTP-200-induced `blocked-unsafe` first-sync operations. `main.js`: `358620` bytes; SHA-256 `e467de6c96c76c1006897926a98f63e0dec0acc67354553560b00b4edf3cb478`.
+
+Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-CONTENT-READER-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+PR #27 and PR #26 remain open/unmerged. No `master`/integration modification, tag/release, Drive/OAuth change, synchronization redesign, performance work, Phase 6 closure, or Stage 3 work occurred.
+
+---
+
 ## Phase 6 OAuth Housekeeping — final master integration and branch retirement
 
 - agent: `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
@@ -1417,3 +1453,21 @@ The previously observed two Windows drive-prefix test failures did **not** repro
 - remaining Phase 6 scope: broader non-OAuth runtime/fault/resource validation and planned post-iPhone performance work already recorded in project state; physical iPhone OAuth acceptance is closed as PASS
 
 This finalization is evidence/branch housekeeping only and changes no production OAuth or synchronization behavior.
+
+---
+
+## Phase 6 Alpha — `0.1.5` integration and master promotion — `agt-CA-P6-IOS-015-INTEGRATE-01`
+
+PR #26 was closed without merging as superseded by PR #27. PR #27 metadata was corrected to its approved final state and guarded-merged normally at exact evidence head `5e4b328ff31682060035ab199d95aa3712c1ee12` into `phase6-integration`; merge commit `91c0c12f06b397f25b5dad115b437c6db49bb8d3`.
+
+Post-merge verification passed: typecheck; focused iOS canonical-content-reader **6/6**; full Windows **321/323** with only the two established drive-prefix assertions; build; all five package verifiers; diff check; consistent `0.1.5` version metadata. Artifact remained exactly `358620` bytes with SHA-256 `e467de6c96c76c1006897926a98f63e0dec0acc67354553560b00b4edf3cb478`.
+
+Promotion PR [#28](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/28) was opened from `phase6-integration` to unchanged `master` at `4454d153980d0e80b1697c7d4a4e1dccc7cb8529`. Its sole initial conflict was the append-only cumulative evidence ledger. Both histories were preserved by evidence-only reconciliation commit `ca9436632da3039c580cfdc070ab8a1838697fbe`; the full local verification was repeated unchanged. PR #28 then became mergeable. `Phase 1 CI` run `33212472938` tested that SHA and passed **323/323**, with the same verifier and artifact identity.
+
+PR #26/#27 close-preview runs `33211857228` and `33211929861` failed because the Azure deployment token was unavailable; integration deployment run `33212471617` passed but does not prove those previews were retired.
+
+`AZURE STAGING HOUSEKEEPING: MANUAL AZURE-SIDE CLEANUP STILL REQUIRED`
+
+No `0.1.5` tag or release was created. PR #28 is intentionally open/unmerged, and `master` is unchanged. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-015-INTEGRATE-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

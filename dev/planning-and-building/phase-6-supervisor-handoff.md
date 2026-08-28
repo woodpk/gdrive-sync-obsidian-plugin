@@ -100,7 +100,14 @@ These are established proven stock-iOS platform limitations, not ordinary TODOs 
    Stock Obsidian iOS cannot currently prove bounded arbitrary-file byte-range reading for every required file type; unsafe whole-file fallback remains prohibited.
 
 2. `BLOCKED — PROVEN PLATFORM LIMITATION`  
-   Stock Obsidian iOS cannot currently prove symlink/alias/external-reference containment equivalent to the required safety guarantee; the product remains fail-closed where proof capability is unavailable.
+   Stock Obsidian iOS cannot currently reproduce Windows `lstat`/canonical-`realpath` physical-reference inspection. Later product authority in `DEC-299` supersedes the former blanket mobile fail-closed conclusion: the active Obsidian mobile `DataAdapter` namespace plus strict vault-relative validation and enumeration provenance is the approved iOS capability boundary. Individual malformed, escaping, unsupported, or unprovable entries still fail closed; the missing desktop mechanism alone no longer disables all normal iOS vault access.
+
+### Active iOS local-vault repair (2026-08-28)
+
+- PR #26's Outcome B remains valid investigation evidence about unavailable physical canonicalization, but its blanket unavailable-guard architecture is superseded and must not be merged or released as the solution.
+- active repair branch: `phase6-alpha-ios-adapter-boundary-refactor`, based on `phase6-integration` SHA `523ba96cc6e975645cfd319fa7bb62b9c1399176`;
+- governing product decision: `DEC-299`;
+- physical iPhone validation of the reviewed adapter-boundary build remains pending.
 
 Phase 6 must not weaken either limitation merely to make a test pass.
 
