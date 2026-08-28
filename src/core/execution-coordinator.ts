@@ -14,6 +14,21 @@ export type CoordinatedExecutionResult =
   | { readonly status: "stale-precondition" | "blocked" | "recovery-required" | "cancelled" | "retryable-failure" | "uncertain"; readonly reason: string }
   | { readonly status: "stale-state"; readonly actualRevision?: StateRevision };
 
+export type ExecutionLifecycleStage =
+  | "operation-start"
+  | "operation-precondition-validation-start"
+  | "operation-precondition-validated"
+  | "pending-journal-start"
+  | "pending-journal-complete"
+  | "content-mutation-start"
+  | "content-mutation-complete"
+  | "content-mutation-failed"
+  | "integrity-verification-complete"
+  | "state-commit-start"
+  | "state-commit-complete"
+  | "operation-complete";
+export type ExecutionLifecycleObserver = (operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string) => void;
+
 /**
  * Phase-2 ordering policy for one planned operation.
  *
@@ -26,33 +41,53 @@ export class CrashSafeExecutionCoordinator {
     private readonly executor: SynchronizationExecutor,
     private readonly journal: StateCommitCoordinator,
     private readonly successCommitter: AuthoritativeSuccessCommitter = journal,
+    private readonly observer?: ExecutionLifecycleObserver,
   ) {}
 
   async executeOperation(operation: PlannedOperation, expectedStateRevision?: StateRevision): Promise<CoordinatedExecutionResult> {
+    this.observe(operation, "operation-start");
+    this.observe(operation, "operation-precondition-validation-start");
     const preconditions = await this.executor.validatePreconditions(operation);
+    this.observe(operation, "operation-precondition-validated", preconditions.status);
     const preconditionResult = this.mapPreconditionFailure(preconditions);
-    if (preconditionResult) return preconditionResult;
+    if (preconditionResult) return this.complete(operation, preconditionResult);
 
+    this.observe(operation, "pending-journal-start");
     const pending = await this.journal.markPending(operation, expectedStateRevision);
-    if (pending.status === "stale-state") return { status: "stale-state", actualRevision: pending.actualRevision };
-    if (pending.status === "recovery-required") return { status: "recovery-required", reason: pending.reason };
+    this.observe(operation, "pending-journal-complete", pending.status);
+    if (pending.status === "stale-state") return this.complete(operation, { status: "stale-state", actualRevision: pending.actualRevision });
+    if (pending.status === "recovery-required") return this.complete(operation, { status: "recovery-required", reason: pending.reason });
 
+    this.observe(operation, "content-mutation-start");
     const execution = await this.executor.execute(operation);
     if (execution.status === "durable-verified-success") {
+      this.observe(operation, "content-mutation-complete", execution.status);
+      this.observe(operation, "integrity-verification-complete", "verified");
+      this.observe(operation, "state-commit-start");
       const committed = await this.successCommitter.commitVerifiedSuccess(operation, execution.receipt, pending.newStateRevision);
-      if (committed.status === "committed") return { status: "committed", commit: committed };
-      if (committed.status === "stale-state") return { status: "stale-state", actualRevision: committed.actualRevision };
-      return { status: "recovery-required", reason: committed.reason };
+      this.observe(operation, "state-commit-complete", committed.status);
+      if (committed.status === "committed") return this.complete(operation, { status: "committed", commit: committed });
+      if (committed.status === "stale-state") return this.complete(operation, { status: "stale-state", actualRevision: committed.actualRevision });
+      return this.complete(operation, { status: "recovery-required", reason: committed.reason });
     }
 
+    this.observe(operation, "content-mutation-failed", execution.status);
     if (execution.status === "uncertain") {
       const marked = await this.journal.markUncertain(operation, pending.newStateRevision);
-      if (marked.status === "stale-state") return { status: "stale-state", actualRevision: marked.actualRevision };
-      if (marked.status === "recovery-required") return { status: "recovery-required", reason: marked.reason };
-      return { status: "uncertain", reason: execution.reason };
+      if (marked.status === "stale-state") return this.complete(operation, { status: "stale-state", actualRevision: marked.actualRevision });
+      if (marked.status === "recovery-required") return this.complete(operation, { status: "recovery-required", reason: marked.reason });
+      return this.complete(operation, { status: "uncertain", reason: execution.reason });
     }
 
-    return this.mapExecutionFailure(execution);
+    return this.complete(operation, this.mapExecutionFailure(execution));
+  }
+
+  private complete(operation: PlannedOperation, result: CoordinatedExecutionResult): CoordinatedExecutionResult {
+    this.observe(operation, "operation-complete", result.status);
+    return result;
+  }
+  private observe(operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string): void {
+    try { this.observer?.(operation, stage, result); } catch { /* Diagnostics must never influence synchronization. */ }
   }
 
   private mapPreconditionFailure(result: PreconditionValidationResult): CoordinatedExecutionResult | undefined {

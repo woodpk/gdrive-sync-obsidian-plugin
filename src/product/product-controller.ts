@@ -24,9 +24,10 @@ import type {
 } from "../contracts";
 import { contractId } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
-import { CrashSafeExecutionCoordinator } from "../core/execution-coordinator";
+import { CrashSafeExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
 import { semanticPlanId, withSemanticOperationId } from "../core/semantic-identifiers";
+import type { DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { createInitialTrustedState, PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { BoundedAuditHistory } from "./audit-history";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
@@ -51,12 +52,14 @@ export interface ProductControllerOptions {
   readonly recoveryActive?: () => boolean;
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
   readonly onFullReconciliationCompleted?: () => Promise<void>;
+  readonly diagnostics?: DiagnosticLogger;
 }
 interface PlannedRun {
   readonly plan: SynchronizationPlan;
   readonly assembly: AssembledPlanningInput;
   readonly checkpointId?: CheckpointId;
   readonly reviewed: boolean;
+  readonly diagnosticRunId?: number;
 }
 type RunOutcome = "complete" | "partial" | "failed";
 
@@ -136,6 +139,35 @@ function authenticationReason(reason: string): string | undefined {
   return reason.startsWith(prefix) ? reason.slice(prefix.length) || "authorization-required" : undefined;
 }
 
+function planDiagnosticFields(plan: SynchronizationPlan, assembly: AssembledPlanningInput): SafeDiagnosticFields {
+  const operations = plan.operations;
+  const count = (predicate: (operation: PlannedOperation) => boolean) => operations.filter(predicate).length;
+  return {
+    trigger: plan.trigger,
+    runMode: assembly.mode,
+    planDisposition: plan.executionDisposition,
+    stateStatus: assembly.input.state.status,
+    classification: assembly.reconstruction ? "recovery" : assembly.input.state.status === "uninitialized" ? "first-sync" : "normal",
+    snapshotCount: assembly.input.snapshots.length,
+    localCount: assembly.input.snapshots.filter(snapshot => snapshot.local.status === "present").length,
+    remoteCount: assembly.input.snapshots.filter(snapshot => snapshot.remote.status === "present").length,
+    operationCount: operations.length,
+    conflictCount: count(operation => operation.kind === "unresolved-conflict"),
+    blockedCount: count(operation => operation.kind === "blocked-unsafe" || operation.kind === "recovery-required"),
+    destructiveCount: count(operation => operation.destructive),
+    uploadCount: count(operation => operation.kind.startsWith("upload-")),
+    downloadCount: count(operation => operation.kind.startsWith("download-")),
+    moveCount: count(operation => operation.kind === "identity-preserving-move"),
+    trashCount: count(operation => operation.kind.startsWith("trash-")),
+    noopCount: count(operation => operation.kind === "noop"),
+    remoteCompleteness: assembly.remoteEnumeration.status,
+    ...(assembly.localEnumeration ? { localCompleteness: assembly.localEnumeration.status } : {}),
+    reviewed: plan.trigger === "manual" || plan.trigger === "verify-reconcile",
+    reconstruction: Boolean(assembly.reconstruction),
+    cursorPresent: Boolean(assembly.nextCursor),
+  };
+}
+
 export class IntegratedProductController implements ProductControlPort {
   private surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
@@ -153,9 +185,26 @@ export class IntegratedProductController implements ProductControlPort {
   readAuditHistory(): Promise<readonly AuditRecord[]> { return this.options.audit.read(); }
   currentRunEvidence(): ExecutorRunEvidence { if (!this.runEvidence) throw new Error("no active synchronization run evidence"); return this.runEvidence; }
   pendingDestructiveCheckpoint(): CheckpointId | undefined { return this.planned?.checkpointId; }
-  async previewManual(): Promise<SynchronizationPlan | undefined> { return this.createPlan("manual", true, true); }
+  async previewManual(runId = this.options.diagnostics?.beginSyncRun("controller")): Promise<SynchronizationPlan | undefined> {
+    this.syncInfo(runId, "manual-sync-request-enter", { operation: "preview-manual", trigger: "manual" });
+    return this.createPlan("manual", true, true, runId);
+  }
   async previewVerifyReconcile(): Promise<SynchronizationPlan | undefined> { return this.createPlan("verify-reconcile", true, true); }
   noteChangeDuringRun(): void { this.runs.noteLocalOrRemoteChangeDuringRun(); }
+  recordPreviewPresented(planId: SynchronizationPlan["planId"]): void {
+    const planned = this.planned;
+    if (planned?.plan.planId === planId) this.syncInfo(planned.diagnosticRunId, "plan-preview-presented", { stage: "preview-presented", ...planDiagnosticFields(planned.plan, planned.assembly) });
+  }
+  recordExecuteClick(planId: SynchronizationPlan["planId"]): void {
+    const planned = this.planned;
+    if (planned?.plan.planId === planId) this.syncInfo(planned.diagnosticRunId, "execute-click-handler-enter", { stage: "execute-click", operationCount: planned.plan.operations.length });
+  }
+  recordPreviewDismissed(planId: SynchronizationPlan["planId"]): void {
+    const planned = this.planned;
+    if (planned?.plan.planId !== planId || planned.diagnosticRunId === undefined) return;
+    this.syncInfo(planned.diagnosticRunId, "sync-run-cancelled", { stage: "preview-dismissed", result: "cancelled" });
+    this.options.diagnostics?.endSyncRun(planned.diagnosticRunId);
+  }
 
   async runAutomatic(trigger: "startup-resume" | "local-change" | "periodic"): Promise<void> {
     if (this.options.recoveryActive?.()) {
@@ -211,30 +260,39 @@ export class IntegratedProductController implements ProductControlPort {
     return this.resolveConflict(id, { kind: "manual", resolvedVersion: version });
   }
 
-  private async createPlan(trigger: SynchronizationPlan["trigger"], full: boolean, reviewed: boolean): Promise<SynchronizationPlan | undefined> {
-    if (this.runs.isPaused()) { this.setStatus({ kind: "paused" }); return undefined; }
+  private async createPlan(trigger: SynchronizationPlan["trigger"], full: boolean, reviewed: boolean, diagnosticRunId?: number): Promise<SynchronizationPlan | undefined> {
+    if (this.runs.isPaused()) {
+      this.setStatus({ kind: "paused" });
+      this.syncInfo(diagnosticRunId, "sync-run-deferred", { stage: "planning-precondition", result: "paused" });
+      this.endDiagnosticRun(diagnosticRunId);
+      return undefined;
+    }
     this.setStatus({ kind: "planning", trigger });
+    this.syncInfo(diagnosticRunId, "planning-start", { stage: "planning", trigger, runMode: full ? "full" : "incremental-preferred" });
     try {
       let assembly: AssembledPlanningInput;
       if (this.options.recoveryActive?.()) {
-        assembly = await this.options.snapshotAssembler.assembleRecovery("persisted recovery gate");
+        assembly = await this.options.snapshotAssembler.assembleRecovery("persisted recovery gate", diagnosticRunId);
       } else {
-        assembly = full ? await this.options.snapshotAssembler.assembleFull() : await this.options.snapshotAssembler.assemble(true);
+        assembly = full ? await this.options.snapshotAssembler.assembleFull(diagnosticRunId) : await this.options.snapshotAssembler.assemble(true, diagnosticRunId);
         if (assembly.input.state.status === "recovery-required") {
           await this.options.onRecoveryGateChanged?.(true);
           await this.audit("recovery-entered", { reasonCode: assembly.input.state.reason });
-          assembly = await this.options.snapshotAssembler.assembleRecovery(assembly.input.state.detail ?? assembly.input.state.reason);
+          assembly = await this.options.snapshotAssembler.assembleRecovery(assembly.input.state.detail ?? assembly.input.state.reason, diagnosticRunId);
         }
       }
 
+      this.syncDebug(diagnosticRunId, "planning-input-assembled", { stage: "planning-input", runMode: assembly.mode, stateStatus: assembly.input.state.status, snapshotCount: assembly.input.snapshots.length, remoteCompleteness: assembly.remoteEnumeration.status, reconstruction: Boolean(assembly.reconstruction), cursorPresent: Boolean(assembly.nextCursor) });
+      this.syncTrace(diagnosticRunId, "planner-start", { stage: "planning" });
       const plan = await this.options.plannerForTrigger(trigger).plan(assembly.input);
+      this.syncTrace(diagnosticRunId, "planning-complete", { stage: "planning", operationCount: plan.operations.length, planDisposition: plan.executionDisposition });
       await this.refreshConflicts(plan, assembly);
       let checkpointId: CheckpointId | undefined;
       if (plan.recoveryCheckpointRequired && !assembly.reconstruction) {
         const backup = await this.options.stateStore.createRecoveryBackup();
         checkpointId = cid<"CheckpointId">(backup.backupId) as CheckpointId;
       }
-      this.planned = { plan, assembly, checkpointId, reviewed };
+      this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId };
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
       this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
 
@@ -245,9 +303,12 @@ export class IntegratedProductController implements ProductControlPort {
       else if (plan.recoveryCheckpointRequired) this.setStatus({ kind: "destructive-plan-blocked", planId: plan.planId });
       else if (pathBlocked.length) this.setStatus({ kind: "error", code: "path-blocked", message: `${pathBlocked.length} path(s) require attention; unrelated reviewed safe work may proceed.` });
       else this.setStatus({ kind: "idle-ready" });
+      this.syncInfo(diagnosticRunId, "plan-preview-preparation-start", { stage: "preview-prepared", ...planDiagnosticFields(plan, assembly) });
       return plan;
     } catch (error) {
       this.mapPlanningError(error);
+      if (diagnosticRunId !== undefined) this.options.diagnostics?.syncFailure("sync.plan", "sync-run-failed", diagnosticRunId, error, { stage: "planning", classification: "planning-failure", result: "failed" });
+      this.endDiagnosticRun(diagnosticRunId);
       return undefined;
     }
   }
@@ -273,8 +334,15 @@ export class IntegratedProductController implements ProductControlPort {
     if (!userInitiated && planned.plan.executionDisposition !== "safe-auto-eligible") return "failed";
     if (planned.plan.executionDisposition === "blocked") return "failed";
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
+    const runId = planned.diagnosticRunId;
+    this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
     const begun = await this.runs.beginRun();
-    if (begun.status !== "started") { if (begun.status === "paused") this.setStatus({ kind: "paused" }); return "failed"; }
+    if (begun.status !== "started") {
+      if (begun.status === "paused") this.setStatus({ kind: "paused" });
+      this.syncInfo(runId, "sync-run-deferred", { stage: "run-lease", result: begun.status });
+      this.endDiagnosticRun(runId);
+      return "failed";
+    }
 
     this.setStatus({ kind: "syncing", planId: planned.plan.planId });
     let outcome: RunOutcome = "failed";
@@ -283,7 +351,13 @@ export class IntegratedProductController implements ProductControlPort {
     try {
       await this.ensureTrustedState(planned.assembly);
       this.runEvidence = { managedRemote: planned.assembly.managedRemote, remoteEnumerationComplete: planned.assembly.remoteEnumeration.status === "complete" };
-      const coordinator = new CrashSafeExecutionCoordinator(this.options.executor, new StateCommitCoordinator(this.options.stateStore, this.options.stateContext));
+      const operationIndexes = new Map(planned.plan.operations.map((operation, index) => [String(operation.operationId), index + 1]));
+      const coordinator = new CrashSafeExecutionCoordinator(
+        this.options.executor,
+        new StateCommitCoordinator(this.options.stateStore, this.options.stateContext),
+        undefined,
+        (operation, stage, result) => this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, stage, result),
+      );
       let needsReplan = false;
       let globalFailure = false;
 
@@ -343,11 +417,17 @@ export class IntegratedProductController implements ProductControlPort {
         else if (conflicts) this.setStatus({ kind: "conflict-present", conflictCount: conflicts });
         else this.setStatus({ kind: "error", code: "path-blocked", message: `Synchronization made safe partial progress; ${blocked || 1} path(s) remain blocked and the Drive cursor was not advanced.` });
       }
+    } catch (error) {
+      if (runId !== undefined) this.options.diagnostics?.syncFailure("sync.execute", "sync-run-failed", runId, error, { stage: "execution", classification: "execution-failure", result: "failed" });
+      throw error;
     } finally {
+      const cancelled = this.runs.isCancellationRequested();
       this.runEvidence = undefined;
       const finished = await this.runs.finishRun();
       if (finished.reconcileAgain && !this.options.recoveryActive?.()) void this.runAutomatic("local-change");
       else if (this.surface.status.kind === "syncing") this.setStatus(this.options.recoveryActive?.() ? { kind: "recovery-required", reason: "recovery reconstruction is incomplete" } : { kind: "idle-ready" });
+      this.syncInfo(runId, cancelled ? "sync-run-cancelled" : outcome === "failed" ? "sync-run-failed" : "sync-run-complete", { stage: "terminal", result: cancelled ? "cancelled" : outcome, ...planDiagnosticFields(planned.plan, planned.assembly) });
+      this.endDiagnosticRun(runId);
     }
     return outcome;
   }
@@ -517,6 +597,27 @@ export class IntegratedProductController implements ProductControlPort {
     }
     this.setStatus({ kind: "error", code: "planning-failed", message: error instanceof Error ? error.message : String(error) });
   }
+  private recordExecutionStage(runId: number | undefined, operation: PlannedOperation, operationIndex: number, stage: ExecutionLifecycleStage, result?: string): void {
+    this.syncTrace(runId, stage, {
+      stage,
+      operationIndex,
+      operationKind: operation.kind,
+      direction: operation.kind.startsWith("upload-") ? "local-to-remote" : operation.kind.startsWith("download-") ? "remote-to-local" : operation.targetSide ?? "none",
+      preconditionCount: operation.preconditions.length,
+      destructiveCount: operation.destructive ? 1 : 0,
+      ...(result ? { result } : {}),
+    });
+  }
+  private syncInfo(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {
+    if (runId !== undefined) this.options.diagnostics?.syncInfo("sync.controller", event, runId, fields);
+  }
+  private syncDebug(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {
+    if (runId !== undefined) this.options.diagnostics?.syncDebug("sync.plan", event, runId, fields);
+  }
+  private syncTrace(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {
+    if (runId !== undefined) this.options.diagnostics?.syncTrace("sync.execute", event, runId, fields);
+  }
+  private endDiagnosticRun(runId?: number): void { if (runId !== undefined) this.options.diagnostics?.endSyncRun(runId); }
   private setStatus(status: SynchronizationStatus): void {
     this.surface = { ...this.surface, status };
     for (const listener of this.listeners) listener(this.surface);

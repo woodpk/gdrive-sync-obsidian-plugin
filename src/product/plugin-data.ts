@@ -98,6 +98,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       records: state.records.map(record => ({ ...record, ...(record.fields ? { fields: { ...record.fields } } : {}) })),
       nextSequence: state.nextSequence,
       nextAttemptId: state.nextAttemptId,
+      nextRunId: state.nextRunId,
     };
     await this.persist(data);
   }
