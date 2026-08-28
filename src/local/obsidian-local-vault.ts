@@ -26,8 +26,9 @@ export type LocalReferenceAccess = "enumerate" | "observe" | "mutation-source" |
  * Private Phase 4 platform seam for proving that a syntactically valid vault
  * path cannot traverse a symlink/junction/alias outside the synchronization
  * boundary. Desktop supplies a Node-backed implementation in an isolated
- * desktop-only module. Production mobile composition supplies an Obsidian
- * vault-tree implementation; generic composition remains fail-closed.
+ * desktop-only module. The supported mobile API exposes no equivalent physical
+ * external-reference authority, so mobile and generic composition remain
+ * fail-closed until a truthful platform mechanism is available.
  */
 export interface ExternalReferenceGuard {
   assertSafe(path: VaultPath, access: LocalReferenceAccess): Promise<void>;

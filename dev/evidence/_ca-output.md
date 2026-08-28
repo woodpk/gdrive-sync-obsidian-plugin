@@ -1413,3 +1413,26 @@ Verification: typecheck PASS; focused mobile-local-safety **7/7 PASS**; full sui
 Complete evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-LOCAL-SAFETY-01.md`.
 
 `Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+---
+
+## PR #26 Rejection Correction — Mobile Containment Outcome B
+
+This entry supersedes the preceding Phase 6 Alpha iOS local-enumeration safety claim at rejected PR head `6bef9eeb6f8e2942ad73f8ec302725632eb0e67f`.
+
+```text
+MOBILE EXTERNAL-REFERENCE CONTAINMENT:
+NOT SAFELY ESTABLISHABLE WITH THE SUPPORTED API
+```
+
+The supported Obsidian mobile `DataAdapter`/`CapacitorAdapter` contract exposes no `lstat`, canonical `realpath`, reparse/symlink inspection, alias resolution, or documented equivalent guarantee that can prove an adapter-visible path does not resolve through an external filesystem reference. `getFullPath()` is not documented as canonical containment evidence. The Vault API's `TAbstractFile` tree is also insufficient: it proves only logical object relationships and intentionally omits hidden-folder content that the Adapter API can access.
+
+The rejected mobile vault-tree guard and runtime injection were therefore removed. Mobile construction again uses the existing explicit unavailable-capability guard and fails closed before metadata or mutation access. Desktop retains its unchanged Node-backed external-reference guard.
+
+A corrected hidden-content fixture proves `.private-sync-test` remains included by policy and is not rejected because of Vault-tree invisibility. With no sufficient physical authority, it receives the same capability-blocked observation as visible content; recursion stops and LOCAL remains truthfully `partial`. The active configuration directory remains excluded. Manual first-sync planning remains blocked-unsafe with no destructive operation.
+
+Corrected verification: typecheck PASS; focused **9/9 PASS**; full suite **316/318 PASS** with only the two established Windows drive-prefix assertions; build PASS; all five package verifiers PASS; `git diff --check` PASS. Generated `main.js` is `351475` bytes with SHA-256 `32500b28f1f8e730f3ea17a43a93a8f79bf028365c0324fa03767db035bb586f`.
+
+Canonical corrected evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-LOCAL-SAFETY-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`

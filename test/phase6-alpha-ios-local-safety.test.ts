@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import type { App, TAbstractFile, TFolder } from "obsidian";
+import type { App } from "obsidian";
 import { contractId, type ManagedRemoteIdentity, type VaultPath } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
 import { DesktopExternalReferenceGuard, type DesktopFilesystemOps } from "../src/local/desktop-external-reference-guard";
-import { MobileVaultReferenceGuard } from "../src/local/mobile-vault-reference-guard";
-import { LocalPlatformCapabilityError, ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
+import { ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
 
@@ -17,7 +16,7 @@ interface Entry { readonly type: "file" | "folder"; readonly bytes?: Uint8Array;
 const vp = (value: string): VaultPath => value as VaultPath;
 const id = <T extends string>(value: string) => contractId<T>(value);
 
-function mobileFixture(initial: Record<string, Entry>, omitFromTree: readonly string[] = []) {
+function mobileFixture(initial: Record<string, Entry>, configDir = ".obsidian") {
   const entries = new Map<string, Entry>([["", { type: "folder" }]]);
   for (const [entryPath, entry] of Object.entries(initial)) {
     const components = entryPath.split("/");
@@ -53,93 +52,87 @@ function mobileFixture(initial: Record<string, Entry>, omitFromTree: readonly st
     },
     getResourcePath: (entryPath: string) => `memory://${entryPath}`,
   };
-
-  const nodes = new Map<string, TAbstractFile>();
-  let root!: TFolder;
-  const vault: any = {
+  const vault = {
     adapter,
-    configDir: ".obsidian",
+    configDir,
     on: () => ({ id: "event" }),
     offref: () => undefined,
     createFolder: async () => undefined,
-    getRoot: () => root,
-    getAbstractFileByPath: (entryPath: string) => nodes.get(entryPath) ?? null,
+    getAbstractFileByPath: () => null,
   };
-  root = { vault, path: "/", name: "", parent: null, children: [], isRoot: () => true } as unknown as TFolder;
-  nodes.set("", root);
-  for (const [entryPath, entry] of [...entries].sort(([left], [right]) => left.split("/").length - right.split("/").length)) {
-    if (!entryPath || omitFromTree.includes(entryPath)) continue;
-    const slash = entryPath.lastIndexOf("/");
-    const parentPath = slash < 0 ? "" : entryPath.slice(0, slash);
-    const parent = nodes.get(parentPath) as TFolder | undefined;
-    if (!parent) continue;
-    const node: any = {
-      vault,
-      path: entryPath,
-      name: slash < 0 ? entryPath : entryPath.slice(slash + 1),
-      parent,
-      ...(entry.type === "folder" ? { children: [], isRoot: () => false } : {}),
-    };
-    (parent.children as TAbstractFile[]).push(node);
-    nodes.set(entryPath, node as TAbstractFile);
-  }
-
   const app = {
     vault,
     fileManager: { renameFile: async () => undefined, trashFile: async () => undefined },
     workspace: { onLayoutReady: () => undefined },
   } as unknown as App;
-  const local = new ObsidianLocalVaultAdapter(app, {
-    externalReferenceGuard: new MobileVaultReferenceGuard(app),
-    stabilityDelayMs: 0,
-  });
-  return { app, local, calls, nodes };
+  return { local: new ObsidianLocalVaultAdapter(app, { stabilityDelayMs: 0 }), calls };
 }
 
-test("mobile vault-tree containment permits normal files to be observed safely", async () => {
+function capabilityReason(status: Awaited<ReturnType<ObsidianLocalVaultAdapter["observe"]>>): string {
+  return status.status === "inaccessible" ? status.reason : "";
+}
+
+test("mobile visible-file access remains explicitly fail-closed without a supported external-reference authority", async () => {
   const fixture = mobileFixture({ "note.md": { type: "file", bytes: new Uint8Array([1, 2, 3]) } });
   const observed = await fixture.local.observe(vp("note.md"));
-  assert.equal(observed.status, "present");
-  if (observed.status === "present") {
-    assert.equal(observed.entityKind, "file");
-    assert.equal(observed.content?.sizeBytes, 3);
-  }
+  assert.equal(observed.status, "inaccessible");
+  assert.match(capabilityReason(observed), /cannot prove.*external filesystem reference/i);
+  assert.equal(fixture.calls.includes("stat:note.md"), false);
 });
 
-test("mobile vault-tree containment recursively enumerates nested folders with complete evidence", async () => {
+test("nested visible enumeration remains partial rather than manufacturing complete LOCAL evidence", async () => {
   const fixture = mobileFixture({
     "Projects": { type: "folder" },
     "Projects/Alpha": { type: "folder" },
     "Projects/Alpha/plan.md": { type: "file", bytes: new Uint8Array([1]) },
-    "root.md": { type: "file", bytes: new Uint8Array([2]) },
   });
   const listing = await fixture.local.enumerate();
-  assert.equal(listing.completeness.status, "complete");
-  assert.deepEqual(
-    listing.entries.filter(entry => entry.status === "present").map(entry => String(entry.path)).sort(),
-    ["Projects", "Projects/Alpha", "Projects/Alpha/plan.md", "root.md"],
-  );
-  assert.ok(fixture.calls.includes("list:Projects/Alpha"));
+  assert.equal(listing.completeness.status, "partial");
+  assert.equal(listing.entries.some(entry => String(entry.path) === "Projects" && entry.status === "inaccessible"), true);
+  assert.equal(fixture.calls.includes("list:Projects"), false);
 });
 
-test("mobile containment rejects absolute, traversal, drive-qualified, and URL path forms before adapter metadata access", async () => {
+test("non-excluded hidden content is not rejected by a false Vault-tree visibility comparison", async () => {
+  const fixture = mobileFixture({
+    ".private-sync-test": { type: "folder" },
+    ".private-sync-test/nested.md": { type: "file", bytes: new Uint8Array([1]) },
+  });
+  const listing = await fixture.local.enumerate();
+  assert.equal(listing.completeness.status, "partial");
+  const hidden = listing.entries.find(entry => String(entry.path) === ".private-sync-test");
+  assert.equal(hidden?.status, "inaccessible");
+  assert.doesNotMatch(hidden?.status === "inaccessible" ? hidden.reason : "", /vault tree disagree/i);
+  assert.match(hidden?.status === "inaccessible" ? hidden.reason : "", /cannot prove.*external filesystem reference/i);
+  assert.equal(fixture.calls.includes("list:.private-sync-test"), false);
+});
+
+test("active configuration directory remains excluded while other hidden content remains in managed scope", async () => {
+  const fixture = mobileFixture({
+    ".profile": { type: "folder" },
+    ".profile/plugin.json": { type: "file" },
+    ".private-sync-test": { type: "folder" },
+  }, ".profile");
+  const listing = await fixture.local.enumerate();
+  assert.equal(listing.entries.some(entry => String(entry.path).startsWith(".profile")), false);
+  assert.equal(listing.entries.some(entry => String(entry.path) === ".private-sync-test"), true);
+});
+
+test("traversal, absolute, drive-qualified, and URL paths all remain blocked before adapter metadata access", async () => {
   const fixture = mobileFixture({ "safe.md": { type: "file" } });
-  const guard = new MobileVaultReferenceGuard(fixture.app);
   for (const unsafe of ["../outside.md", "/outside.md", "C:\\outside.md", "https://example.invalid/outside.md"]) {
-    await assert.rejects(
-      () => guard.assertSafe(vp(unsafe), "observe"),
-      (error: unknown) => error instanceof LocalPlatformCapabilityError && error.capability === "external-reference-detection",
-    );
+    const observed = await fixture.local.observe(vp(unsafe));
+    assert.equal(observed.status, "inaccessible");
   }
   assert.equal(fixture.calls.some(call => call.startsWith("stat:")), false);
 });
 
-test("mobile containment remains fail-closed when adapter and Obsidian vault tree cannot agree", async () => {
-  const fixture = mobileFixture({ "uncertain.md": { type: "file" } }, ["uncertain.md"]);
-  const observed = await fixture.local.observe(vp("uncertain.md"));
-  assert.equal(observed.status, "inaccessible");
-  assert.match(observed.status === "inaccessible" ? observed.reason : "", /adapter and Obsidian vault tree disagree/i);
-  assert.equal(fixture.calls.includes("stat:uncertain.md"), false);
+test("production mobile composition relies on the explicit unavailable-capability guard, not a fake tree proof", () => {
+  const adapterSource = readFileSync("src/local/obsidian-local-vault.ts", "utf8");
+  const runtimeSource = readFileSync("src/product/runtime.ts", "utf8");
+  assert.match(adapterSource, /class UnavailableExternalReferenceGuard/);
+  assert.match(adapterSource, /options\.externalReferenceGuard \?\? new UnavailableExternalReferenceGuard\(\)/);
+  assert.match(runtimeSource, /return new ObsidianLocalVaultAdapter\(this\.host\.app\);/);
+  assert.doesNotMatch(runtimeSource, /MobileVaultReferenceGuard/);
 });
 
 test("desktop external-reference behavior remains independently Node-backed and fail-closed", async () => {
@@ -152,11 +145,10 @@ test("desktop external-reference behavior remains independently Node-backed and 
   await assert.rejects(() => guard.assertSafe(vp("linked/secret.md"), "observe"));
 });
 
-test("mobile production path has no Node or Electron dependency and injects the mobile guard", () => {
-  const guardSource = readFileSync("src/local/mobile-vault-reference-guard.ts", "utf8");
+test("mobile production path introduces no Node or Electron dependency", () => {
   const runtimeSource = readFileSync("src/product/runtime.ts", "utf8");
-  assert.doesNotMatch(guardSource, /(?:node:|from\s+["'](?:fs|path|electron)["']|require\s*\()/);
-  assert.match(runtimeSource, /externalReferenceGuard:\s*new MobileVaultReferenceGuard\(this\.host\.app\)/);
+  const adapterSource = readFileSync("src/local/obsidian-local-vault.ts", "utf8");
+  assert.doesNotMatch(`${runtimeSource}\n${adapterSource}`, /(?:node:|from\s+["'](?:fs|path|electron)["']|require\s*\()/);
   assert.match(runtimeSource, /if\s*\(Platform\.isDesktopApp\)[\s\S]*?import\(["']\.\.\/local\/desktop-local-vault["']\)/);
 });
 
@@ -166,7 +158,7 @@ class MemoryDiagnostics implements DiagnosticPersistence {
   async saveDiagnostics(state: DiagnosticStoreState): Promise<void> { this.state = structuredClone(state); }
 }
 
-test("manual-sync assembly reports complete LOCAL evidence and retains safe-union planning semantics", async () => {
+test("manual first-sync assembly preserves partial truth and cannot plan destructive work", async () => {
   const fixture = mobileFixture({
     "Inbox": { type: "folder" },
     "Inbox/mobile.md": { type: "file", bytes: new Uint8Array([1, 2]) },
@@ -197,15 +189,14 @@ test("manual-sync assembly reports complete LOCAL evidence and retains safe-unio
     undefined,
     diagnostics,
   );
-  const runId = 1;
-  const assembly = await assembler.assembleFull(runId);
-  assert.equal(assembly.localEnumeration?.status, "complete");
+  const assembly = await assembler.assembleFull(1);
+  assert.equal(assembly.localEnumeration?.status, "partial");
   const diagnostic = diagnostics.snapshot().find(event => event.event === "local-observation-complete");
-  assert.equal(diagnostic?.fields?.localCompleteness, "complete");
+  assert.equal(diagnostic?.fields?.localCompleteness, "partial");
 
   const planner = new DeterministicSynchronizationPlanner(new ThreeWayConflictResolver({ readText: async () => undefined }));
   const plan = await planner.plan(assembly.input);
-  assert.deepEqual(plan.operations.map(operation => operation.kind).sort(), ["upload-create", "upload-create"]);
+  assert.equal(plan.executionDisposition, "blocked");
+  assert.equal(plan.operations.every(operation => operation.kind === "blocked-unsafe"), true);
   assert.equal(plan.operations.some(operation => operation.destructive), false);
-  assert.equal(plan.operations.some(operation => operation.kind === "trash-local" || operation.kind === "trash-remote"), false);
 });
