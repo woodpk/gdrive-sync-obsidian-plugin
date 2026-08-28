@@ -21,20 +21,29 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Full tests
-        run: npm test
+        run: mkdir -p .ci-evidence && npm test | tee .ci-evidence/full-tests.tap
       - name: Focused callback, diagnostic, OAuth, and export tests
-        run: node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js
+        run: node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js | tee .ci-evidence/focused-tests.tap
       - name: Production build
         run: npm run build
       - name: Full repository check
-        run: npm run check
+        run: npm run check | tee .ci-evidence/check.log
       - name: Diff whitespace check
         run: git diff --check
-      - name: Upload diagnostic build artifact
+      - name: Record artifact identity
+        run: |
+          wc -c main.js | tee .ci-evidence/main-js-size.txt
+          sha256sum main.js | tee .ci-evidence/main-js-sha256.txt
+      - name: Upload diagnostic build and verification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase6-alpha-diagnostic-build
+          name: phase6-oauth-housekeeping-verification
           path: |
             main.js
             manifest.json
+            .ci-evidence/full-tests.tap
+            .ci-evidence/focused-tests.tap
+            .ci-evidence/check.log
+            .ci-evidence/main-js-size.txt
+            .ci-evidence/main-js-sha256.txt
           if-no-files-found: error
