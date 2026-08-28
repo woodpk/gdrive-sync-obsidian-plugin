@@ -1,4 +1,5 @@
 import { REQUIRED_DRIVE_SCOPE } from "../contracts/google-drive";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 
 export const GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -128,6 +129,7 @@ function hasExactRequiredDriveScope(scope: string): boolean {
 export class GoogleOAuthSession {
   static readonly TOKEN_SECRET_ID = "brain-gdrive-oauth-tokens";
   private transaction?: OAuthTransaction;
+  private diagnostics?: DiagnosticLogger;
   constructor(
     readonly config: OAuthClientConfiguration,
     private readonly secrets: ObsidianSecretStore,
@@ -135,24 +137,64 @@ export class GoogleOAuthSession {
     private readonly now: Clock = () => Date.now(),
   ) {}
 
+  setDiagnosticLogger(logger: DiagnosticLogger | undefined): void { this.diagnostics = logger; }
+
   async beginAuthorization(ttlMs = DEFAULT_TRANSACTION_TTL_MS): Promise<OAuthAuthorizationRequest> {
-    const state = base64Url(randomBytes(32));
-    const verifier = base64Url(randomBytes(64));
-    const challenge = base64Url(await sha256(verifier));
-    const expiresAtMs = this.now() + ttlMs;
-    this.transaction = { state, verifier, expiresAtMs };
-    const url = new URL(GOOGLE_AUTHORIZATION_ENDPOINT);
-    url.searchParams.set("client_id", this.config.clientId);
-    url.searchParams.set("redirect_uri", this.config.redirectUri);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("scope", REQUIRED_DRIVE_SCOPE);
-    url.searchParams.set("state", state);
-    url.searchParams.set("code_challenge", challenge);
-    url.searchParams.set("code_challenge_method", "S256");
-    url.searchParams.set("access_type", "offline");
-    url.searchParams.set("prompt", "consent");
-    url.searchParams.set("include_granted_scopes", "false");
-    return { url: url.toString(), state, expiresAtMs };
+    const diagnostics = this.diagnostics;
+    diagnostics?.debug("oauth.transaction", "transaction-preparation-started", {
+      operation: "begin-authorization",
+      clientIdConfigured: Boolean(this.config.clientId),
+      redirectUriConfigured: Boolean(this.config.redirectUri),
+      scopeExact: true,
+      transactionPrepared: false,
+    });
+    diagnostics?.trace("oauth.transaction", "begin-authorization-enter", { stage: "transaction-preparation" });
+    try {
+      diagnostics?.trace("oauth.transaction", "pkce-state-generation-start", { stage: "state-generation" });
+      const state = base64Url(randomBytes(32));
+      diagnostics?.trace("oauth.transaction", "pkce-state-generation-complete", { stage: "state-generation" });
+      diagnostics?.trace("oauth.transaction", "pkce-verifier-generation-start", { stage: "verifier-generation" });
+      const verifier = base64Url(randomBytes(64));
+      diagnostics?.trace("oauth.transaction", "pkce-verifier-generation-complete", { stage: "verifier-generation" });
+      diagnostics?.trace("oauth.transaction", "pkce-sha256-start", { stage: "challenge-generation" });
+      const challenge = base64Url(await sha256(verifier));
+      diagnostics?.trace("oauth.transaction", "pkce-sha256-complete", { stage: "challenge-generation" });
+      const expiresAtMs = this.now() + ttlMs;
+      this.transaction = { state, verifier, expiresAtMs };
+      diagnostics?.trace("oauth.transaction", "authorization-request-construction-start", { stage: "request-construction" });
+      const url = new URL(GOOGLE_AUTHORIZATION_ENDPOINT);
+      url.searchParams.set("client_id", this.config.clientId);
+      url.searchParams.set("redirect_uri", this.config.redirectUri);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("scope", REQUIRED_DRIVE_SCOPE);
+      url.searchParams.set("state", state);
+      url.searchParams.set("code_challenge", challenge);
+      url.searchParams.set("code_challenge_method", "S256");
+      url.searchParams.set("access_type", "offline");
+      url.searchParams.set("prompt", "consent");
+      url.searchParams.set("include_granted_scopes", "false");
+      diagnostics?.trace("oauth.transaction", "authorization-request-constructed", { stage: "request-construction", transactionPrepared: true });
+      diagnostics?.debug("oauth.transaction", "transaction-preparation-completed", {
+        operation: "begin-authorization",
+        clientIdConfigured: true,
+        redirectUriConfigured: true,
+        scopeExact: true,
+        transactionPrepared: true,
+        result: "prepared",
+      });
+      diagnostics?.trace("oauth.transaction", "begin-authorization-exit", { stage: "transaction-preparation", result: "prepared" });
+      return { url: url.toString(), state, expiresAtMs };
+    } catch (error) {
+      diagnostics?.failure("oauth.transaction", "transaction-preparation-failed", error, {
+        operation: "begin-authorization",
+        stage: "transaction-preparation",
+        classification: "oauth-transaction-preparation-failure",
+        retryable: true,
+        recoveryIntended: false,
+        transactionPrepared: false,
+      });
+      throw error;
+    }
   }
 
   async completeAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {

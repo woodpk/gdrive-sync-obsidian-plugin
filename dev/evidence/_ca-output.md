@@ -925,3 +925,151 @@ On `2026-08-27`, the independently approved repair head `d499bb504e7b1092b4dc6d4
 Local gates passed: typecheck; 25/25 focused OAuth/mobile tests; build; all five build-verifier checks; and `git diff --check`. The full suite produced 268/270 PASS with only the two qualified, pre-existing Windows drive-path assertions. `npm run check` reproduced the same qualified test result after its typecheck and stopped before its build stage. The independently run build was green and reproduced `main.js` at `291948` bytes with SHA-256 `f290076abdd02e59e11f24c3cfdff5f47ad22917aac06c5a69ad7a7ff07a9106`.
 
 Dedicated integration evidence is preserved in `dev/evidence/_ca-output-codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01.md`. This evidence pass creates that record and modifies this cumulative output plus `dev/evidence/phase6-integration-manifest.md`; it deletes nothing. Physical iPhone OAuth validation remains pending. No iPhone pairing/sync, performance work, Stage 3 work, release/version change, Google Cloud change, Azure change, PR `#15` merge, or `master` modification occurred.
+
+---
+
+## Phase 6 Alpha — iOS Diagnostic Logging and Export — `agt-CA-P6-IOS-DIAG-LOGGING-01`
+
+This append-only record closes the diagnostic-logging build and the PR #21 rejection correction while preserving all historical evidence above.
+
+### Authority and provenance
+
+- agent ID: `agt-CA-P6-IOS-DIAG-LOGGING-01`;
+- execution class: `SERIAL-SHARED-OWNER`;
+- branch: `phase6-alpha-ios-diagnostic-logging`;
+- PR: `#21`, base `phase6-integration`;
+- starting authority/base SHA: `d799e0139c36b629769a917f2d328de6ab84f44d`;
+- Git tag `0.1.1` independently re-verified to point exactly to that SHA;
+- original reviewed implementation head: `233d1da26442b2ab79c8d58f334f70c3cb3cfaf5`;
+- gesture-safe final production/test correction SHA: `790243209015300a5f3bb2cf7a1931577d84ec85`;
+- final code/workflow verification head before evidence: `5dd64fe0514ee3a48894d937c8cc333644ebc7e9`;
+- dedicated evidence creation/final dedicated-file modification commit: `185f49f5e5c7e0477e6c5161f1553f711a4c3d65`;
+- detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-DIAG-LOGGING-01.md`.
+
+PR #21 was verified still exactly at reviewed head `233d1da...` before any corrective edit; no intervening unreviewed commit was present.
+
+### Implemented scope
+
+The branch adds a bounded device-local structured diagnostic logger with monotonic sequence ordering, configurable bounded retention, deterministic text rendering, opt-in mirroring of the same already-sanitized records, and levels exactly `Off`, `Error`, `Warn`, `Info`, `Debug`, `Trace`. Inclusion semantics retain Error/Warn at every non-Off level, Info at Info+, Debug at Debug+, and Trace at Trace+. Executable tests establish materially increasing diagnostic richness `Info < Debug < Trace` without opening new secret-bearing data categories.
+
+OAuth/runtime/browser/callback instrumentation is present across the existing OAuth path, with independent diagnostic attempt IDs and safe presence/classification metadata. Two OAuth-independent `_external` browser probes are present: one direct from the user gesture and one after one controlled Promise microtask boundary. Existing callback lifecycle, external-browser implementation, synchronization semantics, and exact Drive scope are preserved.
+
+Diagnostics persist through plugin data and remain device-local; they are not synchronized into the vault.
+
+### Export behavior and rejection correction
+
+Clipboard export remains available and is now gesture-safe. The rejected sequence that awaited `diagnostics.flush()` before `navigator.clipboard.writeText()` was removed. `copyDiagnosticLogText()` invokes the injected/real `writeText(text)` synchronously before returning its Promise. `copyDiagnosticLog()` synchronously renders the in-memory sanitized log and invokes that helper from the settings-button call stack; any persistence flush occurs only after clipboard success. No timeout/retry is used to manufacture activation.
+
+Behavioral regression coverage proves the clipboard call happens before caller awaiting can occur, proves the exact rendered text is supplied, and proves controlled failure when clipboard is unavailable. No vault write is involved.
+
+The separate `.txt` Web Share implementation is preserved. It constructs an in-memory `brain-sync-diagnostic-log.txt` `text/plain` `File` and hands only `{ files: [file] }` to `navigator.share()` directly from the user gesture. It does not write a diagnostic file into the synchronized vault. Feature detection gates the control and clipboard remains fallback.
+
+Physical iPhone share-sheet/Save-to-Files behavior remains unverified.
+
+### Security constraints
+
+Diagnostic fields are structurally constrained and defense-in-depth sanitized. Secret/token/password/authorization/PKCE/verifier/code/challenge/state/URL/body/response-like data and paths/query-like values are excluded or redacted. Errors retain safe classifications/messages only. No OAuth secret, token, state, verifier, challenge, authorization code, or full authorization URL is recorded.
+
+Exact OAuth scope remains:
+
+`https://www.googleapis.com/auth/drive.file`
+
+No `about:blank`, returned `Window`/`WindowProxy` dependency, Node/Electron mobile dependency, synchronized logs, OAuth behavior change, or synchronization behavior change was introduced.
+
+### Correction commits
+
+- `d8e81878382c0cda6a76c0fd756bd7db6f9151b3` — gesture-safe clipboard helper;
+- `60f51c290231ebcca5619f56786547776f1dbe77` — gesture-safe `src/main.ts` clipboard wiring;
+- `790243209015300a5f3bb2cf7a1931577d84ec85` — behavioral clipboard regression coverage;
+- `5dd64fe0514ee3a48894d937c8cc333644ebc7e9` — focused diagnostic CI mechanically extended to include export regressions.
+
+### Complete base-to-evidence-tree net manifest
+
+Comparison base: `d799e0139c36b629769a917f2d328de6ab84f44d`.
+
+#### Created
+
+- `.github/workflows/phase6-alpha-diagnostic-ci.yml`
+- `src/diagnostics/browser-probes.ts`
+- `src/diagnostics/diagnostic-logger.ts`
+- `src/diagnostics/oauth-diagnostics.ts`
+- `src/diagnostics/share-export.ts`
+- `test/phase6-alpha-diagnostic-logging.test.ts`
+- `test/phase6-alpha-oauth-diagnostics.test.ts`
+- `test/phase6-alpha-share-export.test.ts`
+- `dev/evidence/_ca-output-agt-CA-P6-IOS-DIAG-LOGGING-01.md`
+
+#### Modified
+
+- `src/drive/auth.ts`
+- `src/main.ts`
+- `src/product/plugin-data.ts`
+- `src/product/runtime.ts`
+- `src/product/settings-tab.ts`
+- `test/phase6-alpha-ios-oauth-launch.test.ts`
+- `test/phase6-alpha-oauth-lifecycle.test.ts`
+- `dev/evidence/_ca-output.md`
+
+#### Deleted
+
+- none.
+
+### Verification
+
+Code-bearing final verification workflow: `Phase 6 Alpha Diagnostic Verification`.
+
+- run ID: `33108757692`;
+- job ID: `98645636059`;
+- verified head: `5dd64fe0514ee3a48894d937c8cc333644ebc7e9`;
+- conclusion: **SUCCESS**;
+- `npm ci`: PASS — 16 packages added, 17 audited, 0 vulnerabilities;
+- `npm run typecheck`: PASS;
+- full suite: **292/292 PASS**, 0 fail/cancelled/skipped/todo;
+- focused diagnostic/OAuth/export suite: **33/33 PASS**, 0 fail/cancelled/skipped/todo;
+- synchronous clipboard regression: PASS;
+- progressive-detail `Info < Debug < Trace`: PASS;
+- secret-safety/redaction tests: PASS;
+- OAuth launch/lifecycle tests: PASS;
+- exact `drive.file` scope tests: PASS;
+- `npm run build`: PASS;
+- `npm run check`: PASS;
+- `git diff --check`: PASS;
+- artifact upload: PASS.
+
+Five build verifiers:
+
+```text
+BUILD_VERIFY_ENTRYPOINT=PASS
+BUILD_VERIFY_SYNTAX=PASS
+BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS
+BUILD_VERIFY_MOBILE_EVALUATION=PASS
+BUILD_VERIFY_PACKAGE_SHAPE=PASS
+```
+
+Final code-bearing artifact:
+
+- `main.js` size: `329013` bytes;
+- SHA-256: `1225e9b1798d5238d7fd0e0a2241a40080b02b8c0e7d92970828ac1fa98726c6`;
+- uploaded artifact ID: `9661596129`;
+- artifact ZIP size: `69259` bytes;
+- artifact ZIP SHA-256: `30d1dab6fb14719c3cf82e76e7efc54294cded0803150e65354dcf656101ab18`.
+
+A preceding post-correction gate, run `33108598399` / job `98645079257`, also passed 292/292 tests, typecheck, build, check, diff, and all five package verifiers before the focused command was mechanically expanded to include the export test file.
+
+### Azure qualification
+
+Azure Static Web Apps run `33108757695`, job `98645636153`, failed only at deployment capacity. The inspected log states that the Static Web App already has the maximum number of staging environments and asks that one be removed before retrying. Azure configuration/staging environments were not changed. This external preview-capacity condition is not treated as a plugin build/test failure.
+
+### Limitations and explicit non-actions
+
+- `Physical iPhone execution: NOT AVAILABLE IN THIS SESSION`
+- `OAuth root cause: NOT YET ESTABLISHED`
+- physical iPhone clipboard acceptance: NOT AVAILABLE IN THIS SESSION
+- physical iPhone `.txt` share-sheet / Save-to-Files acceptance: NOT AVAILABLE IN THIS SESSION
+- no release/tag `0.1.2` created or published;
+- no pairing performed;
+- no synchronization performed;
+- no performance work performed;
+- no Stage 3 work begun;
+- no `master` modification;
+- PR #21 must remain OPEN and UNMERGED pending independent review and physical iPhone acceptance.

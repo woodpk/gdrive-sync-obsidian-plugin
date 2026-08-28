@@ -1,0 +1,40 @@
+name: Phase 6 Alpha Diagnostic Verification
+
+on:
+  pull_request:
+    branches: [phase6-integration]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Full tests
+        run: npm test
+      - name: Focused diagnostic, OAuth, and export tests
+        run: node --test .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js
+      - name: Production build
+        run: npm run build
+      - name: Full repository check
+        run: npm run check
+      - name: Diff whitespace check
+        run: git diff --check
+      - name: Upload diagnostic build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-alpha-diagnostic-build
+          path: |
+            main.js
+            manifest.json
+          if-no-files-found: error
