@@ -1433,3 +1433,23 @@ Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-CONTENT-READER-01.md`.
 `Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
 
 PR #27 and PR #26 remain open/unmerged. No `master`/integration modification, tag/release, Drive/OAuth change, synchronization redesign, performance work, Phase 6 closure, or Stage 3 work occurred.
+
+---
+
+## Phase 6 OAuth Housekeeping — final master integration and branch retirement
+
+- agent: `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
+- pre-merge `phase6-integration`: `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`
+- master integration merge: `f02db659710e17383c17312553ec087d2d0b7d50`, normal merge commit through PR `#15`; no squash/rebase/force-push
+- diagnostic head `a0fc805b5d93b056d6699fc48633e11782bd0bde`, callback branch head `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`, and housekeeping head `cd8497d61f75980cc3a949c70ff37e4cf993306a` were proven ancestors of master before retirement
+- `phase6-alpha-ios-diagnostic-logging` @ `a0fc805b5d93b056d6699fc48633e11782bd0bde`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-callback-handoff-fix` @ `967f9bbfb7d3989bce1949230caf6e7b20a46d8b`: **DELETED — fully merged and obsolete**
+- `phase6-alpha-ios-oauth-diagnostic` @ `d799e0139c36b629769a917f2d328de6ab84f44d`: **DELETED — fully merged/ancestor-only after explicit rollback and obsolete**
+- `phase6-oauth-housekeeping` @ `cd8497d61f75980cc3a949c70ff37e4cf993306a`: **DELETED — fully merged and obsolete**
+- `phase6-integration` @ `3b2bdd550be4b9fb4dc3dcbecea1ad4ba9029dea`: **RETAINED** because broader Phase 6 work remains active and the production Azure callback workflow is branch-scoped to it
+- open PRs before retirement: none
+- `NEW GITHUB PLUGIN RELEASE: NOT CREATED`
+- Stage 3 not begun
+- remaining Phase 6 scope: broader non-OAuth runtime/fault/resource validation and planned post-iPhone performance work already recorded in project state; physical iPhone OAuth acceptance is closed as PASS
+
+This finalization is evidence/branch housekeeping only and changes no production OAuth or synchronization behavior.
