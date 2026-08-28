@@ -1397,3 +1397,23 @@ The previously observed two Windows drive-prefix test failures did **not** repro
 - no OAuth redesign, token-exchange change, Drive pairing change, synchronization semantic change, or Stage 3 work was performed.
 - `phase6-integration` is intentionally expected to remain after master integration because `dev/planning-and-building/project-state.yaml` still marks Phase 6 active and lists broader non-OAuth runtime/fault/resource validation plus the planned post-iPhone performance block.
 - final master integration SHA and branch-retirement dispositions are to be appended after those operations complete.
+
+---
+
+## Phase 6 Alpha — iOS Adapter-Boundary Vault Access Refactor — `agt-CA-P6-IOS-ADAPTER-BOUNDARY-01`
+
+Later explicit product authority supersedes PR #26's blanket mobile unavailable-guard architecture while retaining its correct finding that iOS does not expose Windows `lstat`/canonical-`realpath` proof. New locked decision `DEC-299` establishes the active Obsidian mobile `DataAdapter` namespace plus strict vault-relative validation and enumeration provenance as the approved iOS filesystem capability boundary; Windows retains its stronger physical guard.
+
+Branch `phase6-alpha-ios-adapter-boundary-refactor` began exactly at `phase6-integration` SHA `523ba96cc6e975645cfd319fa7bb62b9c1399176`. Dynamically verified implementation/governance SHA: `410f252bf5fa35e4abfb12fc47df5db1e710066c`. Version metadata is consistently prepared at `0.1.4`; no tag or release was created.
+
+Production mobile composition now explicitly installs `MobileVaultAccessBoundary`. Valid visible and non-excluded hidden paths reach only the active Obsidian adapter. All operation paths and temporary stage/backup paths are normalized and validated before I/O. Every adapter-listed child must be a valid normalized immediate descendant of its requested parent; malformed, duplicate/colliding, cyclic, escaping, or kind-mismatched entries are isolated without unsafe access, safe siblings continue, and completeness becomes truthful `partial`. Visible moves/trash retain FileManager semantics; hidden objects absent from the Vault tree use supported adapter rename/trash fallback. Desktop Node-backed external-reference protection is unchanged.
+
+Official Obsidian API/documentation and the requested Remotely Save and Self-hosted LiveSync implementations were inspected as engineering evidence. The architecture does not claim physical iOS alias inspection and does not import Node/Electron on the mobile path.
+
+Verification: `npm run typecheck` PASS; focused iOS adapter-boundary suite **8/8 PASS**; `npm test` **315/317 PASS** with only the two established Windows drive-prefix assertions; `npm run build` PASS; `npm run verify:build` PASS; all five package verifiers PASS; `git diff --check` PASS. `main.js`: `357076` bytes; SHA-256 `047dd456a6ed2894bbbf8bd921572d38695fbe85790ca9c7a15260900572e8d8`.
+
+Detailed evidence and complete manifest: `dev/evidence/_ca-output-agt-CA-P6-IOS-ADAPTER-BOUNDARY-01.md`.
+
+`Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
+
+PR #26 was not merged or released. No tag/release, `master`/integration modification, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
