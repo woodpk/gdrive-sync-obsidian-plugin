@@ -456,3 +456,34 @@ Integration agent: `codex-P6-ALPHA-IOS-OAUTH-INTEGRATE-01`.
 - none.
 
 Physical iPhone OAuth validation remains pending. No iPhone pairing or synchronization, performance work, Stage 3 work, release mutation, `master` modification, or PR `#15` merge occurred.
+
+---
+
+## Mixed-plan isolation integration and 0.1.6 promotion - 2026-08-29
+
+- supervisor review result: **APPROVE**;
+- PR #29 approved head: `9aa425d088411ab0c95da1aa8c91275bbf4e67b2`;
+- pre-merge `phase6-integration`: `229488ba4b7580644f70a29c4dd0ee3670447da2`;
+- integration method: guarded normal PR merge commit, with no squash, rebase, force push, or history rewrite;
+- PR #29 merge commit / resulting source integration SHA: `acee2ad373b5a6c0938fa39393f286f05af1fad8`;
+- approved head ancestry after merge: verified;
+- `master` during integration: unchanged at `34fa2e65d86878788434a6527e18d9f54ed64f3e`;
+- version: `0.1.6`;
+- local focused verification: **18/18 PASS**;
+- local Windows full suite: **339/341 qualified PASS**, only the two established drive-prefix expectation mismatches;
+- typecheck/build/diff check/all five package verifiers: **PASS**;
+- final PR #29 Linux run `33236567999`: **341/341 PASS** and complete repository verification PASS;
+- `main.js`: `377230` bytes;
+- `main.js` SHA-256: `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`;
+- promotion PR: [#30](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/30), `phase6-integration` to `master`, intentionally open/unmerged;
+- tag/release `0.1.6`: not created.
+
+Integration evidence-pass files modified:
+
+- `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`;
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+No product code, test, version, OAuth/Azure configuration, physical iPhone state, or Stage 3 state was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

@@ -300,3 +300,35 @@ The separate Azure preview run [33236278904](https://github.com/woodpk/gdrive-sy
 PR #29 metadata was updated to the actual **18/18** focused result, **339/341** qualified Windows result, **341/341** Linux result/run, and final artifact identity. PR #29 remains open and unmerged. No protected branch, tag, release, OAuth/Azure behavior, physical testing, Phase 6 completion, or Stage 3 work occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Approved integration and 0.1.6 promotion preparation
+
+Supervisor status for PR #29: **APPROVE**.
+
+PR #29 was guarded at exact approved head `9aa425d088411ab0c95da1aa8c91275bbf4e67b2`, verified open, unmerged, non-draft, mergeable, and based on `phase6-integration`, then merged normally without squash or rebase. The PR #29 merge commit and resulting source integration SHA are both `acee2ad373b5a6c0938fa39393f286f05af1fad8`. The pre-merge integration SHA was `229488ba4b7580644f70a29c4dd0ee3670447da2`; approved head ancestry was verified after the merge. `master` remained `34fa2e65d86878788434a6527e18d9f54ed64f3e`.
+
+Fresh post-merge local verification on Windows:
+
+- version metadata: `0.1.6` in `manifest.json`, `package.json`, and `package-lock.json`;
+- typecheck: **PASS**;
+- focused mixed-plan/attention/concurrency suite: **18/18 PASS**;
+- full suite: **339/341 PASS**, with only the two unchanged established Windows drive-prefix expectation mismatches;
+- build: **PASS**;
+- all five package verifiers: **PASS**;
+- `git diff --check`: **PASS**;
+- `main.js`: `377230` bytes;
+- `main.js` SHA-256: `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`.
+
+The final PR #29 Linux verification run [33236567999](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33236567999) passed **341/341**, typecheck, build, complete repository check, diff check, and all package verifiers while reproducing the exact artifact above. The separate Azure preview failure remained the known maximum-staging-environments capacity condition and was not an application verification failure.
+
+Promotion PR [#30](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/30) was opened from `phase6-integration` to `master` and is intentionally left open and unmerged for supervisor review. This integration/promotion evidence pass modifies only:
+
+- `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`;
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+No product code, test, version, OAuth/Azure configuration, tag, release, physical iPhone state, or Stage 3 state was changed by the integration evidence pass.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

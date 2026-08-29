@@ -1509,3 +1509,15 @@ Verification: typecheck PASS; focused mixed-plan/attention/concurrency suite **1
 PR #29 remains open/unmerged. No `master`, `phase6-integration`, tag, release, OAuth/Azure behavior, physical testing, Phase 6 completion, or Stage 3 modification occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Phase 6 Alpha — 0.1.6 integration and promotion preparation
+
+After supervisor **APPROVE**, PR #29 was guarded at exact head `9aa425d088411ab0c95da1aa8c91275bbf4e67b2` and normally merged into `phase6-integration`. Merge commit and resulting source integration SHA: `acee2ad373b5a6c0938fa39393f286f05af1fad8`; pre-merge integration SHA: `229488ba4b7580644f70a29c4dd0ee3670447da2`. `master` remained `34fa2e65d86878788434a6527e18d9f54ed64f3e`.
+
+Post-merge verification: consistent version `0.1.6`; typecheck PASS; focused mixed-plan/attention/concurrency **18/18 PASS**; Windows full suite **339/341 PASS** with only the two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. Final PR #29 Linux run [33236567999](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33236567999) passed **341/341** and reproduced `main.js` at `377230` bytes with SHA-256 `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`.
+
+Promotion PR [#30](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/30) was opened from `phase6-integration` to `master` and left open/unmerged for supervisor review. This evidence pass changes only the detailed mixed-plan evidence, this cumulative ledger, and the Phase 6 integration manifest. No product/test/version code, tag, release, physical iPhone action, or Stage 3 work occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
