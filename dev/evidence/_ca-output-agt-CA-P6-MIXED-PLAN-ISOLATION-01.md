@@ -139,7 +139,9 @@ manifest.json byte size: 283
 manifest.json SHA-256: 8f2ac175a1e6526c95436083d7fbf2df90311cd1ba5224ad689cc4709eebb4e5
 ```
 
-GitHub/Linux CI status is recorded after the evidence-only head is pushed and independently inspected.
+GitHub/Linux CI independently verified evidence head `8eeaa80fba6850ef00e208b48d404b6892259cbc` in successful **Phase 6 Alpha Diagnostic Verification** run [33231490680](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33231490680): `npm ci`, typecheck, **335/335** full tests, **38/38** existing focused callback/diagnostic/OAuth/export tests, build, complete `npm run check`, diff check, and all five package verifiers passed. Linux reproduced `main.js` at exactly `372981` bytes and SHA-256 `5903eb849f6ceca67caef17bcac2c6f87b7a9236ed9f6b2de960f54e4f2c1576`; the uploaded workflow artifact ZIP digest was `61988aac2ec8e0505c95848c4fe77ce889f163c7d5bfd4c681a40a8063bcc862`.
+
+The separate Azure Static Web Apps preview run [33231490677](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33231490677) failed only because the existing Static Web App had reached its maximum staging-environment count. The exact service response was `This Static Web App already has the maximum number of staging environments`; this is the known preview-capacity infrastructure condition, not plugin source/test/build failure. No Azure configuration or environment was changed.
 
 ## Remaining limitations and explicit non-actions
 
