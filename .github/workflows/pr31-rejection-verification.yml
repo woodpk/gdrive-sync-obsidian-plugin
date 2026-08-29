@@ -1,0 +1,72 @@
+name: PR31 Rejection Repair Verification
+
+on:
+  push:
+    branches: [phase6-alpha-plan-errors-stability]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-alpha-plan-errors-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Full test suite with pipefail
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test | tee /tmp/pr31-full.tap
+          grep -q '^# tests 366$' /tmp/pr31-full.tap
+          grep -q '^# pass 366$' /tmp/pr31-full.tap
+          grep -q '^# fail 0$' /tmp/pr31-full.tap
+      - name: Focused plan-errors repair suite
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            .test-build/test/phase6-alpha-mixed-plan-isolation.test.js \
+            .test-build/test/phase6-alpha-plan-errors-stability.test.js \
+            .test-build/test/phase6-alpha-plan-errors-stability-rejection.test.js | tee /tmp/pr31-focused.tap
+          grep -q '^# tests 43$' /tmp/pr31-focused.tap
+          grep -q '^# pass 43$' /tmp/pr31-focused.tap
+          grep -q '^# fail 0$' /tmp/pr31-focused.tap
+      - name: Production build
+        run: npm run build
+      - name: Explicit build verification
+        run: npm run verify:build
+      - name: Diff whitespace check
+        run: git diff --check
+      - name: Record artifact identity
+        run: |
+          mkdir -p /tmp/pr31-evidence
+          cp /tmp/pr31-full.tap /tmp/pr31-evidence/full.tap
+          cp /tmp/pr31-focused.tap /tmp/pr31-evidence/focused.tap
+          wc -c main.js | tee /tmp/pr31-evidence/main-js-size.txt
+          sha256sum main.js | tee /tmp/pr31-evidence/main-js-sha256.txt
+          wc -c manifest.json | tee /tmp/pr31-evidence/manifest-size.txt
+          sha256sum manifest.json | tee /tmp/pr31-evidence/manifest-sha256.txt
+      - name: Upload strict verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr31-rejection-repair-verification
+          path: |
+            main.js
+            manifest.json
+            /tmp/pr31-evidence/full.tap
+            /tmp/pr31-evidence/focused.tap
+            /tmp/pr31-evidence/main-js-size.txt
+            /tmp/pr31-evidence/main-js-sha256.txt
+            /tmp/pr31-evidence/manifest-size.txt
+            /tmp/pr31-evidence/manifest-sha256.txt
+          if-no-files-found: error
