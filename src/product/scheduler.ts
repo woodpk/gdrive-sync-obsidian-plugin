@@ -16,8 +16,6 @@ export class ProductSyncScheduler {
   private readonly unsubscribers: Array<() => void> = [];
   private started = false;
   private startupOpportunityIssued = false;
-  private lifecycleRun?: Promise<void>;
-  private lifecycleRunPending = false;
 
   constructor(
     private readonly local: LocalVaultPort,
@@ -29,7 +27,6 @@ export class ProductSyncScheduler {
     if (this.started) return;
     this.started = true;
     this.startupOpportunityIssued = false;
-    this.lifecycleRunPending = false;
     this.unsubscribers.push(this.local.onLifecycle(event => {
       if (event.kind === "vault-ready") this.issueInitialStartupOpportunity();
       if (event.kind === "resume") this.requestLifecycleAutomaticRun();
@@ -50,7 +47,6 @@ export class ProductSyncScheduler {
     if (!this.started) return;
     this.started = false;
     this.startupOpportunityIssued = false;
-    this.lifecycleRunPending = false;
     if (this.changeTimer !== undefined) globalThis.clearTimeout(this.changeTimer);
     this.changeTimer = undefined;
     this.clearPeriodic();
@@ -65,19 +61,7 @@ export class ProductSyncScheduler {
 
   private requestLifecycleAutomaticRun(): void {
     if (!this.started || !this.settings().startupResumeEnabled) return;
-    if (this.lifecycleRun) {
-      this.lifecycleRunPending = true;
-      return;
-    }
-    this.lifecycleRun = this.controller.runAutomatic("startup-resume").finally(() => {
-      this.lifecycleRun = undefined;
-      if (!this.started || !this.lifecycleRunPending) {
-        this.lifecycleRunPending = false;
-        return;
-      }
-      this.lifecycleRunPending = false;
-      this.requestLifecycleAutomaticRun();
-    });
+    void this.controller.runAutomatic("startup-resume");
   }
 
   private installPeriodic(): void {

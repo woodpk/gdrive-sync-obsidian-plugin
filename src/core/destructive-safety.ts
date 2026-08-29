@@ -66,7 +66,7 @@ export class DestructiveSafetyPolicy {
 
   /** Approval is scoped to the exact plan and requires a concrete recovery checkpoint. */
   authorizeReviewedPlan(plan: SynchronizationPlan, checkpointId: CheckpointId): ApprovedDestructivePlan {
-    if (!plan.recoveryCheckpointRequired || plan.executionDisposition !== "requires-user-approval") {
+    if (!plan.recoveryCheckpointRequired || plan.executionDisposition !== "requires-user-approval" || plan.globalExecutionGate !== "destructive-approval-required") {
       throw new Error("plan is not eligible for destructive review approval");
     }
     const destructiveOperationIds = plan.operations.filter(operation => operation.destructive).map(operation => operation.operationId);

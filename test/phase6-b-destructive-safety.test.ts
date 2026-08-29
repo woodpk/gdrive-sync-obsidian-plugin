@@ -116,6 +116,7 @@ test("approval remains scoped to the exact reviewed plan and a concrete recovery
     operations,
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: true,
+    globalExecutionGate: "destructive-approval-required",
   };
   const checkpoint = id<"CheckpointId">("checkpoint:reviewed");
   const approval = policy.authorizeReviewedPlan(plan, checkpoint);
@@ -133,10 +134,12 @@ test("production planner prevents a stale current device from authorizing any de
     operations: destructive(3),
     executionDisposition: "safe-auto-eligible",
     recoveryCheckpointRequired: false,
+    globalExecutionGate: "none",
   };
   const planner = new ProductionSynchronizationPlanner({ plan: async () => unsafePlan });
   const result = await planner.plan({ snapshots: [], state: { status: "trusted", state: trustedState(true) } });
-  assert.equal(result.executionDisposition, "blocked");
+  assert.equal(result.executionDisposition, "requires-user-approval");
+  assert.equal(result.globalExecutionGate, "none");
   assert.equal(result.operations.some(operation => operation.kind === "blocked-unsafe"), true);
   assert.equal(result.operations.some(operation => operation.reasons.some(reason => reason.code === "stale-device-destructive-gate")), true);
 });

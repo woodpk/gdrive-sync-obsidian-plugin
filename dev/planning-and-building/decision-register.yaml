@@ -825,6 +825,10 @@ decisions:
     status: locked
     category: platform_containment
     decision: "Local-vault containment is platform-specific while preserving one safety outcome. Windows retains desktop-only physical external-reference inspection using lstat and canonical realpath containment. On iOS, the active Obsidian mobile DataAdapter namespace plus strict vault-relative path validation and enumeration-child provenance is the approved filesystem capability boundary. Mobile code must not bypass that boundary into arbitrary native filesystem paths or Node/Electron APIs; malformed, escaping, unsupported, or unprovable individual paths remain blocked and produce incomplete evidence. The absence of desktop lstat/realpath on iOS is not grounds to disable all normal iOS vault synchronization."
+  - id: DEC-300
+    status: locked
+    category: synchronization_execution
+    decision: "A path-local blocked, conflicting, or transiently unstable operation must be isolated with any operation whose dependency on it cannot be disproven, while unrelated independently safe operations continue in both automatic and reviewed runs. Path attention is not run-wide execution authority: recovery/untrusted state, invalid managed-remote or authentication authority, stale-plan authority, and checkpoint-gated suspicious destruction remain global gates. Successfully committed safe operations retain normal crash-safe authoritative state; skipped paths remain uncommitted and retryable; partial runs do not advance an incompletely incorporated Drive cursor or complete the first-sync trust gate. Current skipped paths are recorded in a bounded device-local attention ledger with CSV export, outside vault synchronization scope and ordinary diagnostics."
 
 superseded_decisions:
   - id: SUP-001
