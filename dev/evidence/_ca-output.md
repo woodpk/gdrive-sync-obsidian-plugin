@@ -1521,3 +1521,15 @@ Post-merge verification: consistent version `0.1.6`; typecheck PASS; focused mix
 Promotion PR [#30](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/30) was opened from `phase6-integration` to `master` and left open/unmerged for supervisor review. This evidence pass changes only the detailed mixed-plan evidence, this cumulative ledger, and the Phase 6 integration manifest. No product/test/version code, tag, release, physical iPhone action, or Stage 3 work occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Phase 6 Alpha — approved 0.1.6 master promotion and prerelease preparation
+
+After supervisor **APPROVE**, PR #30 was guarded at exact head `233573a2f0abc1a91855a8dcfcb3f091658f38c6` and normally merged into `master`. Merge commit and promoted source SHA: `251f9345488a56f1b4cfa71129b96e3f083fa916`.
+
+Promoted verification: consistent version `0.1.6`; typecheck PASS; focused mixed-plan/attention/concurrency **18/18 PASS**; Windows full suite **339/341 qualified PASS** with only the two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. Master CI run [33238942414](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33238942414) passed **341/341** and reproduced `main.js` at `377230` bytes with SHA-256 `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`. The Windows release `manifest.json` is `284` bytes with SHA-256 `bda99947f74fbbbb072613c14056729fd09cca0eee6882e50ed5b33f7cc7b718`.
+
+The authorized `0.1.6` GitHub prerelease will target the resulting evidence-only `master` commit and attach exactly `main.js` and `manifest.json`. This evidence pass changes only the detailed mixed-plan evidence, cumulative ledger, and integration manifest. No product/test/version code, OAuth/Azure configuration, physical testing, or Stage 3 work occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
