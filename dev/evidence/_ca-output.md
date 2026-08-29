@@ -1494,6 +1494,6 @@ From rejected head `479b701328385baf03a197c164d025508e70767f`, implementation re
 
 Regression verification: focused suite **16/16 PASS**; typecheck PASS; Windows full suite **337/339 PASS** with only the two unchanged established drive-prefix mismatches; build and all five package verifiers PASS; diff check PASS. Version remains `0.1.6`. `main.js`: `374188` bytes, SHA-256 `2d417f5c2a9e09669dd6b689a78c3067628dcf5a96d75eb3ffd6fed93428d7bb`. `manifest.json`: `283` bytes, SHA-256 `8f2ac175a1e6526c95436083d7fbf2df90311cd1ba5224ad689cc4709eebb4e5`.
 
-GitHub/Linux CI evidence will be appended after the repaired PR head is pushed and tested. PR #29 remains open/unmerged; no tag/release or protected-branch modification occurred.
+GitHub/Linux **Phase 6 Alpha Diagnostic Verification** run [33233714856](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33233714856) passed **339/339** full tests, **38/38** existing focused workflow tests, the complete repository check, build, diff check, and all five package verifiers on repaired evidence head `da85659c71edd7fa4368cb6f17c923c061db0e63`; it reproduced the exact artifact. The separate Azure preview run failed only on the unchanged maximum-staging-environments capacity condition. PR #29 remains open/unmerged; no tag/release or protected-branch modification occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

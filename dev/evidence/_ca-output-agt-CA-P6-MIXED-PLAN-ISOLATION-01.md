@@ -213,7 +213,9 @@ main.js byte size: 374188
 main.js SHA-256: 2d417f5c2a9e09669dd6b689a78c3067628dcf5a96d75eb3ffd6fed93428d7bb
 ```
 
-GitHub/Linux CI verification: pending push of this evidence update; final run evidence will be appended after the PR head is tested.
+GitHub/Linux CI independently verified evidence head `da85659c71edd7fa4368cb6f17c923c061db0e63` in successful **Phase 6 Alpha Diagnostic Verification** run [33233714856](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33233714856): typecheck, **339/339** full tests, **38/38** existing focused callback/diagnostic/OAuth/export tests, production build, complete repository check, diff check, and all five package verifiers passed. Linux reproduced `main.js` at exactly `374188` bytes and SHA-256 `2d417f5c2a9e09669dd6b689a78c3067628dcf5a96d75eb3ffd6fed93428d7bb`. Uploaded workflow artifact `9709269773` has ZIP digest `sha256:4fbc2038d1c650ba6d44f699c262ff4adae2fb8cd83a2cdecfe4b03d548d74c1`.
+
+The separate Azure Static Web Apps preview run [33233714911](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33233714911) failed with the unchanged infrastructure response: `This Static Web App already has the maximum number of staging environments`. It is not a source/test/build failure; no Azure configuration or environment was changed.
 
 PR #29 remains open and unmerged. No `master` or `phase6-integration` modification, tag, release, Azure/OAuth change, physical testing, Phase 6 completion, or Stage 3 work occurred.
 
