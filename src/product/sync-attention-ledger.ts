@@ -1,4 +1,5 @@
 import type { PlanOperationKind, VaultPath } from "../contracts";
+import { sha256Text } from "../util/sha256";
 
 export const DEFAULT_SYNC_ATTENTION_RETENTION = 500;
 export const SYNC_ATTENTION_CSV_FILENAME = "brain-sync-attention.csv";
@@ -61,9 +62,30 @@ export class SyncAttentionLedger {
     return (await this.load()).map(record => ({ ...record }));
   }
 
+  /** Privacy-safe identity for notification deduplication; the path-bearing source never leaves this ledger. */
+  async currentIdentity(): Promise<string> {
+    const identities = (await this.load())
+      .filter(record => record.current)
+      .map(record => [String(record.path), record.category, record.reasonCode, record.humanReason].join("\u0000"))
+      .sort();
+    return String(sha256Text(JSON.stringify(identities)));
+  }
+
   async recordSkipped(values: readonly SkippedPathAttention[]): Promise<void> {
     if (!values.length) return;
     const records = (await this.load()).map(record => ({ ...record }));
+    const incomingByPath = new Map<string, Set<string>>();
+    for (const value of values) {
+      const path = String(value.path);
+      const keys = incomingByPath.get(path) ?? new Set<string>();
+      keys.add(keyOf(value));
+      incomingByPath.set(path, keys);
+    }
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index]!;
+      const authoritativeKeys = incomingByPath.get(String(record.path));
+      if (record.current && authoritativeKeys && !authoritativeKeys.has(record.key)) records[index] = { ...record, current: false };
+    }
     for (const value of values) {
       const key = keyOf(value);
       const at = value.timestampMs ?? Date.now();

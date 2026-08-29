@@ -30,6 +30,7 @@ import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
 import { semanticPlanId, withSemanticOperationId } from "../core/semantic-identifiers";
 import type { DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { createInitialTrustedState, PersistentSynchronizationStateStore } from "../state/persistent-state-store";
+import { sha256Text } from "../util/sha256";
 import { BoundedAuditHistory } from "./audit-history";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
@@ -67,6 +68,9 @@ interface PlannedRun {
   attentionPersistenceFailed: boolean;
 }
 type RunOutcome = "complete" | "partial" | "failed";
+type AutomaticTrigger = "startup-resume" | "local-change" | "periodic";
+
+const AUTOMATIC_TRIGGER_PRIORITY: Readonly<Record<AutomaticTrigger, number>> = { periodic: 1, "startup-resume": 2, "local-change": 3 };
 
 const cid = <T extends string>(value: string) => contractId<T>(value);
 const auditId = () => globalThis.crypto?.randomUUID?.() ?? `audit-${Date.now()}-${Math.random()}`;
@@ -198,6 +202,8 @@ export class IntegratedProductController implements ProductControlPort {
   private readonly conflictRegistry = new Map<string, ConflictAssessment>();
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
+  private pendingAutomaticTrigger?: AutomaticTrigger;
+  private automaticDrain?: Promise<void>;
 
   constructor(private readonly options: ProductControllerOptions) {
     this.runs = new CoreRunCoordinator(options.vaultIdentity, options.deviceIdentity, options.leasePort, options.holderId);
@@ -232,7 +238,44 @@ export class IntegratedProductController implements ProductControlPort {
     this.endDiagnosticRun(diagnosticRunId);
   }
 
-  async runAutomatic(trigger: "startup-resume" | "local-change" | "periodic"): Promise<void> {
+  runAutomatic(trigger: AutomaticTrigger): Promise<void> {
+    this.queueAutomaticTrigger(trigger);
+    const drain = this.automaticDrain ?? this.startAutomaticDrain();
+    return this.awaitAutomaticQuiescence(drain);
+  }
+
+  private queueAutomaticTrigger(trigger: AutomaticTrigger): void {
+    if (!this.pendingAutomaticTrigger || AUTOMATIC_TRIGGER_PRIORITY[trigger] > AUTOMATIC_TRIGGER_PRIORITY[this.pendingAutomaticTrigger]) this.pendingAutomaticTrigger = trigger;
+  }
+
+  private startAutomaticDrain(): Promise<void> {
+    const drain = Promise.resolve().then(() => this.drainAutomaticRuns());
+    this.automaticDrain = drain;
+    void drain.finally(() => {
+      if (this.automaticDrain !== drain) return;
+      this.automaticDrain = undefined;
+      if (this.pendingAutomaticTrigger) this.startAutomaticDrain();
+    }).catch(() => undefined);
+    return drain;
+  }
+
+  private async awaitAutomaticQuiescence(initial: Promise<void>): Promise<void> {
+    let drain: Promise<void> | undefined = initial;
+    while (drain) {
+      await drain;
+      drain = this.automaticDrain;
+    }
+  }
+
+  private async drainAutomaticRuns(): Promise<void> {
+    while (this.pendingAutomaticTrigger) {
+      const trigger = this.pendingAutomaticTrigger;
+      this.pendingAutomaticTrigger = undefined;
+      await this.runAutomaticLifecycle(trigger);
+    }
+  }
+
+  private async runAutomaticLifecycle(trigger: AutomaticTrigger): Promise<void> {
     const runId = this.options.diagnostics?.beginSyncRun(`automatic:${trigger}`);
     this.syncInfo(runId, "automatic-sync-attempt-started", { trigger, stage: "automatic-entry" });
     if (this.options.recoveryActive?.()) {
@@ -243,7 +286,13 @@ export class IntegratedProductController implements ProductControlPort {
     }
     const plan = await this.createPlan(trigger, false, false, runId);
     if (!plan) return;
-    if (this.planned?.assembly.reconstruction || globalExecutionGate(plan) !== "none") {
+    const planned = this.planned;
+    if (!planned || planned.plan.planId !== plan.planId) {
+      this.syncInfo(runId, "sync-run-globally-blocked", { stage: "execution-authority", trigger, result: "globally-blocked", classification: "automatic-plan-not-current" });
+      this.endDiagnosticRun(runId);
+      return;
+    }
+    if (planned.assembly.reconstruction || globalExecutionGate(plan) !== "none") {
       this.syncInfo(runId, "sync-run-globally-blocked", { stage: "execution-authority", trigger, result: "globally-blocked", classification: globalExecutionGate(plan) });
       this.endDiagnosticRun(runId);
       return;
@@ -255,7 +304,7 @@ export class IntegratedProductController implements ProductControlPort {
       this.endDiagnosticRun(runId);
       return;
     }
-    await this.executePlanned(false, undefined, runId);
+    await this.executePlanned(false, undefined, runId, planned);
   }
 
   async request(action: UserAction): Promise<UserActionResult> { return this.requestWithDiagnosticRun(action); }
@@ -347,7 +396,7 @@ export class IntegratedProductController implements ProductControlPort {
       else if (plan.operations.some(operation => operation.kind === "recovery-required")) this.setStatus({ kind: "recovery-required", reason: "synchronization state or remote relationship requires recovery" });
       else if (this.surface.conflicts.length && !plan.operations.some(operation => !["blocked-unsafe", "unresolved-conflict"].includes(operation.kind))) this.setStatus({ kind: "conflict-present", conflictCount: this.surface.conflicts.length });
       else if (plan.recoveryCheckpointRequired) this.setStatus({ kind: "destructive-plan-blocked", planId: plan.planId });
-      else if (attentionOperations(plan).length) this.setStatus({ kind: "attention-required", attentionCount: attentionOperations(plan).length, conflictCount: this.surface.conflicts.length, safeOperationsCommitted: 0, phase: "planned", ledgerAvailable: !attentionPersistenceFailed });
+      else if (attentionOperations(plan).length) this.setStatus({ kind: "attention-required", attentionCount: attentionOperations(plan).length, attentionIdentity: await this.attentionIdentityFor(plan, !attentionPersistenceFailed), conflictCount: this.surface.conflicts.length, safeOperationsCommitted: 0, phase: "planned", ledgerAvailable: !attentionPersistenceFailed });
       else this.setStatus({ kind: "idle-ready" });
       this.syncInfo(diagnosticRunId, "plan-preview-preparation-start", { stage: "preview-prepared", ...planDiagnosticFields(plan, assembly) });
       return plan;
@@ -374,8 +423,8 @@ export class IntegratedProductController implements ProductControlPort {
     for (const [key, value] of fresh) this.conflictRegistry.set(key, value);
   }
 
-  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number): Promise<RunOutcome> {
-    const planned = this.planned;
+  private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number, automaticPlanned?: PlannedRun): Promise<RunOutcome> {
+    const planned = automaticPlanned ?? this.planned;
     if (!planned) return "failed";
     if (!userInitiated && globalExecutionGate(planned.plan) !== "none") return "failed";
     if (globalExecutionGate(planned.plan) === "globally-blocked") return "failed";
@@ -482,9 +531,9 @@ export class IntegratedProductController implements ProductControlPort {
         const conflicts = this.surface.conflicts.length;
         const attentionCount = Math.max(skippedCount, attentionOperations(planned.plan).length);
         if (planned.assembly.reconstruction || this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
-        else this.setStatus({ kind: "attention-required", attentionCount: attentionCount || 1, conflictCount: conflicts, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: !planned.attentionPersistenceFailed });
+        else this.setStatus({ kind: "attention-required", attentionCount: attentionCount || 1, attentionIdentity: await this.attentionIdentityFor(planned.plan, !planned.attentionPersistenceFailed), conflictCount: conflicts, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: !planned.attentionPersistenceFailed });
       } else if (!globalFailure && planned.attentionPersistenceFailed) {
-        this.setStatus({ kind: "attention-required", attentionCount: 0, conflictCount: 0, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: false });
+        this.setStatus({ kind: "attention-required", attentionCount: 0, attentionIdentity: await this.attentionIdentityFor(planned.plan, false), conflictCount: 0, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: false });
       }
     } catch (error) {
       if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: "execution-failure", result: "failed" });
@@ -533,7 +582,7 @@ export class IntegratedProductController implements ProductControlPort {
     else {
       const currentAttention = await this.options.attentionLedger?.current() ?? [];
       this.setStatus(currentAttention.length
-        ? { kind: "attention-required", attentionCount: currentAttention.length, conflictCount: this.surface.conflicts.length, safeOperationsCommitted: operations.length, phase: "completed", ledgerAvailable: true }
+        ? { kind: "attention-required", attentionCount: currentAttention.length, attentionIdentity: await this.attentionIdentityFor(current.plan), conflictCount: this.surface.conflicts.length, safeOperationsCommitted: operations.length, phase: "completed", ledgerAvailable: true }
         : this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
     }
     return { status: "accepted" };
@@ -711,6 +760,18 @@ export class IntegratedProductController implements ProductControlPort {
       reasonCode: reasonCode ?? reason?.code ?? operation.kind,
       humanReason: humanReason ?? reason?.summary ?? "The operation could not be safely executed for this path.",
     };
+  }
+  private async attentionIdentityFor(plan: SynchronizationPlan, ledgerReliable = true): Promise<string> {
+    try {
+      if (ledgerReliable && this.options.attentionLedger) return await this.options.attentionLedger.currentIdentity();
+    } catch {
+      // Persistence availability is already surfaced separately; notification identity remains fail-safe and path-free.
+    }
+    const identities = attentionOperations(plan).map(operation => {
+      const reason = operation.reasons[0];
+      return [String(operation.path), operation.kind, reason?.code ?? operation.kind, reason?.summary ?? ""].join("\u0000");
+    }).sort();
+    return String(sha256Text(JSON.stringify(identities)));
   }
   private async recordAttentionEntries(entries: readonly SkippedPathAttention[]): Promise<boolean> {
     if (!entries.length || !this.options.attentionLedger) return true;

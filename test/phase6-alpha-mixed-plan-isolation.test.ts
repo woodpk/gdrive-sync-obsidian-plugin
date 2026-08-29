@@ -4,7 +4,7 @@ import type { ChangeCursor, ContentEvidence, DeviceIdentity, ManagedRemoteIdenti
 import { contractId } from "../src/contracts";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import type { AuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
+import { IntegratedProductController, type PlannerFactory } from "../src/product/product-controller";
 import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
 import { createSyncAttentionCsvFile, SyncAttentionLedger, SYNC_ATTENTION_CSV_FILENAME, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
 import { DiagnosticLogger, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
@@ -64,6 +64,8 @@ async function harness(plans: readonly SynchronizationPlan[], options: {
   readonly persistence?: SyncAttentionPersistence;
   readonly auditPersistence?: AuditPersistence;
   readonly staleDevice?: boolean;
+  readonly plannerForTrigger?: PlannerFactory;
+  readonly beforeExecute?: (operation: PlannedOperation) => Promise<void>;
   readonly onBaseline?: () => Promise<void>;
 } = {}): Promise<ControllerHarness> {
   const state = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
@@ -87,12 +89,13 @@ async function harness(plans: readonly SynchronizationPlan[], options: {
       validatePreconditions: async () => ({ status: "valid" as const }),
       execute: async (candidate: PlannedOperation) => {
         executed.push(candidate);
+        await options.beforeExecute?.(candidate);
         return { status: "durable-verified-success" as const, receipt: { operationId: candidate.operationId, durable: true as const, integrityVerified: true as const, evidence: candidate.contentVersion?.content, resultingRemoteObjectId: candidate.remoteObjectId ?? id<"RemoteObjectId">(`remote:${String(candidate.path)}`), verificationEvidenceRef: "mixed-plan-fixture" } };
       },
       failureScope: () => "global" as const,
     } as never,
     conflictResolver: { assess: async () => ({ kind: "none" as const }) },
-    plannerForTrigger: () => new ProductionSynchronizationPlanner({ plan: async () => plans[Math.min(planIndex++, plans.length - 1)]! }),
+    plannerForTrigger: options.plannerForTrigger ?? (() => new ProductionSynchronizationPlanner({ plan: async () => plans[Math.min(planIndex++, plans.length - 1)]! })),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) }, audit: new BoundedAuditHistory(options.auditPersistence ?? new MemoryAuditPersistence(), 50),
     holderId: "mixed-plan-test", attentionLedger: ledger, diagnostics: options.diagnostics, onTrustedBaselineEstablished: options.onBaseline,
   });
@@ -117,6 +120,80 @@ test("mixed automatic plan commits unrelated safe upload, retains attention, and
   assert.equal(h.executed.filter(item => item.kind === "upload-create").length, 1, "already committed upload must not duplicate");
   loaded = await h.state.load(context);
   if (loaded.status === "trusted") assert.equal(loaded.state.changeCursor, oldCursor, "partial run must not advance cursor");
+});
+
+test("automatic plan-to-execute lifecycle serializes and coalesces overlapping periodic and local-change triggers", async () => {
+  let diagnosticState: DiagnosticStoreState | undefined;
+  const diagnostics = new DiagnosticLogger({
+    persistence: { loadDiagnostics: async () => diagnosticState, saveDiagnostics: async state => { diagnosticState = state; } },
+    level: "trace", retentionLimit: 200, consoleMirror: false, platform: "mobile",
+  });
+  await diagnostics.initialize();
+  const periodicPlan = plan("periodic", [upload("periodic-first.md")]);
+  const localPlan = plan("local-change", [upload("local-second.md")]);
+  let planningActive = 0;
+  let maximumPlanningActive = 0;
+  const plannerTriggers: SynchronizationPlan["trigger"][] = [];
+  let firstPlannerEntered!: () => void;
+  let releaseFirstPlanner!: () => void;
+  const firstPlannerEntry = new Promise<void>(resolve => { firstPlannerEntered = resolve; });
+  const firstPlannerRelease = new Promise<void>(resolve => { releaseFirstPlanner = resolve; });
+  let firstMutationEntered!: () => void;
+  let releaseFirstMutation!: () => void;
+  const firstMutationEntry = new Promise<void>(resolve => { firstMutationEntered = resolve; });
+  const firstMutationRelease = new Promise<void>(resolve => { releaseFirstMutation = resolve; });
+  let mutationActive = 0;
+  let maximumMutationActive = 0;
+  const plannerForTrigger: PlannerFactory = trigger => ({ plan: async () => {
+    plannerTriggers.push(trigger);
+    planningActive += 1;
+    maximumPlanningActive = Math.max(maximumPlanningActive, planningActive);
+    try {
+      if (plannerTriggers.length === 1) { firstPlannerEntered(); await firstPlannerRelease; }
+      return trigger === "periodic" ? periodicPlan : localPlan;
+    } finally { planningActive -= 1; }
+  } });
+  const h = await harness([], {
+    diagnostics,
+    plannerForTrigger,
+    beforeExecute: async candidate => {
+      mutationActive += 1;
+      maximumMutationActive = Math.max(maximumMutationActive, mutationActive);
+      try {
+        if (candidate.operationId === periodicPlan.operations[0]?.operationId) { firstMutationEntered(); await firstMutationRelease; }
+      } finally { mutationActive -= 1; }
+    },
+  });
+  const syncingPlanIds: string[] = [];
+  h.controller.onSurface(surface => { if (surface.status.kind === "syncing") syncingPlanIds.push(String(surface.status.planId)); });
+
+  const first = h.controller.runAutomatic("periodic");
+  await firstPlannerEntry;
+  const second = h.controller.runAutomatic("local-change");
+  await Promise.resolve();
+  assert.deepEqual(plannerTriggers, ["periodic"], "a queued trigger cannot start a competing planner");
+  releaseFirstPlanner();
+  await firstMutationEntry;
+  assert.deepEqual(plannerTriggers, ["periodic"], "the coalesced reconciliation waits for the first execution to finish");
+  releaseFirstMutation();
+  await Promise.all([first, second]);
+  await diagnostics.flush();
+
+  assert.equal(maximumPlanningActive, 1);
+  assert.equal(maximumMutationActive, 1);
+  assert.deepEqual(plannerTriggers, ["periodic", "local-change"]);
+  assert.deepEqual(syncingPlanIds, [String(periodicPlan.planId), String(localPlan.planId)]);
+  assert.deepEqual(h.executed.map(item => String(item.operationId)), [String(periodicPlan.operations[0]?.operationId), String(localPlan.operations[0]?.operationId)]);
+  assert.equal(new Set(h.executed.map(item => String(item.operationId))).size, 2, "each actual mutation executes once");
+
+  const starts = diagnostics.snapshot().filter(event => event.event === "automatic-sync-attempt-started");
+  assert.equal(starts.length, 2);
+  assert.deepEqual(starts.map(event => event.fields?.trigger), ["periodic", "local-change"]);
+  assert.equal(new Set(starts.map(event => event.runId)).size, 2);
+  for (const start of starts) {
+    assert.ok(diagnostics.snapshot().some(event => event.runId === start.runId && event.event === "planning-start" && event.fields?.trigger === start.fields?.trigger));
+    assert.ok(diagnostics.snapshot().some(event => event.runId === start.runId && event.event === "sync-run-complete"));
+  }
 });
 
 test("conflict and all-blocked plans isolate affected paths without mutating them", async () => {
@@ -234,6 +311,35 @@ test("attention ledger retains every current issue while bounding resolved histo
   assert.ok(persistence.saves > 0, "only plugin-owned persistence is used; no vault adapter participates");
 });
 
+test("a fresh reason authoritatively supersedes the prior current reason for that path and successful reconciliation resolves it", async () => {
+  const target = "superseded.md";
+  const h = await harness([
+    plan("periodic", [operation("blocked-unsafe", target, "local-file-not-stable")]),
+    plan("periodic", [operation("blocked-unsafe", target, "local-path-inaccessible")]),
+    plan("periodic", [upload(target)]),
+  ]);
+  await h.controller.runAutomatic("periodic");
+  await h.controller.runAutomatic("periodic");
+  const currentAfterReplacement = await h.ledger.current();
+  assert.equal(currentAfterReplacement.length, 1);
+  assert.equal(currentAfterReplacement[0]?.reasonCode, "local-path-inaccessible");
+  const afterReplacement = await h.ledger.all();
+  assert.equal(afterReplacement.find(record => record.reasonCode === "local-file-not-stable")?.current, false);
+  assert.equal(afterReplacement.find(record => record.reasonCode === "local-path-inaccessible")?.current, true);
+  const csvAfterReplacement = await h.ledger.renderCsv();
+  assert.match(csvAfterReplacement, /"local-file-not-stable"[^\r\n]*"resolved"/u);
+  assert.match(csvAfterReplacement, /"local-path-inaccessible"[^\r\n]*"current"/u);
+  const status = h.controller.currentSurface().status;
+  assert.equal(status.kind, "attention-required");
+  if (status.kind === "attention-required") assert.equal(status.attentionCount, 1);
+
+  await h.controller.runAutomatic("periodic");
+  assert.equal((await h.ledger.current()).some(record => String(record.path) === target), false);
+  const history = (await h.ledger.all()).filter(record => String(record.path) === target);
+  assert.equal(history.length, 2);
+  assert.equal(history.every(record => !record.current), true);
+});
+
 test("ledger persistence failure is surfaced but does not roll back authorized safe work", async () => {
   const failing: SyncAttentionPersistence = { loadSyncAttention: async () => [], saveSyncAttention: async () => { throw new Error("device-local metadata write failed"); } };
   const h = await harness([plan("periodic", [operation("blocked-unsafe", "blocked.md", "local-file-not-stable"), upload("safe.md")])], { persistence: failing });
@@ -346,22 +452,48 @@ test("controller surface emits no premature completion and exactly one terminal 
   assert.ok(observed.some(item => item.kind === "attention-required" && item.phase === "completed" && Boolean(item.notice)));
 });
 
-test("all-attention run reports a truthful terminal result once and unchanged retries do not spam", async () => {
+test("notification identity suppresses the same attention but reports changed paths and reasons with identical counts", async () => {
+  let diagnosticState: DiagnosticStoreState | undefined;
+  const diagnostics = new DiagnosticLogger({
+    persistence: { loadDiagnostics: async () => diagnosticState, saveDiagnostics: async state => { diagnosticState = state; } },
+    level: "trace", retentionLimit: 200, consoleMirror: false, platform: "mobile",
+  });
+  await diagnostics.initialize();
   const filter = new MeaningfulNotificationFilter();
-  const h = await harness([plan("periodic", [operation("blocked-unsafe", "all-attention.md", "local-file-not-stable")])]);
+  const pathA = "PRIVATE_ATTENTION_A.md";
+  const pathB = "PRIVATE_ATTENTION_B.md";
+  const h = await harness([
+    plan("periodic", [operation("blocked-unsafe", pathA, "local-file-not-stable")]),
+    plan("periodic", [operation("blocked-unsafe", pathA, "local-file-not-stable")]),
+    plan("periodic", [operation("blocked-unsafe", pathA, "local-path-inaccessible")]),
+    plan("periodic", [operation("blocked-unsafe", pathB, "local-file-not-stable")]),
+  ], { diagnostics });
   const notices: string[] = [];
-  const phases: string[] = [];
+  let prematureCompletionNotices = 0;
   h.controller.onSurface(surface => {
-    if (surface.status.kind === "attention-required") phases.push(surface.status.phase);
     const notice = filter.next(surface);
+    if (surface.status.kind === "attention-required" && surface.status.phase === "planned" && notice) prematureCompletionNotices += 1;
     if (notice) notices.push(notice);
   });
   await h.controller.runAutomatic("periodic");
-  assert.deepEqual(phases, ["planned", "completed"]);
   assert.equal(notices.length, 1);
   assert.match(notices[0]!, /no unsafe paths were changed/u);
+  const firstStatus = h.controller.currentSurface().status;
+  assert.equal(firstStatus.kind, "attention-required");
+  if (firstStatus.kind === "attention-required") {
+    assert.match(firstStatus.attentionIdentity, /^sha256:[0-9a-f]{64}$/u);
+    assert.doesNotMatch(firstStatus.attentionIdentity, /PRIVATE_ATTENTION/u);
+  }
   await h.controller.runAutomatic("periodic");
   assert.equal(notices.length, 1, "the same unresolved terminal attention result is deduplicated");
+  await h.controller.runAutomatic("periodic");
+  assert.equal(notices.length, 2, "the same path with a different reason has a different identity");
+  await h.ledger.resolvePath(path(pathA));
+  await h.controller.runAutomatic("periodic");
+  assert.equal(notices.length, 3, "a replacement path with the same counts still emits a notice");
+  assert.equal(prematureCompletionNotices, 0);
+  await diagnostics.flush();
+  assert.doesNotMatch(diagnostics.renderText(), /PRIVATE_ATTENTION_A|PRIVATE_ATTENTION_B/u);
 });
 
 test("startup-resume, local-change, and periodic automatic triggers each own a diagnostic run ID", async () => {

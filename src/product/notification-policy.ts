@@ -8,7 +8,7 @@ export function meaningfulNotification(surface: ProductSurfaceState): Meaningful
   switch (status.kind) {
     case "attention-required":
       if (status.phase === "planned") return undefined;
-      return { key: `attention:completed:${status.attentionCount}:${status.safeOperationsCommitted}:${status.ledgerAvailable}`, message: status.attentionCount > 0
+      return { key: `attention:completed:${status.attentionIdentity}:${status.attentionCount}:${status.safeOperationsCommitted}:${status.ledgerAvailable}`, message: status.attentionCount > 0
         ? status.safeOperationsCommitted > 0
           ? `BRAIN sync completed with ${status.attentionCount} path(s) requiring attention; ${status.safeOperationsCommitted} safe operation(s) synchronized.${status.ledgerAvailable ? "" : " The attention ledger could not be updated."}`
           : `BRAIN sync completed with ${status.attentionCount} path(s) requiring attention; no unsafe paths were changed.${status.ledgerAvailable ? "" : " The attention ledger could not be updated."}`
