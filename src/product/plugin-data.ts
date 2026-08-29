@@ -127,7 +127,14 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
   }
 
   private async persist(data: MutablePluginData): Promise<void> {
-    this.saveChain = this.saveChain.then(() => this.host.saveData({ settings: data.settings, audit: data.audit, diagnostics: data.diagnostics, syncAttention: data.syncAttention }));
-    await this.saveChain;
+    const payload = structuredClone({
+      settings: { ...data.settings, userExclusionPatterns: [...data.settings.userExclusionPatterns] },
+      audit: data.audit.map(record => ({ ...record })),
+      diagnostics: data.diagnostics,
+      syncAttention: data.syncAttention.map(record => ({ ...record })),
+    });
+    const write = this.saveChain.catch(() => undefined).then(() => this.host.saveData(payload));
+    this.saveChain = write.catch(() => undefined);
+    await write;
   }
 }

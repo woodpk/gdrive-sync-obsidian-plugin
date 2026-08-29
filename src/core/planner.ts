@@ -231,12 +231,11 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
   private finish(state: StateLoadResult, totalManagedPaths: number, operations: PlannedOperation[]): SynchronizationPlan {
     const safety = this.destructiveSafety.assess(operations, { totalManagedPaths, recentAverageDestructiveOperations: this.options.recentAverageDestructiveOperations, stateCondition: state.status === "trusted" ? "trusted" : state.status === "uninitialized" ? "reconstructed" : "untrusted" });
     const hasRecoveryRequired = operations.some(operation => operation.kind === "recovery-required");
-    const hasGlobalPathGuard = operations.some(operation => operation.reasons.some(reason => reason.code === "stale-device-destructive-gate"));
     let executionDisposition: PlanExecutionDisposition = "safe-auto-eligible";
     let globalExecutionGate: PlanGlobalExecutionGate = "none";
-    if (hasRecoveryRequired || hasGlobalPathGuard) { executionDisposition = "blocked"; globalExecutionGate = "globally-blocked"; }
+    if (hasRecoveryRequired) { executionDisposition = "blocked"; globalExecutionGate = "globally-blocked"; }
     else if (operations.some(operation => operation.kind === "blocked-unsafe" || operation.kind === "unresolved-conflict") || safety.requiresApproval) executionDisposition = "requires-user-approval";
-    if (!hasRecoveryRequired && !hasGlobalPathGuard && safety.requiresApproval) globalExecutionGate = "destructive-approval-required";
+    if (!hasRecoveryRequired && safety.requiresApproval) globalExecutionGate = "destructive-approval-required";
     const trigger = this.options.trigger ?? "verify-reconcile";
     const recoveryCheckpointRequired = safety.recoveryCheckpointRequired;
     return { planId: semanticPlanId({ trigger, operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate }), trigger, operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate };

@@ -45,12 +45,12 @@ function csvCell(value: string | number | undefined): string {
   return `"${raw.replace(/"/g, '""')}"`;
 }
 
-/** Bounded device-local current/history ledger. It is not stored through the vault adapter. */
+/** Complete current state plus bounded resolved history. It is not stored through the vault adapter. */
 export class SyncAttentionLedger {
   private records?: SyncAttentionRecord[];
 
-  constructor(private readonly persistence: SyncAttentionPersistence, private readonly limit = DEFAULT_SYNC_ATTENTION_RETENTION) {
-    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error("sync attention retention must be positive");
+  constructor(private readonly persistence: SyncAttentionPersistence, private readonly resolvedHistoryLimit = DEFAULT_SYNC_ATTENTION_RETENTION) {
+    if (!Number.isSafeInteger(resolvedHistoryLimit) || resolvedHistoryLimit < 1) throw new Error("resolved sync attention history retention must be positive");
   }
 
   async current(): Promise<readonly SyncAttentionRecord[]> {
@@ -101,13 +101,13 @@ export class SyncAttentionLedger {
   }
 
   private async persistBounded(records: SyncAttentionRecord[]): Promise<void> {
-    const sorted = [...records].sort((a, b) => a.lastSeenAtMs - b.lastSeenAtMs);
-    while (sorted.length > this.limit) {
-      const resolved = sorted.findIndex(record => !record.current);
-      sorted.splice(resolved >= 0 ? resolved : 0, 1);
-    }
-    await this.persistence.saveSyncAttention(sorted.map(record => ({ ...record })));
-    this.records = sorted;
+    const current = records.filter(record => record.current);
+    const resolved = records.filter(record => !record.current)
+      .sort((a, b) => b.lastSeenAtMs - a.lastSeenAtMs)
+      .slice(0, this.resolvedHistoryLimit);
+    const retained = [...current, ...resolved].sort((a, b) => a.lastSeenAtMs - b.lastSeenAtMs);
+    await this.persistence.saveSyncAttention(retained.map(record => ({ ...record })));
+    this.records = retained;
   }
 }
 

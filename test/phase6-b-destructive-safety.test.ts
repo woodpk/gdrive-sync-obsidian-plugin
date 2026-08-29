@@ -138,7 +138,8 @@ test("production planner prevents a stale current device from authorizing any de
   };
   const planner = new ProductionSynchronizationPlanner({ plan: async () => unsafePlan });
   const result = await planner.plan({ snapshots: [], state: { status: "trusted", state: trustedState(true) } });
-  assert.equal(result.executionDisposition, "blocked");
+  assert.equal(result.executionDisposition, "requires-user-approval");
+  assert.equal(result.globalExecutionGate, "none");
   assert.equal(result.operations.some(operation => operation.kind === "blocked-unsafe"), true);
   assert.equal(result.operations.some(operation => operation.reasons.some(reason => reason.code === "stale-device-destructive-gate")), true);
 });

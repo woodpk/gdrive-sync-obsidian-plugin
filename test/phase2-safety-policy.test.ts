@@ -59,6 +59,7 @@ test("a returning stale current device cannot authorize destructive propagation"
   const unsafePlan: SynchronizationPlan = { planId: contractId<"PlanId">("delete-plan"), trigger: "local-change", operations: destructive(1), executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" };
   const guarded = new ProductionSynchronizationPlanner({ plan: async () => unsafePlan });
   const result = await guarded.plan({ snapshots: [], state: { status: "trusted", state } });
-  assert.equal(result.executionDisposition, "blocked");
+  assert.equal(result.executionDisposition, "requires-user-approval");
+  assert.equal(result.globalExecutionGate, "none");
   assert.equal(result.operations.at(-1)?.kind, "blocked-unsafe");
 });

@@ -347,7 +347,7 @@ export class IntegratedProductController implements ProductControlPort {
       else if (plan.operations.some(operation => operation.kind === "recovery-required")) this.setStatus({ kind: "recovery-required", reason: "synchronization state or remote relationship requires recovery" });
       else if (this.surface.conflicts.length && !plan.operations.some(operation => !["blocked-unsafe", "unresolved-conflict"].includes(operation.kind))) this.setStatus({ kind: "conflict-present", conflictCount: this.surface.conflicts.length });
       else if (plan.recoveryCheckpointRequired) this.setStatus({ kind: "destructive-plan-blocked", planId: plan.planId });
-      else if (attentionOperations(plan).length) this.setStatus({ kind: "attention-required", attentionCount: attentionOperations(plan).length, conflictCount: this.surface.conflicts.length, synchronizedCount: 0, ledgerAvailable: !attentionPersistenceFailed });
+      else if (attentionOperations(plan).length) this.setStatus({ kind: "attention-required", attentionCount: attentionOperations(plan).length, conflictCount: this.surface.conflicts.length, safeOperationsCommitted: 0, phase: "planned", ledgerAvailable: !attentionPersistenceFailed });
       else this.setStatus({ kind: "idle-ready" });
       this.syncInfo(diagnosticRunId, "plan-preview-preparation-start", { stage: "preview-prepared", ...planDiagnosticFields(plan, assembly) });
       return plan;
@@ -482,9 +482,9 @@ export class IntegratedProductController implements ProductControlPort {
         const conflicts = this.surface.conflicts.length;
         const attentionCount = Math.max(skippedCount, attentionOperations(planned.plan).length);
         if (planned.assembly.reconstruction || this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
-        else this.setStatus({ kind: "attention-required", attentionCount: attentionCount || 1, conflictCount: conflicts, synchronizedCount: committedCount, ledgerAvailable: !planned.attentionPersistenceFailed });
+        else this.setStatus({ kind: "attention-required", attentionCount: attentionCount || 1, conflictCount: conflicts, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: !planned.attentionPersistenceFailed });
       } else if (!globalFailure && planned.attentionPersistenceFailed) {
-        this.setStatus({ kind: "attention-required", attentionCount: 0, conflictCount: 0, synchronizedCount: committedCount, ledgerAvailable: false });
+        this.setStatus({ kind: "attention-required", attentionCount: 0, conflictCount: 0, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: false });
       }
     } catch (error) {
       if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: "execution-failure", result: "failed" });
@@ -533,7 +533,7 @@ export class IntegratedProductController implements ProductControlPort {
     else {
       const currentAttention = await this.options.attentionLedger?.current() ?? [];
       this.setStatus(currentAttention.length
-        ? { kind: "attention-required", attentionCount: currentAttention.length, conflictCount: this.surface.conflicts.length, synchronizedCount: operations.length, ledgerAvailable: true }
+        ? { kind: "attention-required", attentionCount: currentAttention.length, conflictCount: this.surface.conflicts.length, safeOperationsCommitted: operations.length, phase: "completed", ledgerAvailable: true }
         : this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
     }
     return { status: "accepted" };
