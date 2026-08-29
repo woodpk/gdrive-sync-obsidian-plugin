@@ -69,6 +69,10 @@ export type DiagnosticFieldKey =
   | "preconditionCount"
   | "conflictCount"
   | "blockedCount"
+  | "attentionCount"
+  | "skippedCount"
+  | "safeCommittedCount"
+  | "attentionReasonCodes"
   | "destructiveCount"
   | "uploadCount"
   | "downloadCount"
@@ -142,7 +146,7 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "transactionPrepared", "scopeExact", "deviceIdentityPresent", "vaultIdentityPresent", "remoteRootPresent",
   "storeReady", "asyncBoundary", "codePresent", "statePresent", "errorPresent", "count", "retentionLimit", "enabled",
   "runMode", "trigger", "planDisposition", "stateStatus", "localCount", "remoteCount", "snapshotCount",
-  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "conflictCount", "blockedCount",
+  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "conflictCount", "blockedCount", "attentionCount", "skippedCount", "safeCommittedCount", "attentionReasonCodes",
   "destructiveCount", "uploadCount", "downloadCount", "moveCount", "trashCount", "noopCount",
   "localCompleteness", "remoteCompleteness", "reviewed", "reconstruction", "cursorPresent",
 ]);
@@ -313,7 +317,7 @@ export class DiagnosticLogger {
     const runId = this.nextRunId++;
     this.runStarted.set(runId, this.monotonicNow());
     this.queuePersist();
-    this.syncInfo("sync.controller", "manual-sync-attempt-started", runId, { source });
+    this.syncInfo("sync.controller", "synchronization-run-started", runId, { source });
     return runId;
   }
   endSyncRun(runId: number): void { this.runStarted.delete(runId); }

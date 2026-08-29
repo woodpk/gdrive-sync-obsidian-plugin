@@ -42,7 +42,7 @@ test("destructive breaker independently detects count, percentage, abnormal dive
 
 test("review approval is scoped to exact plan and requires a checkpoint", () => {
   const policy = new DestructiveSafetyPolicy();
-  const plan: SynchronizationPlan = { planId: contractId<"PlanId">("plan-1"), trigger: "manual", operations: destructive(1), executionDisposition: "requires-user-approval", recoveryCheckpointRequired: true };
+  const plan: SynchronizationPlan = { planId: contractId<"PlanId">("plan-1"), trigger: "manual", operations: destructive(1), executionDisposition: "requires-user-approval", recoveryCheckpointRequired: true, globalExecutionGate: "destructive-approval-required" };
   const checkpoint = contractId<"CheckpointId">("checkpoint-1");
   const approved = policy.authorizeReviewedPlan(plan, checkpoint);
   assert.equal(approved.planId, plan.planId);
@@ -56,9 +56,10 @@ test("a returning stale current device cannot authorize destructive propagation"
     schemaVersion: 1, stateRevision: revision, vaultIdentity: vault, deviceIdentity: device,
     base: [], remoteMappings: [], tombstones: [], operations: [], knownDevices: [{ deviceId: device, stale: true }],
   };
-  const unsafePlan: SynchronizationPlan = { planId: contractId<"PlanId">("delete-plan"), trigger: "local-change", operations: destructive(1), executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false };
+  const unsafePlan: SynchronizationPlan = { planId: contractId<"PlanId">("delete-plan"), trigger: "local-change", operations: destructive(1), executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" };
   const guarded = new ProductionSynchronizationPlanner({ plan: async () => unsafePlan });
   const result = await guarded.plan({ snapshots: [], state: { status: "trusted", state } });
-  assert.equal(result.executionDisposition, "blocked");
+  assert.equal(result.executionDisposition, "requires-user-approval");
+  assert.equal(result.globalExecutionGate, "none");
   assert.equal(result.operations.at(-1)?.kind, "blocked-unsafe");
 });

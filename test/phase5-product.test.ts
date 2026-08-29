@@ -24,7 +24,7 @@ const remoteIdentity: ManagedRemoteIdentity = { rootId: root, vaultIdentity: vau
 const context = { expectation: "existing-pairing" as const, expectedVaultIdentity: vault, expectedDeviceIdentity: device };
 
 const plan = (sizeBytes = 0): SynchronizationPlan => ({
-  planId: id<"PlanId">("plan:phase5"), trigger: "periodic", executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false,
+  planId: id<"PlanId">("plan:phase5"), trigger: "periodic", executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none",
   operations: sizeBytes ? [{ operationId: id<"OperationId">("op:large"), kind: "download-create", path: id<"VaultPath">("large.bin"), destructive: false, preconditions: [], reasons: [{ code: "test", summary: "large transfer" }], contentVersion: { path: id<"VaultPath">("large.bin"), entityKind: "file", content: { sizeBytes }, remoteObjectId: id<"RemoteObjectId">("rid:1") } }] : [],
 });
 function source(text: string): BinaryContentSource { return { sizeBytes: new TextEncoder().encode(text).byteLength, async *openChunks() { yield new TextEncoder().encode(text); } }; }

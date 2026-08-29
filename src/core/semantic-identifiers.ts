@@ -34,11 +34,13 @@ export function semanticPlanId(values: {
   readonly operations: readonly PlannedOperation[];
   readonly executionDisposition: SynchronizationPlan["executionDisposition"];
   readonly recoveryCheckpointRequired: boolean;
+  readonly globalExecutionGate: SynchronizationPlan["globalExecutionGate"];
 }): PlanId {
   return contractId<"PlanId">(`plan:${semanticFingerprint({
     trigger: values.trigger,
     operations: values.operations.map(operation => ({ operationId: operation.operationId })),
     executionDisposition: values.executionDisposition,
     recoveryCheckpointRequired: values.recoveryCheckpointRequired,
+    globalExecutionGate: values.globalExecutionGate,
   })}`) as PlanId;
 }

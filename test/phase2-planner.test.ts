@@ -153,7 +153,8 @@ test("current stale device cannot authorize destructive propagation", async () =
   const result = await planner.plan({ snapshots: [snap(p, "absent", "B", b)], state: trusted([b], true) });
   assert.equal(result.operations[0].kind, "blocked-unsafe");
   assert.equal(result.operations[0].reasons[0].code, "stale-device-destructive-gate");
-  assert.equal(result.executionDisposition, "blocked");
+  assert.equal(result.executionDisposition, "requires-user-approval");
+  assert.equal(result.globalExecutionGate, "none");
 });
 
 test("ordinary deletion stays auto-eligible while suspicious deletion requires checkpoint", async () => {

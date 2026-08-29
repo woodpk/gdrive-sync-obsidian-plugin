@@ -50,7 +50,7 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(33,"periodic remote reconciliation scheduling","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 33 refresh replaces periodic timer with live cadence"),
  e(34,"manual preview followed by execution","test/phase5-controller.test.ts","Phase 5 successful reviewed first synchronization establishes the persistent first-sync gate only after cursor commit"),
  e(35,"automatic synchronization uses same planner and executor path","test/phase5-group-d-acceptance.test.ts","Phase5 scenario 26 local change during an active production run is deferred into a later reconciliation pass"),
- e(36,"blocked or approval-required work is not automatically executed","test/phase5-second-rejection.test.ts","C1 automatic run cannot execute mixed approval-required plan"),
+ e(36,"path-local attention is isolated while global approval/blocking remains non-automatic","test/phase5-second-rejection.test.ts","C1 automatic run executes the independently safe subset of a mixed attention plan"),
  e(37,"Verify Reconcile Vault performs required reconciliation path","test/phase5-recovery-auth.test.ts","C5 only complete full run with candidate cursor signals scope-reconcile completion"),
  e(38,"authentication revoked","test/phase5-auth-controller.test.ts","Phase5 scenario 38 auth revoked after planning surfaces authentication-required and stops run"),
  e(39,"authenticated account changes or wrong account","test/phase5-auth-controller.test.ts","Phase5 scenario 39 wrong account during execution preserves re-pair reason"),

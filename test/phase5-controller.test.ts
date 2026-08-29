@@ -26,7 +26,7 @@ function hash(value: string): ContentEvidence { return { hash: id<"ContentHash">
 
 function unresolvedPlan(path: ReturnType<typeof id<"VaultPath">>, conflictId: ConflictId): SynchronizationPlan {
   return {
-    planId: id<"PlanId">(`plan:${String(conflictId)}`), trigger: "manual", executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false,
+    planId: id<"PlanId">(`plan:${String(conflictId)}`), trigger: "manual", executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false, globalExecutionGate: "none",
     operations: [{ operationId: id<"OperationId">(`op:${String(conflictId)}`), kind: "unresolved-conflict", path, conflictId: String(conflictId), destructive: false, preconditions: [], reasons: [{ code: "opaque-binary", summary: "preserve" }] }],
   };
 }
@@ -94,7 +94,7 @@ test("Phase 5 successful reviewed first synchronization establishes the persiste
   const controller = new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: newContext, stateStore: store, snapshotAssembler: { assembleFull: async () => assembly, assemble: async () => assembly } as never,
     executor: new ProductSynchronizationExecutor({} as never, {} as never, store, newContext, () => ({ managedRemote, remoteEnumerationComplete: true })),
-    conflictResolver: { assess: async () => ({ kind: "none" as const }) }, plannerForTrigger: trigger => ({ plan: async () => ({ planId: id<"PlanId">("plan:first"), trigger, operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false }) }),
+    conflictResolver: { assess: async () => ({ kind: "none" as const }) }, plannerForTrigger: trigger => ({ plan: async () => ({ planId: id<"PlanId">("plan:first"), trigger, operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }),
     leasePort: lease, audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 100), holderId: "first", onTrustedBaselineEstablished: async () => { completed += 1; },
   });
   const preview = await controller.previewManual(); assert.ok(preview);
@@ -107,7 +107,7 @@ test("Phase 5 unresolved reviewed synchronization remains partial and cannot ope
   const harness = await conflictHarness(async () => { completed += 1; });
   const preview = await harness.controller.previewManual(); assert.ok(preview);
   const result = await harness.controller.request({ kind: "execute-plan", planId: preview.planId });
-  assert.equal(result.status, "accepted"); assert.equal(completed, 0); assert.equal(harness.controller.currentSurface().status.kind, "conflict-present");
+  assert.equal(result.status, "accepted"); assert.equal(completed, 0); assert.equal(harness.controller.currentSurface().status.kind, "attention-required");
 });
 
 test("Phase 5 keep-local resolution revalidates and propagates local authority through journaled upload-update", async () => {

@@ -219,21 +219,11 @@ test("active recovery keeps scheduler startup automatic ineligible", async () =>
   h.scheduler.stop();
 });
 
-test("duplicate ready and resume signals are coalesced and lifecycle runs stay serialized", async () => {
+test("duplicate ready is suppressed while resume opportunities are delegated to central controller coordination", async () => {
   const releases: Array<() => void> = [];
-  let active = 0;
-  let maximumActive = 0;
   const h = harness(
     () => settings(),
-    async () => {
-      active += 1;
-      maximumActive = Math.max(maximumActive, active);
-      try {
-        await new Promise<void>(resolve => releases.push(resolve));
-      } finally {
-        active -= 1;
-      }
-    },
+    async () => new Promise<void>(resolve => releases.push(resolve)),
     true,
   );
 
@@ -244,21 +234,10 @@ test("duplicate ready and resume signals are coalesced and lifecycle runs stay s
   h.emitLifecycle({ kind: "resume" });
   h.emitLifecycle({ kind: "resume" });
   await flushMicrotasks();
-  assert.deepEqual(h.calls, ["startup-resume"]);
-  assert.equal(maximumActive, 1);
+  assert.deepEqual(h.calls, ["startup-resume", "startup-resume", "startup-resume", "startup-resume"]);
 
-  const releaseFirst = releases.shift();
-  assert.ok(releaseFirst);
-  releaseFirst();
+  for (const release of releases.splice(0)) release();
   await flushMicrotasks();
-  assert.deepEqual(h.calls, ["startup-resume", "startup-resume"]);
-  assert.equal(maximumActive, 1);
-
-  const releaseSecond = releases.shift();
-  assert.ok(releaseSecond);
-  releaseSecond();
-  await flushMicrotasks();
-  assert.equal(maximumActive, 1);
   h.scheduler.stop();
 });
 
