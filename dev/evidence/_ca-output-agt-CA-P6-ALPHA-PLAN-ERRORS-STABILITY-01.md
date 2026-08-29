@@ -121,3 +121,57 @@ No file was created or deleted by the rejection repair. The final evidence-only 
 Unavailable checks or remaining product blockers: none within the authorized coding/verification scope. The Azure preview-capacity failure is separate infrastructure state, not a source/build failure.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+
+---
+
+## PR #31 cloud continuation closure — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+This section continues the existing repair from inherited branch head `51b270225b94ced2f66e626b97e00853bfdb9218`. The continuation agent directly inspected the C1/C2 production lifecycle and hard-restart regression coverage and found no remaining implementation defect requiring another source or test change. The last product/test implementation commit therefore remains `ece64f993ed50de4c2bc3810639d942e597ef7e0`; the inherited commit after it was evidence-only.
+
+### C1 — crash-safe CSV relocation verification
+
+PASS by direct implementation and adversarial test inspection. Pending relocation state is durably journaled with exact source and destination paths; restart reconstructs both visible/operational exclusions before scheduler activity; destination establishment/validation precedes the active-location transition; the source remains until the destination and active setting are durable; source cleanup precedes journal clearing; all three hard-restart boundaries converge while preserving prior records and unrelated user exclusions; pending relocation failure leaves both locations protected.
+
+### C2 — crash-safe CSV replacement/recovery verification
+
+PASS by direct implementation and adversarial test inspection. Stage/backup paths are deterministic (`.brain-sync-stage` / `.brain-sync-backup`); recovery runs before absent/blank initialization; a valid canonical wins and stale residue is cleaned; canonical-missing + backup restores committed history; canonical-missing + valid stage with no backup promotes stage; unrecoverable residue fails safely instead of fabricating blank authoritative history; genuinely residue-free first initialization may create the empty/header CSV; relocation uses the same recovery semantics.
+
+### Hard-restart regression verification
+
+The existing tests construct restart residue directly rather than depending on an exception handler completing. They cover canonical missing + backup + stage, canonical present + stale residue, canonical missing + valid stage only, unrecoverable residue, relocation restart after journal creation, after destination creation, and after active-location change, both locations excluded throughout the pending transaction, prior error-record preservation, and unrelated user-exclusion preservation. No test addition was required.
+
+### Continuation verification
+
+One-shot GitHub/Linux continuation workflow run `33273517297` executed from workflow-creation commit `3d3287bcfd647e5687324b30e14e869a30fc612b` against the unchanged product/test tree:
+
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- `npm test`: **358/358 PASS**, 0 fail
+- focused repair command (run after the full suite establishes the repository test harness): `node --test .test-build/test/phase6-alpha-mixed-plan-isolation.test.js .test-build/test/phase6-alpha-plan-errors-stability.test.js` — **35/35 PASS**, 0 fail
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- `git diff --check`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- `main.js`: `404546` bytes; SHA-256 `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`
+- `manifest.json`: `275` bytes; SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`
+
+The exact-head artifact independently downloaded from prior successful run `33268831441` / job `99143544637` matches the continuation product tree for `main.js`: `404546` bytes / `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`. Its Linux-checkout `manifest.json` is `275` bytes / `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`. Earlier prose that used a different final-head `main.js` identity is superseded. The historical `283`-byte / `fd4cd2d...` manifest identity is not used as the exact GitHub/Linux final-head artifact identity.
+
+Inherited local Windows verification remains **356/358 qualified PASS**. It was not re-executed by this cloud continuation agent. The only two inherited failures are the established Windows drive-prefix expectation mismatches for the direct-missing-child and nested-missing-target portable-collision assertions; no new Windows failure is claimed.
+
+### Continuation change boundary and limitations
+
+- additional implementation changes required: **NO**
+- additional source/test files changed by this continuation: **none**
+- continuation repository changes: this append to the two required evidence files plus a session-transient verification workflow that is removed before final-head review
+- no new branch or PR was created
+- PR #31 remains required to stay open and unmerged against `phase6-integration`
+- no `phase6-integration`, `master`, tag, release, OAuth/Azure behavior, physical device, synchronization, Phase 6 completion, or Stage 3 state was modified
+- final evidence/cleanup commit is necessarily subsequent to this text and cannot contain its own Git SHA; the exact final pushed PR head is recorded in PR #31 metadata and the completion response after GitHub returns it
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
