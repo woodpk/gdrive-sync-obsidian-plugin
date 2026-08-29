@@ -1,0 +1,125 @@
+name: PR31 Rejection Repair Evidence Finalizer
+
+on:
+  push:
+    branches: [phase6-alpha-plan-errors-stability]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-alpha-plan-errors-stability
+          fetch-depth: 0
+      - name: Append rejection-repair evidence and self-remove
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          section = r'''
+
+---
+
+## PR #31 rejection repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+### Review authority and supersession
+
+- reviewed rejected head: `872c5872df14a848946607035ff1d6234f6f3592`
+- existing branch: `phase6-alpha-plan-errors-stability`
+- existing PR: `#31` -> `phase6-integration`
+- version remains `0.1.7`
+- the earlier continuation statement that no remaining blockers existed is superseded by this rejection package and this repair record
+- the previously accepted C1/C2 crash-recovery design remains preserved
+
+### Confirmed defect 1 — cross-platform-equivalent relocation
+
+Status: **FIXED**.
+
+`sync-plan-errors-path.ts` now compares complete final CSV locations using the repository's NFC-normalized, case-folded `normalizedComparisonPath` semantics. Literal-different but cross-platform-equivalent source/destination locations are rejected before a durable relocation journal or destination/source filesystem mutation can occur. Persisted relocation journals receive the same defensive rejection. `SyncPlanErrorsCsvPersistence` also rejects an equivalent destination and refuses source cleanup when the source is equivalent to the active CSV.
+
+Regression coverage uses a normalization-aware in-memory adapter whose physical keys are NFC/case-folded, proving case-only and Unicode-equivalent spellings collide meaningfully, no write/rename/remove occurs, no durable journal is accepted, and the original CSV/records survive.
+
+### Confirmed defect 2 — incomplete operational-path validation
+
+Status: **FIXED**.
+
+Canonical/stage/backup path construction is centralized as:
+
+- `<path>`
+- `<path>.brain-sync-stage`
+- `<path>.brain-sync-backup`
+
+`resolveSyncPlanErrorsPath()` now validates all three complete paths through the existing cross-platform path policy before a directory setting is accepted. Root/default and normal directories remain valid. Persisted relocation journal paths are re-derived through the same resolver, so canonical and transaction-path length violations are rejected before relocation state is accepted.
+
+Regression coverage proves: root/default acceptance; normal-directory acceptance; a directory that fits while the canonical CSV crosses the limit is rejected; a canonical path that fits while backup/stage transaction length crosses the conservative Windows limit is rejected; invalid journal paths are rejected before durable relocation state/filesystem mutation.
+
+### Confirmed defect 3 — valid destination history overwrite
+
+Status: **FIXED**.
+
+Relocation now recovers source and destination independently. A valid pre-existing destination is merged deterministically rather than replaced. Merge identity is the existing attention-record key; matching records use maximum occurrence count rather than incrementing on relocation/restart, earliest first-seen, latest last-seen, and current/unresolved dominance. Every current unresolved record is retained. Resolved records are bounded under the existing `DEFAULT_SYNC_ATTENTION_RETENTION` policy. The merged destination is written, re-read, and validated before active-location commit and source cleanup. Invalid/unrecoverable destination state fails safely without overwrite; source and durable relocation protection remain available for recovery.
+
+Regression coverage proves A+B preservation, no fake occurrence increments, current and resolved-history preservation, bounded resolved history, restart re-merge idempotence, invalid-destination non-overwrite, and source cleanup only after durable validated destination plus active-location commit.
+
+One prior C1 restart assertion was intentionally updated because it expected a valid pre-existing destination record to be discarded. Under this rejection's defect #3 requirement, preserving that valid destination record is now the correct invariant.
+
+### Implementation/test commits
+
+- `80733e1d535d32198b05a556a22d921a4b5aa9b1` — complete operational-path validation and cross-platform-equivalent journal rejection
+- `3141533ab775cdb43ddeb0099eef6c3df6dddf9c` — idempotent source+destination history-preserving relocation merge and defensive cleanup
+- `04fc2094dbe0ed54ce2c17ade4c7854b25c2fdba` — eight new rejection regressions in `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `7a8adb4139baa420f323b44d1442e14495635ca8` — final implementation/test tree, including the updated prior C1 restart expectation; this is the implementation SHA for this rejection repair
+
+Transient workflow commits used only to patch/verify the cloud branch are not production design changes and are retained in Git history for provenance. Their workflow files are removed from the final tree.
+
+### Verification
+
+Strict GitHub/Linux repair verification:
+
+- workflow: `PR31 Rejection Repair Verification`
+- run: `33278086171`
+- job: `99168292629`
+- strict verification workflow commit: `4423dafa6d2557522ee8bcd4efb88d3095abb6d4` (same product/test tree as implementation SHA plus the temporary verifier)
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- full `npm test` under `set -o pipefail`: **366/366 PASS**, 0 fail
+- focused plan-errors suite (`phase6-alpha-mixed-plan-isolation`, `phase6-alpha-plan-errors-stability`, `phase6-alpha-plan-errors-stability-rejection`): **43/43 PASS**, 0 fail
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- `git diff --check`: PASS
+- all five package/build verifiers: PASS
+- `main.js`: **408025 bytes**
+- `main.js` SHA-256: `3a25092b5f097a193d769b41603aaf60c789d5e7609ce69c01957d80d7d2fac5`
+- Linux `manifest.json`: 275 bytes; SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`
+
+The first ordinary PR workflow on `04fc2094...` exposed one stale pre-rejection assertion (365/366 actual TAP) even though that workflow's `tee` pipeline reported success. The new rejection tests themselves passed. That assertion was corrected to the new destination-preservation invariant, and the strict pipefail-safe run above then passed 366/366 and 43/43. This history is not represented as a production failure after the correction.
+
+Fresh Windows execution: **NOT AVAILABLE IN THIS CLOUD SESSION**. The inherited Windows result remains **356/358 qualified PASS** and was not rerun. The only inherited failures are the two established Windows drive-prefix expectation mismatches for direct-missing-child and nested-missing-target portable-collision assertions; this rejection repair did not modify that desktop bounded-read implementation.
+
+### Evidence / branch boundaries
+
+This section is appended to both required evidence files. The evidence-finalization commit is generated immediately after this text and therefore cannot self-contain its own SHA; its exact SHA is recorded in PR #31 metadata and the completion response. A subsequent empty final-head trigger may be used to force GitHub's normal PR workflow against the immutable evidence-finalized tree; it changes no file content.
+
+PR #31 must remain OPEN and UNMERGED. `phase6-integration`, `master`, tags/releases, OAuth/Azure product behavior, physical devices, synchronization execution, Phase 6 completion, and Stage 3 are outside this repair and remain untouched.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+'''
+
+          for raw in [
+              'dev/evidence/_ca-output.md',
+              'dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md',
+          ]:
+              p = Path(raw)
+              p.write_text(p.read_text(encoding='utf-8') + section, encoding='utf-8')
+          PY
+          rm .github/workflows/pr31-rejection-evidence-finalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dev/evidence/_ca-output.md dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md .github/workflows/pr31-rejection-evidence-finalize.yml
+          git diff --cached --check
+          git commit -m "docs: append PR 31 rejection repair evidence"
+          git push origin HEAD:phase6-alpha-plan-errors-stability
