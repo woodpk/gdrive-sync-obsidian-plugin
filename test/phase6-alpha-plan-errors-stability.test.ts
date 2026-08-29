@@ -9,13 +9,13 @@ import { InMemoryRunLeasePort } from "../src/core/run-coordinator";
 import { LocalStaleObservationError } from "../src/local/obsidian-local-vault";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vault";
-import { DEFAULT_SETTINGS } from "../src/product/plugin-data";
+import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
 import { ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
 import { IntegratedProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { SyncAttentionLedger, parseSyncAttentionRecordsCsv } from "../src/product/sync-attention-ledger";
-import { SyncPlanErrorsCsvPersistence } from "../src/product/sync-plan-errors-csv";
+import { SyncAttentionLedger, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
+import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "../src/product/sync-plan-errors-csv";
 import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "../src/product/sync-plan-errors-path";
 import { sha256Bytes } from "../src/util/sha256";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
@@ -111,7 +111,7 @@ class MemoryVault {
       mkdir: async (path: string) => { this.folders.add(path); },
       stat: async (path: string) => this.folders.has(path) ? { type: "folder", ctime: 0, mtime: 0, size: 0 } : this.files.has(path) ? { type: "file", ctime: 0, mtime: 0, size: this.files.get(path)!.length } : null,
       rename: async (from: string, to: string) => {
-        if (this.failNextFinalRename && to.endsWith("sync-plan-errors.csv") && from.includes(".brain-sync-stage-")) { this.failNextFinalRename = false; throw new Error("simulated mobile adapter write failure"); }
+        if (this.failNextFinalRename && to.endsWith("sync-plan-errors.csv") && from.endsWith(".brain-sync-stage")) { this.failNextFinalRename = false; throw new Error("simulated mobile adapter write failure"); }
         const value = this.files.get(from); if (value === undefined) throw new Error(`missing ${from}`); this.files.delete(from); this.files.set(to, value);
       },
       remove: async (path: string) => { this.files.delete(path); },
@@ -303,4 +303,186 @@ test("one failed persistent CSV replacement reaches its caller but does not pois
   const persisted = parseSyncAttentionRecordsCsv(vault.files.get("sync-plan-errors.csv")!);
   assert.deepEqual(persisted.map(record => String(record.path)), ["second.md"]);
   persistence.dispose();
+});
+
+function attentionRecord(path: string, reasonCode = "local-file-not-stable"): SyncAttentionRecord {
+  const recordPath = vp(path);
+  return {
+    key: `${path}\0blocked-unsafe\0${reasonCode}`,
+    firstSeenAtMs: 1,
+    lastSeenAtMs: 2,
+    runId: 3,
+    trigger: "periodic",
+    path: recordPath,
+    category: "blocked-unsafe",
+    reasonCode,
+    humanReason: "Retry after the local file settles.",
+    occurrenceCount: 1,
+    current: true,
+  };
+}
+
+function recordsCsv(...paths: string[]): string {
+  return renderSyncAttentionRecordsCsv(paths.map(path => attentionRecord(path)));
+}
+
+test("restart recovery restores committed backup before discarding an uncommitted stage", async () => {
+  const vault = new MemoryVault(), path = "sync-plan-errors.csv";
+  vault.files.set(`${path}.brain-sync-backup`, recordsCsv("committed.md"));
+  vault.files.set(`${path}.brain-sync-stage`, recordsCsv("uncommitted.md"));
+  const persistence = new SyncPlanErrorsCsvPersistence(vault.app, path);
+  await persistence.initialize();
+  assert.deepEqual((await persistence.loadSyncAttention()).map(record => String(record.path)), ["committed.md"]);
+  assert.equal(vault.files.has(`${path}.brain-sync-backup`), false);
+  assert.equal(vault.files.has(`${path}.brain-sync-stage`), false);
+  persistence.dispose();
+});
+
+test("restart recovery keeps a valid canonical CSV and removes stale replacement residue", async () => {
+  const vault = new MemoryVault(), path = "sync-plan-errors.csv";
+  vault.files.set(path, recordsCsv("canonical.md"));
+  vault.files.set(`${path}.brain-sync-backup`, recordsCsv("old.md"));
+  vault.files.set(`${path}.brain-sync-stage`, recordsCsv("uncommitted.md"));
+  const persistence = new SyncPlanErrorsCsvPersistence(vault.app, path);
+  await persistence.initialize();
+  assert.deepEqual((await persistence.loadSyncAttention()).map(record => String(record.path)), ["canonical.md"]);
+  assert.equal(vault.files.has(`${path}.brain-sync-backup`), false);
+  assert.equal(vault.files.has(`${path}.brain-sync-stage`), false);
+  persistence.dispose();
+});
+
+test("restart recovery promotes a valid stage when no canonical or committed backup exists", async () => {
+  const vault = new MemoryVault(), path = "sync-plan-errors.csv";
+  vault.files.set(`${path}.brain-sync-stage`, recordsCsv("staged.md"));
+  const persistence = new SyncPlanErrorsCsvPersistence(vault.app, path);
+  await persistence.initialize();
+  assert.deepEqual((await persistence.loadSyncAttention()).map(record => String(record.path)), ["staged.md"]);
+  assert.equal(vault.files.has(path), true);
+  assert.equal(vault.files.has(`${path}.brain-sync-stage`), false);
+  persistence.dispose();
+});
+
+test("unrecoverable replacement residue fails initialization without fabricating blank history", async () => {
+  const vault = new MemoryVault(), path = "sync-plan-errors.csv";
+  vault.files.set(`${path}.brain-sync-backup`, "not valid CSV");
+  vault.files.set(`${path}.brain-sync-stage`, recordsCsv("uncommitted.md"));
+  const persistence = new SyncPlanErrorsCsvPersistence(vault.app, path);
+  await assert.rejects(() => persistence.initialize(), /header is missing or incompatible/u);
+  assert.equal(vault.files.has(path), false);
+  assert.equal(vault.files.get(`${path}.brain-sync-backup`), "not valid CSV");
+  assert.equal(vault.files.has(`${path}.brain-sync-stage`), true);
+  await assert.rejects(() => persistence.loadSyncAttention(), /header is missing or incompatible/u);
+  assert.equal(vault.files.has(path), false);
+  persistence.dispose();
+});
+
+async function loadRuntimeClass() {
+  return (await import("../src/product/runtime")).Phase5ProductRuntime;
+}
+
+async function recoverRelocation(
+  vault: MemoryVault,
+  initial: ReturnType<typeof withManagedSyncPlanErrorsExclusion>,
+) {
+  const Phase5ProductRuntime = await loadRuntimeClass();
+  let settings = initial;
+  const persisted: typeof initial[] = [];
+  const host = {
+    app: { ...vault.app, secretStorage: { getSecret: () => null } } as unknown as App,
+    plugin: {} as never,
+    settings: () => settings,
+    data: { loadSyncAttention: async () => [], saveSyncAttention: async () => undefined } as never,
+    saveSettings: async (next: typeof initial) => { settings = structuredClone(next); persisted.push(structuredClone(next)); },
+    notify: () => undefined,
+  };
+  const runtime = new Phase5ProductRuntime(host);
+  await runtime.initialize();
+  return { runtime, settings: () => settings, persisted };
+}
+
+for (const scenario of [
+  { name: "after journal persistence before destination creation", activeDirectory: "", destinationExists: false },
+  { name: "after destination creation before active-location commit", activeDirectory: "", destinationExists: true },
+  { name: "after active-location commit before source cleanup", activeDirectory: "99-System", destinationExists: true },
+] as const) {
+  test(`pending relocation restart converges without record or exclusion loss ${scenario.name}`, async () => {
+    const vault = new MemoryVault();
+    const source = "sync-plan-errors.csv", destination = "99-System/sync-plan-errors.csv";
+    vault.files.set(source, recordsCsv(scenario.activeDirectory ? "obsolete-source.md" : "preserved.md"));
+    if (scenario.destinationExists) {
+      vault.folders.add("99-System");
+      vault.files.set(destination, recordsCsv(scenario.activeDirectory ? "preserved.md" : "uncommitted-destination.md"));
+    }
+    const relocation = { sourcePath: source, destinationPath: destination };
+    const settings = withManagedSyncPlanErrorsExclusion({
+      ...DEFAULT_SETTINGS,
+      deviceIdentity: "device:restart",
+      syncPlanErrorsDirectory: scenario.activeDirectory,
+      managedSyncPlanErrorsExclusion: scenario.activeDirectory ? destination : source,
+      syncPlanErrorsRelocation: relocation,
+      userExclusionPatterns: ["private/**", source, destination],
+    }, scenario.activeDirectory);
+    const recovered = await recoverRelocation(vault, settings);
+    const finalSettings = recovered.settings();
+    assert.equal(finalSettings.syncPlanErrorsDirectory, "99-System");
+    assert.equal(finalSettings.syncPlanErrorsRelocation, null);
+    assert.deepEqual(finalSettings.userExclusionPatterns, ["private/**", destination]);
+    assert.equal(vault.files.has(source), false);
+    assert.deepEqual(parseSyncAttentionRecordsCsv(vault.files.get(destination)!).map(record => String(record.path)), ["preserved.md"]);
+    for (const snapshot of recovered.persisted.filter(value => value.syncPlanErrorsRelocation)) {
+      assert.equal(snapshot.userExclusionPatterns.includes(source), true);
+      assert.equal(snapshot.userExclusionPatterns.includes(destination), true);
+    }
+    const operational = (recovered.runtime as unknown as { operationalExclusions: Set<string> }).operationalExclusions;
+    assert.deepEqual(syncPlanErrorsOperationalPaths(destination).every(path => operational.has(path)), true);
+    assert.deepEqual(syncPlanErrorsOperationalPaths(source).some(path => operational.has(path)), false);
+    await recovered.runtime.disposeProduct();
+  });
+}
+
+test("live relocation durably journals both exclusions before copying and clears them only after finalization", async () => {
+  const Phase5ProductRuntime = await loadRuntimeClass();
+  const vault = new MemoryVault(), source = "sync-plan-errors.csv", destination = "99-System/sync-plan-errors.csv";
+  vault.files.set(source, recordsCsv("preserved.md"));
+  let settings = withManagedSyncPlanErrorsExclusion({ ...DEFAULT_SETTINGS, deviceIdentity: "device:live", userExclusionPatterns: ["private/**"] });
+  const writes: Array<{ readonly settings: typeof settings; readonly sourceExists: boolean; readonly destinationExists: boolean }> = [];
+  const runtime = new Phase5ProductRuntime({
+    app: { ...vault.app, secretStorage: { getSecret: () => null } } as unknown as App,
+    plugin: {} as never,
+    settings: () => settings,
+    data: { loadSyncAttention: async () => [], saveSyncAttention: async () => undefined } as never,
+    saveSettings: async next => {
+      settings = structuredClone(next);
+      writes.push({ settings, sourceExists: vault.files.has(source), destinationExists: vault.files.has(destination) });
+    },
+    notify: () => undefined,
+  });
+  await runtime.initialize();
+  writes.length = 0;
+  const previous = settings;
+  const requested = withManagedSyncPlanErrorsExclusion(settings, "99-System");
+  await runtime.applySettingsChange(previous, requested);
+  assert.equal(writes.length, 3);
+  assert.equal(writes[0]!.settings.syncPlanErrorsDirectory, "");
+  assert.deepEqual(writes[0]!.settings.syncPlanErrorsRelocation, { sourcePath: source, destinationPath: destination });
+  assert.equal(writes[0]!.destinationExists, false, "journal is durable before destination creation");
+  assert.equal(writes[0]!.settings.userExclusionPatterns.includes(source), true);
+  assert.equal(writes[0]!.settings.userExclusionPatterns.includes(destination), true);
+  assert.equal(writes[1]!.settings.syncPlanErrorsDirectory, "99-System");
+  assert.notEqual(writes[1]!.settings.syncPlanErrorsRelocation, null);
+  assert.equal(writes[1]!.sourceExists, true);
+  assert.equal(writes[1]!.destinationExists, true, "active location changes only after a valid destination exists");
+  assert.equal(writes[2]!.settings.syncPlanErrorsRelocation, null);
+  assert.equal(writes[2]!.sourceExists, false, "journal clears only after source cleanup");
+  assert.deepEqual(writes[2]!.settings.userExclusionPatterns, ["private/**", destination]);
+  assert.deepEqual(parseSyncAttentionRecordsCsv(vault.files.get(destination)!).map(record => String(record.path)), ["preserved.md"]);
+  await runtime.disposeProduct();
+});
+
+test("persisted relocation journal is defensively rejected when either exact CSV path is unsafe", async () => {
+  const repository = new PluginDataRepository({
+    loadData: async () => ({ settings: { syncPlanErrorsRelocation: { sourcePath: "../sync-plan-errors.csv", destinationPath: "99-System/sync-plan-errors.csv" } } }),
+    saveData: async () => undefined,
+  });
+  await assert.rejects(() => repository.loadSettings(), /relocation path is invalid|safe vault-relative/u);
 });

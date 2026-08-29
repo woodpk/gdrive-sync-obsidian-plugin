@@ -3,6 +3,7 @@ import type { DiagnosticLogLevel, DiagnosticPersistence, DiagnosticStoreState } 
 import { DEFAULT_DIAGNOSTIC_RETENTION } from "../diagnostics/diagnostic-logger";
 import type { AuditPersistence } from "./audit-history";
 import type { SyncAttentionPersistence, SyncAttentionRecord } from "./sync-attention-ledger";
+import { normalizeSyncPlanErrorsRelocationJournal, type SyncPlanErrorsRelocationJournal } from "./sync-plan-errors-path";
 
 export interface BrainSyncSettings {
   oauthClientId: string;
@@ -16,6 +17,7 @@ export interface BrainSyncSettings {
   userExclusionPatterns: string[];
   syncPlanErrorsDirectory: string;
   managedSyncPlanErrorsExclusion: string;
+  syncPlanErrorsRelocation: SyncPlanErrorsRelocationJournal | null;
   scopeReconcileRequired: boolean;
   startupResumeEnabled: boolean;
   localChangeEnabled: boolean;
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   userExclusionPatterns: [],
   syncPlanErrorsDirectory: "",
   managedSyncPlanErrorsExclusion: "",
+  syncPlanErrorsRelocation: null,
   scopeReconcileRequired: false,
   startupResumeEnabled: false,
   localChangeEnabled: false,
@@ -123,6 +126,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
       merged.syncPlanErrorsDirectory = typeof merged.syncPlanErrorsDirectory === "string" ? merged.syncPlanErrorsDirectory : "";
       merged.managedSyncPlanErrorsExclusion = typeof merged.managedSyncPlanErrorsExclusion === "string" ? merged.managedSyncPlanErrorsExclusion : "";
+      merged.syncPlanErrorsRelocation = normalizeSyncPlanErrorsRelocationJournal(merged.syncPlanErrorsRelocation);
       merged.scopeReconcileRequired = Boolean(merged.scopeReconcileRequired);
       if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
       merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);

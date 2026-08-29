@@ -1,6 +1,7 @@
 import type { App, DataAdapter, TAbstractFile } from "obsidian";
 import type { SyncAttentionPersistence, SyncAttentionRecord } from "./sync-attention-ledger";
 import { parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv } from "./sync-attention-ledger";
+import type { SyncPlanErrorsRelocationJournal } from "./sync-plan-errors-path";
 
 export interface SyncPlanErrorsCsvInitialization {
   readonly migratedLegacyRecords: boolean;
@@ -12,6 +13,12 @@ function parentPath(path: string): string {
 }
 
 function recordCopy(record: SyncAttentionRecord): SyncAttentionRecord { return { ...record }; }
+function stagePath(path: string): string { return `${path}.brain-sync-stage`; }
+function backupPath(path: string): string { return `${path}.brain-sync-backup`; }
+
+export function syncPlanErrorsOperationalPaths(path: string): readonly string[] {
+  return [path, stagePath(path), backupPath(path)];
+}
 
 /** Mobile-safe, serialized, crash-conscious vault persistence for sync-plan-errors.csv. */
 export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
@@ -33,10 +40,41 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     try {
       return await this.enqueue(async () => {
         await this.ensureParent(this.csvPath);
-        const exists = await this.app.vault.adapter.exists(this.csvPath, true);
-        const current = exists ? parseSyncAttentionRecordsCsv(await this.app.vault.adapter.read(this.csvPath)) : [];
+        const recovered = await this.recoverFile(this.csvPath);
+        const exists = recovered !== undefined;
+        const current = recovered ?? [];
         const merged = this.mergeLegacy(current, legacy);
         if (!exists || merged.changed) await this.replaceFile(this.csvPath, renderSyncAttentionRecordsCsv(merged.records));
+        this.records = merged.records.map(recordCopy);
+        return { migratedLegacyRecords: legacy.length > 0 };
+      });
+    } finally {
+      this.installDeletionMonitor();
+    }
+  }
+
+  async initializePendingRelocation(
+    journal: SyncPlanErrorsRelocationJournal,
+    activePath: string,
+    legacy: readonly SyncAttentionRecord[] = [],
+  ): Promise<SyncPlanErrorsCsvInitialization> {
+    if (activePath !== journal.sourcePath && activePath !== journal.destinationPath) {
+      throw new Error("Sync plan errors relocation journal does not match the configured active location.");
+    }
+    const fallbackPath = activePath === journal.sourcePath ? journal.destinationPath : journal.sourcePath;
+    try {
+      return await this.enqueue(async () => {
+        await this.ensureParent(activePath);
+        let current = await this.recoverFile(activePath);
+        if (current === undefined) {
+          const fallback = await this.recoverFile(fallbackPath);
+          if (fallback === undefined) throw new Error("Pending sync plan errors relocation has no recoverable authoritative CSV.");
+          current = fallback;
+          await this.replaceFile(activePath, renderSyncAttentionRecordsCsv(current));
+        }
+        const merged = this.mergeLegacy(current, legacy);
+        if (merged.changed) await this.replaceFile(activePath, renderSyncAttentionRecordsCsv(merged.records));
+        this.csvPath = activePath;
         this.records = merged.records.map(recordCopy);
         return { migratedLegacyRecords: legacy.length > 0 };
       });
@@ -49,10 +87,11 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     if (this.records) return this.records.map(recordCopy);
     return this.enqueue(async () => {
       await this.ensureParent(this.csvPath);
-      if (!await this.app.vault.adapter.exists(this.csvPath, true)) {
+      const recovered = await this.recoverFile(this.csvPath);
+      if (recovered === undefined) {
         await this.replaceFile(this.csvPath, renderSyncAttentionRecordsCsv([]));
         this.records = [];
-      } else this.records = parseSyncAttentionRecordsCsv(await this.app.vault.adapter.read(this.csvPath));
+      } else this.records = recovered;
       return this.records.map(recordCopy);
     });
   }
@@ -66,16 +105,30 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     });
   }
 
-  async relocate(nextPath: string): Promise<void> {
+  async relocate(nextPath: string, commitActiveLocation: () => Promise<void> = async () => undefined): Promise<void> {
     if (nextPath === this.csvPath) return;
     await this.enqueue(async () => {
       const priorPath = this.csvPath;
-      const records = this.records ?? (await this.readIfPresent(priorPath));
+      const records = this.records ?? (await this.recoverFile(priorPath));
+      if (!records) throw new Error("Sync plan errors source CSV is unavailable during relocation.");
       await this.ensureParent(nextPath);
       await this.replaceFile(nextPath, renderSyncAttentionRecordsCsv(records));
+      const destination = await this.recoverFile(nextPath);
+      if (!destination) throw new Error("Sync plan errors destination CSV was not durably established.");
+      await commitActiveLocation();
       this.csvPath = nextPath;
-      this.records = records.map(recordCopy);
-      if (await this.app.vault.adapter.exists(priorPath, true)) await this.app.vault.adapter.remove(priorPath);
+      this.records = destination.map(recordCopy);
+      await this.removeFileAndResidue(priorPath);
+    });
+  }
+
+  async cleanupRelocationSource(sourcePath: string): Promise<void> {
+    await this.enqueue(async () => {
+      if (sourcePath === this.csvPath) throw new Error("Cannot clean the active sync plan errors CSV location.");
+      const active = await this.recoverFile(this.csvPath);
+      if (!active) throw new Error("Active sync plan errors destination is unavailable during relocation finalization.");
+      this.records = active.map(recordCopy);
+      await this.removeFileAndResidue(sourcePath);
     });
   }
 
@@ -105,12 +158,12 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
 
   private async replaceFile(path: string, text: string): Promise<void> {
     const adapter: DataAdapter = this.app.vault.adapter;
-    const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const stage = `${path}.brain-sync-stage-${id}`;
-    const backup = `${path}.brain-sync-backup-${id}`;
+    const stage = stagePath(path);
+    const backup = backupPath(path);
     let backedUp = false;
     this.internalMutationDepth += 1;
     try {
+      await this.recoverFile(path);
       await adapter.write(stage, text);
       if (await adapter.exists(path, true)) { await adapter.rename(path, backup); backedUp = true; }
       await adapter.rename(stage, path);
@@ -126,10 +179,46 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     }
   }
 
-  private async readIfPresent(path: string): Promise<SyncAttentionRecord[]> {
-    return await this.app.vault.adapter.exists(path, true)
-      ? parseSyncAttentionRecordsCsv(await this.app.vault.adapter.read(path))
-      : [];
+  private async recoverFile(path: string): Promise<SyncAttentionRecord[] | undefined> {
+    const adapter = this.app.vault.adapter;
+    const stage = stagePath(path), backup = backupPath(path);
+    this.internalMutationDepth += 1;
+    try {
+      const canonicalExists = await adapter.exists(path, true);
+      const backupExists = await adapter.exists(backup, true);
+      const stageExists = await adapter.exists(stage, true);
+      if (canonicalExists) {
+        const records = parseSyncAttentionRecordsCsv(await adapter.read(path));
+        if (stageExists) await adapter.remove(stage);
+        if (backupExists) await adapter.remove(backup);
+        return records;
+      }
+      if (backupExists) {
+        const records = parseSyncAttentionRecordsCsv(await adapter.read(backup));
+        await adapter.rename(backup, path);
+        if (stageExists) await adapter.remove(stage);
+        return records;
+      }
+      if (stageExists) {
+        const records = parseSyncAttentionRecordsCsv(await adapter.read(stage));
+        await adapter.rename(stage, path);
+        return records;
+      }
+      return undefined;
+    } finally {
+      this.internalMutationDepth -= 1;
+    }
+  }
+
+  private async removeFileAndResidue(path: string): Promise<void> {
+    this.internalMutationDepth += 1;
+    try {
+      for (const candidate of syncPlanErrorsOperationalPaths(path)) {
+        if (await this.app.vault.adapter.exists(candidate, true)) await this.app.vault.adapter.remove(candidate);
+      }
+    } finally {
+      this.internalMutationDepth -= 1;
+    }
   }
 
   private mergeLegacy(current: readonly SyncAttentionRecord[], legacy: readonly SyncAttentionRecord[]): { readonly records: SyncAttentionRecord[]; readonly changed: boolean } {
@@ -163,7 +252,7 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     };
     const deleted = this.app.vault.on("delete", (file: TAbstractFile) => recreate(file.path));
     const renamed = this.app.vault.on("rename", (file: TAbstractFile, oldPath: string) => {
-      if (oldPath === this.csvPath && file.path.startsWith(`${this.csvPath}.brain-sync-backup-`)) return;
+      if (oldPath === this.csvPath && file.path === backupPath(this.csvPath)) return;
       recreate(oldPath);
     });
     this.unsubscribe = () => { this.app.vault.offref(deleted); this.app.vault.offref(renamed); };

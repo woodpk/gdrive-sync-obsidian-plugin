@@ -27,8 +27,8 @@ import { automaticNetworkDecision } from "./network-policy";
 import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
 import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
 import { SyncAttentionLedger, type SyncAttentionRecord } from "./sync-attention-ledger";
-import { SyncPlanErrorsCsvPersistence } from "./sync-plan-errors-csv";
-import { resolveSyncPlanErrorsPath, userExclusionsWithoutManaged, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
+import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "./sync-plan-errors-csv";
+import { directoryForSyncPlanErrorsPath, resolveSyncPlanErrorsPath, userExclusionsWithoutManaged, withManagedSyncPlanErrorsExclusion, type SyncPlanErrorsRelocationJournal } from "./sync-plan-errors-path";
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
 const NOOP_DIAGNOSTICS = {
@@ -100,10 +100,15 @@ export class Phase5ProductRuntime {
       reconciled.managedSyncPlanErrorsExclusion !== this.host.settings().managedSyncPlanErrorsExclusion ||
       !exclusionsEqual(reconciled.userExclusionPatterns, this.host.settings().userExclusionPatterns)
     ) await this.host.saveSettings(reconciled);
-    const current = this.host.settings();
+    let current = this.host.settings();
     const errorsPath = resolveSyncPlanErrorsPath(current.syncPlanErrorsDirectory).path;
+    const pendingRelocation = current.syncPlanErrorsRelocation;
     this.operationalExclusions.clear();
-    this.operationalExclusions.add(errorsPath);
+    this.protectSyncPlanErrorsPath(errorsPath);
+    if (pendingRelocation) {
+      this.protectSyncPlanErrorsPath(pendingRelocation.sourcePath);
+      this.protectSyncPlanErrorsPath(pendingRelocation.destinationPath);
+    }
     this.attentionPersistence = new SyncPlanErrorsCsvPersistence(this.host.app, errorsPath, error => {
       void error;
       diagnostics.error("sync.controller", "sync-plan-errors-csv-recreation-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
@@ -111,8 +116,14 @@ export class Phase5ProductRuntime {
     });
     try {
       const legacy = await this.host.data.loadSyncAttention();
-      const initialized = await this.attentionPersistence.initialize(legacy);
+      const initialized = pendingRelocation
+        ? await this.attentionPersistence.initializePendingRelocation(pendingRelocation, errorsPath, legacy)
+        : await this.attentionPersistence.initialize(legacy);
       if (initialized.migratedLegacyRecords) await this.host.data.saveSyncAttention([]);
+      if (pendingRelocation) {
+        await this.recoverSyncPlanErrorsRelocation(pendingRelocation, errorsPath);
+        current = this.host.settings();
+      }
     } catch (error) {
       void error;
       diagnostics.error("sync.controller", "sync-plan-errors-csv-initialization-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
@@ -258,22 +269,36 @@ export class Phase5ProductRuntime {
     if (previous.auditRetention !== next.auditRetention) await this.audit?.setLimit(next.auditRetention);
     if (previous.periodicEnabled !== next.periodicEnabled || previous.periodicIntervalMinutes !== next.periodicIntervalMinutes || previous.firstSyncCompleted !== next.firstSyncCompleted || previous.recoveryInProgress !== next.recoveryInProgress) this.scheduler?.refresh();
     if (previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory) {
+      if (previous.syncPlanErrorsRelocation) {
+        throw new Error("A prior sync plan errors relocation is pending restart recovery.");
+      }
       const priorPath = resolveSyncPlanErrorsPath(previous.syncPlanErrorsDirectory).path;
       const nextPath = resolveSyncPlanErrorsPath(next.syncPlanErrorsDirectory).path;
-      this.operationalExclusions.add(priorPath);
-      this.operationalExclusions.add(nextPath);
+      const relocation: SyncPlanErrorsRelocationJournal = { sourcePath: priorPath, destinationPath: nextPath };
+      this.protectSyncPlanErrorsPath(priorPath);
+      this.protectSyncPlanErrorsPath(nextPath);
       try {
-        await this.attentionPersistence?.relocate(nextPath);
-        this.operationalExclusions.delete(priorPath);
-        this.operationalExclusions.add(nextPath);
-      } catch (error) {
-        void error;
+        if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation.");
+        const pending = withManagedSyncPlanErrorsExclusion({
+          ...next,
+          syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
+          managedSyncPlanErrorsExclusion: priorPath,
+          syncPlanErrorsRelocation: relocation,
+        }, previous.syncPlanErrorsDirectory);
+        await this.host.saveSettings(pending);
+        await this.attentionPersistence.relocate(nextPath, async () => {
+          const transitioned = withManagedSyncPlanErrorsExclusion({
+            ...this.host.settings(),
+            syncPlanErrorsDirectory: next.syncPlanErrorsDirectory,
+            managedSyncPlanErrorsExclusion: nextPath,
+            syncPlanErrorsRelocation: relocation,
+          }, next.syncPlanErrorsDirectory);
+          await this.host.saveSettings(transitioned);
+        });
+        await this.finalizeSyncPlanErrorsRelocation(relocation);
+      } catch {
         this.host.diagnostics?.error("sync.controller", "sync-plan-errors-csv-relocation-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
-        const live = this.host.settings();
-        if (!live.userExclusionPatterns.includes(priorPath)) {
-          await this.host.saveSettings({ ...live, userExclusionPatterns: [...live.userExclusionPatterns, priorPath] });
-        }
-        this.host.notify("BRAIN sync plan errors file could not be moved; both old and new paths remain excluded until initialization succeeds.");
+        this.host.notify("BRAIN sync plan errors file could not be moved; the durable relocation journal keeps both locations excluded for restart recovery.");
       }
     }
     if (!exclusionsEqual(userExclusionsWithoutManaged(previous), userExclusionsWithoutManaged(next))) {
@@ -291,6 +316,53 @@ export class Phase5ProductRuntime {
   async exportSyncAttentionCsv(): Promise<string> {
     if (!this.attention) throw new Error("synchronization attention ledger is unavailable");
     return this.attention.renderCsv();
+  }
+
+  private protectSyncPlanErrorsPath(path: string): void {
+    for (const candidate of syncPlanErrorsOperationalPaths(path)) this.operationalExclusions.add(candidate);
+  }
+
+  private unprotectSyncPlanErrorsPath(path: string): void {
+    for (const candidate of syncPlanErrorsOperationalPaths(path)) this.operationalExclusions.delete(candidate);
+  }
+
+  private async recoverSyncPlanErrorsRelocation(relocation: SyncPlanErrorsRelocationJournal, activePath: string): Promise<void> {
+    if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation recovery.");
+    if (activePath === relocation.sourcePath) {
+      await this.attentionPersistence.relocate(relocation.destinationPath, async () => {
+        const live = this.host.settings();
+        const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
+        await this.host.saveSettings(withManagedSyncPlanErrorsExclusion({
+          ...live,
+          syncPlanErrorsDirectory: destinationDirectory,
+          managedSyncPlanErrorsExclusion: relocation.destinationPath,
+          syncPlanErrorsRelocation: relocation,
+        }, destinationDirectory));
+      });
+    } else if (activePath === relocation.destinationPath) {
+      await this.attentionPersistence.cleanupRelocationSource(relocation.sourcePath);
+    } else {
+      throw new Error("Sync plan errors relocation journal does not match the configured active location.");
+    }
+    await this.finalizeSyncPlanErrorsRelocation(relocation);
+  }
+
+  private async finalizeSyncPlanErrorsRelocation(relocation: SyncPlanErrorsRelocationJournal): Promise<void> {
+    const live = this.host.settings();
+    const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
+    if (resolveSyncPlanErrorsPath(live.syncPlanErrorsDirectory).path !== relocation.destinationPath) {
+      throw new Error("Sync plan errors destination is not the configured active location.");
+    }
+    const finalSettings = withManagedSyncPlanErrorsExclusion({
+      ...live,
+      syncPlanErrorsDirectory: destinationDirectory,
+      managedSyncPlanErrorsExclusion: relocation.destinationPath,
+      syncPlanErrorsRelocation: null,
+      userExclusionPatterns: live.userExclusionPatterns.filter(pattern => pattern !== relocation.sourcePath),
+    }, destinationDirectory);
+    await this.host.saveSettings(finalSettings);
+    this.unprotectSyncPlanErrorsPath(relocation.sourcePath);
+    this.protectSyncPlanErrorsPath(relocation.destinationPath);
   }
 
   async completeGoogleAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
