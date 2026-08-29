@@ -1533,3 +1533,17 @@ Promoted verification: consistent version `0.1.6`; typecheck PASS; focused mixed
 The authorized `0.1.6` GitHub prerelease will target the resulting evidence-only `master` commit and attach exactly `main.js` and `manifest.json`. This evidence pass changes only the detailed mixed-plan evidence, cumulative ledger, and integration manifest. No product/test/version code, OAuth/Azure configuration, physical testing, or Stage 3 work occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Phase 6 Alpha — Sync Plan Error Artifact and Transient Local-Edit Repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01`
+
+From exact released `master` SHA `77336110893ff31e4029d962584ba25fc22ce7c8`, implementation commit `70ee18890603f478dfe19b9926d712b25376e84f` prepares version `0.1.7`. Bounded re-observation now treats an ordinary changed-during-hash race as transient while preserving exact observation-token and post-hash validation; exhaustion becomes path-local `local-file-not-stable`. Per-file canonical-content uncertainty no longer changes directory-enumeration completeness or contaminates unrelated/portable paths, while genuine listing failure remains fail-closed.
+
+The automatically maintained, mobile-safe `sync-plan-errors.csv` is now the persistent user-facing attention source of truth. It is created with its header before normal vault-event processing, recreated after deletion, safely relocatable to a validated vault-relative containing directory, serialized with staged/backup replacement, formula-safe, deduplicated, current-complete/history-bounded, and migrated from legacy plugin data. Its exact visible managed exclusion is maintained without losing user exclusions, and a separate internal exact-path guard prevents upload or feedback even if the visible entry is damaged.
+
+Verification: typecheck PASS; focused mixed-plan/stability suite **26/26 PASS**; Windows full suite **347/349 qualified PASS** with only the same two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. GitHub/Linux run [33266594533](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33266594533) passed **349/349** and reproduced `main.js` at `395507` bytes with SHA-256 `1d0c5dd52a21cbca98584ca2a5c4ab65aef2fd1b055ab80776dd4e4bf9564496`. `manifest.json` is `283` bytes with SHA-256 `fd4cd2d3572b86ad2fea72e27c336f2ce8ee7d3c99979a1abbf220f4eaeb8279`.
+
+PR [#31](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/31) targets `phase6-integration` and remains open/unmerged. Its separate Azure preview failed only on the known maximum-staging-environments capacity condition; no Azure change was made. No protected branch, tag/release, physical test, Phase 6 completion, or Stage 3 work occurred. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
