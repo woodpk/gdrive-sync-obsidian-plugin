@@ -15,6 +15,12 @@ import type { LocalObservation } from "../contracts/snapshot";
 import { sha256BinarySource } from "../util/sha256";
 
 interface CachedEvidence { readonly token: ObservationToken; readonly hash: Awaited<ReturnType<typeof sha256BinarySource>>; }
+export interface CanonicalEvidenceOptions { readonly staleRetryAttempts?: number; readonly staleRetryDelayMs?: number; }
+
+function sleep(milliseconds: number): Promise<void> { return new Promise(resolve => globalThis.setTimeout(resolve, milliseconds)); }
+function staleObservationError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "LocalStaleObservationError" || /^Local observation became stale:/u.test(error.message));
+}
 
 /**
  * Phase-5 production evidence decorator. Stable files receive a canonical SHA-256
@@ -23,25 +29,28 @@ interface CachedEvidence { readonly token: ObservationToken; readonly hash: Awai
  */
 export class CanonicalEvidenceLocalVault implements LocalVaultPort {
   private readonly cache = new Map<string, CachedEvidence>();
-  constructor(private readonly inner: LocalVaultPort) {}
+  private readonly staleRetryAttempts: number;
+  private readonly staleRetryDelayMs: number;
+  constructor(private readonly inner: LocalVaultPort, options: CanonicalEvidenceOptions = {}) {
+    this.staleRetryAttempts = options.staleRetryAttempts ?? 3;
+    this.staleRetryDelayMs = options.staleRetryDelayMs ?? 25;
+    if (!Number.isSafeInteger(this.staleRetryAttempts) || this.staleRetryAttempts < 1) throw new Error("staleRetryAttempts must be a positive safe integer");
+    if (!Number.isSafeInteger(this.staleRetryDelayMs) || this.staleRetryDelayMs < 0) throw new Error("staleRetryDelayMs must be a non-negative safe integer");
+  }
 
   activeConfigurationDirectory(): Promise<VaultPath> { return this.inner.activeConfigurationDirectory(); }
 
   async enumerate(): Promise<LocalVaultListing> {
     const listing = await this.inner.enumerate();
     const entries: LocalObservation[] = [];
-    let hashFailure = false;
-    const reasons: string[] = [];
     for (const observation of listing.entries) {
       const enriched = await this.enrich(observation);
-      if (enriched.status === "unknown" && observation.status === "present") {
-        hashFailure = true; reasons.push(`${String(observation.path)}: ${enriched.reason}`);
-      }
       entries.push(enriched);
     }
-    if (!hashFailure) return { entries, completeness: listing.completeness };
-    const prior = listing.completeness.status === "complete" ? [] : [listing.completeness.reason];
-    return { entries, completeness: { status: "partial", reason: [...prior, ...reasons].join("; ") } };
+    // Per-file canonical-content uncertainty is represented on that path. Only
+    // the wrapped enumerator may determine whether the directory listing itself
+    // was incomplete.
+    return { entries, completeness: listing.completeness };
   }
 
   async observe(path: VaultPath): Promise<LocalObservation> { return this.enrich(await this.inner.observe(path)); }
@@ -85,20 +94,39 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
   private async enrich(observation: LocalObservation): Promise<LocalObservation> {
     if (observation.status !== "present" || observation.entityKind !== "file") return observation;
     if (observation.stability !== "stable" || !observation.observationToken) return observation;
-    const key = String(observation.path), cached = this.cache.get(key);
-    if (cached?.token === observation.observationToken) return { ...observation, content: { ...observation.content, hash: cached.hash } };
-    try {
-      const read = await this.inner.readFile(observation.path, observation.observationToken);
-      const hash = await sha256BinarySource(read.content);
-      const after = await this.inner.observe(observation.path);
-      if (after.status !== "present" || after.entityKind !== "file" || after.stability !== "stable" || after.observationToken !== observation.observationToken) {
-        return { status: "unknown", side: "local", path: observation.path, reason: "file changed while canonical SHA-256 evidence was being computed" };
+    const original = observation;
+    let current: LocalObservation = observation;
+    for (let attempt = 0; attempt < this.staleRetryAttempts; attempt += 1) {
+      if (current.status !== "present" || current.entityKind !== "file" || current.stability !== "stable" || !current.observationToken) {
+        if (attempt + 1 < this.staleRetryAttempts) {
+          if (this.staleRetryDelayMs) await sleep(this.staleRetryDelayMs * (attempt + 1));
+          current = await this.inner.observe(original.path);
+          continue;
+        }
+        break;
       }
-      this.cache.set(key, { token: observation.observationToken, hash });
-      return { ...after, content: { ...after.content, hash } };
-    } catch (error) {
-      return { status: "unknown", side: "local", path: observation.path, reason: `canonical SHA-256 evidence unavailable: ${error instanceof Error ? error.message : String(error)}` };
+      const key = String(current.path), cached = this.cache.get(key);
+      if (cached?.token === current.observationToken) return { ...current, content: { ...current.content, hash: cached.hash } };
+      try {
+        const read = await this.inner.readFile(current.path, current.observationToken);
+        const hash = await sha256BinarySource(read.content);
+        const after = await this.inner.observe(current.path);
+        if (after.status === "present" && after.entityKind === "file" && after.stability === "stable" && after.observationToken === current.observationToken) {
+          this.cache.set(key, { token: current.observationToken, hash });
+          return { ...after, content: { ...after.content, hash } };
+        }
+        current = after;
+      } catch (error) {
+        if (!staleObservationError(error)) {
+          return { status: "unknown", side: "local", path: current.path, reason: `canonical SHA-256 evidence unavailable: ${error instanceof Error ? error.message : String(error)}` };
+        }
+        current = await this.inner.observe(original.path);
+      }
+      if (attempt + 1 < this.staleRetryAttempts && this.staleRetryDelayMs) await sleep(this.staleRetryDelayMs * (attempt + 1));
     }
+    // A bounded stale-observation retry was exhausted. Preserve path-local
+    // presence without promoting any incomplete content evidence.
+    return { ...original, content: undefined, stability: "unstable", observationToken: undefined };
   }
 
   private invalidateChange(change: LocalVaultChange): void {

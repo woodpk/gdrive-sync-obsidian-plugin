@@ -14,6 +14,8 @@ export interface BrainSyncSettings {
   recoveryInProgress: boolean;
   recoveryBackupId: string;
   userExclusionPatterns: string[];
+  syncPlanErrorsDirectory: string;
+  managedSyncPlanErrorsExclusion: string;
   scopeReconcileRequired: boolean;
   startupResumeEnabled: boolean;
   localChangeEnabled: boolean;
@@ -39,6 +41,8 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   recoveryInProgress: false,
   recoveryBackupId: "",
   userExclusionPatterns: [],
+  syncPlanErrorsDirectory: "",
+  managedSyncPlanErrorsExclusion: "",
   scopeReconcileRequired: false,
   startupResumeEnabled: false,
   localChangeEnabled: false,
@@ -117,6 +121,8 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       const value = raw && typeof raw === "object" ? raw as PersistedPluginData : {};
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
+      merged.syncPlanErrorsDirectory = typeof merged.syncPlanErrorsDirectory === "string" ? merged.syncPlanErrorsDirectory : "";
+      merged.managedSyncPlanErrorsExclusion = typeof merged.managedSyncPlanErrorsExclusion === "string" ? merged.managedSyncPlanErrorsExclusion : "";
       merged.scopeReconcileRequired = Boolean(merged.scopeReconcileRequired);
       if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
       merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);

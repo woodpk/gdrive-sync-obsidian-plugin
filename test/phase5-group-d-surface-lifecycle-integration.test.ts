@@ -29,7 +29,29 @@ async function loadRuntimeClass(){
   const module=await import("../src/product/runtime");
   return module.Phase5ProductRuntime;
 }
-async function runtimeHarness(){const Phase5ProductRuntime=await loadRuntimeClass();let settings:BrainSyncSettings={...DEFAULT_SETTINGS,oauthClientId:"client",oauthRedirectUri:"https://example.test/callback",vaultIdentity:String(vault),deviceIdentity:String(device),remoteRootId:String(root)};const saved:BrainSyncSettings[]=[];const notifications:string[]=[];const secretStorage={getSecret:()=>null,setSecret:()=>undefined,deleteSecret:()=>undefined};const plugin={registerObsidianProtocolHandler:()=>undefined};let auditRecords:any[]=[];const data={load:async()=>auditRecords,save:async(records:readonly any[])=>{auditRecords=[...records];}};const host={app:{secretStorage} as never,plugin:plugin as never,settings:()=>settings,data:data as never,saveSettings:async(next:BrainSyncSettings)=>{settings=next;saved.push(next);},notify:(message:string)=>notifications.push(message)};const runtime=new Phase5ProductRuntime(host);return{runtime,host,saved,notifications,settings:()=>settings};}
+async function runtimeHarness(){
+  const Phase5ProductRuntime=await loadRuntimeClass();
+  let settings:BrainSyncSettings={...DEFAULT_SETTINGS,oauthClientId:"client",oauthRedirectUri:"https://example.test/callback",vaultIdentity:String(vault),deviceIdentity:String(device),remoteRootId:String(root)};
+  const saved:BrainSyncSettings[]=[],notifications:string[]=[];
+  const secretStorage={getSecret:()=>null,setSecret:()=>undefined,deleteSecret:()=>undefined};
+  const plugin={registerObsidianProtocolHandler:()=>undefined};
+  let auditRecords:any[]=[];let attentionRecords:any[]=[];
+  const data={load:async()=>auditRecords,save:async(records:readonly any[])=>{auditRecords=[...records];},loadSyncAttention:async()=>attentionRecords,saveSyncAttention:async(records:readonly any[])=>{attentionRecords=[...records];}};
+  const files=new Map<string,string>(),folders=new Set<string>();
+  const adapter={
+    exists:async(path:string)=>files.has(path)||folders.has(path),
+    read:async(path:string)=>{const value=files.get(path);if(value===undefined)throw new Error(`missing ${path}`);return value;},
+    write:async(path:string,value:string)=>{files.set(path,value);},
+    rename:async(from:string,to:string)=>{const value=files.get(from);if(value===undefined)throw new Error(`missing ${from}`);files.delete(from);files.set(to,value);},
+    remove:async(path:string)=>{files.delete(path);},
+    mkdir:async(path:string)=>{folders.add(path);},
+    stat:async(path:string)=>folders.has(path)?{type:"folder",ctime:0,mtime:0,size:0}:files.has(path)?{type:"file",ctime:0,mtime:0,size:files.get(path)!.length}:null,
+  };
+  const app={secretStorage,vault:{adapter,on:()=>({}),offref:()=>undefined}};
+  const host={app:app as never,plugin:plugin as never,settings:()=>settings,data:data as never,saveSettings:async(next:BrainSyncSettings)=>{settings=next;saved.push(next);},notify:(message:string)=>notifications.push(message)};
+  const runtime=new Phase5ProductRuntime(host);
+  return{runtime,host,saved,notifications,settings:()=>settings};
+}
 
 test("G2 scenario 6 Phase5 runtime pairing consumes validated managed-root identity and refuses invalid pairing",async()=>{for(const valid of [true,false]){const h=await runtimeHarness(),calls:string[]=[];const boundary={drive:{pairManagedRoot:async(r:RemoteObjectId,v:unknown)=>{calls.push(`${String(r)}:${String(v)}`);return{ok:true as const,value:valid?{status:"valid" as const,identity}:{status:"identity-mismatch" as const}};}},oauth:{}};Object.assign(h.runtime as unknown as Record<string,unknown>,{boundary});let initialized=0;(h.runtime as unknown as {initialize:()=>Promise<void>}).initialize=async()=>{initialized++;};if(valid){const paired=await h.runtime.pairManagedRemote();assert.equal(paired.rootId,root);assert.equal(initialized,1);assert.equal(h.settings().firstSyncCompleted,false);assert.equal(h.settings().localChangeEnabled,false);}else{await assert.rejects(()=>h.runtime.pairManagedRemote(),/Pairing refused/);assert.equal(initialized,0);}assert.deepEqual(calls,[`${String(root)}:${String(vault)}`]);}});
 

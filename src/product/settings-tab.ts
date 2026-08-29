@@ -11,6 +11,7 @@ import { canShareDiagnosticLogFile } from "../diagnostics/share-export";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
+import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
 
 export interface Phase5SettingsHost {
   readonly app: App;
@@ -100,12 +101,39 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
     this.toggle(containerEl, "Wi-Fi only large transfers on mobile", "Large automatic transfers defer unless Wi-Fi is provable.", settings.wifiOnlyLargeTransfers, value => ({ wifiOnlyLargeTransfers: value }));
 
     containerEl.createEl("h3", { text: "Vault exclusions" });
+    const resolvedErrorsPath = resolveSyncPlanErrorsPath(settings.syncPlanErrorsDirectory);
+    let pendingErrorsDirectory = settings.syncPlanErrorsDirectory;
+    new Setting(containerEl)
+      .setName("Sync plan errors directory")
+      .setDesc("Optional safe vault-relative containing directory. Leave blank for the vault root; the filename is always sync-plan-errors.csv.")
+      .addText(text => text
+        .setPlaceholder("Vault root")
+        .setValue(settings.syncPlanErrorsDirectory)
+        .onChange(value => { pendingErrorsDirectory = value; }))
+      .addButton(button => button.setButtonText("Apply").onClick(async () => {
+          try {
+            const updated = withManagedSyncPlanErrorsExclusion(this.host.settings(), pendingErrorsDirectory);
+            await this.host.updateSettings({
+              syncPlanErrorsDirectory: updated.syncPlanErrorsDirectory,
+              managedSyncPlanErrorsExclusion: updated.managedSyncPlanErrorsExclusion,
+              userExclusionPatterns: updated.userExclusionPatterns,
+            });
+            this.display();
+          } catch (error) {
+            new Notice(error instanceof Error ? error.message : String(error));
+          }
+        }));
+    containerEl.createEl("p", { text: `Resolved sync plan errors file: ${resolvedErrorsPath.path}` });
     new Setting(containerEl)
       .setName("Additional exclusion patterns")
-      .setDesc("One path/glob-like pattern per line. These device-local rules apply symmetrically to LOCAL and managed REMOTE planning views on the next reconciliation.")
+      .setDesc("One path/glob-like pattern per line. The exact sync-plan-errors.csv entry is managed automatically and cannot be removed.")
       .addTextArea(area => area.setValue(settings.userExclusionPatterns.join("\n")).onChange(async value => {
         const patterns = value.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
-        await this.host.updateSettings({ userExclusionPatterns: patterns });
+        const updated = withManagedSyncPlanErrorsExclusion({ ...this.host.settings(), userExclusionPatterns: patterns });
+        await this.host.updateSettings({
+          userExclusionPatterns: updated.userExclusionPatterns,
+          managedSyncPlanErrorsExclusion: updated.managedSyncPlanErrorsExclusion,
+        });
       }));
     const exclusions = containerEl.createEl("ul");
     for (const rule of defaultLocalExclusionRules()) exclusions.createEl("li", { text: `${rule.pattern} — ${rule.description}` });
