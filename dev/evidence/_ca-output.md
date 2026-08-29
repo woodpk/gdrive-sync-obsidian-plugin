@@ -1471,3 +1471,17 @@ PR #26/#27 close-preview runs `33211857228` and `33211929861` failed because the
 No `0.1.5` tag or release was created. PR #28 is intentionally open/unmerged, and `master` is unchanged. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-IOS-015-INTEGRATE-01.md`.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Phase 6 Alpha — Mixed-Plan Isolation and Sync-Attention Ledger — `agt-CA-P6-MIXED-PLAN-ISOLATION-01`
+
+From exact released `master`/`0.1.5` SHA `34fa2e65d86878788434a6527e18d9f54ed64f3e`, branch `phase6-alpha-mixed-plan-isolation` implements locked `DEC-300` at verified implementation SHA `0efacd7ac4b579e98d2202dc2d325ad25b7f0f51`. A required plan-global execution gate now separates recovery/destructive authority from path-local attention. Mixed automatic and reviewed plans commit independently safe operations while blocked, conflicting, transiently unstable, and dependency-linked paths remain unmodified, uncommitted, and retryable. Global recovery/untrusted/stale/auth/managed-remote gates and exact checkpoint-backed suspicious-destruction approval remain fail-closed.
+
+A bounded, deduplicated device-local attention ledger is stored through plugin-owned data rather than the vault adapter. The existing attention command/modal displays current paths and copies or shares an actual formula-safe `brain-sync-attention.csv`; resolved paths leave the current set. Partial status/notifications are distinct from global error/recovery, repeated unchanged attention is not re-notified, and all automatic triggers now have correlated run IDs with aggregate path-free diagnostics.
+
+Verification: typecheck PASS; focused predictive suite **12/12 PASS**; Windows full suite **333/335 PASS** with only the two established drive-prefix assertions; build and all five package verifiers PASS; staged diff check PASS. Prepared version `0.1.6`. `main.js`: `372981` bytes; SHA-256 `5903eb849f6ceca67caef17bcac2c6f87b7a9236ed9f6b2de960f54e4f2c1576`.
+
+PR [#29](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/29) targets `phase6-integration` and remains open/unmerged. No tag/release, `master`/integration modification, OAuth/Azure change, performance work, Phase 6 closure, or Stage 3 work occurred. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
