@@ -1540,10 +1540,26 @@ Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 From exact released `master` SHA `77336110893ff31e4029d962584ba25fc22ce7c8`, implementation commit `70ee18890603f478dfe19b9926d712b25376e84f` prepares version `0.1.7`. Bounded re-observation now treats an ordinary changed-during-hash race as transient while preserving exact observation-token and post-hash validation; exhaustion becomes path-local `local-file-not-stable`. Per-file canonical-content uncertainty no longer changes directory-enumeration completeness or contaminates unrelated/portable paths, while genuine listing failure remains fail-closed.
 
-The automatically maintained, mobile-safe `sync-plan-errors.csv` is now the persistent user-facing attention source of truth. It is created with its header before normal vault-event processing, recreated after deletion, safely relocatable to a validated vault-relative containing directory, serialized with staged/backup replacement, formula-safe, deduplicated, current-complete/history-bounded, and migrated from legacy plugin data. Its exact visible managed exclusion is maintained without losing user exclusions, and a separate internal exact-path guard prevents upload or feedback even if the visible entry is damaged.
+The rejected head introduced the persistent, mobile-safe `sync-plan-errors.csv`, but its relocation and staged replacement were only exception-safe within one process; they were not yet hard-termination/restart safe. The unsupported crash-safety implication in the original record is superseded by the bounded C1/C2 repair below.
 
 Verification: typecheck PASS; focused mixed-plan/stability suite **26/26 PASS**; Windows full suite **347/349 qualified PASS** with only the same two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. GitHub/Linux run [33266594533](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33266594533) passed **349/349** and reproduced `main.js` at `395507` bytes with SHA-256 `1d0c5dd52a21cbca98584ca2a5c4ab65aef2fd1b055ab80776dd4e4bf9564496`. `manifest.json` is `283` bytes with SHA-256 `fd4cd2d3572b86ad2fea72e27c336f2ce8ee7d3c99979a1abbf220f4eaeb8279`.
 
 PR [#31](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/31) targets `phase6-integration` and remains open/unmerged. Its separate Azure preview failed only on the known maximum-staging-environments capacity condition; no Azure change was made. No protected branch, tag/release, physical test, Phase 6 completion, or Stage 3 work occurred. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 crash-consistency rejection repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01`
+
+From rejected head `1516aef5ce93d3bb0ad95fd2dc831edbdc1f2a75`, implementation commit `ece64f993ed50de4c2bc3810639d942e597ef7e0` corrects both shared-owner persistence defects without changing the planner, executor, synchronization authority, OAuth, or unrelated configuration.
+
+C1 now uses one plugin-data-backed relocation journal containing exact source and destination CSV paths. The journal and both visible exclusions are durable before destination work begins; runtime operational exclusions cover both canonical and deterministic stage/backup paths. Relocation is serialized with ledger writes, validates the destination before the active setting changes, preserves the source until that transition is durable, cleans the source next, and clears the journal/old protection last. Restart recovery handles all three transaction boundaries deterministically and preserves unrelated user exclusions.
+
+C2 replaces random transaction names with deterministic `.brain-sync-stage` and `.brain-sync-backup` paths and recovers residue before initialization, load, or replacement. A valid canonical remains authoritative; a missing canonical restores a valid committed backup before discarding stage; a valid stage is promoted only when no backup exists; unrecoverable residue surfaces a sanitized persistence failure and is never replaced with blank history.
+
+Verification: typecheck PASS; focused mixed-plan/plan-errors suite **35/35 PASS**; Windows full suite **356/358 qualified PASS** with only the same two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. GitHub/Linux run [33268697386](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33268697386) passed **358/358** and reproduced `main.js` at `404546` bytes with SHA-256 `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`. `manifest.json` remains `283` bytes with SHA-256 `fd4cd2d3572b86ad2fea72e27c336f2ce8ee7d3c99979a1abbf220f4eaeb8279`.
+
+The repair modified `src/main.ts`, `src/product/plugin-data.ts`, `src/product/runtime.ts`, `src/product/sync-plan-errors-csv.ts`, `src/product/sync-plan-errors-path.ts`, `test/phase6-alpha-plan-errors-stability.test.ts`, and the two evidence files; it created/deleted no files. PR [#31](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/31) remains open/unmerged. The separate Azure preview run [33268697361](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33268697361) reproduced only the known maximum-staging-environments capacity failure. No protected branch, tag/release, physical test, or Stage 3 work occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
