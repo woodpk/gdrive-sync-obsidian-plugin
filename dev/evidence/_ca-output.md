@@ -1497,3 +1497,15 @@ Regression verification: focused suite **16/16 PASS**; typecheck PASS; Windows f
 GitHub/Linux **Phase 6 Alpha Diagnostic Verification** run [33233714856](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33233714856) passed **339/339** full tests, **38/38** existing focused workflow tests, the complete repository check, build, diff check, and all five package verifiers on repaired evidence head `da85659c71edd7fa4368cb6f17c923c061db0e63`; it reproduced the exact artifact. The separate Azure preview run failed only on the unchanged maximum-staging-environments capacity condition. PR #29 remains open/unmerged; no tag/release or protected-branch modification occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #29 final pre-physical-test repair — `agt-CA-P6-MIXED-PLAN-ISOLATION-01`
+
+From starting head `6d9d84c0b876e97d936cc207e7eafd6cc6530099`, implementation repair commit `700b3523d040379b3ab48c3e15c0a07214ee6858` completes three bounded supervisor corrections. One controller-owned drain now serializes every automatic plan-to-execute lifecycle and coalesces overlapping startup/resume, local-change, periodic, and requested-reconciliation opportunities without plan/run cross-contamination. Notification deduplication uses only a privacy-safe deterministic current-attention SHA-256 identity, so unchanged attention is quiet while changed paths/reasons notify. Fresh attention authoritatively supersedes obsolete reasons only for its own observed path; absent incremental paths remain untouched, successful reconciliation resolves the path, and bounded historical CSV evidence remains.
+
+Verification: typecheck PASS; focused mixed-plan/attention/concurrency suite **18/18 PASS**; Windows full suite **339/341 PASS** with only the two unchanged established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. Linux run [33236278937](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33236278937) passed **341/341**, complete repository verification, and reproduced `main.js` at `377230` bytes with SHA-256 `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`. Version remains `0.1.6`. The PR body was updated with these actual results. The separate Azure preview reproduced only the known maximum-staging-environments infrastructure failure.
+
+PR #29 remains open/unmerged. No `master`, `phase6-integration`, tag, release, OAuth/Azure behavior, physical testing, Phase 6 completion, or Stage 3 modification occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

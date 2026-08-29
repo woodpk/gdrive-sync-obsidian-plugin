@@ -226,3 +226,77 @@ Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 - no `0.1.6` tag or GitHub release was created.
 - no OAuth, Azure, Drive scope/transport, canonical hashing, three-way merge, or unrelated scheduling architecture changed.
 - no performance optimization, Phase 6 completion, or Stage 3 work began.
+
+---
+
+## PR #29 final pre-physical-test repair
+
+Starting head: `6d9d84c0b876e97d936cc207e7eafd6cc6530099`.
+
+Verified implementation repair commit: `700b3523d040379b3ab48c3e15c0a07214ee6858`.
+
+### Three bounded corrections
+
+1. **Complete automatic lifecycle coordination:** `IntegratedProductController` now owns one central automatic trigger drain spanning planning through terminal execution. Startup/resume, local-change, periodic, and execution-requested reconciliation enter the same queue. A trigger arriving during planning or execution is coalesced by deterministic reconciliation priority and drained only after the active lifecycle completes. Only actual drained runs receive diagnostic run IDs. The automatic executor receives the exact `PlannedRun` created by its lifecycle, preventing mutable `this.planned` cross-contamination. Manual previews remain outside this automatic drain and no user-review lease is held. `ProductSyncScheduler` now delegates lifecycle opportunities to the controller instead of retaining a separate startup-only serializer.
+2. **Privacy-safe attention identity:** the ledger computes a deterministic SHA-256 identity over the sorted current path/category/reason set. Only the hash reaches `SynchronizationStatus` and the notification deduplication key; paths remain confined to the device-local ledger. The identity is stable for an unchanged condition and changes for additions, removals, changed paths, or changed reasons. Planned attention still emits no completion notice. When ledger persistence is unavailable, a path-free hashed plan fallback preserves correct notification differentiation without blocking safe work.
+3. **Path-scoped reason supersession:** every `recordSkipped` batch is authoritative only for the paths it contains. For each such path, formerly current keys absent from the fresh key set move to resolved history before fresh records are inserted/reactivated. Paths absent from the incremental batch are untouched. Successful reconciliation still resolves every current reason for the successfully committed path. Resolved history remains subject to the existing bound; current state and CSV status remain truthful.
+
+### Exact files changed
+
+- `src/contracts/status-audit-actions.ts`
+- `src/product/notification-policy.ts`
+- `src/product/product-controller.ts`
+- `src/product/scheduler.ts`
+- `src/product/sync-attention-ledger.ts`
+- `test/phase5-scheduler-acceptance.test.ts`
+- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+
+No files were created or deleted.
+
+### Predictive regression evidence
+
+The focused suite now contains **18 tests**, including controlled planner and mutation barriers proving periodic plus local-change attempts cannot overlap or overwrite plans, the second trigger becomes a later reconciliation, plan/operation order remains exact, each mutation executes once, and actual diagnostic run IDs remain associated with their originating trigger. Existing local-change-during-active-run behavior remains green in the full suite.
+
+Additional tests prove unchanged attention does not spam, path A replaced by path B with identical counts emits a new notice, a changed reason on the same path emits a new notice, planned attention emits no completion notice, notification identity is a path-free SHA-256 value, ordinary diagnostics contain neither test path, obsolete reasons become resolved CSV history, current counts remain truthful, and successful later reconciliation clears current attention while retaining bounded history.
+
+### Complete verification
+
+- `npm run typecheck`: **PASS**
+- focused mixed-plan/attention/concurrency suite: **18/18 PASS**
+- Windows `npm test`: **339/341 PASS**
+- `npm run build`: **PASS**
+- `npm run verify:build`: **PASS**
+- `git diff --check`: **PASS** (informational line-ending conversion warnings only)
+
+The only Windows failures remain the two unchanged, previously qualified drive-prefix expectation mismatches:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+
+Package verification:
+
+```text
+BUILD_VERIFY_ENTRYPOINT=PASS
+BUILD_VERIFY_SYNTAX=PASS
+BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS
+BUILD_VERIFY_MOBILE_EVALUATION=PASS
+BUILD_VERIFY_PACKAGE_SHAPE=PASS
+```
+
+Artifact:
+
+```text
+manifest.json version: 0.1.6
+manifest.json byte size: 283
+manifest.json SHA-256: 8f2ac175a1e6526c95436083d7fbf2df90311cd1ba5224ad689cc4709eebb4e5
+main.js byte size: 377230
+main.js SHA-256: 169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae
+```
+
+GitHub/Linux **Phase 6 Alpha Diagnostic Verification** run [33236278937](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33236278937) passed on implementation head `700b3523d040379b3ab48c3e15c0a07214ee6858`: typecheck, **341/341** full tests, **38/38** established workflow-focused tests, production build, full repository check, diff check, and all five package verifiers. Linux reproduced the exact `377230`-byte artifact and SHA-256 above. Workflow artifact `9710015034` has ZIP digest `sha256:a7a677c61d5fffeb3ce790ad451672ca662722691e6a329551d8f63e2ba91b49`.
+
+The separate Azure preview run [33236278904](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33236278904) failed only with the unchanged infrastructure condition: `This Static Web App already has the maximum number of staging environments`. No Azure behavior/configuration was changed.
+
+PR #29 metadata was updated to the actual **18/18** focused result, **339/341** qualified Windows result, **341/341** Linux result/run, and final artifact identity. PR #29 remains open and unmerged. No protected branch, tag, release, OAuth/Azure behavior, physical testing, Phase 6 completion, or Stage 3 work occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
