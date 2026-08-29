@@ -1485,3 +1485,15 @@ Verification: typecheck PASS; focused predictive suite **12/12 PASS**; Windows f
 PR [#29](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/29) targets `phase6-integration` and remains open/unmerged. No tag/release, `master`/integration modification, OAuth/Azure change, performance work, Phase 6 closure, or Stage 3 work occurred. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #29 bounded rejection repair — `agt-CA-P6-MIXED-PLAN-ISOLATION-01`
+
+From rejected head `479b701328385baf03a197c164d025508e70767f`, implementation repair commit `9f439bf3f0fbd44344168afdb361c82876158457` corrects all four reviewed defects without restarting the refactor: the shared plugin-data write queue recovers after an individual failure while preserving immutable per-call payloads; planned attention cannot emit a false completion notice and terminal attention reports committed safe progress truthfully; stale-device destructive operations are path-isolated while pre-existing global recovery/circuit-breaker authority remains fail-closed; and every current unresolved attention record is retained while only resolved history is bounded.
+
+Regression verification: focused suite **16/16 PASS**; typecheck PASS; Windows full suite **337/339 PASS** with only the two unchanged established drive-prefix mismatches; build and all five package verifiers PASS; diff check PASS. Version remains `0.1.6`. `main.js`: `374188` bytes, SHA-256 `2d417f5c2a9e09669dd6b689a78c3067628dcf5a96d75eb3ffd6fed93428d7bb`. `manifest.json`: `283` bytes, SHA-256 `8f2ac175a1e6526c95436083d7fbf2df90311cd1ba5224ad689cc4709eebb4e5`.
+
+GitHub/Linux CI evidence will be appended after the repaired PR head is pushed and tested. PR #29 remains open/unmerged; no tag/release or protected-branch modification occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

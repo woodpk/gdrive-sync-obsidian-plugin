@@ -147,6 +147,78 @@ The separate Azure Static Web Apps preview run [33231490677](https://github.com/
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
+---
+
+## PR #29 rejection repair — four bounded corrections
+
+Starting rejected head: `479b701328385baf03a197c164d025508e70767f`.
+
+Verified implementation repair commit: `9f439bf3f0fbd44344168afdb361c82876158457`.
+
+### Corrected failure mechanisms
+
+1. **Shared persistence queue poisoning:** `PluginDataRepository` now snapshots each full payload before enqueueing, serializes it behind a recovered queue tail, rejects the individual failed write to its caller, and permits later writes to invoke `host.saveData` normally. A production-representative test uses one repository for settings, diagnostics, attention, and audit; an attention write failure no longer prevents plan audit persistence or independent safe execution. A concurrent queued-write test proves per-call payload snapshots remain `queued-a`, `queued-b`, and `queued-c` rather than observing later mutable state.
+2. **False pre-execution completion notice:** `attention-required` now has deterministic `planned` and `completed` phases plus `safeOperationsCommitted`. Planned attention emits no completion notice. Terminal mixed execution emits one accurate completion-with-attention notice; an all-attention run truthfully reports that no unsafe paths changed; unchanged retries remain deduplicated.
+3. **Stale-device over-blocking:** stale-device destructive operations become path-local `blocked-unsafe` entries with reason `stale-device-destructive-gate`; unrelated non-destructive operations may commit. The wrapper preserves any pre-existing recovery/destructive-approval global gate and checkpoint. Dependency isolation, destructive circuit-breaker authority, and cursor conservatism remain intact.
+4. **Current-attention eviction:** every deduplicated current unresolved record is retained and exported. The configured bound now applies only to resolved history. Resolution removes paths from the current set, trims only resolved history, and leaves the current count complete.
+
+### Exact implementation/test files changed
+
+- `src/contracts/status-audit-actions.ts`
+- `src/core/planner.ts`
+- `src/core/production-planner.ts`
+- `src/product/notification-policy.ts`
+- `src/product/plugin-data.ts`
+- `src/product/product-controller.ts`
+- `src/product/sync-attention-ledger.ts`
+- `test/phase2-planner.test.ts`
+- `test/phase2-safety-policy.test.ts`
+- `test/phase5-group-d-recovery-coordination-integration.test.ts`
+- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+- `test/phase6-b-destructive-safety.test.ts`
+
+No files were created or deleted by the repair implementation commit.
+
+### Repair regression and local verification
+
+- `npm run typecheck`: **PASS**
+- focused `phase6-alpha-mixed-plan-isolation` suite: **16/16 PASS**
+- full Windows suite: **337/339 PASS**
+- `npm run build`: **PASS**
+- `npm run verify:build`: **PASS**
+- `git diff --check`: **PASS** (line-ending conversion warnings only)
+
+The only Windows failures are the unchanged, previously qualified drive-prefix expectation mismatches:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+
+Package verification:
+
+```text
+BUILD_VERIFY_ENTRYPOINT=PASS
+BUILD_VERIFY_SYNTAX=PASS
+BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS
+BUILD_VERIFY_MOBILE_EVALUATION=PASS
+BUILD_VERIFY_PACKAGE_SHAPE=PASS
+```
+
+Artifact:
+
+```text
+manifest.json version: 0.1.6
+manifest.json byte size: 283
+manifest.json SHA-256: 8f2ac175a1e6526c95436083d7fbf2df90311cd1ba5224ad689cc4709eebb4e5
+main.js byte size: 374188
+main.js SHA-256: 2d417f5c2a9e09669dd6b689a78c3067628dcf5a96d75eb3ffd6fed93428d7bb
+```
+
+GitHub/Linux CI verification: pending push of this evidence update; final run evidence will be appended after the PR head is tested.
+
+PR #29 remains open and unmerged. No `master` or `phase6-integration` modification, tag, release, Azure/OAuth change, physical testing, Phase 6 completion, or Stage 3 work occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
 - PR #29 remains open and unmerged for adversarial review.
 - `master` and `phase6-integration` remain unchanged.
 - no `0.1.6` tag or GitHub release was created.
