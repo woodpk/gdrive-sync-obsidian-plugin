@@ -14,6 +14,7 @@ import type {
   ProductSurfaceState,
   StateLoadContext,
   SynchronizationPlan,
+  PlanGlobalExecutionGate,
   SynchronizationPlanner,
   SynchronizationStatus,
   UserAction,
@@ -32,6 +33,8 @@ import { createInitialTrustedState, PersistentSynchronizationStateStore } from "
 import { BoundedAuditHistory } from "./audit-history";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
+import { dependsOnSkippedOperation } from "./operation-isolation";
+import type { SkippedPathAttention, SyncAttentionLedger } from "./sync-attention-ledger";
 
 export type PlannerFactory = (trigger: SynchronizationPlan["trigger"]) => SynchronizationPlanner;
 export interface AutomaticExecutionDecision { readonly allowed: boolean; readonly reason?: string; }
@@ -53,6 +56,7 @@ export interface ProductControllerOptions {
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
   readonly onFullReconciliationCompleted?: () => Promise<void>;
   readonly diagnostics?: DiagnosticLogger;
+  readonly attentionLedger?: SyncAttentionLedger;
 }
 interface PlannedRun {
   readonly plan: SynchronizationPlan;
@@ -60,6 +64,7 @@ interface PlannedRun {
   readonly checkpointId?: CheckpointId;
   readonly reviewed: boolean;
   readonly diagnosticRunId?: number;
+  attentionPersistenceFailed: boolean;
 }
 type RunOutcome = "complete" | "partial" | "failed";
 
@@ -139,6 +144,12 @@ function authenticationReason(reason: string): string | undefined {
   return reason.startsWith(prefix) ? reason.slice(prefix.length) || "authorization-required" : undefined;
 }
 
+function globalExecutionGate(plan: SynchronizationPlan): PlanGlobalExecutionGate { return plan.globalExecutionGate; }
+
+function attentionOperations(plan: SynchronizationPlan): readonly PlannedOperation[] {
+  return plan.operations.filter(operation => operation.kind === "blocked-unsafe" || operation.kind === "unresolved-conflict");
+}
+
 function planDiagnosticFields(plan: SynchronizationPlan, assembly: AssembledPlanningInput): SafeDiagnosticFields {
   const operations = plan.operations;
   const count = (predicate: (operation: PlannedOperation) => boolean) => operations.filter(predicate).length;
@@ -154,6 +165,7 @@ function planDiagnosticFields(plan: SynchronizationPlan, assembly: AssembledPlan
     operationCount: operations.length,
     conflictCount: count(operation => operation.kind === "unresolved-conflict"),
     blockedCount: count(operation => operation.kind === "blocked-unsafe" || operation.kind === "recovery-required"),
+    attentionCount: count(operation => operation.kind === "blocked-unsafe" || operation.kind === "unresolved-conflict"),
     destructiveCount: count(operation => operation.destructive),
     uploadCount: count(operation => operation.kind.startsWith("upload-")),
     downloadCount: count(operation => operation.kind.startsWith("download-")),
@@ -221,18 +233,29 @@ export class IntegratedProductController implements ProductControlPort {
   }
 
   async runAutomatic(trigger: "startup-resume" | "local-change" | "periodic"): Promise<void> {
+    const runId = this.options.diagnostics?.beginSyncRun(`automatic:${trigger}`);
+    this.syncInfo(runId, "automatic-sync-attempt-started", { trigger, stage: "automatic-entry" });
     if (this.options.recoveryActive?.()) {
       this.setStatus({ kind: "recovery-required", reason: "recovery reconstruction is incomplete" });
+      this.syncInfo(runId, "sync-run-globally-blocked", { stage: "automatic-precondition", trigger, result: "globally-blocked", classification: "recovery-active" });
+      this.endDiagnosticRun(runId);
       return;
     }
-    const plan = await this.createPlan(trigger, false, false);
-    if (!plan || this.planned?.assembly.reconstruction || plan.executionDisposition !== "safe-auto-eligible") return;
+    const plan = await this.createPlan(trigger, false, false, runId);
+    if (!plan) return;
+    if (this.planned?.assembly.reconstruction || globalExecutionGate(plan) !== "none") {
+      this.syncInfo(runId, "sync-run-globally-blocked", { stage: "execution-authority", trigger, result: "globally-blocked", classification: globalExecutionGate(plan) });
+      this.endDiagnosticRun(runId);
+      return;
+    }
     const gate = this.options.automaticExecutionAllowed?.(plan) ?? { allowed: true };
     if (!gate.allowed) {
       this.setStatus({ kind: "offline-deferred", reason: gate.reason ?? "automatic synchronization deferred by device policy" });
+      this.syncInfo(runId, "sync-run-deferred", { stage: "automatic-policy", trigger, result: "deferred" });
+      this.endDiagnosticRun(runId);
       return;
     }
-    await this.executePlanned(false);
+    await this.executePlanned(false, undefined, runId);
   }
 
   async request(action: UserAction): Promise<UserActionResult> { return this.requestWithDiagnosticRun(action); }
@@ -307,23 +330,24 @@ export class IntegratedProductController implements ProductControlPort {
       this.syncDebug(diagnosticRunId, "planning-input-assembled", { stage: "planning-input", runMode: assembly.mode, stateStatus: assembly.input.state.status, snapshotCount: assembly.input.snapshots.length, remoteCompleteness: assembly.remoteEnumeration.status, reconstruction: Boolean(assembly.reconstruction), cursorPresent: Boolean(assembly.nextCursor) });
       this.syncTrace(diagnosticRunId, "planner-start", { stage: "planning" });
       const plan = await this.options.plannerForTrigger(trigger).plan(assembly.input);
-      this.syncTrace(diagnosticRunId, "planning-complete", { stage: "planning", operationCount: plan.operations.length, planDisposition: plan.executionDisposition });
+      this.syncTrace(diagnosticRunId, "planning-complete", { stage: "planning", operationCount: plan.operations.length, planDisposition: plan.executionDisposition, attentionCount: attentionOperations(plan).length });
       await this.refreshConflicts(plan, assembly);
       let checkpointId: CheckpointId | undefined;
       if (plan.recoveryCheckpointRequired && !assembly.reconstruction) {
         const backup = await this.options.stateStore.createRecoveryBackup();
         checkpointId = cid<"CheckpointId">(backup.backupId) as CheckpointId;
       }
-      this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId };
+      let attentionPersistenceFailed = false;
+      if (!await this.recordAttentionEntries(attentionOperations(plan).map(operation => this.attentionFor(operation, plan, diagnosticRunId)))) attentionPersistenceFailed = true;
+      this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId, attentionPersistenceFailed };
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
       this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
 
-      const pathBlocked = plan.operations.filter(operation => operation.kind === "blocked-unsafe");
       if (assembly.reconstruction) this.setStatus({ kind: "recovery-required", reason: "review and execute this non-destructive reconstruction before recovery can complete" });
       else if (plan.operations.some(operation => operation.kind === "recovery-required")) this.setStatus({ kind: "recovery-required", reason: "synchronization state or remote relationship requires recovery" });
-      else if (this.surface.conflicts.length) this.setStatus({ kind: "conflict-present", conflictCount: this.surface.conflicts.length });
+      else if (this.surface.conflicts.length && !plan.operations.some(operation => !["blocked-unsafe", "unresolved-conflict"].includes(operation.kind))) this.setStatus({ kind: "conflict-present", conflictCount: this.surface.conflicts.length });
       else if (plan.recoveryCheckpointRequired) this.setStatus({ kind: "destructive-plan-blocked", planId: plan.planId });
-      else if (pathBlocked.length) this.setStatus({ kind: "error", code: "path-blocked", message: `${pathBlocked.length} path(s) require attention; unrelated reviewed safe work may proceed.` });
+      else if (attentionOperations(plan).length) this.setStatus({ kind: "attention-required", attentionCount: attentionOperations(plan).length, conflictCount: this.surface.conflicts.length, synchronizedCount: 0, ledgerAvailable: !attentionPersistenceFailed });
       else this.setStatus({ kind: "idle-ready" });
       this.syncInfo(diagnosticRunId, "plan-preview-preparation-start", { stage: "preview-prepared", ...planDiagnosticFields(plan, assembly) });
       return plan;
@@ -353,8 +377,8 @@ export class IntegratedProductController implements ProductControlPort {
   private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number): Promise<RunOutcome> {
     const planned = this.planned;
     if (!planned) return "failed";
-    if (!userInitiated && planned.plan.executionDisposition !== "safe-auto-eligible") return "failed";
-    if (planned.plan.executionDisposition === "blocked") return "failed";
+    if (!userInitiated && globalExecutionGate(planned.plan) !== "none") return "failed";
+    if (globalExecutionGate(planned.plan) === "globally-blocked") return "failed";
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
     const runId = diagnosticRunId ?? planned.diagnosticRunId;
     this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
@@ -377,6 +401,10 @@ export class IntegratedProductController implements ProductControlPort {
     let anyCommitted = false;
     let partial = false;
     let stageFailureReported = false;
+    let committedCount = 0;
+    let skippedCount = 0;
+    const skippedOperations: PlannedOperation[] = [...attentionOperations(planned.plan)];
+    const skippedReasonCodes = new Set<string>();
     try {
       await this.ensureTrustedState(planned.assembly);
       this.runEvidence = { managedRemote: planned.assembly.managedRemote, remoteEnumerationComplete: planned.assembly.remoteEnumeration.status === "complete" };
@@ -392,21 +420,32 @@ export class IntegratedProductController implements ProductControlPort {
 
       for (const operation of planned.plan.operations) {
         if (!this.runs.canStartNextOperation()) { partial = true; break; }
-        if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe") { partial = true; continue; }
+        if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe") { partial = true; skippedCount += 1; for (const reason of operation.reasons) skippedReasonCodes.add(reason.code); continue; }
         if (operation.kind === "recovery-required") { globalFailure = true; break; }
         if (operation.destructive && planned.plan.recoveryCheckpointRequired && !approvedCheckpoint) { partial = true; continue; }
+        if (dependsOnSkippedOperation(operation, skippedOperations)) {
+          partial = true; skippedCount += 1; skippedOperations.push(operation); skippedReasonCodes.add("dependency-on-skipped-operation");
+          if (!await this.recordAttentionEntries([this.attentionFor(operation, planned.plan, runId, "dependency-on-skipped-operation", "Operation depends on a path that was skipped earlier in this plan.")])) planned.attentionPersistenceFailed = true;
+          continue;
+        }
 
         const result = await coordinator.executeOperation(operation);
         if (result.status === "committed") {
           anyCommitted = true;
+          committedCount += 1;
           await this.audit(operation.kind.startsWith("trash-") ? "trash-action" : "operation-completed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path });
+          if (!await this.resolveAttentionFor(operation)) planned.attentionPersistenceFailed = true;
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
         if (result.status === "blocked") {
           const auth = authenticationReason(result.reason);
           if (auth) { this.setStatus({ kind: "authentication-required", reason: auth }); globalFailure = true; break; }
-          if (this.options.executor.failureScope(operation, result.reason) === "path") { partial = true; continue; }
+          if (this.options.executor.failureScope(operation, result.reason) === "path") {
+            partial = true; skippedCount += 1; skippedOperations.push(operation); skippedReasonCodes.add("runtime-path-blocked");
+            if (!await this.recordAttentionEntries([this.attentionFor(operation, planned.plan, runId, "runtime-path-blocked", result.reason.replace(/^path-local:/, ""))])) planned.attentionPersistenceFailed = true;
+            continue;
+          }
         }
         if (result.status === "stale-precondition" || result.status === "stale-state") {
           needsReplan = true; globalFailure = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break;
@@ -441,10 +480,11 @@ export class IntegratedProductController implements ProductControlPort {
       } else if (!globalFailure && (partial || anyCommitted)) {
         outcome = "partial";
         const conflicts = this.surface.conflicts.length;
-        const blocked = planned.plan.operations.filter(operation => operation.kind === "blocked-unsafe").length;
+        const attentionCount = Math.max(skippedCount, attentionOperations(planned.plan).length);
         if (planned.assembly.reconstruction || this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
-        else if (conflicts) this.setStatus({ kind: "conflict-present", conflictCount: conflicts });
-        else this.setStatus({ kind: "error", code: "path-blocked", message: `Synchronization made safe partial progress; ${blocked || 1} path(s) remain blocked and the Drive cursor was not advanced.` });
+        else this.setStatus({ kind: "attention-required", attentionCount: attentionCount || 1, conflictCount: conflicts, synchronizedCount: committedCount, ledgerAvailable: !planned.attentionPersistenceFailed });
+      } else if (!globalFailure && planned.attentionPersistenceFailed) {
+        this.setStatus({ kind: "attention-required", attentionCount: 0, conflictCount: 0, synchronizedCount: committedCount, ledgerAvailable: false });
       }
     } catch (error) {
       if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: "execution-failure", result: "failed" });
@@ -460,7 +500,7 @@ export class IntegratedProductController implements ProductControlPort {
         this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease-release", classification: "run-lease-release-failure", result: "failed" });
         throw error;
       } finally {
-        this.syncInfo(runId, cancelled ? "sync-run-cancelled" : outcome === "failed" ? "sync-run-failed" : "sync-run-complete", { stage: "terminal", result: cancelled ? "cancelled" : outcome, ...planDiagnosticFields(planned.plan, planned.assembly) });
+        this.syncInfo(runId, cancelled ? "sync-run-cancelled" : outcome === "failed" ? "sync-run-failed" : "sync-run-complete", { stage: "terminal", result: cancelled ? "cancelled" : outcome, safeCommittedCount: committedCount, skippedCount, attentionReasonCodes: [...skippedReasonCodes].sort().join(","), ...planDiagnosticFields(planned.plan, planned.assembly) });
         this.endDiagnosticRun(runId);
       }
     }
@@ -480,17 +520,22 @@ export class IntegratedProductController implements ProductControlPort {
     const executionDisposition = "requires-user-approval" as const;
     const recoveryCheckpointRequired = false;
     const resolutionPlan: SynchronizationPlan = {
-      planId: semanticPlanId({ trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired }),
-      trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired,
+      planId: semanticPlanId({ trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate: "none" }),
+      trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate: "none",
     };
     const resolutionAssembly: AssembledPlanningInput = { ...current.assembly, nextCursor: undefined, reconstruction: false };
-    this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false };
+    this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false, attentionPersistenceFailed: false };
     if (await this.executePlanned(true) !== "complete") return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
     this.conflictRegistry.delete(String(id));
     this.surface = { ...this.surface, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
     await this.audit("conflict-resolved", { path: assessment.path, reasonCode: resolution.kind });
     if (this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "conflict resolution was preserved; run a fresh reviewed Verify/Reconcile before recovery can complete" });
-    else this.setStatus(this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
+    else {
+      const currentAttention = await this.options.attentionLedger?.current() ?? [];
+      this.setStatus(currentAttention.length
+        ? { kind: "attention-required", attentionCount: currentAttention.length, conflictCount: this.surface.conflicts.length, synchronizedCount: operations.length, ledgerAvailable: true }
+        : this.surface.conflicts.length ? { kind: "conflict-present", conflictCount: this.surface.conflicts.length } : { kind: "idle-ready" });
+    }
     return { status: "accepted" };
   }
 
@@ -655,6 +700,36 @@ export class IntegratedProductController implements ProductControlPort {
     if (error !== undefined) this.syncFailure(runId, stage, error, fields);
     else this.syncError(runId, stage, fields);
     return true;
+  }
+  private attentionFor(operation: PlannedOperation, plan: SynchronizationPlan, runId?: number, reasonCode?: string, humanReason?: string): SkippedPathAttention {
+    const reason = operation.reasons[0];
+    return {
+      runId,
+      trigger: plan.trigger,
+      path: operation.path,
+      category: operation.kind,
+      reasonCode: reasonCode ?? reason?.code ?? operation.kind,
+      humanReason: humanReason ?? reason?.summary ?? "The operation could not be safely executed for this path.",
+    };
+  }
+  private async recordAttentionEntries(entries: readonly SkippedPathAttention[]): Promise<boolean> {
+    if (!entries.length || !this.options.attentionLedger) return true;
+    try { await this.options.attentionLedger.recordSkipped(entries); return true; }
+    catch (error) {
+      this.syncFailure(entries[0]?.runId, "attention-ledger-write-failed", error, { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
+      return false;
+    }
+  }
+  private async resolveAttentionFor(operation: PlannedOperation): Promise<boolean> {
+    if (!this.options.attentionLedger) return true;
+    try {
+      const paths = new Set([operation.path, operation.fromPath, operation.toPath].filter((path): path is VaultPath => path !== undefined));
+      for (const path of paths) await this.options.attentionLedger.resolvePath(path);
+      return true;
+    } catch (error) {
+      this.syncFailure(this.planned?.diagnosticRunId, "attention-ledger-write-failed", error, { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
+      return false;
+    }
   }
   private syncInfo(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {
     if (runId !== undefined) this.options.diagnostics?.syncInfo("sync.controller", event, runId, fields);

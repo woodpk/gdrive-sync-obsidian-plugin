@@ -26,6 +26,7 @@ import { WebLocksRunLeasePort } from "./web-lock-run-lease";
 import { automaticNetworkDecision } from "./network-policy";
 import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
 import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
+import { SyncAttentionLedger, type SyncAttentionRecord } from "./sync-attention-ledger";
 
 const PROTOCOL_VERSION = contractId<"ProtocolVersion">("1") as ProtocolVersion;
 const NOOP_DIAGNOSTICS = {
@@ -57,6 +58,7 @@ export class Phase5ProductRuntime {
   private controller?: IntegratedProductController;
   private scheduler?: ProductSyncScheduler;
   private audit?: BoundedAuditHistory;
+  private attention?: SyncAttentionLedger;
   private unsubscribeSurface?: () => void;
   private readonly notifications = new MeaningfulNotificationFilter();
 
@@ -150,6 +152,7 @@ export class Phase5ProductRuntime {
     );
     const conflicts = new ThreeWayConflictResolver(textVersions, textVersions, deviceIdentity);
     this.audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
+    this.attention = new SyncAttentionLedger(this.host.data);
     diagnostics.trace("runtime", "audit-store-ready", { stage: "audit-store", storeReady: true });
 
     let controller: IntegratedProductController;
@@ -195,6 +198,7 @@ export class Phase5ProductRuntime {
         }
       },
       diagnostics: this.host.diagnostics,
+      attentionLedger: this.attention,
     });
     this.controller = controller;
     this.unsubscribeSurface = controller.onSurface(surface => {
@@ -231,6 +235,12 @@ export class Phase5ProductRuntime {
   async exportDiagnosticStateText(): Promise<string> {
     if (!this.state) return JSON.stringify({ status: "unavailable", reason: "synchronization state is not initialized" });
     return new TextDecoder().decode(await this.state.exportDiagnosticState());
+  }
+
+  async readSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return this.attention?.current() ?? []; }
+  async exportSyncAttentionCsv(): Promise<string> {
+    if (!this.attention) throw new Error("synchronization attention ledger is unavailable");
+    return this.attention.renderCsv();
   }
 
   async completeGoogleAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
@@ -340,7 +350,7 @@ export class Phase5ProductRuntime {
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
     await this.controller?.request({ kind: "cancel-active-sync" }); this.controller = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
-    disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined;
+    disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
   }
 
   private async createLocalAdapter(): Promise<LocalVaultPort> {

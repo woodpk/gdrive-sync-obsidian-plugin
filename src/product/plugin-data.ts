@@ -2,6 +2,7 @@ import type { AuditRecord } from "../contracts";
 import type { DiagnosticLogLevel, DiagnosticPersistence, DiagnosticStoreState } from "../diagnostics/diagnostic-logger";
 import { DEFAULT_DIAGNOSTIC_RETENTION } from "../diagnostics/diagnostic-logger";
 import type { AuditPersistence } from "./audit-history";
+import type { SyncAttentionPersistence, SyncAttentionRecord } from "./sync-attention-ledger";
 
 export interface BrainSyncSettings {
   oauthClientId: string;
@@ -57,11 +58,13 @@ interface PersistedPluginData {
   readonly settings?: Partial<BrainSyncSettings>;
   readonly audit?: readonly AuditRecord[];
   readonly diagnostics?: unknown;
+  readonly syncAttention?: readonly SyncAttentionRecord[];
 }
 interface MutablePluginData {
   settings: BrainSyncSettings;
   audit: AuditRecord[];
   diagnostics?: unknown;
+  syncAttention: SyncAttentionRecord[];
 }
 
 export interface PluginDataHost {
@@ -70,7 +73,7 @@ export interface PluginDataHost {
 }
 
 /** One serialized device-local persistence owner prevents settings/audit/diagnostic writers from clobbering each other. */
-export class PluginDataRepository implements AuditPersistence, DiagnosticPersistence {
+export class PluginDataRepository implements AuditPersistence, DiagnosticPersistence, SyncAttentionPersistence {
   private loaded?: Promise<MutablePluginData>;
   private saveChain = Promise.resolve();
 
@@ -102,6 +105,12 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
     };
     await this.persist(data);
   }
+  async loadSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return (await this.data()).syncAttention.map(record => ({ ...record })); }
+  async saveSyncAttention(records: readonly SyncAttentionRecord[]): Promise<void> {
+    const data = await this.data();
+    data.syncAttention = records.map(record => ({ ...record }));
+    await this.persist(data);
+  }
 
   private data(): Promise<MutablePluginData> {
     this.loaded ??= this.host.loadData().then(raw => {
@@ -112,13 +121,13 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
       merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);
       if (!Number.isSafeInteger(merged.diagnosticRetention)) merged.diagnosticRetention = DEFAULT_DIAGNOSTIC_RETENTION;
-      return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [], diagnostics: value.diagnostics };
+      return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [], diagnostics: value.diagnostics, syncAttention: Array.isArray(value.syncAttention) ? value.syncAttention.map(record => ({ ...record })) : [] };
     });
     return this.loaded;
   }
 
   private async persist(data: MutablePluginData): Promise<void> {
-    this.saveChain = this.saveChain.then(() => this.host.saveData({ settings: data.settings, audit: data.audit, diagnostics: data.diagnostics }));
+    this.saveChain = this.saveChain.then(() => this.host.saveData({ settings: data.settings, audit: data.audit, diagnostics: data.diagnostics, syncAttention: data.syncAttention }));
     await this.saveChain;
   }
 }

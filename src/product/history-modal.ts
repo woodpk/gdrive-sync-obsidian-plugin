@@ -2,6 +2,7 @@ import { App, Modal } from "obsidian";
 import type { AuditRecord, ConflictAssessment, ConflictId } from "../contracts";
 import { contractId } from "../contracts";
 import type { IntegratedProductController } from "./product-controller";
+import type { SyncAttentionRecord } from "./sync-attention-ledger";
 
 export class AuditHistoryModal extends Modal {
   constructor(app: App, private readonly load: () => Promise<readonly AuditRecord[]>) { super(app); }
@@ -28,17 +29,43 @@ function idFor(assessment: ConflictAssessment): ConflictId | undefined {
 export interface AttentionModalOptions {
   readonly recoveryBackupId?: string;
   readonly copyDiagnostics?: () => Promise<void>;
+  readonly loadAttention?: () => Promise<readonly SyncAttentionRecord[]>;
+  readonly loadAttentionCsv?: () => Promise<string>;
+  readonly copyAttentionCsv?: (csv: string) => Promise<void>;
+  readonly shareAttentionCsv?: (csv: string) => Promise<void>;
 }
 
 export class SyncAttentionModal extends Modal {
   constructor(app: App, private readonly controller: IntegratedProductController, private readonly options: AttentionModalOptions = {}) { super(app); }
-  onOpen(): void { this.render(); }
+  onOpen(): void { void this.render(); }
 
-  private render(): void {
+  private async render(): Promise<void> {
     this.contentEl.empty();
     const surface = this.controller.currentSurface();
     this.contentEl.createEl("h2", { text: "BRAIN synchronization attention" });
     this.contentEl.createEl("p", { text: `Current status: ${surface.status.kind}` });
+
+    const currentAttention = await this.options.loadAttention?.() ?? [];
+    if (currentAttention.length) {
+      this.contentEl.createEl("h3", { text: "Paths currently requiring attention" });
+      const ledgerItems = this.contentEl.createEl("ul");
+      for (const record of currentAttention) ledgerItems.createEl("li", { text: `${String(record.path)} — ${record.category} — ${record.humanReason}` });
+    }
+    if (this.options.loadAttentionCsv) {
+      try {
+        const csv = await this.options.loadAttentionCsv();
+        if (this.options.copyAttentionCsv) {
+          const copy = this.contentEl.createEl("button", { text: "Copy attention CSV" });
+          copy.addEventListener("click", () => void this.options.copyAttentionCsv?.(csv));
+        }
+        if (this.options.shareAttentionCsv) {
+          const share = this.contentEl.createEl("button", { text: "Share attention CSV file" });
+          share.addEventListener("click", () => void this.options.shareAttentionCsv?.(csv));
+        }
+      } catch (error) {
+        this.contentEl.createEl("p", { text: `Attention CSV is unavailable: ${error instanceof Error ? error.message : String(error)}` });
+      }
+    }
 
     if (surface.conflicts.length) {
       for (const conflict of surface.conflicts) {
@@ -79,13 +106,13 @@ export class SyncAttentionModal extends Modal {
   private async resolve(id: ConflictId, kind: "keep-local" | "keep-remote" | "keep-both"): Promise<void> {
     const result = await this.controller.request({ kind: "resolve-conflict", conflictId: id, resolution: { kind } });
     if (result.status === "rejected") this.contentEl.createEl("p", { text: `Resolution was not applied: ${result.reason}` });
-    else this.render();
+    else void this.render();
   }
 
   private async resolveManual(id: ConflictId): Promise<void> {
     const result = await this.controller.resolveWithCurrentLocal(id);
     if (result.status === "rejected") this.contentEl.createEl("p", { text: `Manual resolution was not applied: ${result.reason}` });
-    else this.render();
+    else void this.render();
   }
 
   onClose(): void { this.contentEl.empty(); }

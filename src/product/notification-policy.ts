@@ -6,8 +6,12 @@ export interface MeaningfulNotification { readonly key: string; readonly message
 export function meaningfulNotification(surface: ProductSurfaceState): MeaningfulNotification | undefined {
   const status = surface.status;
   switch (status.kind) {
+    case "attention-required":
+      return { key: `attention:${status.attentionCount}:${status.ledgerAvailable}`, message: status.attentionCount > 0
+        ? `BRAIN sync completed with ${status.attentionCount} path(s) requiring attention; other safe work synchronized.${status.ledgerAvailable ? "" : " The attention ledger could not be updated."}`
+        : "BRAIN sync completed, but the device-local attention ledger could not be updated." };
     case "conflict-present":
-      return { key: `conflict:${status.conflictCount}`, message: `BRAIN sync has ${status.conflictCount} conflict(s) requiring attention.` };
+      return { key: `attention:${status.conflictCount}:true`, message: `BRAIN sync has ${status.conflictCount} conflict(s) requiring attention.` };
     case "destructive-plan-blocked":
       return { key: `destructive:${String(status.planId)}`, message: "BRAIN sync blocked a destructive plan for review." };
     case "authentication-required":
@@ -25,7 +29,10 @@ export class MeaningfulNotificationFilter {
   private lastKey?: string;
   next(surface: ProductSurfaceState): string | undefined {
     const notice = meaningfulNotification(surface);
-    if (!notice) { this.lastKey = undefined; return undefined; }
+    if (!notice) {
+      if (surface.status.kind !== "planning" && surface.status.kind !== "syncing") this.lastKey = undefined;
+      return undefined;
+    }
     if (notice.key === this.lastKey) return undefined;
     this.lastKey = notice.key;
     return notice.message;

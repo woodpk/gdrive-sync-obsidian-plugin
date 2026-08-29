@@ -26,6 +26,6 @@ export class ProductionSynchronizationPlanner implements SynchronizationPlanner 
       preconditions: [],
       reasons: [{ code: "stale-device-destructive-gate", summary: "This device is stale and must reconcile before it can authorize destructive propagation." }],
     };
-    return { ...plan, operations: [...plan.operations, guard], executionDisposition: "blocked", recoveryCheckpointRequired: plan.recoveryCheckpointRequired };
+    return { ...plan, operations: [...plan.operations, guard], executionDisposition: "blocked", recoveryCheckpointRequired: plan.recoveryCheckpointRequired, globalExecutionGate: "globally-blocked" };
   }
 }

@@ -133,7 +133,7 @@ async function planningOnlyController(diagnostics: DiagnosticLogger, samePlanEve
       planNumber += 1;
       return {
         planId: id<"PlanId">(samePlanEveryTime ? "plan:diagnostic:same-semantic-plan" : `plan:diagnostic:${planNumber}`),
-        trigger, operations: [], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false,
+        trigger, operations: [], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false, globalExecutionGate: "none",
       };
     } }),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) },
@@ -167,7 +167,7 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
     operationId: id<"OperationId">("operation:failure-fixture"), kind: "noop", path: filePath, destructive: false, preconditions: [], reasons: [{ code: "fixture", summary: "fixture" }],
   };
   const plan: SynchronizationPlan = {
-    planId: id<"PlanId">("plan:failure-fixture"), trigger: "manual", operations: [operation], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false,
+    planId: id<"PlanId">("plan:failure-fixture"), trigger: "manual", operations: [operation], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false, globalExecutionGate: "none",
   };
   const assembly = { input: { snapshots: [], state: loaded }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
   const executor = {

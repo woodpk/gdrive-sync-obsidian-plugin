@@ -10,6 +10,7 @@ import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
 import { Phase5ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
+import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
@@ -80,7 +81,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "cancel-active-sync", name: "Cancel active synchronization", callback: () => void this.control({ kind: "cancel-active-sync" }) });
     this.addCommand({ id: "authenticate-google", name: "Authenticate with Google", callback: () => { const attemptId = this.beginAuthenticationAttempt("command"); void this.authenticate(attemptId); } });
     this.addCommand({ id: "copy-last-oauth-diagnostic", name: "Copy last Google authentication diagnostic", callback: () => void this.copyLastOAuthDiagnostic() });
-    this.addCommand({ id: "open-sync-attention", name: "Open conflicts and recovery", callback: () => this.openAttention() });
+    this.addCommand({ id: "open-sync-attention", name: "Open synchronization attention", callback: () => this.openAttention() });
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
     this.addCommand({ id: "copy-sync-diagnostics", name: "Copy synchronization diagnostics", callback: () => void this.copyDiagnostics() });
     this.addCommand({ id: "copy-device-diagnostic-log", name: "Copy device diagnostic log", callback: () => void this.copyDiagnosticLog() });
@@ -271,6 +272,10 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     new SyncAttentionModal(this.app, controller, {
       recoveryBackupId: this.currentSettings.recoveryBackupId,
       copyDiagnostics: () => this.copyDiagnostics(),
+      loadAttention: () => this.runtime!.readSyncAttention(),
+      loadAttentionCsv: () => this.runtime!.exportSyncAttentionCsv(),
+      copyAttentionCsv: csv => copySyncAttentionCsv(csv).then(() => { new Notice("BRAIN synchronization attention CSV copied."); }).catch(error => { this.noticeError("Attention CSV could not be copied", error); }),
+      shareAttentionCsv: csv => shareSyncAttentionCsv(csv).catch(error => { this.noticeError("Attention CSV could not be shared", error); }),
     }).open();
   }
   private openHistory(): void {

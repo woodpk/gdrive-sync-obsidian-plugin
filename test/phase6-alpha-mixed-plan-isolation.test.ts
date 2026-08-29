@@ -1,0 +1,261 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { ChangeCursor, ContentEvidence, DeviceIdentity, ManagedRemoteIdentity, PlanOperationKind, PlannedOperation, RemoteObjectId, StateLoadContext, SynchronizationPlan, VaultIdentity, VaultPath } from "../src/contracts";
+import { contractId } from "../src/contracts";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
+import { IntegratedProductController } from "../src/product/product-controller";
+import { createSyncAttentionCsvFile, SyncAttentionLedger, SYNC_ATTENTION_CSV_FILENAME, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
+import { DiagnosticLogger, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
+import { sha256Text } from "../src/util/sha256";
+import { MeaningfulNotificationFilter } from "../src/product/notification-policy";
+
+const id = <T extends string>(value: string) => contractId<T>(value);
+const path = (value: string) => id<"VaultPath">(value) as VaultPath;
+const vault = id<"VaultIdentity">("vault:mixed-plan") as VaultIdentity;
+const device = id<"DeviceIdentity">("device:mixed-plan") as DeviceIdentity;
+const root = id<"RemoteObjectId">("root:mixed-plan") as RemoteObjectId;
+const managed: ManagedRemoteIdentity = { rootId: root, vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
+const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
+const evidence = (text: string): ContentEvidence => ({ hash: sha256Text(text), sizeBytes: new TextEncoder().encode(text).byteLength });
+
+function operation(kind: PlanOperationKind, value: string, reasonCode = "fixture", options: Partial<PlannedOperation> = {}): PlannedOperation {
+  const vaultPath = path(value);
+  return {
+    operationId: id<"OperationId">(`operation:${kind}:${value}`), kind, path: vaultPath,
+    destructive: kind.startsWith("trash-"), preconditions: [], reasons: [{ code: reasonCode, summary: `${reasonCode} requires attention.` }],
+    ...options,
+  };
+}
+function upload(value: string): PlannedOperation {
+  const vaultPath = path(value);
+  return operation("upload-create", value, "safe-upload", { targetSide: "remote", contentVersion: { path: vaultPath, entityKind: "file", content: evidence(value) } });
+}
+function plan(trigger: SynchronizationPlan["trigger"], operations: readonly PlannedOperation[], gate: NonNullable<SynchronizationPlan["globalExecutionGate"]> = "none", checkpoint = false): SynchronizationPlan {
+  return {
+    planId: id<"PlanId">(`plan:${trigger}:${operations.map(item => String(item.operationId)).join(":")}`), trigger, operations,
+    executionDisposition: gate === "globally-blocked" ? "blocked" : operations.some(item => ["blocked-unsafe", "unresolved-conflict"].includes(item.kind)) || checkpoint ? "requires-user-approval" : "safe-auto-eligible",
+    recoveryCheckpointRequired: checkpoint, globalExecutionGate: gate,
+  };
+}
+
+class MemoryAttention implements SyncAttentionPersistence {
+  records: SyncAttentionRecord[] = [];
+  saves = 0;
+  async loadSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return this.records.map(record => ({ ...record })); }
+  async saveSyncAttention(records: readonly SyncAttentionRecord[]): Promise<void> { this.saves += 1; this.records = records.map(record => ({ ...record })); }
+}
+
+interface ControllerHarness {
+  readonly controller: IntegratedProductController;
+  readonly state: PersistentSynchronizationStateStore;
+  readonly executed: PlannedOperation[];
+  readonly ledger: SyncAttentionLedger;
+  readonly persistence: MemoryAttention;
+}
+
+async function harness(plans: readonly SynchronizationPlan[], options: {
+  readonly firstSync?: boolean;
+  readonly cursor?: ChangeCursor;
+  readonly diagnostics?: DiagnosticLogger;
+  readonly persistence?: SyncAttentionPersistence;
+  readonly onBaseline?: () => Promise<void>;
+} = {}): Promise<ControllerHarness> {
+  const state = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  if (!options.firstSync) await state.saveTrusted({ ...createInitialTrustedState({ stateRevision: id<"StateRevision">("state:mixed:0"), vaultIdentity: vault, deviceIdentity: device }), changeCursor: options.cursor });
+  let planIndex = 0;
+  const executed: PlannedOperation[] = [];
+  const memory = options.persistence instanceof MemoryAttention ? options.persistence : new MemoryAttention();
+  const ledger = new SyncAttentionLedger(options.persistence ?? memory, 20);
+  const assembly = async () => ({
+    input: { snapshots: [], state: await state.load(options.firstSync ? { expectation: "new-installation" } : context) },
+    managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const,
+    nextCursor: id<"ChangeCursor">("cursor:candidate") as ChangeCursor,
+  });
+  const controller = new IntegratedProductController({
+    vaultIdentity: vault, deviceIdentity: device, stateContext: options.firstSync ? { expectation: "new-installation" } : context,
+    stateStore: state, snapshotAssembler: { assemble: assembly, assembleFull: assembly } as never,
+    executor: {
+      validatePreconditions: async () => ({ status: "valid" as const }),
+      execute: async (candidate: PlannedOperation) => {
+        executed.push(candidate);
+        return { status: "durable-verified-success" as const, receipt: { operationId: candidate.operationId, durable: true as const, integrityVerified: true as const, evidence: candidate.contentVersion?.content, resultingRemoteObjectId: candidate.remoteObjectId ?? id<"RemoteObjectId">(`remote:${String(candidate.path)}`), verificationEvidenceRef: "mixed-plan-fixture" } };
+      },
+      failureScope: () => "global" as const,
+    } as never,
+    conflictResolver: { assess: async () => ({ kind: "none" as const }) },
+    plannerForTrigger: () => ({ plan: async () => plans[Math.min(planIndex++, plans.length - 1)]! }),
+    leasePort: { tryAcquire: async () => ({ release: async () => undefined }) }, audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 50),
+    holderId: "mixed-plan-test", attentionLedger: ledger, diagnostics: options.diagnostics, onTrustedBaselineEstablished: options.onBaseline,
+  });
+  return { controller, state, executed, ledger, persistence: memory };
+}
+
+test("mixed automatic plan commits unrelated safe upload, retains attention, and preserves cursor/re-plan durability", async () => {
+  const oldCursor = id<"ChangeCursor">("cursor:old") as ChangeCursor;
+  const blocked = operation("blocked-unsafe", "editing.md", "local-file-not-stable");
+  const safe = upload("safe.md");
+  const h = await harness([
+    plan("periodic", [blocked, safe]),
+    plan("periodic", [blocked, operation("noop", "safe.md", "equal-current-content")]),
+  ], { cursor: oldCursor });
+  await h.controller.runAutomatic("periodic");
+  assert.deepEqual(h.executed.map(item => item.kind), ["upload-create"]);
+  assert.equal(h.controller.currentSurface().status.kind, "attention-required");
+  let loaded = await h.state.load(context);
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status === "trusted") { assert.equal(loaded.state.changeCursor, oldCursor); assert.ok(loaded.state.base.some(entry => entry.path === safe.path)); }
+  await h.controller.runAutomatic("periodic");
+  assert.equal(h.executed.filter(item => item.kind === "upload-create").length, 1, "already committed upload must not duplicate");
+  loaded = await h.state.load(context);
+  if (loaded.status === "trusted") assert.equal(loaded.state.changeCursor, oldCursor, "partial run must not advance cursor");
+});
+
+test("conflict and all-blocked plans isolate affected paths without mutating them", async () => {
+  const conflict = operation("unresolved-conflict", "conflict.md", "unresolved-text");
+  const safe = upload("unrelated.md");
+  const mixed = await harness([plan("periodic", [conflict, safe])]);
+  await mixed.controller.runAutomatic("periodic");
+  assert.deepEqual(mixed.executed.map(item => String(item.path)), ["unrelated.md"]);
+  const only = await harness([plan("periodic", [operation("blocked-unsafe", "only.md", "local-file-not-stable")])]);
+  await only.controller.runAutomatic("periodic");
+  assert.equal(only.executed.length, 0);
+  assert.equal(only.controller.currentSurface().status.kind, "attention-required");
+});
+
+test("global recovery and destructive approval gates cannot execute a safe subset automatically", async () => {
+  const recovery = await harness([plan("periodic", [upload("safe.md"), operation("recovery-required", "__state__", "untrusted-base")], "globally-blocked")]);
+  await recovery.controller.runAutomatic("periodic");
+  assert.equal(recovery.executed.length, 0);
+  const destructive = await harness([plan("periodic", [upload("safe.md"), operation("trash-remote", "delete.md")], "destructive-approval-required", true)]);
+  await destructive.controller.runAutomatic("periodic");
+  assert.equal(destructive.executed.length, 0);
+  const preview = await destructive.controller.previewManual();
+  assert.ok(preview);
+  assert.equal((await destructive.controller.request({ kind: "execute-plan", planId: preview.planId })).status, "rejected");
+});
+
+test("ordinary authorized deletion still executes automatically", async () => {
+  const deletion = operation("trash-remote", "ordinary-delete.md", "attested-local-deletion", { remoteObjectId: id<"RemoteObjectId">("remote:delete") });
+  const h = await harness([plan("periodic", [deletion])]);
+  await h.controller.runAutomatic("periodic");
+  assert.deepEqual(h.executed.map(item => item.kind), ["trash-remote"]);
+});
+
+test("partial first-sync safe union commits progress but cannot complete baseline or cursor authority", async () => {
+  let baselineCompletions = 0;
+  const h = await harness([plan("manual", [upload("first-safe.md"), operation("blocked-unsafe", "first-blocked.md", "local-file-not-stable")])], { firstSync: true, onBaseline: async () => { baselineCompletions += 1; } });
+  const preview = await h.controller.previewManual();
+  assert.ok(preview);
+  assert.equal((await h.controller.request({ kind: "execute-plan", planId: preview.planId })).status, "accepted");
+  assert.equal(baselineCompletions, 0);
+  const loaded = await h.state.load({ expectation: "new-installation" });
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status === "trusted") { assert.equal(loaded.state.changeCursor, undefined); assert.ok(loaded.state.base.some(entry => String(entry.path) === "first-safe.md")); }
+});
+
+test("transient unstable path clears from current attention after a later stable retry", async () => {
+  const unstable = operation("blocked-unsafe", "live-edit.md", "local-file-not-stable");
+  const h = await harness([plan("periodic", [unstable, upload("other.md")]), plan("periodic", [upload("live-edit.md")])]);
+  await h.controller.runAutomatic("periodic");
+  assert.ok((await h.ledger.current()).some(record => String(record.path) === "live-edit.md"));
+  await h.controller.runAutomatic("periodic");
+  assert.equal((await h.ledger.current()).some(record => String(record.path) === "live-edit.md"), false);
+  assert.ok(h.executed.some(item => String(item.path) === "live-edit.md"));
+});
+
+test("dependency isolation skips a child of a blocked parent while unrelated work proceeds", async () => {
+  const h = await harness([plan("periodic", [operation("blocked-unsafe", "blocked-folder", "parent-create-blocked"), upload("blocked-folder/child.md"), upload("independent.md")])]);
+  await h.controller.runAutomatic("periodic");
+  assert.deepEqual(h.executed.map(item => String(item.path)), ["independent.md"]);
+  const attention = await h.ledger.current();
+  assert.ok(attention.some(record => String(record.path) === "blocked-folder/child.md" && record.reasonCode === "dependency-on-skipped-operation"));
+});
+
+test("attention ledger is bounded, deduplicated, resolvable, CSV-safe, and independent of vault storage", async () => {
+  const persistence = new MemoryAttention();
+  const ledger = new SyncAttentionLedger(persistence, 2);
+  const special = path("=SUM(1,2), \"quoted\"\nUnicode-雪.md");
+  const entry = { timestampMs: 1, runId: 7, trigger: "periodic", path: special, category: "blocked-unsafe" as const, reasonCode: "@formula", humanReason: "+reason, \"quoted\"\nnext line 雪" };
+  await ledger.recordSkipped([entry]);
+  await ledger.recordSkipped([{ ...entry, timestampMs: 2 }]);
+  assert.equal((await ledger.all()).length, 1);
+  assert.equal((await ledger.all())[0]?.occurrenceCount, 2);
+  const csv = await ledger.renderCsv();
+  assert.match(csv, /"'=SUM\(1,2\), ""quoted""\nUnicode-雪\.md"/u);
+  assert.match(csv, /"'@formula"/u);
+  assert.match(csv, /"'\+reason, ""quoted""\nnext line 雪"/u);
+  const exported = createSyncAttentionCsvFile(csv);
+  assert.equal(exported.name, SYNC_ATTENTION_CSV_FILENAME);
+  assert.equal(exported.type, "text/csv;charset=utf-8");
+  assert.equal(exported.size, new TextEncoder().encode(csv).byteLength);
+  await ledger.resolvePath(special);
+  assert.equal((await ledger.current()).length, 0);
+  await ledger.recordSkipped([{ ...entry, path: path("two.md"), timestampMs: 3 }, { ...entry, path: path("three.md"), timestampMs: 4 }]);
+  assert.equal((await ledger.all()).length, 2);
+  assert.ok(persistence.saves > 0, "only plugin-owned persistence is used; no vault adapter participates");
+});
+
+test("ledger persistence failure is surfaced but does not roll back authorized safe work", async () => {
+  const failing: SyncAttentionPersistence = { loadSyncAttention: async () => [], saveSyncAttention: async () => { throw new Error("device-local metadata write failed"); } };
+  const h = await harness([plan("periodic", [operation("blocked-unsafe", "blocked.md", "local-file-not-stable"), upload("safe.md")])], { persistence: failing });
+  await h.controller.runAutomatic("periodic");
+  assert.deepEqual(h.executed.map(item => String(item.path)), ["safe.md"]);
+  const status = h.controller.currentSurface().status;
+  assert.equal(status.kind, "attention-required");
+  if (status.kind === "attention-required") assert.equal(status.ledgerAvailable, false);
+});
+
+test("automatic lifecycle diagnostics have run IDs, aggregate partial evidence, and contain no paths or secrets", async () => {
+  let diagnosticState: DiagnosticStoreState | undefined;
+  const diagnostics = new DiagnosticLogger({
+    persistence: { loadDiagnostics: async () => diagnosticState, saveDiagnostics: async state => { diagnosticState = state; } },
+    level: "trace", retentionLimit: 200, consoleMirror: false, platform: "mobile",
+  });
+  await diagnostics.initialize();
+  const privatePath = "SENTINEL_PRIVATE_PATH.md";
+  const h = await harness([plan("periodic", [operation("blocked-unsafe", privatePath, "local-file-not-stable"), upload("safe.md")])], { diagnostics });
+  await h.controller.runAutomatic("periodic");
+  await diagnostics.flush();
+  const events = diagnostics.snapshot();
+  const runIds = new Set(events.filter(event => event.component.startsWith("sync.")).map(event => event.runId));
+  assert.equal(runIds.size, 1);
+  assert.equal(runIds.has(undefined), false);
+  assert.ok(events.some(event => event.event === "planning-start" && event.fields?.trigger === "periodic"));
+  const terminal = events.find(event => event.event === "sync-run-complete");
+  assert.equal(terminal?.fields?.result, "partial");
+  assert.equal(terminal?.fields?.safeCommittedCount, 1);
+  assert.equal(terminal?.fields?.skippedCount, 1);
+  assert.equal(terminal?.fields?.attentionReasonCodes, "local-file-not-stable");
+  assert.doesNotMatch(diagnostics.renderText(), /SENTINEL_PRIVATE_PATH|access_token|client_secret/i);
+});
+
+test("unchanged attention is not re-notified across planning and execution transitions", () => {
+  const filter = new MeaningfulNotificationFilter();
+  const attention = { status: { kind: "attention-required" as const, attentionCount: 2, conflictCount: 0, synchronizedCount: 1, ledgerAvailable: true }, conflicts: [] };
+  assert.match(filter.next(attention) ?? "", /2 path/);
+  assert.equal(filter.next({ status: { kind: "planning", trigger: "periodic" }, conflicts: [] }), undefined);
+  assert.equal(filter.next({ status: { kind: "syncing", planId: id<"PlanId">("plan:retry") }, conflicts: [] }), undefined);
+  assert.equal(filter.next(attention), undefined);
+  assert.equal(filter.next({ status: { kind: "idle-ready" }, conflicts: [] }), undefined);
+  assert.match(filter.next(attention) ?? "", /2 path/);
+});
+
+test("startup-resume, local-change, and periodic automatic triggers each own a diagnostic run ID", async () => {
+  for (const trigger of ["startup-resume", "local-change", "periodic"] as const) {
+    let diagnosticState: DiagnosticStoreState | undefined;
+    const diagnostics = new DiagnosticLogger({
+      persistence: { loadDiagnostics: async () => diagnosticState, saveDiagnostics: async state => { diagnosticState = state; } },
+      level: "trace", retentionLimit: 100, consoleMirror: false, platform: "mobile",
+    });
+    await diagnostics.initialize();
+    const h = await harness([plan(trigger, [operation("blocked-unsafe", `${trigger}.md`, "local-file-not-stable")])], { diagnostics });
+    await h.controller.runAutomatic(trigger);
+    await diagnostics.flush();
+    const relevant = diagnostics.snapshot().filter(event => event.component.startsWith("sync."));
+    assert.ok(relevant.length > 0);
+    assert.equal(relevant.every(event => typeof event.runId === "number"), true);
+    assert.ok(relevant.some(event => event.event === "automatic-sync-attempt-started" && event.fields?.trigger === trigger));
+    assert.ok(relevant.some(event => event.event === "sync-run-complete" && event.fields?.result === "partial"));
+  }
+});

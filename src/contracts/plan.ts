@@ -14,6 +14,8 @@ export type OperationPrecondition =
 export interface PlanReason { readonly code: string; readonly summary: string; readonly evidenceRefs?: readonly string[]; }
 export interface PlannedOperation { readonly operationId: OperationId; readonly kind: PlanOperationKind; readonly path: VaultPath; readonly targetSide?: SyncSide; readonly fromPath?: VaultPath; readonly toPath?: VaultPath; readonly remoteObjectId?: RemoteObjectId; readonly contentVersion?: VersionReference; readonly conflictId?: string; readonly destructive: boolean; readonly preconditions: readonly OperationPrecondition[]; readonly reasons: readonly PlanReason[]; }
 export type PlanExecutionDisposition = "safe-auto-eligible" | "requires-user-approval" | "blocked";
-export interface SynchronizationPlan { readonly planId: PlanId; readonly advisoryCreatedAtMs?: number; readonly trigger: "manual" | "startup-resume" | "local-change" | "periodic" | "verify-reconcile"; readonly operations: readonly PlannedOperation[]; readonly executionDisposition: PlanExecutionDisposition; readonly recoveryCheckpointRequired: boolean; }
+/** Run-wide authority is deliberately separate from path-local attention. */
+export type PlanGlobalExecutionGate = "none" | "destructive-approval-required" | "globally-blocked";
+export interface SynchronizationPlan { readonly planId: PlanId; readonly advisoryCreatedAtMs?: number; readonly trigger: "manual" | "startup-resume" | "local-change" | "periodic" | "verify-reconcile"; readonly operations: readonly PlannedOperation[]; readonly executionDisposition: PlanExecutionDisposition; readonly recoveryCheckpointRequired: boolean; readonly globalExecutionGate: PlanGlobalExecutionGate; }
 export interface PlanningInput { readonly snapshots: readonly PathSnapshot[]; readonly state: StateLoadResult; }
 export interface SynchronizationPlanner { plan(input: PlanningInput): Promise<SynchronizationPlan>; }
