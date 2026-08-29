@@ -1,7 +1,9 @@
-import { normalizeVaultPath, validateCrossPlatformPath } from "../local/path-policy";
+import { normalizedComparisonPath, normalizeVaultPath, validateCrossPlatformPath } from "../local/path-policy";
 import type { BrainSyncSettings } from "./plugin-data";
 
 export const SYNC_PLAN_ERRORS_CSV_FILENAME = "sync-plan-errors.csv";
+export const SYNC_PLAN_ERRORS_STAGE_SUFFIX = ".brain-sync-stage";
+export const SYNC_PLAN_ERRORS_BACKUP_SUFFIX = ".brain-sync-backup";
 const RESERVED_PORTABLE_CONFIGURATION_NAMESPACE = "__brain_sync_portable_config__";
 
 export interface SyncPlanErrorsRelocationJournal {
@@ -14,9 +16,29 @@ export interface ResolvedSyncPlanErrorsPath {
   readonly path: string;
 }
 
+export function syncPlanErrorsOperationalPaths(path: string): readonly string[] {
+  return [path, `${path}${SYNC_PLAN_ERRORS_STAGE_SUFFIX}`, `${path}${SYNC_PLAN_ERRORS_BACKUP_SUFFIX}`];
+}
+
+export function syncPlanErrorsPathsEquivalent(first: string, second: string): boolean {
+  return normalizedComparisonPath(first) === normalizedComparisonPath(second);
+}
+
+function assertOperationalPathsCompatible(path: string): void {
+  for (const candidate of syncPlanErrorsOperationalPaths(path)) {
+    const validation = validateCrossPlatformPath(candidate);
+    if (validation.status === "blocked") {
+      throw new Error(`Sync plan errors operational path must be cross-platform safe (${validation.reason}${validation.detail ? `: ${validation.detail}` : ""}).`);
+    }
+  }
+}
+
 export function resolveSyncPlanErrorsPath(directory: string): ResolvedSyncPlanErrorsPath {
   const trimmed = directory.trim();
-  if (!trimmed) return { directory: "", path: SYNC_PLAN_ERRORS_CSV_FILENAME };
+  if (!trimmed) {
+    assertOperationalPathsCompatible(SYNC_PLAN_ERRORS_CSV_FILENAME);
+    return { directory: "", path: SYNC_PLAN_ERRORS_CSV_FILENAME };
+  }
   const normalized = normalizeVaultPath(trimmed);
   const validation = validateCrossPlatformPath(normalized);
   if (validation.status === "blocked") {
@@ -28,7 +50,9 @@ export function resolveSyncPlanErrorsPath(directory: string): ResolvedSyncPlanEr
   if (normalized.toLocaleLowerCase("en-US").endsWith(".csv")) {
     throw new Error("Configure a containing directory, not a CSV filename; the filename is fixed by BRAIN Sync.");
   }
-  return { directory: normalized, path: `${normalized}/${SYNC_PLAN_ERRORS_CSV_FILENAME}` };
+  const path = `${normalized}/${SYNC_PLAN_ERRORS_CSV_FILENAME}`;
+  assertOperationalPathsCompatible(path);
+  return { directory: normalized, path };
 }
 
 export function directoryForSyncPlanErrorsPath(path: string): string {
@@ -51,7 +75,9 @@ export function normalizeSyncPlanErrorsRelocationJournal(value: unknown): SyncPl
   }
   directoryForSyncPlanErrorsPath(candidate.sourcePath);
   directoryForSyncPlanErrorsPath(candidate.destinationPath);
-  if (candidate.sourcePath === candidate.destinationPath) throw new Error("Sync plan errors relocation journal has identical locations.");
+  if (syncPlanErrorsPathsEquivalent(candidate.sourcePath, candidate.destinationPath)) {
+    throw new Error("Sync plan errors relocation journal has cross-platform-equivalent locations.");
+  }
   return { sourcePath: candidate.sourcePath, destinationPath: candidate.destinationPath };
 }
 
@@ -61,7 +87,7 @@ export function withManagedSyncPlanErrorsExclusion(
 ): BrainSyncSettings {
   const resolved = resolveSyncPlanErrorsPath(directory);
   const priorManaged = settings.managedSyncPlanErrorsExclusion;
-  const relocation = settings.syncPlanErrorsRelocation;
+  const relocation = normalizeSyncPlanErrorsRelocationJournal(settings.syncPlanErrorsRelocation);
   const protectedPaths = [resolved.path, ...(relocation ? [relocation.sourcePath, relocation.destinationPath] : [])]
     .filter((path, index, values) => values.indexOf(path) === index);
   const user = settings.userExclusionPatterns.filter(pattern => pattern !== priorManaged && !protectedPaths.includes(pattern));
@@ -69,6 +95,7 @@ export function withManagedSyncPlanErrorsExclusion(
     ...settings,
     syncPlanErrorsDirectory: resolved.directory,
     managedSyncPlanErrorsExclusion: resolved.path,
+    syncPlanErrorsRelocation: relocation,
     userExclusionPatterns: [...user, ...protectedPaths],
   };
 }
