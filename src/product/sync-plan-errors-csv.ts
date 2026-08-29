@@ -1,7 +1,9 @@
 import type { App, DataAdapter, TAbstractFile } from "obsidian";
 import type { SyncAttentionPersistence, SyncAttentionRecord } from "./sync-attention-ledger";
-import { parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv } from "./sync-attention-ledger";
-import type { SyncPlanErrorsRelocationJournal } from "./sync-plan-errors-path";
+import { DEFAULT_SYNC_ATTENTION_RETENTION, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv } from "./sync-attention-ledger";
+import { syncPlanErrorsOperationalPaths, syncPlanErrorsPathsEquivalent, type SyncPlanErrorsRelocationJournal } from "./sync-plan-errors-path";
+
+export { syncPlanErrorsOperationalPaths } from "./sync-plan-errors-path";
 
 export interface SyncPlanErrorsCsvInitialization {
   readonly migratedLegacyRecords: boolean;
@@ -13,12 +15,8 @@ function parentPath(path: string): string {
 }
 
 function recordCopy(record: SyncAttentionRecord): SyncAttentionRecord { return { ...record }; }
-function stagePath(path: string): string { return `${path}.brain-sync-stage`; }
-function backupPath(path: string): string { return `${path}.brain-sync-backup`; }
-
-export function syncPlanErrorsOperationalPaths(path: string): readonly string[] {
-  return [path, stagePath(path), backupPath(path)];
-}
+function stagePath(path: string): string { return syncPlanErrorsOperationalPaths(path)[1]!; }
+function backupPath(path: string): string { return syncPlanErrorsOperationalPaths(path)[2]!; }
 
 /** Mobile-safe, serialized, crash-conscious vault persistence for sync-plan-errors.csv. */
 export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
@@ -32,7 +30,9 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     private readonly app: App,
     private csvPath: string,
     private readonly onPersistenceFailure: (error: unknown) => void = () => undefined,
-  ) {}
+  ) {
+    syncPlanErrorsOperationalPaths(csvPath);
+  }
 
   path(): string { return this.csvPath; }
 
@@ -58,6 +58,9 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     activePath: string,
     legacy: readonly SyncAttentionRecord[] = [],
   ): Promise<SyncPlanErrorsCsvInitialization> {
+    if (syncPlanErrorsPathsEquivalent(journal.sourcePath, journal.destinationPath)) {
+      throw new Error("Pending sync plan errors relocation has cross-platform-equivalent locations.");
+    }
     if (activePath !== journal.sourcePath && activePath !== journal.destinationPath) {
       throw new Error("Sync plan errors relocation journal does not match the configured active location.");
     }
@@ -107,14 +110,24 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
 
   async relocate(nextPath: string, commitActiveLocation: () => Promise<void> = async () => undefined): Promise<void> {
     if (nextPath === this.csvPath) return;
+    if (syncPlanErrorsPathsEquivalent(nextPath, this.csvPath)) {
+      throw new Error("Sync plan errors relocation cannot use a cross-platform-equivalent destination.");
+    }
+    syncPlanErrorsOperationalPaths(nextPath);
     await this.enqueue(async () => {
       const priorPath = this.csvPath;
-      const records = this.records ?? (await this.recoverFile(priorPath));
-      if (!records) throw new Error("Sync plan errors source CSV is unavailable during relocation.");
+      const sourceRecords = this.records ?? (await this.recoverFile(priorPath));
+      if (!sourceRecords) throw new Error("Sync plan errors source CSV is unavailable during relocation.");
       await this.ensureParent(nextPath);
-      await this.replaceFile(nextPath, renderSyncAttentionRecordsCsv(records));
+      const existingDestination = await this.recoverFile(nextPath);
+      const mergedRecords = this.mergeRecordSets(sourceRecords, existingDestination ?? []);
+      await this.replaceFile(nextPath, renderSyncAttentionRecordsCsv(mergedRecords));
       const destination = await this.recoverFile(nextPath);
       if (!destination) throw new Error("Sync plan errors destination CSV was not durably established.");
+      const validatedDestination = this.mergeRecordSets(destination);
+      if (renderSyncAttentionRecordsCsv(validatedDestination) !== renderSyncAttentionRecordsCsv(mergedRecords)) {
+        throw new Error("Sync plan errors destination CSV did not validate after relocation merge.");
+      }
       await commitActiveLocation();
       this.csvPath = nextPath;
       this.records = destination.map(recordCopy);
@@ -123,8 +136,10 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
   }
 
   async cleanupRelocationSource(sourcePath: string): Promise<void> {
+    if (syncPlanErrorsPathsEquivalent(sourcePath, this.csvPath)) {
+      throw new Error("Cannot clean a cross-platform-equivalent active sync plan errors CSV location.");
+    }
     await this.enqueue(async () => {
-      if (sourcePath === this.csvPath) throw new Error("Cannot clean the active sync plan errors CSV location.");
       const active = await this.recoverFile(this.csvPath);
       if (!active) throw new Error("Active sync plan errors destination is unavailable during relocation finalization.");
       this.records = active.map(recordCopy);
@@ -219,6 +234,37 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
     } finally {
       this.internalMutationDepth -= 1;
     }
+  }
+
+  private mergeRecordSets(...sets: readonly SyncAttentionRecord[][]): SyncAttentionRecord[] {
+    const byKey = new Map<string, SyncAttentionRecord>();
+    for (const records of sets) {
+      for (const incoming of records) {
+        const prior = byKey.get(incoming.key);
+        if (!prior) { byKey.set(incoming.key, recordCopy(incoming)); continue; }
+        const newer = incoming.lastSeenAtMs > prior.lastSeenAtMs ? incoming : prior;
+        const current = prior.current || incoming.current;
+        const resolvedCandidates = [prior.resolvedAtMs, incoming.resolvedAtMs].filter((value): value is number => value !== undefined);
+        byKey.set(incoming.key, {
+          ...newer,
+          firstSeenAtMs: Math.min(prior.firstSeenAtMs, incoming.firstSeenAtMs),
+          lastSeenAtMs: Math.max(prior.lastSeenAtMs, incoming.lastSeenAtMs),
+          occurrenceCount: Math.max(prior.occurrenceCount, incoming.occurrenceCount),
+          current,
+          ...(current
+            ? { resolvedAtMs: undefined }
+            : resolvedCandidates.length ? { resolvedAtMs: Math.max(...resolvedCandidates) } : {}),
+        });
+      }
+    }
+    const all = [...byKey.values()];
+    const current = all.filter(record => record.current);
+    const resolved = all.filter(record => !record.current)
+      .sort((a, b) => b.lastSeenAtMs - a.lastSeenAtMs || a.key.localeCompare(b.key))
+      .slice(0, DEFAULT_SYNC_ATTENTION_RETENTION);
+    return [...current, ...resolved]
+      .sort((a, b) => a.lastSeenAtMs - b.lastSeenAtMs || a.key.localeCompare(b.key))
+      .map(recordCopy);
   }
 
   private mergeLegacy(current: readonly SyncAttentionRecord[], legacy: readonly SyncAttentionRecord[]): { readonly records: SyncAttentionRecord[]; readonly changed: boolean } {
