@@ -428,7 +428,11 @@ for (const scenario of [
     assert.equal(finalSettings.syncPlanErrorsRelocation, null);
     assert.deepEqual(finalSettings.userExclusionPatterns, ["private/**", destination]);
     assert.equal(vault.files.has(source), false);
-    assert.deepEqual(parseSyncAttentionRecordsCsv(vault.files.get(destination)!).map(record => String(record.path)), ["preserved.md"]);
+    const recoveredPaths = parseSyncAttentionRecordsCsv(vault.files.get(destination)!).map(record => String(record.path));
+    const expectedPaths = scenario.destinationExists && !scenario.activeDirectory
+      ? ["preserved.md", "uncommitted-destination.md"]
+      : ["preserved.md"];
+    assert.deepEqual(new Set(recoveredPaths), new Set(expectedPaths), "restart preserves every valid source/destination record");
     for (const snapshot of recovered.persisted.filter(value => value.syncPlanErrorsRelocation)) {
       assert.equal(snapshot.userExclusionPatterns.includes(source), true);
       assert.equal(snapshot.userExclusionPatterns.includes(destination), true);
