@@ -12,20 +12,17 @@ jobs:
   finalize-evidence:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Append cumulative evidence through GitHub API and self-remove
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-sync-architecture-foundation
+          fetch-depth: 0
+      - name: Append cumulative evidence and push
         shell: bash
         run: |
           set -euo pipefail
-          REPO="${GITHUB_REPOSITORY}"
-          BRANCH="${GITHUB_REF_NAME}"
-          META="$(gh api "repos/${REPO}/contents/dev/evidence/_ca-output.md?ref=${BRANCH}")"
-          FILE_SHA="$(printf '%s' "$META" | jq -r '.sha')"
-          printf '%s' "$META" | jq -r '.content' | tr -d '\n' | base64 -d > /tmp/ca-output.md
-          if ! grep -Fq '## 2026-08-30 — Synchronization architecture foundation cloud continuation closure' /tmp/ca-output.md; then
-            cat >> /tmp/ca-output.md <<'EOF'
+          if ! grep -Fq '## 2026-08-30 — Synchronization architecture foundation cloud continuation closure' dev/evidence/_ca-output.md; then
+            cat >> dev/evidence/_ca-output.md <<'EOF'
 
 ---
 
@@ -48,23 +45,9 @@ The exact final evidence-bearing branch SHA is necessarily generated after this 
 **Parallel implementation wave: NOT AUTHORIZED — independent supervisor re-review is required.**
 EOF
           fi
-          export BRANCH FILE_SHA
-          python3 - <<'PY'
-          import base64, json, os
-          from pathlib import Path
-          request = {
-              "message": "docs: append synchronization foundation cloud closure",
-              "content": base64.b64encode(Path("/tmp/ca-output.md").read_bytes()).decode("ascii"),
-              "branch": os.environ["BRANCH"],
-              "sha": os.environ["FILE_SHA"],
-          }
-          Path("/tmp/update-request.json").write_text(json.dumps(request), encoding="utf-8")
-          PY
-          gh api --method PUT "repos/${REPO}/contents/dev/evidence/_ca-output.md" --input /tmp/update-request.json >/tmp/update-result.json
-          WF_SHA="$(gh api "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml?ref=${BRANCH}" --jq '.sha')"
-          jq -n \
-            --arg message 'ci: remove synchronization foundation evidence finalizer' \
-            --arg sha "$WF_SHA" \
-            --arg branch "$BRANCH" \
-            '{message:$message,sha:$sha,branch:$branch}' > /tmp/delete-request.json
-          gh api --method DELETE "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml" --input /tmp/delete-request.json >/tmp/delete-result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dev/evidence/_ca-output.md
+          git diff --cached --check
+          git commit -m "docs: append synchronization foundation cloud closure"
+          git push origin HEAD:phase6-sync-architecture-foundation
