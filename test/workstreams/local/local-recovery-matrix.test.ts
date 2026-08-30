@@ -11,6 +11,7 @@ import { sha256Bytes } from "../../../src/util/sha256";
 const vp = (v: string) => v as VaultPath;
 const tok = (v: string) => v as ObservationToken;
 const source = (v: Uint8Array): BinaryContentSource => ({ sizeBytes: v.byteLength, async *openChunks() { yield new Uint8Array(v); } });
+type MatrixCase = { readonly name: string; readonly stage: LocalMutationTransaction["stage"]; readonly files: Record<string, Uint8Array>; readonly expected: string };
 
 class RecoveryLocal implements LocalVaultPort {
   readonly files = new Map<string, Uint8Array>();
@@ -46,12 +47,12 @@ function replaceTx(stage: LocalMutationTransaction["stage"], old: Uint8Array, ne
 
 test("create crash-recovery matrix preserves absence or verified new content at every boundary", async () => {
   const next = new Uint8Array([4,5,6]);
-  const cases = [
-    { name: "before-stage", stage: "staging" as const, files: {}, expected: "blocked" },
-    { name: "after-stage-write", stage: "staged-unverified" as const, files: { ".file.bin.brain-sync-stage-tx": new Uint8Array([4,5]) }, expected: "blocked" },
-    { name: "after-stage-verification", stage: "staged-verified" as const, files: { ".file.bin.brain-sync-stage-tx": next }, expected: "recovered" },
-    { name: "after-swap", stage: "swap-committed" as const, files: { "file.bin": next }, expected: "recovered" },
-    { name: "before-cleanup", stage: "cleanup-pending" as const, files: { "file.bin": next }, expected: "recovered" },
+  const cases: readonly MatrixCase[] = [
+    { name: "before-stage", stage: "staging", files: {}, expected: "blocked" },
+    { name: "after-stage-write", stage: "staged-unverified", files: { ".file.bin.brain-sync-stage-tx": new Uint8Array([4,5]) }, expected: "blocked" },
+    { name: "after-stage-verification", stage: "staged-verified", files: { ".file.bin.brain-sync-stage-tx": next }, expected: "recovered" },
+    { name: "after-swap", stage: "swap-committed", files: { "file.bin": next }, expected: "recovered" },
+    { name: "before-cleanup", stage: "cleanup-pending", files: { "file.bin": next }, expected: "recovered" },
   ];
   for (const c of cases) {
     const local = new RecoveryLocal(c.files), port = new ObsidianLocalMutationTransactions(local.adapter, local);
@@ -65,10 +66,10 @@ test("create crash-recovery matrix preserves absence or verified new content at 
 
 test("replace crash-recovery matrix never converts lost old target into create authority", async () => {
   const old = new Uint8Array([1,2,3]), next = new Uint8Array([7,8,9]);
-  const cases = [
-    { name: "after-backup-establishment", stage: "backup-established" as const, files: { ".file.bin.brain-sync-stage-tx": next, ".file.bin.brain-sync-backup-tx": old }, expected: "recovered" },
-    { name: "after-swap-before-cleanup", stage: "swap-committed" as const, files: { "file.bin": next, ".file.bin.brain-sync-backup-tx": old }, expected: "recovered" },
-    { name: "missing-expected-backup", stage: "backup-established" as const, files: { ".file.bin.brain-sync-stage-tx": next }, expected: "outcome-unknown" },
+  const cases: readonly MatrixCase[] = [
+    { name: "after-backup-establishment", stage: "backup-established", files: { ".file.bin.brain-sync-stage-tx": next, ".file.bin.brain-sync-backup-tx": old }, expected: "recovered" },
+    { name: "after-swap-before-cleanup", stage: "swap-committed", files: { "file.bin": next, ".file.bin.brain-sync-backup-tx": old }, expected: "recovered" },
+    { name: "missing-expected-backup", stage: "backup-established", files: { ".file.bin.brain-sync-stage-tx": next }, expected: "outcome-unknown" },
   ];
   for (const c of cases) {
     const local = new RecoveryLocal(c.files), port = new ObsidianLocalMutationTransactions(local.adapter, local);
