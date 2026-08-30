@@ -68,6 +68,7 @@ function settings(overrides: Partial<AutomaticSyncSettings> = {}): AutomaticSync
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
 }
 
 test("disabled local-change automatic synchronization ignores local events without deferring or scheduling a pass", async () => {
@@ -93,7 +94,7 @@ test("disabled local-change automatic synchronization ignores local events witho
   }
 });
 
-test("Phase5 scenario 31 local-change debounce coalesces repeated events into one automatic pass", async () => {
+test("Phase5 scenario 31 local-change debounce coalesces repeated events into one scheduler-owned automatic pass", async () => {
   const originalSetTimeout = globalThis.setTimeout;
   const originalClearTimeout = globalThis.clearTimeout;
   const callbacks = new Map<number, () => void>();
@@ -111,7 +112,7 @@ test("Phase5 scenario 31 local-change debounce coalesces repeated events into on
     h.scheduler.start();
     h.emitChange({ kind: "modified", path: "a.md" as never });
     h.emitChange({ kind: "modified", path: "a.md" as never });
-    assert.equal(h.noteChangeCalls.length, 2);
+    assert.equal(h.noteChangeCalls.length, 0, "watcher follow-up is scheduler-owned rather than recursive controller deferral");
     assert.equal(callbacks.size, 1);
     const callback = [...callbacks.values()][0];
     assert.ok(callback);
@@ -219,7 +220,7 @@ test("active recovery keeps scheduler startup automatic ineligible", async () =>
   h.scheduler.stop();
 });
 
-test("duplicate ready is suppressed while resume opportunities are delegated to central controller coordination", async () => {
+test("rapid ready/resume burst coalesces and preserves one future reconciliation while a run is active", async () => {
   const releases: Array<() => void> = [];
   const h = harness(
     () => settings(),
@@ -228,15 +229,19 @@ test("duplicate ready is suppressed while resume opportunities are delegated to 
   );
 
   h.scheduler.start();
+  await flushMicrotasks();
   assert.deepEqual(h.calls, ["startup-resume"]);
   h.emitLifecycle({ kind: "vault-ready" });
   h.emitLifecycle({ kind: "resume" });
   h.emitLifecycle({ kind: "resume" });
   h.emitLifecycle({ kind: "resume" });
   await flushMicrotasks();
-  assert.deepEqual(h.calls, ["startup-resume", "startup-resume", "startup-resume", "startup-resume"]);
+  assert.deepEqual(h.calls, ["startup-resume"], "burst is coalesced while the active opportunity is outstanding");
 
-  for (const release of releases.splice(0)) release();
+  releases.shift()?.();
+  await flushMicrotasks();
+  assert.deepEqual(h.calls, ["startup-resume", "startup-resume"], "one later reconciliation survives the burst");
+  releases.shift()?.();
   await flushMicrotasks();
   h.scheduler.stop();
 });
