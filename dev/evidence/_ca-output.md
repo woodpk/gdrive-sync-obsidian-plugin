@@ -1901,3 +1901,20 @@ This evidence-only release-preparation pass makes no product, test, workflow, ve
 Physical iPhone validation remains pending.
 
 Stage 3 has not begun.
+
+---
+
+## 2026-08-30 — Full synchronization remediation ownership checkpoint 0
+
+- agent: `agt-CA-P6-FULL-SYNC-REMEDIATION-01`
+- branch: `phase6-alpha-full-sync-remediation`
+- starting released `master` SHA: `b1b3a4bd70cd14be49ae9085a8305f5825fccf4f`
+- task: independently diagnose and structurally remediate the repeated physical synchronization convergence failures without weakening the target-system safety model
+- supplied evidence: `brain-log-10.txt` and `sync-plan-errors copy.xlsx`
+- repository state at entry: clean `0.1.7` released master; isolated remediation branch created before implementation
+- authority grounding completed: construction manual, target-system specification, decision register including `DEC-299`/`DEC-300`, current project state, and Phase 6 handoff read completely
+- root-cause status: not yet determined; all inherited hypotheses remain unaccepted pending raw-evidence and code-path verification
+- durable detailed record: `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`
+- Stage 3 has not begun
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
