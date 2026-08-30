@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type ContentHash, type VaultPath, type VersionReference } from "../src/contracts";
 import { ThreeWayConflictResolver, mergeThreeWayText } from "../src/core/conflict-resolver";
+import "./workstreams/merge/resource-safety.test";
 
 const p = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const h = (value: string) => contractId<"ContentHash">(value) as ContentHash;
