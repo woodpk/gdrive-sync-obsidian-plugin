@@ -1934,3 +1934,7 @@ The architectural correction is implemented. Operation-local stale work is isola
 Verification: focused remediation plus actual adapter `22/22`; complete Windows suite `375/377` with only the two unchanged qualified drive-prefix assertions; typecheck PASS; build and all package verifiers PASS; `main.js` `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; `git diff --check` PASS. Version remains `0.1.7`. Detailed design, safety reasoning, files, and test evidence are in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 4
+
+Post-implementation adversarial coverage now proves both sides of stale pending-intent retirement: successful exact retirement is a separate durable state revision with no BASE advance, while retirement persistence failure remains globally recoverable and preserves the pending journal. Coordinator plus remediation focus: `10/10` PASS. No further architectural failure mechanism was found in this crash-safety audit.

@@ -191,3 +191,16 @@ Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 No OAuth, Drive scope, managed-remote identity, conflict algorithm, deletion authority, first-sync authority, Azure configuration, or release metadata was changed.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 4: post-implementation crash-safety audit
+
+The new pending-intent retirement seam received two additional coordinator-level adversarial tests:
+
+- a post-journal stale result removes the exact pending intent through a separate durable revision without advancing BASE;
+- a simulated persistence failure during retirement returns `recovery-required`, preserves the pending journal, and leaves BASE untouched so established recovery retains authority.
+
+Focused coordinator plus remediation result: `10/10` PASS. Existing crash-before-mutation, uncertain-outcome, durable-receipt, automatic lifecycle serialization/coalescing, destructive authority, recovery, cursor, first-sync, and attention persistence tests remain part of the complete suite. No further failure mechanism was found in this audit.
+
+Material file additionally modified: `test/phase2-execution.test.ts`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
