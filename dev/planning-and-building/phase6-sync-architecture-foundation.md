@@ -72,31 +72,13 @@ Remote feed ingestion and per-path convergence remain independent.
 
 A terminal Changes token may be advanced only after the corresponding complete batch is durable. The durable authority state now retains `learnedRemoteBatches[]`, not only one latest batch. A later batch may not replace an unresolved earlier batch until every fact from the earlier batch needed for reconciliation has been durably reduced into other authoritative state.
 
-This is necessary for:
-
-- removed objects whose old path/object relation may be needed later;
-- moves represented by repeated changes to one object;
-- create-then-delete before path convergence;
-- repeated updates across successive batches;
-- duplicate/ambiguous logical paths;
-- paths that remain unresolved while later batches continue.
-
-Example state transition:
-
-1. learn batch 1 containing removal/object A; path A remains unresolved;
-2. durably append batch 2 containing object B changes;
-3. durably append batch 3 containing later A/B facts;
-4. process dies;
-5. restart loads all three learned batches plus path convergence state;
-6. reconciliation may compact/retire a batch only after its required facts are represented in trustworthy mappings/BASE/tombstones/path state.
-
-The ingestion watermark therefore never advances by forgetting the only durable representation of unresolved remote reality.
+This is necessary for removals, moves, create-then-delete, repeated changes, duplicate/ambiguous paths, and long-lived unresolved paths while later batches continue.
 
 ## 6. Remote mutation preservation
 
 ### 6.1 Creates
 
-Create retains the predecessor design: durable `MutationIntentId` plus pre-generated `RemoteObjectId`. Ambiguous retry reconciles the same identity rather than creating a duplicate.
+Create retains durable `MutationIntentId` plus pre-generated `RemoteObjectId`. Ambiguous retry reconciles the same identity rather than creating a duplicate.
 
 ### 6.2 Existing-object content updates
 
@@ -104,78 +86,37 @@ Because an atomic Drive v3 content-update CAS was not established, an existing-o
 
 `observe R0 -> revalidate R0 -> PATCH same object -> observe our bytes -> verified conflict-free success`.
 
-That sequence cannot rule out an intervening RI written after revalidation but before the PATCH. Observing RW afterward proves only current bytes, not absence/preservation of RI.
-
-The frozen candidate therefore requires **immutable-candidate preservation**:
-
-1. persist mutation intent and predecessor object/revision authority;
-2. reserve a durable candidate object identity for intended new bytes;
-3. materialize/verify new bytes without destructively overwriting the predecessor;
-4. re-observe identity/path reality;
-5. converge authority/path only while preserving every version whose loss cannot be excluded;
-6. return ordinary `verified-applied` only with `RemoteMutationApplicationProof` showing predecessor preservation under the immutable-candidate protocol;
-7. otherwise return `conflict-preserved` or `outcome-unknown`.
+The frozen candidate therefore requires immutable-candidate preservation: persist predecessor authority and exact intended canonical bytes, reserve a durable candidate object identity, materialize and verify those bytes without destructively overwriting the predecessor, then separately determine path convergence while preserving any independent concurrent candidate.
 
 Revision history/trash may assist recovery but is not the correctness foundation.
 
 ## 7. Durable operation dispatch ordering
 
-Operation stages now mean:
+Operation stages mean:
 
 `intent-persisted -> dispatch-authorized -> outcome-unknown/effect-verified -> state-committed`
 
-- `intent-persisted`: durable intent exists and durable state still proves dispatch was not authorized. Restart may retire it as unattempted.
-- `dispatch-authorized`: this stage is durably written **before** the external mutation call. From this point onward, restart must assume the mutation **may have occurred**, even if the process died before actually entering the call.
-- `outcome-unknown`: mutation may have reached the external system and result is not authoritatively known.
-- `effect-verified`: durable effect has verification evidence but authoritative state commit is not finished.
-- `state-committed`: authoritative state incorporates the verified effect.
-
-Required deterministic fault points distinguish:
-
-1. after intent persistence / before dispatch-authority persistence;
-2. after dispatch-authority persistence / before mutation call;
-3. after mutation call may have reached external system / before response;
-4. after response / before effect verification;
-5. after verification / before state commit;
-6. local stage/backup/swap boundaries.
-
-No crash window may restart from state claiming "definitely not dispatched" after mutation became possible.
+`dispatch-authorized` is durably written before the external mutation call and means the mutation may have occurred. Once this stage is durable, restart must reconcile physical reality rather than classify the operation definitely unattempted.
 
 ## 8. Local transaction authority
 
-Local replacement remains staged and crash-safe, but durable authority now distinguishes transaction kind and exact target pre-state.
-
-### Create
-
-`mutationKind=create` requires `expectedTarget=expected-absent`. Backup absence is normal unless contradictory target reality appears.
-
-### Replace
-
-`mutationKind=replace` requires `expectedTarget=expected-present` with:
-
-- exact observation token;
-- expected file entity kind;
-- canonical SHA-256 old-content proof.
-
-The transaction also requires canonical verified new evidence. A missing backup after old-target displacement is therefore abnormal for replace rather than being confused with a create.
-
-At restart, target/stage/backup combinations are interpreted against this durable pre-state authority. Contradiction fails closed to recovery.
+Local replacement remains staged and crash-safe. Create carries authoritative expected absence. Replace carries expected presence with exact observation token and canonical old-content proof. Both require canonical new-content proof. Backup expectations therefore differ deterministically across create versus replace recovery.
 
 ## 9. Observation, lifecycle, provenance, cancellation, and resource safety
 
 Preserved predecessor rules:
 
-- observation APIs remain read-only; migration/stamping is explicit mutation;
+- observation APIs remain read-only;
 - events are reconciliation hints, never absence/deletion authority;
-- plugin-generated local writes correlate by exact transaction/observation provenance, not timing windows;
+- plugin-generated local writes correlate by exact provenance, not timing windows;
 - cancellation is cooperative and never substitutes for crash durability;
 - no new operation starts while suspending/suspended/unloading;
-- automatic text merge requires known bounded input sizes and falls back to preservation/conflict when unknown/oversized;
-- Windows/iOS supported boundaries and mobile isolation remain mandatory.
+- automatic text merge requires bounded known inputs and otherwise preserves/conflicts;
+- Windows/iOS boundaries remain mandatory.
 
 ## 10. Semantic state validation
 
-Known critical semantic issue codes remain stable. The contract additionally provides `other-semantic-inconsistency` with a privacy-safe invariant category. This prevents a newly discovered impossible state from being treated as trusted merely because the foundation did not predict a dedicated enum member. Any returned semantic issue yields recovery-required authority rather than ordinary trusted continuation.
+Known critical semantic issue codes remain stable. `other-semantic-inconsistency` supplies a privacy-safe fail-closed extension category for newly discovered impossible state.
 
 ## 11. Global invariants
 
@@ -186,43 +127,63 @@ Known critical semantic issue codes remain stable. The contract additionally pro
 5. Stable remote identity is separate from logical path; duplicate candidates remain explicit.
 6. Remote-ingestion progress never discards the only durable fact required by unresolved earlier work.
 7. Every mutation has durable intent; dispatch possibility becomes durable before the external call.
-8. Create/retry uses one reserved remote identity; existing-object update preserves predecessor/concurrent candidates until authority is resolved.
-9. Local create/replace pre-state authority is explicit and survives every swap boundary.
-10. Persistence revision is not semantic authority.
-11. Semantic contradictions fail closed, including newly discovered categories.
-12. PR #33 operation-local stale isolation and unrelated safe-path progress remain intact.
-13. `drive.file`, same-device authentication, device-local secrets, safe-union first sync, destructive circuit breaker, portable-config isolation, mobile compatibility, and resource-bounded processing remain fixed.
-14. When external mutation stops and services eventually succeed, replicas converge or remain explicitly conflicted/recovery-blocked rather than silently losing data or livelocking.
+8. Local create/replace pre-state authority is explicit and survives every swap boundary.
+9. Persistence revision is not semantic authority.
+10. Semantic contradictions fail closed.
+11. PR #33 operation-local stale isolation remains intact.
 
 ## 12. PR #33 preservation boundary
 
-PR #33 remains open/unmerged and is the reviewed predecessor implementation at `85d509d90d475717d609c559fad870f64b956e9e`. This foundation branch is rooted from that reviewed implementation. Its accepted behaviors are preserved:
-
-- operation-local stale preconditions do not abort unrelated safe work;
-- exact known-unmutated pending intent may be retired only from mutation-boundary proof;
-- one current observation per side/path is reused within a validation pass;
-- local enumeration uncertainty remains all/path/subtree scoped;
-- diagnostics expose privacy-safe aggregate precondition evidence.
-
-The corrected foundation broadens future crash/recovery authority but does not reverse any of those behaviors.
+PR #33 remains open/unmerged and is the reviewed predecessor implementation at `85d509d90d475717d609c559fad870f64b956e9e`. Its accepted operation-local stale isolation, pending-intent retirement, per-pass observation coherence, scoped uncertainty, and diagnostic privacy remain preserved.
 
 ## 13. Supervisor finding disposition A–H
 
-| Finding | Disposition in candidate | Correction |
-|---|---|---|
-| A — remote update preservation | **CONFIRMED AND CORRECTED** | No undocumented CAS; immutable-candidate preservation and application proof required before conflict-free acknowledgment. |
-| B — BASE healing proof | **CONFIRMED AND CORRECTED** | Discriminated file/folder/absence common proofs; file proof requires canonical SHA-256 equality. |
-| C — local pre-state authority | **CONFIRMED AND CORRECTED** | Create/replace discriminated transaction with exact absent/present authority and canonical old/new evidence. |
-| D — multi-batch ingestion | **CONFIRMED AND CORRECTED** | Durable `learnedRemoteBatches[]`; latest-only replacement prohibited until safe reduction. |
-| E — dispatch durability | **CONFIRMED AND CORRECTED** | Durable `dispatch-authorized` before call; explicit crash windows and restart meaning. |
-| F — approved SHA semantics | **CONFIRMED AND CORRECTED** | Contract version/checkpoint/current candidate/externally approved workstream-base SHA explicitly separated. |
-| G — parallel feasibility | **CONFIRMED AND CORRECTED** | Workstream manifest now requires branch-local fakes, frozen cross-owned tests, and branch-local typecheck/build feasibility. |
-| H — validation extensibility | **CONFIRMED AND CORRECTED** | Stable known codes plus privacy-safe `other-semantic-inconsistency`. |
-
-No genuine product-authority decision was required to resolve these findings. They are engineering safety corrections within the existing target contract.
+Findings A–H remain **CONFIRMED AND CORRECTED**. This reject/fix pass does not reopen them.
 
 ## 14. Candidate freeze boundary
 
-The contract version remains `phase6-sync-foundation-v1`; the version label is semantic, not an approval claim. The historical Codex implementation checkpoint `8b575e7439fdd601166e3bdb6e335992364da3fc` is not the future worker base.
+The contract version remains `phase6-sync-foundation-v1`; it is semantic, not an approval claim. The historical Codex checkpoint is not the worker base. After independent approval, the supervisor will externally identify one exact complete workstream-base SHA. Parallel implementation remains unauthorized until then.
 
-After this continuation is finished and independently approved, the supervisor will identify one exact **workstream-base SHA** externally. Every A–G worker must branch from that complete snapshot. Until that explicit approval, this document remains a candidate and parallel implementation is unauthorized.
+## 15. Reject/fix R1–R6 lifecycle corrections — superseding authority
+
+This section supersedes any earlier wording in this document that conflicts with it.
+
+### R1 — exact plan authority
+
+The legacy planner DTO may still contain compatibility-only `base-trusted` / `identity-unambiguous` markers, but those markers are **not executable authority**. The frozen execution path accepts only `ExecutablePlannedOperation`, whose preconditions structurally exclude those nominal markers and can carry `ExactBaseAuthority` and `IdentityAuthorityProof` directly. Workstream D must migrate any history/identity-dependent operation to exact authority before it can enter the authoritative executor/committer seam.
+
+### R2 — recoverable physical mutation descriptors
+
+`RecoverableOperationIntent` now persists physical effects, not merely a path and operation bit. A single-effect operation carries one durable effect. A clean merge carries at least two separately staged effects. The durable descriptors cover local file create/replace, remote file create/update, move with side/from/to/identity, and trash with exact deletion/BASE authority. Restart therefore does not require the pre-crash in-memory `PlannedOperation` to know what may have happened.
+
+### R3 — every remote mutation uses the safe seam
+
+`ReliableRemoteMutationPort` covers reserved file/folder create, preservation-safe file content update, identity-preserving move, and trash. All return explicit verified-effect / verified-not-applied / conflict-preserved / outcome-unknown states. The raw `GoogleDrivePort.create/update/move/trash` methods are compatibility transport primitives only and are non-authoritative for the new synchronization path. Workstream A owns the adapter; Workstream D consumes only the safe port.
+
+### R4 — materialization is not convergence
+
+`RemoteMutationApplicationProof` proves only that a physical candidate/effect was safely verified without destructive loss. `RemotePathConvergenceAuthority` separately answers whether the logical path is conflict-free. If R0, independent RI, and writer candidate RW all exist, RW may be safely materialized while the path remains `conflict-preserved`. Ordinary convergence requires both verified application and explicit conflict-free convergence authority.
+
+### R5 — exact intended remote content survives restart
+
+Every remote file-content create/update identity durably binds canonical SHA-256 plus byte size for the exact intended bytes before dispatch. Lost-response recovery verifies the candidate against that persisted intended evidence, not against whatever LOCAL contains after restart.
+
+### R6 — missed event plus unchanged metadata cannot become permanent authority
+
+Workstream B must implement `LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()`. Verify/Reconcile and policy-selected integrity sweeps must eventually use an authoritative cache-bypassing byte read. Thus a same-size modification with unchanged/preserved mtime, missed watcher event, and unchanged cached observation token may temporarily evade the fast path but cannot remain permanent stale authority. Workstream G must model this exact scenario.
+
+## 16. Mutation lifecycle cross-contract audit
+
+For every v1 mutating plan kind the frozen chain is now complete:
+
+`PLAN -> exact execution authority -> durable operation/effect intent -> durable dispatch authority -> local/remote safe mutation port -> physical verification -> path convergence/conflict -> BASE/state commit -> restart recovery`.
+
+- upload-create/update: exact intended content is durable; remote create/update use safe identities/outcomes.
+- download-create/update: exact remote read feeds a local create/replace transaction with durable pre-state and intended new evidence.
+- remote move: durable side/from/to/object/identity descriptor plus safe remote move outcome.
+- local move: durable side/from/to/identity descriptor; Workstream B provides physical semantics and C persists stage/effect authority.
+- remote trash: durable remote object plus exact BASE/deletion/identity authority and safe trash outcome.
+- local trash: durable local path plus exact BASE/deletion authority.
+- clean text merge: one logical operation coordinates two or more separately staged physical effects; one-side completion can never imply logical completion.
+
+No v1 mutation requires a private sidecar contract or the pre-crash in-memory plan to reconstruct unfinished physical intent.
