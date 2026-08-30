@@ -58,3 +58,35 @@ This session may establish shared contracts, minimal compilable scaffolding, arc
 
 Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required after this foundation is complete.**
 
+## 2026-08-30 — Checkpoint 1: implementation audit, protocol research, and contract skeleton
+
+The actual production implementation was inspected across contracts, persistent state, commit/execution/planning, Drive, snapshot/controller/runtime, local Windows/iOS adapter boundaries, and merge/text retention. Every Section 9 finding was classified from code evidence. The complete 20-item disposition and governing correction are persisted in `dev/planning-and-building/phase6-sync-architecture-foundation.md`.
+
+Material confirmed mechanisms include: persistence CAS reused as semantic authority; no BASE healing for `equal-current-content`; no restart consumer for pending/uncertain journals; one-page/collapsed Drive Changes tokens; unresolved paths pinning cursor progress; non-atomic read/compare/later-update; server-assigned retry-unsafe create; listed duplicate paths collapsed in snapshot maps; nominal `identity-unambiguous`; non-exact `base-trusted`; non-persistent local swap recovery; verification after local swap; unpinned ranged downloads; Drive PATCH during observation; event/lifecycle gaps; no self-mutation provenance; cancellation only between operations; unbounded O(n*m) text merge/materialization; no production stale-device transition; and shallow persisted-state semantic validation.
+
+Current official Google Drive, Obsidian, Apple iOS, and Microsoft Windows sources were consulted. The resulting foundation does not invent Drive CAS or indefinite iOS execution. It uses documented intermediate/terminal Changes tokens, pre-generated Drive IDs, resumable-session recovery, explicit remote ambiguity, reconciliation after missed events, and cancellation that is subordinate to crash recovery.
+
+Candidate shared contracts and focused architecture tests were added. Initial verification: typecheck PASS; focused foundation tests `6/6` PASS; `git diff --check` PASS. No existing production behavior was changed. PR #33's operation-local stale isolation, exact pending retirement, per-pass observation reuse, scoped uncertainty, and diagnostic privacy remain preserved.
+
+Created planning artifacts:
+
+- `dev/planning-and-building/phase6-sync-architecture-foundation.md`
+- `dev/planning-and-building/phase6-sync-contract-freeze.md`
+- `dev/planning-and-building/phase6-sync-parallel-workstreams.md`
+- `dev/planning-and-building/phase6-sync-adversarial-validation.md`
+
+Created code/test artifact:
+
+- `src/contracts/synchronization-foundation.ts`
+- `test/phase6-sync-architecture-foundation.test.ts`
+
+Modified shared/project artifacts:
+
+- `src/contracts/common.ts`
+- `src/contracts/index.ts`
+- `dev/planning-and-building/project-state.yaml`
+- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `dev/evidence/_ca-output.md`
+- this dedicated evidence file
+
+Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required.**

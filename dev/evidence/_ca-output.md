@@ -1958,3 +1958,11 @@ Agent `agt-CA-P6-SYNC-FOUNDATION-01` verified PR #33 as open, unmerged, mergeabl
 This is a Stage 2A serial architecture gate. No later workstream agent/branch has been launched, no protected branch or PR #33 has been modified, and Stage 3 has not begun.
 
 Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
+## 2026-08-30 — Synchronization architecture foundation checkpoint 1
+
+The production synchronization stack was audited against all 20 required findings and current official Google Drive, Obsidian, Apple iOS, and Microsoft Windows sources. The candidate foundation now separates persistence CAS from semantic authority, remote ingestion from per-path convergence, Drive intermediate from terminal tokens, stable object identity from logical path, and cancellation from crash recovery. It also defines exact BASE authority/healing, reserved-ID mutation identity, explicit unknown outcomes, restart-consumable intent, verified/recoverable local transactions, exact self-mutation provenance, fault points, and fail-closed merge resource policy.
+
+Typecheck PASS; focused foundation contract/scaffolding tests `6/6` PASS; `git diff --check` PASS. No product implementation behavior changed. Architecture, contract-freeze candidate, exact non-overlapping workstreams, adversarial matrix, all finding dispositions, sources, and complete checkpoint evidence are persisted in the dedicated foundation record.
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.

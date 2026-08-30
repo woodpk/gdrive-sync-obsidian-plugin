@@ -257,3 +257,24 @@ Phase 6 construction must begin in the new supervisor session after repository-g
 - current supervisor operational handoff status: `COMPLETE — NEW SUPERVISOR RE-ENTRY REQUIRED`
 
 The exact final remote `master` SHA after this file is committed is intentionally obtained from GitHub rather than self-embedded, because a commit cannot contain its own SHA as file content without an impossible Git hash self-reference. The new supervisor must verify that exact head during re-entry.
+
+## 16. 2026-08-30 Synchronization Architecture Foundation Re-Entry Addendum
+
+This later addendum supersedes the historical Phase 6 “not started” and sole-branch topology language above for current-progress purposes. Current repository/evidence remains authoritative.
+
+- foundation agent: `agt-CA-P6-SYNC-FOUNDATION-01`
+- isolated branch: `phase6-sync-architecture-foundation`
+- exact reviewed predecessor: PR #33 head `85d509d90d475717d609c559fad870f64b956e9e`
+- foundation implementation SHA: `PENDING_FOUNDATION_IMPLEMENTATION_COMMIT`
+- contract version: `phase6-sync-foundation-v1`
+- architecture: `phase6-sync-architecture-foundation.md`
+- contract-freeze candidate: `phase6-sync-contract-freeze.md`
+- non-overlapping workstreams: `phase6-sync-parallel-workstreams.md`
+- adversarial matrix: `phase6-sync-adversarial-validation.md`
+- dedicated evidence: `../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md`
+- protected branches: not modified or merged by the foundation task
+- PR #33: not merged by the foundation task
+- parallel implementation: **NOT AUTHORIZED**
+- Stage 3: not begun
+
+The next valid action is independent supervisor review of the exact foundation implementation SHA, contracts, finding register, workstream ownership, and adversarial seams. Later workstream agents/branches must not be created until that review explicitly approves the foundation.
