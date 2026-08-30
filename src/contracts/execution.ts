@@ -1,5 +1,5 @@
 import type { ContentEvidence, OperationId, RemoteObjectId, StateRevision } from "./common";
-import type { ExecutablePlannedOperation, OperationPrecondition } from "./plan";
+import type { ExecutableOperationPrecondition, ExecutablePlannedOperation, OperationPrecondition, PlannedOperation } from "./plan";
 
 export type PreconditionValidationResult =
   | { readonly status: "valid" }
@@ -22,9 +22,20 @@ export type ExecutionResult =
   | { readonly status: "blocking-failure" | "uncertain" | "recovery-required"; readonly reason: string }
   | { readonly status: "cancelled"; readonly reason?: string };
 
-/** The new synchronization execution path accepts only authority-complete planned operations. */
+/** Compatibility seam used by the existing pre-foundation execution coordinator. Not authoritative for the new synchronization path. */
 export interface SynchronizationExecutor {
-  validatePreconditions(operation: ExecutablePlannedOperation): Promise<PreconditionValidationResult>;
+  validatePreconditions(operation: PlannedOperation): Promise<PreconditionValidationResult>;
+  execute(operation: PlannedOperation): Promise<ExecutionResult>;
+}
+
+export type AuthorityCompletePreconditionValidationResult =
+  | { readonly status: "valid" }
+  | { readonly status: "stale"; readonly failed: readonly ExecutableOperationPrecondition[] }
+  | { readonly status: "blocked" | "recovery-required"; readonly reason: string };
+
+/** Frozen Workstream D execution seam. Nominal BASE/identity markers are structurally impossible here. */
+export interface AuthoritativeSynchronizationExecutor {
+  validatePreconditions(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult>;
   execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult>;
 }
 
@@ -33,7 +44,12 @@ export type CommitResult =
   | { readonly status: "stale-state"; readonly actualRevision?: StateRevision }
   | { readonly status: "recovery-required"; readonly reason: string };
 
-/** Only a durable, integrity-verified receipt from an authority-complete operation can enter authoritative success state. */
+/** Compatibility committer for the existing coordinator. */
 export interface AuthoritativeSuccessCommitter {
+  commitVerifiedSuccess(operation: PlannedOperation, receipt: VerifiedExecutionReceipt, expectedStateRevision?: StateRevision): Promise<CommitResult>;
+}
+
+/** Frozen new-path committer: only an authority-complete operation may advance authoritative synchronization state. */
+export interface AuthorityCompleteSuccessCommitter {
   commitVerifiedSuccess(operation: ExecutablePlannedOperation, receipt: VerifiedExecutionReceipt, expectedStateRevision?: StateRevision): Promise<CommitResult>;
 }
