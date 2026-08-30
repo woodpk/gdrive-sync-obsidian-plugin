@@ -273,6 +273,8 @@ This later addendum supersedes the historical Phase 6 “not started” and sole
 - adversarial matrix: `phase6-sync-adversarial-validation.md`
 - dedicated evidence: `../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md`
 - review PR: [#34](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34), targeting `phase6-integration`, open and unmerged
+- GitHub/Linux plugin verification: `Phase 6 Alpha Diagnostic Verification` run `33318458951` PASS on evidence head `e53f65bfb6b7bb1597beb274c27b313db477ecd3`
+- Azure qualification: run `33318458964` failed solely because the Static Web App already had the maximum number of staging environments; no Azure change is authorized or performed
 - protected branches: not modified or merged by the foundation task
 - PR #33: not merged by the foundation task
 - parallel implementation: **NOT AUTHORIZED**
