@@ -402,7 +402,7 @@ GitHub Actions:
 - PR head metadata: `phase6-integration` @ `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
 - exact generated PR merge SHA checked out by Actions: `2433141fb106d72b4a71e61c8be5d83893d37620`;
 - checkout log: merge ref combined `ca245e2198f1b8311b3edc3e419379c8c982ede6` into unchanged `master` base `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
-- `npm ci`: **PASS** — 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities;
 - `npm run typecheck`: **PASS**;
 - `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
 - lifecycle repair tests 214–219 all passed in the combined integration run;
@@ -1146,7 +1146,7 @@ Qualified Windows assertions:
 
 `Synchronization root cause: NOT YET ESTABLISHED`
 
-PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
+PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 completion, or Stage 3 work occurred.
 ---
 
 ## Phase 6 Alpha — iOS HTTPS Callback to Obsidian Handoff Repair — `agt-CODEX-P6-IOS-CALLBACK-HANDOFF-01`
@@ -2006,3 +2006,33 @@ Temporary closure-helper workflow attempts in this continuation were transport-o
 The exact final evidence-bearing branch SHA is necessarily generated after this text and therefore cannot self-contain itself without self-reference; it is recorded in PR #34 metadata and the completion response after exact-head verification.
 
 **Parallel implementation wave: NOT AUTHORIZED — independent supervisor re-review is required.**
+
+---
+
+## 2026-08-30 — Synchronization foundation supervisor reject/fix R1–R6
+
+Rejected candidate: `0d84f542a556800d93020b4000072da8faa3f740`. Agent: `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`. Prior A–H corrections remain accepted and preserved.
+
+**R1 CORRECTED:** executable planning authority now carries exact `ExactBaseAuthority` / `IdentityAuthorityProof`; nominal `base-trusted` / `identity-unambiguous` survive only as compatibility planner markers and are structurally excluded from `ExecutablePlannedOperation` and the new authoritative executor/committer seam.
+
+**R2 CORRECTED:** durable recovery now records discriminated physical mutation descriptors/effects for local file create/replace, remote file create/update, side-qualified move, side-qualified trash, and multi-effect clean merge. Restart can reconstruct authorized physical intent without volatile pre-crash plan memory.
+
+**R3 CORRECTED:** `ReliableRemoteMutationPort` covers create, preservation-safe content update, identity-preserving move, and trash with explicit verified/not-applied/conflict/unknown outcomes. Raw `GoogleDrivePort` mutation methods are compatibility transport primitives only.
+
+**R4 CORRECTED:** safe physical materialization is distinct from logical path convergence. R0 + independent RI + writer candidate may have verified non-destructive application while the path remains conflict-preserved; ordinary convergence requires separate conflict-free authority.
+
+**R5 CORRECTED:** remote file-content mutation identity durably binds exact intended SHA-256 plus byte size before dispatch; interrupted candidate recovery validates against that persisted intended version, not later current LOCAL.
+
+**R6 CORRECTED:** `LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()` requires an authoritative actual-byte read/re-hash path. The B/G contract and adversarial matrix explicitly cover same-size/same-mtime H0→H1, missed watcher event, and unchanged cached token followed by cache-bypassing integrity discovery.
+
+The bounded cross-contract audit now covers upload-create/update, download-create/update, local/remote move, local/remote trash, and clean merge across `PLAN -> exact authority -> durable effect intent -> dispatch authority -> safe mutation port -> verification -> convergence/conflict -> BASE/state commit -> restart recovery`. No private authority sidecar is required by the frozen candidate.
+
+Predictive foundation tests retain prior cases and add the required T1–T10 reject/fix coverage. First reject/fix PR merge-ref run `33329149006` / job `99304466290` failed only at typecheck because the first exact-only interface revision collided with the existing legacy coordinator/controller call sites. No A–G production file was modified. The contracts were separated into compatibility and new authoritative seams; corrected checkpoint PR merge-ref run `33329198021` / job `99304595239` then passed typecheck, complete tests, focused workflow tests, production build, repository check, whitespace check, artifact identity, and upload.
+
+CI evidence-label correction is **CORRECTED**: GitHub pull-request verification is recorded as generated **PR merge-ref verification containing the candidate head**, not a literal clean head-SHA checkout unless a workflow explicitly performs one.
+
+Changed shared contract/foundation files are `src/contracts/plan.ts`, `src/contracts/execution.ts`, `src/contracts/synchronization-foundation.ts`, `src/contracts/google-drive.ts`, `src/contracts/local-vault.ts`, `test/phase6-sync-architecture-foundation.test.ts`, the four synchronization-foundation planning artifacts, `phase-6-supervisor-handoff.md`, `project-state.yaml`, and the two evidence records. No A–G implementation-owned production file was changed; worker count/ownership remain sound and no worker branch was created.
+
+The exact final evidence-bearing candidate SHA and final PR merge-ref verification are recorded in PR #34 metadata and the completion response after this append-only evidence commit. PR #33/PR #34 remain unmerged; no protected branch, Azure/OAuth production configuration, tag/release, physical Windows/iPhone synchronization, or Stage 3 work was performed.
+
+**PARALLEL IMPLEMENTATION NOT AUTHORIZED — independent supervisor re-review required.**
