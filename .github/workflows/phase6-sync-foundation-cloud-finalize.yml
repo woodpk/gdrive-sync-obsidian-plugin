@@ -48,14 +48,18 @@ The exact final evidence-bearing branch SHA is necessarily generated after this 
 **Parallel implementation wave: NOT AUTHORIZED — independent supervisor re-review is required.**
 EOF
           fi
-          ENCODED="$(base64 -w0 /tmp/ca-output.md)"
-          gh api --method PUT "repos/${REPO}/contents/dev/evidence/_ca-output.md" \
-            -f message='docs: append synchronization foundation cloud closure' \
-            -f content="$ENCODED" \
-            -f branch="$BRANCH" \
-            -f sha="$FILE_SHA" >/tmp/update.json
+          base64 -w0 /tmp/ca-output.md > /tmp/encoded.txt
+          jq -n \
+            --arg message 'docs: append synchronization foundation cloud closure' \
+            --arg content "$(cat /tmp/encoded.txt)" \
+            --arg branch "$BRANCH" \
+            --arg sha "$FILE_SHA" \
+            '{message:$message,content:$content,branch:$branch,sha:$sha}' > /tmp/update-request.json
+          gh api --method PUT "repos/${REPO}/contents/dev/evidence/_ca-output.md" --input /tmp/update-request.json >/tmp/update-result.json
           WF_SHA="$(gh api "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml?ref=${BRANCH}" --jq '.sha')"
-          gh api --method DELETE "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml" \
-            -f message='ci: remove synchronization foundation evidence finalizer' \
-            -f sha="$WF_SHA" \
-            -f branch="$BRANCH" >/tmp/delete.json
+          jq -n \
+            --arg message 'ci: remove synchronization foundation evidence finalizer' \
+            --arg sha "$WF_SHA" \
+            --arg branch "$BRANCH" \
+            '{message:$message,sha:$sha,branch:$branch}' > /tmp/delete-request.json
+          gh api --method DELETE "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml" --input /tmp/delete-request.json >/tmp/delete-result.json
