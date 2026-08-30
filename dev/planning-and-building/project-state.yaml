@@ -92,7 +92,7 @@ parallel_wave:
   note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, which remains unauthorized."
 
 sync_architecture_foundation:
-  status: "cloud_continuation_corrected_candidate_independent_re_review_pending"
+  status: "reject_fix_corrected_candidate_supervisor_re_review_pending"
   predecessor_agent: "agt-CA-P6-SYNC-FOUNDATION-01"
   continuation_agent: "agt-CA-P6-SYNC-FOUNDATION-CLOUD-01"
   branch: "phase6-sync-architecture-foundation"
@@ -103,16 +103,27 @@ sync_architecture_foundation:
   predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
   predecessor_contract_checkpoint_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
   cloud_reentry_start_sha: "e526d65ee64e8baf58fd7ea0439dfabcfb942c9d"
+  rejected_candidate_sha: "0d84f542a556800d93020b4000072da8faa3f740"
   contract_version: "phase6-sync-foundation-v1"
-  supervisor_review_findings:
-    A_remote_update_preservation: corrected_candidate
-    B_file_common_base_authority: corrected_candidate
-    C_local_transaction_prestate: corrected_candidate
-    D_multi_batch_remote_ingestion: corrected_candidate
-    E_dispatch_durability_order: corrected_candidate
-    F_workstream_base_sha_semantics: corrected_candidate
-    G_parallel_branch_feasibility: corrected_candidate
-    H_semantic_validation_extensibility: corrected_candidate
+  accepted_prior_findings:
+    A_remote_update_preservation: corrected_preserved
+    B_file_common_base_authority: corrected_preserved
+    C_local_transaction_prestate: corrected_preserved
+    D_multi_batch_remote_ingestion: corrected_preserved
+    E_dispatch_durability_order: corrected_preserved
+    F_workstream_base_sha_semantics: corrected_preserved
+    G_parallel_branch_feasibility: corrected_preserved
+    H_semantic_validation_extensibility: corrected_preserved
+  reject_fix_findings:
+    R1_exact_plan_authority: corrected_candidate
+    R2_recoverable_mutation_descriptor: corrected_candidate
+    R3_safe_remote_move_trash: corrected_candidate
+    R4_application_vs_convergence: corrected_candidate
+    R5_exact_intended_remote_content: corrected_candidate
+    R6_cache_bypassing_integrity: corrected_candidate
+    CI_checkout_label: corrected_candidate_merge_ref_wording
+  mutation_lifecycle_audit: "complete_for_upload_create_update_download_create_update_remote_local_move_remote_local_trash_clean_text_merge"
+  ci_checkout_semantics: "GitHub pull-request workflow checks out the generated PR merge ref containing the candidate head unless a workflow explicitly requests the head SHA; evidence must label it accordingly."
   artifacts:
     - "phase6-sync-architecture-foundation.md"
     - "phase6-sync-contract-freeze.md"
@@ -124,16 +135,17 @@ sync_architecture_foundation:
     - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md"
   approved_workstream_base_sha: null
   approved_workstream_base_rule: "The independent supervisor will identify one exact final repository SHA externally after approval; every A-G worker must branch from that complete snapshot."
+  final_candidate_sha_recording_rule: "Read exact current branch head from GitHub after evidence closure; do not attempt self-referential SHA storage inside the commit that creates it."
   parallel_implementation_authorized: false
   worker_branches_created: false
   stage_3_started: false
   azure_change_authorized: false
-  next_valid_action: "Complete cloud continuation verification/evidence, then return the exact final PR #34 head to independent supervisor architecture review. Do not launch A-G."
+  next_valid_action: "Complete reject/fix evidence and PR merge-ref verification, then return exact PR #34 head for independent supervisor re-review. Do not launch A-G."
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Complete and independently re-review the corrected Phase 6 synchronization architecture foundation. Parallel implementation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
+  action: "Return the R1-R6 corrected synchronization foundation candidate to independent supervisor re-review. Parallel implementation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
   governing_file: "stage-1-build-decomposition.md"
   relevant_sections: ["10", "11", "17"]
   handoff: "phase-6-supervisor-handoff.md"
