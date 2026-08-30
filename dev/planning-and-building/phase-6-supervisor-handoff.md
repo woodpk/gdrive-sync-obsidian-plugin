@@ -2,139 +2,86 @@
 
 ## 1. Authority and current purpose
 
-This is the current Stage 2A Phase 6 operational re-entry handoff for `woodpk/gdrive-sync-obsidian-plugin`. It does not redefine product authority.
-
-Normative authority remains in:
-
-- `dev/planning-and-building/agent-led-software-product-construction-manual.md`;
-- `dev/planning-and-building/target-system-specification.md`;
-- `dev/planning-and-building/decision-register.yaml`;
-- `dev/planning-and-building/stage-1-build-decomposition.md`;
-- `dev/planning-and-building/phase-1-shared-contracts.md` and `src/contracts/**`;
-- current repository state and accepted `dev/evidence/**`;
-- later explicit user decisions.
+This is the Stage 2A Phase 6 operational re-entry handoff for `woodpk/gdrive-sync-obsidian-plugin`. Product authority remains in the current manual, target-system specification, decision register, Stage 1 decomposition, Phase 1 shared contracts, current repository/evidence, and later explicit user decisions.
 
 Stage 0 and Stage 1 are complete. Stage 2A remains active. Stage 3 has not begun.
 
-## 2. Synchronization foundation continuation state
+## 2. Synchronization foundation state
 
 Foundation branch: `phase6-sync-architecture-foundation`  
 Review PR: #34 → `phase6-integration`  
 PR state: **OPEN / UNMERGED**  
 Reviewed predecessor implementation: PR #33 head `85d509d90d475717d609c559fad870f64b956e9e`  
-Historical Codex contract checkpoint: `8b575e7439fdd601166e3bdb6e335992364da3fc`  
-Historical Codex handoff head before cloud correction: `e526d65ee64e8baf58fd7ea0439dfabcfb942c9d`  
-Contract version label: `phase6-sync-foundation-v1`
+Cloud continuation rejected candidate: `0d84f542a556800d93020b4000072da8faa3f740`  
+Contract version: `phase6-sync-foundation-v1`  
+Agent: `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`
 
-The cloud continuation agent is `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`. It must preserve valid predecessor foundation architecture and correct only the shared authority gaps identified by independent review. Parallel implementation remains **NOT AUTHORIZED**.
+The accepted A–H correction remains valid. The supervisor subsequently rejected `0d84f542...` only for lifecycle contract gaps R1–R6. This branch now contains the bounded reject/fix correction; the exact current candidate head must be read from GitHub after evidence closure. Parallel implementation remains **NOT AUTHORIZED**.
 
-The exact current candidate head must always be read from GitHub. The future **supervisor-approved workstream base SHA** is selected externally after independent review and is not the older code-only checkpoint.
+## 3. Accepted foundation preserved
 
-## 3. Preserved predecessor foundation
+Preserve LOCAL/REMOTE/BASE/common separation; persistence revision versus semantic generation; canonical BASE healing; multi-batch remote ingestion; duplicate-path ambiguity; immutable-candidate remote update preservation; local create/replace pre-state authority; dispatch-authorized crash semantics; exact local provenance; cancellation/lifecycle/fault injection; bounded merge; semantic validation extensibility; A–G ownership; and PR #33 operation-local stale isolation.
 
-The continuation preserves:
+## 4. Reject/fix R1–R6 corrected contract
 
-- LOCAL / REMOTE / BASE/common separation;
-- persistence revision versus semantic generation;
-- exact BASE authority and BASE healing;
-- remote ingestion versus path convergence;
-- discriminated intermediate/terminal Drive pages;
-- explicit duplicate remote-path ambiguity;
-- durable mutation identity and unknown outcome;
-- restart recovery state;
-- local transaction stages;
-- exact local mutation provenance;
-- cooperative cancellation distinct from crash safety;
-- lifecycle state and deterministic fault injection;
-- resource-bounded text merge policy;
-- semantic state validation;
-- A–G decomposition strategy;
-- PR #33 operation-local stale isolation and safe unrelated-path progress.
+### R1 — executable plan authority
 
-## 4. Independent review corrections now required by candidate contracts
+Compatibility planner DTOs may still contain nominal `base-trusted` / `identity-unambiguous`, but they are not executable authority. The new authoritative execution seam accepts only `ExecutablePlannedOperation`, which carries exact `ExactBaseAuthority` / `IdentityAuthorityProof` where required.
 
-### Remote updates
+### R2 — durable mutation recovery
 
-Current official Drive v3 research did not establish a documented atomic expected-`File.version`/`If-Match` content-update CAS for `files.update`. `File.version` is observable and monotonically increasing, but read-then-later-update does not atomically bind that version. Resumable upload status is transport recovery, not content CAS. Ordinary blob revisions may be purged and are supplementary recovery only.
+`RecoverableOperationIntent` persists separately staged physical effects. Durable descriptors cover local file create/replace, remote file create/update, move with side/from/to/identity, and trash with exact BASE/deletion authority. Clean merge has at least two effects, so one-side completion cannot imply logical completion.
 
-Accordingly, the candidate requires immutable-candidate preservation for existing-object content updates. Final writer bytes alone cannot prove an intervening Windows/iOS version never existed or was preserved.
+### R3 — complete safe remote mutation surface
 
-### File BASE healing
+`ReliableRemoteMutationPort` covers file/folder create, preservation-safe file update, identity-preserving move, and trash. All return explicit verified/not-applied/conflict/unknown outcomes. Raw `GoogleDrivePort` mutation methods are compatibility transport primitives only.
 
-File common-state authority is discriminated and requires current canonical SHA-256 equality plus current local/remote identity/revision evidence. Size/timestamp/path/object identity alone cannot authorize healing.
+### R4 — application is not convergence
 
-### Local hard-death recovery
+A candidate may be safely materialized while an independent concurrent version remains. `RemoteMutationApplicationProof` verifies physical non-destructive materialization; `RemotePathConvergenceAuthority` separately determines conflict-free convergence. R0 + RI + writer candidate therefore remains conflict-preserved unless independent equivalence/no-concurrency authority exists.
 
-Create and replace transactions now carry distinct exact target pre-state authority. Replace includes exact old observation + canonical old content authority; create carries authoritative expected absence. Backup expectations therefore cannot be guessed after restart.
+### R5 — exact intended upload version
 
-### Remote ingestion durability
+Remote file-content mutation identity durably binds SHA-256 + byte size for the exact intended bytes before dispatch. Lost-response restart verifies the candidate against that durable L1 evidence, never against later current LOCAL L2.
 
-Authority state keeps a durable backlog of learned batches, not only a singular latest batch. A batch may be retired only after every reconciliation-relevant fact has been durably reduced elsewhere. This protects removals, moves, repeated changes, create-delete, duplicates, and long-lived unresolved paths while later batches continue.
+### R6 — missed-event cache bypass
 
-### Dispatch ordering
+`LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()` is frozen for Workstream B. Verify/Reconcile and policy-selected integrity sweeps must eventually re-read actual bytes, so a same-size/same-mtime missed-event H0→H1 change cannot leave stale H0 as permanent authority. G must model this exact case.
 
-`dispatch-authorized` is durably persisted before the external mutation call and means the mutation may have happened. Crash points distinguish pre-authority, post-authority/pre-call, call-before-response, and response-before-verification windows.
+## 5. Mutation lifecycle audit result
 
-### Semantic validation
+The frozen chain is complete for upload-create/update, download-create/update, remote/local move, remote/local trash, and clean merge:
 
-Known issue codes remain stable; `other-semantic-inconsistency` ensures a newly discovered contradictory state still fails closed.
+`PLAN -> exact authority -> durable physical effect intent -> durable dispatch authority -> safe mutation port -> verification -> convergence/conflict -> BASE/state commit -> restart recovery`.
 
-## 5. Current candidate artifacts
+No v1 mutation requires pre-crash volatile plan memory or a private authority sidecar to understand unfinished physical intent.
 
-- `phase6-sync-architecture-foundation.md`
-- `phase6-sync-contract-freeze.md`
-- `phase6-sync-parallel-workstreams.md`
-- `phase6-sync-adversarial-validation.md`
-- `project-state.yaml`
-- this handoff
-- `src/contracts/synchronization-foundation.ts`
-- `test/phase6-sync-architecture-foundation.test.ts`
-- predecessor evidence `../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md`
-- continuation evidence `../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md` once created
+## 6. A–G impact
 
-## 6. A–G branch rule
+- **A** implements every remote mutation kind behind `ReliableRemoteMutationPort` and adapts raw Drive transport.
+- **B** implements local transaction safety and cache-bypassing integrity reads.
+- **C** durably persists every physical effect, exact intended content, dispatch stage, and convergence/conflict authority.
+- **D** upgrades nominal planning DTOs into exact executable authority, consumes only safe mutation seams, and separates physical application from path convergence.
+- **E** guarantees policy integrity-reconciliation opportunities.
+- **F** remains bounded merge/resource safety.
+- **G** models all R1–R6 adversarial scenarios with no production ownership.
 
-No A–G worker branch exists or is authorized by this handoff. After independent approval, every worker prompt must name the same exact supervisor-approved repository SHA containing all final contracts, planning artifacts, re-entry state, tests, and evidence.
+Worker count and ownership remain unchanged and pairwise disjoint. `test/phase2-execution.test.ts` and `src/testing/fakes.ts` remain integration-owned.
 
-The current ownership manifest proves branch-local feasibility using frozen public seams and workstream-local fakes. Shared `src/testing/fakes.ts` and cross-workstream compatibility tests remain integration-owned. In particular, `test/phase2-execution.test.ts` crosses C's `StateCommitCoordinator` and D's execution coordinator; neither C nor D may edit it during parallel construction.
+## 7. Evidence/CI semantics
 
-## 7. Required re-entry procedure
+GitHub PR verification uses GitHub's generated **PR merge ref** unless a workflow explicitly checks out the head SHA. Evidence must therefore say "PR merge-ref verification containing candidate head <SHA> passed" rather than "exact-head checkout passed" when that is what occurred.
 
-A later supervisor must:
+No new CI workflow is to be created merely to manufacture literal head-SHA checkout evidence.
 
-1. read the current manual completely and perform the repository-grounded entry-state assessment;
-2. read target specification, decision register, Stage 1 decomposition, Phase 1 shared contracts, project state, this handoff, the four synchronization foundation artifacts, and current evidence;
-3. inspect `src/contracts/**`, foundation tests, PR #33 behavior, PR #34 diff, and actual branch/PR state;
-4. verify any external Drive concurrency claim against current official Google documentation;
-5. treat the exact repository as current implementation evidence;
-6. never launch A–G before independent approval names one exact workstream-base SHA.
+## 8. Hard boundary
 
-No unnecessary restart of Stage 0, Stage 1, or completed Stage 2A work is permitted.
+Do not merge PR #34 or PR #33; merge protected branches; create A–G branches; launch workers; alter Azure/OAuth production config; tag/release; perform physical Windows/iPhone synchronization; or begin Stage 3.
 
-## 8. Known infrastructure/platform qualifications
+## 9. Next authorized action
 
-- Azure Static Web Apps PR preview has previously failed because the Static Web App had the maximum number of staging environments. Azure must not be modified as part of the foundation correction. Only a current run showing the same log may be qualified the same way.
-- Fresh physical Windows/iPhone synchronization is outside this foundation-contract assignment.
-- Existing stock-iOS limitations and later accepted mobile adapter-boundary decisions remain governed by the decision register and accepted evidence; the foundation does not claim new physical platform proof.
+After the reject/fix agent finishes evidence and final PR merge-ref verification:
 
-## 9. Review governance and hard boundary
+> Return PR #34 and its exact corrected candidate head to the independent supervisor architecture reviewer.
 
-Independent review must inspect the exact candidate head, contract semantics, predictive tests, Drive research, workstream ownership/feasibility, and evidence. The foundation is not approved merely because CI passes.
-
-Do not:
-
-- merge PR #34 or PR #33;
-- merge `phase6-integration` or `master`;
-- create A–G branches or launch workers;
-- alter Azure or OAuth production configuration;
-- tag/release;
-- perform physical synchronization;
-- begin Stage 3.
-
-## 10. Next authorized action
-
-After the continuation agent has completed corrections, verification, evidence, and pushed the final candidate:
-
-> Return PR #34 and its exact final head to the independent supervisor architecture reviewer.
-
-Only that reviewer may approve the workstream base SHA and authorize the parallel implementation wave.
+Only that reviewer may approve a workstream-base SHA and authorize the parallel implementation wave.
