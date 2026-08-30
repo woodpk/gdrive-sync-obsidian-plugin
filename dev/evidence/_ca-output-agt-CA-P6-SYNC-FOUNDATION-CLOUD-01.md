@@ -196,3 +196,77 @@ This evidence file cannot contain the SHA of the commit that first creates itsel
 - No A–G worker branch, product implementation, Azure modification, OAuth configuration change, release/tag, physical Windows/iPhone synchronization, or Stage 3 work was performed.
 
 **Foundation continuation is complete at the contract/evidence level, subject only to final helper-file removal and exact-head CI confirmation. Parallel implementation remains NOT AUTHORIZED pending independent supervisor re-review.**
+
+---
+
+## 2026-08-30 — Supervisor REJECT/FIX correction R1–R6
+
+Rejected supervisor candidate: `0d84f542a556800d93020b4000072da8faa3f740`.
+
+Prior A–H corrections remain accepted and were preserved. This pass corrected only the supervisor-localized contract gaps R1–R6 and the CI evidence-label wording.
+
+### R1 — CORRECTED: exact plan authority
+
+`src/contracts/plan.ts` now carries exact `base-authority: ExactBaseAuthority` and `identity-authority: IdentityAuthorityProof`. Legacy `base-trusted` / `identity-unambiguous` remain compatibility-only planner DTO markers. `ExecutableOperationPrecondition` excludes those nominal markers, `ExecutablePlannedOperation` requires `authorityComplete: true`, and `assessExecutableOperation()` rejects any operation that still contains nominal authority. `src/contracts/execution.ts` adds `AuthoritativeSynchronizationExecutor` and `AuthorityCompleteSuccessCommitter`, both accepting only `ExecutablePlannedOperation`; the old executor/committer remain compatibility seams for the already-built pre-foundation coordinator.
+
+### R2 — CORRECTED: durable recoverable physical intent
+
+`RecoverablePhysicalMutationDescriptor` represents local file create/replace, remote file create/update, side-qualified move with source/destination/identity, and side-qualified trash with exact deletion/BASE authority. `RecoverableMutationEffect` persists descriptor + per-effect stage + verification reference. `RecoverableOperationIntent` requires one effect for a single-effect logical operation and at least two separately staged effects for clean text merge. Restart no longer requires the volatile pre-crash `PlannedOperation` to know what physical mutation may have occurred.
+
+### R3 — CORRECTED: safe remote move/trash and legacy migration rule
+
+`ReliableRemoteMutationPort` now covers reserved file/folder create, preservation-safe existing-file update, identity-preserving move, and trash. `RemoteMutationOutcome` distinguishes `verified-effect`, `verified-not-applied`, `conflict-preserved`, and `outcome-unknown`. Raw `GoogleDrivePort.create/update/move/trash` are explicitly compatibility transport primitives only; Workstream A owns their adapter and Workstream D consumes only the reliable frozen seam.
+
+### R4 — CORRECTED: application versus path convergence
+
+`remoteUpdateWasSafelyMaterialized()` verifies non-destructive physical materialization only. `RemotePathConvergenceAuthority` separately records either explicit conflict-free authority or preserved independent candidates. `remoteUpdateEligibleForOrdinaryConvergence()` requires both safe materialization and conflict-free path authority. Therefore R0 + independent RI + writer candidate may be safely materialized while remaining `conflict-preserved`; it is not ordinary convergence.
+
+### R5 — CORRECTED: exact intended remote file content
+
+Remote file create/update identities durably bind `CanonicalFileContentProof` (SHA-256 + byte size) before dispatch. Immutable-candidate application proof carries both intended and verified canonical evidence. Lost-response/restart recovery validates candidate bytes against the persisted intended version L1; a later LOCAL L2 does not redefine the interrupted operation.
+
+### R6 — CORRECTED: cache-bypassing integrity reconciliation
+
+`LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()` is frozen as a separate authoritative local integrity seam. Workstream B must implement actual-byte re-read/re-hash for Verify/Reconcile and policy integrity sweeps. The adversarial matrix explicitly covers H0→H1 with equal byte length, unchanged/restored mtime, missed watcher event, and unchanged cached observation token; the eventual integrity operation must discover H1. Workstream G owns the model case.
+
+### Bounded mutation lifecycle audit
+
+The corrected contracts were audited across:
+
+`PLAN -> EXACT AUTHORITY -> DURABLE OPERATION/EFFECT INTENT -> DURABLE DISPATCH AUTHORITY -> SAFE LOCAL/REMOTE MUTATION PORT -> VERIFICATION -> PATH CONVERGENCE OR CONFLICT -> BASE/STATE COMMIT -> RESTART RECOVERY`.
+
+Coverage is complete at the frozen contract level for upload-create, upload-update, download-create, download-update, remote move, local move, remote trash, local trash, and clean text merge. No v1 mutation needs a private authority sidecar or pre-crash volatile plan object to reconstruct unfinished physical intent.
+
+### Predictive tests
+
+`test/phase6-sync-architecture-foundation.test.ts` retains predecessor foundation tests and now proves all required reject/fix predictions T1–T10: exact BASE authority, exact identity authority, durable move descriptor, durable trash descriptor, multi-effect merge partial recovery, safe remote move/trash outcome states, application-vs-convergence separation, true conflict-free convergence authority, exact intended upload version after lost response, and same-size/same-mtime missed-event cache-bypass obligation.
+
+### Verification chronology
+
+First reject/fix PR merge-ref run `33329149006` / job `99304466290` failed at typecheck only. GitHub checked out generated PR merge ref `984b9505e9d68d8c71c82fcf2336964001332345`, which merged candidate `a70a558365b98a378d462ffe794ebba601808784` into base `3005fe89f4214a9e389889769b088abfcad8293a`. The failure exposed three current `execution-coordinator` calls still using legacy `PlannedOperation` and one controller diagnostic narrowing nominal `base-trusted`. No A–G production file was modified to hide that boundary.
+
+The contracts were adjusted instead: legacy coordinator interfaces remain compatibility-only while the new authoritative synchronization seam is exact-authority-only. Corrected checkpoint PR merge-ref run `33329198021` / job `99304595239` then passed dependency installation, typecheck, complete tests, focused workflow tests, production build, repository check, whitespace check, artifact identity, and evidence upload.
+
+Important evidence wording correction: these GitHub pull-request runs check out GitHub-generated **PR merge refs containing the candidate head**. They are not literal clean checkouts of the branch-head SHA. Future evidence and PR metadata use that precise description.
+
+### Changed shared contract/foundation files in this reject/fix pass
+
+- `src/contracts/plan.ts`
+- `src/contracts/execution.ts`
+- `src/contracts/synchronization-foundation.ts`
+- `src/contracts/google-drive.ts`
+- `src/contracts/local-vault.ts`
+- `test/phase6-sync-architecture-foundation.test.ts`
+- `dev/planning-and-building/phase6-sync-architecture-foundation.md`
+- `dev/planning-and-building/phase6-sync-contract-freeze.md`
+- `dev/planning-and-building/phase6-sync-parallel-workstreams.md`
+- `dev/planning-and-building/phase6-sync-adversarial-validation.md`
+- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `dev/planning-and-building/project-state.yaml`
+- evidence records only thereafter.
+
+No A–G implementation-owned production file was changed. Worker count and pairwise ownership remain unchanged. No worker branch was created. PR #33 and PR #34 remain unmerged. Azure/OAuth production configuration, protected branches, tags/releases, physical Windows/iPhone synchronization, and Stage 3 remain untouched/unperformed.
+
+The exact final candidate branch SHA and final PR merge-ref verification are necessarily recorded in PR #34 metadata and the supervisor completion response after evidence closure, avoiding an impossible self-referential evidence commit.
+
+**REJECT/FIX evidence recorded — parallel implementation remains NOT AUTHORIZED pending independent supervisor re-review.**
