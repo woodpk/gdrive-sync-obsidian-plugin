@@ -261,3 +261,72 @@ This section is appended to both required evidence files. The generated evidence
 PR #31 remains OPEN and UNMERGED. `phase6-integration`, `master`, tag/release state, OAuth/Azure product behavior, physical devices, synchronization execution, Phase 6 completion, and Stage 3 remain untouched.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 chronological relocation-state correction — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+### Review authority
+
+- reviewed rejected head: `adcc90042fe43e6964e0a8625620fab3b5a4b65f`
+- the prior phrase `unresolved/current dominance` is superseded for duplicate-key relocation merges by chronological latest-state-transition semantics.
+
+### C1 — latest-state-transition merge
+
+`mergeRecordSets()` now compares each duplicate record's state-transition time: `lastSeenAtMs` when current and `max(lastSeenAtMs, resolvedAtMs ?? lastSeenAtMs)` when resolved. The later state transition determines `current`; an exact-time conflict conservatively retains current. Earliest `firstSeenAtMs`, latest `lastSeenAtMs`, maximum `occurrenceCount`, and existing deterministic occurrence metadata selection remain. Current output has no `resolvedAtMs`; resolved output preserves the latest applicable resolution timestamp. `mergeLegacy()` remains unchanged.
+
+This prevents an older destination-current copy from resurrecting a record resolved later on the still-authoritative source, while a genuinely later recurrence correctly reopens the record.
+
+### Regression coverage
+
+Same-key tests now cover later resolution over stale current, source/destination order independence, genuinely later recurrence reopening, crash/restart with stale destination then later source resolution, and repeated recovery/merge idempotence. Existing history-preservation, count-idempotence, retention, invalid-destination, cleanup-order, equivalent-path, and complete operational-path regressions remain.
+
+### Implementation and verification
+
+- source correction commit: `1f88dcf1b0d19efa6699ce1a19a00c068f638958`
+- implementation/test SHA: `a730c9dc4616268a8d93890f2a66d9daf9171748`
+- implementation CI: `Phase 6 Alpha Diagnostic Verification` run `33283448357`, job `99182412099` — SUCCESS
+- TypeScript: PASS
+- full suite: **371/371 PASS**, 0 fail
+- new same-key regressions: PASS
+- production build: PASS
+- full repository check: PASS
+- `git diff --check`: PASS
+- build/package verification: PASS
+- `main.js`: `408410` bytes
+- SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+
+### Reconciled prior manifest — `872c... -> adcc...`
+
+Created:
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+
+Modified:
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+Deleted:
+- none.
+
+### Current corrective-pass manifest — from `adcc90042fe43e6964e0a8625620fab3b5a4b65f`
+
+Created:
+- none.
+
+Modified:
+- `src/product/sync-plan-errors-csv.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+Deleted:
+- none.
+
+Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+PR #31 remains OPEN and UNMERGED; protected branches, tags/releases, physical-device state, synchronization authority, and Stage 3 remain untouched. The exact evidence/closure SHA and final PR head are recorded externally in PR metadata and the completion response because a commit cannot self-contain its own SHA.
