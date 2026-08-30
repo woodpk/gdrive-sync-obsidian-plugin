@@ -6,21 +6,24 @@ Rule: one production/test file has at most one parallel workstream owner.
 
 ## 1. Shared execution and compatibility rules
 
-- Every workstream starts from the same exact approved workstream-base SHA. That SHA is selected only after independent foundation approval and contains the final contracts, architecture, freeze candidate, ownership manifest, adversarial matrix, project-state/handoff, tests, and evidence.
+- Every workstream starts from the same exact approved workstream-base SHA selected only after independent foundation approval.
 - `src/contracts/**` is frozen and prohibited to every workstream.
-- A contract gap requires a persisted `CONTRACT CHANGE REQUEST`; branch-local contract copies or semantic shadowing are prohibited.
+- Contract gaps require a persisted `CONTRACT CHANGE REQUEST`; branch-local contract copies/semantic shadowing are prohibited.
 - PR #33 operation-local stale isolation, safe-subset progress, exact pending retirement, coherent per-pass observation, scoped uncertainty, diagnostic privacy, `drive.file`, safe union, destructive gates, path isolation, portable configuration, and mobile boundaries remain fixed.
-- Each workstream may add **workstream-local fakes/adapters only inside its permitted new-test namespace**. Shared `src/testing/fakes.ts` is integration-owned and frozen during the parallel wave.
-- A workstream must remain typecheck/build-capable against the frozen foundation without waiting for another branch. When another subsystem is not yet implemented, the branch uses local contract-conforming fakes—not edits to that subsystem.
-- Existing cross-subsystem integration tests explicitly listed as integration-owned are immutable during parallel work. A branch that breaks one has exposed a compatibility defect; it may not edit the test to hide that defect.
-- No workstream merges itself. Independent review precedes serialized integration.
-- No release, Azure change, physical-device synchronization, or Stage 3 work is authorized.
+- Workstream-local fakes/adapters are permitted only inside each stream's new-test namespace. `src/testing/fakes.ts` remains integration-owned.
+- Each branch must typecheck/build against frozen seams without waiting for another workstream.
+- Existing cross-subsystem tests listed as integration-owned are immutable during the parallel wave.
+- No workstream merges itself. No release, Azure change, physical-device synchronization, or Stage 3 work is authorized.
+
+The frozen mutation lifecycle is:
+
+`PLAN -> EXACT AUTHORITY -> DURABLE OPERATION/EFFECT INTENT -> DURABLE DISPATCH AUTHORITY -> SAFE LOCAL/REMOTE MUTATION PORT -> VERIFICATION -> PATH CONVERGENCE OR CONFLICT -> BASE/STATE COMMIT -> RESTART RECOVERY`.
 
 ## 2. A — Remote / Google Drive Protocol
 
 Agent ID: `agt-CA-P6-SYNC-REMOTE-01`
 
-Objective: implement lossless multipage Drive ingestion, explicit path/object ambiguity, retry-safe reserved create, preservation-safe existing-object update, coherent downloads, and explicit provenance migration.
+Objective: implement lossless Drive ingestion, explicit path/object ambiguity, retry-safe create, preservation-safe file update, recovery-safe move/trash, coherent downloads, and explicit provenance migration.
 
 Production ownership:
 - `src/drive/google-drive-port.ts`
@@ -37,32 +40,31 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/drive/**`
 
-Frozen inputs: Drive page/checkpoint/backlog contracts, ambiguity resolution, remote mutation identity/application proof/outcomes, coherent reads, cancellation, fault points, existing Google/OAuth public contracts.
+Frozen inputs: Drive page/checkpoint/backlog contracts; ambiguity resolution; `RemoteMutationIdentity`; exact intended canonical content; `RemoteMutationOutcome`; `RemoteMutationApplicationProof`; `RemotePathConvergenceAuthority`; `ReliableRemoteMutationPort`; coherent reads; cancellation/fault points; existing Google/OAuth public contracts.
 
 Required outputs:
-- every Changes page is consumed through the terminal token without collapsing intermediate/terminal semantics;
-- learned batches preserve removals, moves, repeated object changes, duplicate logical paths, and >1000-change pagination until C confirms durable reduction;
-- create retries one pre-generated durable object ID;
-- existing-object content update uses immutable-candidate preservation; no read/check/in-place PATCH can be called conflict-free merely because final bytes match;
-- ambiguous/lost outcomes remain unknown or conflict-preserved;
-- coherent downloads prove one expected version/evidence or fail closed;
-- list/observe/Changes are read-only; provenance migration is explicit.
+- consume all Changes pages through terminal token without collapsing intermediate/terminal state;
+- preserve unresolved removals/moves/repeated changes/duplicates across learned batches until C safely reduces them;
+- file/folder create uses reserved durable identity;
+- file-content create/update binds exact SHA-256+size before dispatch;
+- existing-file update uses immutable-candidate preservation, never raw in-place update as synchronization authority;
+- remote move uses `ReliableRemoteMutationPort.moveExisting` with explicit verified/not-applied/conflict/unknown outcome;
+- remote trash uses `ReliableRemoteMutationPort.trashExisting` with the same recovery-safe outcome family;
+- raw `GoogleDrivePort.create/update/move/trash` remain transport primitives only and are adapted behind the reliable seam;
+- ambiguous/lost outcomes remain unknown/conflict-preserved until verified;
+- coherent downloads prove one expected version/evidence or fail closed.
 
-Dependencies: none for branch-local compilation; C/D are represented with local contract fakes. Integration consumes C persistence after C is merged.
-
-Integration seam: A implements only frozen remote ports/results. D consumes them; C persists their durable identities/backlog; B consumes coherent content.
-
-Branch-local fake expectation: local in-memory authority/checkpoint and cancellation fakes live only under `test/workstreams/drive/**`.
-
-Prohibited files: every production file not listed above, especially `src/drive/auth.ts`, `src/drive/oauth-return.ts`, `src/contracts/**`, `src/state/**`, `src/local/**`, `src/core/**`, and `src/product/**`.
-
-Acceptance gates: owned + new focused tests; official-Drive protocol cases including concurrent R0→RI between revalidation and writer activity; full suite; typecheck/build/package/mobile verifiers; exact scope/auth regression.
+Dependencies: none branch-locally; C/D are local contract fakes.  
+Integration seam: implements only frozen remote ports/results; C persists identities/effects, D consumes them.  
+Branch-local fakes: `test/workstreams/drive/**`.  
+Prohibited files: all production outside ownership, especially contracts/state/local/core/product and auth/OAuth-return files.  
+Acceptance gates: owned tests + new remote create/update/move/trash lost-response cases; R0→RI→writer preservation; exact intended-content verification; full suite/typecheck/build/package/mobile/scope regression.
 
 ## 3. B — Local Platform Safety, Windows + iOS
 
 Agent ID: `agt-CA-P6-SYNC-LOCAL-01`
 
-Objective: implement truthful cross-platform observation, durable verified local replacement/recovery with exact create/replace pre-state authority, exact self-mutation provenance, and event-loss recovery semantics.
+Objective: implement truthful cross-platform observation, durable local create/replace recovery, exact provenance, and cache-bypassing integrity reconciliation.
 
 Production ownership:
 - `src/local/config-policy.ts`
@@ -89,32 +91,29 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/local/**`
 
-Frozen inputs: local transaction/pre-state/recovery, local provenance, canonical file proof, cancellation/lifecycle, fault points, local-vault/path contracts.
+Frozen inputs: local transaction/pre-state/recovery; `LocalIntegrityReconciliationPort`; local provenance; canonical file proof; lifecycle/cancellation/fault points; local-vault/path contracts.
 
 Required outputs:
-- create requires authoritative expected absence; replace requires exact present observation and old canonical content proof;
-- staged bytes are canonical-evidence verified before old target displacement;
-- backup absence is interpreted according to create-vs-replace authority rather than guessed;
-- every hard-death boundary recovers old, verified new, or an explicit contradictory/recovery state;
-- Windows and iOS use supported boundaries without Node/Electron in required mobile paths;
-- missed/delayed/overflow events request reconciliation and never imply deletion;
-- plugin events correlate by exact transaction/result while concurrent user edits remain visible.
+- create expects authoritative absence; replace expects exact present token + canonical old content;
+- stage bytes are canonical-evidence verified before displacement;
+- every hard-death boundary resolves to old/verified-new/explicit contradiction;
+- implement `readFileBypassingEvidenceCache()` so Verify/Reconcile and policy integrity sweeps re-read actual bytes;
+- same-size/same-mtime change with missed watcher and unchanged cached token is eventually discovered;
+- Windows/iOS remain within supported platform boundaries;
+- events remain hints, never deletion authority;
+- self-generated events correlate by exact transaction/result while user edits remain visible.
 
-Dependencies: none for branch-local compilation; C persistence and A coherent source are represented by local fakes until integration.
-
-Integration seam: B implements frozen local transaction/observation/provenance behavior; C persists transaction stages; D consumes observations/results; E consumes event/lifecycle signals.
-
-Branch-local fake expectation: persistence/content/event sources live only under `test/workstreams/local/**`.
-
-Prohibited files: all others, especially `src/contracts/**`, `src/drive/**`, `src/state/**`, `src/core/**`, runtime/orchestration/merge files.
-
-Acceptance gates: platform suites, create-vs-replace recovery matrix, every local fault point, event loss/replacement cases, full verification, mobile bundle evaluation.
+Dependencies: none branch-locally; C/A represented with local fakes.  
+Integration seam: B implements frozen local transaction/observation/integrity/provenance behavior.  
+Branch-local fakes: `test/workstreams/local/**`.  
+Prohibited files: all others, especially contracts/drive/state/core/runtime/orchestration/merge.  
+Acceptance gates: platform suites; create/replace recovery matrix; every local fault point; same-size/same-mtime missed-event cache-bypass case; full verification/mobile bundle evaluation.
 
 ## 4. C — State / BASE / Recovery
 
 Agent ID: `agt-CA-P6-SYNC-STATE-01`
 
-Objective: implement semantic generation, exact BASE healing, lossless remote-ingestion backlog, operation/local-transaction recovery, semantic validation/migration, and stale-device authority storage.
+Objective: implement semantic generation, exact BASE healing, lossless remote-ingestion backlog, durable per-effect mutation recovery, semantic validation/migration, and stale-device authority storage.
 
 Production ownership:
 - `src/state/indexeddb-state-storage.ts`
@@ -131,32 +130,30 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/state/**`
 
-Frozen inputs: persistence/semantic generations, exact BASE/common unions, learned-batch backlog, path convergence, recoverable intent/dispatch authority, local transactions, semantic validator, fault points.
+Frozen inputs: persistence/semantic generations; exact BASE/common proofs; learned-batch backlog; path convergence; `RecoverablePhysicalMutationDescriptor`; `RecoverableMutationEffect`; `RecoverableOperationIntent`; exact intended content; local transactions; semantic validator; fault points.
 
 Required outputs:
-- persistence-only writes do not alter semantic authority;
-- file BASE healing cannot occur without canonical SHA-256 current equality;
-- learned batch N+1/N+2 never overwrites the only durable facts from unresolved N; reduction/retirement is explicit and safe for removals, moves, create-delete, repeated object changes, ambiguity, and long-lived unresolved paths;
-- restart consumes operation/local transaction state before new automatic mutation authority;
-- `dispatch-authorized` and later stages are never treated as definitely unattempted;
-- semantic validator rejects every known contradiction and can emit `other-semantic-inconsistency` for a newly discovered impossible state;
-- stale-device authority has a real production transition.
+- persistence-only writes never alter semantic authority;
+- BASE healing requires frozen common proof;
+- unresolved learned facts survive later batches until explicit safe reduction;
+- persist every physical mutation effect, exact intended file content, exact deletion/identity authority, dispatch stage, and verification reference;
+- clean merge can persist one effect committed while another remains unfinished;
+- restart consumes durable effects before new automatic mutation authority;
+- dispatch-authorized or later is never treated definitely unattempted;
+- semantic contradictions fail closed, including unknown future categories;
+- stale-device authority has real transitions.
 
-Dependencies: none for branch-local compilation; A/B/D are represented by data fixtures/local port fakes.
-
-Integration seam: C is the sole durable authority implementation. A/B emit contract values; D requests authority transitions/recovery; E reads recovery/stale-device gate.
-
-Branch-local fake expectation: no edits to `src/testing/fakes.ts`; all contract drivers and corrupt-state fixtures live in `test/workstreams/state/**`.
-
-Prohibited files: all others, especially `src/contracts/**`, Drive/local/execution coordinator/product runtime/merge files.
-
-Acceptance gates: migration/property tests, multi-batch transition table, crash/fault matrix, semantic-corruption fixtures, full verification.
+Dependencies: none branch-locally; A/B/D represented by fixtures/fakes.  
+Integration seam: C is sole durable authority implementation.  
+Branch-local fakes: `test/workstreams/state/**`; no `src/testing/fakes.ts` changes.  
+Prohibited files: all others, especially contracts/Drive/local/execution/runtime/merge.  
+Acceptance gates: migration/property tests; multi-batch table; per-effect crash/restart matrix for upload/download/move/trash/merge; semantic-corruption fixtures; full verification.
 
 ## 5. D — Reconciliation / Orchestration
 
 Agent ID: `agt-CA-P6-SYNC-ORCHESTRATION-01`
 
-Objective: consume frozen authority/ingestion/mutation seams in planning/execution while preserving safe-subset progress, dependencies, destructive gates, cursor correctness, BASE healing, and PR #33 behavior.
+Objective: consume frozen exact authority and mutation/recovery seams while preserving safe-subset progress, destructive gates, cursor correctness, BASE healing, and PR #33 behavior.
 
 Production ownership:
 - `src/core/destructive-safety.ts`
@@ -188,36 +185,35 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/orchestration/**`
 
-Integration-owned compatibility test deliberately **not** D-owned: `test/phase2-execution.test.ts`. It crosses C's `StateCommitCoordinator` and D's `CrashSafeExecutionCoordinator` and must remain unchanged on all parallel branches. C and D must each preserve its existing public seam; intended new behavior is proven in each workstream's local namespace. If this shared compatibility test fails, that is an integration/contract problem, not permission for either branch to edit it.
+Integration-owned compatibility test: `test/phase2-execution.test.ts`; immutable during parallel work.
 
-Frozen inputs: all foundation authority/common/ingestion/ambiguity/mutation/recovery/cancellation/merge contracts plus existing plan/execution/status contracts.
+Frozen inputs: authority/common/ingestion/ambiguity/mutation/recovery/cancellation/merge contracts plus plan/execution/status contracts.
 
 Required outputs:
-- BASE-specific and identity preconditions are executable, never nominal;
-- file equality can heal BASE only from discriminated canonical proof;
-- learned remote progress advances independently of path convergence without losing pending facts;
-- remote `verified-applied` is accepted as conflict-free only when its application proof satisfies frozen preservation authority;
-- unresolved/ambiguous paths remain isolated and dependencies skip safely;
-- global recovery/auth/destructive gates remain global;
-- dispatch authority is durably established before external call; post-authority crash is never classified definitely unattempted;
+- history-dependent operation replaces compatibility `base-trusted` with exact `base-authority` before authoritative execution;
+- identity-dependent operation replaces compatibility `identity-unambiguous` with exact `identity-authority` proof;
+- only `ExecutablePlannedOperation` enters `AuthoritativeSynchronizationExecutor` / `AuthorityCompleteSuccessCommitter`;
+- durable per-effect operation intent exists before dispatch authority;
+- local/remote mutation routes through frozen safe seams;
+- remote physical application proof and path-convergence authority are evaluated separately;
+- safely materialized writer candidate with independent RI remains conflict-preserved, not ordinary convergence;
+- verified file equality heals BASE only from canonical proof;
+- learned progress advances independently without losing unresolved facts;
+- unresolved/ambiguous paths remain isolated; global recovery/auth/destructive gates remain global;
 - PR #33 stale-operation progress/retirement/observation behavior remains;
-- safe committed operations are not duplicated on retry.
+- safe committed effects are not duplicated on retry.
 
-Dependencies: none for branch-local typecheck/build. Local contract fakes represent A/B/C/F until serialized integration.
-
-Integration seam: D consumes only frozen public ports/results. It must not reach into A/B/C/F private state.
-
-Branch-local fake expectation: remote/local/authority/merge fakes live only in `test/workstreams/orchestration/**`; no shared fake edits.
-
-Prohibited files: all others, especially `src/contracts/**`, `src/core/commit-coordinator.ts`, `src/core/conflict-resolver.ts`, `src/core/run-coordinator.ts`, Drive/local/state/runtime/merge files and the integration-owned `test/phase2-execution.test.ts`.
-
-Acceptance gates: planner/executor/controller focused suites, preservation-proof rejection case, destructive/recovery gates, PR #33 regressions, full verification.
+Dependencies: none branch-locally; local contract fakes represent A/B/C/F.  
+Integration seam: consumes only frozen public ports/results.  
+Branch-local fakes: `test/workstreams/orchestration/**`.  
+Prohibited files: all others, including contracts/C/F/E production and integration-owned `test/phase2-execution.test.ts`.  
+Acceptance gates: exact-authority planner/executor tests; per-mutation lifecycle table; materialization-vs-convergence cases; destructive/recovery gates; PR #33 regressions; full verification.
 
 ## 6. E — Runtime / Lifecycle
 
 Agent ID: `agt-CA-P6-SYNC-LIFECYCLE-01`
 
-Objective: coordinate startup/resume/suspend/unload, cooperative cancellation, trigger coalescing, mandatory reconciliation opportunities, and active-app execution without assuming indefinite iOS background time.
+Objective: coordinate startup/resume/suspend/unload, cooperative cancellation, trigger coalescing, and mandatory reconciliation opportunities without assuming iOS background time.
 
 Production ownership:
 - `src/core/run-coordinator.ts`
@@ -234,25 +230,21 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/lifecycle/**`
 
-Frozen inputs: lifecycle/cancellation, local provenance signal, recovery gate, path convergence, status/diagnostic contracts.
+Frozen inputs: lifecycle/cancellation, local provenance/integrity signals, recovery gate, path convergence, status/diagnostic contracts.
 
-Required outputs: no new operation after suspending/suspended/unloading; cancellation propagates without replacing journal recovery; startup/resume/local/periodic triggers coalesce without lost reconciliation; missed local events have eventual reconciliation opportunity; active-app iOS semantics remain accurate; diagnostics preserve run association/privacy.
+Required outputs: no new operation after suspension/unload starts; cancellation never replaces journal recovery; startup/resume/local/periodic triggers coalesce without lost reconciliation; policy guarantees eventual integrity reconciliation opportunity; active-app iOS semantics remain accurate; diagnostics preserve privacy/run association.
 
-Dependencies: branch-local controller/state/event fakes; real integration follows B+C+D.
-
-Integration seam: E invokes D's public controller lifecycle and consumes B/C public signals/state only.
-
-Branch-local fake expectation: all controller/state/event doubles under `test/workstreams/lifecycle/**`.
-
-Prohibited files: all others, especially contracts, Drive/local/state/planner/executor/merge files.
-
-Acceptance gates: controlled async lifecycle tests, suspend/death simulations, trigger races, full build/mobile verifier.
+Dependencies: branch-local fakes; real integration follows B/C/D.  
+Integration seam: invokes D public lifecycle and consumes B/C public signals/state.  
+Branch-local fakes: `test/workstreams/lifecycle/**`.  
+Prohibited files: all others.  
+Acceptance gates: controlled lifecycle tests, trigger races, integrity-opportunity scheduling, build/mobile verifier.
 
 ## 7. F — Merge / Resource Safety
 
 Agent ID: `agt-CA-P6-SYNC-MERGE-01`
 
-Objective: make three-way text handling resource-bounded and iOS-safe while preserving both complete versions whenever automatic merge cannot safely run.
+Objective: make three-way text handling resource-bounded/iOS-safe while preserving all complete versions when auto-merge cannot run safely.
 
 Production ownership:
 - `src/core/conflict-resolver.ts`
@@ -263,83 +255,74 @@ Existing-test ownership:
 
 Permitted new tests: `test/workstreams/merge/**`
 
-Frozen inputs: text merge resource policy, cancellation, conflict/version contracts.
-
-Required outputs: unknown/oversized inputs never enter unbounded automatic merge; algorithm/materialization remain within declared bounds; cancellation cannot acknowledge partial merge; both versions/provenance survive fallback.
-
-Dependencies: none branch-locally; coherent source behavior represented by local fixtures until A/B integration.
-
-Integration seam: F returns frozen conflict/merge outcomes to D without modifying orchestration.
-
-Branch-local fake expectation: all stream/size/cancellation fixtures under `test/workstreams/merge/**`.
-
-Prohibited files: all others, especially contracts, Drive/local/state/orchestration/runtime files.
-
-Acceptance gates: thresholds, large Unicode/text fixtures, resource/complexity evidence, cancellation, full verification.
+Frozen inputs: merge resource policy, cancellation, conflict/version contracts.  
+Required outputs: unknown/oversized inputs never enter unbounded merge; cancellation cannot acknowledge partial merge; complete versions/provenance survive fallback.  
+Dependencies: none branch-locally.  
+Integration seam: returns frozen merge/conflict outcomes to D.  
+Branch-local fakes: `test/workstreams/merge/**`.  
+Prohibited files: all others.  
+Acceptance gates: thresholds/large Unicode/resource/cancellation/full verification.
 
 ## 8. G — Adversarial Model / Verification
 
 Agent ID: `agt-CA-P6-SYNC-ADVERSARIAL-01`
 
-Objective: build deterministic seeded two-device/model-based verification across frozen fault seams. G makes no production changes.
+Objective: deterministic seeded two-device/model verification across all frozen fault/lifecycle seams. G makes no production changes.
 
-Production ownership: **none**.
+Production ownership: **none**.  
+Existing-test ownership: **none**.  
+Permitted new tests/support: `test/adversarial-model/**`, `test/adversarial-model/support/**`.
 
-Existing-test ownership: **none**.
+Frozen inputs: all foundation contracts/fault points and public A–F outputs.
 
-Permitted new tests/support:
-- `test/adversarial-model/**`
-- `test/adversarial-model/support/**`
+Required outputs include reproducible/minimized traces for:
+- exact plan BASE/identity authority rejection;
+- every durable mutation stage/effect across upload/download/move/trash/clean merge;
+- R0 predecessor + independent RI + writer candidate: safe materialization but conflict-preserved path;
+- genuine no-concurrent-candidate conflict-free convergence;
+- lost response with LOCAL advancing L1→L2 while candidate must verify durable intended L1;
+- safe remote move/trash unknown outcomes;
+- clean merge crash after one side effect;
+- multi-page/multi-batch ingestion and duplicate paths;
+- same-size/same-mtime local H0→H1, missed watcher event, unchanged cached token, then cache-bypassing integrity discovery;
+- suspend/resume/cancellation/stale device/resource-bounded merge.
 
-Frozen inputs: all foundation contracts/fault points and public outputs of A–F.
+Dependencies: contract-only model can be built in parallel; final acceptance after A–F integration.  
+Integration seam: public contracts only.  
+Branch-local fakes: entirely under `test/adversarial-model/**`.  
+Prohibited files: all production and tests outside permitted namespace.  
+Acceptance gates: deterministic seeds, minimized traces, zero production diff, integrated full-suite pass.
 
-Required outputs: reproducible seed/minimized trace; every durable crash boundary; two-device create/update/move/delete; R0 revalidation → RI concurrent write → writer update case; response loss/reordering; multi-page/multi-batch remote ingestion; duplicate paths; event loss; suspend/resume; preservation/idempotency/ambiguity/eventual-convergence assertions.
+## 9. Foundation/integration-owned files
 
-Dependencies: contract-only model may be built in parallel; final acceptance executes after A–F serialized integration.
-
-Integration seam: public contracts only; no production helpers.
-
-Branch-local fake expectation: entire model and all fakes remain below `test/adversarial-model/**`.
-
-Prohibited files: all production files and every test outside the permitted namespace.
-
-Acceptance gates: deterministic repeat seeds, minimized failing traces, zero production diff, integrated complete-suite pass.
-
-## 9. Foundation/integration-owned files during the parallel wave
-
-These are prohibited to A–G unless the supervisor serializes a change:
-
+Prohibited to A–G unless supervisor serializes a change:
 - all `src/contracts/**`;
 - `src/diagnostics/**`;
 - `src/drive/auth.ts`, `src/drive/oauth-return.ts`;
-- `src/product/audit-history.ts`, `history-modal.ts`, `index.ts`, `network-policy.ts`, `notification-policy.ts`, `plan-modal.ts`, `plugin-data.ts`, `settings-tab.ts`, `sync-attention-ledger.ts`, `sync-plan-errors-csv.ts`, `sync-plan-errors-path.ts`;
+- shared product settings/audit/history/plan/error-state modules not explicitly assigned;
 - `src/testing/fakes.ts`, `src/util/sha256.ts`;
 - `test/phase2-execution.test.ts` and every existing test not explicitly assigned above;
-- all planning/evidence artifacts except each workstream's new dedicated evidence file.
-
-If exports, shared fakes, compatibility tests, or shared wiring must change after review, the integration operator performs the smallest serialized change after affected branches have been reviewed.
+- foundation planning/evidence artifacts except each worker's dedicated evidence file.
 
 ## 10. Parallel feasibility audit
 
-The production ownership lists above are pairwise disjoint. Existing-test ownership lists are pairwise disjoint. New test namespaces are pairwise disjoint.
+Production ownership remains pairwise disjoint. Existing-test ownership remains pairwise disjoint. New-test namespaces remain pairwise disjoint.
 
-Feasibility rule applied to every stream: **a branch must typecheck/build against the foundation using only its owned production files plus workstream-local test fakes**. A, B, C, D, E, and F have complete frozen public seams for their dependencies; G has no production dependency. Cross-owned integration tests are frozen rather than assigned to a stream that would need another stream's implementation.
+The R1–R6 contract corrections do not require changing worker count. A can implement all remote mutations behind safe ports; B has an explicit integrity seam; C can persist every physical effect/intended version; D can upgrade legacy planning DTOs into exact executable authority without changing contracts; G can model all new cases without production changes.
 
-Specific reviewed tension: C owns `src/core/commit-coordinator.ts` while D owns `src/core/execution-coordinator.ts`. The historical `test/phase2-execution.test.ts` exercises both, so it is now integration-owned and immutable during the wave. C proves state/commit changes in `test/workstreams/state/**`; D proves execution/orchestration in `test/workstreams/orchestration/**`. Both must preserve the existing callable seam so the historical compatibility test remains green without either owning it.
+Specific C/D boundary remains: C owns `src/core/commit-coordinator.ts`, D owns `src/core/execution-coordinator.ts`, and `test/phase2-execution.test.ts` remains integration-owned. Each stream proves new behavior in its own namespace while preserving public compatibility.
 
-A/B/C/F do not need D's real implementation to finish their branches; D does not need A/B/C/F real implementations to finish because it can use local contract fakes. E similarly uses a local controller fake until D is integrated. This is intentional parallelism, not permission to duplicate implementation.
-
-If any workstream discovers it cannot pass typecheck/build/full owned gates without changing another workstream's production/test file, it stops with `CONTRACT CHANGE REQUEST`; it does not negotiate branch-to-branch edits.
+If any workstream cannot pass branch-local typecheck/build/owned gates without another stream's file, it stops with `CONTRACT CHANGE REQUEST`.
 
 ## 11. Serialized integration order
 
-1. Independently review and approve the foundation and identify one exact workstream-base SHA.
-2. Start A–G from that exact SHA.
-3. Independently review each branch against ownership and acceptance gates.
+1. Independent foundation review identifies one exact workstream-base SHA.
+2. A–G branch from that exact SHA.
+3. Each branch receives independent review.
 4. Integrate C first.
-5. Integrate A and B in either order as directed by the integration operator.
+5. Integrate A and B as directed.
 6. Integrate F.
 7. Integrate D against real A/B/C/F.
-8. Integrate E against final orchestration/state/local seams.
+8. Integrate E.
 9. Integrate G and run the complete adversarial matrix.
-10. Run complete Windows/Linux/build/mobile-package verification and return for supervisor review before any release or physical-test decision.
+10. Run complete cross-platform/build/mobile-package verification before any later release/physical-test decision.
