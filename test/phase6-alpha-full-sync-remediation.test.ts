@@ -70,9 +70,9 @@ class MemoryAttentionPersistence implements SyncAttentionPersistence {
   async saveSyncAttention(records: readonly SyncAttentionRecord[]): Promise<void> { this.records = records.map(record => ({ ...record })); }
 }
 
-async function controllerHarness(plan: SynchronizationPlan, executor: {
-  validatePreconditions(operation: PlannedOperation): Promise<any>;
-  execute(operation: PlannedOperation): Promise<any>;
+async function controllerHarness(planOrPlans: SynchronizationPlan | readonly SynchronizationPlan[], executor: {
+  validatePreconditions(operation: PlannedOperation, store: PersistentSynchronizationStateStore): Promise<any>;
+  execute(operation: PlannedOperation, store: PersistentSynchronizationStateStore): Promise<any>;
   failureScope(operation: PlannedOperation, reason: string): "path" | "global";
 }) {
   const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
@@ -90,8 +90,8 @@ async function controllerHarness(plan: SynchronizationPlan, executor: {
   let plannerCalls = 0;
   const executed: PlannedOperation[] = [];
   const wrappedExecutor = {
-    validatePreconditions: (operation: PlannedOperation) => executor.validatePreconditions(operation),
-    execute: async (operation: PlannedOperation) => { executed.push(operation); return executor.execute(operation); },
+    validatePreconditions: (operation: PlannedOperation) => executor.validatePreconditions(operation, store),
+    execute: async (operation: PlannedOperation) => { executed.push(operation); return executor.execute(operation, store); },
     failureScope: (operation: PlannedOperation, reason: string) => executor.failureScope(operation, reason),
   };
   const assembly = {
@@ -99,15 +99,17 @@ async function controllerHarness(plan: SynchronizationPlan, executor: {
     remoteEnumeration: { status: "complete" as const }, localEnumeration: { status: "complete" as const },
     mode: "incremental" as const, nextCursor: id<"ChangeCursor">("cursor:candidate") as ChangeCursor,
   };
+  const plans = Array.isArray(planOrPlans) ? planOrPlans : [planOrPlans];
   const controller = new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store,
     snapshotAssembler: { assemble: async () => assembly } as never,
     executor: wrappedExecutor as never,
     conflictResolver: { assess: async () => ({ kind: "none" as const }) },
     plannerForTrigger: () => ({ plan: async () => {
+      const planned = plans[plannerCalls];
       plannerCalls += 1;
-      if (plannerCalls > 1) throw new Error("stale operation self-scheduled an immediate replan");
-      return plan;
+      if (!planned) throw new Error("stale operation self-scheduled an immediate replan");
+      return planned;
     } }),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) },
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 100), holderId: "full-remediation-test",
@@ -118,8 +120,9 @@ async function controllerHarness(plan: SynchronizationPlan, executor: {
 
 test("operation-local stale precondition is isolated, safe work commits, and no immediate self-replan occurs", async () => {
   const stale = staleUpload("actively-edited.md");
+  const dependent = { ...upload("dependent-on-edit.md"), preconditions: [{ kind: "path-observation" as const, side: "local" as const, path: stale.path, expected: "present" as const }] };
   const safe = upload("independent.md");
-  const h = await controllerHarness(automaticPlan([stale, safe]), {
+  const h = await controllerHarness(automaticPlan([stale, dependent, safe]), {
     validatePreconditions: async operation => operation.operationId === stale.operationId
       ? { status: "stale" as const, failed: [stale.preconditions[0]!] }
       : { status: "valid" as const },
@@ -134,6 +137,7 @@ test("operation-local stale precondition is isolated, safe work commits, and no 
   assert.deepEqual(h.executed.map(operation => String(operation.path)), ["independent.md"]);
   const current = await h.ledger.current();
   assert.ok(current.some(record => String(record.path) === "actively-edited.md" && record.reasonCode === "runtime-stale-precondition"));
+  assert.ok(current.some(record => String(record.path) === "dependent-on-edit.md" && record.reasonCode === "dependency-on-skipped-operation"));
   const loaded = await h.store.load(context);
   assert.equal(loaded.status, "trusted");
   if (loaded.status === "trusted") {
@@ -149,6 +153,32 @@ test("operation-local stale precondition is isolated, safe work commits, and no 
   assert.equal(fields?.failedPreconditionKinds, "path-observation");
   assert.equal(fields?.failedPreconditionSides, "local");
   assert.doesNotMatch(h.diagnostics.renderText(), /actively-edited\.md|independent\.md/u);
+});
+
+test("a later stable no-op reconciliation resolves transient stale attention without a content mutation", async () => {
+  const stale = staleUpload("transient-edit.md");
+  const stableNoop: PlannedOperation = {
+    operationId: id<"OperationId">("op:stable-noop"), kind: "noop", path: stale.path, destructive: false,
+    preconditions: [], reasons: [{ code: "already-reconciled", summary: "The path is now reconciled without a content mutation." }],
+  };
+  let first = true;
+  const h = await controllerHarness([automaticPlan([stale]), automaticPlan([stableNoop])], {
+    validatePreconditions: async operation => operation.operationId === stale.operationId && first
+      ? { status: "stale" as const, failed: [stale.preconditions[0]!] }
+      : { status: "valid" as const },
+    execute: async operation => {
+      first = false;
+      return { status: "durable-verified-success" as const, receipt: { operationId: operation.operationId, durable: true as const, integrityVerified: true as const } };
+    },
+    failureScope: () => "global",
+  });
+
+  await h.controller.runAutomatic("local-change");
+  assert.equal((await h.ledger.current()).length, 1);
+  await h.controller.runAutomatic("periodic");
+  assert.equal((await h.ledger.current()).length, 0);
+  assert.ok((await h.ledger.all()).some(record => String(record.path) === "transient-edit.md" && !record.current));
+  assert.equal(h.plannerCalls(), 2);
 });
 
 test("post-journal stale intent is safely retired before unrelated work continues", async () => {

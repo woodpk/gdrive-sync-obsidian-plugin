@@ -129,3 +129,65 @@ Result: `0 passed; 4 failed; 4 total`.
 The full Windows test invocation also reproduced only these four new predictive failures plus the two already-established drive-prefix expectation mismatches. No production source was changed in this checkpoint.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 3: architectural repair implementation
+
+### Implemented corrections
+
+1. **Operation-local stale execution** — `stale-precondition` now skips only the affected operation, records `runtime-stale-precondition` attention, propagates dependency skipping, continues unrelated safe operations, leaves the cursor unadvanced for the partial run, and does not manufacture its own immediate automatic trigger. `stale-state`, recovery, uncertainty, authentication, and destructive-plan authority remain global.
+2. **Mutation-boundary crash safety** — when the executor's required second validation pass becomes stale after the pending journal, `StateCommitCoordinator.discardPending()` verifies the exact operation/path/revision and durably removes only that known-unmutated pending intent before path-local continuation. A discard race or persistence failure becomes `stale-state` or `recovery-required`; a crash before retirement leaves the pending journal for established recovery.
+3. **Coherent validation observations** — one validation pass now lazily caches one LOCAL observation and one REMOTE observation per actual path, one trusted-state load, and one run-evidence read. The separate post-journal mutation-boundary pass remains independent and fresh.
+4. **Scoped local enumeration uncertainty** — the local listing contract can carry `all`, exact `path`, or `subtree` uncertainty. A listed file that disappears is exact-path uncertainty; an inaccessible or unlistable folder is subtree uncertainty; a root failure remains global. Legacy incomplete listings without scope remain conservatively global. Canonical and portable-config wrappers preserve/map scope instead of globalizing an exact failure.
+5. **Privacy-safe precondition evidence** — diagnostics now record only failed-precondition count, sorted kind set, and sorted side set. Vault paths and content remain excluded from normal diagnostics.
+6. **Attention convergence** — a later successful operation or authoritative no-op for the path resolves current stale attention while retaining bounded resolved history.
+
+### Predictive and adversarial verification
+
+- pre-repair predictive baseline: `0/4` passed;
+- repaired dedicated remediation file plus actual Obsidian adapter file: `22/22` passed;
+- dedicated remediation cases prove unrelated progress, dependency isolation, no stale self-replan, cursor conservatism, sanitized diagnostics, post-journal retirement, per-pass observation coherence, scoped snapshot uncertainty, and later no-mutation attention resolution;
+- actual adapter cases prove exact listed-file disappearance and subtree access rejection produce different scopes;
+- Phase 5 scenario 24 was updated from the superseded whole-run rejection/self-replan expectation to the authoritative partial-attention/no-immediate-trigger behavior while retaining the assertion that the stale mutation never executes;
+- full Windows suite: `375/377` passed; the only failures are the unchanged qualified drive-prefix expectation mismatches:
+  - `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+  - `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+- `npm run typecheck`: PASS;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- build verifier: entrypoint, syntax, local runtime dependencies, mobile evaluation, and package shape all PASS;
+- `git diff --check`: PASS;
+- `npm run check`: qualified nonzero only because it includes the same two established Windows assertions; its typecheck passes and the build was run successfully as an independent gate.
+
+### Artifact
+
+- version: `0.1.7` (unchanged; no release preparation in this task)
+- `main.js`: `415353` bytes
+- SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+
+### Material implementation/test files
+
+**Modified**
+
+- `src/contracts/execution.ts`
+- `src/contracts/local-vault.ts`
+- `src/core/commit-coordinator.ts`
+- `src/core/execution-coordinator.ts`
+- `src/diagnostics/diagnostic-logger.ts`
+- `src/local/obsidian-local-vault.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/path-scope.ts`
+- `src/product/product-controller.ts`
+- `src/product/production-executor.ts`
+- `src/product/snapshot-assembler.ts`
+- `test/obsidian-local-vault.test.ts`
+- `test/phase5-acceptance-map.test.ts`
+- `test/phase5-group-d-active-run-integration.test.ts`
+- `test/phase6-alpha-full-sync-remediation.test.ts`
+
+**Created/deleted**
+
+- none in this implementation checkpoint; the dedicated predictive test file was created and pushed in checkpoint 2.
+
+No OAuth, Drive scope, managed-remote identity, conflict algorithm, deletion authority, first-sync authority, Azure configuration, or release metadata was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

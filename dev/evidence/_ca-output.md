@@ -1926,3 +1926,11 @@ Raw physical evidence and current code jointly confirm: 45 consecutive operation
 ## 2026-08-30 — Full synchronization remediation checkpoint 2
 
 The pre-repair predictive suite was added and run against released `0.1.7`: `0/4` passed. It independently reproduces controller-generated immediate replanning, failure to retire post-journal stale intent and continue unrelated work, three local observations within one validation pass, and unrelated-path contamination from scoped enumeration uncertainty. The Windows suite additionally reproduced only the two already-qualified drive-prefix assertions. Production code remains unchanged at this checkpoint; detailed failures are preserved in the dedicated remediation evidence.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 3
+
+The architectural correction is implemented. Operation-local stale work is isolated into attention without self-scheduling another immediate run; unrelated safe operations commit and dependent operations remain skipped. Post-journal stale intent is durably retired only after exact operation/path/revision verification. Each validation pass uses one lazy observation per side/path while the separate mutation-boundary pass remains fresh. Local enumeration now represents root-global, subtree, and exact-path uncertainty so a listed-file race cannot contaminate portable configuration or unrelated absent paths. Diagnostics expose only aggregate failed-precondition count/kind/side.
+
+Verification: focused remediation plus actual adapter `22/22`; complete Windows suite `375/377` with only the two unchanged qualified drive-prefix assertions; typecheck PASS; build and all package verifiers PASS; `main.js` `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; `git diff --check` PASS. Version remains `0.1.7`. Detailed design, safety reasoning, files, and test evidence are in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

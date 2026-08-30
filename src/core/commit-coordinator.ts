@@ -117,6 +117,26 @@ export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
     return this.writeJournal(operation, { operationId: operation.operationId, path: operation.path, status: "uncertain", checkpointId }, expectedStateRevision);
   }
 
+  /** Remove an exact known-unmutated pending intent after a mutation-boundary stale check. */
+  async discardPending(operation: PlannedOperation, expectedStateRevision: StateRevision): Promise<CommitResult> {
+    const loaded = await this.store.load(this.context);
+    if (loaded.status !== "trusted") return { status: "recovery-required", reason: `trusted state unavailable while retiring stale intent: ${loaded.status}` };
+    if (loaded.state.stateRevision !== expectedStateRevision) return { status: "stale-state", actualRevision: loaded.state.stateRevision };
+    const pending = loaded.state.operations.find(item => item.operationId === operation.operationId);
+    if (!pending || pending.status !== "pending" || pending.path !== operation.path) {
+      return { status: "recovery-required", reason: "stale intent cannot be retired because its exact pending journal is unavailable" };
+    }
+    const updated: TrustedSynchronizationState = {
+      ...loaded.state,
+      stateRevision: nextRevision(loaded.state.stateRevision),
+      operations: loaded.state.operations.filter(item => item.operationId !== operation.operationId),
+    };
+    const saved = await this.store.saveTrusted(updated, loaded.state.stateRevision);
+    if (saved.status === "saved") return { status: "committed", newStateRevision: saved.stateRevision };
+    if (saved.status === "stale-revision") return { status: "stale-state", actualRevision: saved.actualRevision };
+    return { status: "recovery-required", reason: saved.reason };
+  }
+
   async commitVerifiedSuccess(operation: PlannedOperation, receipt: VerifiedExecutionReceipt, expectedStateRevision?: StateRevision): Promise<CommitResult> {
     if (receipt.operationId !== operation.operationId) return { status: "recovery-required", reason: "execution receipt does not match planned operation" };
     if (receipt.durable !== true || receipt.integrityVerified !== true) return { status: "recovery-required", reason: "authoritative commit requires durable integrity-verified execution" };

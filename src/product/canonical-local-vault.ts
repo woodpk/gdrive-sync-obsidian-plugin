@@ -50,7 +50,7 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
     // Per-file canonical-content uncertainty is represented on that path. Only
     // the wrapped enumerator may determine whether the directory listing itself
     // was incomplete.
-    return { entries, completeness: listing.completeness };
+    return { ...listing, entries };
   }
 
   async observe(path: VaultPath): Promise<LocalObservation> { return this.enrich(await this.inner.observe(path)); }
