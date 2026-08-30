@@ -15,6 +15,11 @@ function parentPath(path: string): string {
 }
 
 function recordCopy(record: SyncAttentionRecord): SyncAttentionRecord { return { ...record }; }
+function recordStateAtMs(record: SyncAttentionRecord): number {
+  return record.current
+    ? record.lastSeenAtMs
+    : Math.max(record.lastSeenAtMs, record.resolvedAtMs ?? record.lastSeenAtMs);
+}
 function stagePath(path: string): string { return syncPlanErrorsOperationalPaths(path)[1]!; }
 function backupPath(path: string): string { return syncPlanErrorsOperationalPaths(path)[2]!; }
 
@@ -243,7 +248,13 @@ export class SyncPlanErrorsCsvPersistence implements SyncAttentionPersistence {
         const prior = byKey.get(incoming.key);
         if (!prior) { byKey.set(incoming.key, recordCopy(incoming)); continue; }
         const newer = incoming.lastSeenAtMs > prior.lastSeenAtMs ? incoming : prior;
-        const current = prior.current || incoming.current;
+        const priorStateAtMs = recordStateAtMs(prior);
+        const incomingStateAtMs = recordStateAtMs(incoming);
+        const current = incomingStateAtMs > priorStateAtMs
+          ? incoming.current
+          : incomingStateAtMs < priorStateAtMs
+            ? prior.current
+            : prior.current || incoming.current;
         const resolvedCandidates = [prior.resolvedAtMs, incoming.resolvedAtMs].filter((value): value is number => value !== undefined);
         byKey.set(incoming.key, {
           ...newer,
