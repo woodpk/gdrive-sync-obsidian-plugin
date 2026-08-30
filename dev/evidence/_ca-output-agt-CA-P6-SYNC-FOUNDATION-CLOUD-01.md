@@ -186,3 +186,13 @@ The historical Windows drive-prefix expectation mismatches were not re-executed 
 ## Evidence/final-head note
 
 This evidence file cannot contain the SHA of the commit that first creates itself without an impossible self-reference. The exact final candidate branch SHA is therefore recorded externally in PR #34 metadata and the completion report after all evidence commits. The supervisor-approved workstream-base SHA remains intentionally unset until independent review.
+
+## Closure chronology
+
+- Cumulative evidence was appended directly and append-only in commit `5cd8da3773a5752aee650495a6606aea1f20e8b5`.
+- The cumulative append records the corrected architecture, supervisor findings A–H, verification checkpoint, artifact identity, Azure staging-limit qualification, and the explicit prohibition on parallel implementation.
+- Temporary workflow-based evidence finalizer attempts were transport-only failures. They did not alter production, tests, contracts, planning semantics, or the cumulative evidence before the successful direct append.
+- This dedicated record is finalized before removing the temporary helper workflow. The subsequent helper deletion is intentionally the final branch-content cleanup operation; its exact resulting SHA and exact-head CI are recorded in PR #34 metadata and the supervisor completion response because a file cannot contain the SHA of a later commit without self-reference.
+- No A–G worker branch, product implementation, Azure modification, OAuth configuration change, release/tag, physical Windows/iPhone synchronization, or Stage 3 work was performed.
+
+**Foundation continuation is complete at the contract/evidence level, subject only to final helper-file removal and exact-head CI confirmation. Parallel implementation remains NOT AUTHORIZED pending independent supervisor re-review.**
