@@ -186,6 +186,7 @@ The candidate frozen surface is in:
 
 - `src/contracts/common.ts`: persistence/semantic generation and stable identity brands;
 - `src/contracts/synchronization-foundation.ts`: exact BASE authority, ingestion pages/checkpoints, convergence state, remote ambiguity/mutation identity, restart journal, local transaction, provenance, cancellation/lifecycle, fault points, merge policy, semantic validation;
+- callable workstream seams in that module: `ReliableRemoteChangePort`, `ReliableRemoteMutationPort`, `CoherentRemoteReadPort`, `LocalTransactionalMutationPort`, and `SynchronizationAuthorityStore`;
 - `src/contracts/index.ts`: public export.
 
 Compatibility is intentional: existing `StateRevision` remains available and aliases the persistence concept. Current production behavior is unchanged by this foundation. Later workstreams must migrate implementation behind the new interfaces rather than invent alternative semantics.
@@ -215,4 +216,3 @@ The following are intentionally not implemented here:
 - full deterministic two-device/crash simulator.
 
 These are bounded engineering tasks, not unresolved product decisions. They may begin only after independent supervisor approval.
-

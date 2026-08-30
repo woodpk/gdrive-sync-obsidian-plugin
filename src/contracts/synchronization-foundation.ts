@@ -33,6 +33,28 @@ export interface ExactBaseAuthority extends SemanticAuthorityReference {
   readonly fingerprint: BaseFingerprint;
 }
 
+export interface IdentityAuthorityProof extends SemanticAuthorityReference {
+  readonly status: "unique";
+  readonly path: VaultPath;
+  readonly remoteObjectId: RemoteObjectId;
+}
+
+/** Evidence sufficient to heal a stale BASE without rewriting equal content. */
+export interface CommonStateProof extends SemanticAuthorityReference {
+  readonly path: VaultPath;
+  readonly entityKind: EntityKind;
+  readonly localObservationToken?: ObservationToken;
+  readonly remoteObjectId?: RemoteObjectId;
+  readonly remoteRevision?: RemoteRevisionId;
+  readonly content?: ContentEvidence;
+  readonly identity: "unambiguous";
+}
+
+export type AuthoritativeBaseTransition =
+  | { readonly kind: "heal-common-state"; readonly proof: CommonStateProof; readonly nextFingerprint: BaseFingerprint }
+  | { readonly kind: "verified-operation"; readonly operationId: OperationId; readonly proof: CommonStateProof; readonly nextFingerprint: BaseFingerprint }
+  | { readonly kind: "verified-deletion"; readonly operationId: OperationId; readonly authority: ExactBaseAuthority };
+
 export function exactBaseAuthorityMatches(expected: ExactBaseAuthority, actual: ExactBaseAuthority): boolean {
   return expected.generation === actual.generation
     && expected.path === actual.path
@@ -91,6 +113,17 @@ export interface RemoteIngestionCheckpoint {
   readonly status: "learned";
 }
 
+export interface DurableRemoteChangeBatch {
+  readonly checkpoint: RemoteIngestionCheckpoint;
+  /** Ordered, normalized object changes. Distinct object IDs remain distinct. */
+  readonly changes: readonly RemoteChange[];
+}
+
+/** Drive workstream change-feed seam; a call returns exactly one complete protocol page. */
+export interface ReliableRemoteChangePort {
+  readChangePage(identity: ManagedRemoteIdentity, requestedToken: ChangeCursor, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<RemoteChangeProtocolPage>>;
+}
+
 export interface RemotePathCandidate {
   readonly remoteObjectId: RemoteObjectId;
   readonly path: VaultPath;
@@ -133,9 +166,23 @@ export type RemoteMutationOutcome =
 
 /** Drive workstream target seam; ambiguous results are values, never ordinary retryable success. */
 export interface ReliableRemoteMutationPort {
-  reserveCreateIdentity(root: ManagedRemoteIdentity, intentId: MutationIntentId, path: VaultPath): Promise<DriveResult<RemoteMutationIdentity>>;
+  reserveCreateIdentity(root: ManagedRemoteIdentity, intentId: MutationIntentId, path: VaultPath): Promise<DriveResult<Extract<RemoteMutationIdentity, { readonly kind: "reserved-create" }>>>;
   createReserved(identity: Extract<RemoteMutationIdentity, { readonly kind: "reserved-create" }>, entityKind: EntityKind, content?: BinaryContentSource, expectedEvidence?: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
   updateExisting(identity: Extract<RemoteMutationIdentity, { readonly kind: "existing-object" }>, content: BinaryContentSource, expectedEvidence?: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+}
+
+export type CoherentRemoteDownload =
+  | {
+      readonly status: "coherent";
+      readonly remoteObjectId: RemoteObjectId;
+      readonly revision: RemoteRevisionId;
+      readonly evidence: ContentEvidence;
+      readonly content: BinaryContentSource;
+    }
+  | { readonly status: "changed-during-transfer" | "outcome-unknown"; readonly reason: string };
+
+export interface CoherentRemoteReadPort {
+  downloadVersion(remoteObjectId: RemoteObjectId, expectedRevision: RemoteRevisionId, expectedEvidence: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<CoherentRemoteDownload>>;
 }
 
 export type RecoverableOperationStage =
@@ -188,6 +235,17 @@ export interface LocalMutationTransaction {
   readonly stage: LocalMutationTransactionStage;
   readonly expectedOldToken?: ObservationToken;
   readonly expectedNewEvidence: ContentEvidence;
+}
+
+export type LocalTransactionResult =
+  | { readonly status: "staged-verified" | "committed" | "recovered"; readonly transaction: LocalMutationTransaction; readonly resultingObservationToken?: ObservationToken }
+  | { readonly status: "stale" | "blocked" | "outcome-unknown"; readonly reason: string; readonly transaction: LocalMutationTransaction };
+
+/** Local workstream mutation seam; implementations persist every returned durable stage through C. */
+export interface LocalTransactionalMutationPort {
+  stageAndVerify(transaction: LocalMutationTransaction, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
+  commitVerifiedStage(transaction: LocalMutationTransaction, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
+  recover(transaction: LocalMutationTransaction, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
 }
 
 export type LocalTransactionRecoveryAction = "discard-unverified-stage" | "verify-stage" | "restore-or-complete-swap" | "cleanup-backup" | "none";
@@ -259,3 +317,32 @@ export type SemanticStateValidationIssueCode =
 
 export interface SemanticStateValidationIssue { readonly code: SemanticStateValidationIssueCode; readonly path?: VaultPath; readonly detail: string; }
 export interface SemanticStateValidator<TState> { validate(state: TState): readonly SemanticStateValidationIssue[]; }
+
+/** Required coordination segment of the future trusted synchronization state. */
+export interface SynchronizationAuthorityMetadata {
+  readonly persistenceRevision: PersistenceRevision;
+  readonly semanticGeneration: SemanticStateGeneration;
+  readonly learnedRemoteBatch?: DurableRemoteChangeBatch;
+  /** Array form is intentional: this segment must survive JSON/IndexedDB serialization. */
+  readonly pathConvergence: readonly { readonly path: VaultPath; readonly state: PathConvergenceState }[];
+  readonly operationIntents: readonly RecoverableOperationIntent[];
+  readonly localTransactions: readonly LocalMutationTransaction[];
+}
+
+export type SynchronizationAuthorityLoadResult<TState extends SynchronizationAuthorityMetadata> =
+  | { readonly status: "trusted"; readonly state: TState }
+  | { readonly status: "uninitialized" }
+  | { readonly status: "recovery-required"; readonly issues: readonly SemanticStateValidationIssue[] };
+
+export type SynchronizationAuthoritySaveResult =
+  | { readonly status: "saved"; readonly persistenceRevision: PersistenceRevision; readonly semanticGeneration: SemanticStateGeneration }
+  | { readonly status: "stale-persistence"; readonly actualPersistenceRevision?: PersistenceRevision }
+  | { readonly status: "stale-semantic-authority"; readonly actualSemanticGeneration?: SemanticStateGeneration }
+  | { readonly status: "recovery-required"; readonly issues: readonly SemanticStateValidationIssue[] };
+
+/** State workstream seam with separate CAS and semantic-authority guards. */
+export interface SynchronizationAuthorityStore<TState extends SynchronizationAuthorityMetadata> {
+  loadAuthority(): Promise<SynchronizationAuthorityLoadResult<TState>>;
+  saveAuthority(state: TState, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration?: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult>;
+  commitBaseTransition(transition: AuthoritativeBaseTransition, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult>;
+}

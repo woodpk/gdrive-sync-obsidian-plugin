@@ -182,7 +182,6 @@ Owned test files/namespaces:
 - `test/phase2-execution.test.ts`
 - `test/phase2-planner.test.ts`
 - `test/phase2-planner-edge.test.ts`
-- `test/phase2-safety-policy.test.ts` is **not owned** (C owns it); D adds destructive planner cases under its new namespace
 - `test/phase5-auth-controller.test.ts`
 - `test/phase5-controller.test.ts`
 - `test/phase5-group-d-acceptance.test.ts`
@@ -358,4 +357,3 @@ The production ownership lists above are pairwise disjoint. Test ownership lists
 8. Integrate E against the final orchestration/lifecycle seams.
 9. Integrate G's adversarial suite and run the complete matrix.
 10. Run full Windows/Linux/build/mobile-package verification and return for supervisor review before any release/physical testing decision.
-

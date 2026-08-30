@@ -31,22 +31,28 @@ Later agents must not modify `src/contracts/**` independently. Compatibility ada
 | `PersistenceRevision` | Sequences serialized state-document CAS only; it is not BASE/plan authority. | C, D |
 | `SemanticStateGeneration` | Changes when synchronization authority changes, independently of journal-only persistence. | C, D |
 | `ExactBaseAuthority` | History-dependent/destructive work binds to exact path, semantic generation, and BASE fingerprint. | C, D |
+| `IdentityAuthorityProof` | Identity-dependent work binds path/object uniqueness to a semantic generation. | A, C, D |
+| `CommonStateProof` / `AuthoritativeBaseTransition` | Equal, canonical, unambiguous reality can heal BASE without rewriting content. | B, C, D |
 | `PathConvergenceState` | Per-path convergence/attention/conflict remains separate from remote feed progress. | C, D, E |
 | `RemoteChangeProtocolPage` | Intermediate `nextPageToken` and terminal `newStartPageToken` are distinct, complete-page states. | A, C, D |
 | `RemoteIngestionCheckpoint` | Terminal token represents a completely learned, durable batch, not universal path convergence. | A, C, D |
+| `DurableRemoteChangeBatch` / `ReliableRemoteChangePort` | Preserves ordered learned changes while a Drive read returns exactly one intermediate/terminal page. | A, C, D |
 | `RemoteLogicalPathResolution` | Same-path object multiplicity is explicit; no arbitrary winner. | A, D |
 | `RemoteMutationIdentity` | Create has durable reserved ID/intent; update has exact object/revision intent. | A, C, D |
 | `RemoteMutationOutcome` | Applied, not-applied, and unknown are distinct; unknown is never ordinary retry success. | A, C, D |
 | `ReliableRemoteMutationPort` | Exposes reserved create and explicit update outcomes with cancellation. | A, D |
+| `CoherentRemoteReadPort` | Materialized bytes prove one expected remote revision or return changed/unknown. | A, B, D |
 | `RecoverableOperationIntent` | Durable stage and identity are sufficient for restart reconciliation before new mutation authority. | C, D |
 | `RestartRecoveryDirective` | Noncommitted/ambiguous stages reconcile physical reality; verified effect may finish state commit. | C |
 | `LocalMutationTransaction` | Staging, verification, backup, swap, and cleanup boundaries are durable and recoverable. | B, C, D |
+| `LocalTransactionalMutationPort` | Separates stage+verify, commit, and restart recovery as explicit outcomes. | B, C, D |
 | `LocalMutationProvenance` | Self-generated events correlate by exact operation/transaction/result, never timing alone. | B, E |
 | `SynchronizationCancellationSignal` | Cooperative cancellation can propagate without becoming crash-correctness authority. | A, B, D, E, F |
 | `SynchronizationLifecycleState` | No new work begins while suspending/suspended/unloading. | B, E |
 | `SynchronizationFaultPoint` | Deterministic crash injection exists at journal/mutation/verification/commit and local-swap boundaries. | A, B, C, D, G |
 | `TextMergeResourcePolicy` | Unknown/oversized inputs fail closed to preservation/conflict rather than unbounded merge. | D, F |
 | `SemanticStateValidator` | Semantic inconsistencies are explicit recovery issues, not trusted shape-valid state. | C |
+| `SynchronizationAuthorityMetadata` / `SynchronizationAuthorityStore` | Makes separate persistence and semantic guards callable by C/D and persists learned batches, path state, intents, and local transactions. | C, D |
 
 ## 3. Fixed cross-contract invariants
 
@@ -107,4 +113,3 @@ The supervisor decides whether to reject, amend the foundation centrally, or ser
 ## 6. Approval state
 
 This is not yet an operative freeze. It becomes authoritative only when the independent supervisor returns explicit approval for the exact foundation implementation SHA recorded above.
-
