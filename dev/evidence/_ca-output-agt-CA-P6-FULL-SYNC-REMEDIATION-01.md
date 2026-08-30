@@ -224,3 +224,20 @@ Verification was rerun from clean pushed head `a70d9a70609e40754d394ea30f986755f
 No product or test changes were made during this verification checkpoint.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 6: review PR and independent Linux CI
+
+- PR: `#33` — `https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/33`
+- base: `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`
+- verified implementation/evidence head: `ac9156ffeb0771a903f5edb82fe20e8f746cd069`
+- PR state: OPEN, UNMERGED, MERGEABLE
+- GitHub workflow: `Phase 6 Alpha Diagnostic Verification`
+- run ID: `33313136444`
+- result: PASS on Linux
+- successful gates: checkout, dependency install, typecheck, full tests, focused callback/diagnostic/OAuth/export tests, production build, full repository check, whitespace check, artifact identity, and diagnostic build/evidence upload
+- Azure Static Web Apps run `33313136441`: FAIL only because the Static Web App already has the maximum number of staging environments; this is the established preview-capacity infrastructure condition, not plugin source/test failure
+- Azure infrastructure was not changed.
+
+This checkpoint is evidence-only and does not change the verified bundle.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
