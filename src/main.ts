@@ -112,8 +112,9 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
-    this.currentSettings = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
-    await this.dataRepository?.saveSettings(this.currentSettings);
+    const durable = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
+    await this.dataRepository?.saveSettings(durable);
+    this.currentSettings = durable;
   }
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
@@ -124,13 +125,19 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       next.localChangeEnabled = false;
       next.periodicEnabled = false;
     }
-    await this.replaceSettings(next);
+    const relocatingSyncPlanErrors = previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory;
+    if (relocatingSyncPlanErrors) {
+      if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
+      await this.runtime.applySettingsChange(previous, next);
+    } else {
+      await this.replaceSettings(next);
+    }
     this.diagnostics?.configure({
       level: this.currentSettings.diagnosticLogLevel,
       retentionLimit: this.currentSettings.diagnosticRetention,
       consoleMirror: this.currentSettings.diagnosticConsoleMirror,
     });
-    await this.runtime?.applySettingsChange(previous, this.currentSettings);
+    if (!relocatingSyncPlanErrors) await this.runtime?.applySettingsChange(previous, this.currentSettings);
   }
 
   private authenticationButtonPressed(): number {

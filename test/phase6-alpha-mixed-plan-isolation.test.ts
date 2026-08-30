@@ -6,7 +6,7 @@ import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audi
 import type { AuditPersistence } from "../src/product/audit-history";
 import { IntegratedProductController, type PlannerFactory } from "../src/product/product-controller";
 import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
-import { createSyncAttentionCsvFile, SyncAttentionLedger, SYNC_ATTENTION_CSV_FILENAME, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
+import { createSyncAttentionCsvFile, parseSyncAttentionRecordsCsv, SyncAttentionLedger, SYNC_ATTENTION_CSV_FILENAME, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
 import { DiagnosticLogger, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
 import { sha256Text } from "../src/util/sha256";
@@ -327,8 +327,9 @@ test("a fresh reason authoritatively supersedes the prior current reason for tha
   assert.equal(afterReplacement.find(record => record.reasonCode === "local-file-not-stable")?.current, false);
   assert.equal(afterReplacement.find(record => record.reasonCode === "local-path-inaccessible")?.current, true);
   const csvAfterReplacement = await h.ledger.renderCsv();
-  assert.match(csvAfterReplacement, /"local-file-not-stable"[^\r\n]*"resolved"/u);
-  assert.match(csvAfterReplacement, /"local-path-inaccessible"[^\r\n]*"current"/u);
+  const csvRecords = parseSyncAttentionRecordsCsv(csvAfterReplacement);
+  assert.equal(csvRecords.find(record => record.reasonCode === "local-file-not-stable")?.current, false);
+  assert.equal(csvRecords.find(record => record.reasonCode === "local-path-inaccessible")?.current, true);
   const status = h.controller.currentSurface().status;
   assert.equal(status.kind, "attention-required");
   if (status.kind === "attention-required") assert.equal(status.attentionCount, 1);

@@ -61,6 +61,7 @@ function uncertainty(snapshot: PathSnapshot): { code: string; summary: string; r
   if (snapshot.base.status === "untrusted") return { code: "untrusted-base", summary: snapshot.base.reason, recovery: true };
   if (snapshot.identity.status !== "unambiguous") return { code: "identity-ambiguous", summary: snapshot.identity.reason };
   if (snapshot.local.status === "unreadable" || snapshot.local.status === "inaccessible" || snapshot.local.status === "unknown") return { code: `local-${snapshot.local.status}`, summary: snapshot.local.reason };
+  if (snapshot.local.status === "present" && snapshot.local.entityKind === "file" && snapshot.local.stability !== "stable") return { code: "local-file-not-stable", summary: "Local content changed during stable-source validation; this path will be retried without blocking unrelated work." };
   if (snapshot.remote.status === "unreadable" || snapshot.remote.status === "inaccessible" || snapshot.remote.status === "unknown") return { code: `remote-${snapshot.remote.status}`, summary: snapshot.remote.reason };
   if (snapshot.remote.status === "absent" && snapshot.remoteEnumeration.status !== "complete") return { code: "remote-enumeration-incomplete", summary: snapshot.remoteEnumeration.reason };
   return undefined;

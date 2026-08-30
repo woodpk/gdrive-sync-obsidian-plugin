@@ -487,3 +487,34 @@ Integration evidence-pass files modified:
 No product code, test, version, OAuth/Azure configuration, physical iPhone state, or Stage 3 state was changed.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## 0.1.6 master promotion and prerelease preparation - 2026-08-29
+
+- supervisor review result for promotion PR #30: **APPROVE**;
+- approved PR #30 head: `233573a2f0abc1a91855a8dcfcb3f091658f38c6`;
+- merge method: guarded normal merge commit, with no squash, rebase, force push, or history rewrite;
+- PR #30 merge commit / promoted source `master` SHA: `251f9345488a56f1b4cfa71129b96e3f083fa916`;
+- approved-head ancestry: verified;
+- version: `0.1.6`;
+- local focused verification: **18/18 PASS**;
+- local Windows full suite: **339/341 qualified PASS**, only the two established drive-prefix expectation mismatches;
+- typecheck/build/diff check/all five package verifiers: **PASS**;
+- promoted-master CI run `33238942414`: **341/341 PASS**, build and package verification PASS;
+- `main.js`: `377230` bytes;
+- `main.js` SHA-256: `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`;
+- Windows release `manifest.json`: `284` bytes;
+- Windows release `manifest.json` SHA-256: `bda99947f74fbbbb072613c14056729fd09cca0eee6882e50ed5b33f7cc7b718`;
+- authorized release: GitHub prerelease `0.1.6`, targeting the resulting evidence-only `master` commit;
+- required assets: exactly `main.js` and `manifest.json`.
+
+Release evidence-pass files modified:
+
+- `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`;
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+No product code, tests, version metadata, OAuth/Azure configuration, physical iPhone state, or Stage 3 state was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

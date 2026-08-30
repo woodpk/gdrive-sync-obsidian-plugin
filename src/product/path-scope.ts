@@ -14,7 +14,11 @@ export class ProductPathScope {
   private readonly configurationPolicy = new SelectiveConfigurationPolicy();
   private readonly portable = new Set(this.configurationPolicy.describePortablePolicy().filter(entry => entry.classification.classification === "portable").map(entry => norm(entry.relativePath)));
 
-  constructor(private readonly configurationDirectory: VaultPath, private readonly settings: () => ScopeSettings) {}
+  constructor(
+    private readonly configurationDirectory: VaultPath,
+    private readonly settings: () => ScopeSettings,
+    private readonly operationalExclusions: () => ReadonlySet<string> = () => new Set<string>(),
+  ) {}
 
   isReservedLogical(path: VaultPath | string): boolean {
     const logical = norm(String(path));
@@ -23,6 +27,7 @@ export class ProductPathScope {
 
   isManagedLogical(path: VaultPath | string): boolean {
     const logical = norm(String(path));
+    if (this.operationalExclusions().has(logical)) return false;
     // The exact synthetic namespace is retained in planning only as a collision
     // sentinel. It can never be materialized through logicalToPhysical().
     if (logical === CONFIG_REMOTE_NAMESPACE) return true;

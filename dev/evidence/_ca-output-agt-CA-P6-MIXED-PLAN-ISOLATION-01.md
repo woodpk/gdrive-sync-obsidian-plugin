@@ -332,3 +332,36 @@ Promotion PR [#30](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/30
 No product code, test, version, OAuth/Azure configuration, tag, release, physical iPhone state, or Stage 3 state was changed by the integration evidence pass.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Approved master promotion and 0.1.6 prerelease preparation
+
+Supervisor status for promotion PR #30: **APPROVE**.
+
+PR #30 was guarded at exact approved head `233573a2f0abc1a91855a8dcfcb3f091658f38c6`, verified open, unmerged, non-draft, mergeable, clean, and based on `master`, then merged normally without squash or rebase. The PR #30 merge commit and promoted source `master` SHA are `251f9345488a56f1b4cfa71129b96e3f083fa916`. Approved head ancestry was verified after the merge.
+
+Fresh promoted-build verification:
+
+- version metadata: `0.1.6` in `manifest.json`, `package.json`, and `package-lock.json`;
+- typecheck: **PASS**;
+- focused mixed-plan/attention/concurrency suite: **18/18 PASS**;
+- Windows full suite: **339/341 qualified PASS**, with only the two unchanged established drive-prefix expectation mismatches;
+- production build and all five package verifiers: **PASS**;
+- `git diff --check`: **PASS**;
+- `main.js`: `377230` bytes;
+- `main.js` SHA-256: `169f936b44ae1472ac33eb971372da790c5b4fc91c36ec779ab21e5e33a733ae`;
+- release `manifest.json`: `284` bytes on the Windows release surface;
+- release `manifest.json` SHA-256: `bda99947f74fbbbb072613c14056729fd09cca0eee6882e50ed5b33f7cc7b718`.
+
+Promoted-master **Phase 1 CI** run [33238942414](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33238942414) passed **341/341**, typecheck, production build, and all package verifiers while reproducing the exact `main.js` identity above.
+
+This prerelease evidence pass modifies only:
+
+- `dev/evidence/_ca-output-agt-CA-P6-MIXED-PLAN-ISOLATION-01.md`;
+- `dev/evidence/_ca-output.md`;
+- `dev/evidence/phase6-integration-manifest.md`.
+
+The authorized prerelease is `0.1.6`, will target the resulting evidence-only `master` commit, and will attach exactly the BRAT assets `main.js` and `manifest.json`. Release notes must state that automated verification passed and physical iPhone validation remains pending. No product code, tests, version metadata, OAuth/Azure configuration, physical testing, or Stage 3 work is changed by this evidence pass.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
