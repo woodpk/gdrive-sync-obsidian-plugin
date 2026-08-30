@@ -204,3 +204,23 @@ Focused coordinator plus remediation result: `10/10` PASS. Existing crash-before
 Material file additionally modified: `test/phase2-execution.test.ts`.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 5: resumed final local verification
+
+Verification was rerun from clean pushed head `a70d9a70609e40754d394ea30f986755f992db87` after the user resumed the task:
+
+- `npm run typecheck`: PASS;
+- crash-safety + remediation + actual-adapter focus: `27/27` PASS;
+- complete Windows suite: `377/379` PASS;
+- the only two failures remain the unchanged, previously qualified Windows drive-prefix expectation mismatches;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- entrypoint, syntax, local runtime dependencies, mobile evaluation, and package shape: PASS;
+- `git diff --check`: PASS;
+- version: `0.1.7`;
+- `main.js`: `415353` bytes;
+- SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
+
+No product or test changes were made during this verification checkpoint.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
