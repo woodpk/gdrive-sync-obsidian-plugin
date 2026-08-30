@@ -39,7 +39,13 @@ export interface RemoteUpdateRequest {
   readonly expectedRemoteRevision?: string;
   readonly expectedEvidence?: ContentEvidence;
 }
-/** Authentication/session state and remote identity validation are deliberately separate. */
+/**
+ * Legacy/raw Drive transport surface retained for compatibility with existing code.
+ * The Stage 2A synchronization execution path MUST NOT treat create/update/move/trash
+ * results from this interface as authoritative mutation outcomes. Workstream A owns
+ * the adapter from these transport primitives into ReliableRemoteMutationPort, and
+ * Workstream D consumes only the reliable frozen synchronization seams.
+ */
 export interface GoogleDrivePort {
   authenticationState(): Promise<DriveAuthenticationState>;
   createManagedRoot(vaultIdentity: VaultIdentity, protocolVersion: ProtocolVersion): Promise<DriveResult<ManagedRemoteIdentity>>;
@@ -51,8 +57,12 @@ export interface GoogleDrivePort {
   readChanges(rootId: RemoteObjectId, cursor: ChangeCursor): Promise<DriveResult<RemoteChangePage>>;
   observe(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<RemoteObservation>>;
   download(remoteObjectId: RemoteObjectId): Promise<DriveResult<RemoteDownload>>;
+  /** @deprecated Raw transport primitive; not synchronization authority. */
   create(rootId: RemoteObjectId, request: RemoteCreateRequest): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw in-place transport primitive; forbidden for preservation-safe synchronization content update. */
   update(request: RemoteUpdateRequest): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw transport primitive; synchronization must use ReliableRemoteMutationPort.moveExisting. */
   move(remoteObjectId: RemoteObjectId, fromPath: VaultPath, toPath: VaultPath): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw transport primitive; synchronization must use ReliableRemoteMutationPort.trashExisting. */
   trash(remoteObjectId: RemoteObjectId): Promise<DriveResult<void>>;
 }
