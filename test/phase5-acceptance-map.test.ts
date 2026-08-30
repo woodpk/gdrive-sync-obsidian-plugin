@@ -38,7 +38,7 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(21,"partial remote listing cannot masquerade as complete absence",recovery,"G2 scenarios 21 and 22 incomplete remote or local observation cannot become deletion authority in Phase5 planning"),
  e(22,"unreadable or inaccessible local content cannot masquerade as deletion",recovery,"G2 scenarios 21 and 22 incomplete remote or local observation cannot become deletion authority in Phase5 planning"),
  e(23,"stale long-offline device cannot authorize destructive propagation",recovery,"G2 scenario 23 stale current device cannot authorize destructive propagation through production controller planning"),
- e(24,"stale operation precondition invalidates affected work",active,"G2 scenario 24 stale operation precondition refuses mutation and triggers a later production replanning opportunity"),
+ e(24,"stale operation precondition invalidates affected work",active,"G2 scenario 24 stale operation precondition refuses mutation, completes with attention, and awaits an external reconciliation trigger"),
  e(25,"remote change during active run invalidates or replans affected work",active,"G2 scenario 25 remote change during an active production run is deferred to the later serialized Changes reconciliation"),
  e(26,"local change during active run is deferred and coalesced into a later pass","test/phase5-group-d-acceptance.test.ts","Phase5 scenario 26 local change during an active production run is deferred into a later reconciliation pass"),
  e(27,"safe cancellation of active synchronization",recovery,"G2 scenario 27 cancellation stops future operations and leaves cursor unadvanced"),
