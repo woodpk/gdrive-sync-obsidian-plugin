@@ -260,7 +260,7 @@ G2R C1, C2, and C3 are dynamically verified at `3aab3647b57baad7df0b31cc40042325
 
 ## Phase 6 Alpha Repair — OAuth Protocol-Handler Lifecycle (Alpha Bug #3)
 
-This record is an append-only repair record. Earlier statements above about Phase 6 not yet having begun describe the historical state at the time those records were written and are not rewritten here.
+This append-only record establishes the newer lifecycle-repair state without rewriting the historical records above.
 
 ### Identity and branch control
 
@@ -512,7 +512,7 @@ GitHub Actions:
 - workflow/job conclusion: **SUCCESS**;
 - actual job steps and complete job log were inspected.
 
-The fresh combined build reproduced the approved artifact identity exactly. Alpha Bug #1 is now **repository/build repaired**, but real Windows Obsidian installation/load validation of the integrated packaging remains outstanding and is not represented as PASS by CI. Real iPhone/iOS validation also remains outstanding.
+The fresh combined build reproduced the approved repair artifact identity exactly. Alpha Bug #1 is now **repository/build repaired**, but real Windows Obsidian installation/load validation of the integrated packaging remains outstanding and is not represented as PASS by CI. Real iPhone/iOS validation also remains outstanding.
 
 ### Current boundaries after integration
 
@@ -1259,7 +1259,6 @@ Before the production push, the isolated integration content was verified identi
 
 The production deployment changed no release/tag, version metadata, `master`, Google Cloud configuration, Azure configuration, OAuth scope, token handling, synchronization behavior, performance work, or Stage 3 state. Physical iPhone callback acceptance remains not performed by this agent.
 
-
 ---
 
 ## Phase 6 OAuth Housekeeping — `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
@@ -1533,3 +1532,266 @@ Promoted verification: consistent version `0.1.6`; typecheck PASS; focused mixed
 The authorized `0.1.6` GitHub prerelease will target the resulting evidence-only `master` commit and attach exactly `main.js` and `manifest.json`. This evidence pass changes only the detailed mixed-plan evidence, cumulative ledger, and integration manifest. No product/test/version code, OAuth/Azure configuration, physical testing, or Stage 3 work occurred.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## Phase 6 Alpha — Sync Plan Error Artifact and Transient Local-Edit Repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01`
+
+From exact released `master` SHA `77336110893ff31e4029d962584ba25fc22ce7c8`, implementation commit `70ee18890603f478dfe19b9926d712b25376e84f` prepares version `0.1.7`. Bounded re-observation now treats an ordinary changed-during-hash race as transient while preserving exact observation-token and post-hash validation; exhaustion becomes path-local `local-file-not-stable`. Per-file canonical-content uncertainty no longer changes directory-enumeration completeness or contaminates unrelated/portable paths, while genuine listing failure remains fail-closed.
+
+The rejected head introduced the persistent, mobile-safe `sync-plan-errors.csv`, but its relocation and staged replacement were only exception-safe within one process; they were not yet hard-termination/restart safe. The unsupported crash-safety implication in the original record is superseded by the bounded C1/C2 repair below.
+
+Verification: typecheck PASS; focused mixed-plan/stability suite **26/26 PASS**; Windows full suite **347/349 qualified PASS** with only the same two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. GitHub/Linux run [33266594533](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33266594533) passed **349/349** and reproduced `main.js` at `395507` bytes with SHA-256 `1d0c5dd52a21cbca98584ca2a5c4ab65aef2fd1b055ab80776dd4e4bf9564496`. `manifest.json` is `283` bytes with SHA-256 `fd4cd2d3572b86ad2fea72e27c336f2ce8ee7d3c99979a1abbf220f4eaeb8279`.
+
+PR [#31](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/31) targets `phase6-integration` and remains open/unmerged. Its separate Azure preview failed only on the known maximum-staging-environments capacity condition; no Azure change was made. No protected branch, tag/release, physical test, Phase 6 completion, or Stage 3 work occurred. Detailed evidence: `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 crash-consistency rejection repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01`
+
+From rejected head `1516aef5ce93d3bb0ad95fd2dc831edbdc1f2a75`, implementation commit `ece64f993ed50de4c2bc3810639d942e597ef7e0` corrects both shared-owner persistence defects without changing the planner, executor, synchronization authority, OAuth, or unrelated configuration.
+
+C1 now uses one plugin-data-backed relocation journal containing exact source and destination CSV paths. The journal and both visible exclusions are durable before destination work begins; runtime operational exclusions cover both canonical and deterministic stage/backup paths. Relocation is serialized with ledger writes, validates the destination before the active setting changes, preserves the source until that transition is durable, cleans the source next, and clears the journal/old protection last. Restart recovery handles all three transaction boundaries deterministically and preserves unrelated user exclusions.
+
+C2 replaces random transaction names with deterministic `.brain-sync-stage` and `.brain-sync-backup` paths and recovers residue before initialization, load, or replacement. A valid canonical remains authoritative; a missing canonical restores a valid committed backup before discarding stage; a valid stage is promoted only when no backup exists; unrecoverable residue surfaces a sanitized persistence failure and is never replaced with blank history.
+
+Verification: typecheck PASS; focused mixed-plan/plan-errors suite **35/35 PASS**; Windows full suite **356/358 qualified PASS** with only the same two established drive-prefix mismatches; build, diff check, and all five package verifiers PASS. GitHub/Linux run [33268697386](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33268697386) passed **358/358** and reproduced `main.js` at `404546` bytes with SHA-256 `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`. `manifest.json` remains `283` bytes with SHA-256 `fd4cd2d3572b86ad2fea72e27c336f2ce8ee7d3c99979a1abbf220f4eaeb8279`.
+
+The repair modified `src/main.ts`, `src/product/plugin-data.ts`, `src/product/runtime.ts`, `src/product/sync-plan-errors-csv.ts`, `src/product/sync-plan-errors-path.ts`, `test/phase6-alpha-plan-errors-stability.test.ts`, and the two evidence files; it created/deleted no files. PR [#31](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/31) remains open/unmerged. The separate Azure preview run [33268697361](https://github.com/woodpk/gdrive-sync-obsidian-plugin/actions/runs/33268697361) reproduced only the known maximum-staging-environments capacity failure. No protected branch, tag/release, physical test, or Stage 3 work occurred.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 cloud continuation closure — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+This section continues the existing repair from inherited branch head `51b270225b94ced2f66e626b97e00853bfdb9218`. The continuation agent directly inspected the C1/C2 production lifecycle and hard-restart regression coverage and found no remaining implementation defect requiring another source or test change. The last product/test implementation commit therefore remains `ece64f993ed50de4c2bc3810639d942e597ef7e0`; the inherited commit after it was evidence-only.
+
+### C1 — crash-safe CSV relocation verification
+
+PASS by direct implementation and adversarial test inspection. Pending relocation state is durably journaled with exact source and destination paths; restart reconstructs both visible/operational exclusions before scheduler activity; destination establishment/validation precedes the active-location transition; the source remains until the destination and active setting are durable; source cleanup precedes journal clearing; all three hard-restart boundaries converge while preserving prior records and unrelated user exclusions; pending relocation failure leaves both locations protected.
+
+### C2 — crash-safe CSV replacement/recovery verification
+
+PASS by direct implementation and adversarial test inspection. Stage/backup paths are deterministic (`.brain-sync-stage` / `.brain-sync-backup`); recovery runs before absent/blank initialization; a valid canonical wins and stale residue is cleaned; canonical-missing + backup restores committed history; canonical-missing + valid stage with no backup promotes stage; unrecoverable residue fails safely instead of fabricating blank authoritative history; genuinely residue-free first initialization may create the empty/header CSV; relocation uses the same recovery semantics.
+
+### Hard-restart regression verification
+
+The existing tests construct restart residue directly rather than depending on an exception handler completing. They cover canonical missing + backup + stage, canonical present + stale residue, canonical missing + valid stage only, unrecoverable residue, relocation restart after journal creation, after destination creation, and after active-location change, both locations excluded throughout the pending transaction, prior error-record preservation, and unrelated user-exclusion preservation. No test addition was required.
+
+### Continuation verification
+
+One-shot GitHub/Linux continuation workflow run `33273517297` executed from workflow-creation commit `3d3287bcfd647e5687324b30e14e869a30fc612b` against the unchanged product/test tree:
+
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- `npm test`: **358/358 PASS**, 0 fail
+- focused repair command (run after the full suite establishes the repository test harness): `node --test .test-build/test/phase6-alpha-mixed-plan-isolation.test.js .test-build/test/phase6-alpha-plan-errors-stability.test.js` — **35/35 PASS**, 0 fail
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- `git diff --check`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- `main.js`: `404546` bytes; SHA-256 `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`
+- `manifest.json`: `275` bytes; SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`
+
+The exact-head artifact independently downloaded from prior successful run `33268831441` / job `99143544637` matches the continuation product tree for `main.js`: `404546` bytes / `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`. Its Linux-checkout `manifest.json` is `275` bytes / `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`. Earlier prose that used a different final-head `main.js` identity is superseded. The historical `283`-byte / `fd4cd2d...` manifest identity is not used as the exact GitHub/Linux final-head artifact identity.
+
+Inherited local Windows verification remains **356/358 qualified PASS**. It was not re-executed by this cloud continuation agent. The only two inherited failures are the established Windows drive-prefix expectation mismatches for the direct-missing-child and nested-missing-target portable-collision assertions; no new Windows failure is claimed.
+
+### Continuation change boundary and limitations
+
+- additional implementation changes required: **NO**
+- additional source/test files changed by this continuation: **none**
+- continuation repository changes: this append to the two required evidence files plus a session-transient verification workflow that is removed before final-head review
+- no new branch or PR was created
+- PR #31 remains required to stay open and unmerged against `phase6-integration`
+- no `phase6-integration`, `master`, tag, release, OAuth/Azure behavior, physical device, synchronization, Phase 6 completion, or Stage 3 state was modified
+- final evidence/cleanup commit is necessarily subsequent to this text and cannot contain its own Git SHA; the exact final pushed PR head is recorded in PR #31 metadata and the completion response after GitHub returns it
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+### Cloud-continuation execution-history reconciliation
+
+The continuation's repository-side closure history is recorded explicitly:
+
+- `8eada2467fc1d6e92660e3346823eba9e78ce095` — created the first temporary PR31 continuation verifier. Run `33273425975` reached the 35-test selection but produced **31/35** because four runtime-importing relocation tests could not resolve the Obsidian runtime module when the focused files were invoked before the repository's normal full-test harness. The evidence-writing step was skipped. This was a temporary verifier/harness-order failure; no production or test source changed and it is not represented as C1/C2 product failure.
+- `3d3287bcfd647e5687324b30e14e869a30fc612b` — corrected only the temporary verifier order so the normal full repository test harness runs before the same 35-test focused command.
+- continuation verification run `33273517297` — **SUCCESS**: full **358/358 PASS**, focused PR31 repair **35/35 PASS**, typecheck/build/explicit build verification/diff check PASS, five build verifiers PASS, `main.js` `404546` bytes / SHA-256 `c98eb80d9c6d7e90baa925ed8fd8e72e5ca771c0720813e9b8f2fb1e6e42ef01`, Linux `manifest.json` `275` bytes / SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`.
+- `52f8e8fe6c05798ccb65f4f909504ef3397f4021` — appended the continuation verification/C1/C2 closure to both required evidence files.
+- `b92a2835a26d68ad9e7b3765053c3c7f1ebb8bc2` — removed the temporary continuation verifier from the branch.
+- `a82b9e18094b36fc9c20b2933a961d4f7fd95245` — created this temporary self-removing evidence-finalizer solely to append this reconciliation. It is removed in the same subsequent evidence commit, so no continuation workflow remains in the final net tree.
+
+The subsequent evidence-finalization commit cannot contain its own Git hash without self-reference. Its exact SHA is therefore reported in PR #31 metadata and the completion response after GitHub returns it. Across this cloud continuation, **no production source, test source, version metadata, build configuration, dependency, OAuth/Azure behavior, synchronization authority, `phase6-integration`, or `master` was modified**. The final net repository change relative to inherited head `51b270225b94ced2f66e626b97e00853bfdb9218` is limited to these two evidence files.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 rejection repair — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+### Review authority and supersession
+
+- reviewed rejected head: `872c5872df14a848946607035ff1d6234f6f3592`
+- branch: `phase6-alpha-plan-errors-stability`
+- PR: `#31` -> `phase6-integration`
+- version: `0.1.7`
+- the earlier continuation statement that no remaining blockers existed is superseded by this rejection package and repair record
+- the previously accepted C1/C2 crash-recovery design remains preserved
+
+### Defect 1 — cross-platform-equivalent relocation
+
+**FIXED.** Complete CSV locations are compared using the repository's NFC-normalized, case-folded `normalizedComparisonPath` semantics. Case-only/Unicode-equivalent source and destination locations are rejected before durable relocation journal acceptance or filesystem mutation. Persisted journals receive the same rejection. Cleanup also refuses a source equivalent to the active CSV.
+
+Tests use a normalization-aware adapter whose physical keys collide under the same comparison semantics. They prove case-only and Unicode-equivalent rejection, no write/rename/remove, no accepted journal, and preservation of the original CSV and records.
+
+### Defect 2 — incomplete operational-path validation
+
+**FIXED.** Canonical/stage/backup construction is centralized as `<path>`, `<path>.brain-sync-stage`, and `<path>.brain-sync-backup`. `resolveSyncPlanErrorsPath()` validates all three complete paths through existing cross-platform policy before accepting the directory. Persisted relocation paths are re-derived through that resolver.
+
+Tests prove root/default and normal-directory acceptance; rejection when the directory fits but canonical CSV exceeds the limit; rejection when canonical fits but a transaction path exceeds the limit; and rejection before durable relocation state/filesystem mutation.
+
+### Defect 3 — valid destination history overwrite
+
+**FIXED.** Relocation recovers source and destination independently and deterministically merges valid histories instead of replacing the destination. Matching keys retain maximum occurrence count (no relocation/restart increment), earliest first-seen, latest last-seen, and unresolved/current dominance. Every current record survives; resolved history remains bounded by `DEFAULT_SYNC_ATTENTION_RETENTION`. The destination is written, re-read, and validated before active-location commit/source cleanup. Invalid destination data fails safely without overwrite.
+
+Tests prove source+destination preservation, no fake occurrence increments, current/resolved retention, bounded resolved history, restart idempotence, invalid-destination non-overwrite, and cleanup only after durable validated destination establishment. One pre-rejection C1 assertion was updated because it previously expected a valid destination record to be discarded.
+
+### Implementation/test lineage
+
+- `80733e1d535d32198b05a556a22d921a4b5aa9b1` — operational-path validation and equivalent-journal rejection
+- `3141533ab775cdb43ddeb0099eef6c3df6dddf9c` — history-preserving relocation merge and defensive cleanup
+- `04fc2094dbe0ed54ce2c17ade4c7854b25c2fdba` — eight new rejection regressions
+- `7a8adb4139baa420f323b44d1442e14495635ca8` — final implementation/test tree, including corrected prior C1 restart expectation; **implementation SHA**
+
+### Verification
+
+Strict GitHub/Linux verification:
+
+- workflow: `PR31 Rejection Repair Verification`
+- run: `33278086171`
+- job: `99168292629`
+- verifier commit: `4423dafa6d2557522ee8bcd4efb88d3095abb6d4` (implementation tree plus temporary verifier only)
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- `npm test` with `set -o pipefail`: **366/366 PASS**, 0 fail
+- focused plan-errors suite: **43/43 PASS**, 0 fail
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- `git diff --check`: PASS
+- all five build/package verifiers: PASS
+- `main.js`: **408025 bytes**
+- `main.js` SHA-256: `3a25092b5f097a193d769b41603aaf60c789d5e7609ce69c01957d80d7d2fac5`
+- Linux `manifest.json`: 275 bytes; SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`
+
+An earlier ordinary PR run on `04fc2094...` exposed one stale pre-rejection assertion (365/366 actual TAP) even though its `tee` pipeline reported workflow success. The eight new rejection tests passed. After correcting that stale assertion, the strict pipefail-safe gate passed 366/366 and 43/43.
+
+Fresh Windows execution: **NOT AVAILABLE IN THIS CLOUD SESSION**. The inherited Windows result remains **356/358 qualified PASS** and was not rerun. Its only failures are the established direct-missing-child and nested-missing-target Windows drive-prefix expectation mismatches; this rejection repair did not modify that bounded-read implementation.
+
+### Boundaries
+
+This section is appended to both required evidence files. The generated evidence commit cannot self-contain its own SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response. Temporary repair-verification/evidence workflow files are removed from the final tree.
+
+PR #31 remains OPEN and UNMERGED. `phase6-integration`, `master`, tag/release state, OAuth/Azure product behavior, physical devices, synchronization execution, Phase 6 completion, and Stage 3 remain untouched.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 chronological relocation-state correction — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+### Review authority
+
+- reviewed rejected head: `adcc90042fe43e6964e0a8625620fab3b5a4b65f`
+- branch: `phase6-alpha-plan-errors-stability`
+- PR: `#31` -> `phase6-integration`
+- version: `0.1.7`
+- the prior phrase `unresolved/current dominance` is superseded for duplicate-key relocation merges by the latest-state-transition semantics below.
+
+### C1 — chronological duplicate-state merge
+
+**FIXED.** `SyncPlanErrorsCsvPersistence.mergeRecordSets()` now computes each duplicate record's state-transition time as `lastSeenAtMs` for a current record and `max(lastSeenAtMs, resolvedAtMs ?? lastSeenAtMs)` for a resolved record. The later transition determines `current`. If transition times are exactly equal and status conflicts, `current` is retained conservatively because ordering cannot be proven. Earliest `firstSeenAtMs`, latest `lastSeenAtMs`, maximum `occurrenceCount`, and the existing deterministic newer occurrence metadata selection are retained. A current result carries no `resolvedAtMs`; a resolved result preserves the latest applicable resolution timestamp. `mergeLegacy()` is unchanged.
+
+This prevents an older stale destination-current copy from resurrecting a record that was subsequently resolved on the still-authoritative source. A genuinely later current recurrence still reopens the record.
+
+### New deterministic regression coverage
+
+`test/phase6-alpha-plan-errors-stability-rejection.test.ts` now proves for the same record key:
+
+1. later resolution defeats an older stale current copy and preserves `resolvedAtMs`;
+2. later resolution wins regardless of whether the stale current copy is source or destination;
+3. a genuinely later current recurrence reopens the record and clears `resolvedAtMs`;
+4. a crash/restart relocation sequence with an older destination-current copy and later source resolution remains resolved after retry;
+5. repeating the corrected recovery/merge leaves status, count, timestamps, and retained set unchanged.
+
+The earlier destination-history, occurrence-count, current-retention, resolved-retention, invalid-destination, cleanup-order, equivalent-path, and operational-path regressions remain present.
+
+### Implementation identity and verification
+
+- source correction commit: `1f88dcf1b0d19efa6699ce1a19a00c068f638958`
+- implementation/test SHA: `a730c9dc4616268a8d93890f2a66d9daf9171748`
+- exact implementation compare from rejected head `adcc9004...` to `a730c9dc...`: only `src/product/sync-plan-errors-csv.ts` and `test/phase6-alpha-plan-errors-stability-rejection.test.ts` changed.
+- normal PR workflow: `Phase 6 Alpha Diagnostic Verification`
+- implementation CI run: `33283448357`
+- implementation CI job: `99182412099`
+- TypeScript checking: PASS
+- full test suite: **371/371 PASS**, 0 failures
+- five new same-key regressions: PASS
+- production build: PASS
+- full repository check: PASS
+- `git diff --check`: PASS
+- build/package verification: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+
+### C2 — reconciled mandatory manifests
+
+The canonical evidence now explicitly records the previously omitted net manifest for the repair from `872c5872df14a848946607035ff1d6234f6f3592` through `adcc90042fe43e6964e0a8625620fab3b5a4b65f`:
+
+**Created**
+
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+
+**Modified**
+
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+**Deleted**
+
+- none.
+
+Complete corrective-pass manifest from rejected head `adcc90042fe43e6964e0a8625620fab3b5a4b65f`, derived from the actual Git comparison and including this evidence update:
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `src/product/sync-plan-errors-csv.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+**Deleted**
+
+- none.
+
+### Preserved boundaries and unavailable checks
+
+The accepted case/Unicode-equivalent relocation rejection, complete canonical/stage/backup path validation, durable relocation journal, source/destination restart protection, deterministic stage/backup recovery, invalid-destination fail-safe behavior, resolved-history retention, current-record retention, occurrence-count idempotence, destination validation before source cleanup, planner/executor authority, and attention schema remain unchanged.
+
+Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+PR #31 remains required to stay OPEN and UNMERGED. No new branch/PR, integration/master merge, tag/release, physical-device action, synchronization action, or Stage 3 work is authorized by this correction. The evidence commit cannot self-contain its own Git SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response after GitHub returns them.

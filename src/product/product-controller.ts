@@ -776,8 +776,8 @@ export class IntegratedProductController implements ProductControlPort {
   private async recordAttentionEntries(entries: readonly SkippedPathAttention[]): Promise<boolean> {
     if (!entries.length || !this.options.attentionLedger) return true;
     try { await this.options.attentionLedger.recordSkipped(entries); return true; }
-    catch (error) {
-      this.syncFailure(entries[0]?.runId, "attention-ledger-write-failed", error, { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
+    catch {
+      this.syncError(entries[0]?.runId, "attention-ledger-write-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
       return false;
     }
   }
@@ -787,8 +787,8 @@ export class IntegratedProductController implements ProductControlPort {
       const paths = new Set([operation.path, operation.fromPath, operation.toPath].filter((path): path is VaultPath => path !== undefined));
       for (const path of paths) await this.options.attentionLedger.resolvePath(path);
       return true;
-    } catch (error) {
-      this.syncFailure(this.planned?.diagnosticRunId, "attention-ledger-write-failed", error, { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
+    } catch {
+      this.syncError(this.planned?.diagnosticRunId, "attention-ledger-write-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
       return false;
     }
   }
