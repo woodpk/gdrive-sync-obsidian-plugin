@@ -260,7 +260,7 @@ G2R C1, C2, and C3 are dynamically verified at `3aab3647b57baad7df0b31cc40042325
 
 ## Phase 6 Alpha Repair — OAuth Protocol-Handler Lifecycle (Alpha Bug #3)
 
-This record is an append-only repair record. Earlier statements above about Phase 6 not yet having begun describe the historical state at the time those records were written and are not rewritten here.
+This append-only record establishes the newer lifecycle-repair state without rewriting the historical records above.
 
 ### Identity and branch control
 
@@ -512,7 +512,7 @@ GitHub Actions:
 - workflow/job conclusion: **SUCCESS**;
 - actual job steps and complete job log were inspected.
 
-The fresh combined build reproduced the approved artifact identity exactly. Alpha Bug #1 is now **repository/build repaired**, but real Windows Obsidian installation/load validation of the integrated packaging remains outstanding and is not represented as PASS by CI. Real iPhone/iOS validation also remains outstanding.
+The fresh combined build reproduced the approved repair artifact identity exactly. Alpha Bug #1 is now **repository/build repaired**, but real Windows Obsidian installation/load validation of the integrated packaging remains outstanding and is not represented as PASS by CI. Real iPhone/iOS validation also remains outstanding.
 
 ### Current boundaries after integration
 
@@ -1259,7 +1259,6 @@ Before the production push, the isolated integration content was verified identi
 
 The production deployment changed no release/tag, version metadata, `master`, Google Cloud configuration, Azure configuration, OAuth scope, token handling, synchronization behavior, performance work, or Stage 3 state. Physical iPhone callback acceptance remains not performed by this agent.
 
-
 ---
 
 ## Phase 6 OAuth Housekeeping — `agt-CA-P6-OAUTH-HOUSEKEEPING-01`
@@ -1564,7 +1563,6 @@ The repair modified `src/main.ts`, `src/product/plugin-data.ts`, `src/product/ru
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
-
 ---
 
 ## PR #31 cloud continuation closure — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
@@ -1617,7 +1615,6 @@ Inherited local Windows verification remains **356/358 qualified PASS**. It was 
 - final evidence/cleanup commit is necessarily subsequent to this text and cannot contain its own Git SHA; the exact final pushed PR head is recorded in PR #31 metadata and the completion response after GitHub returns it
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
-
 
 ### Cloud-continuation execution-history reconciliation
 
@@ -1703,3 +1700,98 @@ This section is appended to both required evidence files. The generated evidence
 PR #31 remains OPEN and UNMERGED. `phase6-integration`, `master`, tag/release state, OAuth/Azure product behavior, physical devices, synchronization execution, Phase 6 completion, and Stage 3 remain untouched.
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+---
+
+## PR #31 chronological relocation-state correction — `agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-CLOUD-CONT-01`
+
+### Review authority
+
+- reviewed rejected head: `adcc90042fe43e6964e0a8625620fab3b5a4b65f`
+- branch: `phase6-alpha-plan-errors-stability`
+- PR: `#31` -> `phase6-integration`
+- version: `0.1.7`
+- the prior phrase `unresolved/current dominance` is superseded for duplicate-key relocation merges by the latest-state-transition semantics below.
+
+### C1 — chronological duplicate-state merge
+
+**FIXED.** `SyncPlanErrorsCsvPersistence.mergeRecordSets()` now computes each duplicate record's state-transition time as `lastSeenAtMs` for a current record and `max(lastSeenAtMs, resolvedAtMs ?? lastSeenAtMs)` for a resolved record. The later transition determines `current`. If transition times are exactly equal and status conflicts, `current` is retained conservatively because ordering cannot be proven. Earliest `firstSeenAtMs`, latest `lastSeenAtMs`, maximum `occurrenceCount`, and the existing deterministic newer occurrence metadata selection are retained. A current result carries no `resolvedAtMs`; a resolved result preserves the latest applicable resolution timestamp. `mergeLegacy()` is unchanged.
+
+This prevents an older stale destination-current copy from resurrecting a record that was subsequently resolved on the still-authoritative source. A genuinely later current recurrence still reopens the record.
+
+### New deterministic regression coverage
+
+`test/phase6-alpha-plan-errors-stability-rejection.test.ts` now proves for the same record key:
+
+1. later resolution defeats an older stale current copy and preserves `resolvedAtMs`;
+2. later resolution wins regardless of whether the stale current copy is source or destination;
+3. a genuinely later current recurrence reopens the record and clears `resolvedAtMs`;
+4. a crash/restart relocation sequence with an older destination-current copy and later source resolution remains resolved after retry;
+5. repeating the corrected recovery/merge leaves status, count, timestamps, and retained set unchanged.
+
+The earlier destination-history, occurrence-count, current-retention, resolved-retention, invalid-destination, cleanup-order, equivalent-path, and operational-path regressions remain present.
+
+### Implementation identity and verification
+
+- source correction commit: `1f88dcf1b0d19efa6699ce1a19a00c068f638958`
+- implementation/test SHA: `a730c9dc4616268a8d93890f2a66d9daf9171748`
+- exact implementation compare from rejected head `adcc9004...` to `a730c9dc...`: only `src/product/sync-plan-errors-csv.ts` and `test/phase6-alpha-plan-errors-stability-rejection.test.ts` changed.
+- normal PR workflow: `Phase 6 Alpha Diagnostic Verification`
+- implementation CI run: `33283448357`
+- implementation CI job: `99182412099`
+- TypeScript checking: PASS
+- full test suite: **371/371 PASS**, 0 failures
+- five new same-key regressions: PASS
+- production build: PASS
+- full repository check: PASS
+- `git diff --check`: PASS
+- build/package verification: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+
+### C2 — reconciled mandatory manifests
+
+The canonical evidence now explicitly records the previously omitted net manifest for the repair from `872c5872df14a848946607035ff1d6234f6f3592` through `adcc90042fe43e6964e0a8625620fab3b5a4b65f`:
+
+**Created**
+
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+
+**Modified**
+
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+**Deleted**
+
+- none.
+
+Complete corrective-pass manifest from rejected head `adcc90042fe43e6964e0a8625620fab3b5a4b65f`, derived from the actual Git comparison and including this evidence update:
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `src/product/sync-plan-errors-csv.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `dev/evidence/_ca-output.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+
+**Deleted**
+
+- none.
+
+### Preserved boundaries and unavailable checks
+
+The accepted case/Unicode-equivalent relocation rejection, complete canonical/stage/backup path validation, durable relocation journal, source/destination restart protection, deterministic stage/backup recovery, invalid-destination fail-safe behavior, resolved-history retention, current-record retention, occurrence-count idempotence, destination validation before source cleanup, planner/executor authority, and attention schema remain unchanged.
+
+Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+PR #31 remains required to stay OPEN and UNMERGED. No new branch/PR, integration/master merge, tag/release, physical-device action, synchronization action, or Stage 3 work is authorized by this correction. The evidence commit cannot self-contain its own Git SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response after GitHub returns them.
