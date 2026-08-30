@@ -1,5 +1,6 @@
 import type {
   ConfigurationClassification,
+  LocalIntegrityReconciliationPort,
   LocalLifecycleEvent,
   LocalMutationReceipt,
   LocalReadResult,
@@ -12,26 +13,56 @@ import type {
   VaultPath,
 } from "../contracts";
 import type { LocalObservation } from "../contracts/snapshot";
+import type {
+  LocalMutationProvenance,
+  LocalMutationTransaction,
+  LocalTransactionalMutationPort,
+  LocalTransactionResult,
+  SynchronizationCancellationSignal,
+} from "../contracts/synchronization-foundation";
 import { sha256BinarySource } from "../util/sha256";
 
 interface CachedEvidence { readonly token: ObservationToken; readonly hash: Awaited<ReturnType<typeof sha256BinarySource>>; }
 export interface CanonicalEvidenceOptions { readonly staleRetryAttempts?: number; readonly staleRetryDelayMs?: number; }
+
+interface ActiveMutationCorrelation {
+  readonly transaction: LocalMutationTransaction;
+  readonly provenance: Omit<LocalMutationProvenance, "expectedResultToken">;
+  readonly pending: LocalVaultChange[];
+}
 
 function sleep(milliseconds: number): Promise<void> { return new Promise(resolve => globalThis.setTimeout(resolve, milliseconds)); }
 function staleObservationError(error: unknown): boolean {
   return error instanceof Error && (error.name === "LocalStaleObservationError" || /^Local observation became stale:/u.test(error.message));
 }
 
+function changeTouches(change: LocalVaultChange, path: VaultPath): boolean {
+  return change.kind === "renamed"
+    ? change.fromPath === path || change.toPath === path
+    : change.path === path;
+}
+
 /**
- * Phase-5 production evidence decorator. Stable files receive a canonical SHA-256
- * before planner input is created. The opaque observation token is only a cache
- * predicate; it is never winner/authority evidence.
+ * Phase-5 production evidence decorator, extended by Phase 6 Workstream B.
+ * Stable files receive canonical SHA-256 evidence. Ordinary observations may
+ * use the opaque observation-token cache; authoritative integrity reads never
+ * do. The class can also front the frozen crash-safe transaction port so
+ * self-generated watcher hints are coalesced only when exact transaction/result
+ * provenance proves they are the plugin's own physical effect.
  */
-export class CanonicalEvidenceLocalVault implements LocalVaultPort {
+export class CanonicalEvidenceLocalVault implements LocalVaultPort, LocalIntegrityReconciliationPort, LocalTransactionalMutationPort {
   private readonly cache = new Map<string, CachedEvidence>();
   private readonly staleRetryAttempts: number;
   private readonly staleRetryDelayMs: number;
-  constructor(private readonly inner: LocalVaultPort, options: CanonicalEvidenceOptions = {}) {
+  private readonly changeListeners = new Set<(change: LocalVaultChange) => void>();
+  private activeMutation?: ActiveMutationCorrelation;
+  private innerChangeUnsubscribe?: Unsubscribe;
+
+  constructor(
+    private readonly inner: LocalVaultPort,
+    options: CanonicalEvidenceOptions = {},
+    private readonly transactional?: LocalTransactionalMutationPort,
+  ) {
     this.staleRetryAttempts = options.staleRetryAttempts ?? 3;
     this.staleRetryDelayMs = options.staleRetryDelayMs ?? 25;
     if (!Number.isSafeInteger(this.staleRetryAttempts) || this.staleRetryAttempts < 1) throw new Error("staleRetryAttempts must be a positive safe integer");
@@ -43,13 +74,7 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
   async enumerate(): Promise<LocalVaultListing> {
     const listing = await this.inner.enumerate();
     const entries: LocalObservation[] = [];
-    for (const observation of listing.entries) {
-      const enriched = await this.enrich(observation);
-      entries.push(enriched);
-    }
-    // Per-file canonical-content uncertainty is represented on that path. Only
-    // the wrapped enumerator may determine whether the directory listing itself
-    // was incomplete.
+    for (const observation of listing.entries) entries.push(await this.enrich(observation));
     return { ...listing, entries };
   }
 
@@ -69,6 +94,40 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
     };
   }
 
+  /**
+   * Authoritative integrity seam. This intentionally starts below this
+   * decorator's evidence cache, consumes the current bytes, hashes them, then
+   * proves the file remained the same stable observation across the read.
+   */
+  async readFileBypassingEvidenceCache(path: VaultPath): Promise<LocalReadResult> {
+    let current = await this.inner.observe(path);
+    for (let attempt = 0; attempt < this.staleRetryAttempts; attempt += 1) {
+      if (current.status !== "present" || current.entityKind !== "file" || current.stability !== "stable" || !current.observationToken) {
+        throw new Error(`Authoritative local integrity evidence unavailable: ${String(path)} (${current.status})`);
+      }
+      const token = current.observationToken;
+      try {
+        const read = await this.inner.readFile(path, token);
+        const hash = await sha256BinarySource(read.content);
+        const after = await this.inner.observe(path);
+        if (after.status === "present" && after.entityKind === "file" && after.stability === "stable" && after.observationToken === token) {
+          this.cache.set(String(path), { token, hash });
+          return {
+            ...read,
+            evidence: { ...read.evidence, ...after.content, hash },
+            observationToken: token,
+          };
+        }
+        current = after;
+      } catch (error) {
+        if (!staleObservationError(error)) throw error;
+        current = await this.inner.observe(path);
+      }
+      if (attempt + 1 < this.staleRetryAttempts && this.staleRetryDelayMs) await sleep(this.staleRetryDelayMs * (attempt + 1));
+    }
+    throw new Error(`Authoritative local integrity read remained unstable after bounded retries: ${String(path)}`);
+  }
+
   async createFile(path: VaultPath, content: Parameters<LocalVaultPort["createFile"]>[1]): Promise<LocalMutationReceipt> {
     await this.inner.createFile(path, content); return this.canonicalReceipt(path);
   }
@@ -82,8 +141,121 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
   async trash(path: VaultPath): Promise<void> { this.cache.delete(String(path)); await this.inner.trash(path); }
   validatePath(path: VaultPath): Promise<PathValidationResult> { return this.inner.validatePath(path); }
   classifyConfiguration(path: VaultPath): Promise<ConfigurationClassification> { return this.inner.classifyConfiguration(path); }
-  onChange(listener: (change: LocalVaultChange) => void): Unsubscribe { return this.inner.onChange(change => { this.invalidateChange(change); listener(change); }); }
+
+  onChange(listener: (change: LocalVaultChange) => void): Unsubscribe {
+    this.changeListeners.add(listener);
+    if (!this.innerChangeUnsubscribe) this.innerChangeUnsubscribe = this.inner.onChange(change => this.handleInnerChange(change));
+    return () => {
+      this.changeListeners.delete(listener);
+      if (this.changeListeners.size === 0) {
+        this.innerChangeUnsubscribe?.();
+        this.innerChangeUnsubscribe = undefined;
+      }
+    };
+  }
   onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe { return this.inner.onLifecycle(listener); }
+
+  async stageAndVerify(
+    transaction: LocalMutationTransaction,
+    content: Parameters<LocalTransactionalMutationPort["stageAndVerify"]>[1],
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<LocalTransactionResult> {
+    return this.requireTransactional().stageAndVerify(transaction, content, cancellation);
+  }
+
+  async commitVerifiedStage(
+    transaction: LocalMutationTransaction,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<LocalTransactionResult> {
+    const active = this.beginMutationCorrelation(transaction);
+    try {
+      const result = await this.requireTransactional().commitVerifiedStage(transaction, cancellation);
+      await this.finishMutationCorrelation(active, result);
+      if (result.status === "committed" || result.status === "recovered") this.cache.delete(String(transaction.path));
+      return result;
+    } catch (error) {
+      this.flushCorrelation(active);
+      throw error;
+    }
+  }
+
+  async recover(
+    transaction: LocalMutationTransaction,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<LocalTransactionResult> {
+    const active = this.beginMutationCorrelation(transaction);
+    try {
+      const result = await this.requireTransactional().recover(transaction, cancellation);
+      await this.finishMutationCorrelation(active, result);
+      if (result.status === "committed" || result.status === "recovered") this.cache.delete(String(transaction.path));
+      return result;
+    } catch (error) {
+      this.flushCorrelation(active);
+      throw error;
+    }
+  }
+
+  private requireTransactional(): LocalTransactionalMutationPort {
+    if (!this.transactional) throw new Error("Crash-safe local transactional mutation backend is not configured");
+    return this.transactional;
+  }
+
+  private beginMutationCorrelation(transaction: LocalMutationTransaction): ActiveMutationCorrelation {
+    if (this.activeMutation) throw new Error("Local mutation provenance correlation is already active");
+    const active: ActiveMutationCorrelation = {
+      transaction,
+      provenance: { source: "brain-sync", operationId: transaction.operationId, transactionId: transaction.transactionId },
+      pending: [],
+    };
+    this.activeMutation = active;
+    return active;
+  }
+
+  private async finishMutationCorrelation(active: ActiveMutationCorrelation, result: LocalTransactionResult): Promise<void> {
+    if (this.activeMutation !== active) return;
+    this.activeMutation = undefined;
+    if ((result.status !== "committed" && result.status !== "recovered") || !result.resultingObservationToken) {
+      this.emitChanges(active.pending);
+      return;
+    }
+    const observed = await this.inner.observe(active.transaction.path);
+    const exactResult = observed.status === "present"
+      && observed.entityKind === "file"
+      && observed.stability === "stable"
+      && observed.observationToken === result.resultingObservationToken;
+    const structuralOnly = active.pending.every(change => this.isExactTransactionStructuralHint(change, active.transaction));
+    if (!exactResult || !structuralOnly) this.emitChanges(active.pending);
+    // When both predicates hold, every held hint is explained by the exact
+    // operation/transaction and exact resulting token and can be coalesced.
+  }
+
+  private isExactTransactionStructuralHint(change: LocalVaultChange, transaction: LocalMutationTransaction): boolean {
+    if (change.kind !== "renamed") return false;
+    if (transaction.mutationKind === "create") {
+      return change.fromPath === transaction.stagePath && change.toPath === transaction.path;
+    }
+    return (change.fromPath === transaction.path && change.toPath === transaction.backupPath)
+      || (change.fromPath === transaction.stagePath && change.toPath === transaction.path);
+  }
+
+  private flushCorrelation(active: ActiveMutationCorrelation): void {
+    if (this.activeMutation === active) this.activeMutation = undefined;
+    this.emitChanges(active.pending);
+  }
+
+  private handleInnerChange(change: LocalVaultChange): void {
+    this.invalidateChange(change);
+    const active = this.activeMutation;
+    if (active && changeTouches(change, active.transaction.path)) {
+      active.pending.push(change);
+      return;
+    }
+    this.emitChanges([change]);
+  }
+
+  private emitChanges(changes: readonly LocalVaultChange[]): void {
+    for (const change of changes) for (const listener of this.changeListeners) listener(change);
+  }
 
   private async canonicalReceipt(path: VaultPath): Promise<LocalMutationReceipt> {
     this.cache.delete(String(path));
@@ -124,8 +296,6 @@ export class CanonicalEvidenceLocalVault implements LocalVaultPort {
       }
       if (attempt + 1 < this.staleRetryAttempts && this.staleRetryDelayMs) await sleep(this.staleRetryDelayMs * (attempt + 1));
     }
-    // A bounded stale-observation retry was exhausted. Preserve path-local
-    // presence without promoting any incomplete content evidence.
     return { ...original, content: undefined, stability: "unstable", observationToken: undefined };
   }
 
