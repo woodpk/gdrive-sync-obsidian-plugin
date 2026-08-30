@@ -5,7 +5,15 @@ import type {
   VaultPath
 } from "./common";
 import type { EnumerationCompleteness, LocalObservation } from "./snapshot";
-export interface LocalVaultListing { readonly entries: readonly LocalObservation[]; readonly completeness: EnumerationCompleteness; }
+export type LocalEnumerationUncertainty =
+  | { readonly scope: "all"; readonly reason: string }
+  | { readonly scope: "path" | "subtree"; readonly path: VaultPath; readonly reason: string };
+export interface LocalVaultListing {
+  readonly entries: readonly LocalObservation[];
+  readonly completeness: EnumerationCompleteness;
+  /** Optional scope evidence. Omission on an incomplete legacy listing remains conservatively global. */
+  readonly uncertainties?: readonly LocalEnumerationUncertainty[];
+}
 export interface LocalReadResult {
   readonly content: BinaryContentSource;
   readonly evidence: ContentEvidence;

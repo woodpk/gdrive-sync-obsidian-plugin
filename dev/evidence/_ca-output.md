@@ -1795,3 +1795,158 @@ Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 PR #31 remains required to stay OPEN and UNMERGED. No new branch/PR, integration/master merge, tag/release, physical-device action, synchronization action, or Stage 3 work is authorized by this correction. The evidence commit cannot self-contain its own Git SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response after GitHub returns them.
+
+---
+
+## 2026-08-30 — Phase 6 Alpha `0.1.7` promotion and release preparation
+
+### Identity and promotion authority
+
+- agent: `agt-CA-P6-ALPHA-017-PROMOTE-RELEASE-01`
+- approved source branch: `phase6-integration`
+- source integration SHA: `3005fe89f4214a9e389889769b088abfcad8293a`
+- pre-promotion `master` SHA: `77336110893ff31e4029d962584ba25fc22ce7c8`
+- promotion PR: `#32` (`phase6-integration` -> `master`)
+- promotion result: normal GitHub merge commit; PR `#32` is `MERGED`
+- promotion merge SHA: `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+- source integration tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- master promotion tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- mandatory tree-identity result: **PASS — exact tree identity**
+- release version prepared: `0.1.7`
+
+### Pre-promotion verification at `3005fe89f4214a9e389889769b088abfcad8293a`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; the only failures were the two unchanged, previously qualified drive-prefix expectation mismatches
+- GitHub/Linux Phase 1 CI run `33291412713`: PASS
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+
+The two qualified Windows failures reproduced unchanged:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+
+### Post-promotion verification at `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; only the same two qualified drive-prefix expectation mismatches reproduced
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+- pre-promotion/post-promotion artifact identity: **PASS — exact size and SHA-256 identity**
+
+### Complete promotion/release-preparation file manifest
+
+Net promotion changes introduced to `master` by PR `#32`, relative to pre-promotion `master`:
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PR31-INTEGRATION-MERGE-01.md`
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+- `manifest.json`
+- `package-lock.json`
+- `package.json`
+- `src/core/planner.ts`
+- `src/main.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/path-scope.ts`
+- `src/product/plugin-data.ts`
+- `src/product/product-controller.ts`
+- `src/product/runtime.ts`
+- `src/product/settings-tab.ts`
+- `src/product/sync-attention-ledger.ts`
+- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+
+**Deleted**
+
+- none.
+
+Evidence-preparation pass after the promotion merge:
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+
+**Deleted**
+
+- none.
+
+This evidence-only release-preparation pass makes no product, test, workflow, version-metadata, or generated-release-behavior change. Its final commit becomes the intended `0.1.7` tag target after final tag-target verification.
+
+Physical iPhone validation remains pending.
+
+Stage 3 has not begun.
+
+---
+
+## 2026-08-30 — Full synchronization remediation ownership checkpoint 0
+
+- agent: `agt-CA-P6-FULL-SYNC-REMEDIATION-01`
+- branch: `phase6-alpha-full-sync-remediation`
+- starting released `master` SHA: `b1b3a4bd70cd14be49ae9085a8305f5825fccf4f`
+- task: independently diagnose and structurally remediate the repeated physical synchronization convergence failures without weakening the target-system safety model
+- supplied evidence: `brain-log-10.txt` and `sync-plan-errors copy.xlsx`
+- repository state at entry: clean `0.1.7` released master; isolated remediation branch created before implementation
+- authority grounding completed: construction manual, target-system specification, decision register including `DEC-299`/`DEC-300`, current project state, and Phase 6 handoff read completely
+- root-cause status: not yet determined; all inherited hypotheses remain unaccepted pending raw-evidence and code-path verification
+- durable detailed record: `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`
+- Stage 3 has not begun
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 1
+
+Raw physical evidence and current code jointly confirm: 45 consecutive operation-1 `upload-update` stale-precondition failures with zero safe commits; controller-self-generated immediate replanning; starvation caused by treating operation-local staleness as global; repeated same-object validation observations; and global contamination of absent paths by a single local list/observe race. The supplied workbook's portable-hotkeys entry carrying an `Untitled.md` absence reason is direct evidence of the cross-path uncertainty defect. Exact failed precondition kind/side is absent from current sanitized diagnostics and requires privacy-safe instrumentation. Detailed causal evidence and predictive repair gates are recorded in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 2
+
+The pre-repair predictive suite was added and run against released `0.1.7`: `0/4` passed. It independently reproduces controller-generated immediate replanning, failure to retire post-journal stale intent and continue unrelated work, three local observations within one validation pass, and unrelated-path contamination from scoped enumeration uncertainty. The Windows suite additionally reproduced only the two already-qualified drive-prefix assertions. Production code remains unchanged at this checkpoint; detailed failures are preserved in the dedicated remediation evidence.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 3
+
+The architectural correction is implemented. Operation-local stale work is isolated into attention without self-scheduling another immediate run; unrelated safe operations commit and dependent operations remain skipped. Post-journal stale intent is durably retired only after exact operation/path/revision verification. Each validation pass uses one lazy observation per side/path while the separate mutation-boundary pass remains fresh. Local enumeration now represents root-global, subtree, and exact-path uncertainty so a listed-file race cannot contaminate portable configuration or unrelated absent paths. Diagnostics expose only aggregate failed-precondition count/kind/side.
+
+Verification: focused remediation plus actual adapter `22/22`; complete Windows suite `375/377` with only the two unchanged qualified drive-prefix assertions; typecheck PASS; build and all package verifiers PASS; `main.js` `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; `git diff --check` PASS. Version remains `0.1.7`. Detailed design, safety reasoning, files, and test evidence are in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 4
+
+Post-implementation adversarial coverage now proves both sides of stale pending-intent retirement: successful exact retirement is a separate durable state revision with no BASE advance, while retirement persistence failure remains globally recoverable and preserves the pending journal. Coordinator plus remediation focus: `10/10` PASS. No further architectural failure mechanism was found in this crash-safety audit.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 5
+
+After the user resumed the task, final local verification was rerun from clean pushed head `a70d9a70609e40754d394ea30f986755f992db87`: typecheck PASS; crash-safety/remediation/actual-adapter focus `27/27`; complete Windows suite `377/379` with only the same two qualified drive-prefix mismatches; build and all package verifiers PASS; `git diff --check` PASS. Artifact remains `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 6
+
+PR #33 is open and unmerged against `phase6-integration`: `https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/33`. GitHub/Linux `Phase 6 Alpha Diagnostic Verification` run `33313136444` passed every source, test, build, full-check, whitespace, artifact, and upload gate on head `ac9156ffeb0771a903f5edb82fe20e8f746cd069`. The separate Azure Static Web Apps run `33313136441` failed solely because the app already has the maximum number of staging environments; no Azure change was made.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

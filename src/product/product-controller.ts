@@ -188,6 +188,7 @@ function executionFailureBoundary(stage: ExecutionLifecycleStage): { readonly st
   switch (stage) {
     case "operation-precondition-validation-failed": return { stage: "operation-precondition-validation", classification: "operation-precondition-validation-failure" };
     case "pending-journal-failed": return { stage: "pending-journal", classification: "pending-journal-failure" };
+    case "pending-journal-discard-failed": return { stage: "pending-journal-discard", classification: "pending-journal-discard-failure" };
     case "content-mutation-failed": return { stage: "content-mutation", classification: "content-mutation-failure" };
     case "uncertain-state-journal-failed": return { stage: "uncertain-state-journal", classification: "uncertain-state-journal-failure" };
     case "state-commit-failed": return { stage: "state-commit", classification: "state-commit-failure" };
@@ -462,7 +463,7 @@ export class IntegratedProductController implements ProductControlPort {
         this.options.executor,
         new StateCommitCoordinator(this.options.stateStore, this.options.stateContext),
         undefined,
-        (operation, stage, result, error) => { if (this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, stage, result, error)) stageFailureReported = true; },
+        (operation, stage, result, error, failedPreconditions) => { if (this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, stage, result, error, failedPreconditions)) stageFailureReported = true; },
       );
       let needsReplan = false;
       let globalFailure = false;
@@ -496,7 +497,15 @@ export class IntegratedProductController implements ProductControlPort {
             continue;
           }
         }
-        if (result.status === "stale-precondition" || result.status === "stale-state") {
+        if (result.status === "stale-precondition") {
+          partial = true;
+          skippedCount += 1;
+          skippedOperations.push(operation);
+          skippedReasonCodes.add("runtime-stale-precondition");
+          if (!await this.recordAttentionEntries([this.attentionFor(operation, planned.plan, runId, "runtime-stale-precondition", result.reason)])) planned.attentionPersistenceFailed = true;
+          continue;
+        }
+        if (result.status === "stale-state") {
           needsReplan = true; globalFailure = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break;
         }
         if (result.status === "recovery-required" || result.status === "uncertain") {
@@ -726,8 +735,19 @@ export class IntegratedProductController implements ProductControlPort {
     }
     this.setStatus({ kind: "error", code: "planning-failed", message: error instanceof Error ? error.message : String(error) });
   }
-  private recordExecutionStage(runId: number | undefined, operation: PlannedOperation, operationIndex: number, stage: ExecutionLifecycleStage, result?: string, error?: unknown): boolean {
+  private recordExecutionStage(runId: number | undefined, operation: PlannedOperation, operationIndex: number, stage: ExecutionLifecycleStage, result?: string, error?: unknown, failedPreconditions?: readonly OperationPrecondition[]): boolean {
     const failure = executionFailureBoundary(stage);
+    const failedFields: SafeDiagnosticFields = failedPreconditions?.length ? {
+      failedPreconditionCount: failedPreconditions.length,
+      failedPreconditionKinds: [...new Set(failedPreconditions.map(precondition => precondition.kind))].sort().join(","),
+      failedPreconditionSides: [...new Set(failedPreconditions.map(precondition => {
+        if ("side" in precondition) return precondition.side;
+        if (precondition.kind === "file-stable") return "local";
+        if (precondition.kind === "remote-object" || precondition.kind === "remote-enumeration-complete") return "remote";
+        if (precondition.kind === "base-trusted") return "state";
+        return "identity";
+      }))].sort().join(","),
+    } : {};
     this.syncTrace(runId, stage, {
       stage,
       operationIndex,
@@ -735,6 +755,7 @@ export class IntegratedProductController implements ProductControlPort {
       direction: operation.kind.startsWith("upload-") ? "local-to-remote" : operation.kind.startsWith("download-") ? "remote-to-local" : operation.targetSide ?? "none",
       preconditionCount: operation.preconditions.length,
       destructiveCount: operation.destructive ? 1 : 0,
+      ...failedFields,
       ...(result ? { result } : {}),
     });
     if (!failure) return false;
@@ -744,6 +765,7 @@ export class IntegratedProductController implements ProductControlPort {
       operationIndex,
       operationKind: operation.kind,
       direction: operation.kind.startsWith("upload-") ? "local-to-remote" : operation.kind.startsWith("download-") ? "remote-to-local" : operation.targetSide ?? "none",
+      ...failedFields,
       ...(result ? { result } : {}),
     };
     if (error !== undefined) this.syncFailure(runId, stage, error, fields);
