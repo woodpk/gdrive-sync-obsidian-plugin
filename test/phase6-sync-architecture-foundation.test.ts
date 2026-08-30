@@ -28,6 +28,7 @@ import {
   type RemoteRevisionId,
   type SemanticStateGeneration,
   type SemanticStateValidationIssue,
+  type StateRevision,
   type VaultPath,
 } from "../src/contracts";
 
@@ -41,7 +42,7 @@ const hash = (value: string) => id<"ContentHash">(value) as ContentHash;
 const observationToken = (value: string) => id<"ObservationToken">(value) as ObservationToken;
 const remoteRevision = (value: string) => id<"RemoteRevisionId">(value) as RemoteRevisionId;
 const batchId = (value: string) => id<"RemoteIngestionBatchId">(value) as RemoteIngestionBatchId;
-const persistenceRevision = (value: string) => id<"PersistenceRevision">(value) as PersistenceRevision;
+const persistenceRevision = (value: string) => id<"StateRevision">(value) as StateRevision as PersistenceRevision;
 const operationId = id<"OperationId">("op:foundation") as OperationId;
 const intentId = id<"MutationIntentId">("intent:foundation") as MutationIntentId;
 const transactionId = id<"LocalMutationTransactionId">("local-tx:foundation") as LocalMutationTransactionId;
