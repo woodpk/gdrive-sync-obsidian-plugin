@@ -84,6 +84,14 @@ export class ProductSyncScheduler {
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
   }
 
+  private integrityPort(): LocalIntegrityReconciliationPort | undefined {
+    if (this.integrity) return this.integrity;
+    const candidate = this.local as LocalVaultPort & Partial<LocalIntegrityReconciliationPort>;
+    return typeof candidate.readFileBypassingEvidenceCache === "function"
+      ? candidate as LocalVaultPort & LocalIntegrityReconciliationPort
+      : undefined;
+  }
+
   private handleLocalChange(): void {
     if (!this.settings().localChangeEnabled) return;
     if (!this.started || synchronizationLifecycleState() !== "active") {
@@ -105,7 +113,7 @@ export class ProductSyncScheduler {
   }
 
   private handleResume(): void {
-    if (!this.started) return;
+    if (!this.started || synchronizationLifecycleState() === "unloading") return;
     enterSynchronizationLifecycle("active");
     this.installPeriodic();
 
@@ -123,6 +131,10 @@ export class ProductSyncScheduler {
 
   private beginStopping(kind: "suspend" | "unload"): void {
     if (!this.started && kind === "suspend") return;
+    const current = synchronizationLifecycleState();
+    if (kind === "unload" && current === "unloading") return;
+    if (kind === "suspend" && current !== "active") return;
+
     const target = kind === "unload" ? "unloading" : "suspending";
     enterSynchronizationLifecycle(target);
 
@@ -219,14 +231,15 @@ export class ProductSyncScheduler {
 
   private async performIntegrityOpportunity(): Promise<void> {
     let mismatchObserved = false;
-    if (this.integrity && this.started && synchronizationLifecycleState() === "active") {
+    const integrity = this.integrityPort();
+    if (integrity && this.started && synchronizationLifecycleState() === "active") {
       try {
         const listing = await this.local.enumerate();
         for (const entry of listing.entries) {
           if (!this.started || synchronizationLifecycleState() !== "active") return;
           if (entry.status !== "present" || entry.entityKind !== "file") continue;
           try {
-            const actual = await this.integrity.readFileBypassingEvidenceCache(entry.path);
+            const actual = await integrity.readFileBypassingEvidenceCache(entry.path);
             const cachedHash = entry.content?.hash;
             const actualHash = actual.evidence.hash;
             if (!cachedHash || !actualHash || cachedHash !== actualHash) mismatchObserved = true;
