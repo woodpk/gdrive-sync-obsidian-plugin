@@ -15,7 +15,7 @@ test("suspension during lease acquisition refuses the late lease", async () => {
   await Promise.resolve();
   enterSynchronizationLifecycle("suspending");
   resolveAcquire?.({ release: async () => { releases += 1; } });
-  assert.equal((await pending).status, "paused");
+  assert.equal((await pending).status, "stopping");
   assert.equal(releases, 1);
   assert.equal(runs.canStartNextOperation(), false);
   enterSynchronizationLifecycle("active");
