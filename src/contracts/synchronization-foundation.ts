@@ -14,6 +14,7 @@ import type {
   RemoteObjectId,
   RemoteRevisionId,
   SemanticStateGeneration,
+  SyncSide,
   VaultPath,
 } from "./common";
 import type { DriveResult, ManagedRemoteIdentity, RemoteChange, RemoteMutationReceipt } from "./google-drive";
@@ -21,7 +22,7 @@ import type { DriveResult, ManagedRemoteIdentity, RemoteChange, RemoteMutationRe
 /**
  * Supervisor-review candidate contract surface for the Phase 6 synchronization
  * hardening wave. These contracts deliberately separate persistence mechanics,
- * semantic authority, remote ingestion, and per-path convergence.
+ * semantic authority, remote ingestion, physical mutation, and path convergence.
  */
 
 export interface SemanticAuthorityReference {
@@ -54,7 +55,6 @@ export interface FileCommonStateProof extends SemanticAuthorityReference {
   readonly localObservationToken: ObservationToken;
   readonly remoteObjectId: RemoteObjectId;
   readonly remoteRevision: RemoteRevisionId;
-  /** One canonical SHA-256 result already proven equal for current LOCAL and REMOTE bytes. */
   readonly canonicalContent: CanonicalFileContentProof;
   readonly identity: "unambiguous";
 }
@@ -69,7 +69,6 @@ export interface FolderCommonStateProof extends SemanticAuthorityReference {
   readonly identity: "unambiguous";
 }
 
-/** Explicit two-sided absence authority; remote absence requires complete-enumeration evidence. */
 export interface AbsenceCommonStateProof extends SemanticAuthorityReference {
   readonly kind: "absence-common";
   readonly path: VaultPath;
@@ -79,13 +78,8 @@ export interface AbsenceCommonStateProof extends SemanticAuthorityReference {
   readonly identity: "unambiguous";
 }
 
-/** Evidence sufficient to heal a stale BASE without rewriting current reality. */
 export type CommonStateProof = FileCommonStateProof | FolderCommonStateProof | AbsenceCommonStateProof;
 
-/**
- * File common-state proof can be established only when both current sides carry
- * canonical SHA-256 evidence and the hashes match exactly.
- */
 export function establishFileCommonStateProof(values: {
   readonly path: VaultPath;
   readonly generation: SemanticStateGeneration;
@@ -129,26 +123,14 @@ export type PathConvergenceState =
   | { readonly status: "attention" | "conflict"; readonly reasonCode: string }
   | { readonly status: "unknown"; readonly reasonCode: string };
 
-/** A complete Drive page is intermediate or terminal; those tokens are not interchangeable. */
 export type RemoteChangeProtocolPage =
-  | {
-      readonly kind: "intermediate";
-      readonly requestedToken: ChangeCursor;
-      readonly changes: readonly RemoteChange[];
-      readonly nextPageToken: ChangeCursor;
-    }
-  | {
-      readonly kind: "terminal";
-      readonly requestedToken: ChangeCursor;
-      readonly changes: readonly RemoteChange[];
-      readonly newStartPageToken: ChangeCursor;
-    };
+  | { readonly kind: "intermediate"; readonly requestedToken: ChangeCursor; readonly changes: readonly RemoteChange[]; readonly nextPageToken: ChangeCursor }
+  | { readonly kind: "terminal"; readonly requestedToken: ChangeCursor; readonly changes: readonly RemoteChange[]; readonly newStartPageToken: ChangeCursor };
 
 export type RemoteChangePageClassification =
   | { readonly status: "valid"; readonly page: RemoteChangeProtocolPage }
   | { readonly status: "invalid"; readonly reason: "both-page-tokens-present" | "page-token-missing" };
 
-/** Lossless classifier for the two states returned by Drive changes.list. */
 export function classifyRemoteChangePage(values: {
   readonly requestedToken: ChangeCursor;
   readonly changes: readonly RemoteChange[];
@@ -156,18 +138,11 @@ export function classifyRemoteChangePage(values: {
   readonly newStartPageToken?: ChangeCursor;
 }): RemoteChangePageClassification {
   if (values.nextPageToken && values.newStartPageToken) return { status: "invalid", reason: "both-page-tokens-present" };
-  if (values.nextPageToken) return {
-    status: "valid",
-    page: { kind: "intermediate", requestedToken: values.requestedToken, changes: values.changes, nextPageToken: values.nextPageToken },
-  };
-  if (values.newStartPageToken) return {
-    status: "valid",
-    page: { kind: "terminal", requestedToken: values.requestedToken, changes: values.changes, newStartPageToken: values.newStartPageToken },
-  };
+  if (values.nextPageToken) return { status: "valid", page: { kind: "intermediate", requestedToken: values.requestedToken, changes: values.changes, nextPageToken: values.nextPageToken } };
+  if (values.newStartPageToken) return { status: "valid", page: { kind: "terminal", requestedToken: values.requestedToken, changes: values.changes, newStartPageToken: values.newStartPageToken } };
   return { status: "invalid", reason: "page-token-missing" };
 }
 
-/** Durable learning progress is separate from whether every affected path converged. */
 export interface RemoteIngestionCheckpoint {
   readonly batchId: RemoteIngestionBatchId;
   readonly startingToken: ChangeCursor;
@@ -178,24 +153,14 @@ export interface RemoteIngestionCheckpoint {
 
 export interface DurableRemoteChangeBatch {
   readonly checkpoint: RemoteIngestionCheckpoint;
-  /** Ordered, normalized object changes. Distinct object IDs remain distinct. */
   readonly changes: readonly RemoteChange[];
 }
 
-/**
- * Lossless durable ingestion backlog. A newly learned batch is appended rather
- * than replacing unresolved earlier batches. C may retire a batch only after
- * all of its required facts are durably reduced into later authoritative state.
- */
-export function appendDurableRemoteChangeBatch(
-  backlog: readonly DurableRemoteChangeBatch[],
-  batch: DurableRemoteChangeBatch,
-): readonly DurableRemoteChangeBatch[] {
+export function appendDurableRemoteChangeBatch(backlog: readonly DurableRemoteChangeBatch[], batch: DurableRemoteChangeBatch): readonly DurableRemoteChangeBatch[] {
   if (backlog.some(existing => existing.checkpoint.batchId === batch.checkpoint.batchId)) return backlog;
   return [...backlog, batch];
 }
 
-/** Drive workstream change-feed seam; a call returns exactly one complete protocol page. */
 export interface ReliableRemoteChangePort {
   readChangePage(identity: ManagedRemoteIdentity, requestedToken: ChangeCursor, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<RemoteChangeProtocolPage>>;
 }
@@ -212,7 +177,6 @@ export type RemoteLogicalPathResolution =
   | { readonly status: "unique"; readonly path: VaultPath; readonly candidate: RemotePathCandidate }
   | { readonly status: "ambiguous"; readonly path: VaultPath; readonly candidates: readonly RemotePathCandidate[] };
 
-/** Never reduces multiple same-path Drive objects to an arbitrary map winner. */
 export function resolveRemotePathCandidates(path: VaultPath, candidates: readonly RemotePathCandidate[]): RemoteLogicalPathResolution {
   const unique = [...new Map(candidates.map(candidate => [String(candidate.remoteObjectId), candidate])).values()];
   if (unique.length === 0) return { status: "absent", path };
@@ -220,105 +184,166 @@ export function resolveRemotePathCandidates(path: VaultPath, candidates: readonl
   return { status: "ambiguous", path, candidates: unique };
 }
 
-/**
- * Current Drive v3 does not expose a documented atomic content-update CAS for
- * files.update. Existing-object content changes therefore use an immutable
- * candidate object so the observed predecessor is never overwritten in place.
- */
+/** Durable identity for every v1 remote mutation. File content mutations bind exact intended bytes before dispatch. */
 export type RemoteMutationIdentity =
   | {
-      readonly kind: "reserved-create";
+      readonly kind: "reserved-file-create";
+      readonly intentId: MutationIntentId;
+      readonly reservedRemoteObjectId: RemoteObjectId;
+      readonly path: VaultPath;
+      readonly intendedContent: CanonicalFileContentProof;
+    }
+  | {
+      readonly kind: "reserved-folder-create";
       readonly intentId: MutationIntentId;
       readonly reservedRemoteObjectId: RemoteObjectId;
       readonly path: VaultPath;
     }
   | {
-      readonly kind: "existing-object";
+      readonly kind: "existing-file-content-update";
       readonly intentId: MutationIntentId;
       readonly remoteObjectId: RemoteObjectId;
       readonly expectedRevision: RemoteRevisionId;
       readonly path: VaultPath;
       readonly updateProtocol: "immutable-candidate-preservation";
       readonly candidateRemoteObjectId: RemoteObjectId;
+      readonly intendedContent: CanonicalFileContentProof;
+      readonly identityAuthority: IdentityAuthorityProof;
+    }
+  | {
+      readonly kind: "identity-preserving-move";
+      readonly intentId: MutationIntentId;
+      readonly remoteObjectId: RemoteObjectId;
+      readonly fromPath: VaultPath;
+      readonly toPath: VaultPath;
+      readonly identityAuthority: IdentityAuthorityProof;
+    }
+  | {
+      readonly kind: "trash";
+      readonly intentId: MutationIntentId;
+      readonly remoteObjectId: RemoteObjectId;
+      readonly path: VaultPath;
+      readonly baseAuthority: ExactBaseAuthority;
+      readonly identityAuthority: IdentityAuthorityProof;
     };
 
 export type RemoteMutationApplicationProof =
-  | {
-      readonly kind: "reserved-create";
-      readonly remoteObjectId: RemoteObjectId;
-    }
+  | { readonly kind: "reserved-create"; readonly remoteObjectId: RemoteObjectId; readonly path: VaultPath; readonly verifiedContent?: CanonicalFileContentProof }
   | {
       readonly kind: "immutable-candidate-preservation";
       readonly candidateRemoteObjectId: RemoteObjectId;
       readonly predecessorRemoteObjectId: RemoteObjectId;
       readonly predecessorRevision: RemoteRevisionId;
-      /** IDs whose content remains preserved while path convergence decides authority. */
+      readonly intendedContent: CanonicalFileContentProof;
+      readonly verifiedContent: CanonicalFileContentProof;
       readonly preservedRemoteObjectIds: readonly RemoteObjectId[];
-    };
+    }
+  | { readonly kind: "identity-preserving-move"; readonly remoteObjectId: RemoteObjectId; readonly fromPath: VaultPath; readonly toPath: VaultPath }
+  | { readonly kind: "trash"; readonly remoteObjectId: RemoteObjectId; readonly path: VaultPath; readonly trashed: true };
 
+/** Application proof answers only whether the physical effect was safely verified, not whether the path converged. */
 export type RemoteMutationOutcome =
-  | { readonly status: "verified-applied"; readonly receipt: RemoteMutationReceipt; readonly applicationProof: RemoteMutationApplicationProof }
+  | { readonly status: "verified-effect"; readonly receipt?: RemoteMutationReceipt; readonly applicationProof: RemoteMutationApplicationProof }
   | { readonly status: "conflict-preserved"; readonly reason: string; readonly preservedRemoteObjectIds: readonly RemoteObjectId[] }
   | { readonly status: "verified-not-applied"; readonly reason: string }
   | { readonly status: "outcome-unknown"; readonly reason: string };
 
 export type RemoteUpdateVerificationEvidence =
-  | {
-      readonly kind: "final-content-observed-only";
-      readonly finalContentMatchesCandidate: boolean;
-    }
-  | {
-      readonly kind: "immutable-candidate-preservation";
-      readonly finalContentMatchesCandidate: boolean;
-      readonly proof: Extract<RemoteMutationApplicationProof, { readonly kind: "immutable-candidate-preservation" }>;
-    };
+  | { readonly kind: "final-content-observed-only"; readonly finalContentMatchesCandidate: boolean }
+  | { readonly kind: "immutable-candidate-preservation"; readonly finalContentMatchesCandidate: boolean; readonly proof: Extract<RemoteMutationApplicationProof, { readonly kind: "immutable-candidate-preservation" }> };
 
-/** Final bytes alone can never prove an overwrite was conflict-free. */
-export function remoteUpdateCanBeAcknowledgedConflictFree(evidence: RemoteUpdateVerificationEvidence): boolean {
-  return evidence.kind === "immutable-candidate-preservation"
-    && evidence.finalContentMatchesCandidate
+/** Proves non-destructive materialization only. It deliberately says nothing about logical-path conflict status. */
+export function remoteUpdateWasSafelyMaterialized(evidence: RemoteUpdateVerificationEvidence): boolean {
+  if (evidence.kind !== "immutable-candidate-preservation" || !evidence.finalContentMatchesCandidate) return false;
+  return evidence.proof.intendedContent.hash === evidence.proof.verifiedContent.hash
+    && evidence.proof.intendedContent.sizeBytes === evidence.proof.verifiedContent.sizeBytes
     && evidence.proof.preservedRemoteObjectIds.includes(evidence.proof.predecessorRemoteObjectId);
 }
 
-/** Drive workstream target seam; ambiguous results are values, never ordinary retryable success. */
+export type RemotePathConvergenceAuthority =
+  | { readonly status: "conflict-free"; readonly basis: "no-independent-candidate" | "all-candidates-authoritatively-equivalent"; readonly authoritativeRemoteObjectIds: readonly RemoteObjectId[] }
+  | { readonly status: "conflict-preserved"; readonly independentRemoteObjectIds: readonly RemoteObjectId[] };
+
+export function remoteUpdateEligibleForOrdinaryConvergence(applicationVerified: boolean, authority: RemotePathConvergenceAuthority): boolean {
+  return applicationVerified && authority.status === "conflict-free";
+}
+
+/** Every production synchronization remote mutation must use this recovery-safe seam. */
 export interface ReliableRemoteMutationPort {
-  reserveCreateIdentity(root: ManagedRemoteIdentity, intentId: MutationIntentId, path: VaultPath): Promise<DriveResult<Extract<RemoteMutationIdentity, { readonly kind: "reserved-create" }>>>;
-  createReserved(identity: Extract<RemoteMutationIdentity, { readonly kind: "reserved-create" }>, entityKind: EntityKind, content?: BinaryContentSource, expectedEvidence?: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
-  updateExisting(identity: Extract<RemoteMutationIdentity, { readonly kind: "existing-object" }>, content: BinaryContentSource, expectedEvidence?: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+  reserveFileCreateIdentity(root: ManagedRemoteIdentity, intentId: MutationIntentId, path: VaultPath, intendedContent: CanonicalFileContentProof): Promise<DriveResult<Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" }>>>;
+  reserveFolderCreateIdentity(root: ManagedRemoteIdentity, intentId: MutationIntentId, path: VaultPath): Promise<DriveResult<Extract<RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }>>>;
+  createReserved(identity: Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" | "reserved-folder-create" }>, content?: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+  updateExisting(identity: Extract<RemoteMutationIdentity, { readonly kind: "existing-file-content-update" }>, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+  moveExisting(identity: Extract<RemoteMutationIdentity, { readonly kind: "identity-preserving-move" }>, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+  trashExisting(identity: Extract<RemoteMutationIdentity, { readonly kind: "trash" }>, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
 }
 
 export type CoherentRemoteDownload =
-  | {
-      readonly status: "coherent";
-      readonly remoteObjectId: RemoteObjectId;
-      readonly revision: RemoteRevisionId;
-      readonly evidence: ContentEvidence;
-      readonly content: BinaryContentSource;
-    }
+  | { readonly status: "coherent"; readonly remoteObjectId: RemoteObjectId; readonly revision: RemoteRevisionId; readonly evidence: ContentEvidence; readonly content: BinaryContentSource }
   | { readonly status: "changed-during-transfer" | "outcome-unknown"; readonly reason: string };
 
 export interface CoherentRemoteReadPort {
   downloadVersion(remoteObjectId: RemoteObjectId, expectedRevision: RemoteRevisionId, expectedEvidence: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<CoherentRemoteDownload>>;
 }
 
-export type RecoverableOperationStage =
-  | "intent-persisted"
-  | "dispatch-authorized"
-  | "outcome-unknown"
-  | "effect-verified"
-  | "state-committed";
+export type RecoverableOperationStage = "intent-persisted" | "dispatch-authorized" | "outcome-unknown" | "effect-verified" | "state-committed";
 
-export interface RecoverableOperationIntent {
-  readonly operationId: OperationId;
-  readonly intentId: MutationIntentId;
-  readonly path: VaultPath;
+export type RecoverablePhysicalMutationDescriptor =
+  | {
+      readonly kind: "local-file";
+      readonly targetSide: "local";
+      readonly mutationKind: "create" | "replace";
+      readonly targetPath: VaultPath;
+      readonly localTransactionId: LocalMutationTransactionId;
+      readonly intendedContent: CanonicalFileContentProof;
+    }
+  | {
+      readonly kind: "remote-file";
+      readonly targetSide: "remote";
+      readonly mutationKind: "create" | "update";
+      readonly targetPath: VaultPath;
+      readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" | "existing-file-content-update" }>;
+      readonly intendedContent: CanonicalFileContentProof;
+    }
+  | {
+      readonly kind: "move";
+      readonly targetSide: SyncSide;
+      readonly fromPath: VaultPath;
+      readonly toPath: VaultPath;
+      readonly remoteObjectId?: RemoteObjectId;
+      readonly identityAuthority: IdentityAuthorityProof;
+    }
+  | {
+      readonly kind: "trash";
+      readonly targetSide: SyncSide;
+      readonly path: VaultPath;
+      readonly remoteObjectId?: RemoteObjectId;
+      readonly baseAuthority: ExactBaseAuthority;
+      readonly identityAuthority?: IdentityAuthorityProof;
+    };
+
+export interface RecoverableMutationEffect {
+  readonly effectId: string;
+  readonly descriptor: RecoverablePhysicalMutationDescriptor;
   readonly stage: RecoverableOperationStage;
-  readonly semanticAuthority: SemanticAuthorityReference;
-  readonly baseAuthority?: ExactBaseAuthority;
-  readonly remoteMutation?: RemoteMutationIdentity;
-  readonly localTransactionId?: LocalMutationTransactionId;
   readonly verificationEvidenceRef?: string;
 }
+
+export type RecoverableOperationIntent =
+  | {
+      readonly logicalKind: "single-effect";
+      readonly operationId: OperationId;
+      readonly intentId: MutationIntentId;
+      readonly semanticAuthority: SemanticAuthorityReference;
+      readonly effects: readonly [RecoverableMutationEffect];
+    }
+  | {
+      readonly logicalKind: "clean-text-merge";
+      readonly operationId: OperationId;
+      readonly intentId: MutationIntentId;
+      readonly semanticAuthority: SemanticAuthorityReference;
+      readonly effects: readonly [RecoverableMutationEffect, RecoverableMutationEffect, ...RecoverableMutationEffect[]];
+    };
 
 export type RestartRecoveryDirective =
   | { readonly action: "retire-unattempted-intent" }
@@ -326,40 +351,27 @@ export type RestartRecoveryDirective =
   | { readonly action: "finish-authoritative-state-commit"; readonly verificationEvidenceRef: string }
   | { readonly action: "none" };
 
-/** `dispatch-authorized` is durably persisted before the external call and means the mutation may have occurred. */
 export function mutationMayHaveBeenAttempted(stage: RecoverableOperationStage): boolean {
   return stage !== "intent-persisted";
 }
 
-export function restartRecoveryDirective(intent: RecoverableOperationIntent): RestartRecoveryDirective {
-  if (intent.stage === "state-committed") return { action: "none" };
-  if (intent.stage === "intent-persisted") return { action: "retire-unattempted-intent" };
-  if (intent.stage === "effect-verified" && intent.verificationEvidenceRef) {
-    return { action: "finish-authoritative-state-commit", verificationEvidenceRef: intent.verificationEvidenceRef };
-  }
+export function restartRecoveryDirective(effect: Pick<RecoverableMutationEffect, "stage" | "verificationEvidenceRef">): RestartRecoveryDirective {
+  if (effect.stage === "state-committed") return { action: "none" };
+  if (effect.stage === "intent-persisted") return { action: "retire-unattempted-intent" };
+  if (effect.stage === "effect-verified" && effect.verificationEvidenceRef) return { action: "finish-authoritative-state-commit", verificationEvidenceRef: effect.verificationEvidenceRef };
   return { action: "reconcile-physical-reality" };
 }
 
-export type LocalMutationTransactionStage =
-  | "staging"
-  | "staged-unverified"
-  | "staged-verified"
-  | "backup-established"
-  | "swap-committed"
-  | "cleanup-pending"
-  | "completed";
+/** A multi-effect logical operation is complete only when every physical effect reached state commit. */
+export function recoverableOperationIsComplete(intent: RecoverableOperationIntent): boolean {
+  return intent.effects.every(effect => effect.stage === "state-committed");
+}
+
+export type LocalMutationTransactionStage = "staging" | "staged-unverified" | "staged-verified" | "backup-established" | "swap-committed" | "cleanup-pending" | "completed";
 
 export type LocalTargetPreState =
-  | {
-      readonly status: "expected-absent";
-      readonly observationToken?: ObservationToken;
-    }
-  | {
-      readonly status: "expected-present";
-      readonly observationToken: ObservationToken;
-      readonly entityKind: "file";
-      readonly canonicalContent: CanonicalFileContentProof;
-    };
+  | { readonly status: "expected-absent"; readonly observationToken?: ObservationToken }
+  | { readonly status: "expected-present"; readonly observationToken: ObservationToken; readonly entityKind: "file"; readonly canonicalContent: CanonicalFileContentProof };
 
 interface LocalMutationTransactionBase {
   readonly transactionId: LocalMutationTransactionId;
@@ -373,20 +385,13 @@ interface LocalMutationTransactionBase {
 }
 
 export type LocalMutationTransaction =
-  | (LocalMutationTransactionBase & {
-      readonly mutationKind: "create";
-      readonly expectedTarget: Extract<LocalTargetPreState, { readonly status: "expected-absent" }>;
-    })
-  | (LocalMutationTransactionBase & {
-      readonly mutationKind: "replace";
-      readonly expectedTarget: Extract<LocalTargetPreState, { readonly status: "expected-present" }>;
-    });
+  | (LocalMutationTransactionBase & { readonly mutationKind: "create"; readonly expectedTarget: Extract<LocalTargetPreState, { readonly status: "expected-absent" }> })
+  | (LocalMutationTransactionBase & { readonly mutationKind: "replace"; readonly expectedTarget: Extract<LocalTargetPreState, { readonly status: "expected-present" }> });
 
 export type LocalTransactionResult =
   | { readonly status: "staged-verified" | "committed" | "recovered"; readonly transaction: LocalMutationTransaction; readonly resultingObservationToken?: ObservationToken }
   | { readonly status: "stale" | "blocked" | "outcome-unknown"; readonly reason: string; readonly transaction: LocalMutationTransaction };
 
-/** Local workstream mutation seam; implementations persist every returned durable stage through C. */
 export interface LocalTransactionalMutationPort {
   stageAndVerify(transaction: LocalMutationTransaction, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
   commitVerifiedStage(transaction: LocalMutationTransaction, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
@@ -407,12 +412,10 @@ export function localTransactionRecoveryAction(transaction: LocalMutationTransac
   }
 }
 
-/** Backup absence has different authority for create versus replace recovery. */
 export function localTransactionBackupExpectation(transaction: LocalMutationTransaction): "backup-not-required" | "backup-required-if-target-displaced" {
   return transaction.mutationKind === "create" ? "backup-not-required" : "backup-required-if-target-displaced";
 }
 
-/** Exact provenance, not a timing window, for suppressing plugin-generated event feedback. */
 export interface LocalMutationProvenance {
   readonly source: "brain-sync";
   readonly operationId: OperationId;
@@ -466,25 +469,20 @@ export type KnownSemanticStateValidationIssueCode =
   | "journal-reference-incomplete"
   | "ingestion-checkpoint-inconsistent";
 
-/** Unknown future contradictions remain representable and therefore fail closed. */
 export type SemanticStateValidationIssueCode = KnownSemanticStateValidationIssueCode | "other-semantic-inconsistency";
 
 export interface SemanticStateValidationIssue {
   readonly code: SemanticStateValidationIssueCode;
   readonly path?: VaultPath;
   readonly detail: string;
-  /** Required stable local category when code is the extensibility fallback; never carries content/secrets. */
   readonly invariantCategory?: string;
 }
 export interface SemanticStateValidator<TState> { validate(state: TState): readonly SemanticStateValidationIssue[]; }
 
-/** Required coordination segment of the future trusted synchronization state. */
 export interface SynchronizationAuthorityMetadata {
   readonly persistenceRevision: PersistenceRevision;
   readonly semanticGeneration: SemanticStateGeneration;
-  /** Multiple unresolved learned batches remain durable until safely reduced; latest-only replacement is forbidden. */
   readonly learnedRemoteBatches: readonly DurableRemoteChangeBatch[];
-  /** Array form is intentional: this segment must survive JSON/IndexedDB serialization. */
   readonly pathConvergence: readonly { readonly path: VaultPath; readonly state: PathConvergenceState }[];
   readonly operationIntents: readonly RecoverableOperationIntent[];
   readonly localTransactions: readonly LocalMutationTransaction[];
@@ -501,7 +499,6 @@ export type SynchronizationAuthoritySaveResult =
   | { readonly status: "stale-semantic-authority"; readonly actualSemanticGeneration?: SemanticStateGeneration }
   | { readonly status: "recovery-required"; readonly issues: readonly SemanticStateValidationIssue[] };
 
-/** State workstream seam with separate CAS and semantic-authority guards. */
 export interface SynchronizationAuthorityStore<TState extends SynchronizationAuthorityMetadata> {
   loadAuthority(): Promise<SynchronizationAuthorityLoadResult<TState>>;
   saveAuthority(state: TState, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration?: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult>;
