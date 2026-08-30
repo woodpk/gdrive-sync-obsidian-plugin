@@ -1795,3 +1795,109 @@ Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 PR #31 remains required to stay OPEN and UNMERGED. No new branch/PR, integration/master merge, tag/release, physical-device action, synchronization action, or Stage 3 work is authorized by this correction. The evidence commit cannot self-contain its own Git SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response after GitHub returns them.
+
+---
+
+## 2026-08-30 — Phase 6 Alpha `0.1.7` promotion and release preparation
+
+### Identity and promotion authority
+
+- agent: `agt-CA-P6-ALPHA-017-PROMOTE-RELEASE-01`
+- approved source branch: `phase6-integration`
+- source integration SHA: `3005fe89f4214a9e389889769b088abfcad8293a`
+- pre-promotion `master` SHA: `77336110893ff31e4029d962584ba25fc22ce7c8`
+- promotion PR: `#32` (`phase6-integration` -> `master`)
+- promotion result: normal GitHub merge commit; PR `#32` is `MERGED`
+- promotion merge SHA: `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+- source integration tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- master promotion tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- mandatory tree-identity result: **PASS — exact tree identity**
+- release version prepared: `0.1.7`
+
+### Pre-promotion verification at `3005fe89f4214a9e389889769b088abfcad8293a`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; the only failures were the two unchanged, previously qualified drive-prefix expectation mismatches
+- GitHub/Linux Phase 1 CI run `33291412713`: PASS
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+
+The two qualified Windows failures reproduced unchanged:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+
+### Post-promotion verification at `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; only the same two qualified drive-prefix expectation mismatches reproduced
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+- pre-promotion/post-promotion artifact identity: **PASS — exact size and SHA-256 identity**
+
+### Complete promotion/release-preparation file manifest
+
+Net promotion changes introduced to `master` by PR `#32`, relative to pre-promotion `master`:
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PR31-INTEGRATION-MERGE-01.md`
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+- `manifest.json`
+- `package-lock.json`
+- `package.json`
+- `src/core/planner.ts`
+- `src/main.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/path-scope.ts`
+- `src/product/plugin-data.ts`
+- `src/product/product-controller.ts`
+- `src/product/runtime.ts`
+- `src/product/settings-tab.ts`
+- `src/product/sync-attention-ledger.ts`
+- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+
+**Deleted**
+
+- none.
+
+Evidence-preparation pass after the promotion merge:
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+
+**Deleted**
+
+- none.
+
+This evidence-only release-preparation pass makes no product, test, workflow, version-metadata, or generated-release-behavior change. Its final commit becomes the intended `0.1.7` tag target after final tag-target verification.
+
+Physical iPhone validation remains pending.
+
+Stage 3 has not begun.
