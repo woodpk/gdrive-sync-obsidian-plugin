@@ -1959,6 +1959,16 @@ This is a Stage 2A serial architecture gate. No later workstream agent/branch ha
 
 Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
 
+## 2026-08-30 — Synchronization architecture foundation checkpoint 2
+
+The final source/contracts foundation candidate is `8b575e7439fdd601166e3bdb6e335992364da3fc` (`phase6-sync-foundation-v1`). It adds callable, cross-platform seams for exact semantic/BASE authority, lossless Drive page ingestion, explicit remote ambiguity, retry-safe mutation identity/outcomes, coherent downloads, restart-consumable intent, verified/recoverable local transactions, separate state CAS/semantic guards, cancellation, fault injection, and merge resource admission. All 20 finding dispositions and objective evidence are recorded in the dedicated foundation evidence and architecture artifact.
+
+Verification: typecheck PASS; focused foundation `6/6` PASS; full Windows `383/385` with only the same two qualified drive-prefix expectation mismatches; build and all package verifiers PASS; `git diff --check` PASS. `main.js` remains exactly `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; version remains `0.1.7`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
 ## 2026-08-30 — Synchronization architecture foundation checkpoint 1
 
 The production synchronization stack was audited against all 20 required findings and current official Google Drive, Obsidian, Apple iOS, and Microsoft Windows sources. The candidate foundation now separates persistence CAS from semantic authority, remote ingestion from per-path convergence, Drive intermediate from terminal tokens, stable object identity from logical path, and cancellation from crash recovery. It also defines exact BASE authority/healing, reserved-ID mutation identity, explicit unknown outcomes, restart-consumable intent, verified/recoverable local transactions, exact self-mutation provenance, fault points, and fail-closed merge resource policy.

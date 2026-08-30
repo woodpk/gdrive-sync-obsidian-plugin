@@ -90,3 +90,74 @@ Modified shared/project artifacts:
 - this dedicated evidence file
 
 Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required.**
+
+## 2026-08-30 — Checkpoint 2: final foundation implementation SHA and verification
+
+### Exact implementation/contract version
+
+- foundation implementation SHA: `8b575e7439fdd601166e3bdb6e335992364da3fc`
+- contract version: `phase6-sync-foundation-v1`
+- branch: `phase6-sync-architecture-foundation`
+- predecessor remains PR #33 reviewed head `85d509d90d475717d609c559fad870f64b956e9e`
+- the later final evidence/PR head may differ only through documentation/evidence metadata; workstreams must use the exact approved implementation SHA selected by the supervisor
+
+### Required finding dispositions
+
+1. semantic state authority versus persistence CAS — **CONFIRMED ARCHITECTURAL HAZARD**;
+2. BASE/common-state healing — **CONFIRMED DEFECT**;
+3. pending/uncertain restart recovery — **CONFIRMED DEFECT**;
+4. remote ingestion versus path convergence — **CONFIRMED DEFECT**;
+5. Drive multipage Changes semantics — **CONFIRMED DEFECT**;
+6. remote update TOCTOU/concurrency — **CONFIRMED DEFECT**;
+7. retry-safe remote create — **CONFIRMED DEFECT**;
+8. remote logical-path ambiguity — **CONFIRMED DEFECT**;
+9. executable `identity-unambiguous` authority — **CONFIRMED DEFECT**;
+10. BASE-specific destructive authority — **CONFIRMED DEFECT**;
+11. local crash-safe replacement — **CONFIRMED ARCHITECTURAL HAZARD**;
+12. verification before local swap — **CONFIRMED DEFECT**;
+13. remote download coherence — **CONFIRMED DEFECT**;
+14. observation side effects — **CONFIRMED DEFECT**;
+15. local event/watcher authority — **CONFIRMED ARCHITECTURAL HAZARD**;
+16. self-generated local changes — **CONFIRMED ARCHITECTURAL HAZARD**;
+17. cancellation/lifecycle — **CONFIRMED ARCHITECTURAL HAZARD**;
+18. resource-bounded merge/text — **CONFIRMED DEFECT**;
+19. stale-device lifecycle — **CONFIRMED DEFECT**;
+20. persisted-state semantic validation — **CONFIRMED DEFECT**.
+
+The objective code evidence and governing correction for each item are in the architecture foundation's Section 6. No item was classified merely from the supplied hypothesis; no item was falsified by current code.
+
+### Primary external sources
+
+- Google Drive Changes: <https://developers.google.com/workspace/drive/api/guides/manage-changes>
+- Google generated IDs and retry-safe upload: <https://developers.google.com/workspace/drive/api/guides/create-file> and <https://developers.google.com/workspace/drive/api/guides/manage-uploads>
+- Google Drive update/reference evidence: <https://developers.google.com/workspace/drive/api/reference/rest/v3/files/update> and <https://developers.google.com/workspace/drive/api/reference/rest/v3/files>
+- Google downloads/revisions: <https://developers.google.com/workspace/drive/api/guides/manage-downloads> and <https://developers.google.com/workspace/drive/api/guides/manage-revisions>
+- Obsidian plugin/Vault API: <https://github.com/obsidianmd/obsidian-api> and <https://docs.obsidian.md/Plugins/Vault>
+- Windows notification loss/overflow: <https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw>
+- Apple iOS lifecycle/background constraints: <https://developer.apple.com/documentation/uikit/managing-your-app-s-life-cycle> and <https://developer.apple.com/documentation/uikit/preparing-your-ui-to-run-in-the-background>
+
+### Verification at implementation SHA
+
+- `npm run typecheck`: PASS
+- focused foundation suite: `6/6` PASS
+- complete Windows suite: `383/385` PASS
+- the two failures are the same previously established drive-prefix expectation mismatches:
+  - `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+  - `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+- new failures: none
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- build verifier: entrypoint, syntax, local runtime dependencies, mobile evaluation, package shape — all PASS
+- `git diff --check`: PASS
+- `main.js`: `415353` bytes
+- `main.js` SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+- artifact identity versus PR #33 reviewed predecessor: exact PASS
+- manifest/package version remains `0.1.7`
+
+### Foundation limits
+
+The contracts and pure architecture classifiers are implemented; the later subsystem remediations are intentionally deferred to A-F, and the comprehensive model is deferred to G. No current production execution path was changed. No later agent or branch was created.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required.**

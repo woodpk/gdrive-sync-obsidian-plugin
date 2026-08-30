@@ -178,7 +178,7 @@ sync_architecture_foundation:
   branch: "phase6-sync-architecture-foundation"
   predecessor_pr: 33
   predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
-  implementation_sha: "PENDING_FOUNDATION_IMPLEMENTATION_COMMIT"
+  implementation_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
   contract_version: "phase6-sync-foundation-v1"
   artifacts:
     - "phase6-sync-architecture-foundation.md"

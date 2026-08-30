@@ -265,7 +265,7 @@ This later addendum supersedes the historical Phase 6 “not started” and sole
 - foundation agent: `agt-CA-P6-SYNC-FOUNDATION-01`
 - isolated branch: `phase6-sync-architecture-foundation`
 - exact reviewed predecessor: PR #33 head `85d509d90d475717d609c559fad870f64b956e9e`
-- foundation implementation SHA: `PENDING_FOUNDATION_IMPLEMENTATION_COMMIT`
+- foundation implementation SHA: `8b575e7439fdd601166e3bdb6e335992364da3fc`
 - contract version: `phase6-sync-foundation-v1`
 - architecture: `phase6-sync-architecture-foundation.md`
 - contract-freeze candidate: `phase6-sync-contract-freeze.md`

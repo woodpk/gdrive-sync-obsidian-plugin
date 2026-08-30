@@ -2,7 +2,7 @@
 
 Status: **candidate only — supervisor approval pending**  
 Contract version: `phase6-sync-foundation-v1`  
-Foundation implementation SHA: `PENDING_FOUNDATION_IMPLEMENTATION_COMMIT`  
+Foundation implementation SHA: `8b575e7439fdd601166e3bdb6e335992364da3fc`
 Branch: `phase6-sync-architecture-foundation`
 
 This manifest does not authorize parallel implementation. After independent approval, the listed shared contracts become frozen inputs to the later workstreams.
