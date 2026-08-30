@@ -13,7 +13,9 @@ export interface RunLeasePort {
   tryAcquire(vaultIdentity: VaultIdentity, deviceIdentity: DeviceIdentity, holderId: string): Promise<RunLease | undefined>;
 }
 
-export type BeginRunResult = { readonly status: "started" } | { readonly status: "already-running" | "paused" | "lease-unavailable" };
+export type BeginRunResult =
+  | { readonly status: "started" }
+  | { readonly status: "already-running" | "paused" | "stopping" | "cancelled" | "lease-unavailable" };
 
 /**
  * Lifecycle authority is process-local because Obsidian v1 supports one BRAIN
@@ -83,12 +85,14 @@ export class CoreRunCoordinator {
   ) {}
 
   async beginRun(): Promise<BeginRunResult> {
-    if (this.paused || lifecycleState !== "active") return { status: "paused" };
+    if (this.paused) return { status: "paused" };
+    if (lifecycleState !== "active") return { status: "stopping" };
     if (this.active || this.acquiring) {
       this.deferredReconciliation = true;
       return { status: "already-running" };
     }
 
+    this.cancellation = new MutableCancellationSignal();
     this.acquiring = true;
     const expectedEpoch = lifecycleEpoch;
     let lease: RunLease | undefined;
@@ -96,20 +100,28 @@ export class CoreRunCoordinator {
       lease = await this.leasePort.tryAcquire(this.vaultIdentity, this.deviceIdentity, this.holderId);
       if (!lease) return { status: "lease-unavailable" };
 
-      // Suspension/unload/pause may race an awaited lease acquisition. A lease
-      // obtained after the gate changed is released without granting run authority.
-      if (this.paused || lifecycleState !== "active" || lifecycleEpoch !== expectedEpoch || this.active) {
+      // Suspension/unload/pause/cancel may race an awaited lease acquisition. A
+      // late lease is released without granting new mutation authority.
+      if (this.active) {
         await lease.release();
-        if (this.active) {
-          this.deferredReconciliation = true;
-          return { status: "already-running" };
-        }
+        this.deferredReconciliation = true;
+        return { status: "already-running" };
+      }
+      if (this.paused) {
+        await lease.release();
         return { status: "paused" };
+      }
+      if (lifecycleState !== "active" || lifecycleEpoch !== expectedEpoch) {
+        await lease.release();
+        return { status: "stopping" };
+      }
+      if (this.cancellation.cancelled) {
+        await lease.release();
+        return { status: "cancelled" };
       }
 
       this.lease = lease;
       this.active = true;
-      this.cancellation = new MutableCancellationSignal();
       return { status: "started" };
     } finally {
       this.acquiring = false;
