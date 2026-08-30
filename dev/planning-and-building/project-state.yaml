@@ -176,9 +176,12 @@ sync_architecture_foundation:
   status: "candidate_foundation_built_supervisor_review_pending"
   agent: "agt-CA-P6-SYNC-FOUNDATION-01"
   branch: "phase6-sync-architecture-foundation"
+  review_pr: 34
+  review_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34"
   predecessor_pr: 33
   predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
   implementation_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
+  evidence_checkpoint_sha: "5d71b0c17ed3354fc5560dfd8a670a5f8dd32af9"
   contract_version: "phase6-sync-foundation-v1"
   artifacts:
     - "phase6-sync-architecture-foundation.md"

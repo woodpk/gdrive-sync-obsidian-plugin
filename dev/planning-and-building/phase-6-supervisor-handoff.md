@@ -272,6 +272,7 @@ This later addendum supersedes the historical Phase 6 “not started” and sole
 - non-overlapping workstreams: `phase6-sync-parallel-workstreams.md`
 - adversarial matrix: `phase6-sync-adversarial-validation.md`
 - dedicated evidence: `../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md`
+- review PR: [#34](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34), targeting `phase6-integration`, open and unmerged
 - protected branches: not modified or merged by the foundation task
 - PR #33: not merged by the foundation task
 - parallel implementation: **NOT AUTHORIZED**

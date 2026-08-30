@@ -161,3 +161,38 @@ The contracts and pure architecture classifiers are implemented; the later subsy
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required.**
+
+## 2026-08-30 — Checkpoint 3: final local gates and supervisor-review PR
+
+- evidence checkpoint SHA before this record: `5d71b0c17ed3354fc5560dfd8a670a5f8dd32af9`
+- review PR: [#34](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34)
+- PR state at creation: `OPEN`, `UNMERGED`, non-draft, `MERGEABLE`
+- PR base: `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`
+- PR head before this documentation-only checkpoint: `5d71b0c17ed3354fc5560dfd8a670a5f8dd32af9`
+- PR #33 remains `OPEN`, `UNMERGED`, `MERGEABLE`, at reviewed head `85d509d90d475717d609c559fad870f64b956e9e`
+- `phase6-integration` remains `3005fe89f4214a9e389889769b088abfcad8293a`
+- `master` remains `b1b3a4bd70cd14be49ae9085a8305f5825fccf4f`
+
+Final local verification after the callable contract refinement:
+
+- `npm run typecheck`: PASS
+- focused foundation suite using the repository test runner: `6/6` PASS
+- complete Windows suite: `383/385` PASS
+- qualified failures: only the same two established drive-prefix expectation mismatches recorded in checkpoint 2
+- new failures: none
+- `npm run build`: PASS
+- `npm run verify:build`: PASS
+- entrypoint, syntax, local runtime dependencies, mobile evaluation, and package shape: all PASS
+- `git diff --check`: PASS
+- `main.js`: `415353` bytes
+- `main.js` SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+- artifact identity versus PR #33: exact PASS
+- manifest/package version: `0.1.7`
+- ownership review: A–G production and test ownership lists are pairwise disjoint; shared contracts and integration-owned files remain prohibited to parallel workstreams
+- applicable GitHub checks: triggered; final-head result will be recorded after completion
+
+No production synchronization behavior changed after implementation SHA `8b575e7439fdd601166e3bdb6e335992364da3fc`. No protected branch, tag, release, Azure resource, OAuth configuration, vault, or physical device was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approval is required.**
