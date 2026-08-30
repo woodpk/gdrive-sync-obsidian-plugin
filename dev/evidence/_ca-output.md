@@ -1918,3 +1918,7 @@ Stage 3 has not begun.
 - Stage 3 has not begun
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 1
+
+Raw physical evidence and current code jointly confirm: 45 consecutive operation-1 `upload-update` stale-precondition failures with zero safe commits; controller-self-generated immediate replanning; starvation caused by treating operation-local staleness as global; repeated same-object validation observations; and global contamination of absent paths by a single local list/observe race. The supplied workbook's portable-hotkeys entry carrying an `Untitled.md` absence reason is direct evidence of the cross-path uncertainty defect. Exact failed precondition kind/side is absent from current sanitized diagnostics and requires privacy-safe instrumentation. Detailed causal evidence and predictive repair gates are recorded in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.

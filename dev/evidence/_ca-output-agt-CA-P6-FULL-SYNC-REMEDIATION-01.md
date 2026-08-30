@@ -54,3 +54,58 @@ No root-cause conclusion has been accepted yet. The supplied hypotheses remain l
 
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
+## 2026-08-30 — Checkpoint 1: raw physical evidence and causal reconstruction
+
+### Evidence identity
+
+- `brain-log-10.txt`: `347711` bytes; `1051` JSONL records; SHA-256 `20985ac0a95bea663ba11209e07091d027fd7393c22cd123283655fa4790731b`
+- `sync-plan-errors copy.xlsx`: `11484` bytes; SHA-256 `12b47adf883ed078757dde765d22dc7f458d986a8dfe7b517c4abf2c73bd7f65`
+- workbook inspection used the bundled `@oai/artifact-tool` runtime and did not modify the source workbook
+
+### Independently established physical behavior
+
+- the log covers run IDs `130` through `175` from `2026-08-30T04:45:50.288Z` through `2026-08-30T04:50:09Z`;
+- `45` consecutive completed automatic `local-change` runs failed;
+- every completed run failed on operation index `1`, an `upload-update`, during precondition validation with `stale-precondition`;
+- every failed run committed `0` safe operations and skipped `0` operations;
+- all plans were classified `safe-auto-eligible`, carried `0` attention operations, and contained `2` or `3` uploads plus unrelated no-ops;
+- each failure was followed immediately by another controller-created `automatic:local-change` run; run `175` was already validating operation `1` when the log ended;
+- normal diagnostics expose only the aggregate stale result, not the failed precondition kind/side/count;
+- the attention workbook contains four records: one resolved and three current;
+- current records include `Logs.md`, `Untitled.md`, and `__brain_sync_portable_config__/hotkeys.json`;
+- the portable-configuration record incorrectly carries the exact `Untitled.md: listed file was not truthfully observed as file (absent)` reason, establishing cross-path uncertainty contamination rather than an independent hotkeys observation failure.
+
+### Confirmed failure mechanisms
+
+1. **Root cause — incorrect invalidation scope.** `IntegratedProductController.executePlanned()` groups `stale-precondition` with `stale-state`, marks both run-global, stops before unrelated operations, and therefore violates the target distinction between operation/path-local stale intent and globally stale authoritative state.
+2. **Livelock amplifier — unconditional immediate self-replan.** That same stale branch calls `CoreRunCoordinator.noteLocalOrRemoteChangeDuringRun()`. `finishRun()` then reports `reconcileAgain`, and the controller immediately calls `runAutomatic("local-change")`. A stale operation therefore generates its own next run even when no new external trigger exists. There is no backoff or convergence condition.
+3. **Race amplifier — incoherent repeated validation observation.** `ProductSynchronizationExecutor.validatePreconditions()` independently calls local/remote observation for each path-observation, content-evidence, file-stable, and remote-object precondition. One upload can therefore observe the same object repeatedly during one validation pass, widening the race window and allowing internally mixed evidence. The separate post-journal mutation-boundary validation remains required; coherence is needed within each pass, not across the journal boundary.
+4. **Root cause — globalized local enumeration uncertainty.** `ObsidianLocalVaultAdapter.enumerate()` marks the entire listing partial when one listed file disappears before observation. `ProductSnapshotAssembler.makeSnapshots()` then converts every otherwise absent local path into `unknown`, including unrelated portable configuration paths. `ScopedLocalVault.enumerate()` can similarly globalize exact portable-path observation failures. This exactly accounts for the workbook's portable-hotkeys/Untitled mismatch.
+5. **Secondary consequence — stale attention remains current.** Because execution aborts before safe progress and never reaches per-path attention resolution, historical/current ledger state cannot converge. This is a consequence of the execution and observation defects, not the primary root cause.
+
+### Hypothesis disposition
+
+- repeated stale preconditions causing whole-run abort: **CONFIRMED**
+- immediate automatic replanning/livelock: **CONFIRMED and controller-self-generated**
+- starvation of independently safe operations: **CONFIRMED**
+- path-local observation uncertainty contaminating unrelated paths: **CONFIRMED**
+- repeated same-object observation widening the validation race: **CONFIRMED**
+- insufficient failed-precondition telemetry: **CONFIRMED**
+- attention remaining current because successful reconciliation is not reached: **CONFIRMED as a secondary consequence**
+- exact physical failed precondition kind/side: **NOT ESTABLISHABLE from the supplied sanitized log; instrumentation correction required**
+
+### Required predictive repair gates
+
+- one stale operation must be deferred as path attention while an independent operation commits;
+- a stale operation must not self-create an unbounded automatic run loop;
+- dependencies of stale work must remain skipped;
+- stale-state/recovery/destructive global gates must remain global;
+- each validation pass must use one canonical observation per side/path while the post-journal pass remains fresh;
+- a post-journal stale result must retire the known-unmutated pending journal before path-local continuation is authorized;
+- exact file list/observe races must remain exact-path uncertainty;
+- genuine subtree listing loss must affect that subtree only;
+- normal diagnostics must expose privacy-safe failed-precondition kind/side/count without paths or secrets;
+- later successful reconciliation must resolve current attention without erasing bounded history.
+
+No product behavior decision is unresolved at this checkpoint.
+
