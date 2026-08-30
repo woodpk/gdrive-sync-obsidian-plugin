@@ -52,3 +52,13 @@ export interface LocalVaultPort {
   onChange(listener: (change: LocalVaultChange) => void): Unsubscribe;
   onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe;
 }
+
+/**
+ * Workstream B integrity seam. This read MUST bypass metadata/observation-token
+ * hash caches and derive evidence from the current bytes. Verify/Reconcile and
+ * policy-selected integrity sweeps use this seam so a missed watcher event plus
+ * unchanged size/mtime cannot make stale cached content permanent authority.
+ */
+export interface LocalIntegrityReconciliationPort {
+  readFileBypassingEvidenceCache(path: VaultPath): Promise<LocalReadResult>;
+}
