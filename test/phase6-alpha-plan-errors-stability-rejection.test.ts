@@ -133,6 +133,22 @@ class ExactMemoryVault {
   }
 }
 
+async function relocateSameKeyPair(sourceRecord: SyncAttentionRecord, destinationRecord: SyncAttentionRecord): Promise<SyncAttentionRecord> {
+  const vault = new ExactMemoryVault();
+  const sourcePath = "sync-plan-errors.csv";
+  const destinationPath = "99-System/sync-plan-errors.csv";
+  vault.files.set(sourcePath, renderSyncAttentionRecordsCsv([sourceRecord]));
+  vault.folders.add("99-System");
+  vault.files.set(destinationPath, renderSyncAttentionRecordsCsv([destinationRecord]));
+  const persistence = new SyncPlanErrorsCsvPersistence(vault.app, sourcePath);
+  await persistence.initialize();
+  await persistence.relocate(destinationPath);
+  const [merged] = parseSyncAttentionRecordsCsv(vault.files.get(destinationPath)!);
+  persistence.dispose();
+  assert.ok(merged);
+  return merged;
+}
+
 test("case-only and Unicode-equivalent relocations are rejected before journal or filesystem mutation on a normalizing adapter", async () => {
   for (const [sourcePath, destinationPath] of [
     ["Errors/sync-plan-errors.csv", "errors/sync-plan-errors.csv"],
@@ -312,4 +328,92 @@ test("invalid destination CSV is never overwritten and source remains authoritat
   assert.equal(vault.files.get(destinationPath), invalidDestination);
   assert.equal(vault.files.get(sourcePath), sourceCsv);
   persistence.dispose();
+});
+
+test("later resolution defeats an older stale current copy for the same record key", async () => {
+  const staleCurrent = record("state.md", { current: true, lastSeenAtMs: 20, occurrenceCount: 4 });
+  const laterResolved = record("state.md", { current: false, lastSeenAtMs: 20, resolvedAtMs: 30, occurrenceCount: 4 });
+  const merged = await relocateSameKeyPair(laterResolved, staleCurrent);
+  assert.equal(merged.current, false);
+  assert.equal(merged.resolvedAtMs, 30);
+  assert.equal(merged.occurrenceCount, 4);
+});
+
+test("later resolution wins regardless of whether the stale current copy is source or destination", async () => {
+  const staleCurrent = record("order.md", { current: true, lastSeenAtMs: 25, occurrenceCount: 7 });
+  const laterResolved = record("order.md", { current: false, lastSeenAtMs: 25, resolvedAtMs: 40, occurrenceCount: 7 });
+  const sourceResolved = await relocateSameKeyPair(laterResolved, staleCurrent);
+  const destinationResolved = await relocateSameKeyPair(staleCurrent, laterResolved);
+  for (const merged of [sourceResolved, destinationResolved]) {
+    assert.equal(merged.current, false);
+    assert.equal(merged.resolvedAtMs, 40);
+    assert.equal(merged.occurrenceCount, 7);
+  }
+});
+
+test("a genuinely later recurrence reopens a previously resolved record", async () => {
+  const resolved = record("recur.md", { current: false, lastSeenAtMs: 20, resolvedAtMs: 30, occurrenceCount: 3 });
+  const laterCurrent = record("recur.md", { current: true, lastSeenAtMs: 50, occurrenceCount: 4 });
+  const merged = await relocateSameKeyPair(resolved, laterCurrent);
+  assert.equal(merged.current, true);
+  assert.equal(merged.resolvedAtMs, undefined);
+  assert.equal(merged.lastSeenAtMs, 50);
+  assert.equal(merged.occurrenceCount, 4);
+});
+
+test("restart relocation does not resurrect a source record resolved after a stale destination current copy", async () => {
+  const vault = new ExactMemoryVault();
+  const sourcePath = "sync-plan-errors.csv";
+  const destinationPath = "99-System/sync-plan-errors.csv";
+  const staleCurrent = record("restart-state.md", { current: true, lastSeenAtMs: 20, occurrenceCount: 5 });
+  vault.files.set(sourcePath, renderSyncAttentionRecordsCsv([staleCurrent]));
+  vault.folders.add("99-System");
+
+  const first = new SyncPlanErrorsCsvPersistence(vault.app, sourcePath);
+  await first.initialize();
+  await assert.rejects(
+    () => first.relocate(destinationPath, async () => { throw new Error("simulated crash before active-location commit"); }),
+    /simulated crash/u,
+  );
+  first.dispose();
+  assert.equal(parseSyncAttentionRecordsCsv(vault.files.get(destinationPath)!)[0]?.current, true);
+
+  const laterResolved = record("restart-state.md", { current: false, lastSeenAtMs: 20, resolvedAtMs: 35, occurrenceCount: 5 });
+  vault.files.set(sourcePath, renderSyncAttentionRecordsCsv([laterResolved]));
+
+  const restarted = new SyncPlanErrorsCsvPersistence(vault.app, sourcePath);
+  await restarted.initialize();
+  await restarted.relocate(destinationPath);
+  const finalRecords = parseSyncAttentionRecordsCsv(vault.files.get(destinationPath)!);
+  assert.equal(finalRecords.length, 1);
+  assert.equal(finalRecords[0]?.current, false);
+  assert.equal(finalRecords[0]?.resolvedAtMs, 35);
+  assert.equal(finalRecords[0]?.occurrenceCount, 5);
+  restarted.dispose();
+});
+
+test("corrected resolved relocation state is idempotent across repeated recovery merges", async () => {
+  const vault = new ExactMemoryVault();
+  const sourcePath = "sync-plan-errors.csv";
+  const destinationPath = "99-System/sync-plan-errors.csv";
+  const staleCurrent = record("stable-state.md", { current: true, lastSeenAtMs: 20, occurrenceCount: 8 });
+  const laterResolved = record("stable-state.md", { current: false, lastSeenAtMs: 20, resolvedAtMs: 45, occurrenceCount: 8 });
+  vault.files.set(sourcePath, renderSyncAttentionRecordsCsv([laterResolved]));
+  vault.folders.add("99-System");
+  vault.files.set(destinationPath, renderSyncAttentionRecordsCsv([staleCurrent]));
+
+  const first = new SyncPlanErrorsCsvPersistence(vault.app, sourcePath);
+  await first.initialize();
+  await assert.rejects(() => first.relocate(destinationPath, async () => { throw new Error("leave source active"); }), /leave source active/u);
+  first.dispose();
+  const once = parseSyncAttentionRecordsCsv(vault.files.get(destinationPath)!);
+  assert.equal(once[0]?.current, false);
+  assert.equal(once[0]?.resolvedAtMs, 45);
+
+  const second = new SyncPlanErrorsCsvPersistence(vault.app, sourcePath);
+  await second.initialize();
+  await assert.rejects(() => second.relocate(destinationPath, async () => { throw new Error("leave source active again"); }), /leave source active again/u);
+  second.dispose();
+  const twice = parseSyncAttentionRecordsCsv(vault.files.get(destinationPath)!);
+  assert.deepEqual(twice, once);
 });
