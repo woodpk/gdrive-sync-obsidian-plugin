@@ -1922,3 +1922,7 @@ Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 ## 2026-08-30 — Full synchronization remediation checkpoint 1
 
 Raw physical evidence and current code jointly confirm: 45 consecutive operation-1 `upload-update` stale-precondition failures with zero safe commits; controller-self-generated immediate replanning; starvation caused by treating operation-local staleness as global; repeated same-object validation observations; and global contamination of absent paths by a single local list/observe race. The supplied workbook's portable-hotkeys entry carrying an `Untitled.md` absence reason is direct evidence of the cross-path uncertainty defect. Exact failed precondition kind/side is absent from current sanitized diagnostics and requires privacy-safe instrumentation. Detailed causal evidence and predictive repair gates are recorded in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 2
+
+The pre-repair predictive suite was added and run against released `0.1.7`: `0/4` passed. It independently reproduces controller-generated immediate replanning, failure to retire post-journal stale intent and continue unrelated work, three local observations within one validation pass, and unrelated-path contamination from scoped enumeration uncertainty. The Windows suite additionally reproduced only the two already-qualified drive-prefix assertions. Production code remains unchanged at this checkpoint; detailed failures are preserved in the dedicated remediation evidence.

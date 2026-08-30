@@ -109,3 +109,23 @@ Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 No product behavior decision is unresolved at this checkpoint.
 
+## 2026-08-30 — Checkpoint 2: predictive regression baseline
+
+Created `test/phase6-alpha-full-sync-remediation.test.ts` before changing production code. The focused test file compiles under the repository test TypeScript configuration and fails `0/4` against the released `0.1.7` implementation, proving each intended repair gate is active:
+
+1. `operation-local stale precondition is isolated, safe work commits, and no immediate self-replan occurs` fails because the stale result creates a second automatic plan (`2 !== 1`);
+2. `post-journal stale intent is safely retired before unrelated work continues` fails because execution stops before the independent second operation and the pending intent is not retired;
+3. `one validation pass reuses one coherent local and remote observation per path` fails because one pass observes the local path three times (`3 !== 1`), with the same repeated-observation defect also present remotely;
+4. `path and subtree enumeration uncertainty do not contaminate unrelated absent paths` fails because an unrelated absent path is reported `unknown` instead of `absent`.
+
+Command:
+
+```text
+node --test .test-build/test/phase6-alpha-full-sync-remediation.test.js
+```
+
+Result: `0 passed; 4 failed; 4 total`.
+
+The full Windows test invocation also reproduced only these four new predictive failures plus the two already-established drive-prefix expectation mismatches. No production source was changed in this checkpoint.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
