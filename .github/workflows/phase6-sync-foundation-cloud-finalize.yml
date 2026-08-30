@@ -48,13 +48,18 @@ The exact final evidence-bearing branch SHA is necessarily generated after this 
 **Parallel implementation wave: NOT AUTHORIZED — independent supervisor re-review is required.**
 EOF
           fi
-          base64 -w0 /tmp/ca-output.md > /tmp/encoded.txt
-          jq -n \
-            --arg message 'docs: append synchronization foundation cloud closure' \
-            --arg content "$(cat /tmp/encoded.txt)" \
-            --arg branch "$BRANCH" \
-            --arg sha "$FILE_SHA" \
-            '{message:$message,content:$content,branch:$branch,sha:$sha}' > /tmp/update-request.json
+          export BRANCH FILE_SHA
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          request = {
+              "message": "docs: append synchronization foundation cloud closure",
+              "content": base64.b64encode(Path("/tmp/ca-output.md").read_bytes()).decode("ascii"),
+              "branch": os.environ["BRANCH"],
+              "sha": os.environ["FILE_SHA"],
+          }
+          Path("/tmp/update-request.json").write_text(json.dumps(request), encoding="utf-8")
+          PY
           gh api --method PUT "repos/${REPO}/contents/dev/evidence/_ca-output.md" --input /tmp/update-request.json >/tmp/update-result.json
           WF_SHA="$(gh api "repos/${REPO}/contents/.github/workflows/phase6-sync-foundation-cloud-finalize.yml?ref=${BRANCH}" --jq '.sha')"
           jq -n \
