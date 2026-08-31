@@ -1,11 +1,24 @@
+import {
+  folderCreateEligibleForAuthoritativeCommit,
+  recoverRemoteFolderCreate,
+} from "../contracts";
 import type {
   AuthoritativeSuccessCommitter,
   CommitResult,
+  ExactBaseAuthority,
+  ExecutableOperationPrecondition,
+  ExecutablePlannedOperation,
   ExecutionResult,
+  IdentityAuthorityProof,
   OperationPrecondition,
+  PathConvergenceState,
   PlannedOperation,
   PreconditionValidationResult,
+  RecoverableMutationEffectV1_1,
+  RemoteFolderCreatePhysicalMutationDescriptor,
+  RemoteFolderCreateRecoveryReadPort,
   StateRevision,
+  SynchronizationAuthorityMetadataV1_1,
   SynchronizationExecutor,
 } from "../contracts";
 import type { StateCommitCoordinator } from "./commit-coordinator";
@@ -39,11 +52,9 @@ export type ExecutionLifecycleStage =
 export type ExecutionLifecycleObserver = (operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string, error?: unknown, failedPreconditions?: readonly OperationPrecondition[]) => void;
 
 /**
- * Phase-2 ordering policy for one planned operation.
- *
- * Mutation mechanics stay behind SynchronizationExecutor (Phase 5 composes real adapters),
- * while this coordinator guarantees: precondition validation -> durable pending journal ->
- * mutation/verification -> authoritative verified-success commit. Stale intent is never run.
+ * Compatibility coordinator retained for pre-foundation Phase-2/Phase-5 paths.
+ * New synchronization orchestration must resolve exact authority before using
+ * the frozen authoritative executor seam.
  */
 export class CrashSafeExecutionCoordinator {
   constructor(
@@ -155,22 +166,6 @@ export class CrashSafeExecutionCoordinator {
   }
 }
 
-import {
-  folderCreateEligibleForAuthoritativeCommit,
-  recoverRemoteFolderCreate,
-} from "../contracts";
-import type {
-  ExactBaseAuthority,
-  ExecutableOperationPrecondition,
-  ExecutablePlannedOperation,
-  IdentityAuthorityProof,
-  PathConvergenceState,
-  RecoverableMutationEffectV1_1,
-  RemoteFolderCreatePhysicalMutationDescriptor,
-  RemoteFolderCreateRecoveryReadPort,
-  SynchronizationAuthorityMetadataV1_1,
-} from "../contracts";
-
 export type AuthorityResolutionResult =
   | { readonly status: "ready"; readonly operation: ExecutablePlannedOperation }
   | { readonly status: "incomplete-authority"; readonly reason: string };
@@ -183,8 +178,8 @@ function operationBaseAuthorityPath(operation: PlannedOperation) {
 
 /**
  * Replace compatibility-only planner markers with exact frozen authority.
- * No nominal `base-trusted` / `identity-unambiguous` marker is permitted to
- * cross the authoritative execution boundary.
+ * Runtime precondition validation remains responsible for proving that these
+ * exact generation/path/fingerprint/remote-identity facts are still current.
  */
 export function resolveAuthorityCompleteOperation(
   operation: PlannedOperation,
@@ -194,14 +189,14 @@ export function resolveAuthorityCompleteOperation(
   for (const precondition of operation.preconditions) {
     if (precondition.kind === "base-trusted") {
       const authorityPath = operationBaseAuthorityPath(operation);
-      const convergence = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
-      if (!convergence || convergence.status !== "converged") {
+      const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
+      if (!pathAuthority || pathAuthority.status !== "converged") {
         return { status: "incomplete-authority", reason: `exact BASE authority unavailable for ${String(authorityPath)}` };
       }
       const exact: ExactBaseAuthority = {
         generation: authority.semanticGeneration,
         path: authorityPath,
-        fingerprint: convergence.baseFingerprint,
+        fingerprint: pathAuthority.baseFingerprint,
       };
       preconditions.push({ kind: "base-authority", authority: exact });
       continue;
@@ -243,10 +238,8 @@ function remoteFolderDescriptor(effect: RecoverableMutationEffectV1_1): RemoteFo
 
 /**
  * Restart classifier for one persisted REMOTE folder-create effect.
- *
  * `dispatch-authorized` and `outcome-unknown` always reconstruct Drive reality
  * through the frozen read-only v1.2 seam before any retry can become eligible.
- * Physical existence alone is never treated as ordinary logical convergence.
  */
 export async function recoverRemoteFolderEffectV1_2(
   effect: RecoverableMutationEffectV1_1,
@@ -264,15 +257,9 @@ export async function recoverRemoteFolderEffectV1_2(
   }
 
   const outcome = await recoverRemoteFolderCreate(descriptor, reader);
-  if (outcome.status === "verified-not-applied") {
-    return { status: "safe-retry-eligible", reason: outcome.reason };
-  }
-  if (outcome.status === "conflict-preserved") {
-    return { status: "conflict-preserved", reason: outcome.reason };
-  }
-  if (outcome.status === "outcome-unknown") {
-    return { status: "recovery-pending", reason: outcome.reason };
-  }
+  if (outcome.status === "verified-not-applied") return { status: "safe-retry-eligible", reason: outcome.reason };
+  if (outcome.status === "conflict-preserved") return { status: "conflict-preserved", reason: outcome.reason };
+  if (outcome.status === "outcome-unknown") return { status: "recovery-pending", reason: outcome.reason };
   if (!folderCreateEligibleForAuthoritativeCommit(outcome, pathConvergence)) {
     return { status: "effect-verified-awaiting-convergence", reason: "physical folder effect is verified but logical path is not converged" };
   }
@@ -297,8 +284,9 @@ export async function recoverRemoteFolderIntentsV1_2(
   const results: RemoteFolderIntentRecoveryResult[] = [];
   for (const intent of authority.operationIntents) {
     for (const effect of intent.effects) {
-      if (effect.descriptor.kind !== "remote-folder-create") continue;
-      const pathConvergence = authority.pathConvergence.find(entry => entry.path === effect.descriptor.targetPath)?.state
+      const descriptor = effect.descriptor;
+      if (descriptor.kind !== "remote-folder-create") continue;
+      const pathConvergence = authority.pathConvergence.find(entry => entry.path === descriptor.targetPath)?.state
         ?? { status: "unknown" as const, reasonCode: "path-convergence-unavailable" };
       results.push({
         effectId: effect.effectId,
