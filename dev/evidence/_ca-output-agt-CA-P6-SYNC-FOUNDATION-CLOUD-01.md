@@ -382,3 +382,98 @@ This evidence append is followed only by read-only final verification and PR met
 No physical Windows/iPhone synchronization was performed. No Azure/OAuth configuration was altered. PR #33 and PR #34 are to remain open/unmerged. Protected branches, tags/releases, worker implementation, serial integration, and Stage 3 remain outside this correction.
 
 **FOLDER-CREATE FOUNDATION CORRECTION EVIDENCED — PARALLEL CONTINUATION REMAINS NOT AUTHORIZED PENDING INDEPENDENT SUPERVISOR RE-REVIEW.**
+
+---
+
+## SUPERVISOR RE-REVIEW REJECTION — V1.1 AUTHORITY-STORE INTEGRATION
+
+Rejected SHA: `c9a7f9c2fe77d134bed1659111d58b9a53d3eda3`.
+
+### Exact persistence defect
+
+The rejected v1.1 candidate correctly defined `RecoverablePhysicalMutationDescriptorV1_1`, `RecoverableMutationEffectV1_1`, and `RecoverableOperationIntentV1_1`, but the authoritative persistence path in the older foundation remained typed to `SynchronizationAuthorityMetadata.operationIntents: RecoverableOperationIntent[]` and the corresponding v1 load/store/recovery/completion family. A folder-containing v1.1 intent therefore could not traverse the canonical durable authority path without a sidecar, cast, shadow metadata type, or replacement worker store. The supervisor correctly rejected that claim of C/D readiness.
+
+### Authoritative metadata/store correction
+
+Implementation/test checkpoint: `750100f95c8a32a6deb6909cd03ebbee3682d650`.
+
+`src/contracts/synchronization-folder-create-foundation.ts` now exports the explicit authoritative v1.1 persistence surface:
+
+- `SynchronizationAuthorityMetadataV1_1` with `operationIntents: readonly RecoverableOperationIntentV1_1[]`;
+- `SynchronizationAuthorityLoadResultV1_1`;
+- `SynchronizationAuthorityStoreV1_1` with folder-capable `loadAuthority()` / `saveAuthority()` plus the accepted authoritative BASE-transition seam;
+- `recoverableOperationV1_1RestartRecoveryDirectives()` for shared effect-level restart classification;
+- `recoverableOperationV1_1IsComplete()` for shared logical completion, requiring every required effect to be `state-committed`.
+
+The old v1 `RecoverableOperationIntent`, `SynchronizationAuthorityMetadata`, `SynchronizationAuthorityLoadResult`, and `SynchronizationAuthorityStore` remain intact for compatibility with already-reviewed v1 file/move/trash behavior. They are explicitly compatibility-only for new/resumed v1.1 folder-containing synchronization. C/D must use the v1.1 metadata/store surface and may not substitute a sidecar, untyped blob, cast-through-unknown authority, replacement store, branch-local metadata, or shadow contract.
+
+### LOCAL store/restart trace
+
+`LocalFolderCreatePhysicalMutationDescriptor -> RecoverableMutationEffectV1_1 -> RecoverableOperationIntentV1_1 -> SynchronizationAuthorityMetadataV1_1 -> SynchronizationAuthorityStoreV1_1.saveAuthority -> simulated process death -> loadAuthority -> recoverableOperationV1_1RestartRecoveryDirectives -> verifyLocalFolderCreate -> PathConvergenceState -> folderCreateEligibleForAuthoritativeCommit`.
+
+The round-trip test proves unchanged operation/intent/effect identity, durable `dispatch-authorized` stage, target path, parent/path-comparison/expected-absence authority, and shared restart directive. Structural verification alone remains insufficient; explicit converged path authority is required before authoritative commit eligibility.
+
+### REMOTE store/restart trace and reserved-ID proof
+
+`RemoteFolderCreatePhysicalMutationDescriptor -> RecoverableMutationEffectV1_1 -> RecoverableOperationIntentV1_1 -> SynchronizationAuthorityMetadataV1_1 -> SynchronizationAuthorityStoreV1_1.saveAuthority -> simulated process death -> loadAuthority -> recoverableOperationV1_1RestartRecoveryDirectives -> verifyRemoteFolderCreate -> PathConvergenceState -> folderCreateEligibleForAuthoritativeCommit`.
+
+The round-trip test proves unchanged:
+
+- `intentId`;
+- `effectId`;
+- durable stage;
+- `parentRemoteObjectId`;
+- `remoteMutation.reservedRemoteObjectId`;
+- target path;
+- path authority.
+
+The restarted process therefore reconciles the same pre-reserved intended Drive folder identity; it does not reconstruct or allocate another identity from current path state.
+
+### Shared recovery/completion correction
+
+`recoverableOperationV1_1RestartRecoveryDirectives()` preserves the accepted distinction between `intent-persisted` (definitely pre-dispatch / retire-unattempted) and `dispatch-authorized` or later (may have executed / reconcile physical reality). `recoverableOperationV1_1IsComplete()` returns true only if every required physical effect is `state-committed`; a verified or committed subset cannot complete the logical operation.
+
+### Tests added
+
+New `test/phase6-folder-authority-store-foundation.test.ts` proves supervisor T1–T6:
+
+1. LOCAL folder intent directly inhabits authoritative v1.1 metadata without unsafe casts;
+2. REMOTE folder intent directly inhabits authoritative v1.1 metadata with its reserved Drive identity;
+3. authority-store save/restart/load preserves LOCAL folder stage and authority;
+4. REMOTE reserved identity, parent identity, target/path authority, effect identity, and stage survive restart unchanged;
+5. shared completion semantics require all required effects `state-committed`;
+6. C and D can exchange persisted folder intent solely through the frozen v1.1 metadata/store contract.
+
+Existing `test/phase6-folder-create-foundation.test.ts` and all accepted synchronization-foundation coverage remained in the complete suite and passed.
+
+### Checkpoint verification
+
+`Phase 6 Alpha Diagnostic Verification`:
+- run: `33355904138`
+- job: `99377893445`
+- candidate head: `750100f95c8a32a6deb6909cd03ebbee3682d650`
+- checkout semantics: **GitHub-generated PR merge-ref verification containing candidate head**, not a literal clean head-SHA checkout
+- conclusion: **SUCCESS**
+- typecheck: PASS
+- full tests: **413/413 PASS**, 0 failed/cancelled/skipped/todo
+- workflow-focused tests: **38/38 PASS**
+- production build: PASS
+- `npm run check`: PASS, including repeated **413/413** complete suite
+- `git diff --check`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- `main.js`: `415353` bytes
+- `main.js` SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+- artifact ID: `9745116592`
+- artifact digest: `sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4`
+
+The exact evidence-bearing final branch SHA cannot be embedded in the commit that creates this appendix without self-reference. The exact final corrected SHA is therefore recorded in PR #34 metadata and the final supervisor-facing completion response after this evidence append and final verification.
+
+### Scope confirmation
+
+No A–G worker was resumed. No worker-owned production file was modified. Accepted A–H and R1–R6 semantics remain preserved. No PR was merged; no protected branch, Azure/OAuth configuration, Drive scope, physical-device test, Stage 3 work, tag, or release was changed or performed.
+
+**V1.1 AUTHORITY-STORE INTEGRATION CORRECTION EVIDENCED — PARALLEL CONTINUATION REMAINS NOT AUTHORIZED PENDING INDEPENDENT SUPERVISOR RE-REVIEW.**
