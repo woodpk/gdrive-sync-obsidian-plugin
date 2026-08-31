@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   contractId,
   establishFileCommonStateProof,
-  recoverableOperationIsComplete,
+  recoverableOperationV1_1IsComplete,
   type BaseFingerprint,
   type CanonicalFileContentProof,
   type ChangeCursor,
@@ -201,7 +201,7 @@ test("clean merge keeps independently staged effects and cannot complete after o
   const persisted = state.operationIntents.find(x => x.operationId === merge.operationId);
   assert.ok(persisted);
   if (!persisted) throw new Error("merge intent missing");
-  assert.equal(recoverableOperationIsComplete(persisted), false);
+  assert.equal(recoverableOperationV1_1IsComplete(persisted), false);
   assert.equal(persisted.effects[0].stage, "state-committed");
   assert.equal(persisted.effects[1]?.stage, "intent-persisted");
 });
