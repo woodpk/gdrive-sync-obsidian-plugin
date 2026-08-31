@@ -322,11 +322,17 @@ export class AdversarialSyncModel {
 
   settle(device: DeviceId, maxTransitions = 80): number {
     let transitions = 0;
+    const attemptedRecoveryJournalIds = new Set<string>();
     while (transitions < maxTransitions) {
       const d = this.devices[device];
       if (d.volatile.lifecycle !== "active") break;
       const before = this.digest();
-      if (d.durable.journals.some(j => j.effects.some(e => e.stage === "dispatch-authorized" || e.stage === "outcome-unknown"))) {
+      const recoveryJournalIds = d.durable.journals
+        .filter(journal => !attemptedRecoveryJournalIds.has(journal.id)
+          && journal.effects.some(effect => effect.stage === "dispatch-authorized" || effect.stage === "outcome-unknown"))
+        .map(journal => journal.id);
+      if (recoveryJournalIds.length > 0) {
+        for (const journalId of recoveryJournalIds) attemptedRecoveryJournalIds.add(journalId);
         this.apply({ type: "recover", device });
       } else if (d.durable.journals.some(j => j.effects.some(e => e.stage !== "state-committed"))) {
         this.apply({ type: "advance", device });
@@ -688,6 +694,10 @@ export class AdversarialSyncModel {
       d.durable.persistenceRevision++;
       return;
     }
+    if (found.effect.kind === "remote-folder-create") {
+      this.recoverFolderCreateJournal(device, found.journal);
+      return;
+    }
     if (!this.physicalMatches(device, found.effect)) {
       d.durable.pathState.set(found.journal.path, "conflict");
       found.effect.stage = "outcome-unknown";
@@ -749,6 +759,10 @@ export class AdversarialSyncModel {
           break;
         }
         if (effect.stage === "dispatch-authorized" || effect.stage === "outcome-unknown") {
+          if (effect.kind === "remote-folder-create") {
+            this.recoverFolderCreateJournal(device, journal);
+            break;
+          }
           if (this.physicalMatches(device, effect)) {
             this.markVerified(device, effect, "restart-physical-observation");
           } else if (this.effectAuthoritativelyNotApplied(device, effect)) {
@@ -766,7 +780,7 @@ export class AdversarialSyncModel {
 
   private effectAuthoritativelyNotApplied(device: DeviceId, effect: JournalEffect): boolean {
     const d = this.devices[device];
-    if (effect.kind === "remote-create" || effect.kind === "remote-update-candidate" || effect.kind === "remote-folder-create") {
+    if (effect.kind === "remote-create" || effect.kind === "remote-update-candidate") {
       return d.durable.remoteCoverageComplete && !!effect.remoteId && !this.remote.has(effect.remoteId);
     }
     if (effect.kind === "remote-trash") {
@@ -784,10 +798,6 @@ export class AdversarialSyncModel {
     if (effect.kind === "remote-create" || effect.kind === "remote-update-candidate") {
       const object = effect.remoteId ? this.remote.get(effect.remoteId) : undefined;
       return !!object && !object.trashed && object.path === effect.path && object.content === effect.intendedContent;
-    }
-    if (effect.kind === "remote-folder-create") {
-      const object = effect.remoteId ? this.remote.get(effect.remoteId) : undefined;
-      return !!object && !object.trashed && object.kind === "folder" && object.path === effect.path;
     }
     if (effect.kind === "remote-trash") {
       const object = effect.remoteId ? this.remote.get(effect.remoteId) : undefined;
@@ -950,18 +960,29 @@ export class AdversarialSyncModel {
 
   private recoverFolderCreate(device: DeviceId): void {
     const d = this.devices[device];
-    const journal = d.durable.journals.find(candidate => candidate.kind === "folder-create" && candidate.folderDescriptor);
-    if (!journal?.folderDescriptor) return;
-    const effect = journal.effects[0];
-    if (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown") return;
+    for (const journal of [...d.durable.journals]) {
+      if (journal.kind !== "folder-create" || !journal.folderDescriptor) continue;
+      const effect = journal.effects.find(candidate => candidate.kind === "remote-folder-create");
+      if (!effect || (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown")) continue;
+      this.recoverFolderCreateJournal(device, journal);
+    }
+  }
+
+  private recoverFolderCreateJournal(device: DeviceId, journal: Journal): void {
+    const d = this.devices[device];
+    const descriptor = journal.folderDescriptor;
+    if (journal.kind !== "folder-create" || !descriptor) return;
+    const effect = journal.effects.find(candidate => candidate.kind === "remote-folder-create");
+    if (!effect || (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown")) return;
     this.recoveryReads++;
-    const observation = this.observeFolderRecovery(device, journal.folderDescriptor);
-    this.folderRecovery = verifyRemoteFolderCreate(journal.folderDescriptor, observation);
+    const observation = this.observeFolderRecovery(device, descriptor);
+    this.folderRecovery = verifyRemoteFolderCreate(descriptor, observation);
     if (this.folderRecovery.status === "verified-effect") {
       this.markVerified(device, effect, "folder-recovery-read");
     } else if (this.folderRecovery.status === "verified-not-applied") {
       d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
       d.volatile.dirtyPaths.add(journal.path);
+      d.durable.persistenceRevision++;
     } else if (this.folderRecovery.status === "conflict-preserved") {
       d.durable.pathState.set(journal.path, "conflict");
     } else {
