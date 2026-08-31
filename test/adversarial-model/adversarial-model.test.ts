@@ -61,7 +61,7 @@ function folderDescriptor(path = "folder", reservedId = "folder-reserved", paren
     targetPath,
     parentRemoteObjectId: parentId as RemoteObjectId,
     pathAuthority: {
-      generation: 1 as SemanticStateGeneration,
+      generation: "generation-1" as SemanticStateGeneration,
       targetPath,
       parentPath: "" as VaultPath,
       pathComparisonKey: path,
