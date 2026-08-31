@@ -150,16 +150,26 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
   await realStore.saveTrusted(createInitialTrustedState({ stateRevision: id<"StateRevision">("state:failure:0"), vaultIdentity: vault, deviceIdentity: device }));
   const loaded = await realStore.load(context);
   assert.equal(loaded.status, "trusted");
-  let loadCalls = 0;
+  let injected = false;
   const scriptedStore = {
-    load: async (loadContext: StateLoadContext) => {
-      loadCalls += 1;
-      if (failurePoint === "pending" && loadCalls === 2) throw new Error("client_secret=SENTINEL_PENDING");
-      if (failurePoint === "uncertain-journal" && loadCalls === 3) throw new Error("access_token=SENTINEL_UNCERTAIN");
-      if (failurePoint === "commit" && loadCalls === 3) throw new Error("refresh_token=SENTINEL_COMMIT");
-      return realStore.load(loadContext);
+    load: async (loadContext: StateLoadContext) => realStore.load(loadContext),
+    saveTrusted: async (...args: Parameters<PersistentSynchronizationStateStore["saveTrusted"]>) => {
+      const [candidate] = args;
+      const status = candidate.operations.at(-1)?.status;
+      if (!injected && failurePoint === "pending" && status === "pending") {
+        injected = true;
+        throw new Error("client_secret=SENTINEL_PENDING");
+      }
+      if (!injected && failurePoint === "uncertain-journal" && status === "uncertain") {
+        injected = true;
+        throw new Error("access_token=SENTINEL_UNCERTAIN");
+      }
+      if (!injected && failurePoint === "commit" && status === "completed") {
+        injected = true;
+        throw new Error("refresh_token=SENTINEL_COMMIT");
+      }
+      return realStore.saveTrusted(...args);
     },
-    saveTrusted: realStore.saveTrusted.bind(realStore),
     replaceRecoveryState: realStore.replaceRecoveryState.bind(realStore),
     createRecoveryBackup: realStore.createRecoveryBackup.bind(realStore),
   };
