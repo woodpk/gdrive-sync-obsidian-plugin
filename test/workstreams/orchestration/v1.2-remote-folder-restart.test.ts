@@ -6,7 +6,6 @@ import {
   type MutationIntentId,
   type OperationId,
   type PathConvergenceState,
-  type PersistenceRevision,
   type RecoverableMutationEffectV1_1,
   type RecoverableOperationIntentV1_1,
   type RemoteFolderCreateObservation,
@@ -14,6 +13,7 @@ import {
   type RemoteFolderCreateRecoveryReadPort,
   type RemoteObjectId,
   type SemanticStateGeneration,
+  type StateRevision,
   type SynchronizationAuthorityMetadataV1_1,
   type VaultPath,
 } from "../../../src/contracts";
@@ -28,7 +28,7 @@ const path = (value: string) => id<"VaultPath">(value) as VaultPath;
 const remoteId = (value: string) => id<"RemoteObjectId">(value) as RemoteObjectId;
 const generation = (value: string) => id<"SemanticStateGeneration">(value) as SemanticStateGeneration;
 const fingerprint = (value: string) => id<"BaseFingerprint">(value) as BaseFingerprint;
-const persistence = (value: string) => id<"PersistenceRevision">(value) as PersistenceRevision;
+const persistence = (value: string) => id<"StateRevision">(value) as StateRevision;
 const operationId = (value: string) => id<"OperationId">(value) as OperationId;
 
 function descriptor(target = "empty/remote", suffix = "a"): RemoteFolderCreatePhysicalMutationDescriptor {
@@ -110,8 +110,10 @@ test("D v1.2 authority boundary replaces nominal BASE and identity markers with 
   assert.equal(result.status, "ready");
   if (result.status !== "ready") return;
   assert.equal(result.operation.authorityComplete, true);
-  assert.equal(result.operation.preconditions.some(item => item.kind === "base-trusted" || item.kind === "identity-unambiguous"), false);
-  assert.deepEqual(result.operation.preconditions.map(item => item.kind), ["base-authority", "identity-authority"]);
+  const kinds: string[] = result.operation.preconditions.map(item => item.kind);
+  assert.equal(kinds.includes("base-trusted"), false);
+  assert.equal(kinds.includes("identity-unambiguous"), false);
+  assert.deepEqual(kinds, ["base-authority", "identity-authority"]);
 });
 
 test("D v1.2 restart from dispatch-authorized observes physical reality before retry eligibility", async () => {
