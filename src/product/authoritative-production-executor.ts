@@ -195,7 +195,7 @@ async function prepareIntent(operation: ExecutablePlannedOperation, authority: S
     add("remote-merge", { kind: "remote-file", targetSide: "remote", mutationKind: "update", targetPath: operation.path, remoteMutation: { kind: "existing-file-content-update", intentId, remoteObjectId: operation.remoteObjectId, expectedRevision: revision, path: operation.path, updateProtocol: "immutable-candidate-preservation", candidateRemoteObjectId: candidate.value.reservedRemoteObjectId, intendedContent: intended, identityAuthority: identity }, intendedContent: intended }, source.content);
   }
   if (!prepared.length) return { status: "blocked", reason: `unsupported recoverable operation ${operation.kind}` };
-  return { status: "ready", intent: { logicalKind: operation.kind === "clean-text-merge" ? "clean-text-merge" : "single-effect", operationId: operation.operationId, intentId, semanticAuthority: { generation: authority.semanticGeneration }, effects: prepared.map(value => value.effect) } as RecoverableOperationIntentV1_1, prepared };
+  return { status: "ready", intent: { logicalKind: operation.kind === "clean-text-merge" ? "clean-text-merge" : "single-effect", operationId: operation.operationId, intentId, semanticAuthority: { generation: authority.semanticGeneration }, effects: prepared.map(value => value.effect) } as unknown as RecoverableOperationIntentV1_1, prepared };
 }
 
 async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1): Promise<Convergence> {
