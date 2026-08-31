@@ -12,76 +12,80 @@ Foundation branch: `phase6-sync-architecture-foundation`
 Review PR: #34 → `phase6-integration`  
 PR state: **OPEN / UNMERGED**  
 Reviewed predecessor implementation: PR #33 head `85d509d90d475717d609c559fad870f64b956e9e`  
-Cloud continuation rejected candidate: `0d84f542a556800d93020b4000072da8faa3f740`  
-Contract version: `phase6-sync-foundation-v1`  
+Previously supervisor-approved foundation SHA: `6984915d2989827edf00def64a04c102c4e08785`  
+Folder-create implementation checkpoint: `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`  
+Corrected contract version: `phase6-sync-foundation-v1.1`  
 Agent: `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`
 
-The accepted A–H correction remains valid. The supervisor subsequently rejected `0d84f542...` only for lifecycle contract gaps R1–R6. This branch now contains the bounded reject/fix correction; the exact current candidate head must be read from GitHub after evidence closure. Parallel implementation remains **NOT AUTHORIZED**.
+The accepted A–H and R1–R6 corrections remain valid and preserved. Parallel implementation review subsequently exposed one additional shared-foundation defect: v1 did not provide complete durable physical-effect/restart semantics for LOCAL and REMOTE folder creation, despite the product requirement to preserve empty directories. Workstream D correctly stopped rather than inventing a private contract. The bounded v1.1 correction now exists on this branch. Parallel continuation remains **NOT AUTHORIZED** pending independent supervisor re-review of the exact final candidate head.
 
-## 3. Accepted foundation preserved
+## 3. Preserved foundation authority
 
-Preserve LOCAL/REMOTE/BASE/common separation; persistence revision versus semantic generation; canonical BASE healing; multi-batch remote ingestion; duplicate-path ambiguity; immutable-candidate remote update preservation; local create/replace pre-state authority; dispatch-authorized crash semantics; exact local provenance; cancellation/lifecycle/fault injection; bounded merge; semantic validation extensibility; A–G ownership; and PR #33 operation-local stale isolation.
+Preserve LOCAL/REMOTE/BASE/common separation; persistence revision versus semantic generation; canonical file BASE healing; multi-batch remote ingestion; duplicate-path ambiguity; immutable-candidate remote update preservation; exact execution authority; recoverable per-effect intent; safe remote mutation outcomes; application versus convergence separation; exact intended upload content; local create/replace pre-state authority; cache-bypassing integrity reconciliation; dispatch-authorized crash semantics; exact local provenance; cancellation/lifecycle/fault injection; bounded merge; semantic validation extensibility; A–G ownership; and PR #33 operation-local stale isolation.
 
-## 4. Reject/fix R1–R6 corrected contract
+## 4. Folder-create v1.1 correction
 
-### R1 — executable plan authority
+The additive shared contract `src/contracts/synchronization-folder-create-foundation.ts`, exported through `src/contracts/index.ts`, makes folder creation a first-class recoverable physical mutation without changing worker-owned production code.
 
-Compatibility planner DTOs may still contain nominal `base-trusted` / `identity-unambiguous`, but they are not executable authority. The new authoritative execution seam accepts only `ExecutablePlannedOperation`, which carries exact `ExactBaseAuthority` / `IdentityAuthorityProof` where required.
+### LOCAL folder create
 
-### R2 — durable mutation recovery
+Durable intent carries effect/mutation identity, target logical path, parent path, stable path-comparison authority, and authoritative expected absence. Recovery after restart distinguishes authoritative absence, structurally verified intended folder, incompatible/non-authoritative occupancy, and unobservable state. File-content evidence is not used for folder proof.
 
-`RecoverableOperationIntent` persists separately staged physical effects. Durable descriptors cover local file create/replace, remote file create/update, move with side/from/to/identity, and trash with exact BASE/deletion authority. Clean merge has at least two effects, so one-side completion cannot imply logical completion.
+### REMOTE folder create
 
-### R3 — complete safe remote mutation surface
+Durable intent carries target logical path/path-comparison authority, parent Drive object identity, and the pre-reserved Drive folder object ID before dispatch. Lost-response recovery reconciles the same reserved identity; it does not issue an unrelated second create merely because no response was persisted. Wrong identity/parent or same-logical-path ambiguity remains conflict/unknown rather than ordinary success.
 
-`ReliableRemoteMutationPort` covers file/folder create, preservation-safe file update, identity-preserving move, and trash. All return explicit verified/not-applied/conflict/unknown outcomes. Raw `GoogleDrivePort` mutation methods are compatibility transport primitives only.
+### Restart-stage semantics
 
-### R4 — application is not convergence
+Folder effects use the same durable stages as other synchronization mutations. `intent-persisted` is definitely pre-dispatch. `dispatch-authorized` or later means the mutation may have occurred and physical state must be reconciled before retry or authoritative commit.
 
-A candidate may be safely materialized while an independent concurrent version remains. `RemoteMutationApplicationProof` verifies physical non-destructive materialization; `RemotePathConvergenceAuthority` separately determines conflict-free convergence. R0 + RI + writer candidate therefore remains conflict-preserved unless independent equivalence/no-concurrency authority exists.
+### Verification and commit boundary
 
-### R5 — exact intended upload version
+Folder verification is structural/path/identity based. A verified physical folder effect remains distinct from logical path convergence. Authoritative synchronization commit requires both verified physical effect and explicit converged path authority.
 
-Remote file-content mutation identity durably binds SHA-256 + byte size for the exact intended bytes before dispatch. Lost-response restart verifies the candidate against that durable L1 evidence, never against later current LOCAL L2.
+## 5. Required folder-create predictive coverage
 
-### R6 — missed-event cache bypass
+`test/phase6-folder-create-foundation.test.ts` covers:
 
-`LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()` is frozen for Workstream B. Verify/Reconcile and policy-selected integrity sweeps must eventually re-read actual bytes, so a same-size/same-mtime missed-event H0→H1 change cannot leave stale H0 as permanent authority. G must model this exact case.
+1. LOCAL pre-dispatch intent;
+2. LOCAL post-dispatch interruption;
+3. LOCAL intended folder present after restart;
+4. LOCAL incompatible collision;
+5. REMOTE lost response with same reserved identity;
+6. REMOTE reserved identity authoritatively absent / verified-not-applied;
+7. REMOTE same-logical-path wrong-identity ambiguity;
+8. end-to-end empty-folder lifecycle without child-file or file-hash evidence.
 
-## 5. Mutation lifecycle audit result
+At implementation checkpoint `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`, PR merge-ref verification run `33347048717`, job `99353048259`, passed typecheck, **407/407** full tests, **38/38** workflow-focused tests, production build, repository check, whitespace check, artifact recording/upload, and all build/mobile/package verifiers. `main.js` remained `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
 
-The frozen chain is complete for upload-create/update, download-create/update, remote/local move, remote/local trash, and clean merge:
+Evidence semantics are precise: this is a pull-request workflow and therefore PR merge-ref verification containing candidate head `6ee8d689...`, not a claim of literal clean head-SHA checkout.
 
-`PLAN -> exact authority -> durable physical effect intent -> durable dispatch authority -> safe mutation port -> verification -> convergence/conflict -> BASE/state commit -> restart recovery`.
+## 6. A/B/C/D/G impact
 
-No v1 mutation requires pre-crash volatile plan memory or a private authority sidecar to understand unfinished physical intent.
+- **A** now has frozen durable reserved-identity/parent/path authority sufficient for retry-safe REMOTE folder create.
+- **B** now has frozen LOCAL folder-create/structural-verification semantics without a private transaction type.
+- **C** can persist/recover LOCAL and REMOTE folder-create effects and their stages.
+- **D** can plan/journal/dispatch/verify/recover/commit empty-folder creation using shared contracts while preserving application-versus-convergence separation.
+- **G** can model crash/restart, lost response, collision, wrong identity, and verified-effect-before-state-commit folder scenarios.
 
-## 6. A–G impact
+These workstreams are not complete or authorized to resume by this handoff.
 
-- **A** implements every remote mutation kind behind `ReliableRemoteMutationPort` and adapts raw Drive transport.
-- **B** implements local transaction safety and cache-bypassing integrity reads.
-- **C** durably persists every physical effect, exact intended content, dispatch stage, and convergence/conflict authority.
-- **D** upgrades nominal planning DTOs into exact executable authority, consumes only safe mutation seams, and separates physical application from path convergence.
-- **E** guarantees policy integrity-reconciliation opportunities.
-- **F** remains bounded merge/resource safety.
-- **G** models all R1–R6 adversarial scenarios with no production ownership.
+## 7. Contract freeze and correction artifact
 
-Worker count and ownership remain unchanged and pairwise disjoint. `test/phase2-execution.test.ts` and `src/testing/fakes.ts` remain integration-owned.
+Corrected candidate contract identifier: `phase6-sync-foundation-v1.1`.
 
-## 7. Evidence/CI semantics
+Primary bounded correction record: `phase6-sync-folder-create-foundation-correction.md`.
 
-GitHub PR verification uses GitHub's generated **PR merge ref** unless a workflow explicitly checks out the head SHA. Evidence must therefore say "PR merge-ref verification containing candidate head <SHA> passed" rather than "exact-head checkout passed" when that is what occurred.
-
-No new CI workflow is to be created merely to manufacture literal head-SHA checkout evidence.
+The exact final evidence-bearing candidate SHA must be read from GitHub after evidence closure. Only an independent supervisor may approve that SHA as the new shared workstream base.
 
 ## 8. Hard boundary
 
-Do not merge PR #34 or PR #33; merge protected branches; create A–G branches; launch workers; alter Azure/OAuth production config; tag/release; perform physical Windows/iPhone synchronization; or begin Stage 3.
+Do not merge PR #34 or PR #33; merge protected branches; resume or launch A–G workers; perform serial integration; alter Azure/OAuth production config; broaden Drive permissions; tag/release; perform physical Windows/iPhone synchronization; or begin Stage 3.
 
 ## 9. Next authorized action
 
-After the reject/fix agent finishes evidence and final PR merge-ref verification:
+After evidence closure and final PR verification:
 
-> Return PR #34 and its exact corrected candidate head to the independent supervisor architecture reviewer.
+> Return PR #34 and its exact corrected v1.1 candidate head to the independent supervisor architecture reviewer.
 
-Only that reviewer may approve a workstream-base SHA and authorize the parallel implementation wave.
+Only that reviewer may approve the new workstream-base SHA and authorize affected parallel workstreams to continue.
