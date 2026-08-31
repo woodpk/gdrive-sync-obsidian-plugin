@@ -1139,8 +1139,8 @@ Deleted: none.
 
 Qualified Windows assertions:
 
-1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\vault\__brain_sync_portable_config__`, expected `\vault\__brain_sync_portable_config__`;
-2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\vault\notes\missing.md`, expected `\vault\notes\missing.md`.
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\\vault\\__brain_sync_portable_config__`, expected `\\vault\\__brain_sync_portable_config__`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\\vault\notes\\missing.md`, expected `\\vault\notes\\missing.md`.
 
 `Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
 
@@ -1202,7 +1202,7 @@ The two qualified Windows-only failures were unchanged:
 1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`;
 2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`.
 
-Both remain the previously documented drive-prefix expectation difference (`D:\\vault\\...` actual versus `\\vault\\...` expected). No additional test failed.
+Both remain the previously documented drive-prefix expectation difference (`D:\\\\vault\\\\...` actual versus `\\\\vault\\\\...` expected). No additional test failed.
 
 Five build verifiers:
 
@@ -2036,3 +2036,22 @@ Changed shared contract/foundation files are `src/contracts/plan.ts`, `src/contr
 The exact final evidence-bearing candidate SHA and final PR merge-ref verification are recorded in PR #34 metadata and the completion response after this append-only evidence commit. PR #33/PR #34 remain unmerged; no protected branch, Azure/OAuth production configuration, tag/release, physical Windows/iPhone synchronization, or Stage 3 work was performed.
 
 **PARALLEL IMPLEMENTATION NOT AUTHORIZED — independent supervisor re-review required.**
+
+---
+
+## 2026-08-31 — Foundation v1.2 verification-evidence rejection correction
+
+Agent `agt-CA-P6-SYNC-ORCHESTRATION-01` performed an evidence-only repair on branch `phase6-sync-foundation-v1.2-remote-folder-recovery-observation` from rejected candidate `344a4720bf4c356de757464ae19a7b7fe8e14ad2`. The reviewed contract implementation, predictive test source, and bounded planning correction required no modification.
+
+C1–C5 evidence provenance is corrected: the sole v1.2 review/CI vehicle is open/draft/unmerged PR #40; GitHub pull-request verification is qualified as PR merge-ref verification containing the candidate head rather than literal detached-head verification unless the checkout log proves otherwise; the actual bundle identity is `415353` bytes / SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; the workflow is configured for Node 22 and proves full suite **423/423 PASS**, v1.2 T1–T10 all PASS, and workflow-focused callback/diagnostic/OAuth/export **38/38 PASS**; package verification is the single existing `scripts/verify-build.mjs` emitting `BUILD_VERIFY_ENTRYPOINT`, `BUILD_VERIFY_SYNTAX`, `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES`, `BUILD_VERIFY_MOBILE_EVALUATION`, and `BUILD_VERIFY_PACKAGE_SHAPE`, all PASS.
+
+Fresh corrected-evidence verification was inspected after evidence commit `1a197a4f1001107988103ea2c40403a002120872`: `Phase 6 Alpha Diagnostic Verification` run `33409650181`, job `99545722844`, SUCCESS. The checkout log proves PR #40 merge-ref commit `9a94862757e540382fac81204f83d16b5d251569` was checked out and contained candidate head `1a197a4f1001107988103ea2c40403a002120872`. The uploaded artifact is ID `9764596414`, digest `sha256:ce8b1a528841e5089db33fa1e435d5a399433a890b0499dd91b78a341b3d06c5`; its extracted `main.js` reproduces the `415353`-byte / `02f25864...` identity above. No required corrected-run verification was unavailable.
+
+Exact correction manifest relative to rejected head `344a4720bf4c356de757464ae19a7b7fe8e14ad2`:
+
+- `dev/evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-V1.2-REMOTE-FOLDER-RECOVERY-OBSERVATION-01.md`
+- `dev/evidence/_ca-output.md`
+
+No production source, test source, contract, planning/foundation artifact, workflow, dependency, package, Workstream A production, or Workstream D production file changed. Workstream D remains paused. PR #40 remains unmerged; no branch was merged; `phase6-integration` and `master` remain unmodified; Stage 3 did not begin.
+
+The commit containing this append-only closure cannot self-contain its own content-addressed Git SHA. Its exact final evidence-correction SHA is therefore resolved from the branch/PR after commit and reported in the completion response, consistent with the repository's established evidence-finalization convention. No supervisor approval is claimed.
