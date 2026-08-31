@@ -4,106 +4,98 @@ Status: **corrected candidate for independent supervisor re-review**
 Agent: `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`  
 Foundation branch: `phase6-sync-architecture-foundation`  
 Previously approved foundation SHA: `6984915d2989827edf00def64a04c102c4e08785`  
-Implementation checkpoint: `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`  
+Rejected v1.1 candidate: `c9a7f9c2fe77d134bed1659111d58b9a53d3eda3`  
+Authority-store implementation checkpoint: `750100f95c8a32a6deb6909cd03ebbee3682d650`  
 Prior contract identifier: `phase6-sync-foundation-v1`  
 Corrected contract identifier: `phase6-sync-foundation-v1.1`  
 Parallel continuation: **not authorized pending independent supervisor re-review**
 
 ## 1. Defect and bounded correction
 
-Parallel implementation review exposed one shared-foundation deficiency: the v1 durable physical-effect family covered file mutations, move, and trash but did not give LOCAL and REMOTE folder creation the same restart-safe durable lifecycle. Because the product must preserve empty directories independently of child files, Workstream D could not correctly plan and recover empty-folder creation without inventing a branch-local contract.
+The first v1.1 correction added folder-capable recoverable descriptor/effect/intent types, but supervisor re-review correctly found that the authoritative metadata/store path remained typed only to the old v1 `RecoverableOperationIntent[]` family. Candidate `c9a7f9c2fe77d134bed1659111d58b9a53d3eda3` therefore could not durably carry folder-create intent through Workstream C/D persistence without a sidecar or shadow contract.
 
-The correction is additive and narrow. Previously accepted A–H and R1–R6 semantics remain unchanged. No A–G implementation-owned production file is changed by this correction.
+The bounded correction preserves all accepted A–H, R1–R6, and folder verification semantics. It adds an explicit authoritative v1.1 metadata/store/recovery/completion surface in `src/contracts/synchronization-folder-create-foundation.ts`. The old v1 metadata/store and recoverable-intent family remain compatibility-only for already-reviewed v1 behavior.
 
-The corrected frozen lifecycle remains:
+The authoritative v1.1 lifecycle is:
 
-`PLAN -> EXACT AUTHORITY -> DURABLE OPERATION/EFFECT INTENT -> DURABLE DISPATCH AUTHORITY -> SAFE LOCAL/REMOTE MUTATION -> VERIFICATION -> PATH CONVERGENCE OR CONFLICT -> BASE/STATE COMMIT -> RESTART RECOVERY`
+`FOLDER INTENT -> V1.1 DURABLE EFFECT -> V1.1 OPERATION INTENT -> SynchronizationAuthorityMetadataV1_1 -> SynchronizationAuthorityStoreV1_1.saveAuthority -> PROCESS DEATH -> loadAuthority -> SHARED RESTART CLASSIFICATION -> STRUCTURAL/IDENTITY VERIFICATION -> PATH CONVERGENCE -> AUTHORITATIVE COMMIT`
 
-Folder creation now participates explicitly in every stage.
+No private sidecar, untyped blob, cast-through-unknown authority, replacement worker store, or branch-local synchronization metadata is required.
 
-## 2. Shared contract extension
+## 2. Shared folder-create authority
 
-`src/contracts/synchronization-folder-create-foundation.ts` adds the v1.1 folder-create authority surface and is exported by `src/contracts/index.ts`.
+`src/contracts/synchronization-folder-create-foundation.ts` provides:
 
-The extension provides:
+- `FolderCreatePathAuthority` — exact target, parent, normalized comparison key, and expected absence;
+- `LocalFolderCreatePhysicalMutationDescriptor` — durable LOCAL folder-create identity/path authority;
+- `RemoteFolderCreatePhysicalMutationDescriptor` — durable REMOTE identity/path/parent plus the pre-reserved Drive folder object ID;
+- `RecoverablePhysicalMutationDescriptorV1_1`, `RecoverableMutationEffectV1_1`, `RecoverableOperationIntentV1_1` — folder-capable physical-effect family;
+- `SynchronizationAuthorityMetadataV1_1` — authoritative metadata whose `operationIntents` are `RecoverableOperationIntentV1_1[]`;
+- `SynchronizationAuthorityLoadResultV1_1` and `SynchronizationAuthorityStoreV1_1` — authoritative load/save/BASE-transition persistence seam for new/resumed v1.1 synchronization;
+- `recoverableOperationV1_1RestartRecoveryDirectives()` — shared effect-level restart classification;
+- `recoverableOperationV1_1IsComplete()` — shared rule that a logical operation is complete only when every required effect is `state-committed`;
+- existing conservative LOCAL/REMOTE folder verification and path-convergence commit gating.
 
-- `FolderCreatePathAuthority` — exact logical target path, parent path, stable path-comparison key, and authoritative expected absence;
-- `LocalFolderCreatePhysicalMutationDescriptor` — durable LOCAL folder-create effect identity/path/authority;
-- `RemoteFolderCreatePhysicalMutationDescriptor` — durable REMOTE folder-create effect identity/path/parent plus the pre-reserved Drive object identity used for retry-safe creation;
-- `RecoverablePhysicalMutationDescriptorV1_1`, `RecoverableMutationEffectV1_1`, and `RecoverableOperationIntentV1_1` — additive folder-capable durable physical-effect families while preserving reviewed v1 compatibility types;
-- explicit LOCAL and REMOTE folder observations and conservative recovery outcomes;
-- structural/identity verification helpers;
-- restart-stage classification through the existing durable dispatch semantics;
-- an explicit commit gate requiring both verified physical folder creation and logical path convergence.
+Folder proof remains structural/identity based. It does not invent file hashes or require a child file.
 
-Folder proof is structural/identity based. It does not invent file hashes or require a child file.
+## 3. LOCAL durable store/restart trace
 
-## 3. Local folder-create recovery
+A LOCAL folder-create intent can be inserted directly into `SynchronizationAuthorityMetadataV1_1`, saved through `SynchronizationAuthorityStoreV1_1`, loaded by a simulated restarted process, and recovered with unchanged:
 
-A durable LOCAL folder-create effect survives restart without the original in-memory plan. Recovery distinguishes:
+- operation identity;
+- mutation intent identity;
+- effect identity;
+- durable stage;
+- target path;
+- parent/path-comparison/expected-absence authority;
+- verification reference when present.
 
-- `intent-persisted` before dispatch authority — definitely not dispatched under the existing journal semantics;
-- `dispatch-authorized` or later — mutation may have occurred and physical state must be reconciled;
-- authoritative absence — verified not applied;
-- the intended folder at the exact normalized logical path — structurally verified effect;
-- incompatible or non-authoritative occupancy — conflict preserved;
-- unobservable state — outcome unknown.
+`intent-persisted` remains definitely pre-dispatch. `dispatch-authorized` or later remains may-have-dispatched and requires physical reconciliation. Structural verification does not itself authorize synchronization commit; converged path authority is still required.
 
-No overwrite, deletion, or ordinary success is inferred merely because an object exists at the path.
+## 4. REMOTE durable store/restart trace
 
-## 4. Remote folder-create recovery
+A REMOTE folder-create intent follows the same authoritative metadata/store path. The persisted descriptor additionally carries:
 
-A durable REMOTE folder-create descriptor retains the exact parent Drive identity, target logical path/path-comparison authority, and the pre-reserved Drive folder object ID before dispatch.
+- exact parent Drive object ID;
+- exact pre-reserved intended Drive folder object ID.
 
-After a lost response or process death, recovery reconciles that same intended object identity. It does not issue an unrelated second create merely because the first response was lost.
+The round-trip test saves a `dispatch-authorized` REMOTE folder create, constructs a new store instance from durable state to simulate process death/restart, reloads the operation, and proves the `intentId`, `effectId`, `parentRemoteObjectId`, `reservedRemoteObjectId`, target path, and path authority are unchanged. Restart therefore reconciles the same reserved Drive identity; it does not derive or allocate another identity from current path state.
 
-Recovery distinguishes:
+## 5. Recovery, verification, convergence, and completion
 
-- authoritative absence of the reserved intended identity — verified not applied and retryable using the same durable authority;
-- the exact reserved folder identity under the exact intended parent/path authority — verified physical effect;
-- same-logical-path occupancy by a different identity or wrong parent — conflict preserved;
-- inability to observe authoritatively — outcome unknown.
+`recoverableOperationV1_1RestartRecoveryDirectives()` applies the accepted durable dispatch semantics to every v1.1 effect. `recoverableOperationV1_1IsComplete()` returns true only when every required effect has reached `state-committed`; one verified or committed effect cannot complete a multi-effect logical operation while another remains unfinished.
 
-## 5. Physical effect versus synchronization commit
+`verifyLocalFolderCreate()` and `verifyRemoteFolderCreate()` retain their conservative outcomes. `folderCreateEligibleForAuthoritativeCommit()` continues to require both a verified intended physical folder effect and explicit `PathConvergenceState.status === "converged"`.
 
-Verified physical folder existence is not sufficient for authoritative synchronization commit. `folderCreateEligibleForAuthoritativeCommit()` requires both:
+## 6. Predictive coverage
 
-1. a `verified-effect` folder-create outcome; and
-2. `PathConvergenceState.status === "converged"`.
+Existing `test/phase6-folder-create-foundation.test.ts` remains unchanged and passing.
 
-Thus the existing separation between physical application, logical path convergence/conflict, and BASE/state commit remains intact.
+New `test/phase6-folder-authority-store-foundation.test.ts` proves:
 
-## 6. Required predictive coverage
+1. LOCAL folder intent fits authoritative v1.1 metadata without unsafe casts;
+2. REMOTE folder intent fits authoritative v1.1 metadata with its reserved Drive identity;
+3. LOCAL authority-store save/restart/load preserves durable stage and structural authority;
+4. REMOTE authority-store save/restart/load preserves the exact reserved Drive identity and parent/path authority;
+5. shared v1.1 completion requires every required effect to be `state-committed`;
+6. C and D can exchange persisted folder intent solely through the frozen v1.1 metadata/store contract, with shared pre-dispatch versus may-have-dispatched restart classification.
 
-`test/phase6-folder-create-foundation.test.ts` covers all eight supervisor-required cases:
+At implementation checkpoint `750100f95c8a32a6deb6909cd03ebbee3682d650`, `Phase 6 Alpha Diagnostic Verification` run `33355904138`, job `99377893445`, completed successfully as PR merge-ref verification containing that candidate head. Artifact `9745116592` records **413/413 full tests passing**, **38/38 workflow-focused tests passing**, production build/check/diff verification passing, all five build/mobile/package verifiers passing, `main.js` `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`, and artifact digest `sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4`.
 
-1. LOCAL intent persisted before dispatch;
-2. LOCAL dispatch authority followed by interruption;
-3. intended LOCAL folder exists after restart and requires structural/path authority;
-4. LOCAL collision is preserved rather than overwritten;
-5. REMOTE lost response reconciles the same reserved Drive identity;
-6. REMOTE intended identity authoritatively absent can be classified verified-not-applied and retried with the same authority;
-7. same-logical-path REMOTE object with the wrong identity remains conflict, not convergence;
-8. empty-folder end-to-end contract trace uses structural evidence and still requires path convergence before authoritative commit.
+## 7. Workstream contract readiness
 
-At implementation checkpoint `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`, PR merge-ref verification run `33347048717`, job `99353048259`, completed successfully. The artifact evidence records **407/407 full tests passing**, **38/38 workflow-focused tests passing**, production build/check/diff verification passing, all five build/mobile/package verifiers passing, and unchanged `main.js` identity (`415353` bytes; SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`).
+With the authoritative v1.1 metadata/store path now explicit:
 
-The workflow is a pull-request workflow. This evidence therefore describes it as PR merge-ref verification containing head `6ee8d689...`, not as a literal clean head-SHA checkout.
+- **A** has the frozen remote folder identity/verification contracts it already required;
+- **B** has the frozen LOCAL structural folder-create contracts it already required;
+- **C** can implement persistence/recovery of LOCAL and REMOTE folder-create intent through `SynchronizationAuthorityMetadataV1_1` / `SynchronizationAuthorityStoreV1_1` without a sidecar;
+- **D** can journal, reload, classify, verify, converge, and commit empty-folder synchronization using the same frozen authoritative store contract;
+- **G** can model persistence/restart identity preservation and shared completion/recovery semantics without production ownership.
 
-## 7. Parallel workstream impact audit
-
-The corrected v1.1 surface is sufficient at the frozen-contract level for the affected workers without private sidecar contracts:
-
-- **A — Remote / Google Drive Protocol:** can implement retry-safe remote folder creation by persisting and reusing the reserved Drive identity and returning conservative verified/not-applied/conflict/unknown results.
-- **B — Local Platform Safety:** can implement LOCAL folder creation and structural verification without inventing a file-content transaction or private folder transaction contract.
-- **C — State / BASE / Recovery:** can persist LOCAL/REMOTE folder-create descriptors, durable effect stage, verification reference, and restart state using the v1.1 recoverable effect family.
-- **D — Reconciliation / Orchestration:** can plan, journal, authorize dispatch, invoke the owning mutation seam, verify, recover, and commit empty-folder creation while keeping physical application distinct from path convergence.
-- **G — Adversarial Verification:** can inject pre-dispatch, post-dispatch, lost-response, wrong-identity, collision, and verified-effect-before-state-commit restart cases using the frozen v1.1 contract.
-
-No workstream implementation is performed here. A later supervisor approval must identify one exact complete v1.1 repository SHA before any affected worker continues.
+No workstream implementation has been resumed or completed by this correction. Independent supervisor approval of one exact complete v1.1 candidate SHA remains mandatory before continuation.
 
 ## 8. Scope and approval boundary
 
-This correction does not reopen the accepted A–H or R1–R6 findings except for the additive descriptor-family extension directly required for folder creation. It does not implement or repair A–G, merge worker branches, begin serial integration or Stage 3, perform physical Windows/iPhone validation, modify Azure/OAuth, broaden Drive permissions, merge PR #33 or #34, modify protected branches, or create a tag/release.
+This correction does not reopen accepted A–H, R1–R6, Drive protocol architecture, local file transaction architecture, BASE architecture, merge architecture, lifecycle architecture, or worker implementation. It does not merge PR #33 or #34, alter protected branches, modify Azure/OAuth or Drive scope, perform physical Windows/iPhone validation, begin Stage 3, or create a tag/release.
 
-The exact evidence-bearing final branch SHA is recorded externally in PR #34 metadata and the completion report after repository evidence closure; a commit cannot truthfully contain its own SHA without self-reference.
+The exact evidence-bearing final branch SHA is recorded externally in PR #34 metadata and the completion report after evidence closure; a commit cannot contain its own SHA without self-reference.
