@@ -107,7 +107,7 @@ The persistent PR workflow configures:
     node-version: 22
 ```
 
-Therefore the supported runtime statement is: **workflow configured for Node 22**. This record does not invent an exact Node patch release or npm version without separately inspected execution evidence.
+Therefore the supported runtime statement is: **workflow configured for Node 22**. No unsupported patch-level Node or npm assertion is used as historical evidence for the rejected runs.
 
 Verified test results from the uploaded run artifact:
 
@@ -165,7 +165,7 @@ Earlier evidence used a different bundle identity. That identity was erroneous f
 - **C1 — PR provenance:** CORRECTED. PR #40 is the sole v1.2 review/CI PR in current evidence.
 - **C2 — checkout semantics:** CORRECTED. PR runs are qualified as merge-ref verification containing the candidate head unless a checkout log proves literal exact-head checkout.
 - **C3 — artifact identity:** CORRECTED to `415353` bytes / SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
-- **C4 — runtime/focused tests:** CORRECTED to workflow-configured Node 22; full **423/423**; T1–T10 PASS; workflow-focused **38/38**. Unsupported patch-level runtime and unsupported separate focused-count claims removed.
+- **C4 — runtime/focused tests:** CORRECTED to workflow-configured Node 22; full **423/423**; T1–T10 PASS; workflow-focused **38/38**. Unsupported runtime and unsupported separate focused-count claims removed.
 - **C5 — package verification:** CORRECTED to the actual single `verify-build.mjs` script and its five emitted PASS checks. Nonexistent-script execution claims removed.
 
 ## Evidence-only repair manifest
@@ -179,9 +179,55 @@ No other repository modification is authorized or intended.
 
 ## Fresh corrected-evidence verification
 
-A fresh normal PR #40 verification run is required after this corrected evidence is pushed. Its run/job, checkout qualification, actual test counts, artifact ID/digest, and actual extracted `main.js` identity must be inspected and recorded from the resulting GitHub Actions evidence rather than copied from the rejected run.
+The evidence correction commit `1a197a4f1001107988103ea2c40403a002120872` triggered PR #40's normal `Phase 6 Alpha Diagnostic Verification` workflow.
 
-Until that fresh run is inspected, no new corrected-evidence CI result is claimed in this section.
+- Run: `33409650181`
+- Job: `99545722844`
+- Candidate head metadata: `1a197a4f1001107988103ea2c40403a002120872`
+- Result: **SUCCESS**
+- Workflow runtime configuration: Node `22`
+- Uploaded artifact ID: `9764596414`
+- Artifact digest: `sha256:ce8b1a528841e5089db33fa1e435d5a399433a890b0499dd91b78a341b3d06c5`
+
+### Fresh checkout evidence
+
+The inspected checkout log independently proves that the workflow fetched:
+
+`+9a94862757e540382fac81204f83d16b5d251569:refs/remotes/pull/40/merge`
+
+and then executed checkout of:
+
+`refs/remotes/pull/40/merge`
+
+The checked-out commit was:
+
+`9a94862757e540382fac81204f83d16b5d251569`
+
+with the log identifying it as a merge of candidate head `1a197a4f1001107988103ea2c40403a002120872` into base `86a35b31ccd01df188f00346a7b7b376008899eb`.
+
+Therefore the fresh corrected run is specifically **PR #40 merge-ref verification at `9a94862757e540382fac81204f83d16b5d251569`, containing candidate head `1a197a4f...`**. It is not represented as literal detached-head verification.
+
+### Fresh test/build evidence
+
+The downloaded fresh artifact directly establishes:
+
+- full repository suite: **423/423 PASS**, 0 fail;
+- v1.2 T1–T10: **all PASS** as tests 394–403 in the full suite;
+- workflow-focused callback/diagnostic/OAuth/export suite: **38/38 PASS**, 0 fail;
+- typecheck: **PASS**;
+- production build: **PASS**;
+- repository `npm run check`: **PASS**;
+- `git diff --check`: **PASS**;
+- `verify-build.mjs` five checks: **all PASS**.
+
+The fresh uploaded artifact contains `main.js` with independently rechecked identity:
+
+```text
+415353 bytes
+SHA-256 02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd
+```
+
+No required corrected-run verification is unavailable.
 
 ## Scope and final-stop boundaries
 
