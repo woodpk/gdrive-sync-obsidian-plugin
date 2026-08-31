@@ -154,3 +154,158 @@ export class CrashSafeExecutionCoordinator {
     return { status: "cancelled", reason: result.reason ?? "cancelled" };
   }
 }
+
+import {
+  folderCreateEligibleForAuthoritativeCommit,
+  recoverRemoteFolderCreate,
+} from "../contracts";
+import type {
+  ExactBaseAuthority,
+  ExecutableOperationPrecondition,
+  ExecutablePlannedOperation,
+  IdentityAuthorityProof,
+  PathConvergenceState,
+  RecoverableMutationEffectV1_1,
+  RemoteFolderCreatePhysicalMutationDescriptor,
+  RemoteFolderCreateRecoveryReadPort,
+  SynchronizationAuthorityMetadataV1_1,
+} from "../contracts";
+
+export type AuthorityResolutionResult =
+  | { readonly status: "ready"; readonly operation: ExecutablePlannedOperation }
+  | { readonly status: "incomplete-authority"; readonly reason: string };
+
+function operationBaseAuthorityPath(operation: PlannedOperation) {
+  return operation.kind === "identity-preserving-move" && operation.fromPath
+    ? operation.fromPath
+    : operation.path;
+}
+
+/**
+ * Replace compatibility-only planner markers with exact frozen authority.
+ * No nominal `base-trusted` / `identity-unambiguous` marker is permitted to
+ * cross the authoritative execution boundary.
+ */
+export function resolveAuthorityCompleteOperation(
+  operation: PlannedOperation,
+  authority: SynchronizationAuthorityMetadataV1_1,
+): AuthorityResolutionResult {
+  const preconditions: ExecutableOperationPrecondition[] = [];
+  for (const precondition of operation.preconditions) {
+    if (precondition.kind === "base-trusted") {
+      const authorityPath = operationBaseAuthorityPath(operation);
+      const convergence = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
+      if (!convergence || convergence.status !== "converged") {
+        return { status: "incomplete-authority", reason: `exact BASE authority unavailable for ${String(authorityPath)}` };
+      }
+      const exact: ExactBaseAuthority = {
+        generation: authority.semanticGeneration,
+        path: authorityPath,
+        fingerprint: convergence.baseFingerprint,
+      };
+      preconditions.push({ kind: "base-authority", authority: exact });
+      continue;
+    }
+    if (precondition.kind === "identity-unambiguous") {
+      const remoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+      if (!remoteObjectId) {
+        return { status: "incomplete-authority", reason: `exact remote identity unavailable for ${String(precondition.path)}` };
+      }
+      const proof: IdentityAuthorityProof = {
+        generation: authority.semanticGeneration,
+        status: "unique",
+        path: precondition.path,
+        remoteObjectId,
+      };
+      preconditions.push({ kind: "identity-authority", proof });
+      continue;
+    }
+    preconditions.push(precondition);
+  }
+  return {
+    status: "ready",
+    operation: { ...operation, authorityComplete: true, preconditions },
+  };
+}
+
+export type RemoteFolderRestartDecision =
+  | { readonly status: "already-committed" }
+  | { readonly status: "retire-unattempted" }
+  | { readonly status: "safe-retry-eligible"; readonly reason: string }
+  | { readonly status: "effect-verified-awaiting-convergence"; readonly reason: string }
+  | { readonly status: "authoritative-commit-eligible"; readonly verificationEvidenceRef?: string }
+  | { readonly status: "conflict-preserved"; readonly reason: string }
+  | { readonly status: "recovery-pending"; readonly reason: string };
+
+function remoteFolderDescriptor(effect: RecoverableMutationEffectV1_1): RemoteFolderCreatePhysicalMutationDescriptor | undefined {
+  return effect.descriptor.kind === "remote-folder-create" ? effect.descriptor : undefined;
+}
+
+/**
+ * Restart classifier for one persisted REMOTE folder-create effect.
+ *
+ * `dispatch-authorized` and `outcome-unknown` always reconstruct Drive reality
+ * through the frozen read-only v1.2 seam before any retry can become eligible.
+ * Physical existence alone is never treated as ordinary logical convergence.
+ */
+export async function recoverRemoteFolderEffectV1_2(
+  effect: RecoverableMutationEffectV1_1,
+  pathConvergence: PathConvergenceState,
+  reader: RemoteFolderCreateRecoveryReadPort,
+): Promise<RemoteFolderRestartDecision> {
+  const descriptor = remoteFolderDescriptor(effect);
+  if (!descriptor) return { status: "recovery-pending", reason: "effect-is-not-a-remote-folder-create" };
+  if (effect.stage === "state-committed") return { status: "already-committed" };
+  if (effect.stage === "intent-persisted") return { status: "retire-unattempted" };
+  if (effect.stage === "effect-verified") {
+    return pathConvergence.status === "converged"
+      ? { status: "authoritative-commit-eligible", verificationEvidenceRef: effect.verificationEvidenceRef }
+      : { status: "effect-verified-awaiting-convergence", reason: "physical folder effect is verified but logical path is not converged" };
+  }
+
+  const outcome = await recoverRemoteFolderCreate(descriptor, reader);
+  if (outcome.status === "verified-not-applied") {
+    return { status: "safe-retry-eligible", reason: outcome.reason };
+  }
+  if (outcome.status === "conflict-preserved") {
+    return { status: "conflict-preserved", reason: outcome.reason };
+  }
+  if (outcome.status === "outcome-unknown") {
+    return { status: "recovery-pending", reason: outcome.reason };
+  }
+  if (!folderCreateEligibleForAuthoritativeCommit(outcome, pathConvergence)) {
+    return { status: "effect-verified-awaiting-convergence", reason: "physical folder effect is verified but logical path is not converged" };
+  }
+  return { status: "authoritative-commit-eligible", verificationEvidenceRef: effect.verificationEvidenceRef };
+}
+
+export interface RemoteFolderIntentRecoveryResult {
+  readonly effectId: string;
+  readonly operationId: string;
+  readonly decision: RemoteFolderRestartDecision;
+}
+
+/**
+ * Recover every persisted remote-folder effect independently. One conflicted or
+ * unknown logical path never prevents an unrelated sibling effect from being
+ * classified and progressed according to its own durable evidence.
+ */
+export async function recoverRemoteFolderIntentsV1_2(
+  authority: SynchronizationAuthorityMetadataV1_1,
+  reader: RemoteFolderCreateRecoveryReadPort,
+): Promise<readonly RemoteFolderIntentRecoveryResult[]> {
+  const results: RemoteFolderIntentRecoveryResult[] = [];
+  for (const intent of authority.operationIntents) {
+    for (const effect of intent.effects) {
+      if (effect.descriptor.kind !== "remote-folder-create") continue;
+      const pathConvergence = authority.pathConvergence.find(entry => entry.path === effect.descriptor.targetPath)?.state
+        ?? { status: "unknown" as const, reasonCode: "path-convergence-unavailable" };
+      results.push({
+        effectId: effect.effectId,
+        operationId: String(intent.operationId),
+        decision: await recoverRemoteFolderEffectV1_2(effect, pathConvergence, reader),
+      });
+    }
+  }
+  return results;
+}
