@@ -7,6 +7,7 @@ import type {
   LocalLifecycleEvent,
   LocalVaultChange,
   ManagedRemoteIdentity,
+  ReliableRemoteChangePort,
   RemoteObjectId,
   Unsubscribe,
   VaultPath,
@@ -154,17 +155,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
         },
       };
     },
-    readChanges: async () => {
-      changesCalls += 1;
-      return {
-        ok: true as const,
-        value: {
-          changes: [],
-          nextCursor: cursor("cursor:group-d:later"),
-          completeness: { status: "complete" as const },
-        },
-      };
-    },
+    readChanges: async () => { throw new Error("legacy readChanges must not be used by this test"); },
     observe: async (_root: RemoteObjectId, candidate: VaultPath) => remoteCreated && String(candidate) === String(file)
       ? {
           ok: true as const,
@@ -189,6 +180,20 @@ test("Phase5 scenario 26 local change during an active production run is deferre
       return { ok: true as const, value: { remoteObjectId: allocated, path: file, evidence } };
     },
   } as never;
+  const reliableChanges: ReliableRemoteChangePort = {
+    async readChangePage(_identity, requestedToken) {
+      changesCalls += 1;
+      return {
+        ok: true,
+        value: {
+          kind: "terminal",
+          requestedToken,
+          changes: [],
+          newStartPageToken: cursor("cursor:group-d:later"),
+        },
+      };
+    },
+  };
 
   const stateStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   await stateStore.saveTrusted(createInitialTrustedState({
@@ -197,7 +202,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
     deviceIdentity: device,
   }));
 
-  const assembler = new ProductSnapshotAssembler(local, drive, stateStore, stateContext, async () => managed);
+  const assembler = new ProductSnapshotAssembler(local, drive, stateStore, stateContext, async () => managed, () => true, () => false, undefined, reliableChanges);
   const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
   const triggers: string[] = [];
   let laterPassResolve!: () => void;
@@ -242,7 +247,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
   assert.deepEqual(triggers.slice(0, 2), ["periodic", "local-change"]);
   assert.equal(createCalls, 1, "the executing plan must not be mutated into a duplicate upload");
   assert.equal(fullListingCalls, 1, "the initial active pass used the required full view because no cursor existed");
-  assert.equal(changesCalls, 1, "the deferred pass reconciled from the newly committed cursor");
+  assert.equal(changesCalls, 1, "the deferred pass reconciled from the newly committed cursor through ReliableRemoteChangePort");
   const loaded = await stateStore.load(stateContext);
   assert.equal(loaded.status, "trusted");
   if (loaded.status === "trusted") {
@@ -285,7 +290,7 @@ test("Phase5 scenario 49 snapshot and planning domain is confined to the paired 
     },
     listForReconciliation: async (root: RemoteObjectId) => {
       touchedRoots.push(String(root));
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
     },
     trash: async (objectId: RemoteObjectId) => {
       trashedObjects.push(String(objectId));
