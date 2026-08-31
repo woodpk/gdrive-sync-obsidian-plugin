@@ -2,7 +2,7 @@ schema_version: 1
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-08-30"
+  as_of: "2026-08-31"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
   purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, current repository state, accepted evidence, and later explicit user decisions."
@@ -89,10 +89,10 @@ post_iphone_sync_performance_optimization:
 parallel_wave:
   status: historical_complete
   historical_worker_count: 3
-  note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, which remains unauthorized."
+  note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, whose affected workers remain paused pending approval of the corrected v1.1 foundation."
 
 sync_architecture_foundation:
-  status: "reject_fix_corrected_candidate_supervisor_re_review_pending"
+  status: "folder_create_v1_1_corrected_candidate_supervisor_re_review_pending"
   predecessor_agent: "agt-CA-P6-SYNC-FOUNDATION-01"
   continuation_agent: "agt-CA-P6-SYNC-FOUNDATION-CLOUD-01"
   branch: "phase6-sync-architecture-foundation"
@@ -104,7 +104,10 @@ sync_architecture_foundation:
   predecessor_contract_checkpoint_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
   cloud_reentry_start_sha: "e526d65ee64e8baf58fd7ea0439dfabcfb942c9d"
   rejected_candidate_sha: "0d84f542a556800d93020b4000072da8faa3f740"
-  contract_version: "phase6-sync-foundation-v1"
+  previously_supervisor_approved_foundation_sha: "6984915d2989827edf00def64a04c102c4e08785"
+  folder_create_implementation_checkpoint_sha: "6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8"
+  prior_contract_version: "phase6-sync-foundation-v1"
+  contract_version: "phase6-sync-foundation-v1.1"
   accepted_prior_findings:
     A_remote_update_preservation: corrected_preserved
     B_file_common_base_authority: corrected_preserved
@@ -115,41 +118,79 @@ sync_architecture_foundation:
     G_parallel_branch_feasibility: corrected_preserved
     H_semantic_validation_extensibility: corrected_preserved
   reject_fix_findings:
-    R1_exact_plan_authority: corrected_candidate
-    R2_recoverable_mutation_descriptor: corrected_candidate
-    R3_safe_remote_move_trash: corrected_candidate
-    R4_application_vs_convergence: corrected_candidate
-    R5_exact_intended_remote_content: corrected_candidate
-    R6_cache_bypassing_integrity: corrected_candidate
-    CI_checkout_label: corrected_candidate_merge_ref_wording
-  mutation_lifecycle_audit: "complete_for_upload_create_update_download_create_update_remote_local_move_remote_local_trash_clean_text_merge"
+    R1_exact_plan_authority: corrected_preserved
+    R2_recoverable_mutation_descriptor: corrected_preserved
+    R3_safe_remote_move_trash: corrected_preserved
+    R4_application_vs_convergence: corrected_preserved
+    R5_exact_intended_remote_content: corrected_preserved
+    R6_cache_bypassing_integrity: corrected_preserved
+    CI_checkout_label: corrected_preserved_merge_ref_wording
+  folder_create_foundation_correction:
+    status: corrected_candidate
+    defect: "v1 durable physical-effect family lacked complete restart-safe LOCAL and REMOTE folder-create recovery despite empty-directory preservation requirement"
+    contract_file: "../../src/contracts/synchronization-folder-create-foundation.ts"
+    test_file: "../../test/phase6-folder-create-foundation.test.ts"
+    planning_record: "phase6-sync-folder-create-foundation-correction.md"
+    local_folder_create: "durable path/parent/normalization/expected-absence authority with structural restart verification"
+    remote_folder_create: "durable parent/path authority plus pre-reserved Drive folder identity for retry-safe lost-response recovery"
+    outcomes: "verified_effect_verified_not_applied_conflict_preserved_outcome_unknown"
+    commit_rule: "verified physical folder effect plus explicit converged path authority required before authoritative synchronization commit"
+    affected_workstream_contract_readiness:
+      A_remote: sufficient_candidate
+      B_local: sufficient_candidate
+      C_state_recovery: sufficient_candidate
+      D_orchestration: sufficient_candidate
+      G_adversarial: sufficient_candidate
+  mutation_lifecycle_audit: "complete_for_upload_create_update_download_create_update_local_remote_folder_create_remote_local_move_remote_local_trash_clean_text_merge"
   ci_checkout_semantics: "GitHub pull-request workflow checks out the generated PR merge ref containing the candidate head unless a workflow explicitly requests the head SHA; evidence must label it accordingly."
+  folder_create_checkpoint_verification:
+    workflow: "Phase 6 Alpha Diagnostic Verification"
+    run_id: 33347048717
+    job_id: 99353048259
+    candidate_head: "6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8"
+    checkout_semantics: "PR merge-ref verification containing candidate head"
+    full_tests: 407
+    full_tests_passed: 407
+    focused_tests: 38
+    focused_tests_passed: 38
+    typecheck: PASS
+    build: PASS
+    repository_check: PASS
+    diff_check: PASS
+    mobile_package_verifiers: PASS
+    main_js_bytes: 415353
+    main_js_sha256: "02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd"
+    manifest_sha256: "79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547"
+    artifact_id: 9742325001
   artifacts:
     - "phase6-sync-architecture-foundation.md"
     - "phase6-sync-contract-freeze.md"
     - "phase6-sync-parallel-workstreams.md"
     - "phase6-sync-adversarial-validation.md"
+    - "phase6-sync-folder-create-foundation-correction.md"
     - "phase-6-supervisor-handoff.md"
     - "project-state.yaml"
     - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md"
     - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md"
   approved_workstream_base_sha: null
-  approved_workstream_base_rule: "The independent supervisor will identify one exact final repository SHA externally after approval; every A-G worker must branch from that complete snapshot."
+  approved_workstream_base_rule: "The independent supervisor will identify one exact final v1.1 repository SHA externally after approval; every affected A-G worker must use that complete snapshot before continuation."
   final_candidate_sha_recording_rule: "Read exact current branch head from GitHub after evidence closure; do not attempt self-referential SHA storage inside the commit that creates it."
   parallel_implementation_authorized: false
-  worker_branches_created: false
+  affected_workers_may_resume: false
   stage_3_started: false
   azure_change_authorized: false
-  next_valid_action: "Complete reject/fix evidence and PR merge-ref verification, then return exact PR #34 head for independent supervisor re-review. Do not launch A-G."
+  physical_device_validation_performed: false
+  next_valid_action: "Complete folder-create v1.1 evidence and final PR verification, then return exact PR #34 head for independent supervisor re-review. Do not resume A-G."
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Return the R1-R6 corrected synchronization foundation candidate to independent supervisor re-review. Parallel implementation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
+  action: "Return the restart-safe folder-create v1.1 synchronization foundation candidate to independent supervisor re-review. Parallel continuation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
   governing_file: "stage-1-build-decomposition.md"
   relevant_sections: ["10", "11", "17"]
   handoff: "phase-6-supervisor-handoff.md"
   foundation: "phase6-sync-architecture-foundation.md"
   contract_freeze_candidate: "phase6-sync-contract-freeze.md"
+  folder_create_correction: "phase6-sync-folder-create-foundation-correction.md"
   workstream_manifest: "phase6-sync-parallel-workstreams.md"
   adversarial_matrix: "phase6-sync-adversarial-validation.md"
