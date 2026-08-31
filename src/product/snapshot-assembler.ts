@@ -206,8 +206,14 @@ export class ProductSnapshotAssembler {
     remoteCompleteness: EnumerationCompleteness,
   ): PathSnapshot[] {
     const localByPath = new Map(localEntries.map(entry => [String(entry.path), entry]));
-    const remoteByPath = new Map(remoteEntries.map(entry => [String(entry.path), entry]));
-    const paths = new Set<string>([...localByPath.keys(), ...remoteByPath.keys()]);
+    const remoteEntriesByPath = new Map<string, RemoteEntry[]>();
+    for (const entry of remoteEntries) {
+      const key = String(entry.path);
+      const values = remoteEntriesByPath.get(key) ?? [];
+      values.push(entry);
+      remoteEntriesByPath.set(key, values);
+    }
+    const paths = new Set<string>([...localByPath.keys(), ...remoteEntriesByPath.keys()]);
     if (loadedState.status === "trusted") {
       for (const entry of loadedState.state.base) if (this.pathIncluded(entry.path)) paths.add(String(entry.path));
       for (const tombstone of loadedState.state.tombstones) if (this.pathIncluded(tombstone.path)) paths.add(String(tombstone.path));
@@ -216,7 +222,7 @@ export class ProductSnapshotAssembler {
     const remoteIdCounts = new Map<string, number>();
     for (const entry of remoteEntries) remoteIdCounts.set(String(entry.remoteObjectId), (remoteIdCounts.get(String(entry.remoteObjectId)) ?? 0) + 1);
 
-    const namespaceCollision = localByPath.has(CONFIG_REMOTE_NAMESPACE) || remoteByPath.has(CONFIG_REMOTE_NAMESPACE);
+    const namespaceCollision = localByPath.has(CONFIG_REMOTE_NAMESPACE) || remoteEntriesByPath.has(CONFIG_REMOTE_NAMESPACE);
     const inCollisionScope = (raw: string) => namespaceCollision && (raw === CONFIG_REMOTE_NAMESPACE || raw.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`));
 
     return [...paths].sort().map(raw => {
@@ -240,18 +246,27 @@ export class ProductSnapshotAssembler {
       if (raw === CONFIG_REMOTE_NAMESPACE && namespaceCollision && local.status === "absent") {
         local = { status: "unknown", side: "local", path: p, reason: "remote ordinary-vault content collides with the reserved portable-configuration namespace" };
       }
-      const remoteEntry = remoteByPath.get(raw);
-      const remote = remoteEntry ? remoteObservation(remoteEntry) : absentRemote(p);
+      const remoteCandidates = [...new Map((remoteEntriesByPath.get(raw) ?? []).map(entry => [String(entry.remoteObjectId), entry])).values()];
+      const remote: RemoteObservation = remoteCandidates.length === 0
+        ? absentRemote(p)
+        : remoteCandidates.length === 1
+          ? remoteObservation(remoteCandidates[0]!)
+          : { status: "unknown", side: "remote", path: p, reason: "multiple distinct remote objects occupy the same logical path" };
       let base: BaseEvidence = { status: "uninitialized" };
       if (loadedState.status === "recovery-required") base = { status: "untrusted", reason: loadedState.detail ?? loadedState.reason };
       if (loadedState.status === "trusted") base = { status: "trusted", entry: loadedState.state.base.find(entry => String(entry.path) === raw), tombstone: loadedState.state.tombstones.find(entry => String(entry.path) === raw) };
       let identity: IdentityAssessment = { status: "unambiguous" };
-      if (remoteEntry && (remoteIdCounts.get(String(remoteEntry.remoteObjectId)) ?? 0) > 1) identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds: [remoteEntry.remoteObjectId] };
+      const candidateRemoteIds = remoteCandidates.map(entry => entry.remoteObjectId);
+      if (remoteCandidates.length > 1) {
+        identity = { status: "ambiguous", reason: "multiple distinct remote objects occupy the same logical path", candidateRemoteIds };
+      } else if (remoteCandidates[0] && (remoteIdCounts.get(String(remoteCandidates[0].remoteObjectId)) ?? 0) > 1) {
+        identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds };
+      }
       if (inCollisionScope(raw)) {
         identity = {
           status: "ambiguous",
           reason: `reserved portable-configuration namespace collision isolates ${CONFIG_REMOTE_NAMESPACE} from ordinary vault synchronization`,
-          candidateRemoteIds: remoteEntry ? [remoteEntry.remoteObjectId] : [],
+          candidateRemoteIds,
         };
       }
       return { path: p, local, remote, base, remoteEnumeration: remoteCompleteness, identity };
