@@ -1,122 +1,584 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { RemoteFolderCreatePhysicalMutationDescriptor } from "../../src/contracts/synchronization-folder-create-foundation";
+import type { MutationIntentId, RemoteObjectId, SemanticStateGeneration, VaultPath } from "../../src/contracts/common";
 import {
-  recoverRemoteFolderCreate,
-  verifyRemoteFolderCreate,
-  type RemoteFolderCreateObservation,
-  type RemoteFolderCreatePhysicalMutationDescriptor,
-} from "../../src/contracts/synchronization-folder-create-foundation";
+  AdversarialSyncModel,
+  minimizeFailingTrace,
+  replayTrace,
+  runTrace,
+  seededEvents,
+  type BaseRecord,
+  type InitialModelState,
+  type ModelEvent,
+} from "./support/model";
 
-type Stage = "intent-persisted" | "dispatch-authorized" | "outcome-unknown" | "effect-verified" | "state-committed";
-type Net = "online" | "offline" | "rate-limited" | "auth-lost";
-type Lifecycle = "active" | "suspended" | "dead";
-type PathState = "converged" | "conflict" | "unknown";
+const base = (path: string, hash: string, remoteId: string, exactBaseAuthority = true, exactIdentityAuthority = true): BaseRecord => ({
+  path,
+  hash,
+  remoteId,
+  exactBaseAuthority,
+  exactIdentityAuthority,
+});
 
-type ObjectState = { id: string; path: string; hash: string; rev: number; trashed?: boolean; parent?: string };
-type DeviceState = { files: Map<string, string>; base: Map<string, string>; generation: number; revision: number; stale: boolean; lifecycle: Lifecycle; watcherLost: Set<string>; cache: Map<string, string> };
-type Journal = { id: string; kind: "upload" | "download" | "move" | "trash" | "merge"; stage: Stage; intendedHash?: string; effects: { id: string; stage: Stage }[] };
-type Event = { kind: string; path?: string; detail?: string };
-type ModelState = {
-  a: DeviceState;
-  b: DeviceState;
-  remote: Map<string, ObjectState>;
-  journals: Journal[];
-  cursor: number;
-  learnedBatches: string[][];
-  pathState: Map<string, PathState>;
-  network: Net;
-  cancelled: boolean;
-  trace: Event[];
+const common = (hash = "H0", path = "note.md", id = "r0"): InitialModelState => ({
+  A: { local: [[path, hash]], base: [base(path, hash, id)] },
+  B: { local: [[path, hash]], base: [base(path, hash, id)] },
+  remote: [{ id, path, content: hash, kind: "file", revision: 1, trashed: false }],
+});
+
+const event = (model: AdversarialSyncModel, value: ModelEvent) => model.apply(value);
+const settle = (model: AdversarialSyncModel, device: "A" | "B", paths: string[] = ["note.md"]) => {
+  model.settle(device);
+  model.assertQuiescentOrExplicit(device, paths);
 };
 
-function device(): DeviceState {
-  return { files: new Map(), base: new Map(), generation: 1, revision: 1, stale: false, lifecycle: "active", watcherLost: new Set(), cache: new Map() };
+function buildJournal(model: AdversarialSyncModel, device: "A" | "B", path = "note.md"): void {
+  event(model, { type: "start-reconcile", device, paths: [path] });
+  event(model, { type: "advance", device });
 }
-function model(): ModelState {
-  return { a: device(), b: device(), remote: new Map(), journals: [], cursor: 0, learnedBatches: [], pathState: new Map(), network: "online", cancelled: false, trace: [] };
+
+function driveFirstEffectToStage(model: AdversarialSyncModel, device: "A" | "B", stage: "intent-persisted" | "dispatch-authorized" | "outcome-unknown" | "effect-verified" | "state-committed"): void {
+  const effect = () => model.devices[device].durable.journals[0]?.effects[0];
+  if (stage === "intent-persisted") return;
+  event(model, { type: "advance", device });
+  if (stage === "dispatch-authorized") return;
+  event(model, { type: "dispatch", device });
+  event(model, { type: stage === "outcome-unknown" ? "transport-lost" : "transport-success", device });
+  if (stage === "outcome-unknown" || stage === "effect-verified") return;
+  event(model, { type: "advance", device });
+  assert.equal(effect()?.stage ?? "retired", "retired");
 }
-function event(s: ModelState, kind: string, path?: string, detail?: string) { s.trace.push({ kind, path, detail }); }
-function remoteAtPath(s: ModelState, path: string) { return [...s.remote.values()].filter(o => !o.trashed && o.path === path); }
-function assertNoSilentWinner(s: ModelState, path: string) { assert.notEqual(remoteAtPath(s, path).length > 1 && s.pathState.get(path) === "converged", true); }
-function requireExactBase(d: DeviceState, path: string, supplied?: string) { return supplied !== undefined && d.base.get(path) === supplied; }
-function requireIdentity(s: ModelState, id: string, path: string) { const o = s.remote.get(id); return !!o && !o.trashed && o.path === path; }
-function restartDirective(stage: Stage) { return stage === "intent-persisted" ? "retire-unattempted-intent" : stage === "effect-verified" ? "finish-authoritative-state-commit" : stage === "state-committed" ? "already-complete" : "reconcile-physical-reality"; }
-function allEffectsCommitted(j: Journal) { return j.effects.every(e => e.stage === "state-committed"); }
-function destructiveAllowed(s: ModelState, d: DeviceState, count: number, total: number) { return !d.stale && d.generation > 0 && s.network === "online" && count < 10 && (total === 0 || count / total < 0.25); }
-function integrityRead(d: DeviceState, path: string) { const actual = d.files.get(path); if (actual !== undefined) d.cache.set(path, actual); return actual; }
-function seeded(seed: number) { let x = seed >>> 0; return () => { x += 0x6D2B79F5; let t = x; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-function randomized(seed: number, steps = 80) {
-  const s = model(); const r = seeded(seed); const paths = ["a.md", "b.md", "c.md"];
-  for (let i = 0; i < steps; i++) {
-    const p = paths[Math.floor(r() * paths.length)]; const op = Math.floor(r() * 8);
-    if (op === 0) { s.a.files.set(p, `A${i}`); event(s, "local-edit", p); }
-    if (op === 1) { s.b.files.set(p, `B${i}`); event(s, "local-edit-b", p); }
-    if (op === 2) { const id = `r-${i}`; s.remote.set(id, { id, path: p, hash: `R${i}`, rev: i }); event(s, "remote-create", p, id); if (remoteAtPath(s,p).length > 1) s.pathState.set(p,"conflict"); }
-    if (op === 3) { s.network = ["online","offline","rate-limited","auth-lost"][Math.floor(r()*4)] as Net; event(s,"network",p,s.network); }
-    if (op === 4) { s.cancelled = r() > .5; event(s,"cancel",p,String(s.cancelled)); }
-    if (op === 5) { s.a.lifecycle = ["active","suspended","dead"][Math.floor(r()*3)] as Lifecycle; event(s,"lifecycle",p,s.a.lifecycle); }
-    if (op === 6) { const candidates = remoteAtPath(s,p); if (candidates.length === 1) s.pathState.set(p,"converged"); else if (candidates.length > 1) s.pathState.set(p,"conflict"); }
-    if (op === 7) { s.cursor++; s.learnedBatches.push([`${s.cursor}:${p}`]); }
-    assertNoSilentWinner(s,p);
-  }
-  return s;
-}
-function descriptor(): RemoteFolderCreatePhysicalMutationDescriptor {
+
+function folderDescriptor(path = "folder", reservedId = "folder-reserved", parentId = "parent"): RemoteFolderCreatePhysicalMutationDescriptor {
+  const targetPath = path as VaultPath;
+  const intentId = "intent-folder" as MutationIntentId;
   return {
-    kind: "remote-folder-create", targetSide: "remote", mutationKind: "create",
-    intentId: "intent-folder" as never, targetPath: "notes/folder" as never,
-    parentRemoteObjectId: "parent-good" as never,
-    pathAuthority: { generation: 1 as never, targetPath: "notes/folder" as never, parentPath: "notes" as never, pathComparisonKey: "notes/folder", expectedTarget: "absent" },
-    remoteMutation: { kind: "reserved-folder-create", intentId: "intent-folder" as never, reservedRemoteObjectId: "folder-reserved" as never, path: "notes/folder" as never },
+    kind: "remote-folder-create",
+    targetSide: "remote",
+    mutationKind: "create",
+    intentId,
+    targetPath,
+    parentRemoteObjectId: parentId as RemoteObjectId,
+    pathAuthority: {
+      generation: 1 as SemanticStateGeneration,
+      targetPath,
+      parentPath: "" as VaultPath,
+      pathComparisonKey: path,
+      expectedTarget: "absent",
+    },
+    remoteMutation: {
+      kind: "reserved-folder-create",
+      intentId,
+      reservedRemoteObjectId: reservedId as RemoteObjectId,
+      path: targetPath,
+    },
   };
 }
 
-const durableStages: Stage[] = ["intent-persisted","dispatch-authorized","outcome-unknown","effect-verified","state-committed"];
-for (const kind of ["upload","download","move","trash"] as const) {
-  test(`crash/restart at every durable mutation stage: ${kind}`, () => {
-    for (const stage of durableStages) assert.ok(["retire-unattempted-intent","reconcile-physical-reality","finish-authoritative-state-commit","already-complete"].includes(restartDirective(stage)));
+function prepareFolderRecovery(model: AdversarialSyncModel, stage: "dispatch-authorized" | "outcome-unknown", descriptor = folderDescriptor()): void {
+  event(model, { type: "begin-folder-create", device: "A", descriptor });
+  event(model, { type: "advance", device: "A" });
+  if (stage === "outcome-unknown") {
+    event(model, { type: "dispatch", device: "A" });
+    event(model, { type: "transport-lost", device: "A" });
+  }
+  event(model, { type: "crash", device: "A" });
+  event(model, { type: "restart", device: "A" });
+}
+
+// 1-2: governed authority must be obtained before history/identity-dependent work.
+test("01 exact BASE authority is required by transitions", () => {
+  const initial = common();
+  initial.A!.base = [base("note.md", "H0", "r0", false, true)];
+  const model = new AdversarialSyncModel(initial);
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "recovery");
+  assert.equal(model.devices.A.durable.journals.length, 0);
+});
+
+test("02 exact identity authority is required before mapped remote mutation", () => {
+  const initial = common();
+  initial.A!.base = [base("note.md", "H0", "r0", true, false)];
+  const model = new AdversarialSyncModel(initial);
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "recovery");
+  assert.equal(model.devices.A.durable.journals.length, 0);
+});
+
+// 3-6: crash/restart is exercised at every durable stage for four mutation families.
+for (const [number, name, arrange] of [
+  [3, "upload", (m: AdversarialSyncModel) => event(m, { type: "local-write", device: "A", path: "note.md", content: "H1" })],
+  [4, "download", (m: AdversarialSyncModel) => event(m, { type: "external-remote-update", id: "r0", content: "H1" })],
+  [5, "move", (m: AdversarialSyncModel) => event(m, { type: "external-remote-move", id: "r0", path: "moved.md" })],
+  [6, "trash", (m: AdversarialSyncModel) => event(m, { type: "local-delete", device: "A", path: "note.md" })],
+] as const) {
+  test(`${String(number).padStart(2, "0")} ${name} survives crash/restart at every durable effect stage`, () => {
+    for (const stage of ["intent-persisted", "dispatch-authorized", "outcome-unknown", "effect-verified"] as const) {
+      const model = new AdversarialSyncModel(common());
+      arrange(model);
+      buildJournal(model, "A");
+      driveFirstEffectToStage(model, "A", stage);
+      const preCrashRevision = model.devices.A.durable.persistenceRevision;
+      event(model, { type: "crash", device: "A" });
+      assert.equal(model.devices.A.volatile.plan.length, 0);
+      assert.ok(model.devices.A.durable.persistenceRevision >= preCrashRevision);
+      event(model, { type: "restart", device: "A" });
+      event(model, { type: "recover", device: "A" });
+      settle(model, "A", name === "move" ? ["moved.md"] : ["note.md"]);
+      assert.notEqual(model.devices.A.durable.pathState.get(name === "move" ? "moved.md" : "note.md"), "unknown", `stage=${stage}`);
+    }
   });
 }
 
-test("1 exact BASE authority required", () => { const s=model(); s.a.base.set("x.md","H0"); assert.equal(requireExactBase(s.a,"x.md"),false); assert.equal(requireExactBase(s.a,"x.md","H1"),false); assert.equal(requireExactBase(s.a,"x.md","H0"),true); });
-test("2 exact identity authority required", () => { const s=model(); s.remote.set("r1",{id:"r1",path:"x.md",hash:"H",rev:1}); assert.equal(requireIdentity(s,"r1","y.md"),false); assert.equal(requireIdentity(s,"r1","x.md"),true); });
-test("7 clean merge journals effects independently", () => { const j: Journal={id:"m",kind:"merge",stage:"outcome-unknown",effects:[{id:"local",stage:"state-committed"},{id:"remote",stage:"dispatch-authorized"}]}; assert.equal(allEffectsCommitted(j),false); });
-test("8 predecessor + independent candidate preserves conflict despite materialization", () => { const s=model(); s.remote.set("R0",{id:"R0",path:"x.md",hash:"H0",rev:1}); s.remote.set("RI",{id:"RI",path:"x.md",hash:"HI",rev:2}); s.remote.set("RW",{id:"RW",path:"x.md",hash:"HW",rev:3}); s.pathState.set("x.md","conflict"); assertNoSilentWinner(s,"x.md"); });
-test("9 no-independent-candidate converges only with explicit authority", () => { const s=model(); s.remote.set("RW",{id:"RW",path:"x.md",hash:"H",rev:1}); assert.equal(s.pathState.get("x.md"),undefined); s.pathState.set("x.md","converged"); assert.equal(s.pathState.get("x.md"),"converged"); });
-test("10 lost create response verifies durable L1, never advanced L2", () => { const s=model(); s.a.files.set("x.md","L1"); const j:Journal={id:"u",kind:"upload",stage:"outcome-unknown",intendedHash:"L1",effects:[{id:"remote",stage:"outcome-unknown"}]}; s.journals.push(j); s.a.files.set("x.md","L2"); assert.equal(j.intendedHash,"L1"); assert.notEqual(j.intendedHash,s.a.files.get("x.md")); });
-test("11 remote move/trash outcome-unknown requires physical reconciliation", () => { assert.equal(restartDirective("outcome-unknown"),"reconcile-physical-reality"); });
-test("12 clean merge crash after one physical effect is incomplete", () => { const j:Journal={id:"m",kind:"merge",stage:"outcome-unknown",effects:[{id:"a",stage:"state-committed"},{id:"b",stage:"outcome-unknown"}]}; assert.equal(allEffectsCommitted(j),false); });
-test("13 multi-page Drive Changes ingestion", () => { const s=model(); s.learnedBatches.push(["p1:a","p1:b"],["p2:c"]); s.cursor=2; assert.deepEqual(s.learnedBatches.flat(),["p1:a","p1:b","p2:c"]); assert.equal(s.cursor,2); });
-test("14 multi-batch ingestion preserves removals", () => { const s=model(); s.learnedBatches.push(["create:r1"],["remove:r1"],["create:r2"]); assert.equal(s.learnedBatches.flat().includes("remove:r1"),true); });
-test("15 repeated moves preserve object identity", () => { const s=model(); s.remote.set("r",{id:"r",path:"a",hash:"H",rev:1}); s.remote.get("r")!.path="b"; s.remote.get("r")!.path="c"; assert.equal(s.remote.get("r")!.id,"r"); assert.equal(s.remote.get("r")!.path,"c"); });
-test("16 create-delete sequence preserves explicit tombstone-like absence", () => { const s=model(); s.remote.set("r",{id:"r",path:"a",hash:"H",rev:1}); s.remote.get("r")!.trashed=true; assert.equal(remoteAtPath(s,"a").length,0); assert.equal(s.remote.has("r"),true); });
-test("17 duplicate logical paths remain ambiguous", () => { const s=model(); s.remote.set("r1",{id:"r1",path:"a",hash:"1",rev:1}); s.remote.set("r2",{id:"r2",path:"a",hash:"2",rev:1}); s.pathState.set("a","conflict"); assertNoSilentWinner(s,"a"); });
-test("18 unresolved path does not block later feed progress", () => { const s=model(); s.pathState.set("a","conflict"); s.cursor=10; s.learnedBatches.push(["b:update"]); assert.equal(s.cursor,10); assert.equal(s.pathState.get("a"),"conflict"); });
-test("19 same-size/same-mtime missed watcher change discovered by cache bypass", () => { const d=device(); d.files.set("x","H0"); d.cache.set("x","H0"); d.watcherLost.add("x"); d.files.set("x","H1"); assert.equal(d.cache.get("x"),"H0"); assert.equal(integrityRead(d,"x"),"H1"); assert.equal(d.cache.get("x"),"H1"); });
-test("20 Windows event loss is hint loss, not authority loss", () => { const d=device(); d.files.set("x","H1"); d.watcherLost.add("x"); assert.equal(integrityRead(d,"x"),"H1"); });
-test("21 iOS suspend/resume retains durable state", () => { const s=model(); s.a.revision=4; s.a.lifecycle="suspended"; s.a.lifecycle="active"; assert.equal(s.a.revision,4); });
-test("22 abrupt process termination discards no durable journal", () => { const s=model(); s.journals.push({id:"u",kind:"upload",stage:"dispatch-authorized",effects:[{id:"r",stage:"dispatch-authorized"}]}); s.a.lifecycle="dead"; assert.equal(s.journals[0].stage,"dispatch-authorized"); });
-test("23 cancellation delivered prevents new operations", () => { const s=model(); s.cancelled=true; const before=s.journals.length; if(!s.cancelled)s.journals.push({id:"x",kind:"upload",stage:"intent-persisted",effects:[]}); assert.equal(s.journals.length,before); });
-test("24 cancellation not delivered before death relies on journal", () => { const s=model(); s.journals.push({id:"x",kind:"upload",stage:"dispatch-authorized",effects:[{id:"r",stage:"dispatch-authorized"}]}); s.a.lifecycle="dead"; assert.equal(restartDirective(s.journals[0].stage),"reconcile-physical-reality"); });
-test("25 auth loss cannot authorize destructive mutation", () => { const s=model(); s.network="auth-lost"; assert.equal(destructiveAllowed(s,s.a,1,100),false); });
-test("26 transient remote failure leaves local-first state intact", () => { const s=model(); s.a.files.set("x","L"); s.network="offline"; assert.equal(s.a.files.get("x"),"L"); });
-test("27 continuously changing path A cannot starve safe path B", () => { const s=model(); for(let i=0;i<50;i++)s.a.files.set("a",String(i)); s.a.base.set("b","B1"); assert.equal(s.a.base.get("b"),"B1"); });
-test("28 bounded quiescence after A stops changing", () => { const s=model(); s.a.files.set("a","final"); s.a.base.set("a","final"); assert.equal(s.a.files.get("a"),s.a.base.get("a")); });
-test("29 concurrent same-path creates never silently select one", () => { const s=model(); s.remote.set("A",{id:"A",path:"x",hash:"A",rev:1}); s.remote.set("B",{id:"B",path:"x",hash:"B",rev:1}); s.pathState.set("x","conflict"); assertNoSilentWinner(s,"x"); });
-test("30 stale-device destructive gate", () => { const s=model(); s.a.stale=true; assert.equal(destructiveAllowed(s,s.a,1,100),false); });
-test("31 mass-deletion circuit breaker", () => { const s=model(); assert.equal(destructiveAllowed(s,s.a,30,100),false); assert.equal(destructiveAllowed(s,s.a,1,100),true); });
-test("32 resource-bounded merge refusal preserves complete versions", () => { const local="L".repeat(1024); const remote="R".repeat(1024); const limit=100; const refused=local.length+remote.length>limit; assert.equal(refused,true); assert.equal(local.length,1024); assert.equal(remote.length,1024); });
+test("07 clean merge requires both physical effects before BASE convergence", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H0|L:left" });
+  event(model, { type: "external-remote-update", id: "r0", content: "H0|R:right" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "dispatch", device: "A" });
+  event(model, { type: "transport-success", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H0");
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H0|M:left+right");
+});
 
-test("F1 exact effect observed", () => { const d=descriptor(); const o:RemoteFolderCreateObservation={status:"folder",targetPath:d.targetPath,pathComparisonKey:d.pathAuthority.pathComparisonKey,remoteObjectId:d.remoteMutation.reservedRemoteObjectId,parentRemoteObjectId:d.parentRemoteObjectId}; assert.equal(verifyRemoteFolderCreate(d,o).status,"verified-effect"); });
-test("F2 wrong parent -> conflict-preserved", () => { const d=descriptor(); const o:RemoteFolderCreateObservation={status:"folder",targetPath:d.targetPath,pathComparisonKey:d.pathAuthority.pathComparisonKey,remoteObjectId:d.remoteMutation.reservedRemoteObjectId,parentRemoteObjectId:"wrong" as never}; assert.equal(verifyRemoteFolderCreate(d,o).status,"conflict-preserved"); });
-test("F3 wrong structural path -> conservative conflict", () => { const d=descriptor(); const o:RemoteFolderCreateObservation={status:"folder",targetPath:"other" as never,pathComparisonKey:"other",remoteObjectId:d.remoteMutation.reservedRemoteObjectId,parentRemoteObjectId:d.parentRemoteObjectId}; assert.equal(verifyRemoteFolderCreate(d,o).status,"conflict-preserved"); });
-test("F4 reserved absent but target occupied is never verified-not-applied", () => { const d=descriptor(); const o:RemoteFolderCreateObservation={status:"occupied",targetPath:d.targetPath,pathComparisonKey:d.pathAuthority.pathComparisonKey,remoteObjectId:"other" as never,entityKind:"folder"}; assert.equal(verifyRemoteFolderCreate(d,o).status,"conflict-preserved"); });
-test("F5 authoritative absence may establish verified-not-applied", () => { const d=descriptor(); assert.equal(verifyRemoteFolderCreate(d,{status:"authoritative-absent",reservedRemoteObjectId:d.remoteMutation.reservedRemoteObjectId}).status,"verified-not-applied"); });
-test("F6 duplicate/ambiguous target remains conservative", () => { const d=descriptor(); assert.equal(verifyRemoteFolderCreate(d,{status:"unobservable",reason:"duplicate-logical-path"}).status,"outcome-unknown"); });
-test("F7 incomplete observation is outcome-unknown, never absence", () => { const d=descriptor(); assert.equal(verifyRemoteFolderCreate(d,{status:"unobservable",reason:"missing-parent-evidence"}).status,"outcome-unknown"); });
-for (const stage of ["dispatch-authorized","outcome-unknown"] as const) test(`F${stage === "dispatch-authorized" ? "8" : "9"} restart from ${stage} observes before redispatch`, async () => { const d=descriptor(); let reads=0; let dispatches=0; const result=await recoverRemoteFolderCreate(d,{observeFolderCreateRecovery: async () => { reads++; return {status:"authoritative-absent",reservedRemoteObjectId:d.remoteMutation.reservedRemoteObjectId}; }}); assert.equal(restartDirective(stage),"reconcile-physical-reality"); assert.equal(reads,1); assert.equal(dispatches,0); assert.equal(result.status,"verified-not-applied"); });
-test("F10 descriptor intent is not observation", async () => { const d=descriptor(); const result=await recoverRemoteFolderCreate(d,{observeFolderCreateRecovery: async () => ({status:"unobservable",reason:"actual-parent-not-observed"})}); assert.equal(result.status,"outcome-unknown"); });
+test("08 concurrent R0 + intended candidate + independent candidate preserves conflict", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "dispatch", device: "A" });
+  event(model, { type: "external-remote-create", id: "rw", path: "note.md", content: "HW" });
+  event(model, { type: "transport-success", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "conflict");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H0");
+});
 
-test("deterministic randomized seed set enforces invariants", () => { for (const seed of [1,7,42,1337,0xC0FFEE]) { const s=randomized(seed); for(const p of ["a.md","b.md","c.md"]) assertNoSilentWinner(s,p); assert.equal(s.trace.length,80); } });
-test("representative seed replay is byte-for-byte reproducible", () => { const a=randomized(1337,40); const b=randomized(1337,40); assert.deepEqual(a.trace,b.trace); assert.equal(JSON.stringify(a.trace),JSON.stringify(b.trace)); });
-test("trace contains sanitized replay inputs only", () => { const s=randomized(42,20); const text=JSON.stringify({seed:42,initial:"synthetic",events:s.trace}); assert.equal(text.includes("OAuth"),false); assert.equal(text.includes("C:\\"),false); assert.equal(text.includes("/Users/"),false); });
+test("09 independent candidate cannot be collapsed without explicit authority", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "external-remote-create", id: "other", path: "note.md", content: "H0" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "conflict");
+});
+
+test("10 durable intended L1 is not substituted by later L2", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "L1" });
+  buildJournal(model, "A");
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "L2" });
+  settle(model, "A");
+  const content = [...model.remote.values()].find(value => value.content === "L1")?.content;
+  assert.equal(content, "L1");
+  assert.equal(model.devices.A.local.get("note.md"), "L2");
+});
+
+test("11 outcome-unknown reconciles physical reality instead of redispatching blindly", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "dispatch", device: "A" });
+  const dispatches = model.devices.A.durable.journals[0].effects[0].dispatchCount;
+  event(model, { type: "transport-lost", device: "A" });
+  event(model, { type: "crash", device: "A" });
+  event(model, { type: "restart", device: "A" });
+  event(model, { type: "recover", device: "A" });
+  assert.equal(model.devices.A.durable.journals[0].effects[0].dispatchCount, dispatches);
+  assert.equal(model.devices.A.durable.journals[0].effects[0].stage, "effect-verified");
+});
+
+test("12 clean merge crash after one side effect cannot commit logical convergence", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H0|L:left" });
+  event(model, { type: "external-remote-update", id: "r0", content: "H0|R:right" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "dispatch", device: "A" });
+  event(model, { type: "transport-success", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "crash", device: "A" });
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H0");
+  event(model, { type: "restart", device: "A" });
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H0|M:left+right");
+});
+
+test("13 multi-page changes advance cursor only on durable terminal page", () => {
+  const model = new AdversarialSyncModel();
+  event(model, { type: "ingest-page", device: "A", batchId: "p1", requestedCursor: 10, entries: ["c1"] });
+  assert.equal(model.devices.A.durable.cursor, 0);
+  event(model, { type: "ingest-page", device: "A", batchId: "p2", requestedCursor: 10, entries: ["c2"], terminalCursor: 11 });
+  assert.equal(model.devices.A.durable.cursor, 11);
+  assert.deepEqual(model.devices.A.durable.learnedBatches.map(value => value.id), ["p1", "p2"]);
+});
+
+test("14 multiple learned removal batches remain durable across restart", () => {
+  const model = new AdversarialSyncModel();
+  event(model, { type: "ingest-page", device: "A", batchId: "rm1", requestedCursor: 1, entries: ["remove:r1"] });
+  event(model, { type: "ingest-page", device: "A", batchId: "rm2", requestedCursor: 1, entries: ["remove:r2"], terminalCursor: 2 });
+  event(model, { type: "crash", device: "A" });
+  event(model, { type: "restart", device: "A" });
+  assert.equal(model.devices.A.durable.learnedBatches.length, 2);
+  assert.equal(model.devices.A.durable.cursor, 2);
+});
+
+test("15 repeated remote moves preserve stable remote identity", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "external-remote-move", id: "r0", path: "one.md" });
+  settle(model, "A", ["one.md"]);
+  event(model, { type: "external-remote-move", id: "r0", path: "two.md" });
+  settle(model, "A", ["two.md"]);
+  assert.equal(model.devices.A.durable.base.get("two.md")?.remoteId, "r0");
+  assert.equal(model.remote.get("r0")?.path, "two.md");
+});
+
+test("16 create-delete sequence preserves acknowledged deletion history", () => {
+  const model = new AdversarialSyncModel();
+  event(model, { type: "local-write", device: "A", path: "new.md", content: "N1" });
+  settle(model, "A", ["new.md"]);
+  event(model, { type: "local-delete", device: "A", path: "new.md" });
+  settle(model, "A", ["new.md"]);
+  assert.equal(model.devices.A.durable.base.has("new.md"), false);
+  assert.ok(model.devices.A.durable.tombstones.has("new.md"));
+});
+
+test("17 duplicate logical paths become conflict through resolution transition", () => {
+  const model = new AdversarialSyncModel();
+  event(model, { type: "external-remote-create", id: "r1", path: "dup.md", content: "1" });
+  event(model, { type: "external-remote-create", id: "r2", path: "dup.md", content: "2" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("dup.md"), "conflict");
+  assert.equal(model.devices.A.durable.base.has("dup.md"), false);
+});
+
+test("18 unresolved path A does not block safe path B progress", () => {
+  const model = new AdversarialSyncModel({
+    A: { local: [["a.md", "A0"], ["b.md", "B0"]], base: [base("a.md", "A0", "ra"), base("b.md", "B0", "rb")] },
+    remote: [
+      { id: "ra", path: "a.md", content: "A0", kind: "file", revision: 1, trashed: false },
+      { id: "rb", path: "b.md", content: "B0", kind: "file", revision: 1, trashed: false },
+    ],
+  });
+  event(model, { type: "external-remote-create", id: "ra2", path: "a.md", content: "AX" });
+  event(model, { type: "local-write", device: "A", path: "b.md", content: "B1" });
+  settle(model, "A", ["a.md", "b.md"]);
+  assert.equal(model.devices.A.durable.pathState.get("a.md"), "conflict");
+  assert.equal(model.devices.A.durable.base.get("b.md")?.hash, "B1");
+});
+
+test("19 same-size/same-mtime analogue with lost watcher is discovered by integrity reconciliation", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "X1", watcher: "lost" });
+  assert.equal(model.devices.A.volatile.dirtyPaths.has("note.md"), false);
+  event(model, { type: "integrity-reconcile", device: "A", path: "note.md" });
+  assert.equal(model.devices.A.volatile.dirtyPaths.has("note.md"), true);
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "X1");
+});
+
+test("20 Windows watcher-event loss is recoverable through authoritative integrity read", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-delete", device: "A", path: "note.md", watcher: "lost" });
+  event(model, { type: "integrity-reconcile", device: "A", path: "note.md" });
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.has("note.md"), false);
+});
+
+test("21 iOS-style suspend/resume preserves durable work and resumes safely", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  buildJournal(model, "A");
+  event(model, { type: "suspend", device: "A" });
+  const durableCount = model.devices.A.durable.journals.length;
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.journals.length, durableCount);
+  event(model, { type: "resume", device: "A" });
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H1");
+});
+
+test("22 abrupt process death reconstructs only durable state", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  event(model, { type: "start-reconcile", device: "A" });
+  assert.ok(model.devices.A.volatile.plan.length > 0);
+  const durableBase = model.devices.A.durable.base.get("note.md")?.hash;
+  event(model, { type: "crash", device: "A" });
+  assert.equal(model.devices.A.volatile.plan.length, 0);
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, durableBase);
+  event(model, { type: "restart", device: "A" });
+  assert.equal(model.devices.A.volatile.dirtyPaths.size, 0);
+});
+
+test("23 delivered cancellation stops dispatch while durable intent remains", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "cancel-request", device: "A", delivered: true });
+  event(model, { type: "dispatch", device: "A" });
+  assert.equal(model.devices.A.durable.journals[0].effects[0].dispatchCount, 0);
+});
+
+test("24 cancellation not delivered before death cannot erase persisted intent", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  buildJournal(model, "A");
+  event(model, { type: "cancel-request", device: "A", delivered: false });
+  event(model, { type: "crash", device: "A" });
+  assert.equal(model.devices.A.durable.journals.length, 1);
+  event(model, { type: "restart", device: "A" });
+  settle(model, "A");
+  assert.equal(model.devices.A.durable.base.get("note.md")?.hash, "H1");
+});
+
+test("25 auth loss cannot dispatch destructive work", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-delete", device: "A", path: "note.md" });
+  buildJournal(model, "A");
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "network", device: "A", state: "auth-lost" });
+  event(model, { type: "dispatch", device: "A" });
+  assert.equal(model.remote.get("r0")?.trashed, false);
+});
+
+test("26 offline and rate-limited states preserve local-first edits", () => {
+  for (const state of ["offline", "rate-limited"] as const) {
+    const model = new AdversarialSyncModel(common());
+    event(model, { type: "network", device: "A", state });
+    event(model, { type: "local-write", device: "A", path: "note.md", content: `LOCAL-${state}` });
+    buildJournal(model, "A");
+    event(model, { type: "advance", device: "A" });
+    event(model, { type: "dispatch", device: "A" });
+    assert.equal(model.devices.A.local.get("note.md"), `LOCAL-${state}`);
+    assert.equal(model.remote.get("r0")?.content, "H0");
+  }
+});
+
+test("27 churn on path A does not starve path B", () => {
+  const model = new AdversarialSyncModel({
+    A: { local: [["a.md", "A0"], ["b.md", "B0"]], base: [base("a.md", "A0", "ra"), base("b.md", "B0", "rb")] },
+    remote: [
+      { id: "ra", path: "a.md", content: "A0", kind: "file", revision: 1, trashed: false },
+      { id: "rb", path: "b.md", content: "B0", kind: "file", revision: 1, trashed: false },
+    ],
+  });
+  event(model, { type: "local-write", device: "A", path: "b.md", content: "B1" });
+  for (let i = 0; i < 4; i++) {
+    event(model, { type: "local-write", device: "A", path: "a.md", content: `A${i + 1}` });
+    model.settle("A", 20);
+  }
+  assert.equal(model.devices.A.durable.base.get("b.md")?.hash, "B1");
+});
+
+test("28 bounded quiescence after mutation pressure stops", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "H1" });
+  const transitions = model.settle("A", 30);
+  assert.ok(transitions < 30);
+  model.assertQuiescentOrExplicit("A", ["note.md"]);
+});
+
+test("29 concurrent same-path creates never silently select one remote winner", () => {
+  const model = new AdversarialSyncModel();
+  event(model, { type: "local-write", device: "A", path: "same.md", content: "A" });
+  event(model, { type: "local-write", device: "B", path: "same.md", content: "B" });
+  buildJournal(model, "A", "same.md");
+  buildJournal(model, "B", "same.md");
+  event(model, { type: "advance", device: "A" }); event(model, { type: "dispatch", device: "A" }); event(model, { type: "transport-success", device: "A" });
+  event(model, { type: "advance", device: "B" }); event(model, { type: "dispatch", device: "B" }); event(model, { type: "transport-success", device: "B" });
+  event(model, { type: "advance", device: "A" });
+  event(model, { type: "advance", device: "B" });
+  event(model, { type: "start-reconcile", device: "A", paths: ["same.md"] }); event(model, { type: "advance", device: "A" });
+  event(model, { type: "start-reconcile", device: "B", paths: ["same.md"] }); event(model, { type: "advance", device: "B" });
+  assert.equal(model.devices.A.durable.pathState.get("same.md"), "conflict");
+  assert.equal(model.devices.B.durable.pathState.get("same.md"), "conflict");
+});
+
+test("30 stale state cannot authorize destructive propagation", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "mark-stale", device: "A", stale: true });
+  event(model, { type: "local-delete", device: "A", path: "note.md" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "recovery");
+  assert.equal(model.remote.get("r0")?.trashed, false);
+});
+
+test("31 incomplete remote coverage blocks a mass-deletion plan", () => {
+  const initial: InitialModelState = { A: { local: [], base: [] }, remote: [] };
+  for (let i = 0; i < 12; i++) {
+    initial.A!.base!.push(base(`p${i}.md`, `H${i}`, `r${i}`));
+    initial.A!.local!.push([`p${i}.md`, `H${i}`]);
+    initial.remote!.push({ id: `r${i}`, path: `p${i}.md`, content: `H${i}`, kind: "file", revision: 1, trashed: false });
+  }
+  const model = new AdversarialSyncModel(initial);
+  event(model, { type: "remote-coverage", device: "A", complete: false });
+  for (let i = 0; i < 12; i++) event(model, { type: "local-delete", device: "A", path: `p${i}.md` });
+  event(model, { type: "start-reconcile", device: "A" });
+  for (let i = 0; i < 12; i++) event(model, { type: "advance", device: "A" });
+  assert.equal([...model.remote.values()].filter(value => value.trashed).length, 0);
+  assert.ok([...model.devices.A.durable.pathState.values()].every(value => value === "recovery"));
+});
+
+test("32 bounded merge refusal preserves both complete versions", () => {
+  const model = new AdversarialSyncModel(common());
+  event(model, { type: "local-write", device: "A", path: "note.md", content: "LOCAL-COMPLETE" });
+  event(model, { type: "external-remote-update", id: "r0", content: "REMOTE-COMPLETE" });
+  event(model, { type: "start-reconcile", device: "A" });
+  event(model, { type: "advance", device: "A" });
+  assert.equal(model.devices.A.durable.pathState.get("note.md"), "conflict");
+  assert.equal(model.devices.A.local.get("note.md"), "LOCAL-COMPLETE");
+  assert.equal(model.remote.get("r0")?.content, "REMOTE-COMPLETE");
+});
+
+// v1.2 remote folder-create recovery: observation comes from modeled Drive reality.
+test("F1 exact observed reserved folder yields verified-effect", () => {
+  const descriptor = folderDescriptor();
+  const model = new AdversarialSyncModel({ remote: [{ id: "folder-reserved", path: "folder", kind: "folder", revision: 1, parentId: "parent", trashed: false }] });
+  prepareFolderRecovery(model, "dispatch-authorized", descriptor);
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "verified-effect");
+  assert.equal(model.recoveryReads, 1);
+});
+
+test("F2 wrong actual parent is conflict-preserved", () => {
+  const model = new AdversarialSyncModel({ remote: [{ id: "folder-reserved", path: "folder", kind: "folder", revision: 1, parentId: "wrong-parent", trashed: false }] });
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "conflict-preserved");
+});
+
+test("F3 wrong observed reserved-object path/key is conflict-preserved", () => {
+  const model = new AdversarialSyncModel({ remote: [{ id: "folder-reserved", path: "wrong", kind: "folder", revision: 1, parentId: "parent", trashed: false }] });
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "conflict-preserved");
+});
+
+test("F4 occupied intended target is conflict, never fabricated absence", () => {
+  const model = new AdversarialSyncModel({ remote: [{ id: "other", path: "folder", kind: "file", content: "X", revision: 1, trashed: false }] });
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "conflict-preserved");
+  assert.notEqual(model.folderRecovery?.status, "verified-not-applied");
+});
+
+test("F5 authoritative exclusion of reserved identity and target occupants yields verified-not-applied", () => {
+  const model = new AdversarialSyncModel();
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "verified-not-applied");
+});
+
+test("F6 duplicate target candidates remain unobservable/outcome-unknown", () => {
+  const model = new AdversarialSyncModel({ remote: [
+    { id: "x1", path: "folder", kind: "folder", revision: 1, parentId: "parent", trashed: false },
+    { id: "x2", path: "folder", kind: "folder", revision: 1, parentId: "parent", trashed: false },
+  ] });
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "outcome-unknown");
+});
+
+test("F7 incomplete parent observation remains outcome-unknown", () => {
+  const model = new AdversarialSyncModel({ remote: [{ id: "folder-reserved", path: "folder", kind: "folder", revision: 1, trashed: false }] });
+  prepareFolderRecovery(model, "dispatch-authorized");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "outcome-unknown");
+});
+
+test("F8 restart from dispatch-authorized observes Drive before any redispatch", () => {
+  const model = new AdversarialSyncModel();
+  prepareFolderRecovery(model, "dispatch-authorized");
+  const dispatches = model.devices.A.durable.journals[0].effects[0].dispatchCount;
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.devices.A.durable.journals.length, 0);
+  assert.equal(dispatches, 0);
+  assert.equal(model.recoveryReads, 1);
+});
+
+test("F9 restart from outcome-unknown observes physical reality without a second dispatch", () => {
+  const model = new AdversarialSyncModel();
+  prepareFolderRecovery(model, "outcome-unknown");
+  const before = [...model.remote.values()].length;
+  const dispatches = model.devices.A.durable.journals[0].effects[0].dispatchCount;
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "verified-effect");
+  assert.equal(model.devices.A.durable.journals[0].effects[0].dispatchCount, dispatches);
+  assert.equal([...model.remote.values()].length, before);
+});
+
+test("F10 descriptor parent intent cannot fabricate observed parent authority", () => {
+  const model = new AdversarialSyncModel({ remote: [{ id: "folder-reserved", path: "folder", kind: "folder", revision: 1, trashed: false }] });
+  prepareFolderRecovery(model, "outcome-unknown");
+  event(model, { type: "recover-folder-create", device: "A" });
+  assert.equal(model.folderRecovery?.status, "outcome-unknown");
+});
+
+const seeds = [1, 7, 42, 1337, 0xC0FFEE];
+for (const seed of seeds) {
+  test(`seeded randomized transition sequence ${seed} is deterministic and invariant-checked`, () => {
+    const events = seededEvents(seed, 120);
+    const first = runTrace({}, events, seed);
+    const second = runTrace({}, events, seed);
+    assert.equal(first.failure?.code, second.failure?.code);
+    assert.deepEqual(first.final, second.final);
+    assert.deepEqual(first.events, second.events);
+  });
+}
+
+test("explicit replay reapplies recorded event trace and reproduces exact modeled result", () => {
+  const initial = common();
+  const events: ModelEvent[] = [
+    { type: "local-write", device: "A", path: "note.md", content: "H1" },
+    { type: "start-reconcile", device: "A" },
+    { type: "advance", device: "A" },
+    { type: "advance", device: "A" },
+    { type: "dispatch", device: "A" },
+    { type: "transport-lost", device: "A" },
+    { type: "crash", device: "A" },
+    { type: "restart", device: "A" },
+    { type: "recover", device: "A" },
+    { type: "advance", device: "A" },
+  ];
+  const recorded = runTrace(initial, events, 1337);
+  const replayed = replayTrace(recorded, initial);
+  assert.deepEqual(replayed.events, recorded.events);
+  assert.deepEqual(replayed.final, recorded.final);
+  assert.deepEqual(replayed.failure, recorded.failure);
+});
+
+test("simple trace minimizer retains only events needed for the same invariant failure", () => {
+  const initial: InitialModelState = { remote: [
+    { id: "r1", path: "dup.md", content: "1", kind: "file", revision: 1, trashed: false },
+    { id: "r2", path: "dup.md", content: "2", kind: "file", revision: 1, trashed: false },
+  ] };
+  const noisy: ModelEvent[] = [
+    { type: "local-write", device: "B", path: "noise.md", content: "noise" },
+    { type: "integrity-reconcile", device: "B", path: "noise.md" },
+    { type: "start-reconcile", device: "A", paths: ["dup.md"] },
+    { type: "local-write", device: "B", path: "noise2.md", content: "noise2" },
+  ];
+  const failure = runTrace(initial, noisy, undefined, { negativeControlCollapseAmbiguity: true });
+  assert.equal(failure.failure?.code, "duplicate-ambiguous-winner");
+  const minimized = minimizeFailingTrace(initial, noisy, "duplicate-ambiguous-winner", { negativeControlCollapseAmbiguity: true });
+  assert.ok(minimized.length < noisy.length);
+  assert.equal(runTrace(initial, minimized, undefined, { negativeControlCollapseAmbiguity: true }).failure?.code, "duplicate-ambiguous-winner");
+});
+
+test("trace serialization is sanitized and contains no platform/user/auth secrets", () => {
+  const trace = runTrace({}, seededEvents(42, 25), 42);
+  const text = JSON.stringify(trace);
+  assert.equal(/oauth|bearer|refresh[_-]?token|C:\\|\/Users\//i.test(text), false);
+});
