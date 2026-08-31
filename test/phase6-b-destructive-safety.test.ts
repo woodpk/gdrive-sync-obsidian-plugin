@@ -1,3 +1,4 @@
+import "./workstreams/orchestration/v1.2-remote-folder-restart.test";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
