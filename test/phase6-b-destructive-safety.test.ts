@@ -1,4 +1,5 @@
 import "./workstreams/orchestration/v1.2-remote-folder-restart.test";
+import "./workstreams/orchestration/v1.2-authoritative-boundary.test";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
