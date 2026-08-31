@@ -5,6 +5,7 @@ import type {
   EnumerationCompleteness,
   GoogleDrivePort,
   IdentityAssessment,
+  LocalEnumerationUncertainty,
   LocalObservation,
   LocalVaultPort,
   ManagedRemoteIdentity,
@@ -95,7 +96,7 @@ export class ProductSnapshotAssembler {
       throw new SnapshotAssemblyError("recovery-required", `Recovery reconstruction requires complete LOCAL and REMOTE observation. LOCAL=${localListing.completeness.status}; REMOTE=${remoteResult.value.completeness.status}`);
     }
     const uninitialized: StateLoadResult = { status: "uninitialized" };
-    const snapshots = this.makeSnapshots(uninitialized, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
+    const snapshots = this.makeSnapshots(uninitialized, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
     return { input: { snapshots, state: uninitialized }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full", reconstruction: true, recoveryReason: reason };
   }
 
@@ -129,7 +130,7 @@ export class ProductSnapshotAssembler {
       this.drive.listForReconciliation(managedRemote.rootId).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.entries.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "remote observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
     ]);
     if (!remoteResult.ok) throw new SnapshotAssemblyError(remoteResult.signal.kind, signalMessage(remoteResult.signal, "remote reconciliation listing failed"));
-    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, this.filterRemote(remoteResult.value.entries), remoteResult.value.completeness);
     return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteResult.value.completeness, nextCursor: cursorResult.value, mode: "full" };
   }
 
@@ -156,7 +157,7 @@ export class ProductSnapshotAssembler {
       } else reconstructed.delete(String(change.remoteObjectId));
     }
     const remoteEntries = this.filterRemote([...reconstructed.values()]);
-    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, remoteEntries, changesResult.value.completeness);
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, remoteEntries, changesResult.value.completeness);
     return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
   }
 
@@ -200,6 +201,7 @@ export class ProductSnapshotAssembler {
     loadedState: StateLoadResult,
     localEntries: readonly LocalObservation[],
     localCompleteness: EnumerationCompleteness,
+    localUncertainties: readonly LocalEnumerationUncertainty[] | undefined,
     remoteEntries: readonly RemoteEntry[],
     remoteCompleteness: EnumerationCompleteness,
   ): PathSnapshot[] {
@@ -220,7 +222,21 @@ export class ProductSnapshotAssembler {
     return [...paths].sort().map(raw => {
       const p = path(raw);
       let local = localByPath.get(raw) ?? absentLocal(p);
-      if (local.status === "absent" && localCompleteness.status !== "complete") local = { status: "unknown", side: "local", path: p, reason: localCompleteness.reason };
+      if (local.status === "absent" && localCompleteness.status !== "complete") {
+        const matching = localUncertainties?.filter(uncertainty => {
+          if (uncertainty.scope === "all") return true;
+          const uncertainPath = String(uncertainty.path);
+          return uncertainty.scope === "path"
+            ? raw === uncertainPath
+            : raw === uncertainPath || raw.startsWith(`${uncertainPath}/`);
+        });
+        // An incomplete legacy listing without explicit scope evidence remains
+        // globally uncertain. Once scopes are supplied, only matching paths lose
+        // absence authority.
+        if (!localUncertainties?.length || matching?.length) {
+          local = { status: "unknown", side: "local", path: p, reason: matching?.map(item => item.reason).join("; ") || localCompleteness.reason };
+        }
+      }
       if (raw === CONFIG_REMOTE_NAMESPACE && namespaceCollision && local.status === "absent") {
         local = { status: "unknown", side: "local", path: p, reason: "remote ordinary-vault content collides with the reserved portable-configuration namespace" };
       }

@@ -6,6 +6,15 @@ export type VaultIdentity = Brand<string, "VaultIdentity">;
 export type DeviceIdentity = Brand<string, "DeviceIdentity">;
 export type ChangeCursor = Brand<string, "ChangeCursor">;
 export type StateRevision = Brand<string, "StateRevision">;
+/** Byte-document compare-and-swap sequence. It is not synchronization authority. */
+export type PersistenceRevision = StateRevision;
+/** Changes only when authoritative synchronization facts (BASE, mappings, tombstones, or learned remote state) change. */
+export type SemanticStateGeneration = Brand<string, "SemanticStateGeneration">;
+export type BaseFingerprint = Brand<string, "BaseFingerprint">;
+export type RemoteIngestionBatchId = Brand<string, "RemoteIngestionBatchId">;
+export type MutationIntentId = Brand<string, "MutationIntentId">;
+export type LocalMutationTransactionId = Brand<string, "LocalMutationTransactionId">;
+export type RemoteRevisionId = Brand<string, "RemoteRevisionId">;
 export type OperationId = Brand<string, "OperationId">;
 export type PlanId = Brand<string, "PlanId">;
 export type ConflictId = Brand<string, "ConflictId">;
