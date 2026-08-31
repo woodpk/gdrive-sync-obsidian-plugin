@@ -21,6 +21,7 @@ import {
   type SemanticAuthorityReference,
   type SemanticStateValidationIssue,
   type SynchronizationAuthoritySaveResult,
+  type SynchronizationCancellationSignal,
 } from "./synchronization-foundation";
 
 /**
@@ -195,6 +196,33 @@ export type RemoteFolderCreateObservation =
     }
   | { readonly status: "unobservable"; readonly reason: string };
 
+/**
+ * Phase 6 foundation v1.2 read-only recovery seam for a persisted REMOTE folder create.
+ *
+ * Implementations must reconstruct physical reality from Drive after restart. The
+ * descriptor supplies expected authority only; its parentRemoteObjectId and path
+ * authority MUST NOT be copied into the observation unless a remote read actually
+ * established those facts.
+ *
+ * Returning `authoritative-absent` is a strong two-part claim: the exact persisted
+ * reservedRemoteObjectId was authoritatively proven absent AND the intended logical
+ * target was authoritatively proven free of every competing object. If either fact
+ * is incomplete, inaccessible, ambiguous, or otherwise unproven, the implementation
+ * must return `unobservable`. If an independent object occupies the intended target,
+ * it must return `occupied`. If the reserved object exists, `folder` must carry its
+ * actual observed structural path and actual current parent Drive object identity.
+ *
+ * The seam is observation-only and MUST NOT create, move, trash, or otherwise mutate
+ * any Drive object. It is suitable for recovery from both `dispatch-authorized` and
+ * `outcome-unknown` without redispatching merely because the pre-crash response was lost.
+ */
+export interface RemoteFolderCreateRecoveryReadPort {
+  observeFolderCreateRecovery(
+    descriptor: RemoteFolderCreatePhysicalMutationDescriptor,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<RemoteFolderCreateObservation>;
+}
+
 export type FolderCreateVerificationProof =
   | {
       readonly kind: "local-folder-create";
@@ -302,6 +330,21 @@ export function verifyRemoteFolderCreate(
       reservedRemoteObjectId,
     },
   };
+}
+
+/**
+ * Shared v1.2 recovery helper: observe physical reality through the frozen read-only
+ * seam, then apply the unchanged conservative verifier. No dispatch occurs here.
+ */
+export async function recoverRemoteFolderCreate(
+  descriptor: RemoteFolderCreatePhysicalMutationDescriptor,
+  reader: RemoteFolderCreateRecoveryReadPort,
+  cancellation?: SynchronizationCancellationSignal,
+): Promise<FolderCreateRecoveryOutcome> {
+  return verifyRemoteFolderCreate(
+    descriptor,
+    await reader.observeFolderCreateRecovery(descriptor, cancellation),
+  );
 }
 
 /** Folder effects use the same durable dispatch-stage restart semantics as every other mutation. */
