@@ -24,10 +24,13 @@ import type {
   RecoverableMutationEffectV1_1,
   RemoteFolderCreatePhysicalMutationDescriptor,
   RemoteFolderCreateRecoveryReadPort,
+  RemoteObjectMapping,
+  StateLoadContext,
   StateRevision,
   SynchronizationAuthorityMetadataV1_1,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationExecutor,
+  SynchronizationStateStore,
 } from "../contracts";
 import type { StateCommitCoordinator } from "./commit-coordinator";
 
@@ -181,17 +184,31 @@ function operationBaseAuthorityPath(operation: PlannedOperation) {
   return operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : operation.path;
 }
 
-/** Replace compatibility-only planner markers with exact frozen authority. */
+function uniqueTrustedIdentityMapping(
+  path: PlannedOperation["path"],
+  expectedRemoteObjectId: PlannedOperation["remoteObjectId"],
+  mappings: readonly RemoteObjectMapping[],
+): RemoteObjectMapping | undefined {
+  if (!expectedRemoteObjectId) return undefined;
+  const byPath = mappings.filter(mapping => mapping.path === path);
+  const byId = mappings.filter(mapping => mapping.remoteObjectId === expectedRemoteObjectId);
+  if (byPath.length !== 1 || byId.length !== 1) return undefined;
+  const mapping = byPath[0];
+  return mapping && mapping.remoteObjectId === expectedRemoteObjectId && byId[0]?.path === path ? mapping : undefined;
+}
+
+/** Replace compatibility-only planner markers with independently established exact frozen authority. */
 export function resolveAuthorityCompleteOperation(
   operation: PlannedOperation,
   authority: SynchronizationAuthorityMetadataV1_1,
+  trustedRemoteMappings: readonly RemoteObjectMapping[] = [],
 ): AuthorityResolutionResult {
   const preconditions: ExecutableOperationPrecondition[] = [];
   for (const precondition of operation.preconditions) {
     if (precondition.kind === "base-trusted") {
       const authorityPath = operationBaseAuthorityPath(operation);
       const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
-      if (!pathAuthority || pathAuthority.status !== "converged") {
+      if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
         return { status: "incomplete-authority", reason: `exact BASE authority unavailable for ${String(authorityPath)}` };
       }
       const exact: ExactBaseAuthority = { generation: authority.semanticGeneration, path: authorityPath, fingerprint: pathAuthority.baseFingerprint };
@@ -199,9 +216,19 @@ export function resolveAuthorityCompleteOperation(
       continue;
     }
     if (precondition.kind === "identity-unambiguous") {
-      const remoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
-      if (!remoteObjectId) return { status: "incomplete-authority", reason: `exact remote identity unavailable for ${String(precondition.path)}` };
-      const proof: IdentityAuthorityProof = { generation: authority.semanticGeneration, status: "unique", path: precondition.path, remoteObjectId };
+      const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+      const pathAuthority = authority.pathConvergence.find(entry => entry.path === precondition.path)?.state;
+      if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
+        return { status: "incomplete-authority", reason: `current-generation path authority unavailable for ${String(precondition.path)}` };
+      }
+      const mapping = uniqueTrustedIdentityMapping(precondition.path, expectedRemoteObjectId, trustedRemoteMappings);
+      if (!mapping) return { status: "incomplete-authority", reason: `unique trusted remote identity mapping unavailable for ${String(precondition.path)}` };
+      const proof: IdentityAuthorityProof = {
+        generation: authority.semanticGeneration,
+        status: "unique",
+        path: mapping.path,
+        remoteObjectId: mapping.remoteObjectId,
+      };
       preconditions.push({ kind: "identity-authority", proof });
       continue;
     }
@@ -211,15 +238,18 @@ export function resolveAuthorityCompleteOperation(
 }
 
 /**
- * Authoritative D execution boundary. It loads exact semantic authority, replaces
- * planning-only markers, revalidates the resulting exact preconditions, performs
- * only an authority-complete mutation, and commits only a verified receipt.
+ * Authoritative D execution boundary. It loads exact semantic authority and the
+ * frozen trusted identity mapping state independently, replaces planning-only
+ * markers, revalidates the exact operation, performs only an authority-complete
+ * mutation, and commits only a verified receipt.
  */
 export class AuthorityCompleteExecutionCoordinator {
   constructor(
     private readonly authorityStore: SynchronizationAuthorityStoreV1_1,
     private readonly executor: AuthoritativeSynchronizationExecutor,
     private readonly committer: AuthorityCompleteSuccessCommitter,
+    private readonly identityStateStore?: SynchronizationStateStore,
+    private readonly stateContext?: StateLoadContext,
   ) {}
 
   async executeOperation(operation: PlannedOperation): Promise<CoordinatedExecutionResult> {
@@ -227,7 +257,15 @@ export class AuthorityCompleteExecutionCoordinator {
     if (loaded.status === "uninitialized") return { status: "recovery-required", reason: "authoritative synchronization metadata is uninitialized" };
     if (loaded.status === "recovery-required") return { status: "recovery-required", reason: "authoritative synchronization metadata requires recovery" };
 
-    const resolved = resolveAuthorityCompleteOperation(operation, loaded.state);
+    let mappings: readonly RemoteObjectMapping[] = [];
+    if (operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous")) {
+      if (!this.identityStateStore || !this.stateContext) return { status: "recovery-required", reason: "trusted remote identity mapping state is unavailable" };
+      const identityState = await this.identityStateStore.load(this.stateContext);
+      if (identityState.status !== "trusted") return { status: "recovery-required", reason: "trusted remote identity mapping state is unavailable" };
+      mappings = identityState.state.remoteMappings;
+    }
+
+    const resolved = resolveAuthorityCompleteOperation(operation, loaded.state, mappings);
     if (resolved.status !== "ready") return { status: "recovery-required", reason: resolved.reason };
 
     const validation = await this.executor.validatePreconditions(resolved.operation);
