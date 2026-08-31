@@ -11,6 +11,8 @@ import type {
   ManagedRemoteIdentity,
   PathSnapshot,
   PlanningInput,
+  ReliableRemoteChangePort,
+  RemoteChange,
   RemoteEntry,
   RemoteObservation,
   StateLoadContext,
@@ -57,12 +59,13 @@ export class ProductSnapshotAssembler {
     private readonly pathIncluded: (path: VaultPath) => boolean = () => true,
     private readonly fullReconcileRequired: () => boolean = () => false,
     private readonly diagnostics?: DiagnosticLogger,
+    private readonly reliableChanges?: ReliableRemoteChangePort,
   ) {}
 
   async assemble(preferIncremental = true, runId?: number): Promise<AssembledPlanningInput> {
     const managedRemote = await this.validatedRemote(runId);
     const loadedState = await this.loadState(runId);
-    const incrementalAllowed = preferIncremental && !this.fullReconcileRequired();
+    const incrementalAllowed = preferIncremental && !this.fullReconcileRequired() && Boolean(this.reliableChanges);
     if (incrementalAllowed && loadedState.status === "trusted" && loadedState.state.changeCursor) {
       const incremental = await this.assembleIncremental(managedRemote, loadedState, runId);
       if (incremental) return incremental;
@@ -135,30 +138,51 @@ export class ProductSnapshotAssembler {
   }
 
   private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>, runId?: number): Promise<AssembledPlanningInput | undefined> {
-    const cursor = loadedState.state.changeCursor;
-    if (!cursor) return undefined;
+    const startingCursor = loadedState.state.changeCursor;
+    const reliableChanges = this.reliableChanges;
+    if (!startingCursor || !reliableChanges) return undefined;
     this.trace(runId, "local-observation-start", { stage: "local-observation", runMode: "incremental" });
     this.trace(runId, "remote-observation-start", { stage: "remote-observation", runMode: "incremental" });
-    const [localListing, changesResult] = await Promise.all([
-      this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; }),
-      this.drive.readChanges(managedRemote.rootId, cursor).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.changes.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "incremental observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
-    ]);
-    if (!changesResult.ok) {
-      if (changesResult.signal.kind === "not-found" || changesResult.signal.kind === "conflict") return undefined;
-      throw new SnapshotAssemblyError(changesResult.signal.kind, signalMessage(changesResult.signal, "incremental remote observation failed"));
-    }
-    if (changesResult.value.completeness.status !== "complete") return undefined;
+    const localPromise = this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; });
+    const changes: RemoteChange[] = [];
+    let requestedToken = startingCursor;
+    let terminalCursor: ChangeCursor | undefined;
 
+    while (!terminalCursor) {
+      const result = await reliableChanges.readChangePage(managedRemote, requestedToken).catch(error => {
+        this.failure(runId, "remote-observation-failed", error, "remote-observation");
+        throw error;
+      });
+      if (!result.ok) {
+        if (result.signal.kind === "not-found" || result.signal.kind === "conflict") return undefined;
+        const error = new SnapshotAssemblyError(result.signal.kind, signalMessage(result.signal, "incremental remote observation failed before terminal Changes authority"));
+        this.failure(runId, "remote-observation-failed", error, "remote-observation");
+        throw error;
+      }
+      if (result.value.requestedToken !== requestedToken) {
+        throw new SnapshotAssemblyError("recovery-required", "reliable Changes page did not prove the requested pagination token");
+      }
+      changes.push(...result.value.changes);
+      if (result.value.kind === "intermediate") {
+        requestedToken = result.value.nextPageToken;
+        continue;
+      }
+      terminalCursor = result.value.newStartPageToken;
+    }
+
+    const localListing = await localPromise;
+    this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: changes.length, remoteCompleteness: "complete" });
     const reconstructed = this.remoteBaseline(loadedState.state);
-    for (const change of changesResult.value.changes) {
+    for (const change of changes) {
       if (change.kind === "upsert") {
         if (this.pathIncluded(change.entry.path)) reconstructed.set(String(change.entry.remoteObjectId), change.entry);
         else reconstructed.delete(String(change.entry.remoteObjectId));
       } else reconstructed.delete(String(change.remoteObjectId));
     }
     const remoteEntries = this.filterRemote([...reconstructed.values()]);
-    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, remoteEntries, changesResult.value.completeness);
-    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
+    const remoteCompleteness: EnumerationCompleteness = { status: "complete" };
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, remoteEntries, remoteCompleteness);
+    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteCompleteness, nextCursor: terminalCursor, mode: "incremental" };
   }
 
   private async loadState(runId?: number): Promise<StateLoadResult> {
@@ -236,9 +260,6 @@ export class ProductSnapshotAssembler {
             ? raw === uncertainPath
             : raw === uncertainPath || raw.startsWith(`${uncertainPath}/`);
         });
-        // An incomplete legacy listing without explicit scope evidence remains
-        // globally uncertain. Once scopes are supplied, only matching paths lose
-        // absence authority.
         if (!localUncertainties?.length || matching?.length) {
           local = { status: "unknown", side: "local", path: p, reason: matching?.map(item => item.reason).join("; ") || localCompleteness.reason };
         }
