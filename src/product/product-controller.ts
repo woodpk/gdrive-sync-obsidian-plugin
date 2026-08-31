@@ -2,6 +2,7 @@ import {
   IntegratedProductController as BaseIntegratedProductController,
   type ProductControllerOptions,
 } from "./product-controller-base";
+import { authoritativeDiagnostics, withExecutionLifecycleObserver } from "./authority-execution-diagnostics";
 import { TrustedStateSynchronizationAuthorityStore } from "./trusted-state-authority-store";
 
 export type {
@@ -18,10 +19,13 @@ export type {
  */
 export class IntegratedProductController extends BaseIntegratedProductController {
   constructor(options: ProductControllerOptions) {
+    const diagnostics = authoritativeDiagnostics(options.diagnostics);
+    const authorityStore = options.authorityStore
+      ?? new TrustedStateSynchronizationAuthorityStore(options.stateStore, options.stateContext);
     super({
       ...options,
-      authorityStore: options.authorityStore
-        ?? new TrustedStateSynchronizationAuthorityStore(options.stateStore, options.stateContext),
+      ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
+      authorityStore: withExecutionLifecycleObserver(authorityStore, diagnostics.observer),
     });
   }
 }
