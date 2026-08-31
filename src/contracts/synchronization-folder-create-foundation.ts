@@ -3,26 +3,35 @@ import type {
   MutationIntentId,
   ObservationToken,
   OperationId,
+  PersistenceRevision,
   RemoteObjectId,
+  SemanticStateGeneration,
   VaultPath,
 } from "./common";
 import {
   restartRecoveryDirective,
+  type AuthoritativeBaseTransition,
+  type DurableRemoteChangeBatch,
+  type LocalMutationTransaction,
   type PathConvergenceState,
   type RecoverableOperationStage,
   type RecoverablePhysicalMutationDescriptor,
   type RemoteMutationIdentity,
   type RestartRecoveryDirective,
   type SemanticAuthorityReference,
+  type SemanticStateValidationIssue,
+  type SynchronizationAuthoritySaveResult,
 } from "./synchronization-foundation";
 
 /**
  * Additive Phase 6 v1.1 folder-create recovery contract.
  *
- * The pre-v1.1 RecoverablePhysicalMutationDescriptor remains compatibility
- * authority for the already-reviewed file/move/trash surface. New
- * synchronization code must use RecoverablePhysicalMutationDescriptorV1_1 so
- * empty-folder creation participates in the same durable mutation lifecycle.
+ * The pre-v1.1 RecoverablePhysicalMutationDescriptor and synchronization
+ * authority metadata/store remain compatibility surfaces for already-reviewed
+ * file/move/trash behavior. New or resumed v1.1 synchronization code must use
+ * the v1.1 descriptor, metadata, and store surfaces below so empty-folder
+ * creation participates in the same durable mutation lifecycle without a
+ * sidecar or worker-local authority contract.
  */
 export interface FolderCreatePathAuthority extends SemanticAuthorityReference {
   readonly targetPath: VaultPath;
@@ -84,6 +93,66 @@ export type RecoverableOperationIntentV1_1 =
       readonly semanticAuthority: SemanticAuthorityReference;
       readonly effects: readonly [RecoverableMutationEffectV1_1, RecoverableMutationEffectV1_1, ...RecoverableMutationEffectV1_1[]];
     };
+
+/**
+ * Canonical authoritative metadata for new/resumed phase6-sync-foundation-v1.1
+ * synchronization. Unlike the v1 compatibility metadata, this surface can
+ * durably carry folder-create intents through save/load/restart.
+ */
+export interface SynchronizationAuthorityMetadataV1_1 {
+  readonly persistenceRevision: PersistenceRevision;
+  readonly semanticGeneration: SemanticStateGeneration;
+  readonly learnedRemoteBatches: readonly DurableRemoteChangeBatch[];
+  readonly pathConvergence: readonly { readonly path: VaultPath; readonly state: PathConvergenceState }[];
+  readonly operationIntents: readonly RecoverableOperationIntentV1_1[];
+  readonly localTransactions: readonly LocalMutationTransaction[];
+}
+
+export type SynchronizationAuthorityLoadResultV1_1<TState extends SynchronizationAuthorityMetadataV1_1> =
+  | { readonly status: "trusted"; readonly state: TState }
+  | { readonly status: "uninitialized" }
+  | { readonly status: "recovery-required"; readonly issues: readonly SemanticStateValidationIssue[] };
+
+/**
+ * Frozen authority persistence seam for v1.1. Workstreams C and D exchange
+ * folder-capable state only through this contract; no sidecar or shadow store
+ * is required or permitted.
+ */
+export interface SynchronizationAuthorityStoreV1_1<
+  TState extends SynchronizationAuthorityMetadataV1_1 = SynchronizationAuthorityMetadataV1_1,
+> {
+  loadAuthority(): Promise<SynchronizationAuthorityLoadResultV1_1<TState>>;
+  saveAuthority(
+    state: TState,
+    expectedPersistenceRevision: PersistenceRevision,
+    expectedSemanticGeneration?: SemanticStateGeneration,
+  ): Promise<SynchronizationAuthoritySaveResult>;
+  commitBaseTransition(
+    transition: AuthoritativeBaseTransition,
+    expectedPersistenceRevision: PersistenceRevision,
+    expectedSemanticGeneration: SemanticStateGeneration,
+  ): Promise<SynchronizationAuthoritySaveResult>;
+}
+
+export interface RecoverableEffectRestartDirectiveV1_1 {
+  readonly effectId: string;
+  readonly directive: RestartRecoveryDirective;
+}
+
+/** Shared restart classification for every effect in a folder-capable v1.1 operation. */
+export function recoverableOperationV1_1RestartRecoveryDirectives(
+  intent: RecoverableOperationIntentV1_1,
+): readonly RecoverableEffectRestartDirectiveV1_1[] {
+  return intent.effects.map(effect => ({
+    effectId: effect.effectId,
+    directive: restartRecoveryDirective(effect),
+  }));
+}
+
+/** Shared logical completion rule: every required physical effect must be state-committed. */
+export function recoverableOperationV1_1IsComplete(intent: RecoverableOperationIntentV1_1): boolean {
+  return intent.effects.every(effect => effect.stage === "state-committed");
+}
 
 export type LocalFolderCreateObservation =
   | {
