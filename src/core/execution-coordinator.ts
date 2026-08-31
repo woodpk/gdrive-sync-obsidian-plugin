@@ -8,6 +8,7 @@ import type {
   ExecutablePlannedOperation,
   ExecutionResult,
   IdentityAuthorityProof,
+  OperationPrecondition,
   PlannedOperation,
   RemoteObjectMapping,
   StateLoadContext,
@@ -220,7 +221,7 @@ export class AuthorityCompleteExecutionCoordinator {
     return result;
   }
 
-  private observe(operation: PlannedOperation, stage: Parameters<NonNullable<ExecutionLifecycleObserver>>[1], result?: string, error?: unknown, failed?: readonly ExecutableOperationPrecondition[]): void {
+  private observe(operation: PlannedOperation, stage: Parameters<NonNullable<ExecutionLifecycleObserver>>[1], result?: string, error?: unknown, failed?: readonly OperationPrecondition[]): void {
     try { this.observer?.(operation, stage, result, error, failed); } catch { /* diagnostics are non-authoritative */ }
   }
 
