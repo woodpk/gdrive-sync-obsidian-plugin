@@ -91,3 +91,5 @@ test("verified both-deleted transition removes prior base and records a durable 
     assert.equal(loaded.state.tombstones[0].deletedOn, "both");
   }
 });
+
+import "./workstreams/state/state-authority.test";
