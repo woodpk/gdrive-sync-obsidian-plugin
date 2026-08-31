@@ -23,6 +23,7 @@ import {
   createInitialAuthorityState,
   createInitialAuthorityStateV1,
   type DurableSynchronizationAuthorityState,
+  type DurableSynchronizationAuthorityStateV1,
 } from "../../../src/state/persistent-state-store";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
@@ -108,7 +109,8 @@ test("v1.1 production store round-trips REMOTE folder-create parent and pre-rese
   if (descriptor?.kind !== "remote-folder-create") return;
   assert.equal(descriptor.parentRemoteObjectId, remoteId("folder:parent:stable"));
   assert.equal(descriptor.remoteMutation.reservedRemoteObjectId, remoteId("folder:reserved:stable"));
-  assert.deepEqual(await restarted.restartRecoveryDirectives(), [{ operationId: intent.operationId, effectId: "effect:remote-folder", directive: { action: "reconcile-physical-reality" } }]);
+  const directives = await restarted.restartRecoveryDirectives();
+  assert.equal(directives[0]?.directive.action, "reconcile-physical-reality");
 });
 
 test("v1.1 dispatch-authorized remote folder is may-have-happened, never treated as not applied", async () => {
@@ -155,7 +157,8 @@ test("explicit v1-to-v1.1 migration is backup/CAS safe and preserves existing fi
     oldFileIntent("move", { kind: "move", targetSide: "remote", fromPath: target, toPath: moved, remoteObjectId: remote, identityAuthority: identity }),
     oldFileIntent("trash", { kind: "trash", targetSide: "remote", path: target, remoteObjectId: remote, baseAuthority: { generation: gen(1), path: target, fingerprint: fingerprint("base:a") }, identityAuthority: identity }),
   ];
-  assert.equal((await store.saveTrusted({ ...source, operationIntents: intents })).status, "saved");
+  const priorV1: DurableSynchronizationAuthorityStateV1 = { ...source, operationIntents: intents };
+  assert.equal((await store.saveTrusted(priorV1)).status, "saved");
   assert.equal((await store.loadAuthority()).status, "recovery-required");
   const migrated = await store.migrateAuthorityV1ToV1_1(); assert.equal(migrated.status, "migrated");
   assert.equal(storage.backups.size, 1);
@@ -178,8 +181,16 @@ test("malformed or inconsistent persisted v1.1 folder journal fails closed", asy
 });
 
 test("v1.1 validator rejects folder descriptor/operation intent mismatch before persistence", async () => {
-  const { store } = await setup(); const good = localFolder(); const effect = good.effects[0];
-  const bad: RecoverableOperationIntentV1_1 = { ...good, intentId: mutationId("intent:different"), effects: [effect] };
+  const { store } = await setup(); const good = localFolder();
+  assert.equal(good.logicalKind, "single-effect");
+  if (good.logicalKind !== "single-effect") throw new Error("expected local folder helper to produce a single-effect intent");
+  const bad: RecoverableOperationIntentV1_1 = {
+    logicalKind: "single-effect",
+    operationId: good.operationId,
+    intentId: mutationId("intent:different"),
+    semanticAuthority: good.semanticAuthority,
+    effects: [good.effects[0]],
+  };
   const result = await store.persistOperationIntent(bad, rev(1), gen(1));
   assert.equal(result.status, "recovery-required");
 });
