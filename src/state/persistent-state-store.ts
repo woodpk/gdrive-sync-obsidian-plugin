@@ -536,11 +536,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     const stages: readonly RecoverableMutationEffect["stage"][] = ["intent-persisted", "dispatch-authorized", "outcome-unknown", "effect-verified", "state-committed"];
     const from = stages.indexOf(currentEffect.stage);
     const to = stages.indexOf(stage);
+    const legalDirectVerification = currentEffect.stage === "dispatch-authorized" && stage === "effect-verified";
     const legalUnknownRecovery = currentEffect.stage === "outcome-unknown" && stage === "effect-verified";
-    if (to < from || (to > from + 1 && !legalUnknownRecovery)) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", `illegal effect-stage transition ${currentEffect.stage}->${stage}`, undefined, "journal-stage-order")] };
+    if (to < from || (to > from + 1 && !legalDirectVerification && !legalUnknownRecovery)) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", `illegal effect-stage transition ${currentEffect.stage}->${stage}`, undefined, "journal-stage-order")] };
     if ((stage === "effect-verified" || stage === "state-committed") && !verificationEvidenceRef && !currentEffect.verificationEvidenceRef) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", "verified/committed effect transition requires durable verification evidence", undefined, "journal-verification")] };
 
-    const updatedEffects = intent.effects.map(effect => effect.effectId === effectId ? { ...effect, stage, verificationEvidenceRef: verificationEvidenceRef ?? effect.verificationEvidenceRef } : effect) as RecoverableOperationIntent["effects"];
+    const updatedEffects = intent.effects.map(effect => effect.effectId === effectId ? { ...effect, stage, verificationEvidenceRef: verificationEvidenceRef ?? effect.verificationEvidenceRef } : effect) as unknown as RecoverableOperationIntent["effects"];
     const updatedIntent = { ...intent, effects: updatedEffects } as RecoverableOperationIntent;
     const next = { ...loaded.state, operationIntents: loaded.state.operationIntents.map(item => item.operationId === operationId ? updatedIntent : item) };
     return this.saveAuthority(next, expectedPersistenceRevision, expectedSemanticGeneration);
