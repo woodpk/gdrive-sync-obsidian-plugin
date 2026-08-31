@@ -46,7 +46,6 @@ function semanticGeneration(state: TrustedSynchronizationState): SemanticStateGe
       remoteObjectId: entry.remoteObjectId ? String(entry.remoteObjectId) : undefined,
       sourceDeviceId: String(entry.sourceDeviceId),
     })),
-    changeCursor: state.changeCursor ? String(state.changeCursor) : undefined,
   };
   return contractId<"SemanticStateGeneration">(`semantic:${String(sha256Text(JSON.stringify(semantic)))}`) as SemanticStateGeneration;
 }
@@ -89,11 +88,14 @@ function recoveryIssue(detail: string) {
 }
 
 /**
- * Production bridge from the already durable trusted synchronization state to
- * the frozen v1.1 authority read model. It does not accept shadow authority
- * writes: verified operation results continue to commit through the canonical
- * SynchronizationStateStore, and the next authority read is derived from that
- * durable state.
+ * Read-only production bridge from canonical trusted synchronization state into
+ * the frozen v1.1 authority read model. It can establish exact BASE/identity
+ * authority, but it is intentionally NOT a persistence adapter for operation
+ * intents, physical effect stages, LOCAL transactions, or learned REMOTE batches.
+ *
+ * Workstream C owns the concrete writable authority persistence adapter. D must
+ * fail closed rather than acknowledge an authority transition that was not
+ * durably written.
  */
 export class TrustedStateSynchronizationAuthorityStore implements SynchronizationAuthorityStoreV1_1 {
   constructor(
@@ -111,7 +113,7 @@ export class TrustedStateSynchronizationAuthorityStore implements Synchronizatio
   }
 
   async saveAuthority(
-    state: SynchronizationAuthorityMetadataV1_1,
+    _state: SynchronizationAuthorityMetadataV1_1,
     expectedPersistenceRevision: PersistenceRevision,
     expectedSemanticGeneration?: SemanticStateGeneration,
   ): Promise<SynchronizationAuthoritySaveResult> {
@@ -125,13 +127,9 @@ export class TrustedStateSynchronizationAuthorityStore implements Synchronizatio
     if (expectedSemanticGeneration && loaded.state.semanticGeneration !== expectedSemanticGeneration) {
       return { status: "stale-semantic-authority", actualSemanticGeneration: loaded.state.semanticGeneration };
     }
-    if (state.semanticGeneration !== loaded.state.semanticGeneration) {
-      return { status: "stale-semantic-authority", actualSemanticGeneration: loaded.state.semanticGeneration };
-    }
     return {
-      status: "saved",
-      persistenceRevision: loaded.state.persistenceRevision,
-      semanticGeneration: loaded.state.semanticGeneration,
+      status: "recovery-required",
+      issues: recoveryIssue("read-through trusted-state authority bridge is not a writable durable SynchronizationAuthorityStoreV1_1"),
     };
   }
 
@@ -150,6 +148,6 @@ export class TrustedStateSynchronizationAuthorityStore implements Synchronizatio
     if (loaded.state.semanticGeneration !== expectedSemanticGeneration) {
       return { status: "stale-semantic-authority", actualSemanticGeneration: loaded.state.semanticGeneration };
     }
-    return { status: "recovery-required", issues: recoveryIssue("BASE transitions must commit through the verified canonical state committer; shadow authority mutation is disabled") };
+    return { status: "recovery-required", issues: recoveryIssue("BASE transitions require the concrete writable authority persistence adapter; read-through bridge is read-only") };
   }
 }
