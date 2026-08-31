@@ -12,7 +12,6 @@ import type {
   PlannedOperation,
   RemoteObjectMapping,
   StateLoadContext,
-  StateRevision,
   SynchronizationAuthorityMetadataV1_1,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
@@ -87,20 +86,16 @@ export function resolveAuthorityCompleteOperation(
   return { status: "ready", operation: { ...operation, authorityComplete: true, preconditions } };
 }
 
-type JournalCapableCommitter = AuthorityCompleteSuccessCommitter & {
-  markPending(operation: PlannedOperation, expectedStateRevision?: StateRevision): Promise<CommitResult>;
-  discardPending(operation: PlannedOperation, expectedStateRevision: StateRevision): Promise<CommitResult>;
-  markUncertain(operation: PlannedOperation, expectedStateRevision?: StateRevision): Promise<CommitResult>;
-};
-
-function journalCapable(value: AuthorityCompleteSuccessCommitter): value is JournalCapableCommitter {
-  const candidate = value as Partial<JournalCapableCommitter>;
-  return typeof candidate.markPending === "function"
-    && typeof candidate.discardPending === "function"
-    && typeof candidate.markUncertain === "function";
-}
-
-/** Authority-complete production boundary. No nominal planner authority reaches mutation. */
+/**
+ * Authority-complete production boundary. The executor owns the frozen durable
+ * physical-effect lifecycle; this coordinator performs semantic resolution,
+ * independently revalidates executable authority, and commits canonical state
+ * only after the executor proves every required physical effect is durably
+ * verified/state-committed and logically eligible.
+ *
+ * Legacy OperationJournalEntry pending/uncertain writes are intentionally not
+ * used as physical-dispatch authority here.
+ */
 export class AuthorityCompleteExecutionCoordinator {
   private readonly observer?: ExecutionLifecycleObserver;
 
@@ -143,25 +138,6 @@ export class AuthorityCompleteExecutionCoordinator {
       return this.complete(executable, invalid);
     }
 
-    const journal = journalCapable(this.committer) ? this.committer : undefined;
-    let mutationExpectedRevision = loaded.state.persistenceRevision as StateRevision;
-    if (journal) {
-      this.observe(executable, "pending-journal-start");
-      let pending: CommitResult;
-      try { pending = await journal.markPending(executable, mutationExpectedRevision); }
-      catch (error) { this.observe(executable, "pending-journal-failed", "threw", error); throw error; }
-      this.observe(executable, "pending-journal-complete", pending.status);
-      if (pending.status === "stale-state") {
-        this.observe(executable, "pending-journal-failed", pending.status);
-        return this.complete(executable, { status: "stale-state", actualRevision: pending.actualRevision });
-      }
-      if (pending.status === "recovery-required") {
-        this.observe(executable, "pending-journal-failed", pending.status);
-        return this.complete(executable, { status: "recovery-required", reason: pending.reason });
-      }
-      mutationExpectedRevision = pending.newStateRevision;
-    }
-
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
@@ -172,7 +148,7 @@ export class AuthorityCompleteExecutionCoordinator {
       this.observe(executable, "integrity-verification-complete", "verified");
       this.observe(executable, "state-commit-start");
       let commit: CommitResult;
-      try { commit = await this.committer.commitVerifiedSuccess(executable, execution.receipt, mutationExpectedRevision); }
+      try { commit = await this.committer.commitVerifiedSuccess(executable, execution.receipt); }
       catch (error) { this.observe(executable, "state-commit-failed", "threw", error); throw error; }
       this.observe(executable, "state-commit-complete", commit.status);
       if (commit.status === "committed") return this.complete(executable, { status: "committed", commit });
@@ -185,34 +161,6 @@ export class AuthorityCompleteExecutionCoordinator {
     }
 
     this.observe(executable, "content-mutation-failed", execution.status, undefined, execution.status === "stale-precondition" ? execution.failed : undefined);
-    if (execution.status === "stale-precondition" && journal) {
-      this.observe(executable, "pending-journal-discard-start");
-      let discarded: CommitResult;
-      try { discarded = await journal.discardPending(executable, mutationExpectedRevision); }
-      catch (error) { this.observe(executable, "pending-journal-discard-failed", "threw", error); throw error; }
-      this.observe(executable, "pending-journal-discard-complete", discarded.status);
-      if (discarded.status === "stale-state") {
-        this.observe(executable, "pending-journal-discard-failed", discarded.status);
-        return this.complete(executable, { status: "stale-state", actualRevision: discarded.actualRevision });
-      }
-      if (discarded.status === "recovery-required") {
-        this.observe(executable, "pending-journal-discard-failed", discarded.status);
-        return this.complete(executable, { status: "recovery-required", reason: discarded.reason });
-      }
-    }
-    if (execution.status === "uncertain" && journal) {
-      let marked: CommitResult;
-      try { marked = await journal.markUncertain(executable, mutationExpectedRevision); }
-      catch (error) { this.observe(executable, "uncertain-state-journal-failed", "threw", error); throw error; }
-      if (marked.status === "stale-state") {
-        this.observe(executable, "uncertain-state-journal-failed", marked.status);
-        return this.complete(executable, { status: "stale-state", actualRevision: marked.actualRevision });
-      }
-      if (marked.status === "recovery-required") {
-        this.observe(executable, "uncertain-state-journal-failed", marked.status);
-        return this.complete(executable, { status: "recovery-required", reason: marked.reason });
-      }
-    }
     return this.complete(executable, this.mapAuthoritativeExecution(execution));
   }
 
