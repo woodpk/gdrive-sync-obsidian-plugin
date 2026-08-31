@@ -77,7 +77,7 @@ function singleIntent(kind: string): RecoverableOperationIntentV1_1 {
 
 function emptyAuthority(): SynchronizationAuthorityMetadataV1_1 {
   return {
-    persistenceRevision: id<"PersistenceRevision">("p:0") as PersistenceRevision,
+    persistenceRevision: id<"StateRevision">("p:0") as PersistenceRevision,
     semanticGeneration: generation,
     learnedRemoteBatches: [], pathConvergence: [], operationIntents: [], localTransactions: [],
   };
@@ -91,7 +91,7 @@ class MemoryStore implements SynchronizationAuthorityStoreV1_1 {
   async saveAuthority(candidate: SynchronizationAuthorityMetadataV1_1, expectedPersistenceRevision: PersistenceRevision): Promise<SynchronizationAuthoritySaveResult> {
     assert.equal(expectedPersistenceRevision, this.state.persistenceRevision, "every lifecycle write must use the immediately prior durable revision");
     this.saves += 1;
-    const persistenceRevision = id<"PersistenceRevision">(`p:${this.saves}`) as PersistenceRevision;
+    const persistenceRevision = id<"StateRevision">(`p:${this.saves}`) as PersistenceRevision;
     this.state = { ...candidate, persistenceRevision };
     this.savedStages.push(this.state.operationIntents.flatMap(intent => intent.effects.map(effect => `${effect.effectId}:${effect.stage}`)));
     return { status: "saved", persistenceRevision, semanticGeneration: this.state.semanticGeneration };
