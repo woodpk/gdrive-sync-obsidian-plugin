@@ -1,3 +1,4 @@
+import "./workstreams/drive/phase6-remote-protocol.test";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../src/contracts/common";

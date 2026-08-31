@@ -1,6 +1,9 @@
-import { contractId, type BinaryContentSource, type ChangeCursor, type ContentEvidence, type ContentHash, type ProtocolVersion, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../contracts/common";
+import { contractId, type BinaryContentSource, type ChangeCursor, type ContentEvidence, type ContentHash, type MutationIntentId, type ProtocolVersion, type RemoteObjectId, type RemoteRevisionId, type VaultIdentity, type VaultPath } from "../contracts/common";
 import type { DriveAuthenticationState, DriveResult, DriveSignal, GoogleDrivePort, ManagedRemoteIdentity, ManagedRemoteValidation, RemoteChange, RemoteChangePage, RemoteCreateRequest, RemoteDownload, RemoteEntry, RemoteListing, RemoteMutationReceipt, RemoteProtocolInfo, RemoteUpdateRequest } from "../contracts/google-drive";
 import type { RemoteObservation } from "../contracts/snapshot";
+import { classifyRemoteChangePage, resolveRemotePathCandidates, type CanonicalFileContentProof, type CoherentRemoteDownload, type CoherentRemoteReadPort, type ReliableRemoteChangePort, type ReliableRemoteMutationPort, type RemoteMutationIdentity, type RemoteMutationOutcome, type RemotePathCandidate, type SynchronizationCancellationSignal } from "../contracts/synchronization-foundation";
+import type { RemoteFolderCreateObservation, RemoteFolderCreatePhysicalMutationDescriptor, RemoteFolderCreateRecoveryReadPort } from "../contracts/synchronization-folder-create-foundation";
+import { Sha256 } from "../util/sha256";
 import { GoogleOAuthSession, ObsidianSecretStore } from "./auth";
 import { GoogleHttpTransport, withRemoteId } from "./transport";
 
@@ -26,6 +29,7 @@ type DomainKind = typeof CONTENT_DOMAIN | typeof CONFIG_DOMAIN;
 interface DriveFile { id: string; name?: string; mimeType?: string; parents?: string[]; trashed?: boolean; size?: string; sha256Checksum?: string; md5Checksum?: string; modifiedTime?: string; version?: string; appProperties?: Record<string,string>; }
 interface FileListResponse { files?: DriveFile[]; nextPageToken?: string; }
 interface ChangesResponse { changes?: Array<{ fileId: string; removed?: boolean; file?: DriveFile }>; nextPageToken?: string; newStartPageToken?: string; }
+interface GenerateIdsResponse { ids?: string[]; }
 interface AboutResponse { user?: { displayName?: string; emailAddress?: string; permissionId?: string } }
 interface DomainRoots { content: DriveFile; config: DriveFile; }
 interface DomainProvenance { readonly managedRootId: RemoteObjectId; readonly domain: DomainKind; }
@@ -33,17 +37,19 @@ interface DomainProvenance { readonly managedRootId: RemoteObjectId; readonly do
 const rid = (value: string) => contractId<"RemoteObjectId">(value) as RemoteObjectId;
 const vpath = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const cursor = (value: string) => contractId<"ChangeCursor">(value) as ChangeCursor;
+const revision = (value: string) => contractId<"RemoteRevisionId">(value) as RemoteRevisionId;
 const pversion = (value: string) => contractId<"ProtocolVersion">(value) as ProtocolVersion;
-export const REMOTE_PROTOCOL_VERSION = pversion("1");
 const hash = (value: string) => contractId<"ContentHash">(value) as ContentHash;
+export const REMOTE_PROTOCOL_VERSION = pversion("1");
 const escaped = (value: string) => value.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-const segmentName = (path: VaultPath) => String(path).split("/").filter(Boolean).at(-1) ?? "";
-const parentPath = (path: VaultPath) => vpath(String(path).split("/").filter(Boolean).slice(0,-1).join("/"));
+const segmentName = (path: VaultPath | string) => String(path).split("/").filter(Boolean).at(-1) ?? "";
+const parentPath = (path: VaultPath | string) => vpath(String(path).split("/").filter(Boolean).slice(0,-1).join("/"));
 const joinPath = (parent: string, name: string) => vpath(parent ? `${parent}/${name}` : name);
 const isConfigPath = (path: VaultPath | string) => String(path).startsWith(`${PORTABLE_CONFIG_NAME}/`);
 const configRelativePath = (path: VaultPath) => vpath(String(path).slice(PORTABLE_CONFIG_NAME.length + 1));
 const configLogicalPath = (relative: VaultPath) => vpath(`${PORTABLE_CONFIG_NAME}/${String(relative)}`);
 const domainForLogicalPath = (path: VaultPath | string): DomainKind => isConfigPath(path) ? CONFIG_DOMAIN : CONTENT_DOMAIN;
+const pathComparisonKey = (path: VaultPath | string) => String(path).replace(/\\/g,"/").replace(/^\.\//,"").replace(/\/{2,}/g,"/").replace(/\/$/,"").normalize("NFC").toLocaleLowerCase("en-US");
 
 function evidence(file: DriveFile): ContentEvidence {
   return {
@@ -56,16 +62,22 @@ function evidence(file: DriveFile): ContentEvidence {
 function entry(path: VaultPath, file: DriveFile): RemoteEntry { return { path, entityKind: file.mimeType === FOLDER_MIME ? "folder" : "file", remoteObjectId: rid(file.id), content: file.mimeType === FOLDER_MIME ? undefined : evidence(file), trashed: Boolean(file.trashed) }; }
 async function json<T>(response: Response): Promise<T> { return await response.json() as T; }
 function partialReason(signal: { readonly kind: string; readonly detail?: string }, fallback: string): string { return signal.detail ?? signal.kind ?? fallback; }
-function streamSignalMessage(signal: DriveSignal): string { if ("detail" in signal && signal.detail) return signal.detail; return signal.kind; }
+function streamSignalMessage(signal: DriveSignal): string { return "detail" in signal && signal.detail ? signal.detail : signal.kind; }
+function cancelled(signal?: SynchronizationCancellationSignal): boolean { return Boolean(signal?.cancelled); }
+function canonicalMatches(file: DriveFile, proof: CanonicalFileContentProof): boolean {
+  const ev = evidence(file);
+  return ev.sizeBytes === proof.sizeBytes && ev.hash === proof.hash;
+}
+function revisionMatches(file: DriveFile, expected: RemoteRevisionId | string): boolean { return file.version === String(expected); }
 
-/** Preserves the original Drive semantic signal across lazy BinaryContentSource consumption. */
+/** Preserves Drive semantic failure across lazy BinaryContentSource consumption. */
 export class DriveContentStreamError extends Error {
   readonly driveSignal: DriveSignal;
   constructor(signal: DriveSignal) { super(`drive-download-${signal.kind}:${streamSignalMessage(signal)}`); this.name = "DriveContentStreamError"; this.driveSignal = signal; }
 }
 export function isDriveContentStreamError(error: unknown): error is DriveContentStreamError { return error instanceof DriveContentStreamError || Boolean(error && typeof error === "object" && "driveSignal" in error); }
 
-export class GoogleDriveAdapter implements GoogleDrivePort {
+export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChangePort, ReliableRemoteMutationPort, CoherentRemoteReadPort, RemoteFolderCreateRecoveryReadPort {
   private readonly pathCache = new Map<string, VaultPath>();
   constructor(private readonly oauth: GoogleOAuthSession, private readonly transport: GoogleHttpTransport, private readonly secrets: ObsidianSecretStore) {}
 
@@ -97,36 +109,41 @@ export class GoogleDriveAdapter implements GoogleDrivePort {
     const validation = await this.validateByExpected(rootId, expectedVaultIdentity); if (!validation.ok || validation.value.status !== "valid") return validation;
     const account = await this.currentAccountKey(); if (!account.ok) return account; this.secrets.set(ACCOUNT_SECRET, account.value); return validation;
   }
-
   async validateManagedRoot(identity: ManagedRemoteIdentity): Promise<DriveResult<ManagedRemoteValidation>> {
     const guard = await this.guardPairedAccount(); if (!guard.ok) return guard;
     const result = await this.validateByExpected(identity.rootId, identity.vaultIdentity); if (!result.ok || result.value.status !== "valid") return result;
     if (String(result.value.identity.protocolVersion) !== String(identity.protocolVersion)) return { ok: true, value: { status: "incompatible-protocol", observedVersion: result.value.identity.protocolVersion } }; return result;
   }
-
   async protocolInfo(rootId: RemoteObjectId): Promise<DriveResult<RemoteProtocolInfo>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard;
-    const file = await this.getFile(rootId); if (!file.ok) return file; const observed = file.value.appProperties?.[APP_PROTOCOL];
+    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const file = await this.getFile(rootId); if (!file.ok) return file; const observed = file.value.appProperties?.[APP_PROTOCOL];
     if (!observed) return { ok: false, signal: { kind: "recovery-required", detail: "remote-protocol-metadata-missing" } };
     return { ok: true, value: { currentVersion: pversion(observed), compatible: observed === "1" } };
   }
 
+  /** Ordinary reconciliation is observation-only. Legacy provenance is accepted but never stamped here. */
   async listForReconciliation(rootId: RemoteObjectId): Promise<DriveResult<RemoteListing>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard;
-    const roots = await this.domainRoots(rootId); if (!roots.ok) return roots;
+    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const roots = await this.domainRoots(rootId); if (!roots.ok) return roots;
     const entries: RemoteEntry[] = []; this.pathCache.clear();
-    const ordinary = await this.listDomain(roots.value.content.id, "", entries, { managedRootId: rootId, domain: CONTENT_DOMAIN });
-    if (!ordinary.ok) {
-      if (ordinary.signal.kind === "transient-failure" || ordinary.signal.kind === "rate-limited") return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(ordinary.signal, "ordinary remote listing interrupted") } } };
-      return ordinary;
-    }
-    const config = await this.listDomain(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, entries, { managedRootId: rootId, domain: CONFIG_DOMAIN });
-    if (!config.ok) {
-      if (config.signal.kind === "transient-failure" || config.signal.kind === "rate-limited") return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(config.signal, "portable configuration listing interrupted") } } };
-      return config;
-    }
+    const ordinary = await this.listDomainReadOnly(roots.value.content.id, "", entries, { managedRootId: rootId, domain: CONTENT_DOMAIN });
+    if (!ordinary.ok) { if (ordinary.signal.kind === "transient-failure" || ordinary.signal.kind === "rate-limited") return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(ordinary.signal,"ordinary remote listing interrupted") } } }; return ordinary; }
+    const config = await this.listDomainReadOnly(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, entries, { managedRootId: rootId, domain: CONFIG_DOMAIN });
+    if (!config.ok) { if (config.signal.kind === "transient-failure" || config.signal.kind === "rate-limited") return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(config.signal,"portable configuration listing interrupted") } } }; return config; }
     const provenance = await this.validateManagedObjectProvenance(rootId, roots.value); if (!provenance.ok) return provenance;
     return { ok: true, value: { entries, completeness: { status: "complete" } } };
+  }
+
+  /** Explicit, idempotent legacy provenance migration. Never called by an observation method. */
+  async migrateLegacyDomainProvenance(rootId: RemoteObjectId): Promise<DriveResult<number>> {
+    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const roots = await this.domainRoots(rootId); if (!roots.ok) return roots;
+    let migrated = 0;
+    for (const [root, domain] of [[roots.value.content, CONTENT_DOMAIN],[roots.value.config, CONFIG_DOMAIN]] as const) {
+      const queue = [root.id];
+      while (queue.length) {
+        const parent = queue.shift()!; const children = await this.children(parent); if (!children.ok) return children;
+        for (const file of children.value) { const before = file.appProperties?.[APP_MANAGED_ROOT] === String(rootId) && file.appProperties?.[APP_DOMAIN] === domain; const stamped = await this.ensureDomainProvenance(file,{managedRootId:rootId,domain}); if (!stamped.ok) return stamped; if (!before) migrated++; if (file.mimeType === FOLDER_MIME) queue.push(file.id); }
+      }
+    }
+    return { ok: true, value: migrated };
   }
 
   async getStartCursor(rootId: RemoteObjectId): Promise<DriveResult<ChangeCursor>> {
@@ -135,263 +152,192 @@ export class GoogleDriveAdapter implements GoogleDrivePort {
     const body = await json<{startPageToken?: string}>(response.value); return body.startPageToken ? { ok: true, value: cursor(body.startPageToken) } : { ok: false, signal: { kind: "recovery-required", detail: "drive-start-cursor-missing" } };
   }
 
+  async readChangePage(identity: ManagedRemoteIdentity, requestedToken: ChangeCursor, cancellation?: SynchronizationCancellationSignal): ReturnType<ReliableRemoteChangePort["readChangePage"]> {
+    if (cancelled(cancellation)) return { ok:false, signal:{kind:"transient-failure",detail:"synchronization-cancelled"} };
+    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const validated = await this.validateManagedRoot(identity); if (!validated.ok || validated.value.status !== "valid") return validated.ok ? {ok:false,signal:{kind:"recovery-required",detail:`managed-remote-${validated.value.status}`}} : validated;
+    const roots = await this.domainRoots(identity.rootId); if (!roots.ok) return roots;
+    const raw = await this.readChangeRaw(identity.rootId, roots.value, requestedToken, cancellation); if (!raw.ok) return raw;
+    const classified = classifyRemoteChangePage({ requestedToken, changes: raw.value.changes, ...(raw.value.nextPageToken ? { nextPageToken: cursor(raw.value.nextPageToken) } : {}), ...(raw.value.newStartPageToken ? { newStartPageToken: cursor(raw.value.newStartPageToken) } : {}) });
+    return classified.status === "valid" ? { ok:true, value:classified.page } : { ok:false, signal:{kind:"recovery-required",detail:`drive-change-page-${classified.reason}`} };
+  }
+
+  /** Legacy compatibility surface. It returns one Drive page; reliable callers use readChangePage until terminal. */
   async readChanges(rootId: RemoteObjectId, changeCursor: ChangeCursor): Promise<DriveResult<RemoteChangePage>> {
     const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const roots = await this.domainRoots(rootId); if (!roots.ok) return roots;
-    const params = new URLSearchParams({ pageToken: String(changeCursor), spaces: "drive", pageSize: "1000", includeRemoved: "true", fields: `nextPageToken,newStartPageToken,changes(fileId,removed,file(${FIELDS}))` });
-    const response = await this.transport.request(`${DRIVE_API}/changes?${params}`); if (!response.ok) return response; const page = await json<ChangesResponse>(response.value); const changes: RemoteChange[] = [];
+    const raw = await this.readChangeRaw(rootId, roots.value, changeCursor); if (!raw.ok) return raw;
+    if (raw.value.nextPageToken && raw.value.newStartPageToken) return {ok:false,signal:{kind:"recovery-required",detail:"drive-change-page-both-page-tokens-present"}};
+    const next = raw.value.nextPageToken ?? raw.value.newStartPageToken; return next ? {ok:true,value:{changes:raw.value.changes,nextCursor:cursor(next),completeness:{status:"complete"}}} : {ok:false,signal:{kind:"recovery-required",detail:"drive-change-page-page-token-missing"}};
+  }
+
+  private async readChangeRaw(rootId: RemoteObjectId, roots: DomainRoots, requestedToken: ChangeCursor, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<{changes:RemoteChange[];nextPageToken?:string;newStartPageToken?:string}>> {
+    if (cancelled(cancellation)) return {ok:false,signal:{kind:"transient-failure",detail:"synchronization-cancelled"}};
+    const params = new URLSearchParams({pageToken:String(requestedToken),spaces:"drive",pageSize:"1000",includeRemoved:"true",fields:`nextPageToken,newStartPageToken,changes(fileId,removed,file(${FIELDS}))`});
+    const response = await this.transport.request(`${DRIVE_API}/changes?${params}`); if (!response.ok) return response; if (cancelled(cancellation)) return {ok:false,signal:{kind:"transient-failure",detail:"synchronization-cancelled"}};
+    const page = await json<ChangesResponse>(response.value); const changes: RemoteChange[] = [];
     for (const change of page.changes ?? []) {
-      if ([String(rootId), roots.value.content.id, roots.value.config.id].includes(change.fileId)) { if (change.removed || change.file?.trashed) return { ok: false, signal: { kind: "recovery-required", detail: "managed-remote-root-structure-changed" } }; continue; }
-      if (change.removed || !change.file) { const lastKnownPath = this.pathCache.get(change.fileId); changes.push({ kind: "removed", remoteObjectId: rid(change.fileId), ...(lastKnownPath ? { lastKnownPath } : {}) }); continue; }
-      const p = await this.logicalPathForFile(change.file, roots.value); if (!p.ok) return p;
-      if (!p.value) {
-        const establishedRoot = change.file.appProperties?.[APP_MANAGED_ROOT];
-        if (establishedRoot === String(rootId) || this.pathCache.has(change.fileId)) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-left-remote-domain:${change.fileId}` } };
-        return { ok: false, signal: { kind: "recovery-required", detail: `drive-change-object-domain-unprovable:${change.fileId}` } };
-      }
-      const expectedDomain = domainForLogicalPath(p.value); const stamped = await this.ensureDomainProvenance(change.file, { managedRootId: rootId, domain: expectedDomain }); if (!stamped.ok) return stamped;
-      this.pathCache.set(change.fileId, p.value); changes.push({ kind: "upsert", entry: entry(p.value, stamped.value) });
+      if ([String(rootId),roots.content.id,roots.config.id].includes(change.fileId)) { if (change.removed || change.file?.trashed) return {ok:false,signal:{kind:"recovery-required",detail:"managed-remote-root-structure-changed"}}; continue; }
+      if (change.removed || !change.file) { const lastKnownPath=this.pathCache.get(change.fileId); changes.push({kind:"removed",remoteObjectId:rid(change.fileId),...(lastKnownPath?{lastKnownPath}:{})}); continue; }
+      const p=await this.logicalPathForFile(change.file,roots); if(!p.ok)return p;
+      if(!p.value){ const establishedRoot=change.file.appProperties?.[APP_MANAGED_ROOT]; if(establishedRoot===String(rootId)||this.pathCache.has(change.fileId)) return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-left-remote-domain:${change.fileId}`}}; return {ok:false,signal:{kind:"recovery-required",detail:`drive-change-object-domain-unprovable:${change.fileId}`}}; }
+      const validation=this.validateFileProvenance(change.file,{managedRootId:rootId,domain:domainForLogicalPath(p.value)},true); if(!validation.ok)return validation;
+      this.pathCache.set(change.fileId,p.value); changes.push({kind:"upsert",entry:entry(p.value,change.file)});
     }
-    const next = page.nextPageToken ?? page.newStartPageToken; return next ? { ok: true, value: { changes, nextCursor: cursor(next), completeness: { status: "complete" } } } : { ok: false, signal: { kind: "recovery-required", detail: "drive-change-page-cursor-missing" } };
+    return {ok:true,value:{changes,...(page.nextPageToken?{nextPageToken:page.nextPageToken}:{}),...(page.newStartPageToken?{newStartPageToken:page.newStartPageToken}:{})}};
   }
 
   async observe(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<RemoteObservation>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const resolved = await this.resolveLogicalPath(rootId, path); if (!resolved.ok) return resolved;
-    if (!resolved.value) return { ok: true, value: { status: "absent", side: "remote", path } }; const file = resolved.value;
-    const provenance = this.validateFileProvenance(file, { managedRootId: rootId, domain: domainForLogicalPath(path) }, true); if (!provenance.ok) return provenance;
-    return { ok: true, value: { status: "present", side: "remote", path, entityKind: file.mimeType === FOLDER_MIME ? "folder" : "file", remoteObjectId: rid(file.id), content: file.mimeType === FOLDER_MIME ? undefined : evidence(file), stability: "stable" } };
+    const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const resolution=await this.resolveLogicalPathCandidates(rootId,path);if(!resolution.ok)return resolution;
+    if(resolution.value.status==="ambiguous")return {ok:false,signal:{kind:"conflict",detail:`ambiguous-remote-path:${String(path)}`}};
+    if(resolution.value.status==="absent")return {ok:true,value:{status:"absent",side:"remote",path}};
+    const file=resolution.value.file;const validation=this.validateFileProvenance(file,{managedRootId:rootId,domain:domainForLogicalPath(path)},true);if(!validation.ok)return validation;
+    return {ok:true,value:{status:"present",side:"remote",path,entityKind:file.mimeType===FOLDER_MIME?"folder":"file",remoteObjectId:rid(file.id),content:file.mimeType===FOLDER_MIME?undefined:evidence(file),stability:"stable"}};
   }
 
   async download(remoteObjectId: RemoteObjectId): Promise<DriveResult<RemoteDownload>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const meta = await this.getFile(remoteObjectId); if (!meta.ok) return meta;
-    if (meta.value.mimeType === FOLDER_MIME) return { ok: false, signal: { kind: "conflict", detail: "cannot-download-folder" } };
-    const ev = evidence(meta.value), size = ev.sizeBytes, self = this;
-    const content: BinaryContentSource = { ...(size !== undefined ? { sizeBytes: size } : {}), async *openChunks() {
-      if (size === 0) return; let offset = 0;
-      while (size === undefined || offset < size) {
-        const end = size === undefined ? offset + UPLOAD_CHUNK_BYTES - 1 : Math.min(size - 1, offset + UPLOAD_CHUNK_BYTES - 1);
-        const result = await self.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?alt=media`, { headers: { range: `bytes=${offset}-${end}` } });
-        if (!result.ok) throw new DriveContentStreamError(withRemoteId(result.signal, remoteObjectId));
-        const bytes = new Uint8Array(await result.value.arrayBuffer()); if (!bytes.length) break; yield bytes; offset += bytes.length; if (size === undefined && bytes.length < UPLOAD_CHUNK_BYTES) break;
-      }
-    } };
-    return { ok: true, value: { content, remoteObjectId, evidence: ev } };
+    const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const meta=await this.getFile(remoteObjectId);if(!meta.ok)return meta;if(meta.value.mimeType===FOLDER_MIME)return {ok:false,signal:{kind:"conflict",detail:"cannot-download-folder"}};
+    return {ok:true,value:{content:this.rangeSource(remoteObjectId,meta.value),remoteObjectId,evidence:evidence(meta.value)}};
   }
 
-  async create(rootId: RemoteObjectId, request: RemoteCreateRequest): Promise<DriveResult<RemoteMutationReceipt>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const domain = await this.domainForPath(rootId, request.path); if (!domain.ok) return domain;
-    const provenance: DomainProvenance = { managedRootId: rootId, domain: domainForLogicalPath(request.path) }; const relative = isConfigPath(request.path) ? configRelativePath(request.path) : request.path;
-    const parent = await this.ensureParentFrom(domain.value.id, parentPath(relative), provenance); if (!parent.ok) return parent;
-    if (request.entityKind === "folder") { const created = await this.metadataCreate({ name: segmentName(relative), mimeType: FOLDER_MIME, parents: [parent.value], appProperties: this.provenanceProperties(undefined, provenance) }); if (!created.ok) return created; this.pathCache.set(created.value.id, request.path); return { ok: true, value: { remoteObjectId: rid(created.value.id), path: request.path } }; }
-    if (!request.content) return { ok: false, signal: { kind: "conflict", detail: "file-create-content-required" } }; return this.resumableUpload("create", undefined, request.path, parent.value, request.content, request.expectedEvidence, provenance);
+  async downloadVersion(remoteObjectId: RemoteObjectId, expectedRevision: RemoteRevisionId, expectedEvidence: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<CoherentRemoteDownload>> {
+    if(cancelled(cancellation))return {ok:true,value:{status:"outcome-unknown",reason:"synchronization-cancelled"}};
+    const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const before=await this.getFile(remoteObjectId);if(!before.ok)return before;
+    if(before.value.mimeType===FOLDER_MIME)return {ok:false,signal:{kind:"conflict",detail:"cannot-download-folder"}};
+    if(!revisionMatches(before.value,expectedRevision)||!this.evidenceCompatible(evidence(before.value),expectedEvidence))return {ok:true,value:{status:"changed-during-transfer",reason:"remote-version-or-evidence-precondition-mismatch"}};
+    const self=this;const source:BinaryContentSource={...(before.value.size!==undefined?{sizeBytes:Number(before.value.size)}:{}),async *openChunks(){
+      const hasher=new Sha256();let total=0;for await(const bytes of self.rangeSource(remoteObjectId,before.value,cancellation).openChunks()){if(cancelled(cancellation))throw new DriveContentStreamError({kind:"transient-failure",detail:"synchronization-cancelled"});hasher.update(bytes);total+=bytes.length;yield bytes;}
+      const after=await self.getFile(remoteObjectId);if(!after.ok)throw new DriveContentStreamError(withRemoteId(after.signal,remoteObjectId));
+      const actualHash=hash(`sha256:${hasher.digestHex()}`);const expectedHash=expectedEvidence.hash ?? evidence(before.value).hash;
+      if(!revisionMatches(after.value,expectedRevision)||after.value.version!==before.value.version||!self.evidenceCompatible(evidence(after.value),expectedEvidence)|| (expectedHash!==undefined&&actualHash!==expectedHash) || (expectedEvidence.sizeBytes!==undefined&&total!==expectedEvidence.sizeBytes)) throw new DriveContentStreamError({kind:"recovery-required",detail:"remote-changed-during-coherent-download"});
+    }};
+    return {ok:true,value:{status:"coherent",remoteObjectId,revision:expectedRevision,evidence:evidence(before.value),content:source}};
   }
 
-  async update(request: RemoteUpdateRequest): Promise<DriveResult<RemoteMutationReceipt>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const existing = await this.getFile(request.remoteObjectId); if (!existing.ok) return existing;
-    if (request.expectedRemoteRevision && existing.value.version !== request.expectedRemoteRevision) return { ok: false, signal: { kind: "conflict", detail: "remote-revision-precondition-failed" } };
-    const domain = await this.domainForPathFromExisting(request.path, existing.value); if (!domain.ok) return domain;
-    return this.resumableUpload("update", request.remoteObjectId, request.path, existing.value.parents?.[0], request.content, request.expectedEvidence);
+  async reserveFileCreateIdentity(root: ManagedRemoteIdentity,intentId:MutationIntentId,path:VaultPath,intendedContent:CanonicalFileContentProof): ReturnType<ReliableRemoteMutationPort["reserveFileCreateIdentity"]> {
+    const valid=await this.validateManagedRoot(root);if(!valid.ok)return valid;if(valid.value.status!=="valid")return {ok:false,signal:{kind:"recovery-required",detail:`managed-remote-${valid.value.status}`}};
+    if(intendedContent.algorithm!=="sha256"||!String(intendedContent.hash).startsWith("sha256:")||intendedContent.sizeBytes<0)return {ok:false,signal:{kind:"conflict",detail:"canonical-create-content-proof-required"}};
+    const generated=await this.generateId();if(!generated.ok)return generated;return {ok:true,value:{kind:"reserved-file-create",intentId,reservedRemoteObjectId:generated.value,path,intendedContent}};
+  }
+  async reserveFolderCreateIdentity(root: ManagedRemoteIdentity,intentId:MutationIntentId,path:VaultPath): ReturnType<ReliableRemoteMutationPort["reserveFolderCreateIdentity"]> {
+    const valid=await this.validateManagedRoot(root);if(!valid.ok)return valid;if(valid.value.status!=="valid")return {ok:false,signal:{kind:"recovery-required",detail:`managed-remote-${valid.value.status}`}};const generated=await this.generateId();if(!generated.ok)return generated;return {ok:true,value:{kind:"reserved-folder-create",intentId,reservedRemoteObjectId:generated.value,path}};
   }
 
-  async move(remoteObjectId: RemoteObjectId, _fromPath: VaultPath, toPath: VaultPath): Promise<DriveResult<RemoteMutationReceipt>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const file = await this.getFile(remoteObjectId); if (!file.ok) return file;
-    const domain = await this.domainForPathFromExisting(toPath, file.value); if (!domain.ok) return domain; const relative = isConfigPath(toPath) ? configRelativePath(toPath) : toPath;
-    const root = await this.findManagedRootAncestor(file.value); if (!root.ok) return root as DriveResult<RemoteMutationReceipt>; if (!root.value) return { ok: false, signal: { kind: "recovery-required", detail: "managed-object-outside-remote-domain" } };
-    const provenance: DomainProvenance = { managedRootId: rid(root.value), domain: domainForLogicalPath(toPath) }; const parent = await this.ensureParentFrom(domain.value.id, parentPath(relative), provenance); if (!parent.ok) return parent;
-    const oldParents = (file.value.parents ?? []).join(","); const params = new URLSearchParams({ fields: FIELDS, addParents: parent.value }); if (oldParents) params.set("removeParents", oldParents);
-    const response = await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?${params}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: segmentName(relative), appProperties: this.provenanceProperties(file.value.appProperties, provenance) }) });
-    if (!response.ok) return { ok: false, signal: withRemoteId(response.signal, remoteObjectId) }; const moved = await json<DriveFile>(response.value); this.pathCache.set(moved.id, toPath);
-    return { ok: true, value: { remoteObjectId: rid(moved.id), path: toPath, evidence: moved.mimeType === FOLDER_MIME ? undefined : evidence(moved) } };
+  async createReserved(identity:Extract<RemoteMutationIdentity,{readonly kind:"reserved-file-create"|"reserved-folder-create"}>,content?:BinaryContentSource,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcome>{
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    const existing=await this.getFile(identity.reservedRemoteObjectId);if(existing.ok)return this.verifyReservedCreate(identity,existing.value);
+    if(existing.signal.kind!=="not-found")return {status:"outcome-unknown",reason:`reserved-id-observation-${existing.signal.kind}`};
+    const root=await this.uniqueManagedRoot();if(!root.ok)return {status:"outcome-unknown",reason:`managed-root-${root.signal.kind}`};
+    const parent=await this.resolveUniqueParent(root.value,identity.path);if(!parent.ok)return this.outcomeFromSignal(parent.signal,"reserved-create-parent");if(!parent.value)return {status:"verified-not-applied",reason:"reserved-create-parent-absent"};
+    const provenance:DomainProvenance={managedRootId:root.value.rootId,domain:domainForLogicalPath(identity.path)};
+    let dispatched:DriveResult<RemoteMutationReceipt|DriveFile>;
+    if(identity.kind==="reserved-folder-create")dispatched=await this.metadataCreate({id:String(identity.reservedRemoteObjectId),name:segmentName(identity.path),mimeType:FOLDER_MIME,parents:[parent.value],appProperties:this.provenanceProperties(undefined,provenance)});
+    else { if(!content)return {status:"verified-not-applied",reason:"reserved-file-create-content-required"}; if(content.sizeBytes!==undefined&&content.sizeBytes!==identity.intendedContent.sizeBytes)return {status:"verified-not-applied",reason:"reserved-file-create-size-precondition-mismatch"}; dispatched=await this.resumableUpload("create",identity.reservedRemoteObjectId,identity.path,parent.value,content,{hash:identity.intendedContent.hash,sizeBytes:identity.intendedContent.sizeBytes},provenance); }
+    if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-dispatch"};
+    if(!dispatched.ok&&dispatched.signal.kind!=="conflict")return {status:"outcome-unknown",reason:`reserved-create-dispatch-${dispatched.signal.kind}`};
+    const observed=await this.getFile(identity.reservedRemoteObjectId);if(!observed.ok)return {status:"outcome-unknown",reason:`reserved-create-post-observation-${observed.signal.kind}`};return this.verifyReservedCreate(identity,observed.value);
   }
 
-  async trash(remoteObjectId: RemoteObjectId): Promise<DriveResult<void>> {
-    const guard = await this.guardPairedAccount(); if (!guard.ok) return guard;
-    const response = await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?fields=id,trashed`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ trashed: true }) });
-    if (!response.ok) return { ok: false, signal: withRemoteId(response.signal, remoteObjectId) }; return { ok: true, value: undefined };
+  async updateExisting(identity:Extract<RemoteMutationIdentity,{readonly kind:"existing-file-content-update"}>,content:BinaryContentSource,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcome>{
+    if(identity.updateProtocol!=="immutable-candidate-preservation")return {status:"outcome-unknown",reason:"unsupported-update-protocol"};
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    const predecessor=await this.getFile(identity.remoteObjectId);if(!predecessor.ok)return this.outcomeFromSignalValue(predecessor.signal,"update-predecessor");
+    if(!revisionMatches(predecessor.value,identity.expectedRevision))return {status:"conflict-preserved",reason:"remote-revision-precondition-failed",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const root=await this.rootForFile(predecessor.value);if(!root.ok||!root.value)return {status:"outcome-unknown",reason:"update-managed-root-unprovable"};const roots=await this.domainRoots(root.value);if(!roots.ok)return {status:"outcome-unknown",reason:`update-domain-${roots.signal.kind}`};const actualPath=await this.logicalPathForFile(predecessor.value,roots.value);if(!actualPath.ok||!actualPath.value)return {status:"outcome-unknown",reason:"update-predecessor-path-unprovable"};
+    if(actualPath.value!==identity.path||identity.identityAuthority.remoteObjectId!==identity.remoteObjectId||identity.identityAuthority.path!==identity.path)return {status:"conflict-preserved",reason:"update-identity-authority-mismatch",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const candidateBefore=await this.getFile(identity.candidateRemoteObjectId);if(candidateBefore.ok)return this.verifyUpdateCandidate(identity,predecessor.value,candidateBefore.value,root.value);
+    if(candidateBefore.signal.kind!=="not-found")return {status:"outcome-unknown",reason:`candidate-pre-observation-${candidateBefore.signal.kind}`};
+    const parentId=predecessor.value.parents?.length===1?predecessor.value.parents[0]:undefined;if(!parentId)return {status:"outcome-unknown",reason:"predecessor-parent-unobservable"};
+    const provenance:DomainProvenance={managedRootId:root.value,domain:domainForLogicalPath(identity.path)};
+    const sent=await this.resumableUpload("create",identity.candidateRemoteObjectId,identity.path,parentId,content,{hash:identity.intendedContent.hash,sizeBytes:identity.intendedContent.sizeBytes},provenance);
+    if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-candidate-dispatch"};
+    if(!sent.ok&&sent.signal.kind!=="conflict")return {status:"outcome-unknown",reason:`candidate-dispatch-${sent.signal.kind}`};
+    const candidate=await this.getFile(identity.candidateRemoteObjectId);if(!candidate.ok)return {status:"outcome-unknown",reason:`candidate-post-observation-${candidate.signal.kind}`};const predecessorAfter=await this.getFile(identity.remoteObjectId);if(!predecessorAfter.ok)return {status:"outcome-unknown",reason:`predecessor-post-observation-${predecessorAfter.signal.kind}`};return this.verifyUpdateCandidate(identity,predecessorAfter.value,candidate.value,root.value);
   }
 
-  private async validateByExpected(rootId: RemoteObjectId, expected: VaultIdentity): Promise<DriveResult<ManagedRemoteValidation>> {
-    const file = await this.getFile(rootId); if (!file.ok) return file.signal.kind === "not-found" ? { ok: true, value: { status: "missing-root" } } : file;
-    if (file.value.trashed || file.value.mimeType !== FOLDER_MIME || file.value.appProperties?.[APP_ROLE] !== ROOT_ROLE) return { ok: true, value: { status: "missing-root" } };
-    const observedVault = file.value.appProperties?.[APP_VAULT], observedProtocol = file.value.appProperties?.[APP_PROTOCOL];
-    if (!observedVault) return { ok: true, value: { status: "ambiguous", reason: "managed-root-vault-identity-missing" } };
-    if (observedVault !== String(expected)) return { ok: true, value: { status: "identity-mismatch", observedVaultIdentity: contractId<"VaultIdentity">(observedVault) as VaultIdentity } };
-    if (!observedProtocol) return { ok: true, value: { status: "ambiguous", reason: "managed-root-protocol-version-missing" } };
-    const roots = await this.domainRoots(rootId);
-    if (!roots.ok) {
-      const signal = roots.signal;
-      if (signal.kind === "recovery-required" || signal.kind === "conflict") { const reason = "detail" in signal ? signal.detail : "managed-remote-domain-ambiguous"; return { ok: true, value: { status: "ambiguous", reason } }; }
-      return roots;
-    }
-    const version = pversion(observedProtocol); if (observedProtocol !== "1") return { ok: true, value: { status: "incompatible-protocol", observedVersion: version } };
-    return { ok: true, value: { status: "valid", identity: { rootId, vaultIdentity: expected, protocolVersion: version } } };
+  async moveExisting(identity:Extract<RemoteMutationIdentity,{readonly kind:"identity-preserving-move"}>,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcome>{
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    if(identity.identityAuthority.remoteObjectId!==identity.remoteObjectId||identity.identityAuthority.path!==identity.fromPath)return {status:"outcome-unknown",reason:"move-identity-authority-inconsistent"};
+    const file=await this.getFile(identity.remoteObjectId);if(!file.ok)return this.outcomeFromSignalValue(file.signal,"move-object");const root=await this.rootForFile(file.value);if(!root.ok||!root.value)return {status:"outcome-unknown",reason:"move-managed-root-unprovable"};const roots=await this.domainRoots(root.value);if(!roots.ok)return {status:"outcome-unknown",reason:`move-domain-${roots.signal.kind}`};const actual=await this.logicalPathForFile(file.value,roots.value);if(!actual.ok||!actual.value)return {status:"outcome-unknown",reason:"move-source-path-unprovable"};
+    if(actual.value===identity.toPath)return {status:"verified-effect",receipt:{remoteObjectId:identity.remoteObjectId,path:identity.toPath,evidence:file.value.mimeType===FOLDER_MIME?undefined:evidence(file.value)},applicationProof:{kind:"identity-preserving-move",remoteObjectId:identity.remoteObjectId,fromPath:identity.fromPath,toPath:identity.toPath}};
+    if(actual.value!==identity.fromPath)return {status:"conflict-preserved",reason:"move-source-no-longer-at-authorized-path",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const targets=await this.resolveLogicalPathCandidates(root.value,identity.toPath);if(!targets.ok)return {status:"outcome-unknown",reason:`move-target-${targets.signal.kind}`};if(targets.value.status!=="absent")return {status:"conflict-preserved",reason:"move-target-occupied-or-ambiguous",preservedRemoteObjectIds:targets.value.files.map(f=>rid(f.id))};
+    const parent=await this.resolveUniqueParent({rootId:root.value,vaultIdentity:contractId<"VaultIdentity">("unknown") as VaultIdentity,protocolVersion:REMOTE_PROTOCOL_VERSION},identity.toPath);if(!parent.ok)return this.outcomeFromSignalValue(parent.signal,"move-parent");if(!parent.value)return {status:"verified-not-applied",reason:"move-parent-absent"};
+    const oldParents=(file.value.parents??[]).join(",");const params=new URLSearchParams({fields:FIELDS,addParents:parent.value});if(oldParents)params.set("removeParents",oldParents);const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(identity.remoteObjectId))}?${params}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({name:segmentName(identity.toPath)})});
+    if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-move-dispatch"};if(!response.ok&&response.signal.kind!=="conflict")return {status:"outcome-unknown",reason:`move-dispatch-${response.signal.kind}`};
+    const after=await this.getFile(identity.remoteObjectId);if(!after.ok)return {status:"outcome-unknown",reason:`move-post-observation-${after.signal.kind}`};const afterPath=await this.logicalPathForFile(after.value,roots.value);if(!afterPath.ok||afterPath.value!==identity.toPath)return {status:"outcome-unknown",reason:"move-effect-not-verifiable"};return {status:"verified-effect",receipt:{remoteObjectId:identity.remoteObjectId,path:identity.toPath,evidence:after.value.mimeType===FOLDER_MIME?undefined:evidence(after.value)},applicationProof:{kind:"identity-preserving-move",remoteObjectId:identity.remoteObjectId,fromPath:identity.fromPath,toPath:identity.toPath}};
   }
 
-  private async validateRootExists(rootId: RemoteObjectId): Promise<DriveResult<void>> {
-    const file = await this.getFile(rootId); if (!file.ok) return file.signal.kind === "not-found" ? { ok: false, signal: { kind: "recovery-required", detail: "managed-remote-root-missing" } } : file;
-    if (file.value.trashed || file.value.appProperties?.[APP_ROLE] !== ROOT_ROLE) return { ok: false, signal: { kind: "recovery-required", detail: "managed-remote-root-missing-or-invalid" } }; return { ok: true, value: undefined };
+  async trashExisting(identity:Extract<RemoteMutationIdentity,{readonly kind:"trash"}>,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcome>{
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};if(identity.identityAuthority.remoteObjectId!==identity.remoteObjectId||identity.identityAuthority.path!==identity.path||identity.baseAuthority.path!==identity.path)return {status:"outcome-unknown",reason:"trash-authority-inconsistent"};
+    const before=await this.getFile(identity.remoteObjectId);if(!before.ok)return this.outcomeFromSignalValue(before.signal,"trash-object");if(before.value.trashed)return {status:"verified-effect",applicationProof:{kind:"trash",remoteObjectId:identity.remoteObjectId,path:identity.path,trashed:true}};
+    const root=await this.rootForFile(before.value);if(!root.ok||!root.value)return {status:"outcome-unknown",reason:"trash-managed-root-unprovable"};const roots=await this.domainRoots(root.value);if(!roots.ok)return {status:"outcome-unknown",reason:`trash-domain-${roots.signal.kind}`};const actual=await this.logicalPathForFile(before.value,roots.value);if(!actual.ok||actual.value!==identity.path)return {status:"conflict-preserved",reason:"trash-object-no-longer-at-authorized-path",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(identity.remoteObjectId))}?fields=${encodeURIComponent(FIELDS)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({trashed:true})});if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-trash-dispatch"};if(!response.ok&&response.signal.kind!=="conflict")return {status:"outcome-unknown",reason:`trash-dispatch-${response.signal.kind}`};const after=await this.getFile(identity.remoteObjectId);if(!after.ok)return {status:"outcome-unknown",reason:`trash-post-observation-${after.signal.kind}`};return after.value.trashed?{status:"verified-effect",applicationProof:{kind:"trash",remoteObjectId:identity.remoteObjectId,path:identity.path,trashed:true}}:{status:"verified-not-applied",reason:"trash-post-observation-not-trashed"};
   }
 
-  private async guardPairedAccount(): Promise<DriveResult<void>> {
-    const paired = this.secrets.get(ACCOUNT_SECRET); if (!paired) return { ok: false, signal: { kind: "authentication-required", detail: "explicit-remote-pairing-required" } };
-    const current = await this.currentAccountKey(); if (!current.ok) return current; return current.value === paired ? { ok: true, value: undefined } : { ok: false, signal: { kind: "authentication-required", detail: "google-account-changed-repair-required" } };
+  async observeFolderCreateRecovery(descriptor:RemoteFolderCreatePhysicalMutationDescriptor,cancellation?:SynchronizationCancellationSignal):Promise<RemoteFolderCreateObservation>{
+    if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};const guard=await this.guardPairedAccount();if(!guard.ok)return {status:"unobservable",reason:`authentication-or-remote-unavailable:${guard.signal.kind}`};
+    const reserved=await this.getFile(descriptor.remoteMutation.reservedRemoteObjectId);
+    if(reserved.ok){if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};if(reserved.value.trashed)return {status:"unobservable",reason:"reserved-object-is-trashed"};if(reserved.value.parents?.length!==1)return {status:"unobservable",reason:"reserved-object-parent-identity-incomplete"};const root=await this.rootForFile(reserved.value);if(!root.ok||!root.value)return {status:"unobservable",reason:"reserved-object-managed-root-unprovable"};const roots=await this.domainRoots(root.value);if(!roots.ok)return {status:"unobservable",reason:`managed-domain-unobservable:${roots.signal.kind}`};const actualPath=await this.logicalPathForFile(reserved.value,roots.value);if(!actualPath.ok||!actualPath.value)return {status:"unobservable",reason:"reserved-object-structural-path-unprovable"};if(reserved.value.mimeType!==FOLDER_MIME)return {status:"occupied",targetPath:actualPath.value,pathComparisonKey:pathComparisonKey(actualPath.value),remoteObjectId:rid(reserved.value.id),entityKind:"file"};return {status:"folder",targetPath:actualPath.value,pathComparisonKey:pathComparisonKey(actualPath.value),remoteObjectId:rid(reserved.value.id),parentRemoteObjectId:rid(reserved.value.parents[0])};}
+    if(reserved.signal.kind!=="not-found")return {status:"unobservable",reason:`reserved-object-absence-unproven:${reserved.signal.kind}`};if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};
+    const root=await this.uniqueManagedRoot();if(!root.ok)return {status:"unobservable",reason:`managed-root-unobservable:${root.signal.kind}`};const resolution=await this.resolveLogicalPathCandidates(root.value.rootId,descriptor.targetPath);if(!resolution.ok)return {status:"unobservable",reason:`target-path-unobservable:${resolution.signal.kind}`};if(resolution.value.status==="ambiguous")return {status:"unobservable",reason:"ambiguous-logical-path:multiple-candidates"};if(resolution.value.status==="unique"){const file=resolution.value.file;return {status:"occupied",targetPath:descriptor.targetPath,pathComparisonKey:pathComparisonKey(descriptor.targetPath),remoteObjectId:rid(file.id),entityKind:file.mimeType===FOLDER_MIME?"folder":"file"};}return {status:"authoritative-absent",reservedRemoteObjectId:descriptor.remoteMutation.reservedRemoteObjectId};
   }
 
-  private async currentAccountKey(): Promise<DriveResult<string>> {
-    const response = await this.transport.request(`${DRIVE_API}/about?fields=user(emailAddress,permissionId)`, {}, false); if (!response.ok) return response;
-    const data = await json<AboutResponse>(response.value), key = data.user?.permissionId ?? data.user?.emailAddress; return key ? { ok: true, value: key } : { ok: false, signal: { kind: "authentication-required", detail: "google-account-identity-unavailable" } };
-  }
+  // Legacy raw mutation primitives retained for compatibility only.
+  async create(rootId:RemoteObjectId,request:RemoteCreateRequest):Promise<DriveResult<RemoteMutationReceipt>>{const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const domain=await this.domainForPath(rootId,request.path);if(!domain.ok)return domain;const provenance:DomainProvenance={managedRootId:rootId,domain:domainForLogicalPath(request.path)};const relative=isConfigPath(request.path)?configRelativePath(request.path):request.path;const parent=await this.ensureParentFrom(domain.value.id,parentPath(relative),provenance);if(!parent.ok)return parent;if(request.entityKind==="folder"){const created=await this.metadataCreate({name:segmentName(relative),mimeType:FOLDER_MIME,parents:[parent.value],appProperties:this.provenanceProperties(undefined,provenance)});if(!created.ok)return created;return {ok:true,value:{remoteObjectId:rid(created.value.id),path:request.path}};}if(!request.content)return {ok:false,signal:{kind:"conflict",detail:"file-create-content-required"}};return this.resumableUpload("create",undefined,request.path,parent.value,request.content,request.expectedEvidence,provenance);}
+  async update(request:RemoteUpdateRequest):Promise<DriveResult<RemoteMutationReceipt>>{const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const existing=await this.getFile(request.remoteObjectId);if(!existing.ok)return existing;if(request.expectedRemoteRevision&&existing.value.version!==request.expectedRemoteRevision)return {ok:false,signal:{kind:"conflict",detail:"remote-revision-precondition-failed"}};const domain=await this.domainForPathFromExisting(request.path,existing.value);if(!domain.ok)return domain;return this.resumableUpload("update",request.remoteObjectId,request.path,existing.value.parents?.[0],request.content,request.expectedEvidence);}
+  async move(remoteObjectId:RemoteObjectId,_fromPath:VaultPath,toPath:VaultPath):Promise<DriveResult<RemoteMutationReceipt>>{const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const file=await this.getFile(remoteObjectId);if(!file.ok)return file;const domain=await this.domainForPathFromExisting(toPath,file.value);if(!domain.ok)return domain;const relative=isConfigPath(toPath)?configRelativePath(toPath):toPath;const root=await this.rootForFile(file.value);if(!root.ok||!root.value)return {ok:false,signal:{kind:"recovery-required",detail:"managed-object-outside-remote-domain"}};const provenance:DomainProvenance={managedRootId:root.value,domain:domainForLogicalPath(toPath)};const parent=await this.ensureParentFrom(domain.value.id,parentPath(relative),provenance);if(!parent.ok)return parent;const oldParents=(file.value.parents??[]).join(",");const params=new URLSearchParams({fields:FIELDS,addParents:parent.value});if(oldParents)params.set("removeParents",oldParents);const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?${params}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({name:segmentName(relative),appProperties:this.provenanceProperties(file.value.appProperties,provenance)})});if(!response.ok)return {ok:false,signal:withRemoteId(response.signal,remoteObjectId)};const moved=await json<DriveFile>(response.value);return {ok:true,value:{remoteObjectId:rid(moved.id),path:toPath,evidence:moved.mimeType===FOLDER_MIME?undefined:evidence(moved)}};}
+  async trash(remoteObjectId:RemoteObjectId):Promise<DriveResult<void>>{const guard=await this.guardPairedAccount();if(!guard.ok)return guard;const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?fields=id,trashed`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({trashed:true})});if(!response.ok)return {ok:false,signal:withRemoteId(response.signal,remoteObjectId)};return {ok:true,value:undefined};}
 
-  private async getFile(id: RemoteObjectId): Promise<DriveResult<DriveFile>> {
-    const response = await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(id))}?fields=${encodeURIComponent(FIELDS)}`); if (!response.ok) return { ok: false, signal: withRemoteId(response.signal, id) }; return { ok: true, value: await json<DriveFile>(response.value) };
+  private verifyReservedCreate(identity:Extract<RemoteMutationIdentity,{readonly kind:"reserved-file-create"|"reserved-folder-create"}>,file:DriveFile):RemoteMutationOutcome{
+    if(file.trashed)return {status:"conflict-preserved",reason:"reserved-object-is-trashed",preservedRemoteObjectIds:[rid(file.id)]};if(rid(file.id)!==identity.reservedRemoteObjectId)return {status:"outcome-unknown",reason:"reserved-object-id-mismatch"};
+    if(identity.kind==="reserved-folder-create"){if(file.mimeType!==FOLDER_MIME)return {status:"conflict-preserved",reason:"reserved-folder-id-occupied-by-file",preservedRemoteObjectIds:[rid(file.id)]};return {status:"verified-effect",receipt:{remoteObjectId:rid(file.id),path:identity.path},applicationProof:{kind:"reserved-create",remoteObjectId:rid(file.id),path:identity.path}};}
+    if(file.mimeType===FOLDER_MIME||!canonicalMatches(file,identity.intendedContent))return {status:"conflict-preserved",reason:"reserved-file-content-or-kind-mismatch",preservedRemoteObjectIds:[rid(file.id)]};return {status:"verified-effect",receipt:{remoteObjectId:rid(file.id),path:identity.path,evidence:evidence(file)},applicationProof:{kind:"reserved-create",remoteObjectId:rid(file.id),path:identity.path,verifiedContent:identity.intendedContent}};
   }
-  private async metadataCreate(metadata: Record<string, unknown>): Promise<DriveResult<DriveFile>> {
-    const response = await this.transport.request(`${DRIVE_API}/files?fields=${encodeURIComponent(FIELDS)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(metadata) }); if (!response.ok) return response; return { ok: true, value: await json<DriveFile>(response.value) };
+  private async verifyUpdateCandidate(identity:Extract<RemoteMutationIdentity,{readonly kind:"existing-file-content-update"}>,predecessor:DriveFile,candidate:DriveFile,rootId:RemoteObjectId):Promise<RemoteMutationOutcome>{
+    if(predecessor.trashed||!revisionMatches(predecessor,identity.expectedRevision)||predecessor.id!==String(identity.remoteObjectId))return {status:"conflict-preserved",reason:"predecessor-not-preserved-at-expected-revision",preservedRemoteObjectIds:[rid(predecessor.id),rid(candidate.id)]};if(candidate.trashed||candidate.id!==String(identity.candidateRemoteObjectId)||!canonicalMatches(candidate,identity.intendedContent))return {status:"conflict-preserved",reason:"candidate-content-not-authoritatively-verified",preservedRemoteObjectIds:[rid(predecessor.id),rid(candidate.id)]};
+    const resolution=await this.resolveLogicalPathCandidates(rootId,identity.path);if(!resolution.ok)return {status:"outcome-unknown",reason:`update-path-${resolution.signal.kind}`};const preserved=resolution.value.files.map(f=>rid(f.id));if(!preserved.includes(identity.remoteObjectId))preserved.push(identity.remoteObjectId);if(!preserved.includes(identity.candidateRemoteObjectId))preserved.push(identity.candidateRemoteObjectId);
+    return {status:"verified-effect",receipt:{remoteObjectId:identity.candidateRemoteObjectId,path:identity.path,evidence:evidence(candidate)},applicationProof:{kind:"immutable-candidate-preservation",candidateRemoteObjectId:identity.candidateRemoteObjectId,predecessorRemoteObjectId:identity.remoteObjectId,predecessorRevision:identity.expectedRevision,intendedContent:identity.intendedContent,verifiedContent:identity.intendedContent,preservedRemoteObjectIds:preserved}};
   }
+  private outcomeFromSignal(signal:DriveSignal,prefix:string):RemoteMutationOutcome{if(signal.kind==="conflict")return {status:"conflict-preserved",reason:`${prefix}:${signal.detail}`,preservedRemoteObjectIds:[]};if(signal.kind==="not-found")return {status:"verified-not-applied",reason:`${prefix}:not-found`};return {status:"outcome-unknown",reason:`${prefix}:${signal.kind}`};}
+  private outcomeFromSignalValue(signal:DriveSignal,prefix:string):RemoteMutationOutcome{return this.outcomeFromSignal(signal,prefix);}
+  private evidenceCompatible(actual:ContentEvidence,expected:ContentEvidence):boolean{return (expected.hash===undefined||actual.hash===expected.hash)&&(expected.sizeBytes===undefined||actual.sizeBytes===expected.sizeBytes)&&(expected.revision===undefined||actual.revision===expected.revision);}
 
-  private async contentRoot(rootId: RemoteObjectId): Promise<DriveResult<DriveFile>> {
-    const params = new URLSearchParams({ q: `'${escaped(String(rootId))}' in parents and appProperties has { key='${APP_ROLE}' and value='${CONTENT_ROLE}' }`, fields: `files(${FIELDS})`, spaces: "drive" });
-    const response = await this.transport.request(`${DRIVE_API}/files?${params}`); if (!response.ok) return response; const files = (await json<FileListResponse>(response.value)).files ?? [];
-    if (files.length !== 1 || files[0].trashed || files[0].mimeType !== FOLDER_MIME) return { ok: false, signal: { kind: "recovery-required", detail: files.length > 1 ? "managed-content-root-ambiguous" : "managed-content-root-missing" } }; return { ok: true, value: files[0] };
-  }
+  private rangeSource(remoteObjectId:RemoteObjectId,meta:DriveFile,cancellation?:SynchronizationCancellationSignal):BinaryContentSource{const size=meta.size!==undefined?Number(meta.size):undefined;const self=this;return {...(size!==undefined?{sizeBytes:size}:{}),async *openChunks(){if(size===0)return;let offset=0;while(size===undefined||offset<size){if(cancelled(cancellation))throw new DriveContentStreamError({kind:"transient-failure",detail:"synchronization-cancelled"});const end=size===undefined?offset+UPLOAD_CHUNK_BYTES-1:Math.min(size-1,offset+UPLOAD_CHUNK_BYTES-1);const result=await self.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(remoteObjectId))}?alt=media`,{headers:{range:`bytes=${offset}-${end}`}});if(!result.ok)throw new DriveContentStreamError(withRemoteId(result.signal,remoteObjectId));const bytes=new Uint8Array(await result.value.arrayBuffer());if(!bytes.length)break;yield bytes;offset+=bytes.length;if(size===undefined&&bytes.length<UPLOAD_CHUNK_BYTES)break;}}};}
 
-  private async portableConfigRoot(rootId: RemoteObjectId): Promise<DriveResult<DriveFile>> {
-    const matches = await this.children(String(rootId), PORTABLE_CONFIG_NAME); if (!matches.ok) return matches; const live = matches.value.filter(file => !file.trashed);
-    if (live.some(file => file.appProperties?.[APP_ROLE] !== PORTABLE_CONFIG_ROLE)) return { ok: false, signal: { kind: "conflict", detail: "portable-config-namespace-unmarked-or-ambiguous" } };
-    const marked = live.filter(file => file.appProperties?.[APP_ROLE] === PORTABLE_CONFIG_ROLE && file.mimeType === FOLDER_MIME);
-    if (marked.length !== 1 || marked.length !== live.length) return { ok: false, signal: { kind: "recovery-required", detail: marked.length > 1 ? "portable-config-root-ambiguous" : "portable-config-root-missing" } }; return { ok: true, value: marked[0] };
-  }
+  private async generateId():Promise<DriveResult<RemoteObjectId>>{const response=await this.transport.request(`${DRIVE_API}/files/generateIds?count=1&space=drive&type=files`);if(!response.ok)return response;const body=await json<GenerateIdsResponse>(response.value);const value=body.ids?.[0];return value?{ok:true,value:rid(value)}:{ok:false,signal:{kind:"recovery-required",detail:"drive-generated-id-missing"}};}
+  private async uniqueManagedRoot():Promise<DriveResult<ManagedRemoteIdentity>>{const params=new URLSearchParams({q:`appProperties has { key='${APP_ROLE}' and value='${ROOT_ROLE}' } and trashed=false`,fields:`files(${FIELDS})`,spaces:"drive",pageSize:"1000"});const response=await this.transport.request(`${DRIVE_API}/files?${params}`);if(!response.ok)return response;const roots=(await json<FileListResponse>(response.value)).files??[];if(roots.length!==1)return {ok:false,signal:{kind:"recovery-required",detail:roots.length?"managed-root-ambiguous":"managed-root-missing"}};const file=roots[0],vaultId=file.appProperties?.[APP_VAULT],protocol=file.appProperties?.[APP_PROTOCOL];if(!vaultId||!protocol)return {ok:false,signal:{kind:"recovery-required",detail:"managed-root-identity-incomplete"}};return {ok:true,value:{rootId:rid(file.id),vaultIdentity:contractId<"VaultIdentity">(vaultId) as VaultIdentity,protocolVersion:pversion(protocol)}};}
 
-  private async domainRoots(rootId: RemoteObjectId): Promise<DriveResult<DomainRoots>> {
-    const valid = await this.validateRootExists(rootId); if (!valid.ok) return valid; const content = await this.contentRoot(rootId); if (!content.ok) return content; const config = await this.portableConfigRoot(rootId); if (!config.ok) return config;
-    return { ok: true, value: { content: content.value, config: config.value } };
-  }
-  private async domainForPath(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<DriveFile>> { const roots = await this.domainRoots(rootId); if (!roots.ok) return roots; return { ok: true, value: isConfigPath(path) ? roots.value.config : roots.value.content }; }
+  private async validateByExpected(rootId:RemoteObjectId,expected:VaultIdentity):Promise<DriveResult<ManagedRemoteValidation>>{const file=await this.getFile(rootId);if(!file.ok)return file.signal.kind==="not-found"?{ok:true,value:{status:"missing-root"}}:file;if(file.value.trashed||file.value.mimeType!==FOLDER_MIME||file.value.appProperties?.[APP_ROLE]!==ROOT_ROLE)return {ok:true,value:{status:"missing-root"}};const observedVault=file.value.appProperties?.[APP_VAULT],observedProtocol=file.value.appProperties?.[APP_PROTOCOL];if(!observedVault)return {ok:true,value:{status:"ambiguous",reason:"managed-root-vault-identity-missing"}};if(observedVault!==String(expected))return {ok:true,value:{status:"identity-mismatch",observedVaultIdentity:contractId<"VaultIdentity">(observedVault) as VaultIdentity}};if(!observedProtocol)return {ok:true,value:{status:"ambiguous",reason:"managed-root-protocol-version-missing"}};const roots=await this.domainRoots(rootId);if(!roots.ok){if(roots.signal.kind==="recovery-required"||roots.signal.kind==="conflict")return {ok:true,value:{status:"ambiguous",reason:"detail" in roots.signal?roots.signal.detail:"managed-remote-domain-ambiguous"}};return roots;}const version=pversion(observedProtocol);if(observedProtocol!=="1")return {ok:true,value:{status:"incompatible-protocol",observedVersion:version}};return {ok:true,value:{status:"valid",identity:{rootId,vaultIdentity:expected,protocolVersion:version}}};}
+  private async guardPairedAccount():Promise<DriveResult<void>>{const paired=this.secrets.get(ACCOUNT_SECRET);if(!paired)return {ok:false,signal:{kind:"authentication-required",detail:"explicit-remote-pairing-required"}};const current=await this.currentAccountKey();if(!current.ok)return current;return current.value===paired?{ok:true,value:undefined}:{ok:false,signal:{kind:"authentication-required",detail:"google-account-changed-repair-required"}};}
+  private async currentAccountKey():Promise<DriveResult<string>>{const response=await this.transport.request(`${DRIVE_API}/about?fields=user(emailAddress,permissionId)`,{},false);if(!response.ok)return response;const data=await json<AboutResponse>(response.value),key=data.user?.permissionId??data.user?.emailAddress;return key?{ok:true,value:key}:{ok:false,signal:{kind:"authentication-required",detail:"google-account-identity-unavailable"}};}
+  private async getFile(id:RemoteObjectId):Promise<DriveResult<DriveFile>>{const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(id))}?fields=${encodeURIComponent(FIELDS)}`);if(!response.ok)return {ok:false,signal:withRemoteId(response.signal,id)};return {ok:true,value:await json<DriveFile>(response.value)};}
+  private async metadataCreate(metadata:Record<string,unknown>):Promise<DriveResult<DriveFile>>{const response=await this.transport.request(`${DRIVE_API}/files?fields=${encodeURIComponent(FIELDS)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(metadata)});if(!response.ok)return response;return {ok:true,value:await json<DriveFile>(response.value)};}
 
-  private async domainForPathFromExisting(path: VaultPath, file: DriveFile): Promise<DriveResult<DriveFile>> {
-    const root = await this.findManagedRootAncestor(file); if (!root.ok) return root as DriveResult<DriveFile>; if (!root.value) return { ok: false, signal: { kind: "recovery-required", detail: "managed-object-outside-remote-domain" } };
-    const rootId = rid(root.value); const roots = await this.domainRoots(rootId); if (!roots.ok) return roots; const currentDomain = await this.findDomainAncestor(file, roots.value); if (!currentDomain.ok) return currentDomain;
-    const wanted = isConfigPath(path) ? roots.value.config : roots.value.content; if (currentDomain.value.id !== wanted.id) return { ok: false, signal: { kind: "conflict", detail: "cross-domain-config-vault-reclassification-refused" } };
-    const provenance = await this.ensureDomainProvenance(file, { managedRootId: rootId, domain: domainForLogicalPath(path) }); if (!provenance.ok) return provenance; return { ok: true, value: wanted };
-  }
+  private async contentRoot(rootId:RemoteObjectId):Promise<DriveResult<DriveFile>>{const params=new URLSearchParams({q:`'${escaped(String(rootId))}' in parents and appProperties has { key='${APP_ROLE}' and value='${CONTENT_ROLE}' }`,fields:`files(${FIELDS})`,spaces:"drive"});const response=await this.transport.request(`${DRIVE_API}/files?${params}`);if(!response.ok)return response;const files=(await json<FileListResponse>(response.value)).files??[];if(files.length!==1||files[0].trashed||files[0].mimeType!==FOLDER_MIME)return {ok:false,signal:{kind:"recovery-required",detail:files.length>1?"managed-content-root-ambiguous":"managed-content-root-missing"}};return {ok:true,value:files[0]};}
+  private async portableConfigRoot(rootId:RemoteObjectId):Promise<DriveResult<DriveFile>>{const matches=await this.children(String(rootId),PORTABLE_CONFIG_NAME);if(!matches.ok)return matches;const live=matches.value.filter(file=>!file.trashed);if(live.some(file=>file.appProperties?.[APP_ROLE]!==PORTABLE_CONFIG_ROLE))return {ok:false,signal:{kind:"conflict",detail:"portable-config-namespace-unmarked-or-ambiguous"}};const marked=live.filter(file=>file.appProperties?.[APP_ROLE]===PORTABLE_CONFIG_ROLE&&file.mimeType===FOLDER_MIME);if(marked.length!==1||marked.length!==live.length)return {ok:false,signal:{kind:"recovery-required",detail:marked.length>1?"portable-config-root-ambiguous":"portable-config-root-missing"}};return {ok:true,value:marked[0]};}
+  private async domainRoots(rootId:RemoteObjectId):Promise<DriveResult<DomainRoots>>{const root=await this.getFile(rootId);if(!root.ok)return root;if(root.value.trashed||root.value.appProperties?.[APP_ROLE]!==ROOT_ROLE)return {ok:false,signal:{kind:"recovery-required",detail:"managed-remote-root-missing-or-invalid"}};const content=await this.contentRoot(rootId);if(!content.ok)return content;const config=await this.portableConfigRoot(rootId);if(!config.ok)return config;return {ok:true,value:{content:content.value,config:config.value}};}
+  private async domainForPath(rootId:RemoteObjectId,path:VaultPath):Promise<DriveResult<DriveFile>>{const roots=await this.domainRoots(rootId);if(!roots.ok)return roots;return {ok:true,value:isConfigPath(path)?roots.value.config:roots.value.content};}
+  private async domainForPathFromExisting(path:VaultPath,file:DriveFile):Promise<DriveResult<DriveFile>>{const root=await this.rootForFile(file);if(!root.ok||!root.value)return {ok:false,signal:{kind:"recovery-required",detail:"managed-object-outside-remote-domain"}};const roots=await this.domainRoots(root.value);if(!roots.ok)return roots;const current=await this.findDomainAncestor(file,roots.value);if(!current.ok)return current;const wanted=isConfigPath(path)?roots.value.config:roots.value.content;if(current.value.id!==wanted.id)return {ok:false,signal:{kind:"conflict",detail:"cross-domain-config-vault-reclassification-refused"}};const provenance=await this.ensureDomainProvenance(file,{managedRootId:root.value,domain:domainForLogicalPath(path)});if(!provenance.ok)return provenance;return {ok:true,value:wanted};}
 
-  private async listDomain(rootId: string, prefix: string, entries: RemoteEntry[], provenance: DomainProvenance): Promise<DriveResult<void>> {
-    const queue: Array<{id: string; path: string}> = [{ id: rootId, path: "" }];
-    while (queue.length) {
-      const current = queue.shift()!; let pageToken: string | undefined;
-      do {
-        const params = new URLSearchParams({ q: `'${escaped(current.id)}' in parents`, fields: `nextPageToken,files(${FIELDS})`, spaces: "drive", pageSize: "1000" }); if (pageToken) params.set("pageToken", pageToken);
-        const response = await this.transport.request(`${DRIVE_API}/files?${params}`); if (!response.ok) return response; const page = await json<FileListResponse>(response.value);
-        for (const rawFile of page.files ?? []) {
-          const stamped = await this.ensureDomainProvenance(rawFile, provenance); if (!stamped.ok) return stamped; const file = stamped.value; const relative = joinPath(current.path, file.name ?? "");
-          if (provenance.domain === CONTENT_DOMAIN && current.id === rootId && file.name === PORTABLE_CONFIG_NAME) { const collisionPath = vpath(PORTABLE_CONFIG_NAME); entries.push(entry(collisionPath, file)); this.pathCache.set(file.id, collisionPath); continue; }
-          const logical = vpath(`${prefix}${String(relative)}`); entries.push(entry(logical, file)); this.pathCache.set(file.id, logical); if (file.mimeType === FOLDER_MIME) queue.push({ id: file.id, path: String(relative) });
-        }
-        pageToken = page.nextPageToken;
-      } while (pageToken);
-    }
-    return { ok: true, value: undefined };
-  }
+  private async listDomainReadOnly(rootId:string,prefix:string,entries:RemoteEntry[],provenance:DomainProvenance):Promise<DriveResult<void>>{const queue:Array<{id:string;path:string}>=[{id:rootId,path:""}];while(queue.length){const current=queue.shift()!;const children=await this.children(current.id);if(!children.ok)return children;for(const file of children.value){const validation=this.validateFileProvenance(file,provenance,true);if(!validation.ok)return validation;const relative=joinPath(current.path,file.name??"");if(provenance.domain===CONTENT_DOMAIN&&current.id===rootId&&file.name===PORTABLE_CONFIG_NAME){const collision=vpath(PORTABLE_CONFIG_NAME);entries.push(entry(collision,file));this.pathCache.set(file.id,collision);continue;}const logical=vpath(`${prefix}${String(relative)}`);entries.push(entry(logical,file));this.pathCache.set(file.id,logical);if(file.mimeType===FOLDER_MIME)queue.push({id:file.id,path:String(relative)});}}return {ok:true,value:undefined};}
+  private async children(parentId:string,name?:string):Promise<DriveResult<DriveFile[]>>{const files:DriveFile[]=[];let pageToken:string|undefined;do{let q=`'${escaped(parentId)}' in parents and trashed=false`;if(name!==undefined)q+=` and name='${escaped(name)}'`;const params=new URLSearchParams({q,fields:`nextPageToken,files(${FIELDS})`,spaces:"drive",pageSize:"1000"});if(pageToken)params.set("pageToken",pageToken);const response=await this.transport.request(`${DRIVE_API}/files?${params}`);if(!response.ok)return response;const page=await json<FileListResponse>(response.value);files.push(...(page.files??[]));pageToken=page.nextPageToken;}while(pageToken);return {ok:true,value:files};}
 
-  private async children(parentId: string, name?: string): Promise<DriveResult<DriveFile[]>> {
-    let q = `'${escaped(parentId)}' in parents and trashed=false`; if (name !== undefined) q += ` and name='${escaped(name)}'`;
-    const params = new URLSearchParams({ q, fields: `files(${FIELDS})`, spaces: "drive", pageSize: "1000" }); const response = await this.transport.request(`${DRIVE_API}/files?${params}`); if (!response.ok) return response; return { ok: true, value: (await json<FileListResponse>(response.value)).files ?? [] };
-  }
+  private async resolveLogicalPathCandidates(rootId:RemoteObjectId,path:VaultPath):Promise<DriveResult<{status:"absent";files:DriveFile[]}|{status:"unique";file:DriveFile;files:DriveFile[]}|{status:"ambiguous";files:DriveFile[]}>>{const roots=await this.domainRoots(rootId);if(!roots.ok)return roots;let root:DriveFile;let relative:VaultPath;if(String(path)===PORTABLE_CONFIG_NAME){root=roots.value.content;relative=path;}else if(isConfigPath(path)){root=roots.value.config;relative=configRelativePath(path);}else{root=roots.value.content;relative=path;}let parents=[root];const segments=String(relative).split("/").filter(Boolean);if(!segments.length)return {ok:true,value:{status:"unique",file:root,files:[root]}};for(const [index,segment]of segments.entries()){const next:DriveFile[]=[];for(const parent of parents){const matches=await this.children(parent.id,segment);if(!matches.ok)return matches;next.push(...matches.value);}if(!next.length)return {ok:true,value:{status:"absent",files:[]}};if(index<segments.length-1&&next.some(file=>file.mimeType!==FOLDER_MIME))return {ok:false,signal:{kind:"conflict",detail:`non-folder-parent:${segment}`}};parents=next.filter(file=>index===segments.length-1||file.mimeType===FOLDER_MIME);}const dedup=[...new Map(parents.map(file=>[file.id,file])).values()];return dedup.length===1?{ok:true,value:{status:"unique",file:dedup[0],files:dedup}}:{ok:true,value:{status:"ambiguous",files:dedup}};}
+  private async resolveUniqueParent(root:ManagedRemoteIdentity,path:VaultPath):Promise<DriveResult<string|undefined>>{const wanted=parentPath(isConfigPath(path)?configRelativePath(path):path);const roots=await this.domainRoots(root.rootId);if(!roots.ok)return roots;const domain=isConfigPath(path)?roots.value.config:roots.value.content;if(!String(wanted))return {ok:true,value:domain.id};let parents=[domain];for(const segment of String(wanted).split("/").filter(Boolean)){const next:DriveFile[]=[];for(const parent of parents){const matches=await this.children(parent.id,segment);if(!matches.ok)return matches;next.push(...matches.value.filter(f=>f.mimeType===FOLDER_MIME));}const dedup=[...new Map(next.map(file=>[file.id,file])).values()];if(dedup.length===0)return {ok:true,value:undefined};if(dedup.length>1)return {ok:false,signal:{kind:"conflict",detail:`ambiguous-parent-path:${String(wanted)}`}};parents=dedup;}return {ok:true,value:parents[0].id};}
+  private async ensureParentFrom(rootId:string,path:VaultPath,provenance:DomainProvenance):Promise<DriveResult<string>>{let parent=rootId;for(const segment of String(path).split("/").filter(Boolean)){const matches=await this.children(parent,segment);if(!matches.ok)return matches;const folders=matches.value.filter(file=>file.mimeType===FOLDER_MIME);if(matches.value.length>1||(matches.value.length===1&&folders.length!==1))return {ok:false,signal:{kind:"conflict",detail:`ambiguous-parent-path:${String(path)}`}};if(folders.length===1){const stamped=await this.ensureDomainProvenance(folders[0],provenance);if(!stamped.ok)return stamped;parent=stamped.value.id;}else{const created=await this.metadataCreate({name:segment,mimeType:FOLDER_MIME,parents:[parent],appProperties:this.provenanceProperties(undefined,provenance)});if(!created.ok)return created;parent=created.value.id;}}return {ok:true,value:parent};}
 
-  private async resolveLogicalPath(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<DriveFile | undefined>> {
-    const roots = await this.domainRoots(rootId); if (!roots.ok) return roots; if (String(path) === PORTABLE_CONFIG_NAME) return this.resolvePathFrom(roots.value.content, path); if (isConfigPath(path)) return this.resolvePathFrom(roots.value.config, configRelativePath(path)); return this.resolvePathFrom(roots.value.content, path);
-  }
+  private async logicalPathForFile(file:DriveFile,roots:DomainRoots):Promise<DriveResult<VaultPath|undefined>>{const config=await this.pathForFile(file,roots.config.id);if(!config.ok)return config;if(config.value)return {ok:true,value:configLogicalPath(config.value)};return this.pathForFile(file,roots.content.id);}
+  private async pathForFile(file:DriveFile,domainRootId:string):Promise<DriveResult<VaultPath|undefined>>{const names:string[]=[file.name??""];let current=file;const visited=new Set<string>();while(true){if(current.parents&&current.parents.length!==1)return {ok:false,signal:{kind:"recovery-required",detail:"remote-parent-identity-ambiguous"}};const parentId=current.parents?.[0];if(!parentId)return {ok:true,value:undefined};if(parentId===domainRootId)return {ok:true,value:vpath(names.reverse().join("/"))};if(visited.has(parentId))return {ok:false,signal:{kind:"recovery-required",detail:"remote-parent-cycle"}};visited.add(parentId);const parent=await this.getFile(rid(parentId));if(!parent.ok)return parent.signal.kind==="not-found"?{ok:true,value:undefined}:parent;if(parent.value.appProperties?.[APP_ROLE]===ROOT_ROLE)return {ok:true,value:undefined};names.push(parent.value.name??"");current=parent.value;}}
+  private async rootForFile(file:DriveFile):Promise<DriveResult<RemoteObjectId|undefined>>{let current=file;const visited=new Set<string>();while(current.parents?.length===1){const parentId=current.parents[0];if(visited.has(parentId))return {ok:false,signal:{kind:"recovery-required",detail:"remote-parent-cycle"}};visited.add(parentId);const parent=await this.getFile(rid(parentId));if(!parent.ok)return parent.signal.kind==="not-found"?{ok:true,value:undefined}:parent;if(parent.value.appProperties?.[APP_ROLE]===ROOT_ROLE)return {ok:true,value:rid(parent.value.id)};current=parent.value;}return {ok:true,value:undefined};}
+  private async findDomainAncestor(file:DriveFile,roots:DomainRoots):Promise<DriveResult<DriveFile>>{let current=file;const visited=new Set<string>();while(current.parents?.length===1){const parentId=current.parents[0];if(parentId===roots.content.id)return {ok:true,value:roots.content};if(parentId===roots.config.id)return {ok:true,value:roots.config};if(visited.has(parentId))return {ok:false,signal:{kind:"recovery-required",detail:"remote-parent-cycle"}};visited.add(parentId);const parent=await this.getFile(rid(parentId));if(!parent.ok)return parent as DriveResult<DriveFile>;current=parent.value;}return {ok:false,signal:{kind:"recovery-required",detail:"managed-object-domain-unprovable"}};}
 
-  private async resolvePathFrom(root: DriveFile, path: VaultPath): Promise<DriveResult<DriveFile | undefined>> {
-    let parent = root; const segments = String(path).split("/").filter(Boolean); if (!segments.length) return { ok: true, value: root };
-    for (const [index, segment] of segments.entries()) { const matches = await this.children(parent.id, segment); if (!matches.ok) return matches; if (matches.value.length === 0) return { ok: true, value: undefined }; if (matches.value.length > 1) return { ok: false, signal: { kind: "conflict", detail: `ambiguous-remote-path:${String(path)}` } }; parent = matches.value[0]; if (index < segments.length - 1 && parent.mimeType !== FOLDER_MIME) return { ok: false, signal: { kind: "conflict", detail: `non-folder-parent:${segment}` } }; }
-    return { ok: true, value: parent };
-  }
+  private provenanceProperties(existing:Record<string,string>|undefined,provenance:DomainProvenance):Record<string,string>{return {...(existing??{}),[APP_MANAGED_ROOT]:String(provenance.managedRootId),[APP_DOMAIN]:provenance.domain};}
+  private validateFileProvenance(file:DriveFile,expected:DomainProvenance,allowLegacyMissing=false):DriveResult<void>{const establishedRoot=file.appProperties?.[APP_MANAGED_ROOT],establishedDomain=file.appProperties?.[APP_DOMAIN];if(!establishedRoot&&!establishedDomain&&allowLegacyMissing)return {ok:true,value:undefined};if(establishedRoot&&establishedRoot!==String(expected.managedRootId))return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-root-provenance-mismatch:${file.id}`}};if(establishedDomain&&establishedDomain!==expected.domain)return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-cross-domain-reclassification:${file.id}:${establishedDomain}->${expected.domain}`}};if((establishedRoot&&!establishedDomain)||(!establishedRoot&&establishedDomain))return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-domain-provenance-incomplete:${file.id}`}};return {ok:true,value:undefined};}
+  private async ensureDomainProvenance(file:DriveFile,provenance:DomainProvenance):Promise<DriveResult<DriveFile>>{const validation=this.validateFileProvenance(file,provenance,true);if(!validation.ok)return validation;if(file.appProperties?.[APP_MANAGED_ROOT]===String(provenance.managedRootId)&&file.appProperties?.[APP_DOMAIN]===provenance.domain)return {ok:true,value:file};const response=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(file.id)}?fields=${encodeURIComponent(FIELDS)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:this.provenanceProperties(file.appProperties,provenance)})});if(!response.ok)return {ok:false,signal:withRemoteId(response.signal,rid(file.id))};return {ok:true,value:await json<DriveFile>(response.value)};}
+  private async managedObjectsForRoot(rootId:RemoteObjectId):Promise<DriveResult<DriveFile[]>>{const files:DriveFile[]=[];let pageToken:string|undefined;do{const params=new URLSearchParams({q:`appProperties has { key='${APP_MANAGED_ROOT}' and value='${escaped(String(rootId))}' } and trashed=false`,fields:`nextPageToken,files(${FIELDS})`,spaces:"drive",pageSize:"1000"});if(pageToken)params.set("pageToken",pageToken);const response=await this.transport.request(`${DRIVE_API}/files?${params}`);if(!response.ok)return response;const page=await json<FileListResponse>(response.value);files.push(...(page.files??[]));pageToken=page.nextPageToken;}while(pageToken);return {ok:true,value:files};}
+  private async validateManagedObjectProvenance(rootId:RemoteObjectId,roots:DomainRoots):Promise<DriveResult<void>>{const managed=await this.managedObjectsForRoot(rootId);if(!managed.ok)return managed;for(const file of managed.value){const established=file.appProperties?.[APP_DOMAIN];if(established!==CONTENT_DOMAIN&&established!==CONFIG_DOMAIN)return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-domain-provenance-invalid:${file.id}`}};const actual=await this.findDomainAncestor(file,roots);if(!actual.ok)return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-left-remote-domain:${file.id}`}};const expectedRoot=established===CONTENT_DOMAIN?roots.content.id:roots.config.id;if(actual.value.id!==expectedRoot)return {ok:false,signal:{kind:"recovery-required",detail:`managed-object-cross-domain-reclassification:${file.id}:${established}`}};}return {ok:true,value:undefined};}
 
-  private async ensureParentFrom(rootId: string, path: VaultPath, provenance: DomainProvenance): Promise<DriveResult<string>> {
-    let parent = rootId;
-    for (const segment of String(path).split("/").filter(Boolean)) {
-      const matches = await this.children(parent, segment); if (!matches.ok) return matches; const folders = matches.value.filter(file => file.mimeType === FOLDER_MIME);
-      if (matches.value.length > 1 || (matches.value.length === 1 && folders.length !== 1)) return { ok: false, signal: { kind: "conflict", detail: `ambiguous-parent-path:${String(path)}` } };
-      if (folders.length === 1) { const stamped = await this.ensureDomainProvenance(folders[0], provenance); if (!stamped.ok) return stamped; parent = stamped.value.id; }
-      else { const created = await this.metadataCreate({ name: segment, mimeType: FOLDER_MIME, parents: [parent], appProperties: this.provenanceProperties(undefined, provenance) }); if (!created.ok) return created; parent = created.value.id; }
-    }
-    return { ok: true, value: parent };
-  }
-
-  private async logicalPathForFile(file: DriveFile, roots: DomainRoots): Promise<DriveResult<VaultPath | undefined>> { const config = await this.pathForFile(file, roots.config.id); if (!config.ok) return config; if (config.value) return { ok: true, value: configLogicalPath(config.value) }; return this.pathForFile(file, roots.content.id); }
-
-  private async pathForFile(file: DriveFile, domainRootId: string): Promise<DriveResult<VaultPath | undefined>> {
-    const names: string[] = [file.name ?? ""]; let current = file; const visited = new Set<string>();
-    while (true) { const parentId = current.parents?.[0]; if (!parentId) return { ok: true, value: undefined }; if (parentId === domainRootId) return { ok: true, value: vpath(names.reverse().join("/")) }; if (visited.has(parentId)) return { ok: false, signal: { kind: "recovery-required", detail: "remote-parent-cycle" } }; visited.add(parentId); const parent = await this.getFile(rid(parentId)); if (!parent.ok) return parent.signal.kind === "not-found" ? { ok: true, value: undefined } : parent; if (parent.value.appProperties?.[APP_ROLE] === ROOT_ROLE) return { ok: true, value: undefined }; names.push(parent.value.name ?? ""); current = parent.value; }
-  }
-
-  private async findManagedRootAncestor(file: DriveFile): Promise<DriveResult<string | undefined>> {
-    let current = file; const visited = new Set<string>();
-    while (current.parents?.[0]) { const parentId = current.parents[0]; if (visited.has(parentId)) return { ok: false, signal: { kind: "recovery-required", detail: "remote-parent-cycle" } }; visited.add(parentId); const parent = await this.getFile(rid(parentId)); if (!parent.ok) return parent.signal.kind === "not-found" ? { ok: true, value: undefined } : parent; if (parent.value.appProperties?.[APP_ROLE] === ROOT_ROLE) return { ok: true, value: parent.value.id }; current = parent.value; }
-    return { ok: true, value: undefined };
-  }
-
-  private async findDomainAncestor(file: DriveFile, roots: DomainRoots): Promise<DriveResult<DriveFile>> {
-    let current = file; const visited = new Set<string>();
-    while (current.parents?.[0]) { const parentId = current.parents[0]; if (parentId === roots.content.id) return { ok: true, value: roots.content }; if (parentId === roots.config.id) return { ok: true, value: roots.config }; if (visited.has(parentId)) return { ok: false, signal: { kind: "recovery-required", detail: "remote-parent-cycle" } }; visited.add(parentId); const parent = await this.getFile(rid(parentId)); if (!parent.ok) return parent as DriveResult<DriveFile>; current = parent.value; }
-    return { ok: false, signal: { kind: "recovery-required", detail: "managed-object-domain-unprovable" } };
-  }
-
-  private provenanceProperties(existing: Record<string,string> | undefined, provenance: DomainProvenance): Record<string,string> { return { ...(existing ?? {}), [APP_MANAGED_ROOT]: String(provenance.managedRootId), [APP_DOMAIN]: provenance.domain }; }
-
-  private validateFileProvenance(file: DriveFile, expected: DomainProvenance, allowLegacyMissing = false): DriveResult<void> {
-    const establishedRoot = file.appProperties?.[APP_MANAGED_ROOT], establishedDomain = file.appProperties?.[APP_DOMAIN];
-    if (!establishedRoot && !establishedDomain && allowLegacyMissing) return { ok: true, value: undefined };
-    if (establishedRoot && establishedRoot !== String(expected.managedRootId)) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-root-provenance-mismatch:${file.id}` } };
-    if (establishedDomain && establishedDomain !== expected.domain) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-cross-domain-reclassification:${file.id}:${establishedDomain}->${expected.domain}` } };
-    if ((establishedRoot && !establishedDomain) || (!establishedRoot && establishedDomain)) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-domain-provenance-incomplete:${file.id}` } }; return { ok: true, value: undefined };
-  }
-
-  private async ensureDomainProvenance(file: DriveFile, provenance: DomainProvenance): Promise<DriveResult<DriveFile>> {
-    const validation = this.validateFileProvenance(file, provenance, true); if (!validation.ok) return validation;
-    if (file.appProperties?.[APP_MANAGED_ROOT] === String(provenance.managedRootId) && file.appProperties?.[APP_DOMAIN] === provenance.domain) return { ok: true, value: file };
-    const response = await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(file.id)}?fields=${encodeURIComponent(FIELDS)}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ appProperties: this.provenanceProperties(file.appProperties, provenance) }) });
-    if (!response.ok) return { ok: false, signal: withRemoteId(response.signal, rid(file.id)) }; return { ok: true, value: await json<DriveFile>(response.value) };
-  }
-
-  private async managedObjectsForRoot(rootId: RemoteObjectId): Promise<DriveResult<DriveFile[]>> {
-    const files: DriveFile[] = []; let pageToken: string | undefined;
-    do { const params = new URLSearchParams({ q: `appProperties has { key='${APP_MANAGED_ROOT}' and value='${escaped(String(rootId))}' } and trashed=false`, fields: `nextPageToken,files(${FIELDS})`, spaces: "drive", pageSize: "1000" }); if (pageToken) params.set("pageToken", pageToken); const response = await this.transport.request(`${DRIVE_API}/files?${params}`); if (!response.ok) return response; const page = await json<FileListResponse>(response.value); files.push(...(page.files ?? [])); pageToken = page.nextPageToken; } while (pageToken);
-    return { ok: true, value: files };
-  }
-
-  private async validateManagedObjectProvenance(rootId: RemoteObjectId, roots: DomainRoots): Promise<DriveResult<void>> {
-    const managed = await this.managedObjectsForRoot(rootId); if (!managed.ok) return managed;
-    for (const file of managed.value) { const established = file.appProperties?.[APP_DOMAIN]; if (established !== CONTENT_DOMAIN && established !== CONFIG_DOMAIN) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-domain-provenance-invalid:${file.id}` } }; const actual = await this.findDomainAncestor(file, roots); if (!actual.ok) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-left-remote-domain:${file.id}` } }; const expectedRoot = established === CONTENT_DOMAIN ? roots.content.id : roots.config.id; if (actual.value.id !== expectedRoot) return { ok: false, signal: { kind: "recovery-required", detail: `managed-object-cross-domain-reclassification:${file.id}:${established}` } }; }
-    return { ok: true, value: undefined };
-  }
-
-  private async resumableUpload(mode: "create" | "update", objectId: RemoteObjectId | undefined, path: VaultPath, parentId: string | undefined, content: BinaryContentSource, expected?: ContentEvidence, provenance?: DomainProvenance): Promise<DriveResult<RemoteMutationReceipt>> {
-    const logicalName = isConfigPath(path) ? configRelativePath(path) : path; const metadata: Record<string, unknown> = { name: segmentName(logicalName) }; if (mode === "create" && parentId) metadata.parents = [parentId]; if (mode === "create" && provenance) metadata.appProperties = this.provenanceProperties(undefined, provenance);
-    const endpoint = mode === "create" ? `${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=${encodeURIComponent(FIELDS)}` : `${DRIVE_UPLOAD_API}/files/${encodeURIComponent(String(objectId))}?uploadType=resumable&fields=${encodeURIComponent(FIELDS)}`;
-    const initHeaders: Record<string,string> = { "content-type": "application/json; charset=UTF-8", "x-upload-content-type": "application/octet-stream" }; if (content.sizeBytes !== undefined) initHeaders["x-upload-content-length"] = String(content.sizeBytes);
-    const init = await this.transport.request(endpoint, { method: mode === "create" ? "POST" : "PATCH", headers: initHeaders, body: JSON.stringify(metadata) }); if (!init.ok) return init; const location = init.value.headers.get("location"); if (!location) return { ok: false, signal: { kind: "transient-failure", detail: "resumable-session-location-missing" } };
-    let offset = 0, finalResponse: Response | undefined;
-    for await (const part of rechunk(content, UPLOAD_CHUNK_BYTES)) {
-      const end = offset + part.bytes.length - 1, total = part.final ? String(offset + part.bytes.length) : "*";
-      const sent = await this.transport.request(location, { method: "PUT", headers: { "content-type": "application/octet-stream", "content-range": `bytes ${offset}-${end}/${total}` }, body: part.bytes }, false);
-      if (!sent.ok) { const status = await this.queryUploadOffset(location, content.sizeBytes); if (!status.ok) return sent; if (status.value.completed) { finalResponse = status.value.response; break; } if (status.value.offset === end + 1 && !part.final) { finalResponse = new Response(null, { status: 308 }); offset += part.bytes.length; continue; } if (status.value.offset !== offset) return { ok: false, signal: { kind: "recovery-required", detail: "ambiguous-resumable-upload-offset" } }; const retry = await this.transport.request(location, { method: "PUT", headers: { "content-type": "application/octet-stream", "content-range": `bytes ${offset}-${end}/${total}` }, body: part.bytes }); if (!retry.ok) return retry; finalResponse = retry.value; } else finalResponse = sent.value;
-      if (finalResponse.status === 308) { offset += part.bytes.length; continue; } offset += part.bytes.length; break;
-    }
-    if (content.sizeBytes === 0) { const sent = await this.transport.request(location, { method: "PUT", headers: { "content-length": "0", "content-range": "bytes */0" }, body: new Uint8Array() }); if (!sent.ok) return sent; finalResponse = sent.value; }
-    if (!finalResponse || finalResponse.status === 308) return { ok: false, signal: { kind: "transient-failure", detail: "resumable-upload-incomplete" } };
-    const uploaded = await json<DriveFile>(finalResponse), ev = evidence(uploaded); if (expected?.sizeBytes !== undefined && ev.sizeBytes !== expected.sizeBytes) return { ok: false, signal: { kind: "recovery-required", detail: "uploaded-size-integrity-mismatch" } }; if (expected?.hash && String(expected.hash).startsWith("sha256:") && String(expected.hash) !== String(ev.hash ?? "")) return { ok: false, signal: { kind: "recovery-required", detail: "uploaded-hash-integrity-mismatch" } };
-    this.pathCache.set(uploaded.id, path); return { ok: true, value: { remoteObjectId: rid(uploaded.id), path, evidence: ev } };
-  }
-
-  private async queryUploadOffset(location: string, total?: number): Promise<DriveResult<{offset:number;completed:boolean;response?:Response}>> {
-    const response = await this.transport.request(location, { method: "PUT", headers: { "content-length": "0", "content-range": `bytes */${total ?? "*"}` } }, false); if (!response.ok) return response;
-    if (response.value.status !== 308) return { ok: true, value: { offset: total ?? 0, completed: true, response: response.value } }; const range = response.value.headers.get("range"), end = range ? Number(range.split("-").at(-1)) : -1; return { ok: true, value: { offset: Number.isFinite(end) ? end + 1 : 0, completed: false } };
-  }
+  private async resumableUpload(mode:"create"|"update",objectId:RemoteObjectId|undefined,path:VaultPath,parentId:string|undefined,content:BinaryContentSource,expected?:ContentEvidence,provenance?:DomainProvenance):Promise<DriveResult<RemoteMutationReceipt>>{const logicalName=isConfigPath(path)?configRelativePath(path):path;const metadata:Record<string,unknown>={name:segmentName(logicalName)};if(mode==="create"&&parentId)metadata.parents=[parentId];if(mode==="create"&&objectId)metadata.id=String(objectId);if(mode==="create"&&provenance)metadata.appProperties=this.provenanceProperties(undefined,provenance);const endpoint=mode==="create"?`${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=${encodeURIComponent(FIELDS)}`:`${DRIVE_UPLOAD_API}/files/${encodeURIComponent(String(objectId))}?uploadType=resumable&fields=${encodeURIComponent(FIELDS)}`;const initHeaders:Record<string,string>={"content-type":"application/json; charset=UTF-8","x-upload-content-type":"application/octet-stream"};if(content.sizeBytes!==undefined)initHeaders["x-upload-content-length"]=String(content.sizeBytes);const init=await this.transport.request(endpoint,{method:mode==="create"?"POST":"PATCH",headers:initHeaders,body:JSON.stringify(metadata)});if(!init.ok)return init;const location=init.value.headers.get("location");if(!location)return {ok:false,signal:{kind:"transient-failure",detail:"resumable-session-location-missing"}};let offset=0,finalResponse:Response|undefined;for await(const part of rechunk(content,UPLOAD_CHUNK_BYTES)){const end=offset+part.bytes.length-1,total=part.final?String(offset+part.bytes.length):"*";const sent=await this.transport.request(location,{method:"PUT",headers:{"content-type":"application/octet-stream","content-range":`bytes ${offset}-${end}/${total}`},body:part.bytes},false);if(!sent.ok){const status=await this.queryUploadOffset(location,content.sizeBytes);if(!status.ok)return sent;if(status.value.completed){finalResponse=status.value.response;break;}if(status.value.offset===end+1&&!part.final){finalResponse=new Response(null,{status:308});offset+=part.bytes.length;continue;}if(status.value.offset!==offset)return {ok:false,signal:{kind:"recovery-required",detail:"ambiguous-resumable-upload-offset"}};const retry=await this.transport.request(location,{method:"PUT",headers:{"content-type":"application/octet-stream","content-range":`bytes ${offset}-${end}/${total}`},body:part.bytes});if(!retry.ok)return retry;finalResponse=retry.value;}else finalResponse=sent.value;if(finalResponse.status===308){offset+=part.bytes.length;continue;}offset+=part.bytes.length;break;}if(content.sizeBytes===0){const sent=await this.transport.request(location,{method:"PUT",headers:{"content-length":"0","content-range":"bytes */0"},body:new Uint8Array()});if(!sent.ok)return sent;finalResponse=sent.value;}if(!finalResponse||finalResponse.status===308)return {ok:false,signal:{kind:"transient-failure",detail:"resumable-upload-incomplete"}};const uploaded=await json<DriveFile>(finalResponse),ev=evidence(uploaded);if(expected?.sizeBytes!==undefined&&ev.sizeBytes!==expected.sizeBytes)return {ok:false,signal:{kind:"recovery-required",detail:"uploaded-size-integrity-mismatch"}};if(expected?.hash&&String(expected.hash).startsWith("sha256:")&&String(expected.hash)!==String(ev.hash??""))return {ok:false,signal:{kind:"recovery-required",detail:"uploaded-hash-integrity-mismatch"}};this.pathCache.set(uploaded.id,path);return {ok:true,value:{remoteObjectId:rid(uploaded.id),path,evidence:ev}};}
+  private async queryUploadOffset(location:string,total?:number):Promise<DriveResult<{offset:number;completed:boolean;response?:Response}>>{const response=await this.transport.request(location,{method:"PUT",headers:{"content-length":"0","content-range":`bytes */${total??"*"}`}},false);if(!response.ok)return response;if(response.value.status!==308)return {ok:true,value:{offset:total??0,completed:true,response:response.value}};const range=response.value.headers.get("range"),end=range?Number(range.split("-").at(-1)):-1;return {ok:true,value:{offset:Number.isFinite(end)?end+1:0,completed:false}};}
 }
 
-async function* rechunk(source: BinaryContentSource, size: number): AsyncIterable<{bytes:Uint8Array;final:boolean}> {
-  let pending = new Uint8Array(0);
-  for await (const input of source.openChunks()) { if (!input.length) continue; const combined = new Uint8Array(pending.length + input.length); combined.set(pending); combined.set(input, pending.length); pending = combined; while (pending.length > size) { yield { bytes: pending.slice(0, size), final: false }; pending = pending.slice(size); } }
-  if (pending.length) yield { bytes: pending, final: true };
-}
+async function* rechunk(source:BinaryContentSource,size:number):AsyncIterable<{bytes:Uint8Array;final:boolean}>{let pending=new Uint8Array(0);for await(const input of source.openChunks()){if(!input.length)continue;const combined=new Uint8Array(pending.length+input.length);combined.set(pending);combined.set(input,pending.length);pending=combined;while(pending.length>size){yield {bytes:pending.slice(0,size),final:false};pending=pending.slice(size);}}if(pending.length)yield {bytes:pending,final:true};}
