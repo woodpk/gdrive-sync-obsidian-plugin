@@ -92,7 +92,7 @@ parallel_wave:
   note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, whose affected workers remain paused pending approval of the corrected v1.1 foundation."
 
 sync_architecture_foundation:
-  status: "folder_create_v1_1_corrected_candidate_supervisor_re_review_pending"
+  status: "v1_1_authority_store_corrected_candidate_supervisor_re_review_pending"
   predecessor_agent: "agt-CA-P6-SYNC-FOUNDATION-01"
   continuation_agent: "agt-CA-P6-SYNC-FOUNDATION-CLOUD-01"
   branch: "phase6-sync-architecture-foundation"
@@ -103,9 +103,9 @@ sync_architecture_foundation:
   predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
   predecessor_contract_checkpoint_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
   cloud_reentry_start_sha: "e526d65ee64e8baf58fd7ea0439dfabcfb942c9d"
-  rejected_candidate_sha: "0d84f542a556800d93020b4000072da8faa3f740"
   previously_supervisor_approved_foundation_sha: "6984915d2989827edf00def64a04c102c4e08785"
-  folder_create_implementation_checkpoint_sha: "6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8"
+  rejected_v1_1_candidate_sha: "c9a7f9c2fe77d134bed1659111d58b9a53d3eda3"
+  authority_store_implementation_test_checkpoint_sha: "750100f95c8a32a6deb6909cd03ebbee3682d650"
   prior_contract_version: "phase6-sync-foundation-v1"
   contract_version: "phase6-sync-foundation-v1.1"
   accepted_prior_findings:
@@ -125,32 +125,33 @@ sync_architecture_foundation:
     R5_exact_intended_remote_content: corrected_preserved
     R6_cache_bypassing_integrity: corrected_preserved
     CI_checkout_label: corrected_preserved_merge_ref_wording
-  folder_create_foundation_correction:
-    status: corrected_candidate
-    defect: "v1 durable physical-effect family lacked complete restart-safe LOCAL and REMOTE folder-create recovery despite empty-directory preservation requirement"
-    contract_file: "../../src/contracts/synchronization-folder-create-foundation.ts"
-    test_file: "../../test/phase6-folder-create-foundation.test.ts"
-    planning_record: "phase6-sync-folder-create-foundation-correction.md"
-    local_folder_create: "durable path/parent/normalization/expected-absence authority with structural restart verification"
-    remote_folder_create: "durable parent/path authority plus pre-reserved Drive folder identity for retry-safe lost-response recovery"
-    outcomes: "verified_effect_verified_not_applied_conflict_preserved_outcome_unknown"
-    commit_rule: "verified physical folder effect plus explicit converged path authority required before authoritative synchronization commit"
+  folder_create_foundation:
+    descriptor_semantics: corrected_preserved
+    authority_store_integration: corrected_candidate
+    authoritative_metadata: "SynchronizationAuthorityMetadataV1_1 with folder-capable RecoverableOperationIntentV1_1 operationIntents"
+    authoritative_store: "SynchronizationAuthorityStoreV1_1 load/save/BASE transition seam"
+    old_v1_metadata_store: "compatibility_only_for_new_or_resumed_v1_1_folder_work"
+    local_round_trip: "save_load_preserves_operation_intent_effect_stage_target_and_structural_path_authority"
+    remote_round_trip: "save_load_preserves_operation_intent_effect_stage_parent_remote_id_reserved_remote_id_and_path_authority"
+    restart_helper: "recoverableOperationV1_1RestartRecoveryDirectives"
+    completion_helper: "recoverableOperationV1_1IsComplete requires all effects state-committed"
+    no_private_sidecar_required: true
     affected_workstream_contract_readiness:
       A_remote: sufficient_candidate
       B_local: sufficient_candidate
       C_state_recovery: sufficient_candidate
       D_orchestration: sufficient_candidate
       G_adversarial: sufficient_candidate
-  mutation_lifecycle_audit: "complete_for_upload_create_update_download_create_update_local_remote_folder_create_remote_local_move_remote_local_trash_clean_text_merge"
+  mutation_lifecycle_audit: "folder_chain_complete_from_v1_1_intent_through_authority_store_restart_verification_path_convergence_and_commit_for_local_and_remote_folder_create"
   ci_checkout_semantics: "GitHub pull-request workflow checks out the generated PR merge ref containing the candidate head unless a workflow explicitly requests the head SHA; evidence must label it accordingly."
-  folder_create_checkpoint_verification:
+  authority_store_checkpoint_verification:
     workflow: "Phase 6 Alpha Diagnostic Verification"
-    run_id: 33347048717
-    job_id: 99353048259
-    candidate_head: "6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8"
+    run_id: 33355904138
+    job_id: 99377893445
+    candidate_head: "750100f95c8a32a6deb6909cd03ebbee3682d650"
     checkout_semantics: "PR merge-ref verification containing candidate head"
-    full_tests: 407
-    full_tests_passed: 407
+    full_tests: 413
+    full_tests_passed: 413
     focused_tests: 38
     focused_tests_passed: 38
     typecheck: PASS
@@ -160,8 +161,8 @@ sync_architecture_foundation:
     mobile_package_verifiers: PASS
     main_js_bytes: 415353
     main_js_sha256: "02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd"
-    manifest_sha256: "79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547"
-    artifact_id: 9742325001
+    artifact_id: 9745116592
+    artifact_digest: "sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4"
   artifacts:
     - "phase6-sync-architecture-foundation.md"
     - "phase6-sync-contract-freeze.md"
@@ -180,12 +181,12 @@ sync_architecture_foundation:
   stage_3_started: false
   azure_change_authorized: false
   physical_device_validation_performed: false
-  next_valid_action: "Complete folder-create v1.1 evidence and final PR verification, then return exact PR #34 head for independent supervisor re-review. Do not resume A-G."
+  next_valid_action: "Run final evidence-bearing verification, then return exact PR #34 head for independent supervisor re-review. Do not resume A-G."
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Return the restart-safe folder-create v1.1 synchronization foundation candidate to independent supervisor re-review. Parallel continuation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
+  action: "Return the v1.1 folder authority-store integration correction to independent supervisor re-review. Parallel continuation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
   governing_file: "stage-1-build-decomposition.md"
   relevant_sections: ["10", "11", "17"]
   handoff: "phase-6-supervisor-handoff.md"
