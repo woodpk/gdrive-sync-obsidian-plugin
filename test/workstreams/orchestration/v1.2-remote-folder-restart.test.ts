@@ -106,7 +106,7 @@ test("D v1.2 authority boundary replaces nominal BASE and identity markers with 
     destructive: false,
     preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: target }],
     reasons: [],
-  }, authority);
+  }, authority, [{ path: target, entityKind: "file", remoteObjectId: rid }]);
   assert.equal(result.status, "ready");
   if (result.status !== "ready") return;
   assert.equal(result.operation.authorityComplete, true);
