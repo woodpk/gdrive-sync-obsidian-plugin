@@ -1139,8 +1139,8 @@ Deleted: none.
 
 Qualified Windows assertions:
 
-1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\\vault\\__brain_sync_portable_config__`, expected `\\vault\\__brain_sync_portable_config__`;
-2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\\vault\notes\\missing.md`, expected `\\vault\notes\\missing.md`.
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure` — actual `D:\vault\__brain_sync_portable_config__`, expected `\vault\__brain_sync_portable_config__`;
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates` — actual `D:\vault\notes\missing.md`, expected `\vault\notes\missing.md`.
 
 `Physical iPhone validation: NOT AVAILABLE IN THIS SESSION`
 
@@ -1202,7 +1202,7 @@ The two qualified Windows-only failures were unchanged:
 1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`;
 2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`.
 
-Both remain the previously documented drive-prefix expectation difference (`D:\\\\vault\\\\...` actual versus `\\\\vault\\\\...` expected). No additional test failed.
+Both remain the previously documented drive-prefix expectation difference (`D:\\vault\\...` actual versus `\\vault\\...` expected). No additional test failed.
 
 Five build verifiers:
 
