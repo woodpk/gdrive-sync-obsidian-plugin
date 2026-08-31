@@ -1,10 +1,17 @@
 import {
+  appendDurableRemoteChangeBatch,
   folderCreateEligibleForAuthoritativeCommit,
   recoverRemoteFolderCreate,
 } from "../contracts";
 import type {
+  AuthoritativeBaseTransition,
   AuthoritativeSuccessCommitter,
+  AuthorityCompletePreconditionValidationResult,
+  AuthorityCompleteSuccessCommitter,
+  AuthoritativeSynchronizationExecutor,
   CommitResult,
+  CommonStateProof,
+  DurableRemoteChangeBatch,
   ExactBaseAuthority,
   ExecutableOperationPrecondition,
   ExecutablePlannedOperation,
@@ -19,6 +26,7 @@ import type {
   RemoteFolderCreateRecoveryReadPort,
   StateRevision,
   SynchronizationAuthorityMetadataV1_1,
+  SynchronizationAuthorityStoreV1_1,
   SynchronizationExecutor,
 } from "../contracts";
 import type { StateCommitCoordinator } from "./commit-coordinator";
@@ -53,8 +61,7 @@ export type ExecutionLifecycleObserver = (operation: PlannedOperation, stage: Ex
 
 /**
  * Compatibility coordinator retained for pre-foundation Phase-2/Phase-5 paths.
- * New synchronization orchestration must resolve exact authority before using
- * the frozen authoritative executor seam.
+ * New synchronization orchestration must use AuthorityCompleteExecutionCoordinator.
  */
 export class CrashSafeExecutionCoordinator {
   constructor(
@@ -171,16 +178,10 @@ export type AuthorityResolutionResult =
   | { readonly status: "incomplete-authority"; readonly reason: string };
 
 function operationBaseAuthorityPath(operation: PlannedOperation) {
-  return operation.kind === "identity-preserving-move" && operation.fromPath
-    ? operation.fromPath
-    : operation.path;
+  return operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : operation.path;
 }
 
-/**
- * Replace compatibility-only planner markers with exact frozen authority.
- * Runtime precondition validation remains responsible for proving that these
- * exact generation/path/fingerprint/remote-identity facts are still current.
- */
+/** Replace compatibility-only planner markers with exact frozen authority. */
 export function resolveAuthorityCompleteOperation(
   operation: PlannedOperation,
   authority: SynchronizationAuthorityMetadataV1_1,
@@ -193,34 +194,83 @@ export function resolveAuthorityCompleteOperation(
       if (!pathAuthority || pathAuthority.status !== "converged") {
         return { status: "incomplete-authority", reason: `exact BASE authority unavailable for ${String(authorityPath)}` };
       }
-      const exact: ExactBaseAuthority = {
-        generation: authority.semanticGeneration,
-        path: authorityPath,
-        fingerprint: pathAuthority.baseFingerprint,
-      };
+      const exact: ExactBaseAuthority = { generation: authority.semanticGeneration, path: authorityPath, fingerprint: pathAuthority.baseFingerprint };
       preconditions.push({ kind: "base-authority", authority: exact });
       continue;
     }
     if (precondition.kind === "identity-unambiguous") {
       const remoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
-      if (!remoteObjectId) {
-        return { status: "incomplete-authority", reason: `exact remote identity unavailable for ${String(precondition.path)}` };
-      }
-      const proof: IdentityAuthorityProof = {
-        generation: authority.semanticGeneration,
-        status: "unique",
-        path: precondition.path,
-        remoteObjectId,
-      };
+      if (!remoteObjectId) return { status: "incomplete-authority", reason: `exact remote identity unavailable for ${String(precondition.path)}` };
+      const proof: IdentityAuthorityProof = { generation: authority.semanticGeneration, status: "unique", path: precondition.path, remoteObjectId };
       preconditions.push({ kind: "identity-authority", proof });
       continue;
     }
     preconditions.push(precondition);
   }
-  return {
-    status: "ready",
-    operation: { ...operation, authorityComplete: true, preconditions },
-  };
+  return { status: "ready", operation: { ...operation, authorityComplete: true, preconditions } };
+}
+
+/**
+ * Authoritative D execution boundary. It loads exact semantic authority, replaces
+ * planning-only markers, revalidates the resulting exact preconditions, performs
+ * only an authority-complete mutation, and commits only a verified receipt.
+ */
+export class AuthorityCompleteExecutionCoordinator {
+  constructor(
+    private readonly authorityStore: SynchronizationAuthorityStoreV1_1,
+    private readonly executor: AuthoritativeSynchronizationExecutor,
+    private readonly committer: AuthorityCompleteSuccessCommitter,
+  ) {}
+
+  async executeOperation(operation: PlannedOperation): Promise<CoordinatedExecutionResult> {
+    const loaded = await this.authorityStore.loadAuthority();
+    if (loaded.status === "uninitialized") return { status: "recovery-required", reason: "authoritative synchronization metadata is uninitialized" };
+    if (loaded.status === "recovery-required") return { status: "recovery-required", reason: "authoritative synchronization metadata requires recovery" };
+
+    const resolved = resolveAuthorityCompleteOperation(operation, loaded.state);
+    if (resolved.status !== "ready") return { status: "recovery-required", reason: resolved.reason };
+
+    const validation = await this.executor.validatePreconditions(resolved.operation);
+    const invalid = this.mapAuthoritativeValidation(validation);
+    if (invalid) return invalid;
+
+    const execution = await this.executor.execute(resolved.operation);
+    if (execution.status !== "durable-verified-success") return this.mapAuthoritativeExecution(execution);
+
+    const commit = await this.committer.commitVerifiedSuccess(resolved.operation, execution.receipt, loaded.state.persistenceRevision);
+    if (commit.status === "committed") return { status: "committed", commit };
+    if (commit.status === "stale-state") return { status: "stale-state", actualRevision: commit.actualRevision };
+    return { status: "recovery-required", reason: commit.reason };
+  }
+
+  private mapAuthoritativeValidation(result: AuthorityCompletePreconditionValidationResult): CoordinatedExecutionResult | undefined {
+    if (result.status === "valid") return undefined;
+    if (result.status === "stale") return { status: "stale-precondition", reason: "exact executable authority changed before mutation", failed: result.failed };
+    if (result.status === "blocked") return { status: "blocked", reason: result.reason };
+    return { status: "recovery-required", reason: result.reason };
+  }
+
+  private mapAuthoritativeExecution(result: Exclude<ExecutionResult, { status: "durable-verified-success" }>): CoordinatedExecutionResult {
+    if (result.status === "stale-precondition") return { status: "stale-precondition", reason: result.reason, failed: result.failed };
+    if (result.status === "blocking-failure") return { status: "blocked", reason: result.reason };
+    if (result.status === "recovery-required") return { status: "recovery-required", reason: result.reason };
+    if (result.status === "retryable-failure") return { status: "retryable-failure", reason: result.reason };
+    if (result.status === "uncertain") return { status: "uncertain", reason: result.reason };
+    return { status: "cancelled", reason: result.reason ?? "cancelled" };
+  }
+}
+
+/** Remote feed learning is durable authority independent of unrelated path convergence. */
+export function withLearnedRemoteBatch(
+  authority: SynchronizationAuthorityMetadataV1_1,
+  batch: DurableRemoteChangeBatch,
+): SynchronizationAuthorityMetadataV1_1 {
+  return { ...authority, learnedRemoteBatches: appendDurableRemoteChangeBatch(authority.learnedRemoteBatches, batch) };
+}
+
+/** Exact canonical LOCAL=REMOTE proof may heal BASE without rewriting either side. */
+export function commonStateBaseHealingTransition(proof: CommonStateProof, nextFingerprint: ExactBaseAuthority["fingerprint"]): AuthoritativeBaseTransition {
+  return { kind: "heal-common-state", proof, nextFingerprint };
 }
 
 export type RemoteFolderRestartDecision =
@@ -236,11 +286,7 @@ function remoteFolderDescriptor(effect: RecoverableMutationEffectV1_1): RemoteFo
   return effect.descriptor.kind === "remote-folder-create" ? effect.descriptor : undefined;
 }
 
-/**
- * Restart classifier for one persisted REMOTE folder-create effect.
- * `dispatch-authorized` and `outcome-unknown` always reconstruct Drive reality
- * through the frozen read-only v1.2 seam before any retry can become eligible.
- */
+/** Restart classifier for one persisted REMOTE folder-create effect. */
 export async function recoverRemoteFolderEffectV1_2(
   effect: RecoverableMutationEffectV1_1,
   pathConvergence: PathConvergenceState,
@@ -272,11 +318,7 @@ export interface RemoteFolderIntentRecoveryResult {
   readonly decision: RemoteFolderRestartDecision;
 }
 
-/**
- * Recover every persisted remote-folder effect independently. One conflicted or
- * unknown logical path never prevents an unrelated sibling effect from being
- * classified and progressed according to its own durable evidence.
- */
+/** Recover persisted remote-folder effects independently so siblings can progress. */
 export async function recoverRemoteFolderIntentsV1_2(
   authority: SynchronizationAuthorityMetadataV1_1,
   reader: RemoteFolderCreateRecoveryReadPort,
