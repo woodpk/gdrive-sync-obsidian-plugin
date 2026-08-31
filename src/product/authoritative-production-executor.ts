@@ -66,8 +66,11 @@ export function createAuthoritativeProductExecutor(
           failed.push(precondition);
           continue;
         }
+        const remoteObservationPath = operation.kind === "identity-preserving-move" && operation.targetSide === "local" && operation.toPath
+          ? operation.toPath
+          : mapping.path;
         const currentRemote = await legacy.versionStillCurrent("remote", {
-          path: mapping.path,
+          path: remoteObservationPath,
           entityKind: mapping.entityKind,
           remoteObjectId: mapping.remoteObjectId,
         }, managedRemote);
