@@ -405,3 +405,108 @@ No `npm run typecheck`, `npm test`, `npm run build`, `npm run check`, package/mo
 - Physical Windows/iPhone synchronization: **NOT PERFORMED**.
 - Azure/OAuth/Drive scope: **NOT MODIFIED**.
 - Final continuation SHA: read externally after this evidence commit; a commit cannot contain its own resulting SHA without self-reference.
+
+# Phase 6 Workstream D v1.2 rejection/fix repair closure append
+
+## Repair identity and authority
+
+- Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`
+- Repository: `woodpk/gdrive-sync-obsidian-plugin`
+- Branch: `phase6-sync-orchestration-v1.2-continuation`
+- Approved frozen foundation base: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+- Rejected head: `0cd4c607ea57a72d36363bc38eb8d8190c0e851f`
+- Fully verified source-repair head before this evidence-only closure: `8a31c17743187bb6e9818fea64f19851accf0c6b`
+- Repair execution class: PARALLEL-SAFE; no A-branch production was consumed and no integration/merge work was performed.
+
+## Correction disposition
+
+### D-C1 — authority-complete coordinator in the actual production path: PASS
+
+The normal `IntegratedProductController` import path now installs/uses the authority-complete execution boundary. When an explicit frozen `SynchronizationAuthorityStoreV1_1` is not provided, the product path uses `TrustedStateSynchronizationAuthorityStore` to derive current exact authority from canonical durable synchronization state. The authoritative coordinator upgrades nominal planner markers only when the required current exact BASE/identity authority exists. The production executor independently reloads and checks authoritative metadata/trusted identity state and re-observes remote reality before delegating to the physical executor. Nominal `base-trusted` / `identity-unambiguous` markers alone cannot authorize mutation.
+
+### D-C2 — identity proof cannot be self-fabricated: PASS
+
+Identity authority is derived only from durable `remoteMappings` associated with the current trusted semantic generation. Operation path and `remoteObjectId` are compared against that authority; they are never used to create it. Missing, contradictory, duplicate/nonunique, stale, or mismatched mapping blocks execution. Identity-preserving moves bind the durable identity to the source path while the production executor independently re-observes the resulting remote object at the destination before mutation/commit completion.
+
+### D-C3 — Reliable Changes pagination and terminal-only durable cursor: PASS
+
+`ProductSnapshotAssembler` consumes the frozen `ReliableRemoteChangePort.readChangePage()` seam for incremental reconciliation. It appends all page changes, follows `nextPageToken` only as an in-run pagination token, and exposes only a terminal `newStartPageToken` as the next durable change cursor. Removals and earlier-page changes are preserved. Failure before a terminal page throws without promoting an intermediate token. When no reliable remote-change port is available, D fails conservatively into full reconciliation rather than invoking legacy cursor-collapsing `GoogleDrivePort.readChanges()` semantics.
+
+## Complete source-repair file manifest from rejected head to verified source head
+
+Production files:
+- `src/core/execution-coordinator-base.ts` — added; preserved legacy crash-safe journal mechanics behind the authoritative wrapper.
+- `src/core/execution-coordinator.ts` — modified; authority-complete production coordinator, exact authority resolution, and mutation lifecycle integration.
+- `src/product/authoritative-production-executor.ts` — added; independent exact-authority and current-remote-reality validation before physical mutation.
+- `src/product/authority-execution-diagnostics.ts` — added; authoritative lifecycle diagnostic bridge.
+- `src/product/product-controller-base.ts` — added; preserved underlying controller implementation for the authoritative entrypoint wrapper.
+- `src/product/product-controller.ts` — modified; normal product entrypoint now installs authoritative state/execution boundary.
+- `src/product/snapshot-assembler.ts` — modified; ReliableRemoteChangePort paging with terminal-only cursor semantics and conservative full fallback.
+- `src/product/trusted-state-authority-store.ts` — added; read-through authority derived from canonical trusted state and durable remote mappings.
+
+Test/evidence-support files:
+- `test/phase5-acceptance-map.test.ts` — updated acceptance evidence pointers after required semantics/test-name migrations.
+- `test/phase5-group-a-recovery-state.test.ts` — recovery expectation migrated to fail closed without fresh durable authority.
+- `test/phase5-group-d-acceptance.test.ts` — active-run Changes fixture migrated to reliable page semantics.
+- `test/phase5-group-d-active-run-integration.test.ts` — active-run remote-change case migrated to reliable page semantics.
+- `test/phase5-group-d-recovery-coordination-integration.test.ts` — no-reliable-port case migrated to conservative full reconciliation.
+- `test/phase5-recovery-auth.test.ts` — recovery conflict mutation expectation migrated to fresh-authority requirement.
+- `test/phase5-second-rejection.test.ts` — ID-only removal-after-restart case migrated to ReliableRemoteChangePort.
+- `test/phase6-alpha-ios-sync-diagnostics.test.ts` — lifecycle fault injection made semantic-stage-aware rather than load-call-count-dependent.
+- `test/phase6-b-destructive-safety.test.ts` — D v1.2 targeted test aggregation updated.
+- `test/workstreams/orchestration/v1.2-authoritative-boundary.test.ts` — exact-authority boundary tests updated/expanded.
+- `test/workstreams/orchestration/v1.2-mutation-lifecycle.test.ts` — authoritative crash-safe lifecycle coverage.
+- `test/workstreams/orchestration/v1.2-production-authority-path.test.ts` — added production-composition proof that nominal markers alone cannot mutate and valid durable authority can proceed.
+- `test/workstreams/orchestration/v1.2-reliable-changes.test.ts` — added multi-page, removal, intermediate-token, and pre-terminal-failure proofs.
+- `test/workstreams/orchestration/v1.2-remote-folder-restart.test.ts` — folder restart recovery remains green through authoritative integration.
+
+Dedicated evidence file:
+- `dev/evidence/_ca-output-agt-CA-P6-SYNC-ORCHESTRATION-01.md` — historical D evidence preserved above and this v1.2 closure appended.
+
+## Exact source verification
+
+Strongest fully inspected source-repair CI point before evidence-only closure:
+
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Source branch head: `8a31c17743187bb6e9818fea64f19851accf0c6b`
+- GitHub Actions run: `33449709464`
+- Verification job: `99676623783`
+- Artifact ID: `9779305731`
+- Artifact name: `phase6-oauth-housekeeping-verification`
+- Artifact digest: `sha256:056fde51329746bffa5a41d30e172db37cac8aac75c9e837c04734d15ca2b00a`
+
+Direct artifact inspection, not just workflow status:
+- targeted/focused D suite: **38 / 38 PASS**, zero failures;
+- full `npm test`: **463 tests / 463 PASS / 0 FAIL / 0 cancelled / 0 skipped / 0 todo**, zero `not ok` entries;
+- `npm run typecheck`: PASS;
+- `npm run build`: PASS;
+- `npm run check`: PASS by direct `check.log` inspection, zero `not ok` entries;
+- `git diff --check`: PASS;
+- package/build verifier: PASS;
+- built `main.js`: size `436632` bytes; SHA-256 `aa704e039b03e0bfa289818a4be20a35309e56d92dad4e4bc76f1d86a504e25b`.
+
+Workflow evidence-quality note: the workflow pipes `npm test` and `npm run check` through `tee` without `set -o pipefail`, so a green Actions step alone is insufficient. The uploaded `full-tests.tap`, `focused-tests.tap`, and `check.log` were inspected directly; the counts above are from those artifacts and contain zero masked test failures.
+
+## Explicit required proof
+
+1. **Production controller uses the authority-complete boundary:** PASS. The normal `src/product/product-controller.ts` composition installs exact authority and authoritative execution, with production executor revalidation before physical mutation.
+2. **Operation self-assertion cannot create identity proof:** PASS. Durable/current `remoteMappings` are the sole identity-authority source; operation metadata is comparison input only.
+3. **Only the terminal Changes cursor can become durable:** PASS. Intermediate `nextPageToken` is traversal-only; terminal `newStartPageToken` is the sole returned durable candidate cursor.
+4. **Folder recovery remains green:** PASS in the targeted v1.2 suite.
+5. **Crash-safe mutation lifecycle remains inside the authoritative boundary:** PASS for precondition, pending journal, mutation, uncertainty journal, verification/commit, and stale-post-journal intent behavior.
+
+## Boundary and safety confirmation
+
+- Frozen `src/contracts/**`: **UNCHANGED by this repair**.
+- Canonical `dev/evidence/_ca-output.md`: **UNCHANGED by this repair**.
+- Workstream evidence is confined to `dev/evidence/_ca-output-agt-CA-P6-SYNC-ORCHESTRATION-01.md`.
+- PR #42 remains a review/CI harness and must remain draft/open/unmerged.
+- No integration merge, Stage 3 work, release activity, or physical vault synchronization was performed.
+
+## Remaining limitation
+
+Workstream D intentionally does not implement Workstream A's concrete Google Drive transport for `ReliableRemoteChangePort`. Until the integration layer supplies that approved port, product snapshot assembly conservatively uses full reconciliation rather than legacy `GoogleDrivePort.readChanges()`. This is fail-safe and does not weaken D-C3.
+
+## Post-evidence verification requirement
+
+The final branch SHA, its pull-request synthetic merge checkout SHA, exact post-evidence Actions run/job, direct artifact test counts, final rejected-head diff manifest, frozen-contract audit, canonical-evidence audit, and PR draft/open/unmerged state are verified externally after this self-referential evidence commit. They are reported in the coding-agent completion response; embedding the containing commit SHA in this file would necessarily change that SHA.
