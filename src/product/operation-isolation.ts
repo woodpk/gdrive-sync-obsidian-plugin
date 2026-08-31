@@ -1,5 +1,6 @@
 import {
   restartRecoveryDirective,
+  type LocalMutationTransaction,
   type PlannedOperation,
   type RecoverableMutationEffectV1_1,
   type RecoverableOperationIntentV1_1,
@@ -40,7 +41,7 @@ export interface PhysicalEffectDispatcher {
 }
 
 export type DurableEffectLifecycleResult =
-  | { readonly status: "persisted" | "effect-verified" | "state-committed"; readonly authority: SynchronizationAuthorityMetadataV1_1 }
+  | { readonly status: "persisted" | "dispatch-authorized" | "effect-verified" | "state-committed"; readonly authority: SynchronizationAuthorityMetadataV1_1 }
   | { readonly status: "verified-not-applied" | "conflict-preserved" | "outcome-unknown" | "recovery-required"; readonly reason: string; readonly authority?: SynchronizationAuthorityMetadataV1_1 }
   | { readonly status: "already-progressed"; readonly stage: RecoverableMutationEffectV1_1["stage"]; readonly recoveryAction: ReturnType<typeof restartRecoveryDirective>["action"] }
   | { readonly status: "stale-authority"; readonly reason: string };
@@ -66,23 +67,38 @@ function replaceIntentEffect(
   };
 }
 
+function replaceLocalTransaction(
+  authority: SynchronizationAuthorityMetadataV1_1,
+  transaction: LocalMutationTransaction,
+): SynchronizationAuthorityMetadataV1_1 {
+  const retained = authority.localTransactions.filter(existing => existing.transactionId !== transaction.transactionId);
+  return { ...authority, localTransactions: [...retained, transaction] };
+}
+
 function findEffect(authority: SynchronizationAuthorityMetadataV1_1, operationId: string, effectId: string): RecoverableMutationEffectV1_1 | undefined {
   return authority.operationIntents.find(intent => String(intent.operationId) === operationId)?.effects.find(effect => effect.effectId === effectId);
 }
 
 /**
- * D-owned durable dispatch authority. Every effect is persisted at intent-persisted,
- * then persisted again at dispatch-authorized before the physical dispatcher can run.
- * Any post-dispatch ambiguity remains restart-reconcilable and is never rewritten as
- * definitely unattempted. State-committed is a separate, explicit final step.
+ * D-owned durable physical-effect state machine. Persistence is deliberately
+ * separated from dispatch so production can durably authorize an exact effect,
+ * checkpoint LOCAL transaction progress, and reconcile restart states without
+ * ever interpreting dispatch-authorized/outcome-unknown as blind retry authority.
  */
 export class DurableEffectLifecycleCoordinator {
   constructor(
     private readonly authorityStore: SynchronizationAuthorityStoreV1_1,
-    private readonly dispatcher: PhysicalEffectDispatcher,
+    private readonly dispatcher?: PhysicalEffectDispatcher,
   ) {}
 
-  async persistIntent(intent: RecoverableOperationIntentV1_1): Promise<DurableEffectLifecycleResult> {
+  async loadAuthority(): Promise<{ readonly status: "trusted"; readonly state: SynchronizationAuthorityMetadataV1_1 } | { readonly status: "recovery-required"; readonly reason: string }> {
+    const loaded = await this.authorityStore.loadAuthority();
+    return loaded.status === "trusted"
+      ? { status: "trusted", state: loaded.state }
+      : { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
+  }
+
+  async persistIntent(intent: RecoverableOperationIntentV1_1, localTransactions: readonly LocalMutationTransaction[] = []): Promise<DurableEffectLifecycleResult> {
     if (intent.effects.some(effect => effect.stage !== "intent-persisted")) {
       return { status: "recovery-required", reason: "new operation intent must begin with every physical effect at intent-persisted" };
     }
@@ -91,10 +107,19 @@ export class DurableEffectLifecycleCoordinator {
     if (loaded.state.operationIntents.some(existing => String(existing.operationId) === String(intent.operationId))) {
       return { status: "recovery-required", reason: "operation intent already exists; restart/recovery must consume durable evidence instead of replacing it" };
     }
-    return this.save({ ...loaded.state, operationIntents: [...loaded.state.operationIntents, intent] }, loaded.state);
+    const existingTransactions = new Set(loaded.state.localTransactions.map(transaction => String(transaction.transactionId)));
+    if (localTransactions.some(transaction => existingTransactions.has(String(transaction.transactionId)))) {
+      return { status: "recovery-required", reason: "local mutation transaction identity is already present; restart/recovery must consume it" };
+    }
+    return this.save({
+      ...loaded.state,
+      operationIntents: [...loaded.state.operationIntents, intent],
+      localTransactions: [...loaded.state.localTransactions, ...localTransactions],
+    }, loaded.state);
   }
 
-  async dispatchPersistedEffect(operationId: string, effectId: string): Promise<DurableEffectLifecycleResult> {
+  /** Persist dispatch-authorized before returning the descriptor to the caller. */
+  async authorizePersistedEffect(operationId: string, effectId: string): Promise<DurableEffectLifecycleResult> {
     const loaded = await this.authorityStore.loadAuthority();
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
     const effect = findEffect(loaded.state, operationId, effectId);
@@ -102,32 +127,63 @@ export class DurableEffectLifecycleCoordinator {
     if (effect.stage !== "intent-persisted") {
       return { status: "already-progressed", stage: effect.stage, recoveryAction: restartRecoveryDirective(effect).action };
     }
-
     const dispatchAuthorized = replaceIntentEffect(loaded.state, operationId, effectId, current => ({ ...current, stage: "dispatch-authorized" }));
-    const persistedDispatch = await this.save(dispatchAuthorized, loaded.state);
-    if (persistedDispatch.status !== "persisted") return persistedDispatch;
+    const saved = await this.save(dispatchAuthorized, loaded.state);
+    return saved.status === "persisted" ? { status: "dispatch-authorized", authority: saved.authority } : saved;
+  }
 
-    const authorizedEffect = findEffect(persistedDispatch.authority, operationId, effectId);
-    if (!authorizedEffect) return { status: "recovery-required", reason: "dispatch-authorized effect disappeared after durable save" };
+  /** Persist the exact LOCAL transaction returned by the frozen transactional seam. */
+  async persistLocalTransaction(transaction: LocalMutationTransaction): Promise<DurableEffectLifecycleResult> {
+    const loaded = await this.authorityStore.loadAuthority();
+    if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
+    if (!loaded.state.localTransactions.some(existing => existing.transactionId === transaction.transactionId)) {
+      return { status: "recovery-required", reason: "LOCAL transaction progress cannot be persisted because its durable transaction intent is missing" };
+    }
+    return this.save(replaceLocalTransaction(loaded.state, transaction), loaded.state);
+  }
 
-    const physical = await this.dispatcher.dispatch(authorizedEffect.descriptor);
+  /**
+   * Record a physical result after dispatch OR conservative restart reconciliation.
+   * Only an exact verified-effect may advance to effect-verified. All ambiguous or
+   * conflicting post-dispatch states remain outcome-unknown and restart-recoverable.
+   */
+  async recordPhysicalResult(operationId: string, effectId: string, physical: PhysicalEffectDispatchResult): Promise<DurableEffectLifecycleResult> {
+    const loaded = await this.authorityStore.loadAuthority();
+    if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
+    const effect = findEffect(loaded.state, operationId, effectId);
+    if (!effect) return { status: "recovery-required", reason: "persisted physical effect not found while recording outcome" };
+    if (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown") {
+      if (effect.stage === "effect-verified" || effect.stage === "state-committed") {
+        return { status: "already-progressed", stage: effect.stage, recoveryAction: restartRecoveryDirective(effect).action };
+      }
+      return { status: "recovery-required", reason: `physical result cannot be recorded from ${effect.stage}` };
+    }
+
     if (physical.status === "verified-effect") {
-      const verified = replaceIntentEffect(persistedDispatch.authority, operationId, effectId, current => ({
+      const verified = replaceIntentEffect(loaded.state, operationId, effectId, current => ({
         ...current,
         stage: "effect-verified",
         verificationEvidenceRef: physical.verificationEvidenceRef,
       }));
-      const saved = await this.save(verified, persistedDispatch.authority);
+      const saved = await this.save(verified, loaded.state);
       return saved.status === "persisted" ? { status: "effect-verified", authority: saved.authority } : saved;
     }
 
-    // A dispatch occurred. Even a transport-level claim of non-application or a
-    // preserved conflict must not be rewritten to intent-persisted. Persist the
-    // uncertainty boundary so restart performs physical reconciliation first.
-    const uncertain = replaceIntentEffect(persistedDispatch.authority, operationId, effectId, current => ({ ...current, stage: "outcome-unknown" }));
-    const saved = await this.save(uncertain, persistedDispatch.authority);
+    const uncertain = replaceIntentEffect(loaded.state, operationId, effectId, current => ({ ...current, stage: "outcome-unknown" }));
+    const saved = await this.save(uncertain, loaded.state);
     if (saved.status !== "persisted") return saved;
     return { status: physical.status, reason: physical.reason, authority: saved.authority };
+  }
+
+  /** Compatibility helper retained for isolated lifecycle tests; production may use the split methods above. */
+  async dispatchPersistedEffect(operationId: string, effectId: string): Promise<DurableEffectLifecycleResult> {
+    if (!this.dispatcher) return { status: "recovery-required", reason: "no physical dispatcher is configured" };
+    const authorized = await this.authorizePersistedEffect(operationId, effectId);
+    if (authorized.status !== "dispatch-authorized") return authorized;
+    const effect = findEffect(authorized.authority, operationId, effectId);
+    if (!effect) return { status: "recovery-required", reason: "dispatch-authorized effect disappeared after durable save" };
+    const physical = await this.dispatcher.dispatch(effect.descriptor);
+    return this.recordPhysicalResult(operationId, effectId, physical);
   }
 
   async markEffectStateCommitted(operationId: string, effectId: string, verificationEvidenceRef: string): Promise<DurableEffectLifecycleResult> {
