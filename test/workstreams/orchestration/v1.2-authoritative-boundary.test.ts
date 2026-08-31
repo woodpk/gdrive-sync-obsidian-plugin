@@ -6,24 +6,31 @@ import {
   type AuthorityCompleteSuccessCommitter,
   type AuthoritativeSynchronizationExecutor,
   type CommitResult,
+  type DeviceIdentity,
   type DurableRemoteChangeBatch,
   type ExecutablePlannedOperation,
   type ExecutionResult,
   type FileCommonStateProof,
   type OperationId,
-  type PlannedOperation,
   type RemoteIngestionBatchId,
+  type RemoteObjectMapping,
   type SemanticStateGeneration,
+  type StateLoadContext,
   type StateRevision,
   type SynchronizationAuthorityMetadataV1_1,
   type SynchronizationAuthoritySaveResult,
   type SynchronizationAuthorityStoreV1_1,
+  type SynchronizationStateStore,
+  type TrustedSynchronizationState,
+  type VaultIdentity,
   type VaultPath,
   type VerifiedExecutionReceipt,
+  type PlannedOperation,
 } from "../../../src/contracts";
 import {
   AuthorityCompleteExecutionCoordinator,
   commonStateBaseHealingTransition,
+  resolveAuthorityCompleteOperation,
   withLearnedRemoteBatch,
 } from "../../../src/core/execution-coordinator";
 
@@ -31,6 +38,9 @@ const id = <T extends string>(value: string) => contractId<T>(value);
 const path = (value: string) => id<"VaultPath">(value) as VaultPath;
 const stateRevision = (value: string) => id<"StateRevision">(value) as StateRevision;
 const generation = (value: string) => id<"SemanticStateGeneration">(value) as SemanticStateGeneration;
+const vaultIdentity = id<"VaultIdentity">("vault:authority") as VaultIdentity;
+const deviceIdentity = id<"DeviceIdentity">("device:authority") as DeviceIdentity;
+const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vaultIdentity, expectedDeviceIdentity: deviceIdentity };
 
 function authority(): SynchronizationAuthorityMetadataV1_1 {
   return {
@@ -44,6 +54,25 @@ function authority(): SynchronizationAuthorityMetadataV1_1 {
     operationIntents: [],
     localTransactions: [],
   };
+}
+
+function mapping(remote = "remote:a", mappedPath = "notes/a.md"): RemoteObjectMapping {
+  return { path: path(mappedPath), remoteObjectId: id<"RemoteObjectId">(remote), entityKind: "file" };
+}
+
+function identityState(mappings: readonly RemoteObjectMapping[] = [mapping()]): SynchronizationStateStore {
+  const state: TrustedSynchronizationState = {
+    schemaVersion: 1,
+    stateRevision: stateRevision("legacy:authority"),
+    vaultIdentity,
+    deviceIdentity,
+    base: [],
+    remoteMappings: mappings,
+    tombstones: [],
+    operations: [],
+    knownDevices: [],
+  };
+  return { load: async () => ({ status: "trusted" as const, state }) } as unknown as SynchronizationStateStore;
 }
 
 class MemoryAuthorityStore implements SynchronizationAuthorityStoreV1_1 {
@@ -82,24 +111,28 @@ class RecordingCommitter implements AuthorityCompleteSuccessCommitter {
   }
 }
 
-function planned(): PlannedOperation {
+function planned(remote = "remote:a"): PlannedOperation {
   const target = path("notes/a.md");
   return {
     operationId: id<"OperationId">("op:authoritative") as OperationId,
     kind: "upload-update",
     path: target,
     targetSide: "remote",
-    remoteObjectId: id<"RemoteObjectId">("remote:a"),
+    remoteObjectId: id<"RemoteObjectId">(remote),
     destructive: false,
     preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path: target }],
     reasons: [],
   };
 }
 
+function coordinator(executor = new RecordingAuthoritativeExecutor(), store = new MemoryAuthorityStore(), mappings = identityState()) {
+  return { coordinator: new AuthorityCompleteExecutionCoordinator(store, executor, new RecordingCommitter(), mappings, context), executor };
+}
+
 test("D authoritative coordinator never passes nominal authority markers to execution or commit", async () => {
   const executor = new RecordingAuthoritativeExecutor();
   const committer = new RecordingCommitter();
-  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer);
+  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
   const result = await coordinator.executeOperation(planned());
   assert.equal(result.status, "committed");
   assert.equal(executor.executed.length, 1);
@@ -115,10 +148,38 @@ test("D authoritative coordinator never passes nominal authority markers to exec
   assert.equal(committer.calls[0]?.expected, stateRevision("p:authority"));
 });
 
+test("D operation self-assertion cannot manufacture identity authority without a durable mapping", () => {
+  const resolved = resolveAuthorityCompleteOperation(planned(), authority(), []);
+  assert.equal(resolved.status, "incomplete-authority");
+});
+
+test("D contradictory durable identity mapping rejects operation path or remote ID assertion", () => {
+  assert.equal(resolveAuthorityCompleteOperation(planned(), authority(), [mapping("remote:other")]).status, "incomplete-authority");
+  assert.equal(resolveAuthorityCompleteOperation(planned(), authority(), [mapping("remote:a", "notes/other.md")]).status, "incomplete-authority");
+});
+
+test("D duplicate durable mapping is non-unique and blocks identity authority", () => {
+  const duplicate = [mapping(), { ...mapping() }];
+  assert.equal(resolveAuthorityCompleteOperation(planned(), authority(), duplicate).status, "incomplete-authority");
+});
+
+test("D matching current-generation durable mapping resolves exact identity authority", () => {
+  const resolved = resolveAuthorityCompleteOperation(planned(), authority(), [mapping()]);
+  assert.equal(resolved.status, "ready");
+  if (resolved.status === "ready") {
+    const proof = resolved.operation.preconditions.find(value => value.kind === "identity-authority");
+    assert.equal(proof?.kind, "identity-authority");
+    if (proof?.kind === "identity-authority") {
+      assert.equal(proof.proof.remoteObjectId, id<"RemoteObjectId">("remote:a"));
+      assert.equal(proof.proof.generation, generation("g:authority"));
+    }
+  }
+});
+
 test("D authoritative coordinator isolates stale exact precondition before physical execution", async () => {
   const executor = new RecordingAuthoritativeExecutor({ status: "stale", failed: [] });
   const committer = new RecordingCommitter();
-  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer);
+  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
   const result = await coordinator.executeOperation(planned());
   assert.equal(result.status, "stale-precondition");
   assert.equal(executor.executed.length, 0);
@@ -129,7 +190,16 @@ test("D authoritative coordinator refuses mutation when exact BASE convergence a
   const value = authority();
   const store = new MemoryAuthorityStore({ ...value, pathConvergence: [] });
   const executor = new RecordingAuthoritativeExecutor();
-  const coordinator = new AuthorityCompleteExecutionCoordinator(store, executor, new RecordingCommitter());
+  const coordinator = new AuthorityCompleteExecutionCoordinator(store, executor, new RecordingCommitter(), identityState(), context);
+  const result = await coordinator.executeOperation(planned());
+  assert.equal(result.status, "recovery-required");
+  assert.equal(executor.validated.length, 0);
+  assert.equal(executor.executed.length, 0);
+});
+
+test("D authoritative coordinator refuses operation when trusted mapping disagrees with operation", async () => {
+  const executor = new RecordingAuthoritativeExecutor();
+  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, new RecordingCommitter(), identityState([mapping("remote:other")]), context);
   const result = await coordinator.executeOperation(planned());
   assert.equal(result.status, "recovery-required");
   assert.equal(executor.validated.length, 0);
