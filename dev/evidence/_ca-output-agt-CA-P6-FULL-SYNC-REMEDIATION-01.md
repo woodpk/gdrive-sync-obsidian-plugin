@@ -1,0 +1,243 @@
+# Phase 6 Alpha — Full Synchronization Debugging and Remediation
+
+## 2026-08-30 — Checkpoint 0: ownership and repository grounding
+
+- agent: `agt-CA-P6-FULL-SYNC-REMEDIATION-01`
+- assignment: full debugging and remediation ownership for BRAIN Google Drive Sync convergence failures
+- repository: `woodpk/gdrive-sync-obsidian-plugin`
+- isolated branch: `phase6-alpha-full-sync-remediation`
+- starting released `master` SHA: `b1b3a4bd70cd14be49ae9085a8305f5825fccf4f`
+- released baseline: `0.1.7`
+- physical evidence supplied:
+  - `brain-log-10.txt`
+  - `sync-plan-errors copy.xlsx`
+- governing prompt: `CODEX FULL DEBUGGING & REMEDIATION OWNERSHIP — BRAIN GOOGLE DRIVE SYNC`
+
+### Authorities read completely before implementation
+
+- `dev/planning-and-building/agent-led-software-product-construction-manual.md`
+- `dev/planning-and-building/target-system-specification.md`
+- `dev/planning-and-building/decision-register.yaml`
+- `dev/planning-and-building/project-state.yaml`
+- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+
+The current task is a Stage 2A Phase 6 remediation loop, not Stage 3. The target specification remains authoritative over current code, tests, and earlier debugging conclusions. Locked behavior includes serialized/coalesced runs, immutable plan intent, path-local failure isolation, independent safe-path progress, trustworthy BASE/history, conservative cursor/state advancement, crash-safe verified commit ordering, and no weakening of stale-plan, deletion, conflict, recovery, identity, or transfer-integrity protections.
+
+### Investigation gates
+
+1. independently analyze the raw log and workbook;
+2. reconstruct the actual trigger-to-reconciliation lifecycle and feedback loops;
+3. classify each suspected mechanism as confirmed, rejected, incomplete, or downstream;
+4. create predictive reproductions for confirmed failure transitions;
+5. add privacy-safe instrumentation where existing evidence is insufficient;
+6. implement the minimum architectural correction that prevents the confirmed mechanisms;
+7. run focused adversarial and complete repository verification;
+8. preserve further milestone evidence here and append material milestones to `_ca-output.md`.
+
+### Current conclusions
+
+No root-cause conclusion has been accepted yet. The supplied hypotheses remain leads pending independent evidence and repository reconstruction.
+
+### Current file manifest
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+
+**Deleted**
+
+- none.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 1: raw physical evidence and causal reconstruction
+
+### Evidence identity
+
+- `brain-log-10.txt`: `347711` bytes; `1051` JSONL records; SHA-256 `20985ac0a95bea663ba11209e07091d027fd7393c22cd123283655fa4790731b`
+- `sync-plan-errors copy.xlsx`: `11484` bytes; SHA-256 `12b47adf883ed078757dde765d22dc7f458d986a8dfe7b517c4abf2c73bd7f65`
+- workbook inspection used the bundled `@oai/artifact-tool` runtime and did not modify the source workbook
+
+### Independently established physical behavior
+
+- the log covers run IDs `130` through `175` from `2026-08-30T04:45:50.288Z` through `2026-08-30T04:50:09Z`;
+- `45` consecutive completed automatic `local-change` runs failed;
+- every completed run failed on operation index `1`, an `upload-update`, during precondition validation with `stale-precondition`;
+- every failed run committed `0` safe operations and skipped `0` operations;
+- all plans were classified `safe-auto-eligible`, carried `0` attention operations, and contained `2` or `3` uploads plus unrelated no-ops;
+- each failure was followed immediately by another controller-created `automatic:local-change` run; run `175` was already validating operation `1` when the log ended;
+- normal diagnostics expose only the aggregate stale result, not the failed precondition kind/side/count;
+- the attention workbook contains four records: one resolved and three current;
+- current records include `Logs.md`, `Untitled.md`, and `__brain_sync_portable_config__/hotkeys.json`;
+- the portable-configuration record incorrectly carries the exact `Untitled.md: listed file was not truthfully observed as file (absent)` reason, establishing cross-path uncertainty contamination rather than an independent hotkeys observation failure.
+
+### Confirmed failure mechanisms
+
+1. **Root cause — incorrect invalidation scope.** `IntegratedProductController.executePlanned()` groups `stale-precondition` with `stale-state`, marks both run-global, stops before unrelated operations, and therefore violates the target distinction between operation/path-local stale intent and globally stale authoritative state.
+2. **Livelock amplifier — unconditional immediate self-replan.** That same stale branch calls `CoreRunCoordinator.noteLocalOrRemoteChangeDuringRun()`. `finishRun()` then reports `reconcileAgain`, and the controller immediately calls `runAutomatic("local-change")`. A stale operation therefore generates its own next run even when no new external trigger exists. There is no backoff or convergence condition.
+3. **Race amplifier — incoherent repeated validation observation.** `ProductSynchronizationExecutor.validatePreconditions()` independently calls local/remote observation for each path-observation, content-evidence, file-stable, and remote-object precondition. One upload can therefore observe the same object repeatedly during one validation pass, widening the race window and allowing internally mixed evidence. The separate post-journal mutation-boundary validation remains required; coherence is needed within each pass, not across the journal boundary.
+4. **Root cause — globalized local enumeration uncertainty.** `ObsidianLocalVaultAdapter.enumerate()` marks the entire listing partial when one listed file disappears before observation. `ProductSnapshotAssembler.makeSnapshots()` then converts every otherwise absent local path into `unknown`, including unrelated portable configuration paths. `ScopedLocalVault.enumerate()` can similarly globalize exact portable-path observation failures. This exactly accounts for the workbook's portable-hotkeys/Untitled mismatch.
+5. **Secondary consequence — stale attention remains current.** Because execution aborts before safe progress and never reaches per-path attention resolution, historical/current ledger state cannot converge. This is a consequence of the execution and observation defects, not the primary root cause.
+
+### Hypothesis disposition
+
+- repeated stale preconditions causing whole-run abort: **CONFIRMED**
+- immediate automatic replanning/livelock: **CONFIRMED and controller-self-generated**
+- starvation of independently safe operations: **CONFIRMED**
+- path-local observation uncertainty contaminating unrelated paths: **CONFIRMED**
+- repeated same-object observation widening the validation race: **CONFIRMED**
+- insufficient failed-precondition telemetry: **CONFIRMED**
+- attention remaining current because successful reconciliation is not reached: **CONFIRMED as a secondary consequence**
+- exact physical failed precondition kind/side: **NOT ESTABLISHABLE from the supplied sanitized log; instrumentation correction required**
+
+### Required predictive repair gates
+
+- one stale operation must be deferred as path attention while an independent operation commits;
+- a stale operation must not self-create an unbounded automatic run loop;
+- dependencies of stale work must remain skipped;
+- stale-state/recovery/destructive global gates must remain global;
+- each validation pass must use one canonical observation per side/path while the post-journal pass remains fresh;
+- a post-journal stale result must retire the known-unmutated pending journal before path-local continuation is authorized;
+- exact file list/observe races must remain exact-path uncertainty;
+- genuine subtree listing loss must affect that subtree only;
+- normal diagnostics must expose privacy-safe failed-precondition kind/side/count without paths or secrets;
+- later successful reconciliation must resolve current attention without erasing bounded history.
+
+No product behavior decision is unresolved at this checkpoint.
+
+## 2026-08-30 — Checkpoint 2: predictive regression baseline
+
+Created `test/phase6-alpha-full-sync-remediation.test.ts` before changing production code. The focused test file compiles under the repository test TypeScript configuration and fails `0/4` against the released `0.1.7` implementation, proving each intended repair gate is active:
+
+1. `operation-local stale precondition is isolated, safe work commits, and no immediate self-replan occurs` fails because the stale result creates a second automatic plan (`2 !== 1`);
+2. `post-journal stale intent is safely retired before unrelated work continues` fails because execution stops before the independent second operation and the pending intent is not retired;
+3. `one validation pass reuses one coherent local and remote observation per path` fails because one pass observes the local path three times (`3 !== 1`), with the same repeated-observation defect also present remotely;
+4. `path and subtree enumeration uncertainty do not contaminate unrelated absent paths` fails because an unrelated absent path is reported `unknown` instead of `absent`.
+
+Command:
+
+```text
+node --test .test-build/test/phase6-alpha-full-sync-remediation.test.js
+```
+
+Result: `0 passed; 4 failed; 4 total`.
+
+The full Windows test invocation also reproduced only these four new predictive failures plus the two already-established drive-prefix expectation mismatches. No production source was changed in this checkpoint.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 3: architectural repair implementation
+
+### Implemented corrections
+
+1. **Operation-local stale execution** — `stale-precondition` now skips only the affected operation, records `runtime-stale-precondition` attention, propagates dependency skipping, continues unrelated safe operations, leaves the cursor unadvanced for the partial run, and does not manufacture its own immediate automatic trigger. `stale-state`, recovery, uncertainty, authentication, and destructive-plan authority remain global.
+2. **Mutation-boundary crash safety** — when the executor's required second validation pass becomes stale after the pending journal, `StateCommitCoordinator.discardPending()` verifies the exact operation/path/revision and durably removes only that known-unmutated pending intent before path-local continuation. A discard race or persistence failure becomes `stale-state` or `recovery-required`; a crash before retirement leaves the pending journal for established recovery.
+3. **Coherent validation observations** — one validation pass now lazily caches one LOCAL observation and one REMOTE observation per actual path, one trusted-state load, and one run-evidence read. The separate post-journal mutation-boundary pass remains independent and fresh.
+4. **Scoped local enumeration uncertainty** — the local listing contract can carry `all`, exact `path`, or `subtree` uncertainty. A listed file that disappears is exact-path uncertainty; an inaccessible or unlistable folder is subtree uncertainty; a root failure remains global. Legacy incomplete listings without scope remain conservatively global. Canonical and portable-config wrappers preserve/map scope instead of globalizing an exact failure.
+5. **Privacy-safe precondition evidence** — diagnostics now record only failed-precondition count, sorted kind set, and sorted side set. Vault paths and content remain excluded from normal diagnostics.
+6. **Attention convergence** — a later successful operation or authoritative no-op for the path resolves current stale attention while retaining bounded resolved history.
+
+### Predictive and adversarial verification
+
+- pre-repair predictive baseline: `0/4` passed;
+- repaired dedicated remediation file plus actual Obsidian adapter file: `22/22` passed;
+- dedicated remediation cases prove unrelated progress, dependency isolation, no stale self-replan, cursor conservatism, sanitized diagnostics, post-journal retirement, per-pass observation coherence, scoped snapshot uncertainty, and later no-mutation attention resolution;
+- actual adapter cases prove exact listed-file disappearance and subtree access rejection produce different scopes;
+- Phase 5 scenario 24 was updated from the superseded whole-run rejection/self-replan expectation to the authoritative partial-attention/no-immediate-trigger behavior while retaining the assertion that the stale mutation never executes;
+- full Windows suite: `375/377` passed; the only failures are the unchanged qualified drive-prefix expectation mismatches:
+  - `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+  - `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+- `npm run typecheck`: PASS;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- build verifier: entrypoint, syntax, local runtime dependencies, mobile evaluation, and package shape all PASS;
+- `git diff --check`: PASS;
+- `npm run check`: qualified nonzero only because it includes the same two established Windows assertions; its typecheck passes and the build was run successfully as an independent gate.
+
+### Artifact
+
+- version: `0.1.7` (unchanged; no release preparation in this task)
+- `main.js`: `415353` bytes
+- SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+
+### Material implementation/test files
+
+**Modified**
+
+- `src/contracts/execution.ts`
+- `src/contracts/local-vault.ts`
+- `src/core/commit-coordinator.ts`
+- `src/core/execution-coordinator.ts`
+- `src/diagnostics/diagnostic-logger.ts`
+- `src/local/obsidian-local-vault.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/path-scope.ts`
+- `src/product/product-controller.ts`
+- `src/product/production-executor.ts`
+- `src/product/snapshot-assembler.ts`
+- `test/obsidian-local-vault.test.ts`
+- `test/phase5-acceptance-map.test.ts`
+- `test/phase5-group-d-active-run-integration.test.ts`
+- `test/phase6-alpha-full-sync-remediation.test.ts`
+
+**Created/deleted**
+
+- none in this implementation checkpoint; the dedicated predictive test file was created and pushed in checkpoint 2.
+
+No OAuth, Drive scope, managed-remote identity, conflict algorithm, deletion authority, first-sync authority, Azure configuration, or release metadata was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 4: post-implementation crash-safety audit
+
+The new pending-intent retirement seam received two additional coordinator-level adversarial tests:
+
+- a post-journal stale result removes the exact pending intent through a separate durable revision without advancing BASE;
+- a simulated persistence failure during retirement returns `recovery-required`, preserves the pending journal, and leaves BASE untouched so established recovery retains authority.
+
+Focused coordinator plus remediation result: `10/10` PASS. Existing crash-before-mutation, uncertain-outcome, durable-receipt, automatic lifecycle serialization/coalescing, destructive authority, recovery, cursor, first-sync, and attention persistence tests remain part of the complete suite. No further failure mechanism was found in this audit.
+
+Material file additionally modified: `test/phase2-execution.test.ts`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 5: resumed final local verification
+
+Verification was rerun from clean pushed head `a70d9a70609e40754d394ea30f986755f992db87` after the user resumed the task:
+
+- `npm run typecheck`: PASS;
+- crash-safety + remediation + actual-adapter focus: `27/27` PASS;
+- complete Windows suite: `377/379` PASS;
+- the only two failures remain the unchanged, previously qualified Windows drive-prefix expectation mismatches;
+- `npm run build`: PASS;
+- `npm run verify:build`: PASS;
+- entrypoint, syntax, local runtime dependencies, mobile evaluation, and package shape: PASS;
+- `git diff --check`: PASS;
+- version: `0.1.7`;
+- `main.js`: `415353` bytes;
+- SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
+
+No product or test changes were made during this verification checkpoint.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Checkpoint 6: review PR and independent Linux CI
+
+- PR: `#33` — `https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/33`
+- base: `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`
+- verified implementation/evidence head: `ac9156ffeb0771a903f5edb82fe20e8f746cd069`
+- PR state: OPEN, UNMERGED, MERGEABLE
+- GitHub workflow: `Phase 6 Alpha Diagnostic Verification`
+- run ID: `33313136444`
+- result: PASS on Linux
+- successful gates: checkout, dependency install, typecheck, full tests, focused callback/diagnostic/OAuth/export tests, production build, full repository check, whitespace check, artifact identity, and diagnostic build/evidence upload
+- Azure Static Web Apps run `33313136441`: FAIL only because the Static Web App already has the maximum number of staging environments; this is the established preview-capacity infrastructure condition, not plugin source/test failure
+- Azure infrastructure was not changed.
+
+This checkpoint is evidence-only and does not change the verified bundle.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION

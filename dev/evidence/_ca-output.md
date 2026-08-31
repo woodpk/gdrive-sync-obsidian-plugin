@@ -402,7 +402,7 @@ GitHub Actions:
 - PR head metadata: `phase6-integration` @ `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
 - exact generated PR merge SHA checked out by Actions: `2433141fb106d72b4a71e61c8be5d83893d37620`;
 - checkout log: merge ref combined `ca245e2198f1b8311b3edc3e419379c8c982ede6` into unchanged `master` base `54e8eefbad8e920c8f9b7c0b01fe93c6d82e9ed1`;
-- `npm ci`: **PASS** — 14 packages added, 15 audited, 0 vulnerabilities;
+- `npm ci`: **PASS** — 16 packages added, 17 audited, 0 vulnerabilities;
 - `npm run typecheck`: **PASS**;
 - `npm test`: **PASS** — 239 tests / 239 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo;
 - lifecycle repair tests 214–219 all passed in the combined integration run;
@@ -1146,7 +1146,7 @@ Qualified Windows assertions:
 
 `Synchronization root cause: NOT YET ESTABLISHED`
 
-PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 closure, or Stage 3 work occurred.
+PR #24 must remain OPEN and UNMERGED. No `0.1.3` tag/release, pairing, synchronization, performance work, Phase 6 completion, or Stage 3 work occurred.
 ---
 
 ## Phase 6 Alpha — iOS HTTPS Callback to Obsidian Handoff Repair — `agt-CODEX-P6-IOS-CALLBACK-HANDOFF-01`
@@ -1795,3 +1795,263 @@ Fresh Windows execution: NOT AVAILABLE IN THIS SESSION
 Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
 
 PR #31 remains required to stay OPEN and UNMERGED. No new branch/PR, integration/master merge, tag/release, physical-device action, synchronization action, or Stage 3 work is authorized by this correction. The evidence commit cannot self-contain its own Git SHA; the exact evidence/closure SHA and exact final PR head are recorded in PR #31 metadata and the completion response after GitHub returns them.
+
+---
+
+## 2026-08-30 — Phase 6 Alpha `0.1.7` promotion and release preparation
+
+### Identity and promotion authority
+
+- agent: `agt-CA-P6-ALPHA-017-PROMOTE-RELEASE-01`
+- approved source branch: `phase6-integration`
+- source integration SHA: `3005fe89f4214a9e389889769b088abfcad8293a`
+- pre-promotion `master` SHA: `77336110893ff31e4029d962584ba25fc22ce7c8`
+- promotion PR: `#32` (`phase6-integration` -> `master`)
+- promotion result: normal GitHub merge commit; PR `#32` is `MERGED`
+- promotion merge SHA: `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+- source integration tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- master promotion tree SHA: `5d6694f6a02a95125230b70baca230e19bfc6b78`
+- mandatory tree-identity result: **PASS — exact tree identity**
+- release version prepared: `0.1.7`
+
+### Pre-promotion verification at `3005fe89f4214a9e389889769b088abfcad8293a`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; the only failures were the two unchanged, previously qualified drive-prefix expectation mismatches
+- GitHub/Linux Phase 1 CI run `33291412713`: PASS
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+
+The two qualified Windows failures reproduced unchanged:
+
+1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
+2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
+
+### Post-promotion verification at `7b995a68b004cfa5a13700f04ac24a2206e2febc`
+
+- clean dependency installation (`npm ci`): PASS; 0 vulnerabilities
+- TypeScript checking: PASS
+- Windows full test run: **369/371 PASS**; only the same two qualified drive-prefix expectation mismatches reproduced
+- production build: PASS
+- build/package verification: PASS (`ENTRYPOINT`, `SYNTAX`, `LOCAL_RUNTIME_DEPENDENCIES`, `MOBILE_EVALUATION`, and `PACKAGE_SHAPE`)
+- `git diff --check`: PASS
+- `main.js`: `408410` bytes
+- `main.js` SHA-256: `3c55495bc29d686a4fb27d66f5109dbd5a93e5eb52229052920558ce33067cae`
+- `manifest.json`: `284` bytes
+- `manifest.json` SHA-256: `994d5986566b2e9c874aac45842b10a9db260207a24f3b646499e846a0e031e7`
+- pre-promotion/post-promotion artifact identity: **PASS — exact size and SHA-256 identity**
+
+### Complete promotion/release-preparation file manifest
+
+Net promotion changes introduced to `master` by PR `#32`, relative to pre-promotion `master`:
+
+**Created**
+
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PLAN-ERRORS-STABILITY-01.md`
+- `dev/evidence/_ca-output-agt-CA-P6-ALPHA-PR31-INTEGRATION-MERGE-01.md`
+- `src/product/sync-plan-errors-csv.ts`
+- `src/product/sync-plan-errors-path.ts`
+- `test/phase6-alpha-plan-errors-stability-rejection.test.ts`
+- `test/phase6-alpha-plan-errors-stability.test.ts`
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+- `manifest.json`
+- `package-lock.json`
+- `package.json`
+- `src/core/planner.ts`
+- `src/main.ts`
+- `src/product/canonical-local-vault.ts`
+- `src/product/path-scope.ts`
+- `src/product/plugin-data.ts`
+- `src/product/product-controller.ts`
+- `src/product/runtime.ts`
+- `src/product/settings-tab.ts`
+- `src/product/sync-attention-ledger.ts`
+- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+
+**Deleted**
+
+- none.
+
+Evidence-preparation pass after the promotion merge:
+
+**Created**
+
+- none.
+
+**Modified**
+
+- `dev/evidence/_ca-output.md`
+
+**Deleted**
+
+- none.
+
+This evidence-only release-preparation pass makes no product, test, workflow, version-metadata, or generated-release-behavior change. Its final commit becomes the intended `0.1.7` tag target after final tag-target verification.
+
+Physical iPhone validation remains pending.
+
+Stage 3 has not begun.
+
+---
+
+## 2026-08-30 — Full synchronization remediation ownership checkpoint 0
+
+- agent: `agt-CA-P6-FULL-SYNC-REMEDIATION-01`
+- branch: `phase6-alpha-full-sync-remediation`
+- starting released `master` SHA: `b1b3a4bd70cd14be49ae9085a8305f5825fccf4f`
+- task: independently diagnose and structurally remediate the repeated physical synchronization convergence failures without weakening the target-system safety model
+- supplied evidence: `brain-log-10.txt` and `sync-plan-errors copy.xlsx`
+- repository state at entry: clean `0.1.7` released master; isolated remediation branch created before implementation
+- authority grounding completed: construction manual, target-system specification, decision register including `DEC-299`/`DEC-300`, current project state, and Phase 6 handoff read completely
+- root-cause status: not yet determined; all inherited hypotheses remain unaccepted pending raw-evidence and code-path verification
+- durable detailed record: `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`
+- Stage 3 has not begun
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 1
+
+Raw physical evidence and current code jointly confirm: 45 consecutive operation-1 `upload-update` stale-precondition failures with zero safe commits; controller-self-generated immediate replanning; starvation caused by treating operation-local staleness as global; repeated same-object validation observations; and global contamination of absent paths by a single local list/observe race. The supplied workbook's portable-hotkeys entry carrying an `Untitled.md` absence reason is direct evidence of the cross-path uncertainty defect. Exact failed precondition kind/side is absent from current sanitized diagnostics and requires privacy-safe instrumentation. Detailed causal evidence and predictive repair gates are recorded in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 2
+
+The pre-repair predictive suite was added and run against released `0.1.7`: `0/4` passed. It independently reproduces controller-generated immediate replanning, failure to retire post-journal stale intent and continue unrelated work, three local observations within one validation pass, and unrelated-path contamination from scoped enumeration uncertainty. The Windows suite additionally reproduced only the two already-qualified drive-prefix assertions. Production code remains unchanged at this checkpoint; detailed failures are preserved in the dedicated remediation evidence.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 3
+
+The architectural correction is implemented. Operation-local stale work is isolated into attention without self-scheduling another immediate run; unrelated safe operations commit and dependent operations remain skipped. Post-journal stale intent is durably retired only after exact operation/path/revision verification. Each validation pass uses one lazy observation per side/path while the separate mutation-boundary pass remains fresh. Local enumeration now represents root-global, subtree, and exact-path uncertainty so a listed-file race cannot contaminate portable configuration or unrelated absent paths. Diagnostics expose only aggregate failed-precondition count/kind/side.
+
+Verification: focused remediation plus actual adapter `22/22`; complete Windows suite `375/377` with only the two unchanged qualified drive-prefix assertions; typecheck PASS; build and all package verifiers PASS; `main.js` `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; `git diff --check` PASS. Version remains `0.1.7`. Detailed design, safety reasoning, files, and test evidence are in `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 4
+
+Post-implementation adversarial coverage now proves both sides of stale pending-intent retirement: successful exact retirement is a separate durable state revision with no BASE advance, while retirement persistence failure remains globally recoverable and preserves the pending journal. Coordinator plus remediation focus: `10/10` PASS. No further architectural failure mechanism was found in this crash-safety audit.
+
+## 2026-08-30 — Full synchronization remediation checkpoint 5
+
+After the user resumed the task, final local verification was rerun from clean pushed head `a70d9a70609e40754d394ea30f986755f992db87`: typecheck PASS; crash-safety/remediation/actual-adapter focus `27/27`; complete Windows suite `377/379` with only the same two qualified drive-prefix mismatches; build and all package verifiers PASS; `git diff --check` PASS. Artifact remains `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Full synchronization remediation checkpoint 6
+
+PR #33 is open and unmerged against `phase6-integration`: `https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/33`. GitHub/Linux `Phase 6 Alpha Diagnostic Verification` run `33313136444` passed every source, test, build, full-check, whitespace, artifact, and upload gate on head `ac9156ffeb0771a903f5edb82fe20e8f746cd069`. The separate Azure Static Web Apps run `33313136441` failed solely because the app already has the maximum number of staging environments; no Azure change was made.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+## 2026-08-30 — Synchronization architecture foundation checkpoint 0
+
+Agent `agt-CA-P6-SYNC-FOUNDATION-01` verified PR #33 as open, unmerged, mergeable, and unchanged at reviewed head `85d509d90d475717d609c559fad870f64b956e9e` over `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`. The clean isolated branch `phase6-sync-architecture-foundation` was created exactly from that head. The current manual, target specification, decision register, Stage 1 decomposition/coverage, frozen shared-contract handoff, project state, Phase 6 handoff/integration manifest, cumulative evidence, and PR #33 evidence were read completely before modification. Manual proof and the complete authority/re-entry record are preserved in `dev/evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md`.
+
+This is a Stage 2A serial architecture gate. No later workstream agent/branch has been launched, no protected branch or PR #33 has been modified, and Stage 3 has not begun.
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
+## 2026-08-30 — Synchronization architecture foundation checkpoint 1
+
+The production synchronization stack was audited against all 20 required findings and current official Google Drive, Obsidian, Apple iOS, and Microsoft Windows sources. The candidate foundation now separates persistence CAS from semantic authority, remote ingestion from per-path convergence, Drive intermediate from terminal tokens, stable object identity from logical path, and cancellation from crash recovery. It also defines exact BASE authority/healing, reserved-ID mutation identity, explicit unknown outcomes, restart-consumable intent, verified/recoverable local transactions, exact self-mutation provenance, fault points, and fail-closed merge resource policy.
+
+Typecheck PASS; focused foundation contract/scaffolding tests `6/6` PASS; `git diff --check` PASS. No product implementation behavior changed. Architecture, contract-freeze candidate, exact non-overlapping workstreams, adversarial matrix, all finding dispositions, sources, and complete checkpoint evidence are persisted in the dedicated foundation record.
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
+## 2026-08-30 — Synchronization architecture foundation checkpoint 2
+
+The final source/contracts foundation candidate is `8b575e7439fdd601166e3bdb6e335992364da3fc` (`phase6-sync-foundation-v1`). It adds callable, cross-platform seams for exact semantic/BASE authority, lossless Drive page ingestion, explicit remote ambiguity, retry-safe mutation identity/outcomes, coherent downloads, restart-consumable intent, verified/recoverable local transactions, separate state CAS/semantic guards, cancellation, fault injection, and merge resource admission. All 20 finding dispositions and objective evidence are recorded in the dedicated foundation evidence and architecture artifact.
+
+Verification: typecheck PASS; focused foundation `6/6` PASS; full Windows `383/385` with only the same two qualified drive-prefix expectation mismatches; build and all package verifiers PASS; `git diff --check` PASS. `main.js` remains exactly `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; version remains `0.1.7`.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
+## 2026-08-30 — Synchronization architecture foundation checkpoint 3
+
+Review PR [#34](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34) is open and unmerged from `phase6-sync-architecture-foundation` to `phase6-integration`. Final local verification after the callable contract refinement: typecheck PASS; focused foundation `6/6` PASS; complete Windows `383/385` with only the two established drive-prefix mismatches; build and all five package verifiers PASS; `git diff --check` PASS. The artifact remains exactly `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; version remains `0.1.7`.
+
+PR #33 remains open/unmerged at its reviewed head. No protected branch, tag, release, Azure resource, OAuth configuration, vault, or physical device was changed.
+
+Physical iPhone validation: NOT AVAILABLE IN THIS SESSION
+
+Parallel implementation wave: NOT AUTHORIZED — independent supervisor approval is required.
+
+---
+
+## 2026-08-30 — Synchronization architecture foundation cloud continuation closure
+
+Agent `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01` re-entered `phase6-sync-architecture-foundation` at reviewed Codex head `e526d65ee64e8baf58fd7ea0439dfabcfb942c9d` without restarting the foundation. PR #33 remained open/unmerged at reviewed head `85d509d90d475717d609c559fad870f64b956e9e`; PR #34 remained open/unmerged to `phase6-integration`. The current construction manual and required authority artifacts were re-ingested; independently verified manual proof is preserved in `dev/evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md`.
+
+Supervisor findings A–H were all **CONFIRMED AND CORRECTED** within the shared foundation rather than deferred to later workers. The freeze candidate now requires preservation-safe immutable-candidate remote updates because current official Drive v3 documentation does not establish an atomic expected-version/`If-Match` content CAS; canonical SHA-256 file proof for BASE healing; explicit create-vs-replace local pre-state authority; lossless multiple learned remote batches with explicit retirement authority; durable pre-call `dispatch-authorized` semantics and deterministic crash fault points; one future supervisor-selected complete workstream base SHA; branch-local fake/adaptor feasibility with integration-owned cross-workstream tests/shared fakes; and fail-closed semantic-validation extensibility.
+
+Corrected implementation/document checkpoint: `c18ac873e1fcc30c7df6dcd691e845a2ac90912b`. Contract version remains `phase6-sync-foundation-v1`; historical Codex checkpoint `8b575e7439fdd601166e3bdb6e335992364da3fc` is not a worker branch point. A–G remains the maximum sound parallel decomposition after feasibility audit, but no worker branch was created and parallel implementation remains unauthorized.
+
+GitHub/Linux `Phase 6 Alpha Diagnostic Verification` run `33322848689` / job `99287749243` passed typecheck, **390/390** complete tests, **38/38** existing workflow-focused tests, production build, complete repository check, `git diff --check`, all five package/mobile build verifiers, artifact identity, and upload. The foundation file itself contains **11** predictive contract tests covering the strengthened authority surface, and the complete suite retains PR #33 remediation behavior. `main.js` remained `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; Linux `manifest.json` remained `275` bytes with SHA-256 `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`.
+
+Azure Static Web Apps run `33322848582` / job `99287748754` failed only because the Static Web App already had the maximum number of staging environments. No Azure change was made. Fresh Windows execution and physical iPhone synchronization were not available in this cloud continuation and are not represented as PASS.
+
+Temporary closure-helper workflow attempts in this continuation were transport-only failures; they changed no production/test/planning-contract behavior. The final net tree must not retain `.github/workflows/phase6-sync-foundation-cloud-finalize.yml`. Detailed dispositions, Drive research, exact file manifest, tests, workstream feasibility audit, and verification evidence: `dev/evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md`.
+
+The exact final evidence-bearing branch SHA is necessarily generated after this text and therefore cannot self-contain itself without self-reference; it is recorded in PR #34 metadata and the completion response after exact-head verification.
+
+**Parallel implementation wave: NOT AUTHORIZED — independent supervisor re-review is required.**
+
+---
+
+## 2026-08-30 — Synchronization foundation supervisor reject/fix R1–R6
+
+Rejected candidate: `0d84f542a556800d93020b4000072da8faa3f740`. Agent: `agt-CA-P6-SYNC-FOUNDATION-CLOUD-01`. Prior A–H corrections remain accepted and preserved.
+
+**R1 CORRECTED:** executable planning authority now carries exact `ExactBaseAuthority` / `IdentityAuthorityProof`; nominal `base-trusted` / `identity-unambiguous` survive only as compatibility planner markers and are structurally excluded from `ExecutablePlannedOperation` and the new authoritative executor/committer seam.
+
+**R2 CORRECTED:** durable recovery now records discriminated physical mutation descriptors/effects for local file create/replace, remote file create/update, side-qualified move, side-qualified trash, and multi-effect clean merge. Restart can reconstruct authorized physical intent without volatile pre-crash plan memory.
+
+**R3 CORRECTED:** `ReliableRemoteMutationPort` covers create, preservation-safe content update, identity-preserving move, and trash with explicit verified/not-applied/conflict/unknown outcomes. Raw `GoogleDrivePort` mutation methods are compatibility transport primitives only.
+
+**R4 CORRECTED:** safe physical materialization is distinct from logical path convergence. R0 + independent RI + writer candidate may have verified non-destructive application while the path remains conflict-preserved; ordinary convergence requires separate conflict-free authority.
+
+**R5 CORRECTED:** remote file-content mutation identity durably binds exact intended SHA-256 plus byte size before dispatch; interrupted candidate recovery validates against that persisted intended version, not later current LOCAL.
+
+**R6 CORRECTED:** `LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()` requires an authoritative actual-byte read/re-hash path. The B/G contract and adversarial matrix explicitly cover same-size/same-mtime H0→H1, missed watcher event, and unchanged cached token followed by cache-bypassing integrity discovery.
+
+The bounded cross-contract audit now covers upload-create/update, download-create/update, local/remote move, local/remote trash, and clean merge across `PLAN -> exact authority -> durable effect intent -> dispatch authority -> safe mutation port -> verification -> convergence/conflict -> BASE/state commit -> restart recovery`. No private authority sidecar is required by the frozen candidate.
+
+Predictive foundation tests retain prior cases and add the required T1–T10 reject/fix coverage. First reject/fix PR merge-ref run `33329149006` / job `99304466290` failed only at typecheck because the first exact-only interface revision collided with the existing legacy coordinator/controller call sites. No A–G production file was modified. The contracts were separated into compatibility and new authoritative seams; corrected checkpoint PR merge-ref run `33329198021` / job `99304595239` then passed typecheck, complete tests, focused workflow tests, production build, repository check, whitespace check, artifact identity, and upload.
+
+CI evidence-label correction is **CORRECTED**: GitHub pull-request verification is recorded as generated **PR merge-ref verification containing the candidate head**, not a literal clean head-SHA checkout unless a workflow explicitly performs one.
+
+Changed shared contract/foundation files are `src/contracts/plan.ts`, `src/contracts/execution.ts`, `src/contracts/synchronization-foundation.ts`, `src/contracts/google-drive.ts`, `src/contracts/local-vault.ts`, `test/phase6-sync-architecture-foundation.test.ts`, the four synchronization-foundation planning artifacts, `phase-6-supervisor-handoff.md`, `project-state.yaml`, and the two evidence records. No A–G implementation-owned production file was changed; worker count/ownership remain sound and no worker branch was created.
+
+The exact final evidence-bearing candidate SHA and final PR merge-ref verification are recorded in PR #34 metadata and the completion response after this append-only evidence commit. PR #33/PR #34 remain unmerged; no protected branch, Azure/OAuth production configuration, tag/release, physical Windows/iPhone synchronization, or Stage 3 work was performed.
+
+**PARALLEL IMPLEMENTATION NOT AUTHORIZED — independent supervisor re-review required.**
+
+---
+
+## 2026-08-31 — Foundation v1.2 verification-evidence rejection correction
+
+Agent `agt-CA-P6-SYNC-ORCHESTRATION-01` performed an evidence-only repair on branch `phase6-sync-foundation-v1.2-remote-folder-recovery-observation` from rejected candidate `344a4720bf4c356de757464ae19a7b7fe8e14ad2`. The reviewed contract implementation, predictive test source, and bounded planning correction required no modification.
+
+C1–C5 evidence provenance is corrected: the sole v1.2 review/CI vehicle is open/draft/unmerged PR #40; GitHub pull-request verification is qualified as PR merge-ref verification containing the candidate head rather than literal detached-head verification unless the checkout log proves otherwise; the actual bundle identity is `415353` bytes / SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`; the workflow is configured for Node 22 and proves full suite **423/423 PASS**, v1.2 T1–T10 all PASS, and workflow-focused callback/diagnostic/OAuth/export **38/38 PASS**; package verification is the single existing `scripts/verify-build.mjs` emitting `BUILD_VERIFY_ENTRYPOINT`, `BUILD_VERIFY_SYNTAX`, `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES`, `BUILD_VERIFY_MOBILE_EVALUATION`, and `BUILD_VERIFY_PACKAGE_SHAPE`, all PASS.
+
+Fresh corrected-evidence verification was inspected after evidence commit `1a197a4f1001107988103ea2c40403a002120872`: `Phase 6 Alpha Diagnostic Verification` run `33409650181`, job `99545722844`, SUCCESS. The checkout log proves PR #40 merge-ref commit `9a94862757e540382fac81204f83d16b5d251569` was checked out and contained candidate head `1a197a4f1001107988103ea2c40403a002120872`. The uploaded artifact is ID `9764596414`, digest `sha256:ce8b1a528841e5089db33fa1e435d5a399433a890b0499dd91b78a341b3d06c5`; its extracted `main.js` reproduces the `415353`-byte / `02f25864...` identity above. No required corrected-run verification was unavailable.
+
+Exact correction manifest relative to rejected head `344a4720bf4c356de757464ae19a7b7fe8e14ad2`:
+
+- `dev/evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-V1.2-REMOTE-FOLDER-RECOVERY-OBSERVATION-01.md`
+- `dev/evidence/_ca-output.md`
+
+No production source, test source, contract, planning/foundation artifact, workflow, dependency, package, Workstream A production, or Workstream D production file changed. Workstream D remains paused. PR #40 remains unmerged; no branch was merged; `phase6-integration` and `master` remain unmodified; Stage 3 did not begin.
+
+The commit containing this append-only closure cannot self-contain its own content-addressed Git SHA. Its exact final evidence-correction SHA is therefore resolved from the branch/PR after commit and reported in the completion response, consistent with the repository's established evidence-finalization convention. No supervisor approval is claimed.
