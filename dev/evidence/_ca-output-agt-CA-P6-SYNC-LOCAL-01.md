@@ -148,14 +148,14 @@ The final Phase 6 diagnostic workflow run completed successfully and exercised t
 
 - `npm ci` — PASS
 - `npm run typecheck` — PASS
-- `npm test` — PASS (includes every workstream-owned existing test plus both `test/workstreams/local/**` files)
+- `npm test` — PASS for the then-discovered repository tests. The later C1 correction record below supersedes the prior incorrect assertion that this original run included both nested `test/workstreams/local/**` suites.
 - focused Phase 6 callback/diagnostic/OAuth/replay/mobile-oriented test invocation — PASS
 - `npm run build` — PASS
 - `npm run check` — PASS
 - `git diff --check` — PASS
 - built-artifact identity/packaging check in the diagnostic workflow — PASS
 
-A preceding corrected standard CI run also passed `npm run typecheck`, the complete `npm test` suite, and `npm run build` before the explicit recovery-matrix expansion. The final diagnostic run above is the authoritative post-matrix result.
+A preceding corrected standard CI run also passed `npm run typecheck`, the complete then-discovered `npm test` suite, and `npm run build` before the explicit recovery-matrix expansion. The C1 correction record below is authoritative for execution of the nested Workstream B suites.
 
 ## Workstream-Specific Acceptance Evidence
 
@@ -194,7 +194,7 @@ The local-safety test proves exact transaction structural rename hints can be co
 
 ### Windows and iOS safety regressions
 
-The full `npm test` suite remained green, including the owned desktop bounded-read, external-reference, local failure/policy, mobile safety, Obsidian local-vault, Phase 6 local-hardening, iOS adapter/content-reader, and portable-collision suites. `npm run check` and the Phase 6 diagnostic workflow also remained green, preserving mobile-safe packaging/import boundaries.
+The full then-discovered `npm test` suite remained green, including the owned desktop bounded-read, external-reference, local failure/policy, mobile safety, Obsidian local-vault, Phase 6 local-hardening, iOS adapter/content-reader, and portable-collision suites. `npm run check` and the Phase 6 diagnostic workflow also remained green, preserving mobile-safe packaging/import boundaries. The C1 correction record below separately establishes execution of both nested Workstream B suites by the default runner.
 
 ### Failure/absence semantics
 
@@ -240,3 +240,46 @@ None. All assigned acceptance semantics were implementable behind the frozen con
 - Branch was pushed through the GitHub repository API throughout the workstream.
 - No merge was performed.
 - No Stage 3, release, tag, Azure/OAuth production configuration, integration-branch modification, or physical-device synchronization was performed.
+
+## Correction C1 — Workstream-local test discovery and evidence accuracy
+
+The prior statement in this evidence that the default `npm test` command executed both nested Workstream B suites was incorrect. At reviewed head `02c553cef1402e4bc0d392a6e9a709900b72427f`, the repository command compiled the nested tests but `node --test .test-build/test/*.test.js` executed only top-level compiled test entrypoints, and `test/phase6-a-local-hardening.test.ts` did not import either nested suite.
+
+### Test-discovery correction
+
+At correction implementation SHA `1d59af4bf4ed6f5b3a16a763c8e8c192c7c77d2d`, `test/phase6-a-local-hardening.test.ts` was changed only to import:
+
+- `./workstreams/local/local-recovery-matrix.test`
+- `./workstreams/local/local-transaction-safety.test`
+
+No production file, nested Workstream B test file, `package.json`, or GitHub Actions workflow was modified for C1.
+
+### Verification actually performed after correction
+
+GitHub Actions `Phase 6 Alpha Diagnostic Verification` run `33419658797`, job `99578650700`, executed on correction SHA `1d59af4bf4ed6f5b3a16a763c8e8c192c7c77d2d` and completed successfully.
+
+Required commands actually executed after the correction:
+
+- `npm run typecheck` — PASS
+- `npm test` — PASS
+- `npm run build` — PASS
+- `npm run check` — PASS
+- `git diff --check` — PASS
+
+The archived `npm test` TAP (`.ci-evidence/full-tests.tap`) proves both nested suites were discovered and executed by the default test command:
+
+- `test/workstreams/local/local-recovery-matrix.test.ts`
+  - `ok 227 - create crash-recovery matrix preserves absence or verified new content at every boundary`
+  - `ok 228 - replace crash-recovery matrix never converts lost old target into create authority`
+- `test/workstreams/local/local-transaction-safety.test.ts`
+  - `ok 229 - authoritative cache-bypass discovers same-size same-mtime H0->H1 after missed watcher event`
+  - `ok 230 - corrupt staged bytes are rejected before target displacement`
+  - `ok 231 - create requires authoritative absence and commits verified bytes`
+  - `ok 232 - replace rechecks canonical old bytes even when observation token is unchanged`
+  - `ok 233 - replace recovery treats absent target plus absent required backup as contradiction`
+  - `ok 234 - replace recovery completes verified stage when old target survives in backup`
+  - `ok 235 - exact plugin structural hints coalesce while overlapping user edit remains observable`
+
+Full-test summary: `1..408`; `tests 408`; `pass 408`; `fail 0`; `cancelled 0`; `skipped 0`; `todo 0`.
+
+Final C1 correction implementation SHA: `1d59af4bf4ed6f5b3a16a763c8e8c192c7c77d2d`. This evidence correction is a directly necessary evidence-only publication commit after that verified correction SHA; the final branch SHA is reported in the completion response.
