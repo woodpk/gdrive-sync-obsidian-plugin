@@ -1,198 +1,341 @@
-# Phase 6 Workstream G Evidence — agt-CA-P6-SYNC-ADVERSARIAL-01
+# Phase 6 Workstream G-C1 Repair Evidence — agt-CA-P6-SYNC-ADVERSARIAL-01
 
-## Identity and branch control
+## Identity / branch control
 
 - Agent: `agt-CA-P6-SYNC-ADVERSARIAL-01`
-- Approved v1.2 base SHA: `96b4541b15012ac4ce0d81243b73ef779efd343e`
-- Foundation branch authority: `phase6-sync-foundation-v1.2-remote-folder-recovery-observation`
-- Frozen synchronization contract: `phase6-sync-foundation-v1.2`
 - Work branch: `phase6-sync-adversarial-model`
-- Branch was created directly from exact approved SHA `96b4541b15012ac4ce0d81243b73ef779efd343e`.
-- No A-F worker branch was merged, rebased, cherry-picked, or consumed.
-- Implementation commit before this evidence-only commit: `ebc71a1ba2a53026e9f2ff7f8a15a5566f5f1845`.
-- Final branch SHA is reported in the completion response because a file cannot truthfully contain the SHA of the commit that creates that same file.
+- Rejected head: `83098e39f44f0b2259dfaaf25ef927be5be9a687`
+- Approved frozen v1.2 foundation base: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+- Frozen synchronization contract: `phase6-sync-foundation-v1.2`
+- Repair consumed no A/D worker implementation and changed no production source.
+- G-C1 implementation commits before this evidence commit:
+  - `0fda20876e876e5ca47791bbe3a7fb060db76246` — executable transition model support.
+  - `9f3be821081c2fd399dd9b8cf26728fe510d6c80` — directed/random/replay scenarios rewritten to drive the transition model.
+  - `4ddbd3851d7a37511f00d8ae67831fc82eb6b42f` — branded generation fixture correction after CI typecheck feedback.
+- Final correction SHA is reported in the completion response because this evidence file cannot contain the SHA of the commit that creates its final content.
 
-## Fresh manual-ingestion proof
+## G-only changed-file manifest for G-C1
 
-Fresh repository manual source inspected at approved base:
-`dev/planning-and-building/agent-led-software-product-construction-manual.md`, blob `02adedab577f397d98fb9666166270358a581761`.
+Relative to rejected head `83098e39f44f0b2259dfaaf25ef927be5be9a687`:
 
-Verification markers:
-- Title: `Agent-Led Software Product Construction Manual`
-- First substantive sentence: `This manual defines an agent-led process for moving from an initial software idea or partially developed concept through product definition, build planning, implementation, and independent validation.`
-- H2 sequence: Purpose; Operating Principles; Navigation and Entry; Stage 0 — Product Discovery and Requirements Elicitation; Stage 1 — Target-System Specification and Minimum Sound Build Decomposition; Stage 2A — Controlled Session-Based Construction; Stage 2B — Autonomous Product Construction; Stage 3 — Independent Product and System Validation; Cross-Stage Handoff Rules; Re-Entry and Recovery; Recommended Default Workflow.
-- Embedded dedicated agent prompts verified: Stage 0, Stage 1, Stage 2A build-prompt expansion, Stage 2B autonomous construction, Stage 3 validation.
-- Final sentence verified: `The appropriate entry stage should always be determined from the actual project state rather than from an assumption that the manual must be followed from the beginning.`
+- modified: `test/adversarial-model/adversarial-model.test.ts`
+- added: `test/adversarial-model/support/model.ts`
+- modified: `dev/evidence/_ca-output-agt-CA-P6-SYNC-ADVERSARIAL-01.md`
 
-## Created / modified / deleted files
+No files outside G ownership were changed by the repair.
 
-Created:
-- `test/adversarial-model/adversarial-model.test.ts`
-- `dev/evidence/_ca-output-agt-CA-P6-SYNC-ADVERSARIAL-01.md`
+## Transition-model implementation
 
-Modified: none.
-Deleted: none.
+The repaired model is an explicit deterministic synchronization transition engine rather than assertion-by-construction.
 
-Production files changed: none.
-Frozen contracts changed: none.
-Existing tests outside `test/adversarial-model/**` changed: none.
-`src/testing/fakes.ts` changed: no.
-Planning/foundation artifacts changed: no.
-Workflow/release/Azure/OAuth/protected-branch material changed: no.
+### Durable device state
 
-## Model and deterministic seed mechanism
+For both Device A and Device B the model carries:
 
-The G entrypoint contains a deterministic two-device synthetic model with:
-- Device A local files, BASE, semantic generation, persistence revision, stale-device state, lifecycle, watcher-loss set, evidence cache;
-- Device B equivalent local state;
-- REMOTE objects with stable object ID independent from logical path, content identity/revision, parent identity, and trash state;
-- durable logical operation journals and per-effect stages;
-- Drive change/checkpoint position and durable learned batches;
-- path convergence/conflict/unknown state;
-- online/offline/rate-limit/auth-loss network conditions;
-- active/suspended/dead application lifecycle;
-- delivered/non-delivered cancellation modeling;
-- synthetic local/change-event delivery loss;
-- cache-bypassing integrity reads.
+- LOCAL filesystem content;
+- per-path BASE records and acknowledged-version history;
+- deletion/tombstone history;
+- semantic generation;
+- persistence revision;
+- durable learned remote pages/batches;
+- durable cursor/checkpoint position;
+- durable logical operation journals;
+- per-effect physical mutation stage;
+- verification-evidence references;
+- path convergence/conflict/recovery state;
+- stale-state flag;
+- remote-coverage completeness;
+- local-readability/observation completeness;
+- starvation/progress counters.
 
-Random behavior uses one explicit numeric seed and a deterministic Mulberry32-style PRNG. Selected fixed seed set: `1`, `7`, `42`, `1337`, `0xC0FFEE`.
+### Shared remote state
 
-Every randomized step records sanitized synthetic event data only. The representative replay seed is `1337`; the entrypoint asserts two independent 40-step runs produce byte-for-byte identical serialized traces.
+REMOTE is keyed by stable remote identity independently of logical path. Each modeled object carries:
 
-## Enforced invariants
+- stable ID;
+- current logical path;
+- file/folder kind;
+- content identity when applicable;
+- remote revision;
+- parent identity when applicable;
+- trash state.
 
-The model asserts at minimum:
-- exact BASE authority is required for history-dependent work;
-- exact identity/path authority is required for identity-dependent work;
-- acknowledged/durable intended version survives later LOCAL advancement;
-- incomplete/unknown state never fabricates absence;
-- remote object identity is independent from logical path;
-- duplicate same-path candidates never become an implicit converged winner;
-- physical materialization is distinct from path convergence;
-- path-local conflict does not prevent unrelated learned-feed progress;
-- destructive authority is blocked for stale/auth-lost/mass-destructive conditions;
-- watcher/event loss cannot permanently hide content when authoritative integrity bypass is used;
-- clean merge completion requires every required effect to reach `state-committed`;
-- resource-bounded merge refusal preserves complete local/remote versions.
+### Volatile device state
 
-## Directed scenario implementation/result ledger
+Crash-discardable state includes:
 
-The following scenarios are implemented as deterministic assertions in `test/adversarial-model/adversarial-model.test.ts` and the complete test source compiled successfully in repository CI typecheck. Runtime execution of the nested G entrypoint is separately qualified below because the repository workflow does not execute nested G tests.
+- current reconciliation plan;
+- in-flight transport response state;
+- watcher/change-event state;
+- cached evidence;
+- volatile dirty-path set;
+- cancellation requested/delivered state;
+- lifecycle state;
+- network/auth/offline/rate-limit state.
 
-1. history-dependent work without exact BASE — rejection assertion present / compiled.
-2. identity-dependent work without exact identity — rejection assertion present / compiled.
-3. upload crash/restart at every durable stage — restart-classification matrix present / compiled.
-4. download crash/restart at every durable stage — matrix present / compiled.
-5. move crash/restart at every durable stage — matrix present / compiled.
-6. trash crash/restart at every durable stage — matrix present / compiled.
-7. clean merge independently journaled effects — incomplete-until-all-committed assertion present / compiled.
-8. R0 + RI + writer candidate — conflict preserved despite materialization / compiled.
-9. no-independent-candidate — convergence occurs only after explicit path authority / compiled.
-10. lost create/update response with L1 -> L2 — durable L1 intent retained and not substituted by L2 / compiled.
-11. remote move/trash outcome-unknown — physical reconciliation directive required / compiled.
-12. clean merge crash after one effect — logical operation remains incomplete / compiled.
-13. multi-page Drive Changes — page facts retained through terminal cursor / compiled.
-14. multi-batch ingestion with removals — earlier removal fact retained / compiled.
-15. repeated moves — stable remote object ID preserved / compiled.
-16. create-delete sequence — object identity/tombstone-like history retained while active-path absence is observed / compiled.
-17. duplicate logical paths — explicit conflict / compiled.
-18. long-lived unresolved path with later feed progress — cursor/backlog continues / compiled.
-19. same-size/same-mtime H0 -> H1 with missed watcher/stale cache — cache-bypassing read discovers H1 / compiled.
-20. Windows event loss — event loss does not become authority loss / compiled.
-21. iOS suspend/resume — durable revision retained / compiled.
-22. abrupt iOS/process termination — journal survives modeled process death / compiled.
-23. cancellation delivered — no new operation starts / compiled.
-24. cancellation not delivered before death — restart uses durable journal classification / compiled.
-25. auth loss — destructive authority denied / compiled.
-26. rate-limit/offline/transient remote failure — local-first content remains intact / compiled.
-27. path A changes continuously while B commits — B authority remains independently progressable / compiled.
-28. bounded quiescence once A stops — final A becomes equal to BASE in bounded modeled step / compiled.
-29. concurrent same-path creates — duplicate objects remain conflict and never silently select one / compiled.
-30. stale-device destructive gating — destructive authority denied / compiled.
-31. mass-deletion circuit breaker — suspicious destructive count/ratio denied while small ordinary deletion remains allowed / compiled.
-32. resource-bounded merge refusal — oversized merge refused while both complete versions remain / compiled.
+`crash` discards volatile process state while leaving physical LOCAL/REMOTE reality and durable authority/journals/history/checkpoints intact. `restart` reconstructs fresh volatile state only from the durable/physical model.
 
-## V1.2 REMOTE folder-create recovery scenarios
+## Event vocabulary
 
-The G test entrypoint consumes the frozen v1.2 `verifyRemoteFolderCreate()` / `recoverRemoteFolderCreate()` seam directly.
+The same transition API is used by directed scenarios, randomized runs, and replay:
 
-- F1 exact reserved effect + exact observed parent/path -> expected `verified-effect` assertion present / compiled.
-- F2 exact reserved ID + wrong actual parent -> expected `conflict-preserved` / compiled.
-- F3 exact reserved ID + wrong observed structural path -> conservative conflict / compiled.
-- F4 reserved ID absent but intended target occupied -> `conflict-preserved`, never `verified-not-applied` / compiled.
-- F5 exact reserved ID authoritatively absent + target clear -> `verified-not-applied` permitted / compiled.
-- F6 duplicate/ambiguous target -> `outcome-unknown` conservative result / compiled.
-- F7 incomplete parent/path observation -> `outcome-unknown`, never absence / compiled.
-- F8 restart from `dispatch-authorized` -> `reconcile-physical-reality`; recovery read occurs; synthetic dispatch count remains zero / compiled.
-- F9 restart from `outcome-unknown` -> same read-before-redispatch rule / compiled.
-- F10 persisted descriptor intent cannot synthesize observed parent proof -> unobservable read remains `outcome-unknown` / compiled.
+- `local-write`
+- `local-delete`
+- `local-move`
+- `local-readability`
+- `external-remote-create`
+- `external-remote-update`
+- `external-remote-move`
+- `external-remote-trash`
+- `start-reconcile`
+- `advance`
+- `dispatch`
+- `transport-success`
+- `transport-lost`
+- `ingest-page`
+- `crash`
+- `restart`
+- `recover`
+- `suspend`
+- `resume`
+- `cancel-request`
+- `network`
+- `mark-stale`
+- `remote-coverage`
+- `integrity-reconcile`
+- `begin-folder-create`
+- `recover-folder-create`
 
-## Randomized/replay evidence
+The model derives plans and journals from current modeled evidence. Directed tests no longer assign the expected authoritative BASE/REMOTE/convergence result as a substitute for the transition under test.
 
-Selected deterministic randomized seeds in source: `1`, `7`, `42`, `1337`, `0xC0FFEE`.
+## Frozen-contract consumption
 
-Representative replay trace contract:
-- seed: `1337`;
-- initial modeled state: synthetic empty two-device/remote state;
-- ordered events: 40 seeded operations over synthetic paths `a.md`, `b.md`, `c.md`;
-- fault dimensions include network mode, cancellation, lifecycle death/suspend, duplicate remote creates, local edits, and learned-feed progression;
-- invariant checked after every randomized step: duplicate ambiguous remote candidates may not coexist with modeled `converged` path state;
-- replay assertion: two independent runs with seed `1337` serialize to identical traces.
+The repair continues to import the approved v1.2 folder-create recovery contract from `src/contracts/synchronization-folder-create-foundation.ts`.
 
-Minimized failure trace: none available because the focused nested runtime entrypoint could not be executed on the available repository Actions surface. The code contains deterministic trace data sufficient for later minimization once the entrypoint is run by an execution surface that accepts the explicit command.
+Folder recovery derives a `RemoteFolderCreateObservation` from modeled Drive reality and passes that observation to frozen `verifyRemoteFolderCreate()`.
+
+Descriptor intent is not treated as observed parent/path evidence. Authoritative absence is emitted only when modeled remote coverage is complete, the reserved identity is absent, and no competing target occupant exists. Occupied/duplicate/incomplete/unobservable cases remain conservative.
+
+No worker-local replacement production contract was introduced.
+
+## Invariants enforced by the transition model
+
+The model checks invariants after applied transitions, including:
+
+- no fabricated physical success: `effect-verified` / `state-committed` effects require modeled verification evidence;
+- no fabricated absence in remote-folder recovery;
+- acknowledged-version history is retained durably;
+- remote identity is represented independently from path and survives moves;
+- ambiguous same-path candidates cannot be accepted as an observed converged winner;
+- physical application is distinct from logical BASE/path convergence;
+- exact BASE authority is required for history-dependent mutation work;
+- exact identity authority is required for mapped identity-dependent mutation work;
+- stale/incomplete remote authority cannot authorize destructive propagation;
+- unresolved path work is path-local and does not inherently block unrelated safe paths;
+- starvation counters bound repeated safe-path deferral;
+- convergence checks require LOCAL/BASE/REMOTE agreement or an explicit conflict/recovery state.
+
+## Directed scenario coverage — 1 through 32
+
+Every required directed scenario is now expressed as an event sequence over the executable model. The TypeScript test tree containing all scenarios compiled successfully in CI after the repair.
+
+1. missing exact BASE authority -> transition blocks history-dependent work into recovery.
+2. missing exact identity authority -> transition blocks mapped remote mutation.
+3. upload crash/restart -> exercised at `intent-persisted`, `dispatch-authorized`, `outcome-unknown`, and `effect-verified`.
+4. download crash/restart -> same durable-stage coverage.
+5. move crash/restart -> same durable-stage coverage while stable remote identity is retained.
+6. trash crash/restart -> same durable-stage coverage.
+7. clean merge -> one physical effect cannot commit BASE; logical convergence waits for all required effects.
+8. predecessor + intended immutable candidate + independent candidate -> finalization preserves conflict and does not advance BASE.
+9. independent same-path candidate -> reconciliation produces explicit conflict rather than implicit equivalence.
+10. durable intended L1 followed by later LOCAL L2 -> persisted mutation remains bound to L1 and is not substituted by L2.
+11. outcome-unknown after a physically applied remote mutation -> restart recovery observes physical reality without incrementing dispatch count.
+12. clean merge crash after one effect -> BASE remains pre-merge until remaining durable work completes.
+13. multi-page changes -> intermediate page is durable without prematurely advancing cursor; terminal page advances checkpoint.
+14. multiple learned removal batches -> learned facts and cursor survive crash/restart.
+15. repeated remote moves -> stable remote object identity is preserved while logical path changes.
+16. create/delete -> BASE deletion is accompanied by retained tombstone/acknowledged history.
+17. duplicate logical paths -> reconciliation yields explicit conflict with no BASE winner.
+18. unresolved path A plus safe path B -> B can complete while A remains conflict-local.
+19. lost watcher plus stale cache analogue -> integrity reconciliation discovers actual LOCAL divergence and schedules work.
+20. Windows-style event loss -> integrity reconciliation recovers deletion authority rather than trusting event delivery.
+21. iOS-style suspend/resume -> durable journal survives suspension and completes after resume.
+22. abrupt process death -> volatile plan disappears while durable authority survives restart.
+23. delivered cancellation -> dispatch is suppressed while durable intent remains.
+24. cancellation not delivered before death -> durable intent survives and can resume after restart.
+25. auth loss -> remote destructive dispatch is suppressed.
+26. offline/rate-limited states -> LOCAL edits remain intact and remote dispatch is suppressed.
+27. repeated path-A churn with pending path-B change -> B remains independently progressable.
+28. pressure stops -> bounded settle loop must reach convergence or explicit conflict/recovery before transition bound.
+29. concurrent same-path creates from two devices -> reconciliation does not silently choose one as authoritative.
+30. stale device -> destructive propagation is blocked into recovery.
+31. suspicious multi-path deletion case -> modeled authority is deliberately incomplete so destructive actions remain blocked; no remote delete is dispatched.
+32. non-clean/unsupported merge -> explicit conflict preserves complete LOCAL and REMOTE versions.
+
+Focused runtime result for the above scenarios is separately qualified under Verification; compilation success must not be read as runtime execution.
+
+## V1.2 F1-F10 folder-recovery coverage
+
+These cases now enter through the model's persisted folder-create journal plus restart/recovery transition and derive the observation from modeled REMOTE reality:
+
+- F1 exact reserved folder + actual expected path/parent -> expected frozen-verifier result `verified-effect`.
+- F2 exact reserved folder at expected path but wrong actual parent -> `conflict-preserved`.
+- F3 exact reserved ID at wrong observed path -> `conflict-preserved`.
+- F4 reserved ID absent but target occupied -> `conflict-preserved`, never fabricated absence.
+- F5 reserved ID absent + target authoritatively clear -> `verified-not-applied`.
+- F6 duplicate target candidates -> modeled observation `unobservable`; frozen verifier -> `outcome-unknown`.
+- F7 reserved folder with incomplete parent evidence -> `unobservable` / `outcome-unknown`.
+- F8 restart from `dispatch-authorized` -> one recovery read, zero pre-recovery dispatches, no blind redispatch.
+- F9 restart from `outcome-unknown` after physical application/response loss -> physical read verifies effect without a second dispatch.
+- F10 descriptor expected parent cannot manufacture observed parent evidence -> incomplete physical observation remains `outcome-unknown`.
+
+Again, these assertions compiled successfully; focused runtime execution is not claimed when unavailable.
+
+## Deterministic randomized event generation
+
+Fixed seed set:
+
+- `1`
+- `7`
+- `42`
+- `1337`
+- `0xC0FFEE`
+
+Each seed produces an ordered 120-event sequence over the same transition vocabulary. Generated events include LOCAL edits/deletes, external REMOTE creates, planning/advance/dispatch, success vs response loss, crashes/restarts/recovery, network/auth/rate-limit/offline changes, integrity reconciliation, learned-page ingestion, and cancellation delivery races.
+
+`runTrace()` applies each event through the same model and invokes model invariants after each transition. It records sanitized initial state, ordered events, final modeled state, seed, and first invariant failure if one occurs.
+
+## Exact replay evidence
+
+The explicit replay test records a concrete ordered trace containing:
+
+1. LOCAL edit;
+2. reconciliation start;
+3. plan -> durable journal transition;
+4. durable journal -> dispatch-authorized transition;
+5. physical dispatch;
+6. lost transport response -> outcome-unknown;
+7. crash;
+8. restart;
+9. recovery observation;
+10. authoritative advancement.
+
+`replayTrace()` re-applies the recorded `trace.events`; it does not regenerate PRNG values. The test requires replayed ordered events, final serialized state, and failure result to deep-equal the recorded trace result.
+
+## Minimization evidence
+
+A deterministic negative control intentionally models the forbidden behavior "collapse observed duplicate remote candidates into converged." The invariant emits failure code `duplicate-ambiguous-winner`.
+
+`minimizeFailingTrace()` performs deletion-based trace reduction. It repeatedly removes one event and keeps the reduction only if re-execution through the same transition model reproduces the same invariant failure code.
+
+The minimization test requires the minimized trace to be shorter than the noisy original and to reproduce `duplicate-ambiguous-winner`.
+
+Focused runtime result remains `NOT AVAILABLE IN THIS SESSION`; therefore no numeric minimized trace length is claimed as executed evidence.
 
 ## Verification
 
-### Focused G adversarial test command
+### Local repository execution surface
 
-Required explicit command:
+A direct container clone failed because outbound DNS/network access is disabled:
+
+`fatal: unable to access 'https://github.com/woodpk/gdrive-sync-obsidian-plugin.git/': Could not resolve host: github.com`
+
+Therefore the local environment could not obtain the repository/dependencies needed to execute the compiled nested test artifact.
+
+### Focused G execution
+
+Required command:
+
 `node --test .test-build/test/adversarial-model/adversarial-model.test.js`
 
-Result: `NOT AVAILABLE IN THIS SESSION`.
+Result:
 
-Reason: repository `npm test` compiles all `test/**/*.ts` but executes only `.test-build/test/*.test.js`; the existing GitHub workflows do not contain an explicit nested G execution step, workflow files are prohibited to G, no workflow-dispatch mutation surface is available, and the repository cannot be cloned into the local execution container because outbound DNS/network access is disabled. G therefore does not falsely claim that `npm test` executed its nested tests.
+`NOT AVAILABLE IN THIS SESSION`
 
-Important positive evidence: CI `Typecheck` succeeded with the G source included, proving the G entrypoint typechecks against the frozen v1.2 contracts.
+Reason: the repository's existing `npm test` compiles `test/**/*.ts` but runtime-discovers only `.test-build/test/*.test.js`. The G entrypoint is nested at `.test-build/test/adversarial-model/adversarial-model.test.js`, and the existing permitted workflow has no nested G execution step. G did not modify workflow/package configuration or tests outside its ownership merely to obtain a runtime surface.
 
-### Repository-wide verification
+Consequently:
 
-A temporary draft PR was opened solely to invoke the existing master-target CI, then closed immediately when GitHub showed master was not the correct exact-base integration target. It was never merged. The resulting CI run nevertheless checked out the G head and recorded:
+- deterministic directed G runtime: `NOT AVAILABLE IN THIS SESSION`
+- v1.2 F1-F10 runtime: `NOT AVAILABLE IN THIS SESSION`
+- seeded randomized runtime: `NOT AVAILABLE IN THIS SESSION`
+- explicit event-trace replay runtime: `NOT AVAILABLE IN THIS SESSION`
+- minimization runtime: `NOT AVAILABLE IN THIS SESSION`
 
-- GitHub Actions run: `33420349506`, job `99580914409`.
-- `npm ci` — PASS.
-- `npm run typecheck` — PASS.
-- `npm test` — PASS. This is repository-wide top-level test execution only; it does **not** execute nested G runtime tests.
-- `npm run build` — PASS.
+### Repository CI verification
 
-The CI workflow does not separately run `npm run check`; however `check` is compositionally `typecheck && npm test && npm run build`, and those exact three component commands each passed in the same CI job. This is recorded as component-equivalent evidence, not as a literal `npm run check` invocation.
+Temporary draft PR `#44` was opened only to invoke the existing repository CI and was closed after verification. It was never merged and is not an integration proposal.
 
-`git diff --check`: `NOT AVAILABLE IN THIS SESSION` as a literal repository command. The complete GitHub compare against the approved base was independently inspected.
+First correction CI run:
 
-Applicable package/mobile verification beyond production build: no G-specific mobile runtime mutation exists; physical iPhone/Windows testing is prohibited and was not claimed.
+- run `33436319449`, job `99633522469`
+- failed during `npm run typecheck` because the test fixture cast numeric `1` directly to string-branded `SemanticStateGeneration`.
+- defect was corrected on the G branch.
 
-## Complete diff inspection
+Final correction CI run for head `4ddbd3851d7a37511f00d8ae67831fc82eb6b42f`:
 
-GitHub compare from approved base `96b4541b15012ac4ce0d81243b73ef779efd343e` to implementation commit `ebc71a1ba2a53026e9f2ff7f8a15a5566f5f1845` reported:
-- status: ahead;
-- ahead by: 1;
-- behind by: 0;
-- merge base: exact approved SHA;
-- changed files: exactly one, `test/adversarial-model/adversarial-model.test.ts`.
+- run `33436516082`, job `99634166842`
+- install dependencies: PASS
+- `npm run typecheck`: PASS
+- `npm test`: PASS
+- `npm run build`: PASS
+- complete job: PASS
 
-After this evidence commit the expected complete branch diff is the G test file plus this dedicated evidence file only. Final compare is performed in the completion pass.
+Important discovery qualification: repository `npm test` compiled the nested G source through `tsconfig.test.json` but did **not** runtime-execute the nested G entrypoint. No claim to the contrary is made.
 
-## Integration dependency requests
+### `npm run check`
 
-- Later serialized integration may adapt this scenario generator/invariant set to real A-F production adapters after those workstreams are integrated.
-- No current A-F branch is required or consumed by G.
-- Focused runtime execution of the compiled nested G entrypoint remains a later verification dependency unless a supervisor provides an execution surface that can run the exact command without modifying prohibited workflows.
+Literal `npm run check` result: `NOT AVAILABLE IN THIS SESSION`.
+
+The repository CI did execute and pass the three commands that compose `check` (`typecheck`, `npm test`, `build`) in the same final job. This is component-equivalent evidence only, not a literal invocation claim.
+
+### `git diff --check`
+
+Literal result: `NOT AVAILABLE IN THIS SESSION`.
+
+No local repository checkout was available. GitHub compare/diff metadata was used for exact changed-file inspection instead.
+
+## Exact rejected-head diff inspection
+
+GitHub compare:
+
+- base: rejected head `83098e39f44f0b2259dfaaf25ef927be5be9a687`
+- head inspected before this evidence update: `4ddbd3851d7a37511f00d8ae67831fc82eb6b42f`
+- status: ahead
+- ahead by: 3
+- behind by: 0
+- merge base: exact rejected head
+- changed files at that point:
+  - `test/adversarial-model/adversarial-model.test.ts`
+  - `test/adversarial-model/support/model.ts`
+
+This evidence-file update adds only the already-authorized G-specific evidence file to that repair diff.
+
+## Production / frozen-boundary confirmation
+
+Production diff: zero.
+
+Unchanged:
+
+- `src/**`
+- `src/contracts/**`
+- `src/testing/fakes.ts`
+- all existing tests outside `test/adversarial-model/**`
+- `dev/evidence/_ca-output.md`
+- planning/foundation files
+- workflows
+- release files
+- Azure/OAuth/Drive-scope material
+- A-F worker branches
+
+No merge, Stage 3 work, release/tag, or physical Windows/iPhone synchronization was performed.
+
+## Blockers / limitations
+
+The material verification limitation is focused nested-G runtime execution. The model and all test source compile against the frozen v1.2 repository, but this session has no permitted execution surface that can run the required nested entrypoint without modifying prohibited repository surfaces.
+
+This limitation is intentionally preserved for independent supervisor re-review rather than hidden behind repository-wide `npm test`.
 
 ## Contract-change requests
 
 None.
-
-The v1.2 folder-recovery read-port/verifier semantics are sufficient for this model.
-
-## Physical-device validation
-
-Not performed and not claimed. Physical Windows/iPhone validation is explicitly deferred/prohibited for this workstream.
