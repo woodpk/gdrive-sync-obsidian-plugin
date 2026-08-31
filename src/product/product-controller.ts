@@ -13,6 +13,7 @@ import type {
   ProductControlPort,
   ProductSurfaceState,
   StateLoadContext,
+  SynchronizationAuthorityStoreV1_1,
   SynchronizationPlan,
   PlanGlobalExecutionGate,
   SynchronizationPlanner,
@@ -25,13 +26,14 @@ import type {
 } from "../contracts";
 import { contractId } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
-import { CrashSafeExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
+import { AuthorityCompleteExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
 import { semanticPlanId, withSemanticOperationId } from "../core/semantic-identifiers";
 import type { DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { createInitialTrustedState, PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { sha256Text } from "../util/sha256";
 import { BoundedAuditHistory } from "./audit-history";
+import { createAuthoritativeProductExecutor } from "./authoritative-production-executor";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
 import { dependsOnSkippedOperation } from "./operation-isolation";
@@ -44,6 +46,7 @@ export interface ProductControllerOptions {
   readonly deviceIdentity: DeviceIdentity;
   readonly stateContext: StateLoadContext;
   readonly stateStore: PersistentSynchronizationStateStore;
+  readonly authorityStore?: SynchronizationAuthorityStoreV1_1;
   readonly snapshotAssembler: ProductSnapshotAssembler;
   readonly executor: ProductSynchronizationExecutor;
   readonly conflictResolver: ConflictResolver;
@@ -459,16 +462,24 @@ export class IntegratedProductController implements ProductControlPort {
       await this.ensureTrustedState(planned.assembly);
       this.runEvidence = { managedRemote: planned.assembly.managedRemote, remoteEnumerationComplete: planned.assembly.remoteEnumeration.status === "complete" };
       const operationIndexes = new Map(planned.plan.operations.map((operation, index) => [String(operation.operationId), index + 1]));
-      const coordinator = new CrashSafeExecutionCoordinator(
-        this.options.executor,
-        new StateCommitCoordinator(this.options.stateStore, this.options.stateContext),
-        undefined,
-        (operation, stage, result, error, failedPreconditions) => { if (this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, stage, result, error, failedPreconditions)) stageFailureReported = true; },
-      );
       let needsReplan = false;
       let globalFailure = false;
+      const authorityStore = this.options.authorityStore;
+      const coordinator = authorityStore ? new AuthorityCompleteExecutionCoordinator(
+        authorityStore,
+        createAuthoritativeProductExecutor(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote),
+        new StateCommitCoordinator(this.options.stateStore, this.options.stateContext),
+        this.options.stateStore,
+        this.options.stateContext,
+      ) : undefined;
+      if (!coordinator) {
+        this.setStatus({ kind: "recovery-required", reason: "authoritative synchronization store is unavailable; ordinary mutation is disabled" });
+        this.syncError(runId, "authority-complete-execution-unavailable", { stage: "execution-authority", classification: "authoritative-store-unavailable", result: "blocked" });
+        globalFailure = true;
+      }
 
       for (const operation of planned.plan.operations) {
+        if (globalFailure || !coordinator) break;
         if (!this.runs.canStartNextOperation()) { partial = true; break; }
         if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe") { partial = true; skippedCount += 1; for (const reason of operation.reasons) skippedReasonCodes.add(reason.code); continue; }
         if (operation.kind === "recovery-required") { globalFailure = true; break; }
@@ -479,7 +490,10 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
 
+        this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-start");
+        this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-precondition-validation-start");
         const result = await coordinator.executeOperation(operation);
+        this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, result.status === "committed" ? "operation-complete" : "operation-precondition-validation-failed", result.status);
         if (result.status === "committed") {
           anyCommitted = true;
           committedCount += 1;
@@ -744,7 +758,7 @@ export class IntegratedProductController implements ProductControlPort {
         if ("side" in precondition) return precondition.side;
         if (precondition.kind === "file-stable") return "local";
         if (precondition.kind === "remote-object" || precondition.kind === "remote-enumeration-complete") return "remote";
-        if (precondition.kind === "base-trusted") return "state";
+        if (precondition.kind === "base-trusted" || precondition.kind === "base-authority") return "state";
         return "identity";
       }))].sort().join(","),
     } : {};
