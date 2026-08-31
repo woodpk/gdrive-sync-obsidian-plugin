@@ -151,11 +151,12 @@ test("D actual controller plus product executor has no nominal-only ordinary mut
     remoteEnumeration: { status: "complete" },
     mode: "full",
   };
+  const missingDurableIdentity = { ...trustedState(), remoteMappings: [] };
   const controller = new IntegratedProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext,
-    stateStore: stateStore() as never,
+    stateStore: stateStore(missingDurableIdentity) as never,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor,
     conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
@@ -168,7 +169,7 @@ test("D actual controller plus product executor has no nominal-only ordinary mut
   assert.equal(preview?.planId, plan.planId);
   const result = await controller.request({ kind: "execute-plan", planId: plan.planId });
   assert.equal(result.status, "rejected");
-  assert.equal(updateCalls, 0, "nominal BASE/identity markers cannot reach the legacy physical updater when frozen authority is absent");
+  assert.equal(updateCalls, 0, "nominal BASE/identity markers cannot reach the legacy physical updater when durable identity authority is absent");
   assert.equal(controller.currentSurface().status.kind, "recovery-required");
 });
 
