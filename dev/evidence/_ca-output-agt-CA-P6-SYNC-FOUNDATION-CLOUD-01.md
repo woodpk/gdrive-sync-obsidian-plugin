@@ -270,3 +270,115 @@ No A–G implementation-owned production file was changed. Worker count and pair
 The exact final candidate branch SHA and final PR merge-ref verification are necessarily recorded in PR #34 metadata and the supervisor completion response after evidence closure, avoiding an impossible self-referential evidence commit.
 
 **REJECT/FIX evidence recorded — parallel implementation remains NOT AUTHORIZED pending independent supervisor re-review.**
+
+---
+
+## SUPERVISOR RE-ENTRY — FOLDER-CREATE FOUNDATION CORRECTION
+
+Previous supervisor-approved foundation SHA: `6984915d2989827edf00def64a04c102c4e08785` (`phase6-sync-foundation-v1`).
+
+### Defect discovered during parallel review
+
+The product requires empty-directory preservation, but v1's durable/recoverable physical-effect family covered file mutations, move, and trash without giving LOCAL and REMOTE folder creation the same durable restart lifecycle. Although the Drive-facing surface could reserve/create a folder identity, the shared durable operation/effect contract could not persist and recover folder-create physical intent across process death. Workstream D therefore could not implement empty-folder synchronization without inventing a branch-local authority contract and correctly stopped.
+
+This was a frozen shared-contract deficiency, not a Workstream D implementation defect.
+
+### Shared contracts changed
+
+Implementation checkpoint: `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`.
+
+Created:
+- `src/contracts/synchronization-folder-create-foundation.ts`
+- `test/phase6-folder-create-foundation.test.ts`
+
+Modified:
+- `src/contracts/index.ts`
+
+No A–G implementation-owned production file changed in the implementation checkpoint. The compare from approved SHA `6984915d...` to `6ee8d689...` is exactly one commit and contains only those three paths.
+
+### LOCAL folder-create recovery semantics
+
+The v1.1 contract adds durable LOCAL folder-create physical intent containing mutation/effect identity, target logical path, parent path, stable normalized path-comparison authority, and authoritative expected absence. It survives restart independently of the pre-crash in-memory plan.
+
+Recovery distinguishes:
+- pre-dispatch durable intent (`intent-persisted`) — definitely not dispatched;
+- `dispatch-authorized` or later — create may have occurred and physical reality must be reconciled;
+- authoritative absence — verified not applied;
+- intended folder at the exact authoritative structural/path relationship — verified physical effect;
+- incompatible or non-authoritative occupancy — conflict preserved;
+- unobservable state — outcome unknown.
+
+Folder verification uses structural/path/identity evidence, never file-content hashes or a child file.
+
+### REMOTE folder-create recovery semantics
+
+The REMOTE durable descriptor contains the logical target/path-comparison authority, exact parent Drive identity, and the intended pre-reserved Drive folder object ID before dispatch. A lost response therefore causes restart reconciliation of the same intended identity rather than an unrelated second same-name create.
+
+Recovery distinguishes:
+- authoritative absence of the same reserved identity — verified not applied and retryable with the same durable authority;
+- exact reserved identity under the exact intended parent/path authority — verified physical effect;
+- wrong object identity, wrong parent, or same-logical-path non-authoritative occupancy — conflict preserved;
+- unobservable state — outcome unknown.
+
+### Verification and authoritative commit boundary
+
+`verifyLocalFolderCreate()` and `verifyRemoteFolderCreate()` provide conservative explicit outcomes. `folderCreateRestartRecoveryDirective()` inherits the existing durable mutation-stage semantics. `folderCreateEligibleForAuthoritativeCommit()` requires both a verified physical folder effect and explicit `PathConvergenceState.status === "converged"`; physical existence alone cannot advance unrelated BASE/state authority.
+
+### Contract freeze/version update
+
+The corrected candidate contract identifier is `phase6-sync-foundation-v1.1`. The additive v1.1 surface preserves the reviewed v1 file/move/trash compatibility types while making the v1.1 folder-capable descriptor/effect/intent family authoritative for new or resumed empty-folder synchronization. No affected worker may resume until the independent supervisor selects one exact complete v1.1 repository SHA.
+
+### A/B/C/D/G impact audit
+
+- **A:** sufficient frozen authority for retry-safe REMOTE folder creation using durable reserved Drive identity and parent/path authority.
+- **B:** sufficient frozen authority for LOCAL folder creation/structural verification without a private transaction type.
+- **C:** sufficient frozen authority to persist/recover LOCAL and REMOTE folder-create physical effects and durable stages.
+- **D:** sufficient frozen authority to plan, journal, authorize dispatch, verify/recover, and commit empty-folder creation without private sidecar authority and while separating physical effect from path convergence.
+- **G:** sufficient frozen authority to inject pre-dispatch/post-dispatch/lost-response/collision/wrong-identity/pre-state-commit folder crash scenarios.
+
+No workstream was implemented or resumed by this correction.
+
+### Required contract tests and observed results
+
+`test/phase6-folder-create-foundation.test.ts` proves all eight required scenarios:
+1. LOCAL intent before dispatch;
+2. LOCAL interruption after dispatch authority;
+3. intended LOCAL folder present after restart;
+4. LOCAL incompatible collision;
+5. REMOTE lost response reconciles the same reserved identity;
+6. REMOTE reserved identity authoritatively absent is verified-not-applied and can retry with the same authority;
+7. same-logical-path REMOTE wrong identity is conflict, not convergence;
+8. complete empty-folder lifecycle uses structural proof and still requires path convergence before authoritative commit.
+
+Checkpoint verification:
+- workflow: `Phase 6 Alpha Diagnostic Verification`
+- run: `33347048717`
+- job: `99353048259`
+- candidate head included: `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`
+- semantics: **PR merge-ref verification containing candidate head**, not literal clean head-SHA checkout
+- conclusion: **SUCCESS**
+- typecheck: PASS
+- full tests: **407/407 PASS**, 0 failed/cancelled/skipped/todo
+- workflow-focused tests: **38/38 PASS**
+- production build: PASS
+- full repository check: PASS, including repeated 407/407 suite
+- `git diff --check`: PASS
+- `BUILD_VERIFY_ENTRYPOINT=PASS`
+- `BUILD_VERIFY_SYNTAX=PASS`
+- `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
+- `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
+- `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
+- `main.js`: `415353` bytes
+- `main.js` SHA-256: `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`
+- `manifest.json`: `275` bytes
+- `manifest.json` SHA-256: `79127c33d5e7df64776f0bdd076cf58d37ac53f20de1e4bd533f750273c3e547`
+- artifact ID: `9742325001`
+- artifact digest: `sha256:b169e0ad0e8d25afc580419c6d4e08481210e7463350687770341f848f8a49cd`
+
+### Remaining closure semantics
+
+This evidence append is followed only by read-only final verification and PR metadata closure. The exact final candidate SHA cannot be embedded inside the commit that creates this milestone without self-reference; it is recorded in PR #34 metadata and the final supervisor-facing report.
+
+No physical Windows/iPhone synchronization was performed. No Azure/OAuth configuration was altered. PR #33 and PR #34 are to remain open/unmerged. Protected branches, tags/releases, worker implementation, serial integration, and Stage 3 remain outside this correction.
+
+**FOLDER-CREATE FOUNDATION CORRECTION EVIDENCED — PARALLEL CONTINUATION REMAINS NOT AUTHORIZED PENDING INDEPENDENT SUPERVISOR RE-REVIEW.**
