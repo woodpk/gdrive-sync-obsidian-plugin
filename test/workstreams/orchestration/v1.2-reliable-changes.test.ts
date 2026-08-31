@@ -64,11 +64,13 @@ function drive(): GoogleDrivePort {
 }
 
 function stateStore(state = trustedState()): SynchronizationStateStore & { saves: number } {
-  return {
-    saves: 0,
+  let saves = 0;
+  const store = {
+    get saves() { return saves; },
     load: async () => ({ status: "trusted", state }),
-    saveTrusted: async function () { this.saves += 1; return { status: "saved", stateRevision: state.stateRevision }; },
-  } as unknown as SynchronizationStateStore & { saves: number };
+    saveTrusted: async () => { saves += 1; return { status: "saved", stateRevision: state.stateRevision }; },
+  };
+  return store as unknown as SynchronizationStateStore & { saves: number };
 }
 
 function assembler(changes: ReliableRemoteChangePort, state = stateStore()): ProductSnapshotAssembler {
