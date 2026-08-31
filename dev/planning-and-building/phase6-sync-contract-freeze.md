@@ -1,16 +1,18 @@
 # Phase 6 Synchronization Contract Freeze Candidate
 
 Status: **candidate only — independent supervisor approval pending**  
-Contract version: `phase6-sync-foundation-v1`  
-Rejected supervisor candidate: `0d84f542a556800d93020b4000072da8faa3f740`  
+Contract version: `phase6-sync-foundation-v1.1`  
+Previous supervisor-approved foundation: `6984915d2989827edf00def64a04c102c4e08785` (`phase6-sync-foundation-v1`)  
+Folder-create correction implementation checkpoint: `6ee8d689f92f9ad2aec88ac359f84ae0ca21ebf8`  
 Branch: `phase6-sync-architecture-foundation`
 
-This manifest does not authorize parallel implementation. The exact supervisor-approved workstream-base SHA will be identified externally after review and must be the single repository snapshot used by every later workstream.
+This manifest does not authorize parallel continuation. The exact supervisor-approved workstream-base SHA will be identified externally after review and must be the single repository snapshot used by every later or resumed affected workstream.
 
 ## 1. Frozen files
 
 - `src/contracts/common.ts`
 - `src/contracts/synchronization-foundation.ts`
+- `src/contracts/synchronization-folder-create-foundation.ts`
 - `src/contracts/state.ts`
 - `src/contracts/snapshot.ts`
 - `src/contracts/plan.ts`
@@ -40,19 +42,26 @@ Later agents must not modify `src/contracts/**` independently after approval. Co
 | `RemoteMutationOutcome` | `verified-effect`, `verified-not-applied`, `conflict-preserved`, and `outcome-unknown` are distinct. | A, C, D |
 | `RemoteMutationApplicationProof` | Proves safe physical materialization/effect only; not logical path convergence. | A, C, D |
 | `RemotePathConvergenceAuthority` | Separately proves conflict-free path authority or records preserved conflict. | C, D |
-| `ReliableRemoteMutationPort` | Sole authoritative v1 synchronization mutation seam for create/update/move/trash. | A, D |
+| `ReliableRemoteMutationPort` | Sole authoritative synchronization mutation seam for create/update/move/trash. | A, D |
 | `GoogleDrivePort` raw mutations | Compatibility transport only; raw `create/update/move/trash` results are non-authoritative for new synchronization. | A only |
-| `RecoverablePhysicalMutationDescriptor` | Durable physical intent for local/remote file mutation, move, and trash. | C, D |
+| `RecoverablePhysicalMutationDescriptor` | v1 durable physical intent for local/remote file mutation, move, and trash. | C, D |
+| `FolderCreatePathAuthority` | Exact empty-folder path/parent/path-comparison authority with expected absence. | A, B, C, D |
+| `LocalFolderCreatePhysicalMutationDescriptor` | Durable LOCAL empty-folder create identity/path/authority without file-content evidence. | B, C, D |
+| `RemoteFolderCreatePhysicalMutationDescriptor` | Durable REMOTE empty-folder create identity/path/parent plus reserved Drive identity before dispatch. | A, C, D |
+| `RecoverablePhysicalMutationDescriptorV1_1` / `RecoverableMutationEffectV1_1` / `RecoverableOperationIntentV1_1` | Additive v1.1 durable physical-effect family including LOCAL and REMOTE folder create while preserving v1 compatibility. | A, B, C, D, G |
+| `verifyLocalFolderCreate` / `verifyRemoteFolderCreate` | Conservative structural/identity verification: verified effect, verified not applied where proven, conflict preserved, or outcome unknown. | A, B, C, D, G |
+| `folderCreateRestartRecoveryDirective` | Folder effects inherit the same durable pre-dispatch versus may-have-dispatched recovery classification. | C, D, G |
+| `folderCreateEligibleForAuthoritativeCommit` | Physical folder verification is insufficient; logical path convergence is also mandatory before authoritative state commit. | C, D |
 | `RecoverableMutationEffect` | Per-effect durable stage/verification state. | C, D |
 | `RecoverableOperationIntent` | Single-effect operations carry one effect; clean merge carries at least two separately staged physical effects. | C, D |
-| `LocalMutationTransaction` | Exact create-vs-replace pre-state plus canonical new evidence and durable swap stage. | B, C, D |
+| `LocalMutationTransaction` | Exact file create-vs-replace pre-state plus canonical new evidence and durable swap stage. | B, C, D |
 | `LocalIntegrityReconciliationPort` | Authoritative integrity read bypasses metadata/observation-token evidence cache and re-reads actual bytes. | B, E, G |
 | `SynchronizationFaultPoint` | Deterministic crash injection covers dispatch and local swap boundaries. | A, B, C, D, G |
 | `SemanticStateValidator` | Known codes plus fail-closed extensibility for newly discovered contradictions. | C |
 
 ## 3. Fixed mutation lifecycle
 
-Every v1 mutation must satisfy:
+Every v1.1 mutation must satisfy:
 
 `PLAN -> EXACT AUTHORITY -> DURABLE OPERATION/EFFECT INTENT -> DURABLE DISPATCH AUTHORITY -> SAFE LOCAL/REMOTE MUTATION PORT -> VERIFICATION -> PATH CONVERGENCE OR CONFLICT -> BASE/STATE COMMIT -> RESTART RECOVERY`
 
@@ -70,6 +79,17 @@ There may be no private sidecar authority needed to make this chain executable.
 
 - coherent remote read supplies verified source evidence;
 - local physical mutation is a durable create/replace transaction with exact pre-state and intended new evidence.
+
+### Folder create / empty-directory preservation
+
+- LOCAL and REMOTE folder create are first-class recoverable physical effects under the v1.1 descriptor family;
+- folder proof is structural/path/identity based and never requires file hashes or a child file;
+- LOCAL durable intent records target/parent/path-normalization authority and expected absence;
+- REMOTE durable intent additionally records the intended parent Drive identity and pre-reserved Drive folder object ID before dispatch;
+- `intent-persisted` is definitely pre-dispatch; `dispatch-authorized` or later means the create may have occurred and must be reconciled;
+- lost REMOTE responses reconcile the same reserved identity rather than issuing an unrelated second create;
+- same-logical-path occupancy by an incompatible or non-authoritative object is preserved as conflict/unknown rather than ordinary success;
+- verified physical existence does not authorize BASE/state advancement unless logical path convergence is separately established.
 
 ### Move
 
@@ -94,7 +114,7 @@ For example, if predecessor R0, independent RI, and writer candidate RW are all 
 1. verified non-destructive application; and
 2. explicit conflict-free path authority (`no-independent-candidate` or authoritatively equivalent candidates).
 
-Observing writer bytes alone is never sufficient.
+The same distinction applies to folder creation: observing the intended physical directory object is not enough to commit synchronization state unless path convergence is authoritative.
 
 ## 5. Local integrity/cache invariant
 
@@ -116,31 +136,34 @@ The repository contains existing planner/executor/Drive interfaces that predate 
 - `base-trusted` and `identity-unambiguous` may exist only in compatibility planning DTOs until Workstream D migrates them; `ExecutablePlannedOperation` cannot contain them.
 - existing `SynchronizationExecutor` / `AuthoritativeSuccessCommitter` remain compatibility seams for current code; new synchronization uses the authority-complete variants.
 - raw `GoogleDrivePort.create/update/move/trash` are transport primitives; new synchronization mutations use `ReliableRemoteMutationPort` only.
+- pre-v1.1 recoverable descriptors remain compatibility authority for the already-reviewed file/move/trash surface, but new or resumed empty-folder synchronization must use the v1.1 folder-capable descriptor family rather than inventing a private folder transaction.
 
 Workstream implementation that routes around these frozen safe seams is a contract violation.
 
-## 7. Cross-contract invariants retained from accepted A–H foundation
+## 7. Cross-contract invariants retained from accepted A–H and R1–R6 foundation
 
 1. Persistence revision and semantic authority remain distinct.
 2. File BASE healing requires canonical SHA-256 equality.
-3. Remote-ingestion progress cannot discard unresolved learned facts.
-4. Duplicate logical paths remain explicit.
-5. Existing-object remote content update does not assume undocumented atomic Drive CAS.
-6. Dispatch possibility is durable before the external call.
-7. Local create/replace recovery authority remains explicit.
-8. Unknown mutation outcome never becomes retryable-not-applied by assumption.
-9. Semantic contradiction always has a fail-closed representation.
-10. PR #33 operation-local stale isolation remains fixed.
+3. Folder proof is structural/identity authority and does not borrow file-content evidence.
+4. Remote-ingestion progress cannot discard unresolved learned facts.
+5. Duplicate logical paths remain explicit.
+6. Existing-object remote content update does not assume undocumented atomic Drive CAS.
+7. Dispatch possibility is durable before the external call.
+8. Local file create/replace recovery authority remains explicit.
+9. Unknown mutation outcome never becomes retryable-not-applied by assumption.
+10. Semantic contradiction always has a fail-closed representation.
+11. PR #33 operation-local stale isolation remains fixed.
+12. Physical application and logical path convergence remain distinct.
 
 ## 8. Workstream effects
 
-- **A** implements every remote mutation kind behind the safe frozen port and adapts raw Drive transport without exposing it as synchronization authority.
-- **B** implements exact local transaction behavior and the cache-bypassing integrity read.
-- **C** persists exact plan authority, mutation descriptors/effects, intended content, dispatch stages, and convergence/conflict state.
-- **D** converts compatibility planning output to exact executable authority, journals physical effects before dispatch, and separates application proof from path convergence.
-- **G** models R1–R6 adversarial cases without production changes.
+- **A** can implement retry-safe REMOTE folder creation behind the frozen remote mutation seam using the durable reserved identity and parent/path authority.
+- **B** can implement LOCAL folder create/verification using structural path authority without a private file-like transaction type.
+- **C** can persist and recover both LOCAL and REMOTE folder-create physical effects and their durable stages.
+- **D** can plan, journal, authorize dispatch, verify/recover, and commit empty-folder synchronization using only frozen shared contracts while keeping physical effect separate from path convergence.
+- **G** can inject folder-create pre-dispatch, post-dispatch, lost-response, collision, wrong-identity, and pre-state-commit crash cases without production ownership.
 
-The seven-workstream decomposition remains sound; worker count is unchanged.
+The seven-workstream decomposition remains sound; worker count and ownership are unchanged. No workstream is authorized to resume until independent supervisor approval establishes one exact v1.1 workstream-base SHA.
 
 ## 9. Contract change rule
 
@@ -148,4 +171,4 @@ If an approved workstream cannot meet acceptance criteria using this surface, it
 
 ## 10. Approval state
 
-This remains a **candidate**, not an operative freeze. Parallel implementation remains unauthorized until the independent supervisor explicitly approves one exact candidate head and identifies that SHA as the common workstream base.
+This remains a **candidate**, not an operative freeze. Parallel continuation remains unauthorized until the independent supervisor explicitly approves one exact candidate head and identifies that SHA as the common workstream base.
