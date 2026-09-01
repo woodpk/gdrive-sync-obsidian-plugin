@@ -18,6 +18,7 @@ import { BoundedAuditHistory } from "./audit-history";
 import { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
 import { MeaningfulNotificationFilter } from "./notification-policy";
 import { ProductPathScope, ScopedLocalVault } from "./path-scope";
+import { IntegratedLocalTransactionalMutationPort, IntegratedSynchronizationStateStore } from "./phase6-sync-integration";
 import { IntegratedProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
@@ -165,7 +166,9 @@ export class Phase5ProductRuntime {
       () => this.operationalExclusions,
     );
     const scopedLocal = new ScopedLocalVault(rawLocal, scope);
-    this.local = new CanonicalEvidenceLocalVault(scopedLocal);
+    const localTransactions = new IntegratedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
+    const canonicalLocal = new CanonicalEvidenceLocalVault(scopedLocal, {}, localTransactions);
+    this.local = canonicalLocal;
 
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
@@ -175,7 +178,8 @@ export class Phase5ProductRuntime {
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
-    this.state = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
+    const durableState = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
+    this.state = new IntegratedSynchronizationStateStore(durableState);
     diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
     const snapshots = new ProductSnapshotAssembler(
@@ -187,6 +191,8 @@ export class Phase5ProductRuntime {
       path => scope.isManagedLogical(path),
       () => this.host.settings().scopeReconcileRequired,
       this.host.diagnostics,
+      this.boundary.drive,
+      this.state,
     );
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
@@ -204,9 +210,13 @@ export class Phase5ProductRuntime {
       deviceIdentity,
       stateContext,
       stateStore: this.state,
+      authorityStore: this.state,
       snapshotAssembler: snapshots,
       executor,
       conflictResolver: conflicts,
+      reliableRemoteMutationPort: this.boundary.drive,
+      localTransactionalMutationPort: canonicalLocal,
+      remoteFolderCreateRecoveryReadPort: this.boundary.drive,
       plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
       leasePort: new WebLocksRunLeasePort(),
       audit: this.audit,
