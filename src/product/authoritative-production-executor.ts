@@ -6,7 +6,6 @@ import type {
   GoogleDrivePort,
   ManagedRemoteIdentity,
   RecoverableOperationIntentV1_1,
-  RemoteEntry,
   RemoteObjectId,
   StateLoadContext,
   SynchronizationAuthorityStoreV1_1,
@@ -16,7 +15,7 @@ import {
   createAuthoritativeProductExecutor as createBaseAuthoritativeProductExecutor,
   type RecoverableProductionMutationDependencies,
 } from "./authoritative-production-executor-base";
-import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "./durable-intent-recovery";
+import { recoverMatchingDurableIntentToVerifiedReceipt } from "./durable-intent-recovery";
 import type { ProductSynchronizationExecutor } from "./production-executor";
 
 export type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor-base";
@@ -63,24 +62,21 @@ function operationContradiction(operation: ExecutablePlannedOperation, intent: R
 async function outstandingIntent(authorityStore: SynchronizationAuthorityStoreV1_1, operation: ExecutablePlannedOperation): Promise<{ readonly status: "none" } | { readonly status: "recovery-required"; readonly reason: string } | { readonly status: "found"; readonly intent: RecoverableOperationIntentV1_1 }> {
   const loaded = await authorityStore.loadAuthority();
   if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
-  const intent = loaded.state.operationIntents.find(value => value.operationId === operation.operationId);
-  if (!intent) return { status: "none" };
+  const intents = loaded.state.operationIntents.filter(value => value.operationId === operation.operationId);
+  if (!intents.length) return { status: "none" };
+  if (intents.length !== 1) return { status: "recovery-required", reason: "duplicate durable operation intent identity" };
+  const intent = intents[0]!;
   if (intent.semanticAuthority.generation !== loaded.state.semanticGeneration) return { status: "recovery-required", reason: "persisted durable intent belongs to stale semantic generation" };
   const contradiction = operationContradiction(operation, intent);
   return contradiction ? { status: "recovery-required", reason: contradiction } : { status: "found", intent };
 }
 
-async function completeRemoteEntries(legacy: ProductSynchronizationExecutor, managedRemote: ManagedRemoteIdentity): Promise<readonly RemoteEntry[] | undefined> {
-  const listed = await (legacy as unknown as LegacyRecoveryReads).drive.listForReconciliation(managedRemote.rootId);
-  return listed.ok && listed.value.completeness.status === "complete" ? listed.value.entries.filter(entry => !entry.trashed) : undefined;
-}
-
 /**
  * Production authoritative executor. New work delegates to the established D-C4
  * implementation. A matching persisted physical intent, however, is a restart
- * record: it bypasses ordinary pre-dispatch validation, recovers from durable
- * descriptors, and returns only the descriptor-derived receipt already committed
- * by the restart path. Current operation content can never replace durable bytes.
+ * record: it bypasses ordinary pre-dispatch validation and is recovered only as
+ * far as effect-verified. Canonical BASE/state commit and state-committed durable
+ * finalization remain owned by AuthorityCompleteExecutionCoordinator.
  */
 export function createAuthoritativeProductExecutor(
   legacy: ProductSynchronizationExecutor,
@@ -104,33 +100,22 @@ export function createAuthoritativeProductExecutor(
     const existing = await outstandingIntent(authorityStore, operation);
     if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };
     if (existing.status === "none") return base.execute(operation);
-    const wasUnattempted = existing.intent.effects.every(effect => effect.stage === "intent-persisted");
 
-    const recovery = await recoverOutstandingDurableIntents(
+    const recovery = await recoverMatchingDurableIntentToVerifiedReceipt(
       legacy,
       authorityStore,
       identityStateStore,
       stateContext,
       managedRemote,
+      operation.operationId,
       {
         localTransactionalMutationPort: configured.localTransactionalMutationPort,
         remoteFolderCreateRecoveryReadPort: configured.remoteFolderCreateRecoveryReadPort,
       },
     );
     if (recovery.status === "recovery-required") return { status: "recovery-required", reason: recovery.reason };
-    if (wasUnattempted) return { status: "recovery-required", reason: "unattempted durable intent was retired; current work must be replanned under renewed authority" };
-
-    const [authority, canonical, entries] = await Promise.all([
-      authorityStore.loadAuthority(),
-      identityStateStore.load(stateContext),
-      completeRemoteEntries(legacy, managedRemote),
-    ]);
-    if (authority.status !== "trusted" || canonical.status !== "trusted" || !entries) return { status: "recovery-required", reason: "durable restart completed but exact committed receipt cannot be reconstructed" };
-    const persisted = authority.state.operationIntents.find(value => value.operationId === operation.operationId);
-    if (!persisted) return { status: "recovery-required", reason: "durable restart intent disappeared before receipt reconstruction" };
-    const reconstructed = reconstructDurableRecovery(persisted, canonical.state, entries);
-    if (!reconstructed) return { status: "recovery-required", reason: "durable restart receipt cannot be reconstructed from persisted physical authority" };
-    return { status: "durable-verified-success", receipt: reconstructed.receipt };
+    if (recovery.status === "retired") return { status: "recovery-required", reason: "unattempted durable intent was retired; current work must be replanned under renewed authority" };
+    return { status: "durable-verified-success", receipt: recovery.receipt };
   }
 
   return { validatePreconditions, execute };
