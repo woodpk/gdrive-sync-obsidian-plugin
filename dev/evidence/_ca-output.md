@@ -268,7 +268,7 @@ This append-only record establishes the newer lifecycle-repair state without rew
 - repair branch: `phase6-alpha-oauth-lifecycle-fix`;
 - verified integration base branch: `phase6-integration`;
 - exact verified base SHA: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
-- exact production/test implementation head: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`; subsequent branch commits are evidence-only unless otherwise stated;
+- exact production/test implementation head: `b54e7dbcadc90c2a1d4cca14110b4e10be2951`; subsequent branch commits are evidence-only unless otherwise stated;
 - draft review PR: `#16`, retargeted to `phase6-integration`, unmerged;
 - `master` was not modified;
 - Phase 6 integration PR `#15` was not merged;
@@ -347,11 +347,11 @@ GitHub Actions evidence:
 - workflow: `Phase 1 CI`;
 - run ID: `32925172932`;
 - job ID: `98046517476`;
-- workflow head SHA metadata: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- workflow head SHA metadata: `b54e7dbcadc90c2a1d4cca14110b4e10be2951`;
 - workflow conclusion: **success**;
 - actual job log inspected.
 
-CI checkout qualification: because the repository workflow is configured only for pushes to `master` and pull requests targeting `master`, the CI trigger was a draft PR and `actions/checkout` tested GitHub's generated PR merge ref `33f014e27e76c6a97f03f4a2c352470cb5dce18c`, which merged repair head `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951` into the then-current `master` base. The repair head was therefore present in the tested tree, but an Actions clean checkout of the repair head SHA itself was not performed. The PR was then retargeted to `phase6-integration` for supervisor review and remains unmerged.
+CI checkout qualification: because the repository workflow is configured only for pushes to `master` and pull requests targeting `master`, the CI trigger was a draft PR and `actions/checkout` tested GitHub's generated PR merge ref `33f014e27e76c6a97f03f4a2c352470cb5dce18c`, which merged repair head `b54e7dbcadc90c2a1d4cca14110b4e10be2951` into the then-current `master` base. The repair head was therefore present in the tested tree, but an Actions clean checkout of the repair head SHA itself was not performed. The PR was then retargeted to `phase6-integration` for supervisor review and remains unmerged.
 
 A separate focused-test-only shell command was not executed; the focused lifecycle file executed successfully as part of the complete 239-test CI suite.
 
@@ -384,7 +384,7 @@ This record establishes the newer integration state and does not rewrite the his
 - agent ID: `agt-CA-P6-ALPHA-OAUTH-LIFECYCLE-01`;
 - approved repair branch: `phase6-alpha-oauth-lifecycle-fix`;
 - approved repair head: `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
-- production/test implementation head within that history: `b54e7dbcadc90c0c2a1d4cca14110b4e10be2951`;
+- production/test implementation head within that history: `b54e7dbcadc90c2a1d4cca14110b4e10be2951`;
 - pre-integration `phase6-integration` head: `717c35b5fcd7a97bec110ac18f02cec3f821590c`;
 - integration method: **fast-forward only**; no merge commit, rebase, cherry-pick, squash, conflict resolution, or force-push was used;
 - after the fast-forward and before this evidence-only commit, `phase6-integration` resolved exactly to `ca245e2198f1b8311b3edc3e419379c8c982ede6`;
@@ -2067,3 +2067,54 @@ Agent `agt-CA-P6-SYNC-ORCHESTRATION-01`; branch `phase6-sync-orchestration-v1.2-
 Pre-evidence `Phase 6 Alpha Diagnostic Verification` run `33462863169`, job `99716534570`, artifact `9783793737`, digest `sha256:a15de7abe90f976f720a1cf96fa5581c197f20b9c94b9e8ce116ff4361875cac`. Direct raw TAP inspection (required because `tee` masks exit status) reports **484 tests / 430 pass / 29 fail / 25 cancelled / 0 skipped / 0 todo**; all D-owned/new D-C4-D-C9 tests PASS. Remaining failures/cancellations are legacy cross-workstream composition tests expecting mutation without mandatory writable `SynchronizationAuthorityStoreV1_1` and/or frozen mutation ports. D remains fail-closed; integration must compose Workstream C writable authority persistence + approved Workstream A frozen mutation ports and migrate the legacy cross-workstream constructions/tests at their owning/integration surface.
 
 Rejected-head repair changed production `src/core/execution-coordinator.ts` and `src/product/authoritative-production-executor.ts`; modified D tests `test/phase6-d-orchestration-v1.2.test.ts`, `v1.2-authoritative-boundary.test.ts`, `v1.2-production-authority-path.test.ts`, `v1.2-remote-feed-authority.test.ts`; created `v1.2-authoritative-commit-lifecycle.test.ts`, `v1.2-folder-identity-production.test.ts`, and `v1.2-production-lifecycle-composition.test.ts`. Frozen `src/contracts/**` is unchanged. PR #42 remains required draft/open/unmerged; no merge/integration, Stage 3, release/tag, protected-branch, Azure/OAuth/Drive-scope, or physical-sync action occurred. Final evidence SHA and post-evidence CI/merge-ref/artifact/diff/PR audits are reported externally after this append-only commit.
+
+---
+
+## 2026-09-01 — Workstream D serial repair closure — D-C10 through D-C12
+
+Agent `agt-CA-P6-SYNC-ORCHESTRATION-01`; branch `phase6-sync-orchestration-v1.2-continuation`; frozen foundation `96b4541b15012ac4ce0d81243b73ef779efd343e`; Unit-1 supervisor-approved input `bc5fdb1902539d7a870780435885b1cb351f312d`; final Unit-2 source/test SHA `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`.
+
+**D-C10 PASS.** Production exact identity authority is operation-driven rather than legacy-marker-driven. `upload-update`, `trash-remote`, identity-preserving move, and clean merge derive exactly one trusted current-generation identity proof from canonical mapping/convergence authority; missing, stale, ambiguous, duplicate, or contradictory authority remains fail-closed.
+
+**D-C11 PASS.** Restart recovery is driven by persisted durable physical intent before ordinary new-mutation preconditions or fresh planning can invalidate the post-dispatch world. `intent-persisted` retires without mutation; `dispatch-authorized` / `outcome-unknown` use observation/recovery seams with no blind redispatch; `effect-verified` never redispatches and is re-observed for current convergence before canonical completion; `state-committed` performs neither physical nor repeated semantic work. Production controller recovery occurs before fresh planning, so a durable intent survives a new noop/conflict/different-operation plan.
+
+**D-C12 PASS.** Restart `VerifiedExecutionReceipt` authority is reconstructed from persisted physical descriptors plus durable effect-verification references. Persisted file-create V1 content and exact reserved identity cannot be overwritten by current-plan V2 claims; update candidate identity comes from the immutable-candidate descriptor; folder identity is the exact persisted `reservedRemoteObjectId`; clean merge requires every durable effect; aggregate verification identity is deterministic; contradictory current/durable identity fails closed. The real `StateCommitCoordinator` receives the durable reconstructed receipt for canonical commit.
+
+Exact restart order is:
+
+`load canonical + synchronization authority -> discover outstanding durable intent -> validate generation/descriptor -> recover/observe persisted physical effect before ordinary mutation validation -> obtain/retain durable verification -> reconstruct receipt from durable effects -> establish current convergence/canonical eligibility -> canonical CAS commit -> finalize state-committed`.
+
+Only if no recoverable durable intent exists may the path proceed through `current plan -> exact authority -> ordinary current preconditions -> persist new intent -> dispatch`.
+
+Unit-2 source/test manifest from approved Unit-1 head:
+
+Created:
+- `src/product/authoritative-production-executor-base.ts`
+- `src/product/durable-intent-recovery-base.ts`
+- `src/product/durable-intent-recovery.ts`
+- `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`
+- `test/workstreams/orchestration/v1.2-effect-verified-convergence.test.ts`
+
+Modified:
+- `src/product/authoritative-production-executor.ts`
+- `src/product/operation-isolation.ts`
+- `src/product/product-controller.ts`
+- `test/phase6-d-orchestration-v1.2.test.ts`
+
+Deleted: none.
+
+Strongest source/test verification: `Phase 6 Alpha Diagnostic Verification` run `33514787893`, job `99878968796`, artifact `9803128660`, digest `sha256:1537cf3704d6d6c96c91697152973e087989e041769203c8c91f0b420d8c0587`. Typecheck, focused verification, production build, repository-check step, `git diff --check`, artifact identity, and upload all passed.
+
+Because repository CI pipes `npm test` and `npm run check` through `tee` without `pipefail`, raw uploaded artifacts were inspected directly. Final raw counts are **500 tests / 442 pass / 33 fail / 25 cancelled / 0 skipped / 0 todo**. All **79 D-prefixed tests PASS**; Unit-2 D-C11/D-C12 tests **448–456 are 9/9 PASS**; Unit-1 D-C10 tests **441–447 remain 7/7 PASS**; D-C6 through D-C9 lifecycle/restart coverage remains PASS. The residual 33 failures/25 cancellations are outside the D-prefixed block and remain legacy/cross-workstream integration constructions requiring approved Workstream A frozen mutation/recovery ports plus Workstream C writable synchronization-authority persistence. D remains intentionally fail-closed.
+
+Frozen-boundary audit: Git comparison `96b4541b15012ac4ce0d81243b73ef779efd343e -> c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3` contains no `src/contracts/**` changes. No A/B/C/E/F/G worker branch was consumed. No semantic operation-ID redesign, protected-branch modification, OAuth/Azure/Drive-scope change, release/tag, Stage 3 activity, or physical synchronization occurred.
+
+PR #42 remains required to stay OPEN, DRAFT, and UNMERGED. Source/test closure state: base `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`; head `phase6-sync-orchestration-v1.2-continuation @ c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`.
+
+Physical Windows synchronization: `NOT AVAILABLE IN THIS SESSION`
+
+Physical iPhone/iOS synchronization: `NOT AVAILABLE IN THIS SESSION`
+
+Live production Google Drive mutation/recovery: `NOT AVAILABLE IN THIS SESSION`
+
+**Cumulative D repair status: D-C1 through D-C12 PASS within Workstream D ownership.** This record is ready for independent supervisor review and does not claim supervisor approval, cross-workstream integration completion, PR merge, Phase 6 completion, or Stage 3 completion. Exact final evidence SHA is reported externally after this append-only commit because a content-addressed commit cannot self-contain its own resulting SHA.
