@@ -257,6 +257,29 @@ function authorityState(value: TrustedSynchronizationState): value is DurableSyn
 }
 
 /**
+ * A fully state-committed intent is inert: its physical effects are already
+ * independently verified and its canonical state is already durable. When H's
+ * split-domain bridge advances C's semantic generation for that canonical commit,
+ * keep only that completed journal record aligned with the new generation so a
+ * later restart treats it as idempotently complete rather than stale work. Never
+ * rebase an intent that could still authorize or recover a physical mutation.
+ */
+function rebaseCompletedIntentSemanticAuthority(
+  state: DurableSynchronizationAuthorityState,
+  generation: SemanticStateGeneration,
+): DurableSynchronizationAuthorityState {
+  let changed = false;
+  const operationIntents = state.operationIntents.map(intent => {
+    if (intent.semanticAuthority.generation === generation
+      || intent.effects.length === 0
+      || !intent.effects.every(effect => effect.stage === "state-committed")) return intent;
+    changed = true;
+    return { ...intent, semanticAuthority: { ...intent.semanticAuthority, generation } };
+  });
+  return changed ? { ...state, operationIntents } : state;
+}
+
+/**
  * H's state adapter is the production compatibility layer between D's historical
  * split-store stateRevision CAS and C's single-document persistenceRevision +
  * semanticGeneration authority. D observes a semantic CAS token; all physical
@@ -320,9 +343,13 @@ export class IntegratedSynchronizationStateStore extends PersistentSynchronizati
         : { status: "recovery-required", issues: loaded.issues };
     }
     const semanticChanged = authorityProjection(loaded.state) !== authorityProjection(state);
+    const targetGeneration = semanticChanged
+      ? nextIntegratedSemanticGeneration(loaded.state.semanticGeneration)
+      : loaded.state.semanticGeneration;
+    const withCompletedIntents = rebaseCompletedIntentSemanticAuthority(state, targetGeneration);
     const candidate = semanticChanged
-      ? rebaseIntegratedConvergence(state, nextIntegratedSemanticGeneration(loaded.state.semanticGeneration))
-      : state;
+      ? rebaseIntegratedConvergence(withCompletedIntents, targetGeneration)
+      : withCompletedIntents;
     return this.source.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
   }
 
