@@ -22,7 +22,7 @@ import {
 } from "../../../src/contracts";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { IntegratedProductController } from "../../../src/product/product-controller";
-import { ProductSnapshotAssembler, SnapshotAssemblyError } from "../../../src/product/snapshot-assembler";
+import { ProductSnapshotAssembler } from "../../../src/product/snapshot-assembler";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const cursor = (value: string) => id<"ChangeCursor">(value) as ChangeCursor;
@@ -94,9 +94,7 @@ function controller(state: MutableStateStore, authority: WritableAuthority, reli
   const assembler = new ProductSnapshotAssembler(local(), drive(), state as never, context, async () => identity, () => true, () => false, undefined, reliable);
   return new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority,
-    snapshotAssembler: assembler,
-    executor: {} as never,
-    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
+    snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
     plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">(`plan:${String(state.value.changeCursor)}`), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }),
     leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:feed-authority",
   });
@@ -104,8 +102,8 @@ function controller(state: MutableStateStore, authority: WritableAuthority, reli
 
 test("D terminal two-page batch is durably learned before cursor advancement while sibling path conflict remains unresolved", async () => {
   const state = new MutableStateStore(); const authority = new WritableAuthority(); const calls: string[] = [];
-  const result = await controller(state, authority, pages(calls)).runAutomatic("periodic");
-  assert.equal(result.status, "accepted");
+  const c = controller(state, authority, pages(calls));
+  await c.runAutomatic("periodic");
   assert.deepEqual(calls, ["cursor:0", "page:1"]);
   assert.equal(authority.value.learnedRemoteBatches.length, 1);
   const batch = authority.value.learnedRemoteBatches[0]!;
@@ -129,13 +127,10 @@ test("D later unrelated REMOTE changes continue from durable learned terminal wh
 
 test("D repeated already-learned terminal batch is idempotent", async () => {
   const state = new MutableStateStore(); const authority = new WritableAuthority(); const calls: string[] = [];
-  const first = controller(state, authority, pages(calls)); await first.runAutomatic("periodic");
+  await controller(state, authority, pages(calls)).runAutomatic("periodic");
   const savedBatch: DurableRemoteChangeBatch = authority.value.learnedRemoteBatches[0]!;
   const count = authority.value.learnedRemoteBatches.length;
-  const duplicateAssembler = {
-    bindAuthorityStore: () => undefined,
-    assemble: async () => ({ input: { snapshots: [], state: { status: "trusted", state: state.value } }, managedRemote: identity, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, nextCursor: savedBatch.checkpoint.terminalStartToken, remoteChangeBatch: savedBatch, mode: "incremental" }),
-  } as never;
+  const duplicateAssembler = { bindAuthorityStore: () => undefined, assemble: async () => ({ input: { snapshots: [], state: { status: "trusted", state: state.value } }, managedRemote: identity, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, nextCursor: savedBatch.checkpoint.terminalStartToken, remoteChangeBatch: savedBatch, mode: "incremental" }) } as never;
   const duplicate = new IntegratedProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority, snapshotAssembler: duplicateAssembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:duplicate"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:duplicate" });
   await duplicate.runAutomatic("periodic");
   assert.equal(authority.value.learnedRemoteBatches.length, count);
@@ -145,13 +140,14 @@ test("D absent writable authority store cannot advance terminal REMOTE feed chec
   const state = new MutableStateStore(); const calls: string[] = [];
   const assembler = new ProductSnapshotAssembler(local(), drive(), state as never, context, async () => identity, () => true, () => false, undefined, pages(calls));
   const c = new IntegratedProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:no-write"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:no-write" });
-  const result = await c.runAutomatic("periodic");
-  assert.equal(result.status, "rejected"); assert.equal(state.value.changeCursor, cursor("cursor:0"));
+  await c.runAutomatic("periodic");
+  assert.equal(c.currentSurface().status.kind, "recovery-required"); assert.equal(state.value.changeCursor, cursor("cursor:0"));
 });
 
 test("D failure before terminal creates no learned batch and advances no checkpoint", async () => {
   const state = new MutableStateStore(); const authority = new WritableAuthority();
   const failing: ReliableRemoteChangePort = { async readChangePage(_identity, requestedToken) { return requestedToken === cursor("cursor:0") ? { ok: true, value: { kind: "intermediate", requestedToken, changes: [], nextPageToken: cursor("page:failure") } } : { ok: false, signal: { kind: "transient-failure", detail: "boom" } }; } };
-  const result = await controller(state, authority, failing).runAutomatic("periodic");
-  assert.equal(result.status, "rejected"); assert.equal(authority.value.learnedRemoteBatches.length, 0); assert.equal(state.value.changeCursor, cursor("cursor:0"));
+  const c = controller(state, authority, failing);
+  await c.runAutomatic("periodic");
+  assert.equal(c.currentSurface().status.kind, "recovery-required"); assert.equal(authority.value.learnedRemoteBatches.length, 0); assert.equal(state.value.changeCursor, cursor("cursor:0"));
 });
