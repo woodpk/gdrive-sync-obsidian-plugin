@@ -13,6 +13,7 @@ import {
 } from "./product-controller-base";
 import { authoritativeDiagnostics, withExecutionLifecycleObserver } from "./authority-execution-diagnostics";
 import type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor";
+import { recoverOutstandingDurableIntents, type DurableIntentRecoveryDependencies } from "./durable-intent-recovery";
 import { SnapshotAssemblyError, type AssembledPlanningInput, type ProductSnapshotAssembler } from "./snapshot-assembler";
 import { TrustedStateSynchronizationAuthorityStore } from "./trusted-state-authority-store";
 
@@ -70,27 +71,60 @@ function authorityLearningAssembler(
   assembler: ProductSnapshotAssembler,
   authorityStore: SynchronizationAuthorityStoreV1_1,
   options: ProductControllerOptions,
+  recoveryDependencies: DurableIntentRecoveryDependencies,
 ): ProductSnapshotAssembler {
-  // D tests use structural assembler doubles. Bind and intercept incremental
-  // assembly only when those methods actually exist; full-only doubles remain
-  // valid for controller tests and cannot manufacture a remote terminal batch.
+  // D tests use structural assembler doubles. Bind whatever methods exist. Every
+  // production assembly entry is wrapped so durable intent recovery is complete
+  // before the base controller can invoke the current planner.
   const structural = assembler as ProductSnapshotAssembler & {
     bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
-    assemble?: ProductSnapshotAssembler["assemble"];
   };
   structural.bindAuthorityStore?.(authorityStore);
-  if (typeof structural.assemble !== "function") return assembler;
-  const originalAssemble = structural.assemble.bind(assembler);
+
+  const methods = new Map<PropertyKey, (...args: never[]) => Promise<AssembledPlanningInput>>();
+  for (const property of ["assemble", "assembleFull", "assembleRecovery"] as const) {
+    const method = Reflect.get(assembler as object, property);
+    if (typeof method === "function") methods.set(property, method.bind(assembler));
+  }
+  if (!methods.size) return assembler;
+
   return new Proxy(assembler, {
     get(target, property, receiver) {
-      if (property === "assemble") {
-        return async (...args: Parameters<ProductSnapshotAssembler["assemble"]>) => {
-          const assembly = await originalAssemble(...args);
+      const original = methods.get(property);
+      if (!original) return Reflect.get(target, property, receiver);
+      return async (...args: never[]) => {
+        let assembly = await original(...args);
+        await persistLearnedRemoteBatch(assembly, authorityStore, options);
+
+        const recovery = await recoverOutstandingDurableIntents(
+          options.executor,
+          authorityStore,
+          options.stateStore,
+          options.stateContext,
+          assembly.managedRemote,
+          recoveryDependencies,
+        );
+        if (recovery.status === "recovery-required") throw new SnapshotAssemblyError("recovery-required", recovery.reason);
+
+        // Recovery may commit canonical BASE, finalize effects, or retire an
+        // unattempted intent. Refresh the exact same assembly mode once so the
+        // current planner consumes post-recovery reality rather than stale input.
+        if (recovery.changed) {
+          assembly = await original(...args);
           await persistLearnedRemoteBatch(assembly, authorityStore, options);
-          return assembly;
-        };
-      }
-      return Reflect.get(target, property, receiver);
+          const residual = await recoverOutstandingDurableIntents(
+            options.executor,
+            authorityStore,
+            options.stateStore,
+            options.stateContext,
+            assembly.managedRemote,
+            recoveryDependencies,
+          );
+          if (residual.status === "recovery-required") throw new SnapshotAssemblyError("recovery-required", residual.reason);
+          if (residual.changed) throw new SnapshotAssemblyError("recovery-required", "durable recovery did not reach a stable pre-planning authority state in one bounded refresh");
+        }
+        return assembly;
+      };
     },
   });
 }
@@ -111,10 +145,14 @@ export class IntegratedProductController extends BaseIntegratedProductController
       localTransactionalMutationPort: options.localTransactionalMutationPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
     };
+    const recoveryDependencies: DurableIntentRecoveryDependencies = {
+      localTransactionalMutationPort: options.localTransactionalMutationPort,
+      remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
+    };
     (options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies }).recoverableProductionMutationDependencies = dependencies;
     super({
       ...options,
-      snapshotAssembler: authorityLearningAssembler(options.snapshotAssembler, authorityStore, options),
+      snapshotAssembler: authorityLearningAssembler(options.snapshotAssembler, authorityStore, options, recoveryDependencies),
       ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
       authorityStore,
     });
