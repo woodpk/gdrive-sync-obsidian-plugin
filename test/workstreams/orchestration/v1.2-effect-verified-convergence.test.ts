@@ -18,7 +18,7 @@ const intentId = id<"MutationIntentId">("intent:verified-diverged");
 
 class Authority implements SynchronizationAuthorityStoreV1_1 {
   value: SynchronizationAuthorityMetadataV1_1 = {
-    persistenceRevision: id<"PersistenceRevision">("authority:1") as PersistenceRevision,
+    persistenceRevision: id<"StateRevision">("authority:1") as PersistenceRevision,
     semanticGeneration: generation,
     learnedRemoteBatches: [], pathConvergence: [], localTransactions: [],
     operationIntents: [{
