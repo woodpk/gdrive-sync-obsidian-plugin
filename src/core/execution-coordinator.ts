@@ -12,10 +12,14 @@ import type {
   PlannedOperation,
   RemoteObjectMapping,
   StateLoadContext,
+  StateRevision,
   SynchronizationAuthorityMetadataV1_1,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
+  TrustedSynchronizationState,
+  VerifiedExecutionReceipt,
 } from "../contracts";
+import { DurableEffectLifecycleCoordinator } from "../product/operation-isolation";
 import type {
   AuthorityResolutionResult,
   CoordinatedExecutionResult,
@@ -43,6 +47,99 @@ function uniqueTrustedIdentityMapping(
   if (byPath.length !== 1 || byId.length !== 1) return undefined;
   const mapping = byPath[0];
   return mapping && mapping.remoteObjectId === expectedRemoteObjectId && byId[0]?.path === path ? mapping : undefined;
+}
+
+function physicalOperation(operation: PlannedOperation): boolean {
+  return [
+    "upload-create",
+    "upload-update",
+    "download-create",
+    "download-update",
+    "identity-preserving-move",
+    "clean-text-merge",
+    "trash-local",
+    "trash-remote",
+  ].includes(operation.kind);
+}
+
+function exactContentMatches(
+  actual: TrustedSynchronizationState["base"][number]["content"],
+  expected: VerifiedExecutionReceipt["evidence"],
+): boolean {
+  if (!expected) return true;
+  if (!actual) return false;
+  if (expected.hash !== undefined && actual.hash !== expected.hash) return false;
+  if (expected.sizeBytes !== undefined && actual.sizeBytes !== expected.sizeBytes) return false;
+  return true;
+}
+
+/**
+ * Prove that this exact durable physical receipt has already crossed the
+ * canonical synchronization-state boundary. The completed journal binds the
+ * operation to the durable aggregate verification reference; the state-shape
+ * checks prevent a journal marker alone from authorizing replay suppression.
+ */
+function exactCanonicalCommitAlreadyApplied(
+  state: TrustedSynchronizationState,
+  operation: ExecutablePlannedOperation,
+  receipt: VerifiedExecutionReceipt,
+): boolean {
+  if (!receipt.verificationEvidenceRef) return false;
+  const journal = state.operations.find(entry => entry.operationId === operation.operationId);
+  if (!journal
+    || journal.status !== "completed"
+    || journal.path !== operation.path
+    || journal.verificationEvidenceRef !== receipt.verificationEvidenceRef) return false;
+
+  const expectedEvidence = receipt.evidence ?? operation.contentVersion?.content;
+  const resultingRemoteObjectId = receipt.resultingRemoteObjectId
+    ?? operation.remoteObjectId
+    ?? operation.contentVersion?.remoteObjectId;
+
+  if (["upload-create", "upload-update", "download-create", "download-update", "clean-text-merge"].includes(operation.kind)) {
+    const entries = state.base.filter(entry => entry.path === operation.path);
+    if (entries.length !== 1) return false;
+    const entry = entries[0]!;
+    const entityKind = operation.contentVersion?.entityKind ?? entry.entityKind;
+    const localOnlyConflictCopy = operation.kind === "download-create"
+      && operation.contentVersion !== undefined
+      && operation.path !== operation.contentVersion.path;
+    if (entry.entityKind !== entityKind || entry.localExisted !== true || entry.remoteExisted !== !localOnlyConflictCopy) return false;
+    if (!exactContentMatches(entry.content, expectedEvidence)) return false;
+    if (localOnlyConflictCopy) return entry.remoteObjectId === undefined && state.remoteMappings.every(mapping => mapping.path !== operation.path);
+    if (!resultingRemoteObjectId || entry.remoteObjectId !== resultingRemoteObjectId) return false;
+    const byPath = state.remoteMappings.filter(mapping => mapping.path === operation.path);
+    const byId = state.remoteMappings.filter(mapping => mapping.remoteObjectId === resultingRemoteObjectId);
+    return byPath.length === 1
+      && byId.length === 1
+      && byPath[0]?.remoteObjectId === resultingRemoteObjectId
+      && byId[0]?.path === operation.path
+      && byPath[0]?.entityKind === entityKind;
+  }
+
+  if (operation.kind === "identity-preserving-move" && operation.fromPath && operation.toPath) {
+    if (!resultingRemoteObjectId) return false;
+    if (state.base.some(entry => entry.path === operation.fromPath)) return false;
+    if (state.remoteMappings.some(mapping => mapping.path === operation.fromPath)) return false;
+    const targetBase = state.base.filter(entry => entry.path === operation.toPath);
+    const targetMapping = state.remoteMappings.filter(mapping => mapping.path === operation.toPath || mapping.remoteObjectId === resultingRemoteObjectId);
+    return targetBase.length === 1
+      && targetBase[0]?.remoteObjectId === resultingRemoteObjectId
+      && targetMapping.length === 1
+      && targetMapping[0]?.path === operation.toPath
+      && targetMapping[0]?.remoteObjectId === resultingRemoteObjectId;
+  }
+
+  if (operation.kind === "trash-local" || operation.kind === "trash-remote") {
+    if (state.base.some(entry => entry.path === operation.path)) return false;
+    if (state.remoteMappings.some(mapping => mapping.path === operation.path)) return false;
+    const expectedDeletedOn = operation.kind === "trash-remote" ? "local" : "remote";
+    const tombstones = state.tombstones.filter(entry => entry.path === operation.path && entry.deletedOn === expectedDeletedOn);
+    if (tombstones.length !== 1) return false;
+    return !resultingRemoteObjectId || tombstones[0]?.remoteObjectId === resultingRemoteObjectId;
+  }
+
+  return false;
 }
 
 /** Replace compatibility-only planner markers with independently established exact frozen authority. */
@@ -87,14 +184,10 @@ export function resolveAuthorityCompleteOperation(
 }
 
 /**
- * Authority-complete production boundary. The executor owns the frozen durable
- * physical-effect lifecycle; this coordinator performs semantic resolution,
- * independently revalidates executable authority, and commits canonical state
- * only after the executor proves every required physical effect is durably
- * verified/state-committed and logically eligible.
- *
- * Legacy OperationJournalEntry pending/uncertain writes are intentionally not
- * used as physical-dispatch authority here.
+ * Authority-complete production boundary. The executor owns durable physical
+ * intent/dispatch/verification; this coordinator alone owns the transition from
+ * verified physical effects into canonical BASE/state, and only after that
+ * canonical CAS succeeds may durable effects advance to state-committed.
  */
 export class AuthorityCompleteExecutionCoordinator {
   private readonly observer?: ExecutionLifecycleObserver;
@@ -114,14 +207,18 @@ export class AuthorityCompleteExecutionCoordinator {
     const loaded = await this.authorityStore.loadAuthority();
     if (loaded.status === "uninitialized") return this.complete(operation, { status: "recovery-required", reason: "authoritative synchronization metadata is uninitialized" });
     if (loaded.status === "recovery-required") return this.complete(operation, { status: "recovery-required", reason: "authoritative synchronization metadata requires recovery" });
-
-    let mappings: readonly RemoteObjectMapping[] = [];
-    if (operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous")) {
-      if (!this.identityStateStore || !this.stateContext) return this.complete(operation, { status: "recovery-required", reason: "trusted remote identity mapping state is unavailable" });
-      const identityState = await this.identityStateStore.load(this.stateContext);
-      if (identityState.status !== "trusted") return this.complete(operation, { status: "recovery-required", reason: "trusted remote identity mapping state is unavailable" });
-      mappings = identityState.state.remoteMappings;
+    if (!this.identityStateStore || !this.stateContext) {
+      return this.complete(operation, { status: "recovery-required", reason: "trusted canonical synchronization state is unavailable for exact commit CAS" });
     }
+
+    const canonicalAtStart = await this.identityStateStore.load(this.stateContext);
+    if (canonicalAtStart.status !== "trusted") {
+      return this.complete(operation, { status: "recovery-required", reason: "trusted canonical synchronization state is unavailable for exact commit CAS" });
+    }
+    const expectedStateRevision: StateRevision = canonicalAtStart.state.stateRevision;
+    const mappings = operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous")
+      ? canonicalAtStart.state.remoteMappings
+      : [];
 
     const resolved = resolveAuthorityCompleteOperation(operation, loaded.state, mappings);
     if (resolved.status !== "ready") return this.complete(operation, { status: "recovery-required", reason: resolved.reason });
@@ -146,12 +243,54 @@ export class AuthorityCompleteExecutionCoordinator {
     if (execution.status === "durable-verified-success") {
       this.observe(executable, "content-mutation-complete", execution.status);
       this.observe(executable, "integrity-verification-complete", "verified");
+
+      const canonicalNow = await this.identityStateStore.load(this.stateContext);
+      if (canonicalNow.status !== "trusted") {
+        return this.complete(executable, { status: "recovery-required", reason: "canonical state became unavailable after physical verification" });
+      }
+      const priorCanonicalCommit = physicalOperation(executable)
+        && exactCanonicalCommitAlreadyApplied(canonicalNow.state, executable, execution.receipt);
+
+      if (priorCanonicalCommit) {
+        this.observe(executable, "state-commit-start", "already-committed");
+        const finalized = await this.finalizeDurableEffects(executable);
+        if (!finalized.ok) {
+          this.observe(executable, "state-commit-failed", "durable-finalization-failed");
+          return this.complete(executable, { status: "recovery-required", reason: finalized.reason });
+        }
+        const commit: CommitResult = { status: "committed", newStateRevision: canonicalNow.state.stateRevision };
+        this.observe(executable, "state-commit-complete", "already-committed");
+        return this.complete(executable, { status: "committed", commit });
+      }
+
+      if (physicalOperation(executable)) {
+        const readiness = await this.authorityStore.loadAuthority();
+        if (readiness.status !== "trusted") {
+          return this.complete(executable, { status: "recovery-required", reason: "durable effect authority unavailable before canonical state commit" });
+        }
+        const intent = readiness.state.operationIntents.find(value => value.operationId === executable.operationId);
+        if (!intent) return this.complete(executable, { status: "recovery-required", reason: "durable physical intent missing before canonical state commit" });
+        if (intent.effects.some(effect => effect.stage === "state-committed")) {
+          return this.complete(executable, { status: "recovery-required", reason: "state-committed durable marker lacks exact prior canonical commit proof" });
+        }
+        if (!intent.effects.every(effect => effect.stage === "effect-verified" && Boolean(effect.verificationEvidenceRef))) {
+          return this.complete(executable, { status: "recovery-required", reason: "canonical state commit requires every durable physical effect to remain effect-verified" });
+        }
+      }
+
       this.observe(executable, "state-commit-start");
       let commit: CommitResult;
-      try { commit = await this.committer.commitVerifiedSuccess(executable, execution.receipt); }
+      try { commit = await this.committer.commitVerifiedSuccess(executable, execution.receipt, expectedStateRevision); }
       catch (error) { this.observe(executable, "state-commit-failed", "threw", error); throw error; }
       this.observe(executable, "state-commit-complete", commit.status);
-      if (commit.status === "committed") return this.complete(executable, { status: "committed", commit });
+      if (commit.status === "committed") {
+        const finalized = await this.finalizeDurableEffects(executable);
+        if (!finalized.ok) {
+          this.observe(executable, "state-commit-failed", "durable-finalization-failed");
+          return this.complete(executable, { status: "recovery-required", reason: finalized.reason });
+        }
+        return this.complete(executable, { status: "committed", commit });
+      }
       if (commit.status === "stale-state") {
         this.observe(executable, "state-commit-failed", commit.status);
         return this.complete(executable, { status: "stale-state", actualRevision: commit.actualRevision });
@@ -162,6 +301,26 @@ export class AuthorityCompleteExecutionCoordinator {
 
     this.observe(executable, "content-mutation-failed", execution.status, undefined, execution.status === "stale-precondition" ? execution.failed : undefined);
     return this.complete(executable, this.mapAuthoritativeExecution(execution));
+  }
+
+  private async finalizeDurableEffects(operation: ExecutablePlannedOperation): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }> {
+    if (!physicalOperation(operation)) return { ok: true };
+    const lifecycle = new DurableEffectLifecycleCoordinator(this.authorityStore);
+    const loaded = await lifecycle.loadAuthority();
+    if (loaded.status !== "trusted") return { ok: false, reason: loaded.reason };
+    const intent = loaded.state.operationIntents.find(value => value.operationId === operation.operationId);
+    if (!intent) return { ok: false, reason: "canonical state committed but durable physical intent is missing" };
+    for (const effect of intent.effects) {
+      if (effect.stage === "state-committed") continue;
+      if (effect.stage !== "effect-verified" || !effect.verificationEvidenceRef) {
+        return { ok: false, reason: `canonical state committed but durable effect ${effect.effectId} is ${effect.stage}` };
+      }
+      const finalized = await lifecycle.markEffectStateCommitted(String(operation.operationId), effect.effectId, effect.verificationEvidenceRef);
+      if (finalized.status !== "state-committed") {
+        return { ok: false, reason: `canonical state committed but durable effect ${effect.effectId} finalization failed (${finalized.status})` };
+      }
+    }
+    return { ok: true };
   }
 
   private complete(operation: PlannedOperation, result: CoordinatedExecutionResult): CoordinatedExecutionResult {
