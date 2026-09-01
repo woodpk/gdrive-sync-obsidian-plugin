@@ -1,1 +1,0 @@
-Post-evidence verification trigger only. No production, contract, or canonical evidence semantics.
