@@ -383,3 +383,89 @@ This is byte-identical at the tree level to frozen foundation `96b4541b15012ac4c
 - Unresolved H-U1 blocker: **none**.
 - Canonical `dev/evidence/_ca-output.md` remains untouched.
 - H-U2 has **not** been started.
+
+## H-U2 — MUTATION & RESTART INTEGRATION TESTS
+
+### Entry / authority consumed
+
+- H-U1 semantic source/test authority consumed: `58ba4799987208e728c645d30f8cdd5e558d0120`.
+- H-U1 evidence-only completion / H-U2 entry head: `8d8ede4c1b6835e699c843e9274d60862c5f1396`.
+- Writable branch remained `phase6-sync-integration-h`; protected/shared branches were not modified and no merge was performed.
+- The checkpoint and completed H-U1 evidence were read before editing, the actual H-U1 production wiring was re-inspected, and the frozen contract tree was confirmed unchanged.
+
+### H-U2 test surfaces
+
+Added:
+
+- `test/workstreams/integration/h-u2-mutation-restart-integration.test.ts` — bounded five-case A/B/C/D production-composition acceptance suite.
+- `test/phase6-h-u2-integration.test.ts` — one-line top-level H-U2 execution shim required because the repository test command discovers only `test/*.test.ts` outputs; this is not the final G/H discovery entrypoint reserved for H-U3.
+- `test/phase6-h-u2-affected-regression.test.ts` — narrow execution shim for C v1.1 authority, D durable-intent recovery, and D authoritative commit-lifecycle worker suites materially adjacent to the H bridge repair.
+
+The H suite uses real integrated production implementations wherever the unit requires them: A `GoogleDriveAdapter` over a deterministic transport boundary, C `PersistentSynchronizationStateStore` wrapped by H `IntegratedSynchronizationStateStore`, D's authoritative executor/coordinator/recovery path, and B's crash-safe local transaction engine through H's logical-to-physical adapter. Test doubles are limited to external environment boundaries and do not replace the production integration layer being proved.
+
+### Production file modified and reason
+
+Modified only:
+
+- `src/product/phase6-sync-integration.ts`
+
+Initial runtime execution at pre-fix H-U2 test head `e862491b34180bd9c42dc67d81f9903390165ba1` passed H-I1, H-I2, H-I4, and H-I8 but exposed one H-owned H-I3 bridge defect on the second restart. The first restart had already recovered the persisted operation, verified the physical effect, and committed canonical state. C correctly advanced global `semanticGeneration` for that canonical change, but H's split-domain compatibility bridge left the now-`state-committed` durable intent tagged with the preceding generation. D correctly rejected that stale tag before reaching its completed-intent no-op path.
+
+Repair commit:
+
+`011317dfe80ad0a06af57f392de469d0b1d79de7` — `fix(H-U2): keep completed intents restart-idempotent`
+
+The repair is deliberately narrow: H rebases a durable intent's semantic-authority tag only when every effect is already `state-committed`. Pending, `dispatch-authorized`, `outcome-unknown`, and `effect-verified` intents are never rebased, so stale authority cannot be renewed for work that could still authorize or recover a physical mutation. No C or D worker semantic implementation and no frozen contract was changed.
+
+### Acceptance results
+
+- **H-I1 — PASS.** Production-planned REMOTE create persisted C-backed durable intent/effect state, used A's reserved-ID reliable create path, independently observed the resulting Drive object after a simulated lost response, reached `state-committed` only after verified convergence/canonical commit, and preserved the reserved Drive identity in BASE/mapping. Raw legacy Drive mutation remained unused.
+- **H-I2 — PASS.** REMOTE trash used the exact current trusted C remote mapping through A's reliable mutation seam. A deliberately forged planner identity marker could not replace C authority. Removing the durable mapping produced fail-closed `recovery-required` behavior with zero physical trash dispatch.
+- **H-I3 — PASS after H-owned bridge repair.** A C-persisted `dispatch-authorized` reserved create survived store reconstruction, restarted through D observation/recovery without reservation or redispatch, committed the recovered identity canonically, and reached `state-committed`. A repeated restart after completion performed no physical mutation and no repeated semantic/persistence commit.
+- **H-I4 — PASS.** D's durable LOCAL descriptor retained the logical portable-configuration path while H mapped target/stage/backup into the active physical configuration directory and B's crash-safe transaction engine performed staging and atomic promotion. The synthetic remote namespace never became a literal filesystem target. C persisted transaction progress and canonical BASE advanced only after verified local bytes.
+- **H-I8 — PASS.** Missing writable C authority, missing A reliable REMOTE mutation seam, and missing B LOCAL transactional seam each failed closed. None silently fell back to raw legacy physical mutation.
+
+### Focused execution and exact counts
+
+Final source/test head:
+
+`4d582e72e4a5bee47a24690f3a4a68299dd4baf7`
+
+Phase 6 verification CI at that head:
+
+- Workflow run: `33565771075`
+- Job: `100048468415`
+- Artifact: `9823046263`
+- Artifact digest: `sha256:0fb622ced629d0c81f20673bffd09ad708b6ba25ac6c5629b764952095426934`
+- `npm ci`: **success**.
+- `npm run typecheck`: **success**.
+- Repository test execution invoked the dedicated top-level H-U2 shim and executed all five H acceptance cases at runtime: **5 tests / 5 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo**.
+- Affected C/D regression shim executed C v1.1 authority **9/9**, D durable-intent recovery **8/8**, and D authoritative commit lifecycle **4/4**: **21 tests / 21 pass / 0 fail** total for the explicitly affected regression set.
+- `npm run build`: **success**.
+- `git diff --check`: **success**.
+- The workflow also ran the broader repository tests/check as part of its fixed CI definition. Raw full-test aggregate was `584 tests / 525 pass / 34 fail / 25 cancelled / 0 skipped / 0 todo`; those non-H-U2 failures/cancellations were not classified or repaired in this unit because whole-repository classification is explicitly reserved for H-U4.
+- A/B worker production source was not modified by the H-I3 bridge repair, so no additional A/B worker regression suite was mechanically affected by that repair. H-I1/H-I2 exercise A's real reliable mutation seam and H-I4 exercises B's real transaction engine in the integrated path.
+
+### Frozen-contract result
+
+Foundation `96b4541b15012ac4ce0d81243b73ef779efd343e` resolves `src/contracts/**` to tree:
+
+`4deb82e382f7957c731ef78db52b4164571d57a3`
+
+H-U2 source/test completion head `4d582e72e4a5bee47a24690f3a4a68299dd4baf7` resolves `src/contracts/**` to the exact same tree:
+
+`4deb82e382f7957c731ef78db52b4164571d57a3`
+
+Therefore `src/contracts/**` is byte-identical to the frozen v1.2 foundation. No contract change request exists.
+
+### H-U2 completion state
+
+- Source/test SHA: `4d582e72e4a5bee47a24690f3a4a68299dd4baf7`.
+- H-I1: PASS.
+- H-I2: PASS.
+- H-I3: PASS after bounded H-owned bridge repair.
+- H-I4: PASS.
+- H-I8: PASS.
+- Routed blocker: **none**.
+- Canonical `dev/evidence/_ca-output.md` remains untouched.
+- H-U3 has **not** been started.
