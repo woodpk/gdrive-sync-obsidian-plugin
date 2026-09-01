@@ -97,14 +97,33 @@ function transactionPath(operation: ExecutablePlannedOperation, role: "stage" | 
 function evidenceRef(prefix: string, value: unknown): string {
   return `${prefix}:${String(sha256Text(JSON.stringify(value)))}`;
 }
-function success(operation: ExecutablePlannedOperation, resultingRemoteObjectId?: RemoteObjectId): ExecutionResult {
+function aggregateVerificationRef(operation: ExecutablePlannedOperation, effects: readonly RecoverableMutationEffectV1_1[]): string {
+  return evidenceRef("durable-effects", {
+    operationId: String(operation.operationId),
+    effects: effects.map(effect => ({ effectId: effect.effectId, verificationEvidenceRef: effect.verificationEvidenceRef })),
+  });
+}
+function resultingRemoteObjectId(operation: ExecutablePlannedOperation, effects: readonly RecoverableMutationEffectV1_1[]): RemoteObjectId | undefined {
+  for (const descriptor of effects.map(effect => effect.descriptor)) {
+    if (descriptor.kind === "remote-folder-create") return descriptor.remoteMutation.reservedRemoteObjectId;
+    if (descriptor.kind === "remote-file") {
+      return descriptor.remoteMutation.kind === "reserved-file-create"
+        ? descriptor.remoteMutation.reservedRemoteObjectId
+        : descriptor.remoteMutation.candidateRemoteObjectId;
+    }
+    if (descriptor.kind === "move" && descriptor.targetSide === "remote" && descriptor.remoteObjectId) return descriptor.remoteObjectId;
+    if (descriptor.kind === "trash" && descriptor.targetSide === "remote" && descriptor.remoteObjectId) return descriptor.remoteObjectId;
+  }
+  return operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+}
+function success(operation: ExecutablePlannedOperation, effects: readonly RecoverableMutationEffectV1_1[]): ExecutionResult {
   const receipt: VerifiedExecutionReceipt = {
     operationId: operation.operationId,
     durable: true,
     integrityVerified: true,
     evidence: operation.contentVersion?.content,
-    resultingRemoteObjectId,
-    verificationEvidenceRef: `durable-effects:${String(operation.operationId)}`,
+    resultingRemoteObjectId: resultingRemoteObjectId(operation, effects),
+    verificationEvidenceRef: aggregateVerificationRef(operation, effects),
   };
   return { status: "durable-verified-success", receipt };
 }
@@ -455,8 +474,7 @@ async function recoverEffect(
   const converged = await convergenceFor(legacy, current.descriptor);
   if (!converged.ok) return { status: "blocking-failure", reason: converged.reason };
   if (!current.verificationEvidenceRef) return { status: "recovery-required", reason: "verified effect lacks evidence reference" };
-  const committed = await lifecycle.markEffectStateCommitted(String(operation.operationId), current.effectId, current.verificationEvidenceRef);
-  return committed.status === "state-committed" ? undefined : { status: "recovery-required", reason: "verified effect could not reach state-committed" };
+  return undefined;
 }
 
 async function dispatchEffect(
@@ -479,12 +497,16 @@ async function dispatchEffect(
     physical = mapRemoteOutcome(outcome);
   } else if (descriptor.kind === "remote-folder-create") {
     if (!deps.reliableRemoteMutationPort || !deps.remoteFolderCreateRecoveryReadPort) return { status: "recovery-required", reason: "REMOTE folder frozen mutation/recovery port unavailable" };
-    await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation);
-    const observed = await deps.remoteFolderCreateRecoveryReadPort.observeFolderCreateRecovery(descriptor);
-    const verified = verifyRemoteFolderCreate(descriptor, observed);
-    physical = verified.status === "verified-effect"
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("remote-folder", verified.proof) }
-      : verified;
+    const outcome = await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation);
+    if (outcome.status !== "verified-effect") {
+      physical = mapRemoteOutcome(outcome);
+    } else {
+      const observed = await deps.remoteFolderCreateRecoveryReadPort.observeFolderCreateRecovery(descriptor);
+      const verified = verifyRemoteFolderCreate(descriptor, observed);
+      physical = verified.status === "verified-effect"
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("remote-folder", verified.proof) }
+        : verified;
+    }
   } else if (descriptor.kind === "move" && descriptor.targetSide === "remote") {
     if (!deps.reliableRemoteMutationPort || !descriptor.remoteObjectId) return { status: "recovery-required", reason: "REMOTE move frozen port/identity unavailable" };
     physical = mapRemoteOutcome(await deps.reliableRemoteMutationPort.moveExisting({
@@ -553,8 +575,7 @@ async function dispatchEffect(
   if (!converged.ok) return { status: "blocking-failure", reason: converged.reason };
   const current = recorded.authority.operationIntents.find(value => value.operationId === operation.operationId)?.effects.find(value => value.effectId === prepared.effect.effectId);
   if (!current?.verificationEvidenceRef) return { status: "recovery-required", reason: "durable verification evidence missing" };
-  const committed = await lifecycle.markEffectStateCommitted(String(operation.operationId), current.effectId, current.verificationEvidenceRef);
-  return committed.status === "state-committed" ? undefined : { status: "recovery-required", reason: "effect could not reach state-committed" };
+  return undefined;
 }
 
 export function createAuthoritativeProductExecutor(
@@ -609,7 +630,7 @@ export function createAuthoritativeProductExecutor(
       if (!physicalOperation(operation)) return legacy.execute(operation);
 
       const needsRemote = operation.targetSide === "remote" || operation.kind.startsWith("upload-") || operation.kind === "trash-remote" || operation.kind === "clean-text-merge";
-      const needsLocalFile = (operation.kind === "download-create" || operation.kind === "download-update") && operation.contentVersion?.entityKind !== "folder" || operation.kind === "clean-text-merge";
+      const needsLocalFile = ((operation.kind === "download-create" || operation.kind === "download-update") && operation.contentVersion?.entityKind !== "folder") || operation.kind === "clean-text-merge";
       if (needsRemote && !dependencies.reliableRemoteMutationPort) return { status: "recovery-required", reason: "ReliableRemoteMutationPort unavailable; physical mutation disabled" };
       if (needsLocalFile && !dependencies.localTransactionalMutationPort) return { status: "recovery-required", reason: "LocalTransactionalMutationPort unavailable; physical mutation disabled" };
       if (operation.kind === "upload-create" && operation.contentVersion?.entityKind === "folder" && !dependencies.remoteFolderCreateRecoveryReadPort) return { status: "recovery-required", reason: "RemoteFolderCreateRecoveryReadPort unavailable; REMOTE folder mutation disabled" };
@@ -626,13 +647,11 @@ export function createAuthoritativeProductExecutor(
         }
         const final = await lifecycle.loadAuthority();
         if (final.status !== "trusted") return { status: "recovery-required", reason: final.reason };
-        const complete = final.state.operationIntents.find(value => value.operationId === operation.operationId);
-        if (!complete?.effects.every(value => value.stage === "state-committed")) return { status: "recovery-required", reason: "restart did not complete every required effect" };
-        const remoteDescriptor = complete.effects.map(value => value.descriptor).find(value => value.kind === "remote-file");
-        const resulting = remoteDescriptor?.kind === "remote-file"
-          ? (remoteDescriptor.remoteMutation.kind === "reserved-file-create" ? remoteDescriptor.remoteMutation.reservedRemoteObjectId : remoteDescriptor.remoteMutation.candidateRemoteObjectId)
-          : operation.remoteObjectId;
-        return success(operation, resulting);
+        const recovered = final.state.operationIntents.find(value => value.operationId === operation.operationId);
+        if (!recovered?.effects.every(value => (value.stage === "effect-verified" || value.stage === "state-committed") && Boolean(value.verificationEvidenceRef))) {
+          return { status: "recovery-required", reason: "restart did not recover every required effect to durable verification" };
+        }
+        return success(operation, recovered.effects);
       }
 
       const prepared = await prepareIntent(operation, loaded.state, legacy, dependencies, identityStateStore, stateContext, managedRemote);
@@ -645,13 +664,11 @@ export function createAuthoritativeProductExecutor(
       }
       const final = await lifecycle.loadAuthority();
       if (final.status !== "trusted") return { status: "recovery-required", reason: final.reason };
-      const complete = final.state.operationIntents.find(value => value.operationId === operation.operationId);
-      if (!complete?.effects.every(value => value.stage === "state-committed")) return { status: "recovery-required", reason: "logical operation incomplete: required effect not state-committed" };
-      const remoteDescriptor = complete.effects.map(value => value.descriptor).find(value => value.kind === "remote-file");
-      const resulting = remoteDescriptor?.kind === "remote-file"
-        ? (remoteDescriptor.remoteMutation.kind === "reserved-file-create" ? remoteDescriptor.remoteMutation.reservedRemoteObjectId : remoteDescriptor.remoteMutation.candidateRemoteObjectId)
-        : operation.remoteObjectId;
-      return success(operation, resulting);
+      const verified = final.state.operationIntents.find(value => value.operationId === operation.operationId);
+      if (!verified?.effects.every(value => value.stage === "effect-verified" && Boolean(value.verificationEvidenceRef))) {
+        return { status: "recovery-required", reason: "logical operation incomplete: required effect not effect-verified" };
+      }
+      return success(operation, verified.effects);
     },
   };
 }
