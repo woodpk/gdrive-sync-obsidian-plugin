@@ -73,7 +73,11 @@ function authorityLearningAssembler(
   authorityStore: SynchronizationAuthorityStoreV1_1,
   options: ProductControllerOptions,
 ): ProductSnapshotAssembler {
-  assembler.bindAuthorityStore(authorityStore);
+  // D integration tests legitimately use structural assembler doubles. Bind the
+  // authority store when this is the real ProductSnapshotAssembler, while the
+  // proxy still performs controller-level durable learning for either shape.
+  const bindable = assembler as ProductSnapshotAssembler & { bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void };
+  bindable.bindAuthorityStore?.(authorityStore);
   const originalAssemble = assembler.assemble.bind(assembler);
   return new Proxy(assembler, {
     get(target, property, receiver) {
