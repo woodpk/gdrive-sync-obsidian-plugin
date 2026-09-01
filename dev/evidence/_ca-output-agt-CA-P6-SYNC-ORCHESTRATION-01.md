@@ -564,3 +564,41 @@ Created tests:
 Deleted: none. Frozen `src/contracts/**`: unchanged by this repair.
 
 PR #42 must remain draft/open/unmerged. No merge/integration, Stage 3, release/tag, Azure/OAuth/Drive-scope change, protected-branch modification, or physical synchronization was performed. Exact final evidence SHA and post-evidence CI/merge-ref/artifact/diff/PR audits are resolved after this append and reported in the completion response.
+
+# Workstream D repair Unit 1 — D-C10 production identity authority
+
+- Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`
+- Branch: `phase6-sync-orchestration-v1.2-continuation`
+- Supervisor-rejected head: `5fe4571d6e444484c73929494bb7e5233172b0b3`
+- Approved frozen foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+- Final Unit-1 source/test SHA before this evidence-only commit: `1275c5a39ac22ca21955bfbcbfafb99182b6052d`
+- Correction: **D-C10 PASS**. `resolveAuthorityCompleteOperation(...)` now determines exact identity-authority requirements from operation semantics (`upload-update`, `trash-remote`, `identity-preserving-move`, `clean-text-merge`) rather than the presence of legacy `identity-unambiguous`. The operation's path/remote ID remain comparison inputs only. Required operations reload current-generation convergence plus trusted canonical `remoteMappings`, require exactly one path mapping and exactly one expected-ID mapping describing the same relationship, strip nominal markers and incoming identity proofs, and construct exactly one executable `IdentityAuthorityProof`. Missing, stale, duplicate, contradictory, or ambiguous authority remains fail-closed.
+
+## Unit-1 changed-file manifest from rejected head to source/test SHA
+
+- `src/core/execution-coordinator.ts` — operation-driven identity requirement and canonical mapping load; no planner change required.
+- `test/workstreams/orchestration/v1.2-production-identity-authority.test.ts` — added real deterministic-planner authority and production-composition coverage.
+- `test/phase6-d-orchestration-v1.2.test.ts` — imports the new D-C10 nested suite.
+
+No `src/contracts/**`, `src/core/planner.ts`, another workstream's production surface, or canonical `dev/evidence/_ca-output.md` was modified in Unit 1.
+
+## Unit-1 verification
+
+Strongest pre-evidence CI source point:
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Run: `33465728560`
+- Job: `99725064088`
+- Source head: `1275c5a39ac22ca21955bfbcbfafb99182b6052d`
+- PR synthetic merge checkout used by CI: `60794e77ecb479768bc68e52b07e521550242987`
+- Artifact ID: `9784772220`
+- Artifact digest: `sha256:7c7c8cbd8a1070db307973d15e70dc322f52b3d5ad58cfd4e4cf44835cd8544a`
+
+CI steps: typecheck PASS; full-test execution step PASS; focused verification PASS; production build PASS; repository check step PASS; `git diff --check` PASS; artifact identity/upload PASS. Direct raw artifact inspection was used because full tests/check use `tee`.
+
+Raw `full-tests.tap`: **491 tests / 436 pass / 30 fail / 25 cancelled / 0 skipped / 0 todo**. The complete D top-level block, tests **423–447**, is **25/25 PASS**. New D-C10 tests **441–447** are **7/7 PASS**, proving planner-generated ordinary `upload-update` and `trash-remote` gain exactly one trusted proof, missing/duplicate/contradictory authority blocks, a nominal marker cannot manufacture authority, and both planner-generated operations reach the real frozen REMOTE update/trash seams through the real authority-complete coordinator/authoritative production executor without raw Drive fallback. Existing move/clean-merge production lifecycle tests in the same D block remain PASS.
+
+The repository-wide residual **30 failures / 25 cancellations** are outside the D-owned top-level block and remain legacy/cross-workstream production-composition cases that require the unintegrated Workstream C writable authority persistence and/or Workstream A frozen mutation-port composition. D remains intentionally fail-closed; no D-C10 production weakening was made to satisfy those constructions.
+
+Frozen-contract audit: compare `96b4541b15012ac4ce0d81243b73ef779efd343e -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains no `src/contracts/**` file changes. Direct rejected-head compare `5fe4571d6e444484c73929494bb7e5233172b0b3 -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains only the three Unit-1 source/test files listed above.
+
+Remaining known D dependency: **Supervisor D repair Unit 2 — durable restart routing. NOT STARTED in this unit.** Canonical D repair closure remains deferred until all serial D repair units pass independent review.
