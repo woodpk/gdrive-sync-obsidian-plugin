@@ -234,7 +234,7 @@ class DriveWorld {
       this.uploadDispatches += 1;
       const intended = this.intended;
       if (!intended) throw new Error("test world intended content not configured");
-      const metadata = this.pendingMetadata ?? {};
+      const metadata: Partial<DriveFile> = this.pendingMetadata ?? {};
       this.files.set(this.nextReserved, {
         id: this.nextReserved,
         name: metadata.name ?? "note.md",
