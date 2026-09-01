@@ -1,25 +1,32 @@
 import type { DataAdapter } from "obsidian";
 import {
   contractId,
-  type AuthorityCompleteSuccessCommitter,
+  type AuthoritativeBaseTransition,
+  type BaseEntry,
   type BaseFingerprint,
-  type CommitResult,
-  type ExecutablePlannedOperation,
   type LocalMutationTransaction,
   type LocalTransactionResult,
   type LocalTransactionalMutationPort,
   type LocalVaultPort,
   type PersistenceRevision,
   type SemanticStateGeneration,
+  type StateLoadContext,
+  type StateLoadResult,
   type StateRevision,
+  type StateSaveResult,
+  type SynchronizationAuthoritySaveResult,
   type SynchronizationCancellationSignal,
+  type SynchronizationStateStore,
+  type TrustedSynchronizationState,
   type VaultPath,
-  type VerifiedExecutionReceipt,
 } from "../contracts";
 import { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
 import {
+  createInitialAuthorityState,
   type DurableSynchronizationAuthorityState,
+  MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
+  type RecoveryReplacementResult,
 } from "../state/persistent-state-store";
 import { sha256Text } from "../util/sha256";
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope } from "./path-scope";
@@ -27,18 +34,15 @@ import { CONFIG_REMOTE_NAMESPACE, ProductPathScope } from "./path-scope";
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const normalize = (value: string) => value.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/\/$/, "");
 
-/**
- * C owns the semantic-generation algorithm in production persistence. H must
- * predict the generation that C will assign when a semantic projection changes
- * so every still-valid converged path can be carried forward under that exact
- * generation instead of becoming spuriously stale after an unrelated durable
- * fact is learned.
- */
 export function nextIntegratedSemanticGeneration(current: SemanticStateGeneration): SemanticStateGeneration {
   const value = String(current);
   const match = /^(.*?)(\d+)$/.exec(value);
   const next = match ? `${match[1]}${Number(match[2]) + 1}` : `${value}:1`;
   return contractId<"SemanticStateGeneration">(next) as SemanticStateGeneration;
+}
+
+function semanticStateRevision(generation: SemanticStateGeneration): StateRevision {
+  return contractId<"StateRevision">(`semantic-cas:${String(generation)}`) as StateRevision;
 }
 
 /** Carry unchanged converged-path authority through one exact semantic CAS. */
@@ -54,11 +58,20 @@ export function rebaseIntegratedConvergence(
   };
 }
 
+function physicalArtifactPath(target: VaultPath, role: "stage" | "backup", seed: VaultPath): VaultPath {
+  const raw = normalize(String(target));
+  const slash = raw.lastIndexOf("/");
+  const parent = slash >= 0 ? raw.slice(0, slash) : "";
+  const name = slash >= 0 ? raw.slice(slash + 1) : raw;
+  const token = String(sha256Text(String(seed))).slice(0, 24);
+  return vp(`${parent ? `${parent}/` : ""}.${name}.brain-sync-${role}-${token}`);
+}
+
 /**
- * B's physical transaction implementation intentionally works on physical vault
- * paths. Product planning works on logical paths, including the synthetic
- * portable-configuration namespace. This adapter performs only that mapping and
- * returns the original logical durable descriptor with B's updated crash stage.
+ * B's crash-safe transaction engine owns the actual filesystem mutation. H maps
+ * D's logical durable transaction into physical sibling artifacts so selective
+ * configuration paths resolve correctly and staging/backup files remain inside
+ * the repository's operational exclusion patterns.
  */
 export class IntegratedLocalTransactionalMutationPort implements LocalTransactionalMutationPort {
   private readonly delegate: ObsidianLocalMutationTransactions;
@@ -97,11 +110,12 @@ export class IntegratedLocalTransactionalMutationPort implements LocalTransactio
   }
 
   private toPhysical(transaction: LocalMutationTransaction): LocalMutationTransaction {
+    const target = this.physical(transaction.path);
     return {
       ...transaction,
-      path: this.physical(transaction.path),
-      stagePath: this.physical(transaction.stagePath),
-      backupPath: this.physical(transaction.backupPath),
+      path: target,
+      stagePath: physicalArtifactPath(target, "stage", transaction.stagePath),
+      backupPath: physicalArtifactPath(target, "backup", transaction.backupPath),
     } as LocalMutationTransaction;
   }
 
@@ -123,218 +137,228 @@ export class IntegratedLocalTransactionalMutationPort implements LocalTransactio
   }
 }
 
-function physicalOperation(operation: ExecutablePlannedOperation): boolean {
-  return [
-    "upload-create",
-    "upload-update",
-    "download-create",
-    "download-update",
-    "identity-preserving-move",
-    "clean-text-merge",
-    "trash-local",
-    "trash-remote",
-  ].includes(operation.kind);
-}
-
-function operationGeneration(operation: ExecutablePlannedOperation): SemanticStateGeneration | undefined {
-  const values = operation.preconditions.flatMap(precondition => {
-    if (precondition.kind === "base-authority") return [precondition.authority.generation];
-    if (precondition.kind === "identity-authority") return [precondition.proof.generation];
-    return [];
+function authorityProjection(state: DurableSynchronizationAuthorityState): string {
+  return JSON.stringify({
+    vaultIdentity: state.vaultIdentity,
+    deviceIdentity: state.deviceIdentity,
+    base: state.base,
+    baseAuthority: state.baseAuthority,
+    remoteMappings: state.remoteMappings,
+    tombstones: state.tombstones,
+    changeCursor: state.changeCursor,
+    learnedRemoteBatches: state.learnedRemoteBatches,
+    learnedRemoteReductions: state.learnedRemoteReductions,
+    pathConvergence: state.pathConvergence,
+    knownDevices: state.knownDevices,
   });
-  if (!values.length) return undefined;
-  return values.every(value => value === values[0]) ? values[0] : undefined;
 }
 
-function fingerprint(
-  operation: ExecutablePlannedOperation,
-  receipt: VerifiedExecutionReceipt,
-  remoteObjectId: string | undefined,
-): BaseFingerprint {
-  const evidence = receipt.evidence ?? operation.contentVersion?.content;
-  const value = sha256Text(JSON.stringify({
-    path: String(operation.path),
-    entityKind: operation.contentVersion?.entityKind ?? "file",
-    remoteObjectId,
-    hash: evidence?.hash ? String(evidence.hash) : undefined,
-    sizeBytes: evidence?.sizeBytes,
+function legacySemanticProjection(state: TrustedSynchronizationState): string {
+  return JSON.stringify({
+    vaultIdentity: state.vaultIdentity,
+    deviceIdentity: state.deviceIdentity,
+    base: state.base,
+    remoteMappings: state.remoteMappings,
+    tombstones: state.tombstones,
+    changeCursor: state.changeCursor,
+    knownDevices: state.knownDevices,
+  });
+}
+
+function factForPath(state: TrustedSynchronizationState, path: VaultPath): string {
+  return JSON.stringify({
+    base: state.base.filter(entry => entry.path === path),
+    mapping: state.remoteMappings.filter(entry => entry.path === path),
+    tombstone: state.tombstones.filter(entry => entry.path === path),
+  });
+}
+
+function changedCanonicalPaths(current: TrustedSynchronizationState, candidate: TrustedSynchronizationState): readonly VaultPath[] {
+  const paths = new Map<string, VaultPath>();
+  for (const entry of [...current.base, ...candidate.base, ...current.remoteMappings, ...candidate.remoteMappings, ...current.tombstones, ...candidate.tombstones]) {
+    paths.set(String(entry.path), entry.path);
+  }
+  return [...paths.values()].filter(path => factForPath(current, path) !== factForPath(candidate, path));
+}
+
+function fingerprintForBase(entry: BaseEntry): BaseFingerprint {
+  const hash = sha256Text(JSON.stringify({
+    path: String(entry.path),
+    entityKind: entry.entityKind,
+    localExisted: entry.localExisted,
+    remoteExisted: entry.remoteExisted,
+    remoteObjectId: entry.remoteObjectId ? String(entry.remoteObjectId) : undefined,
+    content: entry.content ? {
+      hash: entry.content.hash ? String(entry.content.hash) : undefined,
+      sizeBytes: entry.content.sizeBytes,
+      revision: entry.content.revision,
+    } : undefined,
   }));
-  return contractId<"BaseFingerprint">(`base:${String(value)}`) as BaseFingerprint;
+  return contractId<"BaseFingerprint">(`base:${String(hash)}`) as BaseFingerprint;
 }
 
-function asStateRevision(value: PersistenceRevision): StateRevision {
-  return contractId<"StateRevision">(String(value)) as StateRevision;
+function canCarryExactBaseAuthority(entry: BaseEntry): boolean {
+  if (!entry.localExisted || !entry.remoteExisted || !entry.remoteObjectId) return false;
+  if (entry.entityKind === "folder") return true;
+  return Boolean(entry.content?.hash)
+    && entry.content?.sizeBytes !== undefined
+    && Number.isSafeInteger(entry.content.sizeBytes)
+    && entry.content.sizeBytes >= 0;
+}
+
+function reconcileCanonicalAuthority(
+  current: DurableSynchronizationAuthorityState,
+  legacyCandidate: TrustedSynchronizationState,
+): DurableSynchronizationAuthorityState {
+  const semanticChanged = legacySemanticProjection(current) !== legacySemanticProjection(legacyCandidate);
+  let candidate: DurableSynchronizationAuthorityState = {
+    ...current,
+    base: legacyCandidate.base,
+    remoteMappings: legacyCandidate.remoteMappings,
+    tombstones: legacyCandidate.tombstones,
+    changeCursor: legacyCandidate.changeCursor,
+    operations: legacyCandidate.operations,
+    knownDevices: legacyCandidate.knownDevices,
+  };
+  if (!semanticChanged) return candidate;
+
+  const nextGeneration = nextIntegratedSemanticGeneration(current.semanticGeneration);
+  const changed = new Set(changedCanonicalPaths(current, legacyCandidate).map(String));
+  let baseAuthority = candidate.baseAuthority.filter(entry => !changed.has(String(entry.path)));
+  let pathConvergence = candidate.pathConvergence.filter(entry => !changed.has(String(entry.path)));
+
+  for (const pathValue of changed) {
+    const entry = candidate.base.find(value => String(value.path) === pathValue);
+    if (!entry || !canCarryExactBaseAuthority(entry)) continue;
+    const mapping = candidate.remoteMappings.filter(value => value.path === entry.path);
+    if (mapping.length !== 1 || mapping[0]?.remoteObjectId !== entry.remoteObjectId || mapping[0]?.entityKind !== entry.entityKind) continue;
+    const fingerprint = fingerprintForBase(entry);
+    baseAuthority = [...baseAuthority, { path: entry.path, fingerprint }];
+    pathConvergence = [...pathConvergence, {
+      path: entry.path,
+      state: { status: "converged" as const, generation: nextGeneration, baseFingerprint: fingerprint },
+    }];
+  }
+
+  candidate = { ...candidate, baseAuthority, pathConvergence };
+  return rebaseIntegratedConvergence(candidate, nextGeneration);
+}
+
+function authorityState(value: TrustedSynchronizationState): value is DurableSynchronizationAuthorityState {
+  const candidate = value as Partial<DurableSynchronizationAuthorityState>;
+  return candidate.authoritySchemaVersion === 2
+    && candidate.persistenceRevision !== undefined
+    && candidate.semanticGeneration !== undefined
+    && Array.isArray(candidate.learnedRemoteBatches)
+    && Array.isArray(candidate.pathConvergence)
+    && Array.isArray(candidate.operationIntents)
+    && Array.isArray(candidate.localTransactions)
+    && Array.isArray(candidate.baseAuthority);
 }
 
 /**
- * H-owned production bridge between D's verified-effect boundary and C's single
- * durable authority document. Persistence-only operation/effect checkpoints are
- * allowed to advance C's persistence revision between validation and commit; the
- * semantic generation must remain exact. The final BASE/journal transition then
- * uses C's current persistence revision as the CAS token.
+ * H's state adapter is the production compatibility layer between D's historical
+ * split-store stateRevision CAS and C's single-document persistenceRevision +
+ * semanticGeneration authority. D observes a semantic CAS token; all physical
+ * intent/effect checkpoints still advance C's independent persistence revision.
  */
-export class IntegratedAuthorityStateCommitter implements AuthorityCompleteSuccessCommitter {
-  constructor(private readonly store: PersistentSynchronizationStateStore) {}
-
-  async commitVerifiedSuccess(
-    operation: ExecutablePlannedOperation,
-    receipt: VerifiedExecutionReceipt,
-    expectedStateRevision?: StateRevision,
-  ): Promise<CommitResult> {
-    if (receipt.operationId !== operation.operationId || receipt.durable !== true || receipt.integrityVerified !== true) {
-      return { status: "recovery-required", reason: "integrated authoritative commit requires the exact durable verified operation receipt" };
-    }
-
-    const loaded = await this.store.loadAuthority();
-    if (loaded.status !== "trusted") return { status: "recovery-required", reason: `integrated authority is ${loaded.status}` };
-    const current = loaded.state;
-    const intent = current.operationIntents.find(value => value.operationId === operation.operationId);
-    const operationAuthority = operationGeneration(operation);
-
-    if (physicalOperation(operation)) {
-      if (!intent) return { status: "recovery-required", reason: "durable physical intent is missing at integrated canonical commit" };
-      if (intent.semanticAuthority.generation !== current.semanticGeneration) {
-        return { status: "stale-state", actualRevision: current.stateRevision };
-      }
-      if (!intent.effects.every(effect => effect.stage === "effect-verified" && Boolean(effect.verificationEvidenceRef))) {
-        return { status: "recovery-required", reason: "integrated canonical commit requires every physical effect to remain durably effect-verified" };
-      }
-    } else if (expectedStateRevision && current.stateRevision !== expectedStateRevision) {
-      return { status: "stale-state", actualRevision: current.stateRevision };
-    }
-
-    if (operationAuthority && operationAuthority !== current.semanticGeneration) {
-      return { status: "stale-state", actualRevision: current.stateRevision };
-    }
-
-    const transitioned = this.applyOperation(current, operation, receipt);
-    if (!transitioned.ok) return { status: "recovery-required", reason: transitioned.reason };
-
-    const saved = await this.store.saveAuthority(
-      transitioned.state,
-      current.persistenceRevision,
-      current.semanticGeneration,
-    );
-    if (saved.status === "saved") return { status: "committed", newStateRevision: asStateRevision(saved.persistenceRevision) };
-    if (saved.status === "stale-persistence") return { status: "stale-state", actualRevision: saved.actualPersistenceRevision ? asStateRevision(saved.actualPersistenceRevision) : undefined };
-    if (saved.status === "stale-semantic-authority") return { status: "stale-state", actualRevision: current.stateRevision };
-    return { status: "recovery-required", reason: saved.issues.map(issue => `${issue.code}:${issue.detail}`).join("; ") || "integrated authority save failed semantic validation" };
+export class IntegratedSynchronizationStateStore extends PersistentSynchronizationStateStore implements SynchronizationStateStore {
+  constructor(private readonly source: PersistentSynchronizationStateStore) {
+    super(new MemoryStateByteStorage(), source.currentSchemaVersion);
   }
 
-  private applyOperation(
-    current: DurableSynchronizationAuthorityState,
-    operation: ExecutablePlannedOperation,
-    receipt: VerifiedExecutionReceipt,
-  ): { readonly ok: true; readonly state: DurableSynchronizationAuthorityState } | { readonly ok: false; readonly reason: string } {
-    let base = [...current.base];
-    let baseAuthority = [...current.baseAuthority];
-    let mappings = [...current.remoteMappings];
-    let tombstones = [...current.tombstones];
-    let pathConvergence = [...current.pathConvergence];
-    const sourcePath = operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : operation.path;
-    const oldBase = base.find(entry => entry.path === sourcePath);
-    const entityKind = operation.contentVersion?.entityKind ?? oldBase?.entityKind ?? "file";
-    const remoteObjectId = receipt.resultingRemoteObjectId ?? operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId ?? oldBase?.remoteObjectId;
-    const evidence = receipt.evidence ?? operation.contentVersion?.content ?? oldBase?.content;
-    let semanticChanged = false;
-
-    const clearPath = (path: VaultPath) => {
-      base = base.filter(entry => entry.path !== path);
-      baseAuthority = baseAuthority.filter(entry => entry.path !== path);
-      mappings = mappings.filter(entry => entry.path !== path);
-      tombstones = tombstones.filter(entry => entry.path !== path);
-      pathConvergence = pathConvergence.filter(entry => entry.path !== path);
+  override async load(context: StateLoadContext): Promise<StateLoadResult> {
+    const loaded = await this.source.load(context);
+    if (loaded.status !== "trusted" || !authorityState(loaded.state)) return loaded;
+    return {
+      status: "trusted",
+      state: { ...loaded.state, stateRevision: semanticStateRevision(loaded.state.semanticGeneration) },
     };
-
-    const establishCommon = (path: VaultPath): string | undefined => {
-      if (!remoteObjectId) return "common-state commit lacks exact remote object identity";
-      clearPath(path);
-      base.push({ path, entityKind, localExisted: true, remoteExisted: true, content: evidence, remoteObjectId });
-      mappings = mappings.filter(entry => entry.remoteObjectId !== remoteObjectId);
-      mappings.push({ path, remoteObjectId, entityKind });
-      const nextGeneration = nextIntegratedSemanticGeneration(current.semanticGeneration);
-      const nextFingerprint = fingerprint(operation, receipt, String(remoteObjectId));
-      baseAuthority.push({ path, fingerprint: nextFingerprint });
-      pathConvergence.push({ path, state: { status: "converged", generation: nextGeneration, baseFingerprint: nextFingerprint } });
-      semanticChanged = true;
-      return undefined;
-    };
-
-    if (["upload-create", "upload-update", "download-create", "download-update", "clean-text-merge"].includes(operation.kind)) {
-      const localOnlyConflictCopy = operation.kind === "download-create"
-        && operation.contentVersion !== undefined
-        && operation.path !== operation.contentVersion.path;
-      if (localOnlyConflictCopy) {
-        clearPath(operation.path);
-        base.push({ path: operation.path, entityKind, localExisted: true, remoteExisted: false, content: evidence });
-        semanticChanged = true;
-      } else {
-        const problem = establishCommon(operation.path);
-        if (problem) return { ok: false, reason: problem };
-      }
-    } else if (operation.kind === "identity-preserving-move") {
-      if (!operation.fromPath || !operation.toPath || !oldBase || !remoteObjectId) {
-        return { ok: false, reason: "identity-preserving move commit lacks exact old BASE, destination, or remote identity" };
-      }
-      clearPath(operation.fromPath);
-      clearPath(operation.toPath);
-      base.push({ ...oldBase, path: operation.toPath, localExisted: true, remoteExisted: true, content: evidence, remoteObjectId });
-      mappings = mappings.filter(entry => entry.remoteObjectId !== remoteObjectId);
-      mappings.push({ path: operation.toPath, remoteObjectId, entityKind: oldBase.entityKind });
-      const nextGeneration = nextIntegratedSemanticGeneration(current.semanticGeneration);
-      const nextFingerprint = fingerprint({ ...operation, path: operation.toPath }, receipt, String(remoteObjectId));
-      baseAuthority.push({ path: operation.toPath, fingerprint: nextFingerprint });
-      pathConvergence.push({ path: operation.toPath, state: { status: "converged", generation: nextGeneration, baseFingerprint: nextFingerprint } });
-      semanticChanged = true;
-    } else if (operation.kind === "trash-local" || operation.kind === "trash-remote") {
-      if (!oldBase) return { ok: false, reason: "verified deletion commit lacks prior BASE" };
-      clearPath(operation.path);
-      tombstones.push({
-        path: operation.path,
-        entityKind: oldBase.entityKind,
-        deletedOn: operation.kind === "trash-remote" ? "local" : "remote",
-        remoteObjectId: remoteObjectId ?? oldBase.remoteObjectId,
-        sourceDeviceId: current.deviceIdentity,
-      });
-      semanticChanged = true;
-    } else if (operation.kind === "noop" && operation.reasons.some(reason => reason.code === "both-deleted") && oldBase) {
-      clearPath(operation.path);
-      tombstones.push({
-        path: operation.path,
-        entityKind: oldBase.entityKind,
-        deletedOn: "both",
-        remoteObjectId: remoteObjectId ?? oldBase.remoteObjectId,
-        sourceDeviceId: current.deviceIdentity,
-      });
-      semanticChanged = true;
-    } else if (operation.kind === "noop" && operation.reasons.some(reason => reason.code === "safe-union-identical") && operation.contentVersion) {
-      const problem = establishCommon(operation.path);
-      if (problem) return { ok: false, reason: problem };
-    }
-
-    let candidate: DurableSynchronizationAuthorityState = {
-      ...current,
-      base,
-      baseAuthority,
-      remoteMappings: mappings,
-      tombstones,
-      pathConvergence,
-      operations: [
-        ...current.operations.filter(entry => entry.operationId !== operation.operationId),
-        {
-          operationId: operation.operationId,
-          path: operation.path,
-          status: "completed",
-          verificationEvidenceRef: receipt.verificationEvidenceRef,
-          checkpointId: current.operations.find(entry => entry.operationId === operation.operationId)?.checkpointId,
-        },
-      ],
-    };
-
-    if (semanticChanged) {
-      const nextGeneration = nextIntegratedSemanticGeneration(current.semanticGeneration);
-      candidate = rebaseIntegratedConvergence(candidate, nextGeneration);
-    }
-    return { ok: true, state: candidate };
   }
+
+  override async saveTrusted(candidate: TrustedSynchronizationState, expectedRevision?: StateRevision): Promise<StateSaveResult> {
+    const authority = await this.source.loadAuthority();
+    if (authority.status === "uninitialized") {
+      const initial = createInitialAuthorityState({
+        persistenceRevision: contractId<"PersistenceRevision">(String(candidate.stateRevision)) as PersistenceRevision,
+        semanticGeneration: contractId<"SemanticStateGeneration">("semantic:0") as SemanticStateGeneration,
+        vaultIdentity: candidate.vaultIdentity,
+        deviceIdentity: candidate.deviceIdentity,
+        schemaVersion: candidate.schemaVersion,
+      });
+      const saved = await this.source.saveTrusted(initial);
+      return saved.status === "saved"
+        ? { status: "saved", stateRevision: semanticStateRevision(initial.semanticGeneration) }
+        : saved;
+    }
+    if (authority.status !== "trusted") return { status: "recovery-required", reason: "authoritative state requires recovery" };
+    const current = authority.state;
+    const semanticRevision = semanticStateRevision(current.semanticGeneration);
+    if (expectedRevision && expectedRevision !== semanticRevision) return { status: "stale-revision", actualRevision: semanticRevision };
+
+    const reconciled = reconcileCanonicalAuthority(current, candidate);
+    const saved = await this.saveAuthority(reconciled, current.persistenceRevision, current.semanticGeneration);
+    if (saved.status === "saved") return { status: "saved", stateRevision: semanticStateRevision(saved.semanticGeneration) };
+    if (saved.status === "stale-persistence" || saved.status === "stale-semantic-authority") {
+      const latest = await this.source.loadAuthority();
+      return { status: "stale-revision", actualRevision: latest.status === "trusted" ? semanticStateRevision(latest.state.semanticGeneration) : undefined };
+    }
+    return { status: "recovery-required", reason: saved.issues.map(issue => `${issue.code}:${issue.detail}`).join("; ") };
+  }
+
+  override async loadAuthority() { return this.source.loadAuthority(); }
+
+  override async saveAuthority(
+    state: DurableSynchronizationAuthorityState,
+    expectedPersistenceRevision: PersistenceRevision,
+    expectedSemanticGeneration?: SemanticStateGeneration,
+  ): Promise<SynchronizationAuthoritySaveResult> {
+    const loaded = await this.source.loadAuthority();
+    if (loaded.status !== "trusted") {
+      return loaded.status === "uninitialized"
+        ? { status: "stale-persistence" }
+        : { status: "recovery-required", issues: loaded.issues };
+    }
+    const semanticChanged = authorityProjection(loaded.state) !== authorityProjection(state);
+    const candidate = semanticChanged
+      ? rebaseIntegratedConvergence(state, nextIntegratedSemanticGeneration(loaded.state.semanticGeneration))
+      : state;
+    return this.source.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
+  }
+
+  override async commitBaseTransition(
+    transition: AuthoritativeBaseTransition,
+    expectedPersistenceRevision: PersistenceRevision,
+    expectedSemanticGeneration: SemanticStateGeneration,
+  ): Promise<SynchronizationAuthoritySaveResult> {
+    const first = await this.source.commitBaseTransition(transition, expectedPersistenceRevision, expectedSemanticGeneration);
+    if (first.status !== "saved") return first;
+    const loaded = await this.source.loadAuthority();
+    if (loaded.status !== "trusted") return loaded.status === "uninitialized"
+      ? { status: "stale-persistence" }
+      : { status: "recovery-required", issues: loaded.issues };
+    const staleConvergence = loaded.state.pathConvergence.some(entry => entry.state.status === "converged" && entry.state.generation !== loaded.state.semanticGeneration);
+    if (!staleConvergence) return first;
+    const candidate = rebaseIntegratedConvergence(loaded.state, nextIntegratedSemanticGeneration(loaded.state.semanticGeneration));
+    return this.source.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+  }
+
+  override async createRecoveryBackup() { return this.source.createRecoveryBackup(); }
+
+  override async replaceRecoveryState(state: TrustedSynchronizationState, context: StateLoadContext): Promise<RecoveryReplacementResult> {
+    const replacement = authorityState(state) ? state : createInitialAuthorityState({
+      persistenceRevision: contractId<"PersistenceRevision">(String(state.stateRevision)) as PersistenceRevision,
+      semanticGeneration: contractId<"SemanticStateGeneration">("semantic:recovery:0") as SemanticStateGeneration,
+      vaultIdentity: state.vaultIdentity,
+      deviceIdentity: state.deviceIdentity,
+      schemaVersion: state.schemaVersion,
+    });
+    const result = await this.source.replaceRecoveryState(replacement, context);
+    return result.status === "replaced"
+      ? { ...result, stateRevision: semanticStateRevision(replacement.semanticGeneration) }
+      : result;
+  }
+
+  override async assessMigration(targetSchemaVersion: number) { return this.source.assessMigration(targetSchemaVersion); }
+  override async exportDiagnosticState() { return this.source.exportDiagnosticState(); }
 }
