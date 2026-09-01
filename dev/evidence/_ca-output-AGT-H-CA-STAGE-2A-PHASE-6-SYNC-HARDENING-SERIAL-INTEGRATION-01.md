@@ -469,3 +469,163 @@ Therefore `src/contracts/**` is byte-identical to the frozen v1.2 foundation. No
 - Routed blocker: **none**.
 - Canonical `dev/evidence/_ca-output.md` remains untouched.
 - H-U3 has **not** been started.
+
+## H-U3 — FEED, LIFECYCLE, MERGE & TEST DISCOVERY
+
+### Entry / authority consumed
+
+- H-U2 source/test authority consumed: `4d582e72e4a5bee47a24690f3a4a68299dd4baf7`.
+- H-U2 evidence-only completion / H-U3 entry head: `dcd18ce685fa2422de2080aa22895accfcd1a0ec`.
+- Writable branch remained `phase6-sync-integration-h`; protected/shared branches were not modified and no merge was performed.
+- H checkpoint, H-U1, and H-U2 evidence were read before editing; actual production seams for E lifecycle integrity, A reliable Changes, D durable feed/merge orchestration, C persistence, F merge retention, and B local transactions were inspected.
+
+### H-U3 source/test changes
+
+Added:
+
+- `test/workstreams/integration/h-u3-feed-lifecycle-merge-integration.test.ts` — bounded H-I5/H-I6/H-I7 integrated production acceptance.
+- `test/phase6-h-sync-integration.test.ts` — consolidated top-level discovery entrypoint importing H-U2, H-U3, and G's nested adversarial model exactly once.
+
+Removed:
+
+- `test/phase6-h-u2-integration.test.ts` — temporary H-U2-only discovery shim, retired to avoid duplicate H-U2 execution after consolidated discovery was introduced.
+
+No production source was modified in H-U3. The source tree remained exactly the H-U2 source tree.
+
+### H-I5 — PASS
+
+`H-I5 E periodic integrity uses B cache-bypassing bytes, schedules reconciliation on drift, and suspension prevents a new run` passed at runtime.
+
+The test deliberately changes underlying local bytes while preserving the same observation token. Ordinary canonical enumeration continues to return cached old evidence, proving the fixture actually contains stale cached evidence. E's real `ProductSyncScheduler` periodic integrity opportunity then reaches `CanonicalEvidenceLocalVault.readFileBypassingEvidenceCache()`, observes the changed authoritative bytes, and schedules reconciliation opportunity rather than manufacturing deletion authority. A second blocked integrity read followed by lifecycle `suspend` proves suspension/cancellation remains authoritative over starting new synchronization work after the integrity opportunity.
+
+### H-I6 — PASS
+
+Two integrated H-I6 tests passed.
+
+1. `H-I6 A Changes traverse all pages; C durable learning precedes cursor mirror and restart consumes durable facts`
+   - A's real `GoogleDriveAdapter` traversed intermediate page tokens losslessly: `cursor:0` -> `page:1` -> terminal `cursor:1`.
+   - The legacy cursor-collapsing `readChanges` surface was instrumented to throw and was never called.
+   - D durably learned the complete terminal batch into the real C-backed authority store before attempting canonical cursor mirror advancement.
+   - An injected canonical cursor-mirror save failure left the canonical cursor at `cursor:0` while the complete learned batch remained durable.
+   - Reconstructing C from the same durable bytes caused restart to resume from learned terminal `cursor:1`, not the stale canonical mirror.
+   - The already-durable first batch was reconstructed into planning facts, a later `b.md` fact was learned through terminal `cursor:2`, and an unrelated pre-existing conflict remained unresolved without blocking later feed learning.
+2. `H-I6 failure to durably learn the terminal A batch prevents canonical cursor advancement`
+   - An injected writable-authority save failure prevented the learned batch from becoming durable.
+   - The canonical cursor remained `cursor:0` and the controller entered recovery-required state.
+
+### H-I7 — BLOCKED BY WORKER-OWNED D/A COMPATIBILITY DEFECT
+
+`H-I7 F clean merge requires independent B LOCAL and A REMOTE durable verification before C canonical commit` failed at the integrated cross-workstream convergence boundary.
+
+The test uses real integrated production implementations:
+
+- F `ProductTextVersionStore` and `ThreeWayConflictResolver` produce and retain the exact clean merge;
+- D `DeterministicSynchronizationPlanner` emits `clean-text-merge`;
+- D authoritative execution creates independent LOCAL and REMOTE durable effects;
+- B's real local transaction engine performs the LOCAL effect;
+- A's real reliable update protocol performs the REMOTE effect;
+- C's real durable authority persists the operation/effect state.
+
+The clean merge input is deliberately unambiguous:
+
+- BASE: `a\nb\nc\n`
+- LOCAL: `A\nb\nc\n`
+- REMOTE: `a\nb\nC\n`
+- F retained clean merge: `A\nb\nC\n`
+
+Raw integrated failure state:
+
+- operation result: `blocked`;
+- durable LOCAL effect: `effect-verified`;
+- durable REMOTE effect: `effect-verified`;
+- active same-path REMOTE objects: `remote:merge-predecessor`, `remote:merge-candidate`;
+- canonical C BASE hash remained the pre-merge hash `sha256:880553fca8fcea94e325ee2cfb48e5a985cc797f39a14cc6d3cedecfeb2ae4d2`.
+
+This demonstrates the safety property that partial/blocked convergence is not falsely committed: both physical effects were independently verified, but C canonical state did not advance.
+
+The incompatibility is precise:
+
+- A's approved reliable update semantics are `immutable-candidate-preservation`: the predecessor is intentionally preserved while a verified immutable candidate is materialized.
+- D's current post-mutation `remote-file` convergence predicate in `src/product/authoritative-production-executor-base.ts` requires exactly one active object at the target path and requires that object to be the expected new object.
+- Therefore D rejects the exact predecessor-plus-candidate physical state that A intentionally and correctly produces.
+
+This is not safely repairable as H-owned composition wiring. Changing A would alter approved worker semantics; filtering or hiding the predecessor in an H adapter would manufacture false convergence evidence. The required correction belongs to D's worker-owned independent REMOTE convergence semantics and must preserve genuine ambiguity detection while recognizing A's approved predecessor-preserving successful-update shape. H-U3 therefore stopped without modifying D or A semantics.
+
+### G adversarial runtime discovery — PROVEN
+
+The consolidated top-level entrypoint `test/phase6-h-sync-integration.test.ts` imports:
+
+- H-U2 acceptance;
+- H-U3 acceptance;
+- `test/adversarial-model/adversarial-model.test.ts`.
+
+Raw TAP proves the nested G suite executes at runtime under ordinary repository `npm test`, not merely TypeScript compilation. G occupies runtime test numbers **548 through 601 inclusive: 54 G subtests**. Explicit runtime markers include:
+
+- seeded randomized transition sequence `1` — PASS;
+- seed `7` — PASS;
+- seed `42` — PASS;
+- seed `1337` — PASS;
+- seed `12648430` — PASS;
+- explicit replay of recorded event trace — PASS.
+
+Raw stack locations reference `.test-build/test/adversarial-model/adversarial-model.test.js`, eliminating compile-only ambiguity. Any G failures elsewhere in the 54-subtest runtime surface are intentionally not classified in H-U3; repository-wide failure classification remains H-U4 scope.
+
+The consolidated H entrypoint also proves H acceptance is not duplicated: H-I1 through H-I8 markers appear once in one contiguous runtime sequence before G.
+
+### Verification / exact source-test authority
+
+H-U3 source/test SHA:
+
+`3c0de0d9c552e7b866591cbd0115e61cadb7dc86`
+
+Phase 6 verification CI at that SHA:
+
+- workflow run: `33569991238`;
+- job: `100061634877`;
+- artifact: `9824569629`;
+- artifact digest: `sha256:93ee09a7122d17eb4780513cc1731e43f7cf9563fac47c14b1b2f996fbb88bab`;
+- `npm ci`: **success**;
+- `npm run typecheck`: **success**;
+- `npm run build`: **success**;
+- `git diff --check`: **success**.
+
+Raw TAP H markers at this SHA:
+
+- H-I1 #539 PASS;
+- H-I2 #540 PASS;
+- H-I3 #541 PASS;
+- H-I4 #542 PASS;
+- H-I8 #543 PASS;
+- H-I5 #544 PASS;
+- H-I6 primary #545 PASS;
+- H-I6 durable-learning failure #546 PASS;
+- H-I7 #547 FAIL for the exact D/A compatibility blocker documented above.
+
+The workflow's test/check steps use `tee` without pipefail and therefore are not relied on as pass/fail truth. Raw artifact TAP was inspected directly.
+
+Incidental raw whole-repository aggregate at this SHA was `644 tests / 571 pass / 48 fail / 25 cancelled / 0 skipped / 0 todo`. These repository-wide failures/cancellations were not classified or repaired in H-U3; H-U4 remains the owner of that classification campaign.
+
+### Frozen-contract / production-source audit
+
+H-U3 source/test root `3c0de0d9c552e7b866591cbd0115e61cadb7dc86` resolves `src` to:
+
+`7fff46a3271ad295267b292fa47c334a466fb85a`
+
+That is the same source tree already present at H-U2 completion. The current `src/contracts/**` tree remains exactly:
+
+`4deb82e382f7957c731ef78db52b4164571d57a3`
+
+This is byte-identical to frozen foundation `96b4541b15012ac4ce0d81243b73ef779efd343e`. No production file and no contract file was modified by H-U3.
+
+### H-U3 disposition
+
+- H-I5: PASS.
+- H-I6: PASS, both required ordering/restart and durable-learning-failure cases.
+- H-I7: BLOCKED by a concrete D worker-owned REMOTE convergence incompatibility with A's approved predecessor-preserving update semantics.
+- G runtime discovery: PROVEN, 54 runtime G subtests discovered through ordinary repository execution.
+- Production correction in H-U3: none.
+- Canonical `dev/evidence/_ca-output.md`: untouched.
+- Draft verification PR #45 remains verification-only and must not be merged.
+- H-U4 has not been started.
+
+`BLOCKED — SUPERVISOR DECISION REQUIRED`
