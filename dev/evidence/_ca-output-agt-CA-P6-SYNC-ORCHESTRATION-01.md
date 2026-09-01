@@ -510,3 +510,57 @@ Workstream D intentionally does not implement Workstream A's concrete Google Dri
 ## Post-evidence verification requirement
 
 The final branch SHA, its pull-request synthetic merge checkout SHA, exact post-evidence Actions run/job, direct artifact test counts, final rejected-head diff manifest, frozen-contract audit, canonical-evidence audit, and PR draft/open/unmerged state are verified externally after this self-referential evidence commit. They are reported in the coding-agent completion response; embedding the containing commit SHA in this file would necessarily change that SHA.
+# Phase 6 Workstream D v1.2 D-C4-D-C9 rejection repair closure
+
+Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`  
+Branch: `phase6-sync-orchestration-v1.2-continuation`  
+Frozen foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`  
+Supervisor-rejected head: `587ea7e94aa394378e10ee2c7cd930c0c55ab1a0`  
+Verified source/test repair head before evidence closure: `f89535fe5dc6121fe7f715775ec0daa7ab023365`
+
+## Correction disposition
+
+- **D-C4 PASS.** The authoritative production executor persists exact frozen mutation intent and `dispatch-authorized` before physical work. REMOTE file create/update/move/trash use `ReliableRemoteMutationPort`; LOCAL file create/replace use `LocalTransactionalMutationPort`; REMOTE folder create uses the v1.2 reserved folder descriptor plus `RemoteFolderCreateRecoveryReadPort`/`verifyRemoteFolderCreate`; LOCAL folder create/move/trash are descriptor-driven; clean merge is two independently recoverable effects. Missing writable authority or required frozen mutation/recovery seams disables physical mutation. The authoritative physical path has no raw legacy Drive mutation fallback.
+- **D-C5 PASS.** Complete terminal Changes pagination is accumulated into a deterministic `DurableRemoteChangeBatch`, persisted through `SynchronizationAuthorityStoreV1_1`, and only then mirrored to the canonical cursor. Pre-terminal failure creates no batch/cursor advance; repeated learned batches are idempotent; restart consumes canonical BASE plus durable learned backlog. The intended transient pre-terminal product classification is `offline-deferred`.
+- **D-C6 PASS.** Lifecycle is now `intent-persisted -> dispatch-authorized -> physical mutation -> effect-verified -> convergence -> canonical BASE/state commit -> state-committed`. The production executor stops at `effect-verified`. `AuthorityCompleteExecutionCoordinator` performs canonical commit first and only then durable finalization. A stale/failed canonical commit leaves `effect-verified`. A simulated crash after canonical commit but before durable finalization restarts by proving the exact completed journal/verification/canonical state, performs no redispatch and no second semantic commit, then finalizes `state-committed`.
+- **D-C7 PASS.** The coordinator captures the exact pre-execution trusted canonical `stateRevision` and supplies it as the final `commitVerifiedSuccess` CAS expectation. Stale CAS is surfaced.
+- **D-C8 PASS.** REMOTE folder create receipt `resultingRemoteObjectId` is derived from the pre-reserved folder ID. Actual `StateCommitCoordinator` coverage proves that exact ID enters both BASE and `remoteMappings`. Production-adapter coverage proves the ID originates from the frozen reserve/create/recovery/verifier path.
+- **D-C9 PASS.** An actual controller run with a real `unresolved-conflict` operation on path A remains `attention-required` while its terminal REMOTE batch/cursor are learned durably; the next run starts at that terminal and learns unrelated path B while A remains unresolved.
+
+## D-owned regression coverage added/updated
+
+The D suite directly covers REMOTE create/update/move/trash, LOCAL file create/replace, REMOTE/LOCAL folder create, LOCAL move/trash, clean-merge two-effect recovery, restart from `intent-persisted`/`dispatch-authorized`/`outcome-unknown` without blind redispatch, post-physical-verification path conflict, stale canonical CAS, post-canonical/pre-finalization crash recovery, folder identity propagation, terminal multipage Changes learning, idempotence, pre-terminal failure, and actual partial/conflict feed progression.
+
+## Pre-evidence CI / raw artifact
+
+Workflow: `Phase 6 Alpha Diagnostic Verification`  
+Run: `33462863169`  
+Job: `99716534570`  
+Source head: `f89535fe5dc6121fe7f715775ec0daa7ab023365`  
+Artifact ID: `9783793737`  
+Artifact digest: `sha256:a15de7abe90f976f720a1cf96fa5581c197f20b9c94b9e8ce116ff4361875cac`
+
+Because the workflow uses `npm test | tee` / `npm run check | tee` without `pipefail`, acceptance used direct artifact inspection. Raw `full-tests.tap`: **484 tests; 430 pass; 29 fail; 25 cancelled; 0 skipped; 0 todo**. All D-owned/new D-C4-D-C9 tests PASS. Typecheck, build, whitespace/package/artifact checks also PASS.
+
+The remaining 29 failures/25 cancellations are legacy cross-workstream composition tests that still expect production mutation without the now-mandatory writable `SynchronizationAuthorityStoreV1_1` and/or frozen mutation ports. D intentionally remains fail-closed. Remaining integration dependency: compose Workstream C's concrete writable authority persistence and Workstream A's approved frozen mutation ports, then migrate those legacy cross-workstream constructions/tests at their owning/integration surface. No other worker production implementation was changed.
+
+## Rejected-head repair manifest
+
+Modified production:
+- `src/core/execution-coordinator.ts`
+- `src/product/authoritative-production-executor.ts`
+
+Modified tests:
+- `test/phase6-d-orchestration-v1.2.test.ts`
+- `test/workstreams/orchestration/v1.2-authoritative-boundary.test.ts`
+- `test/workstreams/orchestration/v1.2-production-authority-path.test.ts`
+- `test/workstreams/orchestration/v1.2-remote-feed-authority.test.ts`
+
+Created tests:
+- `test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.ts`
+- `test/workstreams/orchestration/v1.2-folder-identity-production.test.ts`
+- `test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.ts`
+
+Deleted: none. Frozen `src/contracts/**`: unchanged by this repair.
+
+PR #42 must remain draft/open/unmerged. No merge/integration, Stage 3, release/tag, Azure/OAuth/Drive-scope change, protected-branch modification, or physical synchronization was performed. Exact final evidence SHA and post-evidence CI/merge-ref/artifact/diff/PR audits are resolved after this append and reported in the completion response.
