@@ -9,6 +9,7 @@ import {
   type LocalVaultPort,
   type ManagedRemoteIdentity,
   type PersistenceRevision,
+  type PlannedOperation,
   type ReliableRemoteChangePort,
   type RemoteObjectId,
   type StateLoadContext,
@@ -90,12 +91,26 @@ function pages(calls: string[]): ReliableRemoteChangePort {
     },
   };
 }
-function controller(state: MutableStateStore, authority: WritableAuthority, reliable: ReliableRemoteChangePort) {
+function conflictOperation(sequence: number): PlannedOperation {
+  return {
+    operationId: id<"OperationId">(`op:feed-conflict:${sequence}`),
+    kind: "unresolved-conflict",
+    path: path("a.md"),
+    destructive: false,
+    preconditions: [],
+    reasons: [{ code: "remote-path-ambiguous", detail: "persisted path-local conflict remains unresolved" }],
+  };
+}
+function controller(state: MutableStateStore, authority: WritableAuthority, reliable: ReliableRemoteChangePort, actualConflict = false) {
   const assembler = new ProductSnapshotAssembler(local(), drive(), state as never, context, async () => identity, () => true, () => false, undefined, reliable);
+  let plans = 0;
   return new IntegratedProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority,
     snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
-    plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">(`plan:${String(state.value.changeCursor)}`), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }),
+    plannerForTrigger: () => ({ plan: async () => {
+      plans += 1;
+      return { planId: id<"PlanId">(`plan:${plans}:${String(state.value.changeCursor)}`), trigger: "periodic", operations: actualConflict ? [conflictOperation(plans)] : [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" };
+    } }),
     leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:feed-authority",
   });
 }
@@ -125,6 +140,24 @@ test("D later unrelated REMOTE changes continue from durable learned terminal wh
   assert.equal(authority.value.pathConvergence[0]?.state.status, "conflict");
 });
 
+test("D-C9 actual partial conflict run still learns terminal batch and next run progresses to later REMOTE facts", async () => {
+  const state = new MutableStateStore(); const authority = new WritableAuthority(); const calls: string[] = [];
+  const c = controller(state, authority, pages(calls), true);
+  await c.runAutomatic("periodic");
+  assert.equal(c.currentSurface().status.kind, "attention-required", "actual unresolved-conflict operation makes the run partial rather than complete");
+  assert.equal(authority.value.learnedRemoteBatches.length, 1);
+  assert.equal(state.value.changeCursor, cursor("cursor:1"), "feed authority progresses independently of path execution partiality");
+  assert.equal(authority.value.pathConvergence[0]?.state.status, "conflict");
+
+  await c.runAutomatic("periodic");
+  assert.deepEqual(calls, ["cursor:0", "page:1", "cursor:1"]);
+  assert.equal(c.currentSurface().status.kind, "attention-required");
+  assert.equal(authority.value.learnedRemoteBatches.length, 2, "later batch is learned although prior path conflict is still unresolved");
+  assert.equal(authority.value.learnedRemoteBatches[1]?.changes.some(change => change.kind === "upsert" && change.entry.path === path("b.md")), true);
+  assert.equal(state.value.changeCursor, cursor("cursor:2"));
+  assert.equal(authority.value.pathConvergence[0]?.state.status, "conflict");
+});
+
 test("D repeated already-learned terminal batch is idempotent", async () => {
   const state = new MutableStateStore(); const authority = new WritableAuthority(); const calls: string[] = [];
   await controller(state, authority, pages(calls)).runAutomatic("periodic");
@@ -149,5 +182,5 @@ test("D failure before terminal creates no learned batch and advances no checkpo
   const failing: ReliableRemoteChangePort = { async readChangePage(_identity, requestedToken) { return requestedToken === cursor("cursor:0") ? { ok: true, value: { kind: "intermediate", requestedToken, changes: [], nextPageToken: cursor("page:failure") } } : { ok: false, signal: { kind: "transient-failure", detail: "boom" } }; } };
   const c = controller(state, authority, failing);
   await c.runAutomatic("periodic");
-  assert.equal(c.currentSurface().status.kind, "recovery-required"); assert.equal(authority.value.learnedRemoteBatches.length, 0); assert.equal(state.value.changeCursor, cursor("cursor:0"));
+  assert.equal(c.currentSurface().status.kind, "offline-deferred"); assert.equal(authority.value.learnedRemoteBatches.length, 0); assert.equal(state.value.changeCursor, cursor("cursor:0"));
 });
