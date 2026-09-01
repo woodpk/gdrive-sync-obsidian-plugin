@@ -40,7 +40,6 @@ async function persistLearnedRemoteBatch(
   if (!batch) return;
   const loaded = await authorityStore.loadAuthority();
   if (loaded.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch cannot be learned without trusted writable synchronization authority");
-
   const existing = loaded.state.learnedRemoteBatches.find(value => value.checkpoint.batchId === batch.checkpoint.batchId);
   if (!existing) {
     const candidate = {
@@ -53,9 +52,8 @@ async function persistLearnedRemoteBatch(
     const saved = await authorityStore.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
     if (saved.status !== "saved") throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch was fully read but could not be durably learned (${saved.status})`);
   }
-
-  // The durable learned batch is the primary feed authority. The legacy cursor
-  // mirror may advance only after that save, never before it.
+  // The learned batch is primary feed authority. The canonical cursor is only a
+  // mirror and can move after, never before, the durable batch save.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const state = await options.stateStore.load(options.stateContext);
     if (state.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
@@ -65,7 +63,7 @@ async function persistLearnedRemoteBatch(
     if (saved.status === "saved") return;
     if (saved.status !== "stale-revision") throw new SnapshotAssemblyError("recovery-required", `durable REMOTE batch exists but cursor mirror could not advance: ${saved.reason}`);
   }
-  throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but cursor mirror repeatedly raced with other trusted-state persistence");
+  throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but cursor mirror repeatedly raced with trusted-state persistence");
 }
 
 function authorityLearningAssembler(
@@ -73,12 +71,16 @@ function authorityLearningAssembler(
   authorityStore: SynchronizationAuthorityStoreV1_1,
   options: ProductControllerOptions,
 ): ProductSnapshotAssembler {
-  // D integration tests legitimately use structural assembler doubles. Bind the
-  // authority store when this is the real ProductSnapshotAssembler, while the
-  // proxy still performs controller-level durable learning for either shape.
-  const bindable = assembler as ProductSnapshotAssembler & { bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void };
-  bindable.bindAuthorityStore?.(authorityStore);
-  const originalAssemble = assembler.assemble.bind(assembler);
+  // D tests use structural assembler doubles. Bind and intercept incremental
+  // assembly only when those methods actually exist; full-only doubles remain
+  // valid for controller tests and cannot manufacture a remote terminal batch.
+  const structural = assembler as ProductSnapshotAssembler & {
+    bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
+    assemble?: ProductSnapshotAssembler["assemble"];
+  };
+  structural.bindAuthorityStore?.(authorityStore);
+  if (typeof structural.assemble !== "function") return assembler;
+  const originalAssemble = structural.assemble.bind(assembler);
   return new Proxy(assembler, {
     get(target, property, receiver) {
       if (property === "assemble") {
@@ -96,8 +98,8 @@ function authorityLearningAssembler(
 /**
  * Production controller entrypoint. A caller-supplied writable frozen authority
  * store is required for physical mutation and durable REMOTE feed progress. The
- * default trusted-state bridge remains read-only so exact BASE/identity reads are
- * available but persistence-dependent work fails closed.
+ * default trusted-state bridge is read-only, so persistence-dependent work fails
+ * closed rather than silently using raw legacy mutation or fake authority saves.
  */
 export class IntegratedProductController extends BaseIntegratedProductController {
   constructor(options: ProductControllerOptions) {
@@ -110,10 +112,9 @@ export class IntegratedProductController extends BaseIntegratedProductController
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
     };
     (options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies }).recoverableProductionMutationDependencies = dependencies;
-    const snapshotAssembler = authorityLearningAssembler(options.snapshotAssembler, authorityStore, options);
     super({
       ...options,
-      snapshotAssembler,
+      snapshotAssembler: authorityLearningAssembler(options.snapshotAssembler, authorityStore, options),
       ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
       authorityStore,
     });
