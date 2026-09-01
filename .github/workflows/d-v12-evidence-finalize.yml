@@ -18,8 +18,12 @@ jobs:
         with:
           ref: phase6-sync-orchestration-v1.2-continuation
           fetch-depth: 0
-      - name: Append D dedicated and canonical closure evidence exactly once
+      - name: Append required evidence exactly once and remove helper
         shell: bash
+        env:
+          D0: CiMgUGhhc2UgNiBXb3Jrc3RyZWFtIEQgdjEuMiBELUM0LUQtQzkgcmVqZWN0aW9uIHJlcGFpciBjbG9zdXJlCgpBZ2VudDogYGFndC1DQS1QNi1TWU5DLU9SQ0hFU1RSQVRJT04tMDFgICAKQnJhbmNoOiBgcGhhc2U2LXN5bmMtb3JjaGVzdHJhdGlvbi12MS4yLWNvbnRpbnVhdGlvbmAgIApGcm96ZW4gZm91bmRhdGlvbjogYDk2YjQ1NDFiMTUwMTJhYzRjZTBkODEyNDNiNzNlZjc3OWVmZDM0M2VgICAKU3VwZXJ2aXNvci1yZWplY3RlZCBoZWFkOiBgNTg3ZWE3ZTk0YWEzOTQzNzhlMTBlZTJjN2NkOTMwYzBjNTVhYjFhMGAgIApWZXJpZmllZCBzb3VyY2UvdGVzdCByZXBhaXIgaGVhZCBiZWZvcmUgZXZpZGVuY2UgY2xvc3VyZTogYGY4OTUzNWZlNWRjNjEyMWZlN2Y3MTU3NzVlYzBkYWE3YWIwMjMzNjVgCgojIyBDb3JyZWN0aW9uIGRpc3Bvc2l0aW9uCgotICoqRC1DNCBQQVNTLioqIFRoZSBhdXRob3JpdGF0aXZlIHByb2R1Y3Rpb24gZXhlY3V0b3IgcGVyc2lzdHMgZXhhY3QgZnJvemVuIG11dGF0aW9uIGludGVudCBhbmQgYGRpc3BhdGNoLWF1dGhvcml6ZWRgIGJlZm9yZSBwaHlzaWNhbCB3b3JrLiBSRU1PVEUgZmlsZSBjcmVhdGUvdXBkYXRlL21vdmUvdHJhc2ggdXNlIGBSZWxpYWJsZVJlbW90ZU11dGF0aW9uUG9ydGA7IExPQ0FMIGZpbGUgY3JlYXRlL3JlcGxhY2UgdXNlIGBMb2NhbFRyYW5zYWN0aW9uYWxNdXRhdGlvblBvcnRgOyBSRU1PVEUgZm9sZGVyIGNyZWF0ZSB1c2VzIHRoZSB2MS4yIHJlc2VydmVkIGZvbGRlciBkZXNjcmlwdG9yIHBsdXMgYFJlbW90ZUZvbGRlckNyZWF0ZVJlY292ZXJ5UmVhZFBvcnRgL2B2ZXJpZnlSZW1vdGVGb2xkZXJDcmVhdGVgOyBMT0NBTCBmb2xkZXIgY3JlYXRlL21vdmUvdHJhc2ggYXJlIGRlc2NyaXB0b3ItZHJpdmVuOyBjbGVhbiBtZXJnZSBpcyB0d28gaW5kZXBlbmRlbnRseSByZWNvdmVyYWJsZSBlZmZlY3RzLiBNaXNzaW5nIHdyaXRhYmxlIGF1dGhvcml0eSBvciByZXF1aXJlZCBmcm96ZW4gbXV0YXRpb24vcmVjb3Zlcnkgc2VhbXMgZGlzYWJsZXMgcGh5c2ljYWwgbXV0YXRpb24uIFRoZSBhdXRob3JpdGF0aXZlIHBoeXNpY2FsIHBhdGggaGFzIG5vIHJhdyBsZWdhY3kgRHJpdmUgbXV0YXRpb24gZmFsbGJhY2suCi0gKipELUM1IFBBU1MuKiogQ29tcGxldGUgdGVybWluYWwgQ2hhbmdlcyBwYWdpbmF0aW9uIGlzIGFjY3VtdWxhdGVkIGludG8gYSBkZXRlcm1pbmlzdGljIGBEdXJhYmxlUmVtb3RlQ2hhbmdlQmF0Y2hgLCBwZXJzaXN0ZWQgdGhyb3VnaCBgU3luY2hyb25pemF0aW9uQXV0aG9yaXR5U3RvcmVWMV8xYCwgYW5kIG9ubHkgdGhlbiBtaXJyb3JlZCB0byB0aGUgY2Fub25pY2FsIGN1cnNvci4gUHJlLXRlcm1pbmFsIGZhaWx1cmUgY3JlYXRlcyBubyBiYXRjaC9jdXJzb3IgYWR2YW5jZTsgcmVwZWF0ZWQgbGVhcm5lZCBiYXRjaGVzIGFyZSBpZGVtcG90ZW50OyByZXN0YXJ0IGNvbnN1bWVzIGNhbm9uaWNhbCBCQVNFIHBsdXMgZHVyYWJsZSBsZWFybmVkIGJhY2tsb2cuIFRoZSBpbnRlbmRlZCB0cmFuc2llbnQgcHJlLXRlcm1pbmFsIHByb2R1Y3QgY2xhc3NpZmljYXRpb24gaXMgYG9mZmxpbmUtZGVmZXJyZWRgLgotICoqRC1DNiBQQVNTLioqIExpZmVjeWNsZSBpcyBub3cgYGludGVudC1wZXJzaXN0ZWQgLT4gZGlzcGF0Y2gtYXV0aG9yaXplZCAtPiBwaHlzaWNhbCBtdXRhdGlvbiAtPiBlZmZlY3QtdmVyaWZpZWQgLT4gY29udmVyZ2VuY2UgLT4gY2Fub25pY2FsIEJBU0Uvc3RhdGUgY29tbWl0IC0+IHN0YXRlLWNvbW1pdHRlZGAuIFRoZSBwcm9kdWN0aW9uIGV4ZWN1dG9yIHN0b3BzIGF0IGBlZmZlY3QtdmVyaWZpZWRgLiBgQXV0aG9yaXR5Q29tcGxldGVFeGVjdXRpb25Db29yZGluYXRvcmAgcGVyZm9ybXMgY2Fub25pY2FsIGNvbW1pdCBmaXJzdCBhbmQgb25seSB0aGVuIGR1cmFibGUgZmluYWxpemF0aW9uLiBBIHN0YWxlL2ZhaWxlZCBjYW5vbmljYWwgY29tbWl0IGxlYXZlcyBgZWZmZWN0LXZlcmlmaWVkYC4gQSBzaW11bGF0ZWQgY3Jhc2ggYWZ0ZXIgY2Fub25pY2FsIGNvbW1pdCBidXQgYmVmb3JlIGR1cmFibGUgZmluYWxpemF0aW9uIHJlc3RhcnRzIGJ5IHByb3ZpbmcgdGhlIGV4YWN0IGNvbXBsZXRlZCBqb3VybmFsL3ZlcmlmaWNhdGlvbi9jYW5vbmljYWwgc3RhdGUsIHBlcmZvcm1zIG5vIHJlZGlzcGF0Y2ggYW5kIG5vIHNlY29uZCBzZW1hbnRpYyBjb21taXQsIHRoZW4gZmluYWxpemVzIGBzdGF0ZS1jb21taXR0ZWRgLgotICoqRC1DNyBQQVNTLioqIFRoZSBjb29yZGluYXRvciBjYXB0dXJlcyB0aGUgZXhhY3QgcHJlLWV4ZWN1dGlvbiB0cnVzdGVkIGNhbm9uaWNhbCBgc3RhdGVSZXZpc2lvbmAgYW5kIHN1cHBsaWVzIGl0IGFzIHRoZSBmaW5hbCBgY29tbWl0VmVyaWZpZWRTdWNjZXNzYCBDQVMgZXhwZWN0YXRpb24uIFN0YWxlIENBUyBpcyBzdXJmYWNlZC4KLSAqKkQtQzggUEFTUy4qKiBSRU1PVEUgZm9sZGVyIGNyZWF0ZSByZWNlaXB0IGByZXN1bHRpbmdSZW1vdGVPYmplY3RJZGAgaXMgZGVyaXZlZCBmcm9tIHRoZSBwcmUtcmVzZXJ2ZWQgZm9sZGVyIElELiBBY3R1YWwgYFN0YXRlQ29tbWl0Q29vcmRpbmF0b3JgIGNvdmVyYWdlIHByb3ZlcyB0aGF0IGV4YWN0IElEIGVudGVycyBib3RoIEJBU0UgYW5kIGByZW1vdGVNYXBwaW5nc2AuIFByb2R1Y3Rpb24tYWRhcHRlciBjb3ZlcmFnZSBwcm92ZXMgdGhlIElEIG9yaWdpbmF0ZXMgZnJvbSB0aGUgZnJvemVuIHJlc2VydmUvY3JlYXRlL3JlY292ZXJ5L3ZlcmlmaWVyIHBhdGguCi0gKipELUM5IFBBU1MuKiogQW4gYWN0dWFsIGNvbnRyb2xsZXIgcnVuIHdpdGggYSByZWFsIGB1bnJlc29sdmVkLWNvbmZsaWN0YCBvcGVyYXRpb24gb24gcGF0aCBBIHJlbWFpbnMgYGF0dGVudGlvbi1yZXF1aXJlZGAgd2hpbGUgaXRzIHRlcm1pbmFsIFJFTU9URSBiYXRjaC9jdXJzb3IgYXJlIGxlYXJuZWQgZHVyYWJseTsgdGhlIG5leHQgcnVuIHN0YXJ0cyBhdCB0aGF0IHRlcm1pbmFsIGFuZCBsZWFybnMgdW5yZWxhdGVkIHBhdGggQiB3aGlsZSBBIHJlbWFpbnMg
+          D1: dW5yZXNvbHZlZC4KCiMjIEQtb3duZWQgcmVncmVzc2lvbiBjb3ZlcmFnZSBhZGRlZC91cGRhdGVkCgpUaGUgRCBzdWl0ZSBkaXJlY3RseSBjb3ZlcnMgUkVNT1RFIGNyZWF0ZS91cGRhdGUvbW92ZS90cmFzaCwgTE9DQUwgZmlsZSBjcmVhdGUvcmVwbGFjZSwgUkVNT1RFL0xPQ0FMIGZvbGRlciBjcmVhdGUsIExPQ0FMIG1vdmUvdHJhc2gsIGNsZWFuLW1lcmdlIHR3by1lZmZlY3QgcmVjb3ZlcnksIHJlc3RhcnQgZnJvbSBgaW50ZW50LXBlcnNpc3RlZGAvYGRpc3BhdGNoLWF1dGhvcml6ZWRgL2BvdXRjb21lLXVua25vd25gIHdpdGhvdXQgYmxpbmQgcmVkaXNwYXRjaCwgcG9zdC1waHlzaWNhbC12ZXJpZmljYXRpb24gcGF0aCBjb25mbGljdCwgc3RhbGUgY2Fub25pY2FsIENBUywgcG9zdC1jYW5vbmljYWwvcHJlLWZpbmFsaXphdGlvbiBjcmFzaCByZWNvdmVyeSwgZm9sZGVyIGlkZW50aXR5IHByb3BhZ2F0aW9uLCB0ZXJtaW5hbCBtdWx0aXBhZ2UgQ2hhbmdlcyBsZWFybmluZywgaWRlbXBvdGVuY2UsIHByZS10ZXJtaW5hbCBmYWlsdXJlLCBhbmQgYWN0dWFsIHBhcnRpYWwvY29uZmxpY3QgZmVlZCBwcm9ncmVzc2lvbi4KCiMjIFByZS1ldmlkZW5jZSBDSSAvIHJhdyBhcnRpZmFjdAoKV29ya2Zsb3c6IGBQaGFzZSA2IEFscGhhIERpYWdub3N0aWMgVmVyaWZpY2F0aW9uYCAgClJ1bjogYDMzNDYyODYzMTY5YCAgCkpvYjogYDk5NzE2NTM0NTcwYCAgClNvdXJjZSBoZWFkOiBgZjg5NTM1ZmU1ZGM2MTIxZmU3ZjcxNTc3NWVjMGRhYTdhYjAyMzM2NWAgIApBcnRpZmFjdCBJRDogYDk3ODM3OTM3MzdgICAKQXJ0aWZhY3QgZGlnZXN0OiBgc2hhMjU2OmExNWRlN2FiZTkwZjk3NmY3MjBhMWNmOTZmYTU1ODFjMTk3ZjIwYjljOTRiOWU4Y2UxMTZmZjQzNjE4NzVjYWNgCgpCZWNhdXNlIHRoZSB3b3JrZmxvdyB1c2VzIGBucG0gdGVzdCB8IHRlZWAgLyBgbnBtIHJ1biBjaGVjayB8IHRlZWAgd2l0aG91dCBgcGlwZWZhaWxgLCBhY2NlcHRhbmNlIHVzZWQgZGlyZWN0IGFydGlmYWN0IGluc3BlY3Rpb24uIFJhdyBgZnVsbC10ZXN0cy50YXBgOiAqKjQ4NCB0ZXN0czsgNDMwIHBhc3M7IDI5IGZhaWw7IDI1IGNhbmNlbGxlZDsgMCBza2lwcGVkOyAwIHRvZG8qKi4gQWxsIEQtb3duZWQvbmV3IEQtQzQtRC1DOSB0ZXN0cyBQQVNTLiBUeXBlY2hlY2ssIGJ1aWxkLCB3aGl0ZXNwYWNlL3BhY2thZ2UvYXJ0aWZhY3QgY2hlY2tzIGFsc28gUEFTUy4KClRoZSByZW1haW5pbmcgMjkgZmFpbHVyZXMvMjUgY2FuY2VsbGF0aW9ucyBhcmUgbGVnYWN5IGNyb3NzLXdvcmtzdHJlYW0gY29tcG9zaXRpb24gdGVzdHMgdGhhdCBzdGlsbCBleHBlY3QgcHJvZHVjdGlvbiBtdXRhdGlvbiB3aXRob3V0IHRoZSBub3ctbWFuZGF0b3J5IHdyaXRhYmxlIGBTeW5jaHJvbml6YXRpb25BdXRob3JpdHlTdG9yZVYxXzFgIGFuZC9vciBmcm96ZW4gbXV0YXRpb24gcG9ydHMuIEQgaW50ZW50aW9uYWxseSByZW1haW5zIGZhaWwtY2xvc2VkLiBSZW1haW5pbmcgaW50ZWdyYXRpb24gZGVwZW5kZW5jeTogY29tcG9zZSBXb3Jrc3RyZWFtIEMncyBjb25jcmV0ZSB3cml0YWJsZSBhdXRob3JpdHkgcGVyc2lzdGVuY2UgYW5kIFdvcmtzdHJlYW0gQSdzIGFwcHJvdmVkIGZyb3plbiBtdXRhdGlvbiBwb3J0cywgdGhlbiBtaWdyYXRlIHRob3NlIGxlZ2FjeSBjcm9zcy13b3Jrc3RyZWFtIGNvbnN0cnVjdGlvbnMvdGVzdHMgYXQgdGhlaXIgb3duaW5nL2ludGVncmF0aW9uIHN1cmZhY2UuIE5vIG90aGVyIHdvcmtlciBwcm9kdWN0aW9uIGltcGxlbWVudGF0aW9uIHdhcyBjaGFuZ2VkLgoKIyMgUmVqZWN0ZWQtaGVhZCByZXBhaXIgbWFuaWZlc3QKCk1vZGlmaWVkIHByb2R1Y3Rpb246Ci0gYHNyYy9jb3JlL2V4ZWN1dGlvbi1jb29yZGluYXRvci50c2AKLSBgc3JjL3Byb2R1Y3QvYXV0aG9yaXRhdGl2ZS1wcm9kdWN0aW9uLWV4ZWN1dG9yLnRzYAoKTW9kaWZpZWQgdGVzdHM6Ci0gYHRlc3QvcGhhc2U2LWQtb3JjaGVzdHJhdGlvbi12MS4yLnRlc3QudHNgCi0gYHRlc3Qvd29ya3N0cmVhbXMvb3JjaGVzdHJhdGlvbi92MS4yLWF1dGhvcml0YXRpdmUtYm91bmRhcnkudGVzdC50c2AKLSBgdGVzdC93b3Jrc3RyZWFtcy9vcmNoZXN0cmF0aW9uL3YxLjItcHJvZHVjdGlvbi1hdXRob3JpdHktcGF0aC50ZXN0LnRzYAotIGB0ZXN0L3dvcmtzdHJlYW1zL29yY2hlc3RyYXRpb24vdjEuMi1yZW1vdGUtZmVlZC1hdXRob3JpdHkudGVzdC50c2AKCkNyZWF0ZWQgdGVzdHM6Ci0gYHRlc3Qvd29ya3N0cmVhbXMvb3JjaGVzdHJhdGlvbi92MS4yLWF1dGhvcml0YXRpdmUtY29tbWl0LWxpZmVjeWNsZS50ZXN0LnRzYAotIGB0ZXN0L3dvcmtzdHJlYW1zL29yY2hlc3RyYXRpb24vdjEuMi1mb2xkZXItaWRlbnRpdHktcHJvZHVjdGlvbi50ZXN0LnRzYAotIGB0ZXN0L3dvcmtzdHJlYW1zL29yY2hlc3RyYXRpb24vdjEuMi1wcm9kdWN0aW9uLWxpZmVjeWNsZS1jb21wb3NpdGlvbi50ZXN0LnRzYAoKRGVsZXRlZDogbm9uZS4gRnJvemVuIGBzcmMvY29udHJhY3RzLyoqYDogdW5jaGFuZ2VkIGJ5IHRoaXMgcmVwYWlyLgoKUFIgIzQyIG11c3QgcmVtYWluIGRyYWZ0L29wZW4vdW5tZXJnZWQuIE5vIG1lcmdlL2ludGVncmF0aW9uLCBTdGFnZSAzLCByZWxlYXNlL3RhZywgQXp1cmUvT0F1dGgvRHJpdmUtc2NvcGUgY2hhbmdlLCBwcm90ZWN0ZWQtYnJhbmNoIG1vZGlmaWNhdGlvbiwgb3IgcGh5c2ljYWwgc3luY2hyb25pemF0aW9uIHdhcyBwZXJmb3JtZWQuIEV4YWN0IGZpbmFsIGV2aWRlbmNlIFNIQSBhbmQgcG9zdC1ldmlkZW5jZSBDSS9tZXJnZS1yZWYvYXJ0aWZhY3QvZGlmZi9QUiBhdWRpdHMgYXJlIHJlc29sdmVkIGFmdGVyIHRoaXMgYXBwZW5kIGFuZCByZXBvcnRlZCBpbiB0aGUgY29tcGxldGlvbiByZXNwb25zZS4K
+          C0: Ci0tLQoKIyMgUGhhc2UgNiBXb3Jrc3RyZWFtIEQgdjEuMiBELUM0LUQtQzkgcmVqZWN0aW9uIHJlcGFpciBjbG9zdXJlCgpBZ2VudCBgYWd0LUNBLVA2LVNZTkMtT1JDSEVTVFJBVElPTi0wMWA7IGJyYW5jaCBgcGhhc2U2LXN5bmMtb3JjaGVzdHJhdGlvbi12MS4yLWNvbnRpbnVhdGlvbmA7IGZyb3plbiBiYXNlIGA5NmI0NTQxYjE1MDEyYWM0Y2UwZDgxMjQzYjczZWY3NzllZmQzNDNlYDsgcmVqZWN0ZWQgaGVhZCBgNTg3ZWE3ZTk0YWEzOTQzNzhlMTBlZTJjN2NkOTMwYzBjNTVhYjFhMGA7IHZlcmlmaWVkIHByZS1ldmlkZW5jZSBzb3VyY2UvdGVzdCBoZWFkIGBmODk1MzVmZTVkYzYxMjFmZTdmNzE1Nzc1ZWMwZGFhN2FiMDIzMzY1YC4KCioqRC1DNOKAk0QtQzkgUEFTUyB3aXRoaW4gRCBvd25lcnNoaXAuKiogUHJvZHVjdGlvbiBwaHlzaWNhbCBtdXRhdGlvbiBpcyBmcm96ZW4tZGVzY3JpcHRvci9mcm96ZW4tcG9ydCBvbmx5IGFuZCBmYWlsLWNsb3NlZCB3aXRob3V0IHdyaXRhYmxlIGF1dGhvcml0eTsgZXhlY3V0b3Igc3RvcHMgYXQgYGVmZmVjdC12ZXJpZmllZGA7IGNhbm9uaWNhbCBCQVNFL3N0YXRlIGNvbW1pdCB3aXRoIGV4YWN0IHByZS1leGVjdXRpb24gYHN0YXRlUmV2aXNpb25gIENBUyBwcmVjZWRlcyBkdXJhYmxlIGBzdGF0ZS1jb21taXR0ZWRgOyBwb3N0LWNhbm9uaWNhbC9wcmUtZmluYWxpemF0aW9uIHJlc3RhcnQgcHJvdmVzIHRoZSBleGFjdCBwcmlvciBzZW1hbnRpYyBjb21taXQgYW5kIG9ubHkgZmluYWxpemVzIGR1cmFibHk7IHJlc2VydmVkIFJFTU9URSBmb2xkZXIgSUQgZmxvd3MgcmVjZWlwdCAtPiBCQVNFIC0+IGByZW1vdGVNYXBwaW5nc2A7IHRlcm1pbmFsIENoYW5nZXMgbGVhcm5pbmcgaXMgZHVyYWJsZSBiZWZvcmUgY3Vyc29yIGFkdmFuY2UgYW5kIHByb2NlZWRzIGFjcm9zcyBhbiBhY3R1YWwgdW5yZXNvbHZlZCBwYXRoIGNvbmZsaWN0IHNvIGxhdGVyIHVucmVsYXRlZCBSRU1PVEUgZmFjdHMgYXJlIGxlYXJuZWQuCgpQcmUtZXZpZGVuY2UgYFBoYXNlIDYgQWxwaGEgRGlhZ25vc3RpYyBWZXJpZmljYXRpb25gIHJ1biBgMzM0NjI4NjMxNjlgLCBqb2IgYDk5NzE2NTM0NTcwYCwgYXJ0aWZhY3QgYDk3ODM3OTM3MzdgLCBkaWdlc3QgYHNoYTI1NjphMTVkZTdhYmU5MGY5NzZmNzIwYTFjZjk2ZmE1NTgxYzE5N2YyMGI5Yzk0YjllOGNlMTE2ZmY0MzYxODc1Y2FjYC4gRGlyZWN0IHJhdyBUQVAgaW5zcGVjdGlvbiAocmVxdWlyZWQgYmVjYXVzZSBgdGVlYCBtYXNrcyBleGl0IHN0YXR1cykgcmVwb3J0cyAqKjQ4NCB0ZXN0cyAvIDQzMCBwYXNzIC8gMjkgZmFpbCAvIDI1IGNhbmNlbGxlZCAvIDAgc2tpcHBlZCAvIDAgdG9kbyoqOyBhbGwgRC1vd25lZC9uZXcgRC1DNC1ELUM5IHRlc3RzIFBBU1MuIFJlbWFpbmluZyBmYWlsdXJlcy9jYW5jZWxsYXRpb25zIGFyZSBsZWdhY3kgY3Jvc3Mtd29ya3N0cmVhbSBjb21wb3NpdGlvbiB0ZXN0cyBleHBlY3RpbmcgbXV0YXRpb24gd2l0aG91dCBtYW5kYXRvcnkgd3JpdGFibGUgYFN5bmNocm9uaXphdGlvbkF1dGhvcml0eVN0b3JlVjFfMWAgYW5kL29yIGZyb3plbiBtdXRhdGlvbiBwb3J0cy4gRCByZW1haW5zIGZhaWwtY2xvc2VkOyBpbnRlZ3JhdGlvbiBtdXN0IGNvbXBvc2UgV29ya3N0cmVhbSBDIHdyaXRhYmxlIGF1dGhvcml0eSBwZXJzaXN0ZW5jZSArIGFwcHJvdmVkIFdvcmtzdHJlYW0gQSBmcm96ZW4gbXV0YXRpb24gcG9ydHMgYW5kIG1pZ3JhdGUgdGhlIGxlZ2FjeSBjcm9zcy13b3Jrc3RyZWFtIGNvbnN0cnVjdGlvbnMvdGVzdHMgYXQgdGhlaXIgb3duaW5nL2ludGVncmF0aW9uIHN1cmZhY2UuCgpSZWplY3RlZC1oZWFkIHJlcGFpciBjaGFuZ2VkIHByb2R1Y3Rpb24gYHNyYy9jb3JlL2V4ZWN1dGlvbi1jb29yZGluYXRvci50c2AgYW5kIGBzcmMvcHJvZHVjdC9hdXRob3JpdGF0aXZlLXByb2R1Y3Rpb24tZXhlY3V0b3IudHNgOyBtb2RpZmllZCBEIHRlc3RzIGB0ZXN0L3BoYXNlNi1kLW9yY2hlc3RyYXRpb24tdjEuMi50ZXN0LnRzYCwgYHYxLjItYXV0aG9yaXRhdGl2ZS1ib3VuZGFyeS50ZXN0LnRzYCwgYHYxLjItcHJvZHVjdGlvbi1hdXRob3JpdHktcGF0aC50ZXN0LnRzYCwgYHYxLjItcmVtb3RlLWZlZWQtYXV0aG9yaXR5LnRlc3QudHNgOyBjcmVhdGVkIGB2MS4yLWF1dGhvcml0YXRpdmUtY29tbWl0LWxpZmVjeWNsZS50ZXN0LnRzYCwgYHYxLjItZm9sZGVyLWlkZW50aXR5LXByb2R1Y3Rpb24udGVzdC50c2AsIGFuZCBgdjEuMi1wcm9kdWN0aW9uLWxpZmVjeWNsZS1jb21wb3NpdGlvbi50ZXN0LnRzYC4gRnJvemVuIGBzcmMvY29udHJhY3RzLyoqYCBpcyB1bmNoYW5nZWQuIFBSICM0MiByZW1haW5zIHJlcXVpcmVkIGRyYWZ0L29wZW4vdW5tZXJnZWQ7IG5vIG1lcmdlL2ludGVncmF0aW9uLCBTdGFnZSAzLCByZWxlYXNlL3RhZywgcHJvdGVjdGVkLWJyYW5jaCwgQXp1cmUvT0F1dGgvRHJpdmUtc2NvcGUsIG9yIHBoeXNpY2FsLXN5bmMgYWN0aW9uIG9jY3VycmVkLiBGaW5hbCBldmlkZW5jZSBTSEEgYW5kIHBvc3QtZXZpZGVuY2UgQ0kvbWVyZ2UtcmVmL2FydGlmYWN0L2RpZmYvUFIgYXVkaXRzIGFyZSByZXBvcnRlZCBleHRlcm5hbGx5IGFmdGVyIHRoaXMgYXBwZW5kLW9ubHkgY29tbWl0Lgo=
         run: |
           set -euo pipefail
           dedicated='dev/evidence/_ca-output-agt-CA-P6-SYNC-ORCHESTRATION-01.md'
@@ -29,153 +33,8 @@ jobs:
             echo 'Evidence marker already present; refusing duplicate append.' >&2
             exit 1
           fi
-          cat >> "$dedicated" <<'EOF'
-
-# Phase 6 Workstream D v1.2 D-C4-D-C9 rejection repair closure
-
-## Repair identity and authority
-
-- Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`
-- Repository: `woodpk/gdrive-sync-obsidian-plugin`
-- Branch: `phase6-sync-orchestration-v1.2-continuation`
-- Approved frozen foundation base: `96b4541b15012ac4ce0d81243b73ef779efd343e`
-- Supervisor-reviewed/rejected head: `587ea7e94aa394378e10ee2c7cd930c0c55ab1a0`
-- Fully verified source/test repair head before evidence-only closure: `f89535fe5dc6121fe7f715775ec0daa7ab023365`
-- Repair remained PARALLEL-SAFE: no unfinished A/B/C/E/F/G implementation branch was consumed; no protected branch was modified; no merge/integration work was performed.
-
-## D-C4 — durable/recoverable production mutation lifecycle: PASS
-
-The actual authoritative production executor now uses frozen durable mutation descriptors and frozen mutation seams for the required production classes: REMOTE file create/update, REMOTE move, REMOTE trash, LOCAL file create/replace, REMOTE folder create, LOCAL folder create, LOCAL move, LOCAL trash, and two-effect clean merge. Physical work cannot begin until exact intent is durable and `dispatch-authorized` has been durably persisted. LOCAL file writes use `LocalTransactionalMutationPort`; REMOTE mutations use `ReliableRemoteMutationPort`; REMOTE folder restart verification uses `RemoteFolderCreateRecoveryReadPort` plus `verifyRemoteFolderCreate`. Missing writable authority or a required frozen mutation/recovery port disables physical mutation rather than falling back to the raw legacy Drive mutation methods.
-
-Restart coverage proves `intent-persisted` is never blindly dispatched, and `dispatch-authorized` / `outcome-unknown` are reconciled from current physical reality before any success result. Physical verification is distinct from logical convergence: a verified candidate under a duplicate/conflicted logical path remains `effect-verified` and returns a blocking conflict rather than becoming authoritative state.
-
-## D-C5 — durable terminal REMOTE-feed learning independent of path conflict: PASS
-
-Incremental assembly traverses complete `ReliableRemoteChangePort.readChangePage()` pagination, accumulates the full terminal batch, persists the `DurableRemoteChangeBatch` through `SynchronizationAuthorityStoreV1_1`, and only then advances the legacy canonical cursor mirror. Intermediate `nextPageToken` values never become durable terminal authority. Pre-terminal failure produces no learned batch and no cursor advance. Repeated already-learned terminal batches are idempotent. Restart reconstructs REMOTE planning input from canonical BASE plus durable learned batches not retired.
-
-The transient pre-terminal failure classification is confirmed as the product's existing `offline-deferred` result; the D-owned regression now asserts that classification while also proving zero learned batch and zero cursor advancement.
-
-## D-C6 — authoritative commit-boundary lifecycle: PASS
-
-The rejected ordering was removed. The production lifecycle is now:
-
-`intent-persisted -> dispatch-authorized -> physical mutation -> effect-verified -> required convergence -> canonical BASE/state commit -> state-committed`.
-
-`src/product/authoritative-production-executor.ts` stops physical effects at durable `effect-verified` and returns a verification receipt; it no longer advances a physical effect to `state-committed`. `AuthorityCompleteExecutionCoordinator` verifies every required physical effect remains `effect-verified`, performs the canonical authoritative commit, and only after that commit succeeds advances those durable effects to `state-committed`.
-
-Crash/restart acceptance proves both required windows: a stale/failed canonical commit leaves the durable effect at `effect-verified`; and if canonical state committed but durable finalization failed, restart proves the exact prior canonical commit from the completed operation journal, aggregate verification reference, and canonical state shape, skips redispatch and skips a second semantic commit, then performs only durable `state-committed` finalization.
-
-## D-C7 — exact canonical state-revision CAS: PASS
-
-The coordinator loads the trusted canonical state before execution and captures its exact `stateRevision`. Final `commitVerifiedSuccess(...)` receives that exact pre-execution revision as the expected CAS revision. A stale-state result is surfaced and the durable physical effect remains `effect-verified`; no silent or revision-free canonical commit is accepted.
-
-## D-C8 — reserved REMOTE folder identity propagation: PASS
-
-The REMOTE folder create descriptor retains the pre-reserved Drive object ID. The production executor derives `VerifiedExecutionReceipt.resultingRemoteObjectId` from that exact reserved folder identity. The authoritative `StateCommitCoordinator` then writes that receipt identity into both the folder BASE entry and `remoteMappings`. Production-adapter regression coverage proves the receipt ID originates from the real frozen `reserveFolderCreateIdentity -> createReserved -> parent-aware recovery observation -> verifyRemoteFolderCreate` path.
-
-## D-C9 — actual partial/conflict REMOTE-feed progression: PASS
-
-A production-controller acceptance case now emits a real `unresolved-conflict` operation for path A, producing `attention-required` / partial execution while terminal REMOTE-feed authority is still durably learned. The next run begins from the learned terminal cursor and ingests a later unrelated path B even though A remains unresolved. The path-convergence conflict record survives both runs. This proves feed-learning authority is independent of path-local execution/convergence.
-
-## Direct D-owned acceptance coverage at source head `f89535fe5dc6121fe7f715775ec0daa7ab023365`
-
-D-owned/new acceptance includes:
-
-- authoritative exact-CAS and exact-authority boundary;
-- production update stops at `effect-verified` before canonical commit;
-- REMOTE file create through reserved reliable mutation;
-- REMOTE move/trash through frozen mutation methods and zero raw Drive fallback;
-- LOCAL file create/replace through `LocalTransactionalMutationPort`;
-- REMOTE folder reserved identity through production receipt;
-- LOCAL folder create plus LOCAL move/trash durable descriptors;
-- clean merge as independently recoverable LOCAL + REMOTE effects;
-- restart from `intent-persisted`, `dispatch-authorized`, and `outcome-unknown` without blind redispatch;
-- verified physical effect plus conflicted logical path cannot become state committed;
-- stale canonical CAS leaves `effect-verified`;
-- canonical-commit/durable-finalization crash restarts without repeating the semantic commit;
-- terminal multipage REMOTE-feed learning, pre-terminal failure, idempotence, and actual partial/conflict progression.
-
-## Strongest pre-evidence CI and raw-artifact verification
-
-- Workflow: `Phase 6 Alpha Diagnostic Verification`
-- Source head: `f89535fe5dc6121fe7f715775ec0daa7ab023365`
-- Run: `33462863169`
-- Job: `99716534570`
-- Artifact ID: `9783793737`
-- Artifact name: `phase6-oauth-housekeeping-verification`
-- Artifact digest: `sha256:a15de7abe90f976f720a1cf96fa5581c197f20b9c94b9e8ce116ff4361875cac`
-
-The Actions workflow's `npm test | tee` and `npm run check | tee` pipeline lacks `set -o pipefail`, so the green workflow step was not treated as sufficient evidence. The uploaded `full-tests.tap` and check output were inspected directly.
-
-Raw `full-tests.tap` at this source head:
-
-- tests: **484**
-- pass: **430**
-- fail: **29**
-- cancelled: **25**
-- skipped: **0**
-- todo: **0**
-
-All D-owned/new D-C4-D-C9 acceptance tests are PASS in that raw TAP, including D-C9 actual partial conflict progression, D-C6 commit/finalization crash windows, D-C7 exact CAS, D-C8 production folder identity, all required production mutation classes, clean merge, restart no-blind-redispatch, and post-verification conflict blocking. Typecheck, production build, whitespace check, package verification, artifact identity, and upload also passed.
-
-The remaining 29 failures and 25 cascade cancellations are legacy/cross-workstream integration tests that instantiate the production controller with the pre-v1.2 composition assumption that physical mutation may proceed without a writable `SynchronizationAuthorityStoreV1_1` and/or the required frozen mutation ports. Representative failures are older Phase 5 controller/move/update/download/mixed-plan and C1 isolation cases reporting rejected/no mutation where they previously expected mutation. D intentionally does not weaken fail-closed D-C4 authority to make those obsolete constructions mutate again. The remaining integration dependency is: integration must compose the concrete writable authority persistence supplied by Workstream C and the approved concrete frozen remote mutation ports supplied by Workstream A, and cross-workstream legacy tests must be migrated to that authority-complete composition by their owning/integration surface. No other worker's production implementation was changed by D.
-
-The separate Azure Static Web Apps workflow failure remains unrelated/out of scope and was not modified.
-
-## Supervisor-rejected-head repair manifest (`587ea7e...` -> source head `f89535fe...`)
-
-Modified production:
-
-- `src/core/execution-coordinator.ts`
-- `src/product/authoritative-production-executor.ts`
-
-Modified tests:
-
-- `test/phase6-d-orchestration-v1.2.test.ts`
-- `test/workstreams/orchestration/v1.2-authoritative-boundary.test.ts`
-- `test/workstreams/orchestration/v1.2-production-authority-path.test.ts`
-- `test/workstreams/orchestration/v1.2-remote-feed-authority.test.ts`
-
-Created tests:
-
-- `test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.ts`
-- `test/workstreams/orchestration/v1.2-folder-identity-production.test.ts`
-- `test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.ts`
-
-No production/test file was deleted. `src/contracts/**` was not modified.
-
-## Safety/boundary closure
-
-- Frozen `src/contracts/**`: **UNCHANGED** by this repair.
-- Raw legacy Drive mutation fallback from the authoritative physical path: **NONE**; `legacy.execute(operation)` is reachable only after the executor has classified the operation as nonphysical.
-- Missing writable authority/frozen mutation dependency: **physical mutation disabled / fail closed**.
-- `phase6-integration`: unchanged by this workstream.
-- `master`: unchanged by this workstream.
-- PR #42: required to remain draft/open/unmerged.
-- No integration merge, Stage 3 work, release/tag operation, Azure/OAuth/Drive-scope configuration change, or physical vault synchronization was performed.
-
-The exact final evidence-bearing branch SHA, the exact PR synthetic merge checkout SHA, post-evidence run/job/artifact identity and raw TAP counts, final rejected-head/foundation diff manifests, and final PR state are necessarily resolved after this append-only evidence commit and are reported in the completion response.
-EOF
-
-          cat >> "$canonical" <<'EOF'
-
----
-
-## Phase 6 Workstream D v1.2 D-C4-D-C9 rejection repair closure
-
-Agent `agt-CA-P6-SYNC-ORCHESTRATION-01` repaired branch `phase6-sync-orchestration-v1.2-continuation` from supervisor-reviewed/rejected head `587ea7e94aa394378e10ee2c7cd930c0c55ab1a0` on frozen foundation `96b4541b15012ac4ce0d81243b73ef779efd343e`. The fully verified source/test head before this evidence-only closure is `f89535fe5dc6121fe7f715775ec0daa7ab023365`.
-
-D-C4 is corrected/verified: every production physical mutation class is represented by durable frozen intent before dispatch and uses the frozen reliable REMOTE or transactional LOCAL seam; the production executor stops at `effect-verified`; missing writable authority or required frozen mutation/recovery ports disables mutation; the authoritative path has no raw legacy Drive mutation fallback. D-C5 is corrected/verified: complete terminal Changes batches are durably learned before the canonical cursor mirror advances, pre-terminal failure advances neither batch nor cursor, learned batches are idempotent/restart-consumable, and feed authority remains independent of path-local conflict.
-
-D-C6 is corrected/verified: authoritative ordering is `intent-persisted -> dispatch-authorized -> physical mutation -> effect-verified -> convergence -> canonical BASE/state commit -> state-committed`. A failed/stale canonical commit leaves the durable effect at `effect-verified`; restart after canonical commit but before durable finalization proves the exact prior commit, performs no redispatch and no second semantic state transition, and only finalizes `state-committed`. D-C7 restores exact final canonical CAS using the pre-execution trusted `stateRevision`. D-C8 carries the pre-reserved REMOTE folder object ID through the production receipt and authoritative commit into both BASE and `remoteMappings`. D-C9 adds an actual `unresolved-conflict` partial-run acceptance: conflicted path A remains unresolved while terminal feed authority advances, and the next run learns later unrelated path B from the durable terminal cursor.
-
-Strongest pre-evidence gate: `Phase 6 Alpha Diagnostic Verification` run `33462863169`, job `99716534570`, artifact `9783793737`, digest `sha256:a15de7abe90f976f720a1cf96fa5581c197f20b9c94b9e8ce116ff4361875cac`, source head `f89535fe5dc6121fe7f715775ec0daa7ab023365`. Direct raw artifact inspection (required because the workflow uses `tee` without `pipefail`) reports **484 tests / 430 pass / 29 fail / 25 cancelled / 0 skipped / 0 todo**. Every D-owned/new D-C4-D-C9 acceptance test is PASS. The remaining failures/cancellations are legacy cross-workstream composition tests that still expect physical mutation without the now-mandatory writable `SynchronizationAuthorityStoreV1_1` and/or frozen mutation ports. D does not weaken fail-closed authority to satisfy them. The integration dependency is concrete Workstream C writable authority persistence + approved Workstream A frozen mutation-port composition and consequential migration of legacy cross-workstream construction/tests by their owning/integration surface.
-
-Rejected-head repair source/test manifest: modified `src/core/execution-coordinator.ts`, `src/product/authoritative-production-executor.ts`, `test/phase6-d-orchestration-v1.2.test.ts`, `test/workstreams/orchestration/v1.2-authoritative-boundary.test.ts`, `test/workstreams/orchestration/v1.2-production-authority-path.test.ts`, and `test/workstreams/orchestration/v1.2-remote-feed-authority.test.ts`; created `test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.ts`, `test/workstreams/orchestration/v1.2-folder-identity-production.test.ts`, and `test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.ts`; deleted none. Frozen `src/contracts/**` is unchanged by this repair.
-
-PR #42 remains required to stay draft/open/unmerged. No integration merge, `phase6-integration`/`master` modification, Stage 3 work, release/tag, Azure/OAuth/Drive-scope configuration change, or physical synchronization occurred. Exact final evidence SHA, post-evidence PR merge-ref/run/job/artifact/raw-TAP evidence, and final diff/PR audits are resolved after this self-removing evidence finalizer and reported in the completion response.
-EOF
-
+          printf '%s%s' "$D0" "$D1" | base64 -d >> "$dedicated"
+          printf '%s' "$C0" | base64 -d >> "$canonical"
           git rm .github/workflows/d-v12-evidence-finalize.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
