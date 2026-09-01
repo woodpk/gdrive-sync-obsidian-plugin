@@ -280,7 +280,7 @@ export class IntegratedSynchronizationStateStore extends PersistentSynchronizati
     const authority = await this.source.loadAuthority();
     if (authority.status === "uninitialized") {
       const initial = createInitialAuthorityState({
-        persistenceRevision: contractId<"PersistenceRevision">(String(candidate.stateRevision)) as PersistenceRevision,
+        persistenceRevision: contractId<"PersistenceRevision">(String(candidate.stateRevision)) as unknown as PersistenceRevision,
         semanticGeneration: contractId<"SemanticStateGeneration">("semantic:0") as SemanticStateGeneration,
         vaultIdentity: candidate.vaultIdentity,
         deviceIdentity: candidate.deviceIdentity,
@@ -347,7 +347,7 @@ export class IntegratedSynchronizationStateStore extends PersistentSynchronizati
 
   override async replaceRecoveryState(state: TrustedSynchronizationState, context: StateLoadContext): Promise<RecoveryReplacementResult> {
     const replacement = authorityState(state) ? state : createInitialAuthorityState({
-      persistenceRevision: contractId<"PersistenceRevision">(String(state.stateRevision)) as PersistenceRevision,
+      persistenceRevision: contractId<"PersistenceRevision">(String(state.stateRevision)) as unknown as PersistenceRevision,
       semanticGeneration: contractId<"SemanticStateGeneration">("semantic:recovery:0") as SemanticStateGeneration,
       vaultIdentity: state.vaultIdentity,
       deviceIdentity: state.deviceIdentity,
