@@ -117,7 +117,8 @@ function assertExactIdentity(operation: PlannedOperation, mappings: readonly Rem
     assert.equal(proofs[0].proof.generation, generation);
     assert.equal(proofs[0].proof.status, "unique");
   }
-  assert.equal(resolved.operation.preconditions.some(value => value.kind === "identity-unambiguous"), false);
+  const executableKinds: string[] = resolved.operation.preconditions.map(value => value.kind);
+  assert.equal(executableKinds.includes("identity-unambiguous"), false);
 }
 
 for (const kind of ["upload-update", "trash-remote"] as const) {
@@ -203,7 +204,7 @@ function productionHarness(kind: "upload-update" | "trash-remote") {
       canonical = {
         ...canonical,
         stateRevision: revision(`state:committed:${kind}`),
-        operations: [...canonical.operations, { operationId: operation.operationId as OperationId, kind: operation.kind, path: operation.path, status: "completed" as const, verificationEvidenceRef: receipt.verificationEvidenceRef }],
+        operations: [...canonical.operations, { operationId: operation.operationId as OperationId, path: operation.path, status: "completed" as const, verificationEvidenceRef: receipt.verificationEvidenceRef }],
       };
       return { status: "committed" as const, newStateRevision: canonical.stateRevision };
     },
