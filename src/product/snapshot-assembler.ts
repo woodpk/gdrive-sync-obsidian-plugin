@@ -2,6 +2,7 @@ import type {
   BaseEvidence,
   ChangeCursor,
   DriveSignal,
+  DurableRemoteChangeBatch,
   EnumerationCompleteness,
   GoogleDrivePort,
   IdentityAssessment,
@@ -10,17 +11,23 @@ import type {
   LocalVaultPort,
   ManagedRemoteIdentity,
   PathSnapshot,
+  PersistenceRevision,
   PlanningInput,
+  ReliableRemoteChangePort,
+  RemoteChange,
   RemoteEntry,
+  RemoteIngestionBatchId,
   RemoteObservation,
   StateLoadContext,
   StateLoadResult,
+  SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
   TrustedSynchronizationState,
   VaultPath,
 } from "../contracts";
 import { contractId } from "../contracts";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import { sha256Text } from "../util/sha256";
 import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
 
 export interface AssembledPlanningInput {
@@ -29,6 +36,8 @@ export interface AssembledPlanningInput {
   readonly remoteEnumeration: EnumerationCompleteness;
   readonly localEnumeration?: EnumerationCompleteness;
   readonly nextCursor?: ChangeCursor;
+  /** Complete terminal Changes traversal awaiting durable authority ingestion. */
+  readonly remoteChangeBatch?: DurableRemoteChangeBatch;
   readonly mode: "full" | "incremental";
   readonly reconstruction?: boolean;
   readonly recoveryReason?: string;
@@ -41,6 +50,26 @@ function absentRemote(p: VaultPath): RemoteObservation { return { status: "absen
 function remoteObservation(entry: RemoteEntry): RemoteObservation {
   return { status: "present", side: "remote", path: entry.path, entityKind: entry.entityKind, remoteObjectId: entry.remoteObjectId, content: entry.content, stability: "stable" };
 }
+function applyChanges(target: Map<string, RemoteEntry>, changes: readonly RemoteChange[], included: (path: VaultPath) => boolean): void {
+  for (const change of changes) {
+    if (change.kind === "upsert") {
+      if (included(change.entry.path)) target.set(String(change.entry.remoteObjectId), change.entry);
+      else target.delete(String(change.entry.remoteObjectId));
+    } else target.delete(String(change.remoteObjectId));
+  }
+}
+function batchIdentity(startingToken: ChangeCursor, terminalStartToken: ChangeCursor, changes: readonly RemoteChange[]): RemoteIngestionBatchId {
+  const normalized = changes.map(change => change.kind === "removed"
+    ? { kind: change.kind, remoteObjectId: String(change.remoteObjectId), lastKnownPath: change.lastKnownPath ? String(change.lastKnownPath) : undefined }
+    : {
+        kind: change.kind,
+        entry: {
+          path: String(change.entry.path), entityKind: change.entry.entityKind, remoteObjectId: String(change.entry.remoteObjectId), trashed: change.entry.trashed,
+          content: change.entry.content ? { hash: change.entry.content.hash ? String(change.entry.content.hash) : undefined, sizeBytes: change.entry.content.sizeBytes, revision: change.entry.content.revision } : undefined,
+        },
+      });
+  return contractId<"RemoteIngestionBatchId">(`remote-batch:${String(sha256Text(JSON.stringify({ startingToken: String(startingToken), terminalStartToken: String(terminalStartToken), changes: normalized })))}`) as RemoteIngestionBatchId;
+}
 
 export class SnapshotAssemblyError extends Error {
   constructor(readonly code: string, message: string) { super(message); this.name = "SnapshotAssemblyError"; }
@@ -48,6 +77,8 @@ export class SnapshotAssemblyError extends Error {
 
 /** Produces lossless LOCAL + REMOTE + BASE planning evidence; uncertainty is never flattened into absence. */
 export class ProductSnapshotAssembler {
+  private authorityStore?: SynchronizationAuthorityStoreV1_1;
+
   constructor(
     private readonly local: LocalVaultPort,
     private readonly drive: GoogleDrivePort,
@@ -57,12 +88,17 @@ export class ProductSnapshotAssembler {
     private readonly pathIncluded: (path: VaultPath) => boolean = () => true,
     private readonly fullReconcileRequired: () => boolean = () => false,
     private readonly diagnostics?: DiagnosticLogger,
-  ) {}
+    private readonly reliableChanges?: ReliableRemoteChangePort,
+    authorityStore?: SynchronizationAuthorityStoreV1_1,
+  ) { this.authorityStore = authorityStore; }
+
+  /** D-owned orchestration binding; the store itself remains the frozen C/D contract. */
+  bindAuthorityStore(authorityStore: SynchronizationAuthorityStoreV1_1): void { this.authorityStore = authorityStore; }
 
   async assemble(preferIncremental = true, runId?: number): Promise<AssembledPlanningInput> {
     const managedRemote = await this.validatedRemote(runId);
     const loadedState = await this.loadState(runId);
-    const incrementalAllowed = preferIncremental && !this.fullReconcileRequired();
+    const incrementalAllowed = preferIncremental && !this.fullReconcileRequired() && Boolean(this.reliableChanges);
     if (incrementalAllowed && loadedState.status === "trusted" && loadedState.state.changeCursor) {
       const incremental = await this.assembleIncremental(managedRemote, loadedState, runId);
       if (incremental) return incremental;
@@ -135,30 +171,65 @@ export class ProductSnapshotAssembler {
   }
 
   private async assembleIncremental(managedRemote: ManagedRemoteIdentity, loadedState: Extract<StateLoadResult, { status: "trusted" }>, runId?: number): Promise<AssembledPlanningInput | undefined> {
-    const cursor = loadedState.state.changeCursor;
-    if (!cursor) return undefined;
+    const canonicalCursor = loadedState.state.changeCursor;
+    const reliableChanges = this.reliableChanges;
+    if (!canonicalCursor || !reliableChanges) return undefined;
+
+    let authorityRevision = loadedState.state.stateRevision as PersistenceRevision;
+    let learnedBatches: readonly DurableRemoteChangeBatch[] = [];
+    if (this.authorityStore) {
+      const authority = await this.authorityStore.loadAuthority();
+      if (authority.status === "trusted") {
+        authorityRevision = authority.state.persistenceRevision;
+        learnedBatches = authority.state.learnedRemoteBatches;
+      }
+    }
+
     this.trace(runId, "local-observation-start", { stage: "local-observation", runMode: "incremental" });
     this.trace(runId, "remote-observation-start", { stage: "remote-observation", runMode: "incremental" });
-    const [localListing, changesResult] = await Promise.all([
-      this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; }),
-      this.drive.readChanges(managedRemote.rootId, cursor).then(value => { if (value.ok) this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: value.value.changes.length, remoteCompleteness: value.value.completeness.status }); else this.failure(runId, "remote-observation-failed", new SnapshotAssemblyError(value.signal.kind, signalMessage(value.signal, "incremental observation failed")), "remote-observation"); return value; }).catch(error => { this.failure(runId, "remote-observation-failed", error, "remote-observation"); throw error; }),
-    ]);
-    if (!changesResult.ok) {
-      if (changesResult.signal.kind === "not-found" || changesResult.signal.kind === "conflict") return undefined;
-      throw new SnapshotAssemblyError(changesResult.signal.kind, signalMessage(changesResult.signal, "incremental remote observation failed"));
-    }
-    if (changesResult.value.completeness.status !== "complete") return undefined;
+    const localPromise = this.local.enumerate().then(value => { this.debug(runId, "local-observation-complete", { stage: "local-observation", localCount: value.entries.length, localCompleteness: value.completeness.status }); return value; }).catch(error => { this.failure(runId, "local-observation-failed", error, "local-observation"); throw error; });
 
     const reconstructed = this.remoteBaseline(loadedState.state);
-    for (const change of changesResult.value.changes) {
-      if (change.kind === "upsert") {
-        if (this.pathIncluded(change.entry.path)) reconstructed.set(String(change.entry.remoteObjectId), change.entry);
-        else reconstructed.delete(String(change.entry.remoteObjectId));
-      } else reconstructed.delete(String(change.remoteObjectId));
+    for (const durable of learnedBatches) applyChanges(reconstructed, durable.changes, this.pathIncluded);
+    const effectiveCursor = learnedBatches.length ? learnedBatches[learnedBatches.length - 1]!.checkpoint.terminalStartToken : canonicalCursor;
+
+    const changes: RemoteChange[] = [];
+    let requestedToken = effectiveCursor;
+    let terminalCursor: ChangeCursor | undefined;
+    while (!terminalCursor) {
+      const result = await reliableChanges.readChangePage(managedRemote, requestedToken).catch(error => {
+        this.failure(runId, "remote-observation-failed", error, "remote-observation");
+        throw error;
+      });
+      if (!result.ok) {
+        if (result.signal.kind === "not-found" || result.signal.kind === "conflict") return undefined;
+        const error = new SnapshotAssemblyError(result.signal.kind, signalMessage(result.signal, "incremental remote observation failed before terminal Changes authority"));
+        this.failure(runId, "remote-observation-failed", error, "remote-observation");
+        throw error;
+      }
+      if (result.value.requestedToken !== requestedToken) throw new SnapshotAssemblyError("recovery-required", "reliable Changes page did not prove the requested pagination token");
+      changes.push(...result.value.changes);
+      if (result.value.kind === "intermediate") { requestedToken = result.value.nextPageToken; continue; }
+      terminalCursor = result.value.newStartPageToken;
     }
+
+    const localListing = await localPromise;
+    applyChanges(reconstructed, changes, this.pathIncluded);
+    this.debug(runId, "remote-observation-complete", { stage: "remote-observation", remoteCount: changes.length, remoteCompleteness: "complete" });
     const remoteEntries = this.filterRemote([...reconstructed.values()]);
-    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, remoteEntries, changesResult.value.completeness);
-    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: changesResult.value.completeness, nextCursor: changesResult.value.nextCursor, mode: "incremental" };
+    const remoteCompleteness: EnumerationCompleteness = { status: "complete" };
+    const snapshots = this.makeSnapshots(loadedState, this.filterLocal(localListing.entries), localListing.completeness, localListing.uncertainties, remoteEntries, remoteCompleteness);
+    const remoteChangeBatch: DurableRemoteChangeBatch = {
+      checkpoint: {
+        batchId: batchIdentity(effectiveCursor, terminalCursor, changes),
+        startingToken: effectiveCursor,
+        terminalStartToken: terminalCursor,
+        persistenceRevision: authorityRevision,
+        status: "learned",
+      },
+      changes,
+    };
+    return { input: { snapshots, state: loadedState }, managedRemote, localEnumeration: localListing.completeness, remoteEnumeration: remoteCompleteness, nextCursor: terminalCursor, remoteChangeBatch, mode: "incremental" };
   }
 
   private async loadState(runId?: number): Promise<StateLoadResult> {
@@ -166,24 +237,13 @@ export class ProductSnapshotAssembler {
     let loaded: StateLoadResult;
     try { loaded = await this.state.load(this.stateContext); }
     catch (error) { this.failure(runId, "base-state-load-failed", error, "base-load"); throw error; }
-    this.debug(runId, "base-state-load-complete", {
-      stage: "base-load",
-      stateStatus: loaded.status,
-      count: loaded.status === "trusted" ? loaded.state.base.length : 0,
-      cursorPresent: loaded.status === "trusted" && Boolean(loaded.state.changeCursor),
-    });
+    this.debug(runId, "base-state-load-complete", { stage: "base-load", stateStatus: loaded.status, count: loaded.status === "trusted" ? loaded.state.base.length : 0, cursorPresent: loaded.status === "trusted" && Boolean(loaded.state.changeCursor) });
     return loaded;
   }
 
-  private trace(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncTrace"]>[3]): void {
-    if (runId !== undefined) this.diagnostics?.syncTrace("sync.plan", event, runId, fields);
-  }
-  private debug(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncDebug"]>[3]): void {
-    if (runId !== undefined) this.diagnostics?.syncDebug("sync.plan", event, runId, fields);
-  }
-  private failure(runId: number | undefined, event: string, error: unknown, stage: string): void {
-    if (runId !== undefined) this.diagnostics?.syncFailure("sync.plan", event, runId, error, { stage, classification: "planning-boundary-failure", result: "failed" });
-  }
+  private trace(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncTrace"]>[3]): void { if (runId !== undefined) this.diagnostics?.syncTrace("sync.plan", event, runId, fields); }
+  private debug(runId: number | undefined, event: string, fields: Parameters<DiagnosticLogger["syncDebug"]>[3]): void { if (runId !== undefined) this.diagnostics?.syncDebug("sync.plan", event, runId, fields); }
+  private failure(runId: number | undefined, event: string, error: unknown, stage: string): void { if (runId !== undefined) this.diagnostics?.syncFailure("sync.plan", event, runId, error, { stage, classification: "planning-boundary-failure", result: "failed" }); }
 
   private remoteBaseline(state: TrustedSynchronizationState): Map<string, RemoteEntry> {
     const byId = new Map<string, RemoteEntry>();
@@ -197,26 +257,18 @@ export class ProductSnapshotAssembler {
   private filterLocal(entries: readonly LocalObservation[]): LocalObservation[] { return entries.filter(entry => this.pathIncluded(entry.path)); }
   private filterRemote(entries: readonly RemoteEntry[]): RemoteEntry[] { return entries.filter(entry => !entry.trashed && this.pathIncluded(entry.path)); }
 
-  private makeSnapshots(
-    loadedState: StateLoadResult,
-    localEntries: readonly LocalObservation[],
-    localCompleteness: EnumerationCompleteness,
-    localUncertainties: readonly LocalEnumerationUncertainty[] | undefined,
-    remoteEntries: readonly RemoteEntry[],
-    remoteCompleteness: EnumerationCompleteness,
-  ): PathSnapshot[] {
+  private makeSnapshots(loadedState: StateLoadResult, localEntries: readonly LocalObservation[], localCompleteness: EnumerationCompleteness, localUncertainties: readonly LocalEnumerationUncertainty[] | undefined, remoteEntries: readonly RemoteEntry[], remoteCompleteness: EnumerationCompleteness): PathSnapshot[] {
     const localByPath = new Map(localEntries.map(entry => [String(entry.path), entry]));
-    const remoteByPath = new Map(remoteEntries.map(entry => [String(entry.path), entry]));
-    const paths = new Set<string>([...localByPath.keys(), ...remoteByPath.keys()]);
+    const remoteEntriesByPath = new Map<string, RemoteEntry[]>();
+    for (const entry of remoteEntries) { const key = String(entry.path); const values = remoteEntriesByPath.get(key) ?? []; values.push(entry); remoteEntriesByPath.set(key, values); }
+    const paths = new Set<string>([...localByPath.keys(), ...remoteEntriesByPath.keys()]);
     if (loadedState.status === "trusted") {
       for (const entry of loadedState.state.base) if (this.pathIncluded(entry.path)) paths.add(String(entry.path));
       for (const tombstone of loadedState.state.tombstones) if (this.pathIncluded(tombstone.path)) paths.add(String(tombstone.path));
     }
-
     const remoteIdCounts = new Map<string, number>();
     for (const entry of remoteEntries) remoteIdCounts.set(String(entry.remoteObjectId), (remoteIdCounts.get(String(entry.remoteObjectId)) ?? 0) + 1);
-
-    const namespaceCollision = localByPath.has(CONFIG_REMOTE_NAMESPACE) || remoteByPath.has(CONFIG_REMOTE_NAMESPACE);
+    const namespaceCollision = localByPath.has(CONFIG_REMOTE_NAMESPACE) || remoteEntriesByPath.has(CONFIG_REMOTE_NAMESPACE);
     const inCollisionScope = (raw: string) => namespaceCollision && (raw === CONFIG_REMOTE_NAMESPACE || raw.startsWith(`${CONFIG_REMOTE_NAMESPACE}/`));
 
     return [...paths].sort().map(raw => {
@@ -226,34 +278,21 @@ export class ProductSnapshotAssembler {
         const matching = localUncertainties?.filter(uncertainty => {
           if (uncertainty.scope === "all") return true;
           const uncertainPath = String(uncertainty.path);
-          return uncertainty.scope === "path"
-            ? raw === uncertainPath
-            : raw === uncertainPath || raw.startsWith(`${uncertainPath}/`);
+          return uncertainty.scope === "path" ? raw === uncertainPath : raw === uncertainPath || raw.startsWith(`${uncertainPath}/`);
         });
-        // An incomplete legacy listing without explicit scope evidence remains
-        // globally uncertain. Once scopes are supplied, only matching paths lose
-        // absence authority.
-        if (!localUncertainties?.length || matching?.length) {
-          local = { status: "unknown", side: "local", path: p, reason: matching?.map(item => item.reason).join("; ") || localCompleteness.reason };
-        }
+        if (!localUncertainties?.length || matching?.length) local = { status: "unknown", side: "local", path: p, reason: matching?.map(item => item.reason).join("; ") || localCompleteness.reason };
       }
-      if (raw === CONFIG_REMOTE_NAMESPACE && namespaceCollision && local.status === "absent") {
-        local = { status: "unknown", side: "local", path: p, reason: "remote ordinary-vault content collides with the reserved portable-configuration namespace" };
-      }
-      const remoteEntry = remoteByPath.get(raw);
-      const remote = remoteEntry ? remoteObservation(remoteEntry) : absentRemote(p);
+      if (raw === CONFIG_REMOTE_NAMESPACE && namespaceCollision && local.status === "absent") local = { status: "unknown", side: "local", path: p, reason: "remote ordinary-vault content collides with the reserved portable-configuration namespace" };
+      const remoteCandidates = [...new Map((remoteEntriesByPath.get(raw) ?? []).map(entry => [String(entry.remoteObjectId), entry])).values()];
+      const remote: RemoteObservation = remoteCandidates.length === 0 ? absentRemote(p) : remoteCandidates.length === 1 ? remoteObservation(remoteCandidates[0]!) : { status: "unknown", side: "remote", path: p, reason: "multiple distinct remote objects occupy the same logical path" };
       let base: BaseEvidence = { status: "uninitialized" };
       if (loadedState.status === "recovery-required") base = { status: "untrusted", reason: loadedState.detail ?? loadedState.reason };
       if (loadedState.status === "trusted") base = { status: "trusted", entry: loadedState.state.base.find(entry => String(entry.path) === raw), tombstone: loadedState.state.tombstones.find(entry => String(entry.path) === raw) };
       let identity: IdentityAssessment = { status: "unambiguous" };
-      if (remoteEntry && (remoteIdCounts.get(String(remoteEntry.remoteObjectId)) ?? 0) > 1) identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds: [remoteEntry.remoteObjectId] };
-      if (inCollisionScope(raw)) {
-        identity = {
-          status: "ambiguous",
-          reason: `reserved portable-configuration namespace collision isolates ${CONFIG_REMOTE_NAMESPACE} from ordinary vault synchronization`,
-          candidateRemoteIds: remoteEntry ? [remoteEntry.remoteObjectId] : [],
-        };
-      }
+      const candidateRemoteIds = remoteCandidates.map(entry => entry.remoteObjectId);
+      if (remoteCandidates.length > 1) identity = { status: "ambiguous", reason: "multiple distinct remote objects occupy the same logical path", candidateRemoteIds };
+      else if (remoteCandidates[0] && (remoteIdCounts.get(String(remoteCandidates[0].remoteObjectId)) ?? 0) > 1) identity = { status: "ambiguous", reason: "multiple remote entries claim the same stable Drive identity", candidateRemoteIds };
+      if (inCollisionScope(raw)) identity = { status: "ambiguous", reason: `reserved portable-configuration namespace collision isolates ${CONFIG_REMOTE_NAMESPACE} from ordinary vault synchronization`, candidateRemoteIds };
       return { path: p, local, remote, base, remoteEnumeration: remoteCompleteness, identity };
     });
   }
