@@ -149,13 +149,15 @@ test("D actual controller plus product executor has no nominal-only ordinary mut
   assert.equal(result.status, "rejected"); assert.equal(raw, 0); assert.equal(controller.currentSurface().status.kind, "recovery-required");
 });
 
-test("D production update crosses writable intent/dispatch lifecycle and ReliableRemoteMutationPort, never raw GoogleDrivePort.update", async () => {
+test("D production update stops at effect-verified until authoritative canonical commit occurs", async () => {
   let raw = 0; const log: string[] = []; const store = new WritableAuthorityStore(); const legacy = realExecutor({ onRawUpdate: () => { raw += 1; } });
   const adapter = createAuthoritativeProductExecutor(legacy, store, stateStore() as never, stateContext, managedRemote, { reliableRemoteMutationPort: reliableRemote(log) });
   const result = await adapter.execute(executable());
   assert.equal(result.status, "durable-verified-success"); assert.equal(raw, 0); assert.deepEqual(log, ["reserve-update-candidate", "updateExisting"]);
   const stages = store.saves.flatMap(saved => saved.operationIntents.flatMap(intent => intent.effects.map(effect => effect.stage)));
-  assert.equal(stages.includes("intent-persisted"), true); assert.equal(stages.includes("dispatch-authorized"), true); assert.equal(stages.includes("effect-verified"), true); assert.equal(stages.includes("state-committed"), true);
+  assert.equal(stages.includes("intent-persisted"), true); assert.equal(stages.includes("dispatch-authorized"), true); assert.equal(stages.includes("effect-verified"), true);
+  assert.equal(stages.includes("state-committed"), false, "executor cannot persist state-committed before canonical BASE/state commit");
+  assert.equal(store.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
   const dispatchSave = store.saves.find(saved => saved.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "dispatch-authorized")));
   assert.ok(dispatchSave, "dispatch-authorized must be durably saved before updateExisting returns control");
 });
