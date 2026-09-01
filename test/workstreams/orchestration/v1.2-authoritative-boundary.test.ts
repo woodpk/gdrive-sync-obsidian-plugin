@@ -125,11 +125,7 @@ function planned(remote = "remote:a"): PlannedOperation {
   };
 }
 
-function coordinator(executor = new RecordingAuthoritativeExecutor(), store = new MemoryAuthorityStore(), mappings = identityState()) {
-  return { coordinator: new AuthorityCompleteExecutionCoordinator(store, executor, new RecordingCommitter(), mappings, context), executor };
-}
-
-test("D authoritative coordinator never passes nominal authority markers to execution or commit", async () => {
+test("D authoritative coordinator never passes nominal authority markers and restores exact canonical state CAS", async () => {
   const executor = new RecordingAuthoritativeExecutor();
   const committer = new RecordingCommitter();
   const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
@@ -145,7 +141,16 @@ test("D authoritative coordinator never passes nominal authority markers to exec
     assert.equal(kinds.includes("base-authority"), true);
     assert.equal(kinds.includes("identity-authority"), true);
   }
-  assert.equal(committer.calls[0]?.expected, undefined, "legacy operation-level pending journals no longer supply physical-dispatch authority or a synthetic canonical commit revision");
+  assert.equal(committer.calls[0]?.expected, stateRevision("legacy:authority"), "final canonical BASE/state commit must CAS the exact pre-execution canonical revision");
+});
+
+test("D exact canonical CAS stale result is surfaced rather than silently committing", async () => {
+  const executor = new RecordingAuthoritativeExecutor();
+  const committer = new RecordingCommitter({ status: "stale-state", actualRevision: stateRevision("legacy:raced") });
+  const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
+  const result = await coordinator.executeOperation(planned());
+  assert.equal(result.status, "stale-state");
+  assert.equal(committer.calls[0]?.expected, stateRevision("legacy:authority"));
 });
 
 test("D operation self-assertion cannot manufacture identity authority without a durable mapping", () => {
