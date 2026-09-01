@@ -98,7 +98,7 @@ function conflictOperation(sequence: number): PlannedOperation {
     path: path("a.md"),
     destructive: false,
     preconditions: [],
-    reasons: [{ code: "remote-path-ambiguous", detail: "persisted path-local conflict remains unresolved" }],
+    reasons: [{ code: "remote-path-ambiguous", summary: "persisted path-local conflict remains unresolved" }],
   };
 }
 function controller(state: MutableStateStore, authority: WritableAuthority, reliable: ReliableRemoteChangePort, actualConflict = false) {
