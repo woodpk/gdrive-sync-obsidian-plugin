@@ -186,6 +186,31 @@ export class DurableEffectLifecycleCoordinator {
     return this.recordPhysicalResult(operationId, effectId, physical);
   }
 
+  /**
+   * Retire only an exact current-generation intent for which dispatch authority
+   * was never granted to any physical effect. This is the frozen restart
+   * directive for intent-persisted: discard the unattempted authorization record,
+   * then require ordinary planning/authority to decide whether work is still valid.
+   */
+  async retireUnattemptedIntent(operationId: string): Promise<DurableEffectLifecycleResult> {
+    const loaded = await this.authorityStore.loadAuthority();
+    if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
+    const intent = loaded.state.operationIntents.find(existing => String(existing.operationId) === operationId);
+    if (!intent) return { status: "recovery-required", reason: "unattempted intent not found" };
+    if (intent.semanticAuthority.generation !== loaded.state.semanticGeneration) {
+      return { status: "recovery-required", reason: "stale-generation intent cannot be silently retired as current authority" };
+    }
+    if (!intent.effects.length || intent.effects.some(effect => effect.stage !== "intent-persisted" || effect.verificationEvidenceRef !== undefined)) {
+      return { status: "recovery-required", reason: "only wholly unattempted intent-persisted effects may be retired" };
+    }
+    const candidate: SynchronizationAuthorityMetadataV1_1 = {
+      ...loaded.state,
+      operationIntents: loaded.state.operationIntents.filter(existing => String(existing.operationId) !== operationId),
+      localTransactions: loaded.state.localTransactions.filter(transaction => String(transaction.operationId) !== operationId),
+    };
+    return this.save(candidate, loaded.state);
+  }
+
   async markEffectStateCommitted(operationId: string, effectId: string, verificationEvidenceRef: string): Promise<DurableEffectLifecycleResult> {
     const loaded = await this.authorityStore.loadAuthority();
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
