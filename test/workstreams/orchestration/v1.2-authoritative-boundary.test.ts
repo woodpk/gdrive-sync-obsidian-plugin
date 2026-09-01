@@ -145,7 +145,7 @@ test("D authoritative coordinator never passes nominal authority markers to exec
     assert.equal(kinds.includes("base-authority"), true);
     assert.equal(kinds.includes("identity-authority"), true);
   }
-  assert.equal(committer.calls[0]?.expected, stateRevision("p:authority"));
+  assert.equal(committer.calls[0]?.expected, undefined, "legacy operation-level pending journals no longer supply physical-dispatch authority or a synthetic canonical commit revision");
 });
 
 test("D operation self-assertion cannot manufacture identity authority without a durable mapping", () => {
