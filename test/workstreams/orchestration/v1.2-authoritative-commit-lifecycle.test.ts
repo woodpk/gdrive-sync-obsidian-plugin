@@ -79,7 +79,7 @@ class MutableAuthority implements SynchronizationAuthorityStoreV1_1 {
     const attemptsStateCommit = candidate.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "state-committed"));
     if (attemptsStateCommit && this.failNextStateCommittedSave) {
       this.failNextStateCommittedSave = false;
-      return { status: "recovery-required", issues: [{ code: "invalid-operation-intent", detail: "simulated crash window after canonical commit" }] };
+      return { status: "recovery-required", issues: [{ code: "other-semantic-inconsistency", detail: "simulated crash window after canonical commit" }] };
     }
     this.saves += 1;
     const persistenceRevision = revision(`authority:${this.saves + 1}`) as PersistenceRevision;
