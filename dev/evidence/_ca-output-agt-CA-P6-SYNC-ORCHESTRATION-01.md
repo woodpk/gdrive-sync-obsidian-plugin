@@ -602,3 +602,106 @@ The repository-wide residual **30 failures / 25 cancellations** are outside the 
 Frozen-contract audit: compare `96b4541b15012ac4ce0d81243b73ef779efd343e -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains no `src/contracts/**` file changes. Direct rejected-head compare `5fe4571d6e444484c73929494bb7e5233172b0b3 -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains only the three Unit-1 source/test files listed above.
 
 Remaining known D dependency: **Supervisor D repair Unit 2 — durable restart routing. NOT STARTED in this unit.** Canonical D repair closure remains deferred until all serial D repair units pass independent review.
+
+# Workstream D repair Unit 2 — D-C11/D-C12 durable-intent restart recovery
+
+- Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`
+- Branch: `phase6-sync-orchestration-v1.2-continuation`
+- Unit-1 supervisor-approved input SHA: `bc5fdb1902539d7a870780435885b1cb351f312d`
+- Approved frozen foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+- Final Unit-2 source/test SHA before evidence: `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`
+- **D-C11 PASS.** Existing durable physical intent is discovered and routed before ordinary new-mutation validation/planning can reject the post-dispatch world. `intent-persisted` retires without dispatch; `dispatch-authorized`/`outcome-unknown` are observation/recovery-only; `effect-verified` never redispatches and must re-establish physical convergence before canonical completion; `state-committed` is idempotent.
+- **D-C12 PASS.** Restart receipts are reconstructed from persisted descriptors plus durable verification evidence. Current-plan content/identity is comparison/routing context only and cannot replace the persisted V1/reserved/candidate identity. Contradictory current identity or contradictory/malformed durable authority fails closed.
+
+## Exact restart-recovery ordering
+
+`load canonical + synchronization authority -> discover outstanding durable intent -> validate semantic generation + persisted descriptor integrity -> recover/observe each physical effect from persisted descriptor before ordinary new-mutation validation -> retain/obtain durable verification -> reconstruct VerifiedExecutionReceipt from durable effects -> establish current physical/logical convergence and canonical eligibility -> canonical CAS commit -> finalize durable effects to state-committed`
+
+Only when no recoverable intent exists does production use:
+
+`current plan -> exact authority -> ordinary current preconditions -> persist new intent -> dispatch`.
+
+The controller drains durable intents before fresh snapshot/planning, so a prior durable operation is recovered even when the new planner would produce a different operation, noop, conflict, or stale expected-absence result. Direct production-executor restart recovery stops at `effect-verified`; the existing `AuthorityCompleteExecutionCoordinator` remains the owner of canonical CAS commit and final `state-committed` transition.
+
+## D-C11/D-C12 proof points
+
+- Lost-response REMOTE file create: persisted `dispatch-authorized` + physical object already present bypasses the original expected-absence validation; no second create is dispatched; the exact first reserved remote object ID is retained.
+- REMOTE folder `outcome-unknown`: recovery uses `RemoteFolderCreateRecoveryReadPort` and frozen `verifyRemoteFolderCreate(...)`; no blind redispatch.
+- `effect-verified`: zero physical dispatch; current physical convergence is re-observed; divergence preserves the exact durable proof and returns recovery-required; converged effects remain eligible for canonical completion.
+- `state-committed`: zero physical dispatch and zero repeated semantic commit.
+- `intent-persisted`: no effect is assumed; unattempted intent is retired conservatively and current work must regain governing authority through planning.
+- Stale semantic generation or malformed/inconsistent descriptor/transaction authority: recovery-required; no silent discard or execution.
+- Persisted REMOTE file-create content V1 wins over a restart/current operation claiming V2. The actual canonical commit test uses the real `StateCommitCoordinator` and receives the reconstructed V1 receipt.
+- Persisted folder create identity is exactly `reservedRemoteObjectId`; folder receipt does not invent file-content evidence.
+- Persisted REMOTE update uses the durable immutable-candidate `candidateRemoteObjectId`, which propagates to canonical BASE/mapping.
+- Clean-merge recovery requires the complete durable effect set; missing verification blocks recovery.
+- Aggregate `verificationEvidenceRef` is deterministic from sorted persisted effect IDs, descriptors, semantic authority, and durable per-effect verification references.
+- A current operation that claims a contradictory REMOTE identity cannot overwrite persisted durable physical authority.
+
+## Unit-2 source/test manifest from approved Unit-1 head
+
+Created:
+- `src/product/authoritative-production-executor-base.ts`
+- `src/product/durable-intent-recovery-base.ts`
+- `src/product/durable-intent-recovery.ts`
+- `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`
+- `test/workstreams/orchestration/v1.2-effect-verified-convergence.test.ts`
+
+Modified:
+- `src/product/authoritative-production-executor.ts`
+- `src/product/operation-isolation.ts`
+- `src/product/product-controller.ts`
+- `test/phase6-d-orchestration-v1.2.test.ts`
+
+Deleted: none.
+
+No `src/contracts/**`, planner semantic-operation-ID logic, protected branch, or another worker-owned production implementation changed.
+
+## Final source/test verification
+
+Strongest verified source/test gate:
+
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Run: `33514787893`
+- Job: `99878968796`
+- Source/test head: `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`
+- Artifact ID: `9803128660`
+- Artifact name: `phase6-oauth-housekeeping-verification`
+- Artifact digest: `sha256:1537cf3704d6d6c96c91697152973e087989e041769203c8c91f0b420d8c0587`
+
+Workflow steps: typecheck PASS; full-test step green; focused callback/diagnostic/OAuth/export PASS; production build PASS; full repository-check step green; `git diff --check` PASS; artifact identity/upload PASS.
+
+Because `npm test | tee` and `npm run check | tee` do not use `pipefail`, the green workflow steps were not accepted as sufficient evidence. The uploaded raw `full-tests.tap` and `check.log` were directly inspected.
+
+Raw final repository counts:
+- tests: **500**
+- pass: **442**
+- fail: **33**
+- cancelled: **25**
+- skipped: **0**
+- todo: **0**
+
+All **79 D-prefixed tests are PASS**. The D top-level Unit-2 block tests **423–456** is clean. Unit-2 D-C11/D-C12 tests **448–456 are 9/9 PASS**. Unit-1 D-C10 tests **441–447 remain 7/7 PASS**. D-C6 through D-C9 lifecycle/restart coverage in tests **429–440 remains PASS**.
+
+The residual 33 failures/25 cancellations are outside the D-prefixed block and remain cross-workstream/legacy composition dependencies. They are not permission to weaken D's fail-closed authority/recovery behavior. Remaining integration work is to compose the approved Workstream A frozen mutation/recovery ports with Workstream C writable synchronization-authority persistence and migrate legacy cross-workstream fixtures/constructions at their owning/integration surface.
+
+## Frozen-boundary and PR audit
+
+- Compare `96b4541b15012ac4ce0d81243b73ef779efd343e -> c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3` contains no `src/contracts/**` changes: **PASS — frozen contracts byte-identical by Git object history**.
+- No A/B/C/E/F/G worker branch was consumed.
+- No `phase6-integration`, `master`, or `main` modification.
+- No OAuth/Azure/Drive-scope change.
+- No release/tag or Stage 3 work.
+- PR #42 at source/test closure: OPEN, DRAFT, UNMERGED; base `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a`; head `phase6-sync-orchestration-v1.2-continuation @ c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`.
+
+## Unavailable physical/live checks
+
+- Physical Windows synchronization: `NOT AVAILABLE IN THIS SESSION`
+- Physical iPhone/iOS synchronization: `NOT AVAILABLE IN THIS SESSION`
+- Live production Google Drive mutation/recovery: `NOT AVAILABLE IN THIS SESSION`
+
+## Cumulative D repair status
+
+**D-C1 through D-C12 PASS within Workstream D ownership.** This is a coding-agent completion/evidence statement only. It does **not** claim independent supervisor approval, cross-workstream integration completion, PR merge, Phase 6 completion, or Stage 3 completion.
+
+The exact final evidence-bearing branch SHA is resolved after the canonical evidence append and reported externally because a content-addressed commit cannot self-contain its own resulting SHA.
