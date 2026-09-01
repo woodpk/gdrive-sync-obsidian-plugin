@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type GoogleDrivePort, type LocalVaultPort, type PersistenceRevision, type RecoverableOperationIntentV1_1, type RemoteEntry, type RemoteObjectId, type StateRevision, type SynchronizationAuthorityMetadataV1_1, type SynchronizationAuthoritySaveResult, type SynchronizationAuthorityStoreV1_1, type TrustedSynchronizationState, type VaultPath } from "../../../src/contracts";
+import { StateCommitCoordinator } from "../../../src/core/commit-coordinator";
+import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/execution-coordinator";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
 import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "../../../src/product/durable-intent-recovery";
@@ -83,9 +85,9 @@ function executable(content: any = v2, claimed?: RemoteObjectId) { return { oper
 
 test("D-C11 lost-response create bypasses stale expected-absence and D-C12 keeps persisted V1", async () => {
   const canonical = new CanonicalStore(); const authority = new AuthorityStore([createIntent()]); const f = fixture(canonical, () => [entry()]); const adapter = createAuthoritativeProductExecutor(f.executor, authority, canonical as never, context, managedRemote);
-  assert.equal((await adapter.validatePreconditions(executable())).status, "valid"); const result = await adapter.execute(executable()); assert.equal(result.status, "durable-verified-success");
-  if (result.status === "durable-verified-success") { assert.equal(result.receipt.resultingRemoteObjectId, reserved); assert.equal(result.receipt.evidence?.hash, h1); }
-  assert.equal(f.raw(), 0); assert.equal(canonical.value.base[0]?.content?.hash, h1); assert.equal(canonical.value.base[0]?.remoteObjectId, reserved); assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed");
+  assert.equal((await adapter.validatePreconditions(executable())).status, "valid");
+  const coordinated = await new AuthorityCompleteExecutionCoordinator(authority, adapter, new StateCommitCoordinator(canonical as never, context), canonical as never, context).executeOperation(executable());
+  assert.equal(coordinated.status, "committed"); assert.equal(f.raw(), 0); assert.equal(canonical.value.base[0]?.content?.hash, h1); assert.equal(canonical.value.base[0]?.remoteObjectId, reserved); assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed");
 });
 
 test("D-C11 outcome-unknown folder uses frozen recovery reader with no blind redispatch", async () => {
