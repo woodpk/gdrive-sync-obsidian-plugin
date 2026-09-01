@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { LocalLifecycleEvent, LocalVaultChange, Unsubscribe } from "../src/contracts";
+import {
+  CoreRunCoordinator,
+  consumeDeferredReconciliationAcrossLifecycle,
+  enterSynchronizationLifecycle,
+  type RunLease,
+  type RunLeasePort,
+} from "../src/core/run-coordinator";
 import { ProductSyncScheduler, type AutomaticSyncSettings } from "../src/product/scheduler";
 
 interface Harness {
@@ -68,6 +75,8 @@ function settings(overrides: Partial<AutomaticSyncSettings> = {}): AutomaticSync
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 }
 
 test("disabled local-change automatic synchronization ignores local events without deferring or scheduling a pass", async () => {
@@ -93,7 +102,7 @@ test("disabled local-change automatic synchronization ignores local events witho
   }
 });
 
-test("Phase5 scenario 31 local-change debounce coalesces repeated events into one automatic pass", async () => {
+test("Phase5 scenario 31 local-change debounce coalesces repeated events into one scheduler-owned automatic pass", async () => {
   const originalSetTimeout = globalThis.setTimeout;
   const originalClearTimeout = globalThis.clearTimeout;
   const callbacks = new Map<number, () => void>();
@@ -111,7 +120,7 @@ test("Phase5 scenario 31 local-change debounce coalesces repeated events into on
     h.scheduler.start();
     h.emitChange({ kind: "modified", path: "a.md" as never });
     h.emitChange({ kind: "modified", path: "a.md" as never });
-    assert.equal(h.noteChangeCalls.length, 2);
+    assert.equal(h.noteChangeCalls.length, 0, "watcher follow-up is scheduler-owned rather than recursive controller deferral");
     assert.equal(callbacks.size, 1);
     const callback = [...callbacks.values()][0];
     assert.ok(callback);
@@ -219,7 +228,7 @@ test("active recovery keeps scheduler startup automatic ineligible", async () =>
   h.scheduler.stop();
 });
 
-test("duplicate ready is suppressed while resume opportunities are delegated to central controller coordination", async () => {
+test("rapid ready/resume burst coalesces and preserves one future reconciliation while a run is active", async () => {
   const releases: Array<() => void> = [];
   const h = harness(
     () => settings(),
@@ -228,15 +237,19 @@ test("duplicate ready is suppressed while resume opportunities are delegated to 
   );
 
   h.scheduler.start();
+  await flushMicrotasks();
   assert.deepEqual(h.calls, ["startup-resume"]);
   h.emitLifecycle({ kind: "vault-ready" });
   h.emitLifecycle({ kind: "resume" });
   h.emitLifecycle({ kind: "resume" });
   h.emitLifecycle({ kind: "resume" });
   await flushMicrotasks();
-  assert.deepEqual(h.calls, ["startup-resume", "startup-resume", "startup-resume", "startup-resume"]);
+  assert.deepEqual(h.calls, ["startup-resume"], "burst is coalesced while the active opportunity is outstanding");
 
-  for (const release of releases.splice(0)) release();
+  releases.shift()?.();
+  await flushMicrotasks();
+  assert.deepEqual(h.calls, ["startup-resume", "startup-resume"], "one later reconciliation survives the burst");
+  releases.shift()?.();
   await flushMicrotasks();
   h.scheduler.stop();
 });
@@ -249,4 +262,126 @@ test("Phase5 scenario 50 unload requests cancellation and scheduler teardown is 
   assert.deepEqual(h.requests, ["cancel-active-sync"]);
   assert.deepEqual(h.calls, []);
   h.scheduler.stop();
+});
+
+test("suspension during awaited lease acquisition releases the late lease without run authority", async () => {
+  enterSynchronizationLifecycle("active");
+  let resolveAcquire: ((lease: RunLease) => void) | undefined;
+  let releases = 0;
+  const port: RunLeasePort = { tryAcquire: async () => new Promise<RunLease>(resolve => { resolveAcquire = resolve; }) };
+  const runs = new CoreRunCoordinator("vault:lifecycle" as never, "device:lifecycle" as never, port, "holder");
+  const pending = runs.beginRun();
+  await Promise.resolve();
+  enterSynchronizationLifecycle("suspending");
+  resolveAcquire?.({ release: async () => { releases += 1; } });
+  assert.equal((await pending).status, "stopping");
+  assert.equal(releases, 1);
+  assert.equal(runs.canStartNextOperation(), false);
+  enterSynchronizationLifecycle("active");
+});
+
+test("concurrent begin requests serialize before lease acquisition and preserve one follow-up fact", async () => {
+  enterSynchronizationLifecycle("active");
+  let resolveAcquire: ((lease: RunLease) => void) | undefined;
+  let acquisitions = 0;
+  const port: RunLeasePort = { tryAcquire: async () => { acquisitions += 1; return new Promise<RunLease>(resolve => { resolveAcquire = resolve; }); } };
+  const runs = new CoreRunCoordinator("vault:lifecycle" as never, "device:lifecycle" as never, port, "holder");
+  const first = runs.beginRun();
+  await Promise.resolve();
+  assert.equal((await runs.beginRun()).status, "already-running");
+  assert.equal(acquisitions, 1);
+  resolveAcquire?.({ release: async () => undefined });
+  assert.equal((await first).status, "started");
+  assert.deepEqual(await runs.finishRun(), { reconcileAgain: true });
+});
+
+test("stopping state blocks subsequent operations and retains deferred reconciliation for resume", async () => {
+  enterSynchronizationLifecycle("active");
+  const runs = new CoreRunCoordinator(
+    "vault:lifecycle" as never,
+    "device:lifecycle" as never,
+    { tryAcquire: async () => ({ release: async () => undefined }) },
+    "holder",
+  );
+  assert.equal((await runs.beginRun()).status, "started");
+  runs.noteLocalOrRemoteChangeDuringRun();
+  enterSynchronizationLifecycle("suspending");
+  assert.equal(runs.canStartNextOperation(), false);
+  assert.equal(runs.isCancellationRequested(), true);
+  assert.deepEqual(await runs.finishRun(), { reconcileAgain: false });
+  assert.equal(consumeDeferredReconciliationAcrossLifecycle(), true);
+  enterSynchronizationLifecycle("active");
+});
+
+test("cooperative cancellation signal is observable exactly once", async () => {
+  enterSynchronizationLifecycle("active");
+  const runs = new CoreRunCoordinator(
+    "vault:lifecycle" as never,
+    "device:lifecycle" as never,
+    { tryAcquire: async () => ({ release: async () => undefined }) },
+    "holder",
+  );
+  assert.equal((await runs.beginRun()).status, "started");
+  const signal = runs.cancellationSignal();
+  let delivered = 0;
+  signal.onCancellation(() => { delivered += 1; });
+  runs.requestCancellation();
+  runs.requestCancellation();
+  assert.equal(signal.cancelled, true);
+  assert.equal(delivered, 1);
+  assert.equal(runs.canStartNextOperation(), false);
+  await runs.finishRun();
+});
+
+test("periodic active-app policy consumes cache-bypassing integrity evidence even without a watcher event", async () => {
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  const intervals = new Map<number, () => void>();
+  let next = 1;
+  globalThis.setInterval = (((callback: (...args: unknown[]) => void) => {
+    const id = next++;
+    intervals.set(id, () => callback());
+    return id;
+  }) as unknown) as typeof globalThis.setInterval;
+  globalThis.clearInterval = (((id: ReturnType<typeof globalThis.setInterval>) => { intervals.delete(Number(id)); }) as unknown) as typeof globalThis.clearInterval;
+  try {
+    let lifecycleListener: (event: LocalLifecycleEvent) => void = () => undefined;
+    let bypassReads = 0;
+    const local = {
+      onChange: (_listener: (change: LocalVaultChange) => void): Unsubscribe => () => undefined,
+      onLifecycle(listener: typeof lifecycleListener): Unsubscribe { lifecycleListener = listener; return () => undefined; },
+      enumerate: async () => ({
+        entries: [{ status: "present", side: "local", path: "missed.md", entityKind: "file", stability: "stable", content: { hash: "cached-h0" } }],
+        completeness: { status: "complete" },
+      }),
+      readFileBypassingEvidenceCache: async () => {
+        bypassReads += 1;
+        return { content: new Uint8Array([1]), evidence: { hash: "actual-h1" }, stability: "stable" };
+      },
+    } as never;
+    const calls: string[] = [];
+    const controller = {
+      runAutomatic: async (trigger: string) => { calls.push(trigger); },
+      request: async () => ({ status: "accepted" as const }),
+      noteChangeDuringRun: () => undefined,
+    } as never;
+    const scheduler = new ProductSyncScheduler(local, controller, () => settings({ localChangeEnabled: true, periodicEnabled: true }));
+    scheduler.start();
+    assert.equal(intervals.size, 1);
+    [...intervals.values()][0]?.();
+    await flushMicrotasks();
+    assert.equal(bypassReads, 1);
+    assert.deepEqual(calls, ["local-change"]);
+
+    lifecycleListener({ kind: "suspend" });
+    await flushMicrotasks();
+    const readsAtSuspend = bypassReads;
+    for (const callback of intervals.values()) callback();
+    await flushMicrotasks();
+    assert.equal(bypassReads, readsAtSuspend, "periodic work is active-app only and makes no iOS background promise");
+    scheduler.stop();
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
+  }
 });
