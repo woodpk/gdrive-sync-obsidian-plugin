@@ -32,8 +32,12 @@ function baseAuthorityPath(operation: PlannedOperation) {
   return operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : operation.path;
 }
 
-function identityAuthorityPath(operation: PlannedOperation, nominalPath: PlannedOperation["path"]) {
-  return operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : nominalPath;
+function operationRequiresIdentityAuthority(operation: PlannedOperation): boolean {
+  return ["upload-update", "trash-remote", "identity-preserving-move", "clean-text-merge"].includes(operation.kind);
+}
+
+function identityAuthorityPath(operation: PlannedOperation) {
+  return operation.kind === "identity-preserving-move" && operation.fromPath ? operation.fromPath : operation.path;
 }
 
 function uniqueTrustedIdentityMapping(
@@ -46,7 +50,12 @@ function uniqueTrustedIdentityMapping(
   const byId = mappings.filter(mapping => mapping.remoteObjectId === expectedRemoteObjectId);
   if (byPath.length !== 1 || byId.length !== 1) return undefined;
   const mapping = byPath[0];
-  return mapping && mapping.remoteObjectId === expectedRemoteObjectId && byId[0]?.path === path ? mapping : undefined;
+  return mapping
+    && mapping.remoteObjectId === expectedRemoteObjectId
+    && byId[0]?.path === path
+    && byId[0]?.remoteObjectId === mapping.remoteObjectId
+    ? mapping
+    : undefined;
 }
 
 function physicalOperation(operation: PlannedOperation): boolean {
@@ -149,6 +158,7 @@ export function resolveAuthorityCompleteOperation(
   trustedRemoteMappings: readonly RemoteObjectMapping[] = [],
 ): AuthorityResolutionResult {
   const preconditions: ExecutableOperationPrecondition[] = [];
+  const requiresIdentity = operationRequiresIdentityAuthority(operation);
   for (const precondition of operation.preconditions) {
     if (precondition.kind === "base-trusted") {
       const authorityPath = baseAuthorityPath(operation);
@@ -161,25 +171,32 @@ export function resolveAuthorityCompleteOperation(
       continue;
     }
     if (precondition.kind === "identity-unambiguous") {
-      const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
-      const authorityPath = identityAuthorityPath(operation, precondition.path);
-      const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
-      if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
-        return { status: "incomplete-authority", reason: `current-generation path authority unavailable for ${String(authorityPath)}` };
-      }
-      const mapping = uniqueTrustedIdentityMapping(authorityPath, expectedRemoteObjectId, trustedRemoteMappings);
-      if (!mapping) return { status: "incomplete-authority", reason: `unique trusted remote identity mapping unavailable for ${String(authorityPath)}` };
-      const proof: IdentityAuthorityProof = {
-        generation: authority.semanticGeneration,
-        status: "unique",
-        path: mapping.path,
-        remoteObjectId: mapping.remoteObjectId,
-      };
-      preconditions.push({ kind: "identity-authority", proof });
+      continue;
+    }
+    if (requiresIdentity && precondition.kind === "identity-authority") {
       continue;
     }
     preconditions.push(precondition);
   }
+
+  if (requiresIdentity) {
+    const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+    const authorityPath = identityAuthorityPath(operation);
+    const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
+    if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
+      return { status: "incomplete-authority", reason: `current-generation path authority unavailable for ${String(authorityPath)}` };
+    }
+    const mapping = uniqueTrustedIdentityMapping(authorityPath, expectedRemoteObjectId, trustedRemoteMappings);
+    if (!mapping) return { status: "incomplete-authority", reason: `unique trusted remote identity mapping unavailable for ${String(authorityPath)}` };
+    const proof: IdentityAuthorityProof = {
+      generation: authority.semanticGeneration,
+      status: "unique",
+      path: mapping.path,
+      remoteObjectId: mapping.remoteObjectId,
+    };
+    preconditions.push({ kind: "identity-authority", proof });
+  }
+
   return { status: "ready", operation: { ...operation, authorityComplete: true, preconditions } };
 }
 
@@ -216,7 +233,7 @@ export class AuthorityCompleteExecutionCoordinator {
       return this.complete(operation, { status: "recovery-required", reason: "trusted canonical synchronization state is unavailable for exact commit CAS" });
     }
     const expectedStateRevision: StateRevision = canonicalAtStart.state.stateRevision;
-    const mappings = operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous")
+    const mappings = operationRequiresIdentityAuthority(operation)
       ? canonicalAtStart.state.remoteMappings
       : [];
 
