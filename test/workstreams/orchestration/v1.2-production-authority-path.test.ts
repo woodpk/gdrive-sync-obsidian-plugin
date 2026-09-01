@@ -14,7 +14,6 @@ import {
   type PlanId,
   type PlannedOperation,
   type ReliableRemoteMutationPort,
-  type RemoteMutationIdentity,
   type RemoteObjectId,
   type StateLoadContext,
   type StateRevision,
@@ -129,7 +128,7 @@ function reliableRemote(log: string[]): ReliableRemoteMutationPort {
       assert.equal(identity.kind, "existing-file-content-update");
       assert.equal(identity.remoteObjectId, expectedRemoteId);
       assert.equal(identity.candidateRemoteObjectId, candidateRemoteId);
-      return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId, predecessorRemoteObjectId: expectedRemoteId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [expectedRemoteId, candidateRemoteId] } };
+      return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: candidateRemoteId, predecessorRemoteObjectId: expectedRemoteId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [expectedRemoteId, candidateRemoteId] } };
     },
     async moveExisting() { throw new Error("not used"); }, async trashExisting() { throw new Error("not used"); },
   };
