@@ -308,3 +308,78 @@ Canonical `dev/evidence/_ca-output.md` has **not** been modified by H at this ch
 ## Current disposition
 
 `TURN PAUSED BY SUPERVISOR — INTEGRATION NOT COMPLETE`
+
+## H-U1 — PRODUCTION COMPOSITION
+
+### Entry / boundary verification
+
+- H-U1 entry branch head: `3ecbc6993dedf58284b443cfcc1925f71d3c1b70`.
+- Required checkpoint `ef4af05ff349c631960a08d7b71f43a90109766c` was confirmed in branch ancestry before editing.
+- Semantic checkpoint immediately beneath that evidence commit: `034c2165f8edca198c9ceda09e7cce716c9b0660`.
+- Frozen Phase 6 v1.2 foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`.
+- Entry `src/contracts/**` tree SHA: `4deb82e382f7957c731ef78db52b4164571d57a3`, identical to the foundation.
+- The H checkpoint evidence file was read in full and the actual production composition root (`src/product/runtime.ts`) plus D controller seams were inspected before editing.
+
+### Production files changed
+
+- `src/product/runtime.ts`
+- `src/product/phase6-sync-integration.ts`
+
+`src/product/product-controller.ts` required no modification. `src/contracts/**` was not modified.
+
+### Exact production composition decisions
+
+1. **C -> D writable state/authority:** runtime now constructs C's real `PersistentSynchronizationStateStore`, wraps it with H's `IntegratedSynchronizationStateStore`, and supplies that same C-backed H store as D's `stateStore` and `authorityStore`, to the production executor, and to snapshot assembly. H preserves C's separate `persistenceRevision` and `semanticGeneration`; state writes continue through C CAS/validation rather than a parallel or read-only store.
+2. **A -> D reliable REMOTE seams:** runtime supplies the approved production `GoogleDriveAdapter` (`this.boundary.drive`) as D's `ReliableRemoteMutationPort`, `RemoteFolderCreateRecoveryReadPort`, and `ProductSnapshotAssembler` reliable Changes port. Incremental Changes therefore uses A's production reliable Changes implementation rather than the legacy/default absence path.
+3. **B -> D crash-safe LOCAL mutation:** runtime constructs `IntegratedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope)`, which delegates to B's `ObsidianLocalMutationTransactions` and preserves H's logical-to-physical mapping, including portable configuration paths. That transaction backend is attached to `CanonicalEvidenceLocalVault`, and the canonical local object is supplied to D's local transactional seam.
+4. **D -> C durability:** because D's state and authority seams, executor, recovery dependencies, learned-remote-batch path, and canonical commit path share the same `IntegratedSynchronizationStateStore`, durable operation intents, physical-effect stages, learned batches, authority writes, and canonical state transitions resolve to C's real durable authority document instead of D's read-only/default authority fallback.
+5. **E lifecycle integrity:** the runtime scheduler continues to receive `CanonicalEvidenceLocalVault`, whose B-approved `readFileBypassingEvidenceCache()` surface remains structurally visible. E's scheduler already detects and invokes this cache-bypassing seam; no redundant integration API was added.
+6. **F merge path:** the existing `ProductTextVersionStore` + `ThreeWayConflictResolver` composition was preserved unchanged. H-U1 did not alter F semantics.
+
+### H-U1 commits
+
+- `35ebe01f12ea5712b1a27a3f1150cf8c8347e46a` — `integrate(H-U1): compose production synchronization seams`
+- `58ba4799987208e728c645d30f8cdd5e558d0120` — `fix(H-U1): make revision-domain conversion explicit`
+
+The second commit corrected an H-owned TypeScript branded-revision compatibility error found by verification. It changes only the explicit compile-time conversion of a legacy `StateRevision`-domain value into C's `PersistenceRevision` domain by routing the cast through `unknown`; it does not change C worker semantics or frozen contracts.
+
+### Verification
+
+The local execution sandbox could not clone/install from GitHub because outbound DNS resolution was unavailable (`Could not resolve host: github.com`). To obtain a dependency-capable deterministic execution environment without merging anything, H opened verification-only **draft PR #45**, titled `DO NOT MERGE — H-U1 production composition verification only`, from `phase6-sync-integration-h` to `phase6-integration`. The PR remains verification-only and must not be merged.
+
+First verification run:
+
+- Workflow run: `33549895800`
+- Job: `99996479353`
+- `npm ci`: succeeded.
+- `npm run typecheck`: failed with H-owned `TS2352` branded-conversion diagnostics at `src/product/phase6-sync-integration.ts` lines 283 and 350.
+- Subsequent workflow steps were skipped by the workflow after that failure.
+- The H-owned defect was corrected in `58ba4799987208e728c645d30f8cdd5e558d0120`.
+
+Successful verification run against source/test completion SHA `58ba4799987208e728c645d30f8cdd5e558d0120`:
+
+- Workflow run: `33550259731`
+- Job: `99997666103`
+- `npm ci`: **success**.
+- `npm run typecheck`: **success**.
+- `npm run build`: **success**.
+- `git diff --check`: **success**.
+- The repository workflow also completed its existing `npm test` and `npm run check` steps successfully. Those broader executions are incidental evidence only; H-U1 did not begin the H-U4 full-suite failure-classification task.
+- No separate narrower focused-test command was available in the existing workflow without changing CI. No H-I1 through H-I8 tests were started in this unit.
+
+### Frozen-contract result
+
+At source/test completion SHA `58ba4799987208e728c645d30f8cdd5e558d0120`, the `src/contracts/**` tree SHA is still exactly:
+
+`4deb82e382f7957c731ef78db52b4164571d57a3`
+
+This is byte-identical at the tree level to frozen foundation `96b4541b15012ac4ce0d81243b73ef779efd343e`. No `src/contracts/**` file was changed by H-U1.
+
+### Completion state
+
+- Source/test completion SHA: `58ba4799987208e728c645d30f8cdd5e558d0120`.
+- Production now constructs the real C-backed writable authority/state path, A reliable REMOTE seams including incremental Changes, and B crash-safe LOCAL transactional seam instead of relying on D's fail-closed defaults.
+- E cache-bypass integrity composition is preserved and F merge composition is unchanged.
+- Unresolved H-U1 blocker: **none**.
+- Canonical `dev/evidence/_ca-output.md` remains untouched.
+- H-U2 has **not** been started.
