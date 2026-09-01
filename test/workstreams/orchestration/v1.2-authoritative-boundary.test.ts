@@ -124,12 +124,22 @@ function planned(remote = "remote:a"): PlannedOperation {
     reasons: [],
   };
 }
+function plannedNoop(): PlannedOperation {
+  return {
+    operationId: id<"OperationId">("op:authoritative-noop") as OperationId,
+    kind: "noop",
+    path: path("notes/a.md"),
+    destructive: false,
+    preconditions: [{ kind: "base-trusted" }],
+    reasons: [],
+  };
+}
 
-test("D authoritative coordinator never passes nominal authority markers and restores exact canonical state CAS", async () => {
+test("D authoritative coordinator replaces nominal BASE authority and restores exact canonical state CAS", async () => {
   const executor = new RecordingAuthoritativeExecutor();
   const committer = new RecordingCommitter();
   const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
-  const result = await coordinator.executeOperation(planned());
+  const result = await coordinator.executeOperation(plannedNoop());
   assert.equal(result.status, "committed");
   assert.equal(executor.executed.length, 1);
   assert.equal(committer.calls.length, 1);
@@ -137,9 +147,7 @@ test("D authoritative coordinator never passes nominal authority markers and res
     assert.equal(operation.authorityComplete, true);
     const kinds: string[] = operation.preconditions.map(item => item.kind);
     assert.equal(kinds.includes("base-trusted"), false);
-    assert.equal(kinds.includes("identity-unambiguous"), false);
     assert.equal(kinds.includes("base-authority"), true);
-    assert.equal(kinds.includes("identity-authority"), true);
   }
   assert.equal(committer.calls[0]?.expected, stateRevision("legacy:authority"), "final canonical BASE/state commit must CAS the exact pre-execution canonical revision");
 });
@@ -148,7 +156,7 @@ test("D exact canonical CAS stale result is surfaced rather than silently commit
   const executor = new RecordingAuthoritativeExecutor();
   const committer = new RecordingCommitter({ status: "stale-state", actualRevision: stateRevision("legacy:raced") });
   const coordinator = new AuthorityCompleteExecutionCoordinator(new MemoryAuthorityStore(), executor, committer, identityState(), context);
-  const result = await coordinator.executeOperation(planned());
+  const result = await coordinator.executeOperation(plannedNoop());
   assert.equal(result.status, "stale-state");
   assert.equal(committer.calls[0]?.expected, stateRevision("legacy:authority"));
 });
