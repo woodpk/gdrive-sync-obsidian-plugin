@@ -2,6 +2,7 @@ import type {
   AuthoritativeSuccessCommitter,
   CommitResult,
   ExecutionResult,
+  OperationPrecondition,
   PlannedOperation,
   PreconditionValidationResult,
   StateRevision,
@@ -11,7 +12,8 @@ import type { StateCommitCoordinator } from "./commit-coordinator";
 
 export type CoordinatedExecutionResult =
   | { readonly status: "committed"; readonly commit: Extract<CommitResult, { status: "committed" }> }
-  | { readonly status: "stale-precondition" | "blocked" | "recovery-required" | "cancelled" | "retryable-failure" | "uncertain"; readonly reason: string }
+  | { readonly status: "stale-precondition"; readonly reason: string; readonly failed?: readonly OperationPrecondition[] }
+  | { readonly status: "blocked" | "recovery-required" | "cancelled" | "retryable-failure" | "uncertain"; readonly reason: string }
   | { readonly status: "stale-state"; readonly actualRevision?: StateRevision };
 
 export type ExecutionLifecycleStage =
@@ -22,6 +24,9 @@ export type ExecutionLifecycleStage =
   | "pending-journal-start"
   | "pending-journal-complete"
   | "pending-journal-failed"
+  | "pending-journal-discard-start"
+  | "pending-journal-discard-complete"
+  | "pending-journal-discard-failed"
   | "content-mutation-start"
   | "content-mutation-complete"
   | "content-mutation-failed"
@@ -31,7 +36,7 @@ export type ExecutionLifecycleStage =
   | "state-commit-complete"
   | "state-commit-failed"
   | "operation-complete";
-export type ExecutionLifecycleObserver = (operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string, error?: unknown) => void;
+export type ExecutionLifecycleObserver = (operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string, error?: unknown, failedPreconditions?: readonly OperationPrecondition[]) => void;
 
 /**
  * Phase-2 ordering policy for one planned operation.
@@ -57,7 +62,7 @@ export class CrashSafeExecutionCoordinator {
     this.observe(operation, "operation-precondition-validated", preconditions.status);
     const preconditionResult = this.mapPreconditionFailure(preconditions);
     if (preconditionResult) {
-      this.observe(operation, "operation-precondition-validation-failed", preconditionResult.status);
+      this.observe(operation, "operation-precondition-validation-failed", preconditionResult.status, undefined, preconditions.status === "stale" ? preconditions.failed : undefined);
       return this.complete(operation, preconditionResult);
     }
 
@@ -96,7 +101,18 @@ export class CrashSafeExecutionCoordinator {
       return this.complete(operation, { status: "recovery-required", reason: committed.reason });
     }
 
-    this.observe(operation, "content-mutation-failed", execution.status);
+    this.observe(operation, "content-mutation-failed", execution.status, undefined, execution.status === "stale-precondition" ? execution.failed : undefined);
+    if (execution.status === "stale-precondition") {
+      this.observe(operation, "pending-journal-discard-start");
+      let discarded: CommitResult;
+      try { discarded = await this.journal.discardPending(operation, pending.newStateRevision); }
+      catch (error) { this.observe(operation, "pending-journal-discard-failed", "threw", error); throw error; }
+      this.observe(operation, "pending-journal-discard-complete", discarded.status);
+      if (discarded.status === "committed") return this.complete(operation, { status: "stale-precondition", reason: execution.reason, failed: execution.failed });
+      this.observe(operation, "pending-journal-discard-failed", discarded.status);
+      if (discarded.status === "stale-state") return this.complete(operation, { status: "stale-state", actualRevision: discarded.actualRevision });
+      return this.complete(operation, { status: "recovery-required", reason: discarded.reason });
+    }
     if (execution.status === "uncertain") {
       let marked: CommitResult;
       try { marked = await this.journal.markUncertain(operation, pending.newStateRevision); }
@@ -119,13 +135,13 @@ export class CrashSafeExecutionCoordinator {
     this.observe(operation, "operation-complete", result.status);
     return result;
   }
-  private observe(operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string, error?: unknown): void {
-    try { this.observer?.(operation, stage, result, error); } catch { /* Diagnostics must never influence synchronization. */ }
+  private observe(operation: PlannedOperation, stage: ExecutionLifecycleStage, result?: string, error?: unknown, failedPreconditions?: readonly OperationPrecondition[]): void {
+    try { this.observer?.(operation, stage, result, error, failedPreconditions); } catch { /* Diagnostics must never influence synchronization. */ }
   }
 
   private mapPreconditionFailure(result: PreconditionValidationResult): CoordinatedExecutionResult | undefined {
     if (result.status === "valid") return undefined;
-    if (result.status === "stale") return { status: "stale-precondition", reason: "planned operation preconditions changed; affected work must be re-planned" };
+    if (result.status === "stale") return { status: "stale-precondition", reason: "planned operation preconditions changed; affected work must be re-planned", failed: result.failed };
     if (result.status === "blocked") return { status: "blocked", reason: result.reason };
     return { status: "recovery-required", reason: result.reason };
   }

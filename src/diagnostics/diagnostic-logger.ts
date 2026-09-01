@@ -67,6 +67,9 @@ export type DiagnosticFieldKey =
   | "operationKind"
   | "direction"
   | "preconditionCount"
+  | "failedPreconditionCount"
+  | "failedPreconditionKinds"
+  | "failedPreconditionSides"
   | "conflictCount"
   | "blockedCount"
   | "attentionCount"
@@ -146,7 +149,7 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "transactionPrepared", "scopeExact", "deviceIdentityPresent", "vaultIdentityPresent", "remoteRootPresent",
   "storeReady", "asyncBoundary", "codePresent", "statePresent", "errorPresent", "count", "retentionLimit", "enabled",
   "runMode", "trigger", "planDisposition", "stateStatus", "localCount", "remoteCount", "snapshotCount",
-  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "conflictCount", "blockedCount", "attentionCount", "skippedCount", "safeCommittedCount", "attentionReasonCodes",
+  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "failedPreconditionCount", "failedPreconditionKinds", "failedPreconditionSides", "conflictCount", "blockedCount", "attentionCount", "skippedCount", "safeCommittedCount", "attentionReasonCodes",
   "destructiveCount", "uploadCount", "downloadCount", "moveCount", "trashCount", "noopCount",
   "localCompleteness", "remoteCompleteness", "reviewed", "reconstruction", "cursorPresent",
 ]);

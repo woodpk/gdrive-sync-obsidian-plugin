@@ -53,8 +53,9 @@ The repair process MUST follow these principles.
 6. **Use waves when dependencies exist.** A group that consumes a contract another repair group must change waits until that contract is established and integrated.
 7. **Integrate before acceptance closure.** Acceptance/evidence work validates the combined repaired build. It does not redesign implementation or independently invent fixes.
 8. **Repair only what blocks approval.** Optional improvements and unrelated cleanup remain excluded.
+9. **Capacity-size every coding-agent assignment.** Scope each dispatched work order or repair unit to work the target agent/model can reasonably implement, verify, evidence, and report within one model turn. A semantically coherent repair may be divided into serial, resumable units when one combined assignment would exceed that capacity.
 
-Generate the smallest repair package that completely restores conformance.
+Generate the smallest repair package that completely restores conformance, while also capacity-sizing each coding-agent assignment so the package is realistically executable rather than merely logically well grouped.
 
 ---
 
@@ -153,17 +154,46 @@ Assign each group one execution classification:
 
 Parallelism is an optimization, not a requirement. Do not create parallel groups when the coordination overhead exceeds the repair benefit.
 
-### Step 7 — Generate One Bounded Work Order per Implementation Group
+### Step 7 — Capacity-Size and Generate Bounded Work Orders
 
-Each work order must contain only the information its coding agent needs to implement its group correctly:
+After semantic grouping and ownership are established, perform **capacity-sizing** before dispatch. The repair group is the semantic/ownership unit; the coding-agent work order is the executable unit. They do not have to be the same size.
+
+Estimate the work reasonably required for the target agent/model to complete the assignment, including:
+
+- repository inspection needed to implement the known repair;
+- implementation across the owned surface;
+- directly necessary consequential edits;
+- targeted and repository-level verification;
+- likely correction/debug iteration after verification;
+- evidence and completion reporting.
+
+A work order is oversized when it reasonably appears to require multiple substantial implementation-debug-verification cycles beyond what the target agent/model can complete within one model turn. Do not dispatch an oversized work order merely because all included defects share one owner or invariant.
+
+When a coherent repair group is oversized, divide it into the minimum number of **serial, resumable repair units** that preserve the same owner, frozen boundaries, governing invariant, and dependency chain. Capacity-sizing MUST NOT be used to fragment one causal correction into arbitrary micro-tasks or to create new semantic owners.
+
+Each dispatched work order or repair unit must contain only the information its coding agent needs to implement that executable unit correctly:
 
 - owned scope;
 - frozen boundaries it must preserve;
-- exact corrections;
+- exact corrections assigned to the unit;
 - directly necessary consequential edits;
 - available verification;
-- evidence/completion requirements;
-- stopping condition.
+- evidence/completion requirements appropriate to the unit;
+- dependencies on earlier repair units, if any;
+- explicit stopping condition.
+
+For a multi-unit repair, state explicitly that:
+
+- completion of the current unit is not completion of the overall repair;
+- later units MUST consume the actual supervisor-approved repository state produced by the prior unit;
+- the agent MUST NOT begin a later unit before its stated gate; and
+- canonical acceptance/evidence closure occurs only at the unit designated for final closure.
+
+If the agent reaches practical turn capacity before its assigned unit is complete, it must not represent the unit or repair as complete. It must preserve a resumable checkpoint and report:
+
+`CONTINUATION REQUIRED — WORKSTREAM NOT COMPLETE`
+
+The checkpoint must identify the current branch/SHA or equivalent state, completed work, remaining assigned work, current verification/failures, and the exact next executable action. This capacity-exhaustion continuation is distinct from a contract/ownership blocker and does not authorize redesign or scope expansion.
 
 Do not give a coding agent authority over another group's owned surface.
 
@@ -225,6 +255,24 @@ Parallel repair is prohibited when two agents would independently modify:
 - another shared semantic authority where competing edits could overwrite or reinterpret one another.
 
 When in doubt, prefer one coherent owner over unsafe parallelism.
+
+---
+
+## Capacity-Sizing and Resumable Repair Units
+
+Capacity-sizing is a dispatch-safety rule, not a new defect taxonomy and not a substitute for ownership-based decomposition.
+
+Apply these rules:
+
+- **Preserve semantic grouping first.** Diagnose and group defects by causal invariant and ownership before considering turn capacity.
+- **Size the executable unit second.** If the coherent group exceeds one-turn capacity for the target agent/model, split execution into serial units without changing the repair's semantic owner.
+- **Match the target agent/model.** Capacity-sizing must reflect the capabilities of the actual agent/model receiving the prompt; do not assume all models can reliably execute the same amount of repository inspection, implementation, debugging, verification, and evidence work in one turn.
+- **Prefer resumable boundaries.** Split at boundaries where a unit can produce a coherent repository state with objective verification and a deterministic next step.
+- **Do not precompute stale later mechanics.** A later unit must be finalized against the actual state produced and approved by the earlier unit when implementation details can change. Its governing objective and frozen boundaries may be specified in advance, but stale file/SHA/mechanical assumptions must be refreshed before dispatch.
+- **Keep final closure singular.** Intermediate units may update dedicated/unit evidence as authorized, but canonical acceptance evidence must remain reserved for the final closure owner/unit unless higher authority requires otherwise.
+- **Distinguish completion, continuation, and blocker.** A unit ends in exactly one relevant state: completed and ready for its gate; continuation required because turn capacity ended before completion; or blocked by an actual ownership/contract/authority condition requiring supervisor action. Known unfinished in-scope work is never a valid completed stop.
+
+Capacity-sizing should reduce premature agent termination without weakening acceptance criteria, omitting verification, moving work to the supervisor, or accepting partial implementation as completion.
 
 ---
 
@@ -415,13 +463,17 @@ A multi-group repair package must use these top-level sections in this order:
 
 For a single coherent repair group, the package may omit empty topology complexity, but it must preserve the same ownership, correction, verification, evidence, and stopping principles.
 
+If capacity-sizing requires multiple serial units within one coherent repair group, keep the group identity and ownership stable while issuing independently executable unit work orders. Do not force all units into one oversized agent prompt solely because they share one owner.
+
 ---
 
 ## Group Work-Order Requirements
 
 Each implementation group must have a stable ID such as `G1`, `G2`, etc.
 
-Each group work order must state:
+If capacity-sizing divides one implementation group into multiple serial repair units, use stable unit identifiers such as `G1-U1`, `G1-U2`, etc. The group remains the semantic/ownership unit; unit IDs identify bounded execution slices only.
+
+Each group work order or capacity-sized repair unit must state:
 
 - **OWNERSHIP** — files/types/modules/semantic authority the group may modify;
 - **EXECUTION CLASS** — PARALLEL-SAFE, SERIAL-PREREQUISITE, or SERIAL-SHARED-OWNER;
@@ -430,7 +482,14 @@ Each group work order must state:
 - **CORRECTIONS** — concrete defects and required repairs;
 - **VERIFICATION** — strongest available group-specific checks;
 - **COMPLETION RESPONSE** — change manifest, checks/results, unavailable checks, blockers;
-- **STOP** — stop after the assigned group is complete.
+- **STOP** — stop after the assigned group or unit is complete.
+
+For a multi-unit repair, each unit must additionally state:
+
+- **UNIT POSITION** — e.g. Unit 1 of 2;
+- **START GATE** — the exact predecessor approval/state required before this unit begins;
+- **OVERALL REPAIR STATUS** — explicit statement that unit completion does not equal overall repair completion until the final unit/closure passes;
+- **CONTINUATION RESPONSE** — the required resumable checkpoint format if turn capacity ends before the unit is complete.
 
 For each correction include:
 
@@ -675,5 +734,9 @@ Before emitting a repair package, verify all of the following:
 15. Optional improvements and reviewer-only narrative are absent.
 16. Each coding agent can implement its assignment without repeating the reviewer's diagnosis.
 17. The package contains nothing that does not help implement, constrain, integrate, verify, or evidence the repair.
+18. Capacity-sizing has been performed for every coding-agent assignment against the capabilities of the target agent/model.
+19. No dispatched work order reasonably requires more than one model turn of implementation, expected correction/debug iteration, verification, evidence, and completion reporting; oversized coherent groups are divided into dependency-safe serial repair units.
+20. Every multi-unit repair makes unit completion versus overall repair completion explicit, defines predecessor/start gates, and provides a resumable continuation state that cannot be mistaken for successful completion.
+21. Capacity-sizing has not weakened acceptance criteria, split semantic ownership, created arbitrary micro-tasks, or moved unfinished implementation into acceptance/closure.
 
-If any ownership or frozen-boundary condition cannot be established safely, reduce parallelism until the repair becomes deterministic.
+If any ownership or frozen-boundary condition cannot be established safely, reduce parallelism until the repair becomes deterministic. If any coding-agent assignment fails the capacity-sizing gate, reduce the executable unit size while preserving causal ownership and frozen contracts before dispatch.
