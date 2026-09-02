@@ -1,0 +1,133 @@
+name: H-U5 P1 Fixture Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p1-proof-h02-r2
+
+permissions:
+  contents: read
+
+jobs:
+  prove-h-u5-p1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout H-U5 P1 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 3f442dbe093201a6900489d6fa89c9baefb9f79b
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify authority and environment
+        shell: bash
+        run: |
+          mkdir -p .ci-evidence
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          {
+            echo "H_U5_P1_TESTED_SHA=$ACTUAL_SHA"
+            node --version
+            npm --version
+          } | tee .ci-evidence/environment.txt
+          test "$ACTUAL_SHA" = "3f442dbe093201a6900489d6fa89c9baefb9f79b"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > .ci-evidence/typecheck.log 2>&1
+          CODE=$?
+          set -e
+          cat .ci-evidence/typecheck.log
+          echo "typecheck_exit=$CODE" > .ci-evidence/typecheck-exit.txt
+          test "$CODE" -eq 0
+
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          npm run build > .ci-evidence/build.log 2>&1
+          CODE=$?
+          set -e
+          cat .ci-evidence/build.log
+          echo "build_exit=$CODE" > .ci-evidence/build-exit.txt
+          test "$CODE" -eq 0
+
+      - name: Diff whitespace check
+        shell: bash
+        run: |
+          set +e
+          git diff --check 84cae684607be10b57ec5569bab14a819bad822f...3f442dbe093201a6900489d6fa89c9baefb9f79b > .ci-evidence/diff-check.log 2>&1
+          CODE=$?
+          set -e
+          cat .ci-evidence/diff-check.log
+          echo "diff_check_exit=$CODE" > .ci-evidence/diff-check-exit.txt
+          test "$CODE" -eq 0
+
+      - name: Compile tests
+        shell: bash
+        run: |
+          npx tsc -p tsconfig.test.json > .ci-evidence/test-compile.log 2>&1
+          cat .ci-evidence/test-compile.log
+
+      - name: Focused repaired fixtures
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase5-controller.test.js .test-build/test/phase5-group-a-recovery-state.test.js .test-build/test/phase5-group-b-scope-transfer.test.js > .ci-evidence/focused-tests.log 2>&1
+          CODE=$?
+          set -e
+          cat .ci-evidence/focused-tests.log
+          echo "focused_exit=$CODE" > .ci-evidence/focused-exit.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' .ci-evidence/focused-tests.log > .ci-evidence/focused-summary.txt || true
+          cat .ci-evidence/focused-summary.txt
+          test "$CODE" -eq 0
+          test "$(grep -E '^# fail ' .ci-evidence/focused-tests.log | tail -n 1 | awk '{print $3}')" = "0"
+          test "$(grep -E '^# cancelled ' .ci-evidence/focused-tests.log | tail -n 1 | awk '{print $3}')" = "0"
+          test "$(grep -E '^# skipped ' .ci-evidence/focused-tests.log | tail -n 1 | awk '{print $3}')" = "0"
+          test "$(grep -E '^# todo ' .ci-evidence/focused-tests.log | tail -n 1 | awk '{print $3}')" = "0"
+
+      - name: Full regression measurement
+        shell: bash
+        run: |
+          set +e
+          npm test > .ci-evidence/full-tests.log 2>&1
+          CODE=$?
+          set -e
+          cat .ci-evidence/full-tests.log
+          echo "npm_test_exit=$CODE" > .ci-evidence/full-exit.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' .ci-evidence/full-tests.log | tail -n 6 > .ci-evidence/full-summary.txt || true
+          cat .ci-evidence/full-summary.txt
+          test "$CODE" -ne 0
+          test "$(grep -E '^# tests ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "656"
+          test "$(grep -E '^# pass ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "592"
+          test "$(grep -E '^# fail ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "39"
+          test "$(grep -E '^# cancelled ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "25"
+          test "$(grep -E '^# skipped ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "0"
+          test "$(grep -E '^# todo ' .ci-evidence/full-summary.txt | awk '{print $3}')" = "0"
+
+      - name: Verify frozen invariants
+        shell: bash
+        run: |
+          CONTRACT_TREE="$(git rev-parse HEAD:src/contracts)"
+          CANONICAL_EVIDENCE_BLOB="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          printf 'contracts_tree=%s\ncanonical_evidence_blob=%s\n' "$CONTRACT_TREE" "$CANONICAL_EVIDENCE_BLOB" | tee .ci-evidence/invariants.txt
+          test "$CONTRACT_TREE" = "4deb82e382f7957c731ef78db52b4164571d57a3"
+          test "$CANONICAL_EVIDENCE_BLOB" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+
+      - name: Upload H-U5 P1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p1-proof
+          path: .ci-evidence/
+          if-no-files-found: error
+          include-hidden-files: true
