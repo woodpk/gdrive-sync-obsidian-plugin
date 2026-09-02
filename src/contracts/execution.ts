@@ -55,7 +55,7 @@ export interface AuthorityCompleteSuccessCommitter {
 }
 
 /** V1.3 operational provenance types used by successor mutation/execution seams. */
-export type OperationalFailureProvenanceV1_3 = import("./common").OperationalFailureProvenanceV1_3;
+type OperationalFailureProvenanceV1_3 = import("./common").OperationalFailureProvenanceV1_3;
 export type RetryableOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "transient-failure" | "rate-limited" }>;
 export type BlockingOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "permission-denied" | "quota-exhausted" }>;
 export type RecoveryOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "recovery-required" | "unclassified" }>;
