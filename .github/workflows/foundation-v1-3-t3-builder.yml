@@ -1,0 +1,464 @@
+name: foundation-v1-3-t3-builder
+
+on:
+  push:
+    branches:
+      - foundation-v1-3-t3-builder
+
+permissions:
+  contents: write
+
+jobs:
+  build-corrected-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-sync-foundation-v1.3-failure-provenance
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reconstruct exact predecessor plus corrected V1.3 successor
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=96b4541b15012ac4ce0d81243b73ef779efd343e
+          for f in \
+            src/contracts/common.ts \
+            src/contracts/google-drive.ts \
+            src/contracts/execution.ts \
+            dev/planning-and-building/phase6-sync-contract-freeze.md \
+            dev/planning-and-building/phase6-sync-architecture-foundation.md
+          do
+            git show "$P:$f" > "$f"
+          done
+          rm -f test/phase6-foundation-failure-provenance.test.ts
+
+          cat >> src/contracts/common.ts <<'EOF'
+
+/**
+ * V1.3 successor operational provenance. Every member is a remote/Drive
+ * operational class by construction; local I/O uncertainty is represented by
+ * the absence of this provenance rather than by fabricating remote semantics.
+ */
+export type OperationalFailureProvenanceV1_3 =
+  | { readonly kind: "authentication-required"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "transient-failure"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "rate-limited"; readonly source: "google-drive"; readonly retryAfterMs?: number; readonly detail?: string }
+  | { readonly kind: "permission-denied"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "quota-exhausted"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "recovery-required"; readonly source: "google-drive"; readonly detail: string }
+  | { readonly kind: "unclassified"; readonly source: "remote-operational"; readonly detail?: string };
+
+/** Public V1.3 carrier for operational failures raised only during lazy content consumption. */
+export class OperationalFailureErrorV1_3 extends Error {
+  readonly name = "OperationalFailureErrorV1_3";
+  constructor(readonly provenance: OperationalFailureProvenanceV1_3, message?: string) {
+    super(message ?? provenance.detail ?? provenance.kind);
+  }
+}
+
+/** Unknown errors remain unclassified by returning undefined; callers must stay conservative. */
+export function operationalFailureProvenanceFromErrorV1_3(error: unknown): OperationalFailureProvenanceV1_3 | undefined {
+  return error instanceof OperationalFailureErrorV1_3 ? error.provenance : undefined;
+}
+EOF
+
+          cat >> src/contracts/google-drive.ts <<'EOF'
+
+/**
+ * V1.3 maps only context-free operational Drive failures. Observation/semantic
+ * results such as not-found and conflict remain owned by their calling context.
+ */
+export function operationalFailureFromDriveSignalV1_3(
+  signal: DriveSignal,
+): import("./common").OperationalFailureProvenanceV1_3 | undefined {
+  switch (signal.kind) {
+    case "authentication-required":
+      return { kind: "authentication-required", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "transient-failure":
+      return { kind: "transient-failure", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "rate-limited":
+      return { kind: "rate-limited", source: "google-drive", ...(signal.retryAfterMs === undefined ? {} : { retryAfterMs: signal.retryAfterMs }) };
+    case "permission-denied":
+      return { kind: "permission-denied", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "quota-exhausted":
+      return { kind: "quota-exhausted", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "recovery-required":
+      return { kind: "recovery-required", source: "google-drive", detail: signal.detail };
+    case "not-found":
+    case "conflict":
+      return undefined;
+  }
+}
+EOF
+
+          cat >> src/contracts/execution.ts <<'EOF'
+
+/** V1.3 operational provenance types used by successor mutation/execution seams. */
+type OperationalFailureProvenanceV1_3 = import("./common").OperationalFailureProvenanceV1_3;
+export type AuthenticationOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "authentication-required" }>;
+export type RetryableOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "transient-failure" | "rate-limited" }>;
+export type BlockingOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "permission-denied" | "quota-exhausted" }>;
+export type RecoveryOperationalFailureV1_3 = Extract<OperationalFailureProvenanceV1_3, { readonly kind: "recovery-required" | "unclassified" }>;
+
+/** Physical proof that no unresolved may-have-dispatched effect exists. */
+export type RetrySafePhysicalAuthorityV1_3 =
+  | { readonly status: "verified-no-unresolved-effect"; readonly basis: "pre-dispatch-rejection" }
+  | { readonly status: "verified-no-unresolved-effect"; readonly basis: "verified-not-applied"; readonly verificationEvidenceRef?: string };
+
+/** V1.3 successor preserves predecessor physical distinctions and adds provenance only where defined. */
+export type RemoteMutationOutcomeV1_3 =
+  | Extract<import("./synchronization-foundation").RemoteMutationOutcome, { readonly status: "verified-effect" }>
+  | Extract<import("./synchronization-foundation").RemoteMutationOutcome, { readonly status: "conflict-preserved" }>
+  | { readonly status: "verified-not-applied"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenanceV1_3 }
+  | { readonly status: "outcome-unknown"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenanceV1_3 };
+
+export interface ReliableRemoteMutationPortV1_3 {
+  reserveFileCreateIdentity(root: import("./google-drive").ManagedRemoteIdentity, intentId: import("./common").MutationIntentId, path: import("./common").VaultPath, intendedContent: import("./synchronization-foundation").CanonicalFileContentProof): Promise<import("./google-drive").DriveResult<Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "reserved-file-create" }>>>;
+  reserveFolderCreateIdentity(root: import("./google-drive").ManagedRemoteIdentity, intentId: import("./common").MutationIntentId, path: import("./common").VaultPath): Promise<import("./google-drive").DriveResult<Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }>>>;
+  createReserved(identity: Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "reserved-file-create" | "reserved-folder-create" }>, content?: import("./common").BinaryContentSource, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<RemoteMutationOutcomeV1_3>;
+  updateExisting(identity: Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "existing-file-content-update" }>, content: import("./common").BinaryContentSource, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<RemoteMutationOutcomeV1_3>;
+  moveExisting(identity: Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "identity-preserving-move" }>, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<RemoteMutationOutcomeV1_3>;
+  trashExisting(identity: Extract<import("./synchronization-foundation").RemoteMutationIdentity, { readonly kind: "trash" }>, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<RemoteMutationOutcomeV1_3>;
+}
+
+export type CoherentRemoteDownloadV1_3 =
+  | Extract<import("./synchronization-foundation").CoherentRemoteDownload, { readonly status: "coherent" }>
+  | { readonly status: "changed-during-transfer"; readonly reason: string }
+  | { readonly status: "outcome-unknown"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenanceV1_3 };
+
+export interface CoherentRemoteReadPortV1_3 {
+  downloadVersion(remoteObjectId: import("./common").RemoteObjectId, expectedRevision: import("./common").RemoteRevisionId, expectedEvidence: import("./common").ContentEvidence, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<import("./google-drive").DriveResult<CoherentRemoteDownloadV1_3>>;
+}
+
+export type LocalTransactionResultV1_3 =
+  | { readonly status: "staged-verified" | "committed" | "recovered"; readonly transaction: import("./synchronization-foundation").LocalMutationTransaction; readonly resultingObservationToken?: import("./common").ObservationToken }
+  | { readonly status: "stale" | "blocked"; readonly reason: string; readonly transaction: import("./synchronization-foundation").LocalMutationTransaction }
+  | { readonly status: "outcome-unknown"; readonly reason: string; readonly transaction: import("./synchronization-foundation").LocalMutationTransaction; readonly operationalFailure?: OperationalFailureProvenanceV1_3 };
+
+export interface LocalTransactionalMutationPortV1_3 {
+  stageAndVerify(transaction: import("./synchronization-foundation").LocalMutationTransaction, content: import("./common").BinaryContentSource, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<LocalTransactionResultV1_3>;
+  commitVerifiedStage(transaction: import("./synchronization-foundation").LocalMutationTransaction, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<LocalTransactionResultV1_3>;
+  recover(transaction: import("./synchronization-foundation").LocalMutationTransaction, cancellation?: import("./synchronization-foundation").SynchronizationCancellationSignal): Promise<LocalTransactionResultV1_3>;
+}
+
+/** V1.3 execution result keeps operational cause and physical certainty orthogonal. */
+export type ExecutionResultV1_3 =
+  | { readonly status: "durable-verified-success"; readonly receipt: VerifiedExecutionReceipt }
+  | { readonly status: "authentication-required"; readonly reason: string; readonly operationalFailure: AuthenticationOperationalFailureV1_3; readonly effectSafety: RetrySafePhysicalAuthorityV1_3 }
+  | { readonly status: "retryable-failure"; readonly reason: string; readonly operationalFailure: RetryableOperationalFailureV1_3; readonly retrySafety: RetrySafePhysicalAuthorityV1_3 }
+  | { readonly status: "stale-precondition"; readonly reason: string; readonly failed?: readonly OperationPrecondition[] }
+  | { readonly status: "blocking-failure"; readonly reason: string; readonly operationalFailure?: BlockingOperationalFailureV1_3; readonly effectSafety: RetrySafePhysicalAuthorityV1_3 }
+  | { readonly status: "uncertain"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenanceV1_3 }
+  | { readonly status: "recovery-required"; readonly reason: string; readonly operationalFailure?: RecoveryOperationalFailureV1_3 }
+  | { readonly status: "cancelled"; readonly reason?: string };
+
+export interface AuthoritativeSynchronizationExecutorV1_3 {
+  validatePreconditions(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult>;
+  execute(operation: ExecutablePlannedOperation): Promise<ExecutionResultV1_3>;
+}
+
+export type ExecutionDispositionV1_3 = {
+  readonly primary: "success" | "authentication-required" | "deferred" | "blocking-failure" | "recovery-required" | "stale-precondition" | "cancelled";
+  readonly physicalReconciliationRequired: boolean;
+  readonly physicalRedispatchSafe: boolean;
+  readonly retryMode: "none" | "ordinary-retry" | "reauthenticate-then-retry" | "reauthenticate-then-reconcile" | "reconcile-before-redispatch";
+  readonly retryAfterMs?: number;
+  /** Authorized to dispatch now after physical and operational gates, not merely safe for a future retry. */
+  readonly mutationRedispatchAuthorized: boolean;
+};
+
+/** Complete V1.3 disposition derived from physical execution state plus operational gates. */
+export function executionDispositionV1_3(result: ExecutionResultV1_3): ExecutionDispositionV1_3 {
+  switch (result.status) {
+    case "durable-verified-success":
+      return { primary: "success", physicalReconciliationRequired: false, physicalRedispatchSafe: false, retryMode: "none", mutationRedispatchAuthorized: false };
+    case "stale-precondition":
+      return { primary: "stale-precondition", physicalReconciliationRequired: false, physicalRedispatchSafe: false, retryMode: "none", mutationRedispatchAuthorized: false };
+    case "cancelled":
+      return { primary: "cancelled", physicalReconciliationRequired: false, physicalRedispatchSafe: false, retryMode: "none", mutationRedispatchAuthorized: false };
+    case "blocking-failure":
+      return { primary: "blocking-failure", physicalReconciliationRequired: false, physicalRedispatchSafe: true, retryMode: "none", mutationRedispatchAuthorized: false };
+    case "authentication-required":
+      return { primary: "authentication-required", physicalReconciliationRequired: false, physicalRedispatchSafe: true, retryMode: "reauthenticate-then-retry", mutationRedispatchAuthorized: false };
+    case "retryable-failure": {
+      const retryAfterMs = result.operationalFailure.kind === "rate-limited" ? result.operationalFailure.retryAfterMs : undefined;
+      return {
+        primary: "deferred",
+        physicalReconciliationRequired: false,
+        physicalRedispatchSafe: true,
+        retryMode: "ordinary-retry",
+        ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+        mutationRedispatchAuthorized: false,
+      };
+    }
+    case "recovery-required":
+      return { primary: "recovery-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false };
+    case "uncertain": {
+      const provenance = result.operationalFailure;
+      if (!provenance) return { primary: "recovery-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false };
+      switch (provenance.kind) {
+        case "authentication-required":
+          return { primary: "authentication-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reauthenticate-then-reconcile", mutationRedispatchAuthorized: false };
+        case "transient-failure":
+          return { primary: "deferred", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false };
+        case "rate-limited":
+          return { primary: "deferred", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", ...(provenance.retryAfterMs === undefined ? {} : { retryAfterMs: provenance.retryAfterMs }), mutationRedispatchAuthorized: false };
+        case "permission-denied":
+        case "quota-exhausted":
+          return { primary: "blocking-failure", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false };
+        case "recovery-required":
+        case "unclassified":
+          return { primary: "recovery-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false };
+      }
+    }
+  }
+}
+EOF
+
+          cat >> dev/planning-and-building/phase6-sync-contract-freeze.md <<'EOF'
+
+## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE
+
+Candidate identity: `phase6-sync-foundation-v1.3-failure-provenance`
+
+Predecessor approved foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+
+Predecessor approved contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`
+
+This section is appended succession material. Every byte above this heading remains predecessor contract history and compatibility authority.
+
+### 12.1 Succession and deprecation
+
+Deprecation does not delete or rewrite predecessor contract history. After independent V1.3 approval/adoption, new or resumed affected workstreams use `RemoteMutationOutcomeV1_3`, `ReliableRemoteMutationPortV1_3`, `CoherentRemoteDownloadV1_3`, `CoherentRemoteReadPortV1_3`, `LocalTransactionResultV1_3`, `LocalTransactionalMutationPortV1_3`, `ExecutionResultV1_3`, and `AuthoritativeSynchronizationExecutorV1_3` in place of the corresponding predecessor seams where operational failure provenance must survive.
+
+New V1.3 shared surfaces include `OperationalFailureProvenanceV1_3`, `OperationalFailureErrorV1_3`, `operationalFailureProvenanceFromErrorV1_3`, `operationalFailureFromDriveSignalV1_3`, `AuthenticationOperationalFailureV1_3`, `RetrySafePhysicalAuthorityV1_3`, `ExecutionDispositionV1_3`, and `executionDispositionV1_3`.
+
+### 12.2 Orthogonal authority invariant
+
+Physical-effect certainty and operational-failure provenance are orthogonal. Operational provenance never proves non-application, converts `outcome-unknown` to `verified-not-applied`, authorizes blind redispatch, advances BASE/path convergence, or becomes semantic synchronization authority.
+
+`RetrySafePhysicalAuthorityV1_3` proves only that there is no unresolved may-have-dispatched physical effect. It does not prove that operational scheduling, authentication, or rate-limit gates permit dispatch now.
+
+### 12.3 Authentication states
+
+V1.3 preserves two distinct authentication truths:
+
+- physically safe authentication failure -> `status: "authentication-required"`, required `effectSafety`, no physical reconciliation, `physicalRedispatchSafe: true`, `retryMode: "reauthenticate-then-retry"`, current redispatch authorization false;
+- uncertain authentication -> `status: "uncertain"` with authentication provenance, physical reconciliation required, `physicalRedispatchSafe: false`, `retryMode: "reauthenticate-then-reconcile"`, current redispatch authorization false.
+
+### 12.4 Retry scheduling versus current authorization
+
+`ExecutionDispositionV1_3.mutationRedispatchAuthorized` means authorized to dispatch now after both physical and operational gates. A static failure disposition never pre-authorizes a future dispatch.
+
+For safe transient/rate-limit failure, `physicalReconciliationRequired` is false and `physicalRedispatchSafe` is true, but `primary` is deferred and `mutationRedispatchAuthorized` is false. A later scheduler opportunity may authorize retry. Rate-limit timing has exactly one authority: `OperationalFailureProvenanceV1_3.kind === "rate-limited"`.
+
+### 12.5 Contextual Drive-signal rule
+
+`operationalFailureFromDriveSignalV1_3` maps authentication-required, transient-failure, rate-limited, permission-denied, quota-exhausted, and explicit recovery-required only. `not-found` and `conflict` remain contextual and return `undefined` from the context-free mapper.
+
+### 12.6 Downstream migration requirements
+
+A maps Drive/lazy failures into V1.3 provenance and successor remote seams. B consumes the lazy carrier/extractor without fabricating remote provenance for generic local I/O. C gains no new persistence authority. D emits V1.3 execution results while keeping physical retry safety distinct from current dispatch authorization. G proves uncertain failures never gain redispatch authority. H/UI consumes `executionDispositionV1_3` rather than reason strings.
+
+No downstream implementation is authorized by this candidate.
+EOF
+
+          cat >> dev/planning-and-building/phase6-sync-architecture-foundation.md <<'EOF'
+
+## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE
+
+This entire section is successor architecture. Sections 1–16 above are preserved byte-for-byte from the approved predecessor foundation.
+
+### 17.1 Two-dimensional failure model
+
+V1.3 keeps physical-effect certainty independent from operational cause. Authentication-required, transient transport failure, and rate limiting can coexist with either verified no-unresolved-effect authority or an unresolved may-have-dispatched physical state.
+
+### 17.2 Safe versus uncertain authentication
+
+A token/authentication rejection known to occur pre-dispatch or otherwise verified not applied is represented by the dedicated `ExecutionResultV1_3.status === "authentication-required"` member with required `RetrySafePhysicalAuthorityV1_3`. It requires reauthentication before a future retry but does not manufacture physical reconciliation.
+
+Authentication discovered after a mutation may have dispatched remains `uncertain` plus authentication provenance. That path requires reauthentication then physical reconciliation before any redispatch.
+
+### 17.3 Physical retry safety is not current authorization
+
+`physicalRedispatchSafe` answers only whether unresolved physical reconciliation blocks a future retry. `mutationRedispatchAuthorized` answers whether dispatch is authorized now after physical and operational gates.
+
+Safe transient and rate-limited failures therefore produce deferred dispositions with `physicalRedispatchSafe: true` and `mutationRedispatchAuthorized: false`. Rate-limit timing is copied solely from structured provenance. Safe authentication similarly yields `reauthenticate-then-retry`, not `reauthenticate-then-reconcile`.
+
+### 17.4 Contextual semantics and restart authority
+
+`not-found` and `conflict` remain contextual rather than global operational recovery classifications. Operational provenance does not become durable semantic synchronization authority; predecessor durable physical intent/stage/effect/recovery state remains authoritative across restart.
+
+### 17.5 Succession boundary
+
+The predecessor seams remain physically present for compatibility. After independent V1.3 approval/adoption, affected new/resumed work uses the explicitly versioned successors. This candidate authorizes no downstream implementation or integration.
+EOF
+
+          cat > test/phase6-foundation-failure-provenance.test.ts <<'EOF'
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import {
+  OperationalFailureErrorV1_3,
+  contractId,
+  executionDispositionV1_3,
+  operationalFailureFromDriveSignalV1_3,
+  operationalFailureProvenanceFromErrorV1_3,
+  type BinaryContentSource,
+  type ExecutionResultV1_3,
+  type LocalMutationTransaction,
+  type LocalTransactionResultV1_3,
+  type OperationalFailureProvenanceV1_3,
+  type RemoteMutationOutcomeV1_3,
+} from "../src/contracts";
+
+const operationId = contractId<"OperationId">("failure-prov-op");
+const transactionId = contractId<"LocalMutationTransactionId">("failure-prov-tx");
+const path = contractId<"VaultPath">("10-Notes/failure-provenance.md");
+const transaction: LocalMutationTransaction = {
+  transactionId,
+  operationId,
+  path,
+  stagePath: contractId<"VaultPath">(".sync-stage/failure-provenance.md"),
+  backupPath: contractId<"VaultPath">(".sync-backup/failure-provenance.md"),
+  stage: "staging",
+  mutationKind: "create",
+  expectedEntityKind: "file",
+  expectedNewEvidence: { algorithm: "sha256", hash: contractId<"ContentHash">("hash-new"), sizeBytes: 1 },
+  expectedTarget: { status: "expected-absent" },
+};
+
+async function captureLazyFailure(provenance: OperationalFailureProvenanceV1_3): Promise<OperationalFailureProvenanceV1_3 | undefined> {
+  const content: BinaryContentSource = { async *openChunks() { throw new OperationalFailureErrorV1_3(provenance); } };
+  try { for await (const chunk of content.openChunks()) void chunk; } catch (error) { return operationalFailureProvenanceFromErrorV1_3(error); }
+  return undefined;
+}
+
+function gitBlobSha1(bytes: Buffer): string {
+  return createHash("sha1").update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest("hex");
+}
+
+const predecessorPrefixes = [
+  ["src/contracts/common.ts", 2559, "4048ceca9bd2a5022ededf7406a736360330572c"],
+  ["src/contracts/google-drive.ts", 5457, "dc331d4acd1e7d9c308c0df73232497bf5d85d55"],
+  ["src/contracts/execution.ts", 3107, "7fd20c94d5852f14bc223b6e5e0280d60fbb5776"],
+  ["dev/planning-and-building/phase6-sync-contract-freeze.md", 16296, "fe527c76137b2cd578ef7050ee3444498b21a5e0"],
+  ["dev/planning-and-building/phase6-sync-architecture-foundation.md", 14429, "f67d8ff67ff1915610e5a21ddc3d113c94a2f94b"],
+] as const;
+
+// @ts-expect-error invalid source/category combination
+const invalidLocalAuthentication: OperationalFailureProvenanceV1_3 = { kind: "authentication-required", source: "local" };
+void invalidLocalAuthentication;
+// @ts-expect-error duplicate retry timing authority is forbidden
+const contradictoryRetryTiming: ExecutionResultV1_3 = { status: "retryable-failure", reason: "429", operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 }, retryAfterMs: 1, retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied" } };
+void contradictoryRetryTiming;
+// @ts-expect-error retryable transient/rate-limit requires physical safety authority
+const retryWithoutPhysicalSafety: ExecutionResultV1_3 = { status: "retryable-failure", reason: "network", operationalFailure: { kind: "transient-failure", source: "google-drive" } };
+void retryWithoutPhysicalSafety;
+// @ts-expect-error physically safe authentication requires explicit no-unresolved-effect authority
+const safeAuthWithoutPhysicalSafety: ExecutionResultV1_3 = { status: "authentication-required", reason: "no token", operationalFailure: { kind: "authentication-required", source: "google-drive" } };
+void safeAuthWithoutPhysicalSafety;
+
+test("foundation v1.3 T3 C1: Drive authentication maps and survives lazy carrier", async () => {
+  const mapped = operationalFailureFromDriveSignalV1_3({ kind: "authentication-required", detail: "token revoked" });
+  assert.deepEqual(mapped, { kind: "authentication-required", source: "google-drive", detail: "token revoked" });
+  assert.deepEqual(await captureLazyFailure(mapped!), mapped);
+});
+
+test("foundation v1.3 T3 C2: transient and rate-limit mapping preserve structured cause/timing", () => {
+  assert.deepEqual(operationalFailureFromDriveSignalV1_3({ kind: "transient-failure", detail: "network reset" }), { kind: "transient-failure", source: "google-drive", detail: "network reset" });
+  assert.deepEqual(operationalFailureFromDriveSignalV1_3({ kind: "rate-limited", retryAfterMs: 5000 }), { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 });
+});
+
+test("foundation v1.3 T3 C3: not-found and conflict remain contextual", () => {
+  assert.equal(operationalFailureFromDriveSignalV1_3({ kind: "not-found", remoteObjectId: contractId<"RemoteObjectId">("missing") }), undefined);
+  assert.equal(operationalFailureFromDriveSignalV1_3({ kind: "conflict", detail: "context owns meaning" }), undefined);
+});
+
+test("foundation v1.3 T3 C4: generic local I/O uncertainty fabricates no remote provenance", () => {
+  const result: LocalTransactionResultV1_3 = { status: "outcome-unknown", reason: "local rename result unknown", transaction };
+  assert.equal(result.operationalFailure, undefined);
+  assert.equal(operationalFailureProvenanceFromErrorV1_3(new Error("ECONNRESET-looking text is not authority")), undefined);
+});
+
+test("foundation v1.3 T3 C5: remote physical outcome preserves verified-not-applied versus outcome-unknown", () => {
+  const provenance = { kind: "authentication-required", source: "google-drive" } as const;
+  const safe: RemoteMutationOutcomeV1_3 = { status: "verified-not-applied", reason: "pre-dispatch rejection", operationalFailure: provenance };
+  const unknown: RemoteMutationOutcomeV1_3 = { status: "outcome-unknown", reason: "may have dispatched", operationalFailure: provenance };
+  assert.notEqual(safe.status, unknown.status);
+});
+
+test("foundation v1.3 T3 C6: physically safe authentication preserves auth without fabricated reconciliation", () => {
+  const disposition = executionDispositionV1_3({ status: "authentication-required", reason: "no usable token before dispatch", operationalFailure: { kind: "authentication-required", source: "google-drive" }, effectSafety: { status: "verified-no-unresolved-effect", basis: "pre-dispatch-rejection" } });
+  assert.deepEqual(disposition, { primary: "authentication-required", physicalReconciliationRequired: false, physicalRedispatchSafe: true, retryMode: "reauthenticate-then-retry", mutationRedispatchAuthorized: false });
+});
+
+test("foundation v1.3 T3 C7: uncertain authentication still requires reauthenticate then reconcile", () => {
+  const disposition = executionDispositionV1_3({ status: "uncertain", reason: "dispatch may have occurred", operationalFailure: { kind: "authentication-required", source: "google-drive" } });
+  assert.deepEqual(disposition, { primary: "authentication-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reauthenticate-then-reconcile", mutationRedispatchAuthorized: false });
+});
+
+test("foundation v1.3 T3 C8: safe transient is physically retry-safe but not currently dispatch-authorized", () => {
+  const result: ExecutionResultV1_3 = { status: "retryable-failure", reason: "verified rejection", operationalFailure: { kind: "transient-failure", source: "google-drive" }, retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied", verificationEvidenceRef: "proof-1" } };
+  assert.deepEqual(executionDispositionV1_3(result), { primary: "deferred", physicalReconciliationRequired: false, physicalRedispatchSafe: true, retryMode: "ordinary-retry", mutationRedispatchAuthorized: false });
+});
+
+test("foundation v1.3 T3 C9: safe rate limit preserves exact timing while remaining deferred", () => {
+  const result: ExecutionResultV1_3 = { status: "retryable-failure", reason: "429 verified not applied", operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 }, retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied" } };
+  assert.equal("retryAfterMs" in result, false);
+  assert.deepEqual(executionDispositionV1_3(result), { primary: "deferred", physicalReconciliationRequired: false, physicalRedispatchSafe: true, retryMode: "ordinary-retry", retryAfterMs: 5000, mutationRedispatchAuthorized: false });
+});
+
+test("foundation v1.3 T3 C10: uncertain transient/rate-limit never gain physical safety or redispatch authority", () => {
+  const transient = executionDispositionV1_3({ status: "uncertain", reason: "unknown", operationalFailure: { kind: "transient-failure", source: "google-drive" } });
+  const rate = executionDispositionV1_3({ status: "uncertain", reason: "unknown", operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 } });
+  assert.equal(transient.physicalReconciliationRequired, true);
+  assert.equal(transient.physicalRedispatchSafe, false);
+  assert.equal(transient.mutationRedispatchAuthorized, false);
+  assert.equal(rate.physicalReconciliationRequired, true);
+  assert.equal(rate.physicalRedispatchSafe, false);
+  assert.equal(rate.retryAfterMs, 5000);
+  assert.equal(rate.mutationRedispatchAuthorized, false);
+});
+
+test("foundation v1.3 T3 C11: recovery-required physical state cannot be erased by operational metadata", () => {
+  const disposition = executionDispositionV1_3({ status: "recovery-required", reason: "durable physical recovery required", operationalFailure: { kind: "recovery-required", source: "google-drive", detail: "cursor invalid" } });
+  assert.deepEqual(disposition, { primary: "recovery-required", physicalReconciliationRequired: true, physicalRedispatchSafe: false, retryMode: "reconcile-before-redispatch", mutationRedispatchAuthorized: false });
+});
+
+test("foundation v1.3 T3 C12: predecessor approved contract/document bytes remain exact immutable prefixes", () => {
+  for (const [file, predecessorSize, predecessorBlobSha] of predecessorPrefixes) {
+    const current = readFileSync(file);
+    assert.ok(current.length > predecessorSize, `${file} must append successor material`);
+    assert.equal(gitBlobSha1(current.subarray(0, predecessorSize)), predecessorBlobSha, `${file} predecessor prefix changed`);
+  }
+  assert.equal(gitBlobSha1(readFileSync("src/contracts/synchronization-foundation.ts")), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
+});
+
+test("foundation v1.3 T3 C13: documentation successor begins after predecessor byte boundaries", () => {
+  const freeze = readFileSync("dev/planning-and-building/phase6-sync-contract-freeze.md");
+  const architecture = readFileSync("dev/planning-and-building/phase6-sync-architecture-foundation.md");
+  assert.ok(freeze.indexOf(Buffer.from("## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE")) >= 16296);
+  assert.ok(architecture.indexOf(Buffer.from("## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE")) >= 14429);
+  assert.match(freeze.toString("utf8"), /reauthenticate-then-retry/);
+  assert.match(freeze.toString("utf8"), /physicalRedispatchSafe/);
+});
+EOF
+
+          npm ci
+          npm run typecheck
+          npx tsc -p tsconfig.test.json
+          npm test
+          npm run build
+          npm run check
+          git diff --check "$P...HEAD" || true
+          git diff --check "$P"
+          git config user.name "foundation-v1.3-t3-builder"
+          git config user.email "foundation-v1.3-t3-builder@users.noreply.github.com"
+          git add src/contracts/common.ts src/contracts/google-drive.ts src/contracts/execution.ts test/phase6-foundation-failure-provenance.test.ts dev/planning-and-building/phase6-sync-contract-freeze.md dev/planning-and-building/phase6-sync-architecture-foundation.md
+          git commit -m "foundation v1.3 T3: correct auth and redispatch authority contracts"
+          git push origin HEAD:phase6-sync-foundation-v1.3-failure-provenance
