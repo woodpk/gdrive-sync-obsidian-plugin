@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type {
+  BinaryContentSource,
   ConflictAssessment,
   ContentEvidence,
   ManagedRemoteIdentity,
   PathSnapshot,
   PlannedOperation,
+  ReliableRemoteMutationPort,
+  RemoteEntry,
   VaultPath,
   VersionReference,
 } from "../src/contracts";
@@ -14,9 +17,10 @@ import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { IntegratedProductController } from "../src/product/product-controller";
+import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import type { AssembledPlanningInput } from "../src/product/snapshot-assembler";
 import {
-  createInitialTrustedState,
+  createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
 } from "../src/state/persistent-state-store";
@@ -36,8 +40,13 @@ const context = {
   expectedVaultIdentity: vault,
   expectedDeviceIdentity: device,
 };
-const evidence = (value: string): ContentEvidence => ({ hash: sha256Text(value), sizeBytes: value.length });
+const evidence = (value: string): ContentEvidence => ({ hash: sha256Text(value), sizeBytes: new TextEncoder().encode(value).byteLength });
 const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
+
+function source(text: string): BinaryContentSource {
+  const bytes = new TextEncoder().encode(text);
+  return { sizeBytes: bytes.byteLength, async *openChunks() { yield bytes; } };
+}
 
 function conflictSnapshot(name: string): PathSnapshot {
   const path = vp(name);
@@ -98,8 +107,37 @@ function recoveryAssembly(snapshots: readonly PathSnapshot[]): AssembledPlanning
   };
 }
 
-function fakeExecutor() {
+function fixtureExecutor(remoteEntries: RemoteEntry[]) {
+  const local = {
+    readFile: async (path: VaultPath) => {
+      const text = `local-${String(path)}`;
+      return {
+        content: source(text),
+        evidence: evidence(text),
+        stability: "stable" as const,
+        observationToken: id<"ObservationToken">(`local-token-${String(path)}`),
+      };
+    },
+    observe: async (path: VaultPath) => ({
+      status: "present" as const,
+      side: "local" as const,
+      path,
+      entityKind: "file" as const,
+      content: evidence(`local-${String(path)}`),
+      stability: "stable" as const,
+      observationToken: id<"ObservationToken">(`local-token-${String(path)}`),
+    }),
+  };
+  const drive = {
+    listForReconciliation: async () => ({
+      ok: true as const,
+      value: { entries: [...remoteEntries], completeness: { status: "complete" as const } },
+    }),
+  };
   return {
+    local,
+    drive,
+    runEvidence: () => ({ managedRemote: managed, remoteEnumerationComplete: true }),
     validatePreconditions: async () => ({ status: "valid" as const }),
     execute: async (operation: PlannedOperation) => ({
       status: "durable-verified-success" as const,
@@ -127,13 +165,14 @@ function fakeExecutor() {
 }
 
 async function seededStore() {
-  const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  await store.saveTrusted(createInitialTrustedState({
-    stateRevision: id<"StateRevision">("state:0"),
+  const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  await raw.saveTrusted(createInitialAuthorityState({
+    persistenceRevision: id<"PersistenceRevision">("persistence:group-a:1"),
+    semanticGeneration: id<"SemanticStateGeneration">("semantic:group-a:1"),
     vaultIdentity: vault,
     deviceIdentity: device,
   }));
-  return store;
+  return new IntegratedSynchronizationStateStore(raw);
 }
 
 function assertPreservedState(
@@ -165,14 +204,48 @@ test("GROUP A A1 recovery preserves reconstructed trusted state while authority-
     conflictSnapshot("conflict-one.bin"),
     conflictSnapshot("conflict-two.bin"),
   ];
+  const remoteEntries: RemoteEntry[] = [];
+  const executor = fixtureExecutor(remoteEntries);
+  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_root, intentId, path, intendedContent) => ({
+      ok: true,
+      value: {
+        kind: "reserved-file-create",
+        intentId,
+        reservedRemoteObjectId: id<"RemoteObjectId">(`created:${String(path)}`),
+        path,
+        intendedContent,
+      },
+    }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder creation is not used by this fixture"); },
+    createReserved: async identity => {
+      if (identity.kind !== "reserved-file-create") throw new Error("folder creation is not used by this fixture");
+      remoteEntries.push({
+        path: identity.path,
+        entityKind: "file",
+        remoteObjectId: identity.reservedRemoteObjectId,
+        content: { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: "created" },
+        trashed: false,
+      });
+      return {
+        status: "verified-effect",
+        applicationProof: { kind: "reserved-create", remoteObjectId: identity.reservedRemoteObjectId, path: identity.path, verifiedContent: identity.intendedContent },
+      };
+    },
+    updateExisting: async () => { throw new Error("update is not used by this fixture"); },
+    moveExisting: async () => { throw new Error("move is not used by this fixture"); },
+    trashExisting: async () => { throw new Error("trash is not used by this fixture"); },
+  };
 
   const controller = new IntegratedProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
     stateStore: store,
+    authorityStore: store,
     snapshotAssembler: { assembleRecovery: async () => recoveryAssembly(snapshots) } as never,
-    executor: fakeExecutor() as never,
+    executor: executor as never,
+    reliableRemoteMutationPort,
     conflictResolver: resolver,
     plannerForTrigger: trigger => new DeterministicSynchronizationPlanner(resolver, undefined, { trigger }),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
