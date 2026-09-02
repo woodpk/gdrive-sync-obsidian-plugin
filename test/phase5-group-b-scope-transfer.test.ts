@@ -109,11 +109,12 @@ interface StreamHarnessResult {
 
 async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
   const first=vp("a.bin"),second=vp("b.bin"),firstId=remoteId("remote-a"),secondId=remoteId("remote-b");
-  const firstBase=canonical("old-a"),secondBase=canonical("old-b"),remoteEvidence:ContentEvidence={revision:"7",sizeBytes:300000};
+  const firstBase=canonical("old-a"),secondBase=canonical("old-b"),remoteHash=sha256Text("group-b-lazy-remote-version"),remoteEvidence:ContentEvidence={hash:remoteHash,revision:"7",sizeBytes:300000};
+  const remoteChecksum=String(remoteHash).replace(/^sha256:/,"");
   let mediaCalls=0;
   const adapter=googleAdapter(async url=>{
     if(url.includes("/about")) return ok({user:{permissionId:"acct"}});
-    if(url.includes("/files/remote-a?")&&!url.includes("alt=media")) return ok({id:"remote-a",name:"a.bin",mimeType:"application/octet-stream",parents:["content"],size:"300000",version:"7",appProperties:{brainManagedRootId:"root",brainSyncDomain:"content"}});
+    if(url.includes("/files/remote-a?")&&!url.includes("alt=media")) return ok({id:"remote-a",name:"a.bin",mimeType:"application/octet-stream",parents:["content"],size:"300000",version:"7",sha256Checksum:remoteChecksum,appProperties:{brainManagedRootId:"root",brainSyncDomain:"content"}});
     if(url.includes("alt=media")){
       mediaCalls++;
       if(mediaCalls===1) return Promise.resolve({ok:true,value:new Response(new Uint8Array(256*1024).slice().buffer,{status:206})} as DriveResult<Response>);
