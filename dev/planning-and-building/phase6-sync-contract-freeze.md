@@ -185,3 +185,75 @@ If an approved workstream cannot meet acceptance criteria using this surface, it
 ## 11. Approval state
 
 This remains a **candidate**, not an operative freeze. Parallel continuation remains unauthorized until the independent supervisor explicitly approves one exact candidate head and identifies that SHA as the common workstream base.
+
+## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE
+
+Candidate identity: `phase6-sync-foundation-v1.3-failure-provenance`
+
+Predecessor approved foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+
+Predecessor approved contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`
+
+This section is appended succession material. Every byte above this heading remains predecessor contract history and compatibility authority.
+
+### 12.1 Succession and deprecation
+
+Deprecation does not delete or rewrite predecessor contract history. It prohibits new/resumed affected workstreams from using the weaker predecessor seam once the V1.3 successor has been approved and adopted.
+
+After V1.3 approval/adoption:
+
+| Retained predecessor surface | Status for new/resumed affected work | V1.3 successor |
+|---|---|---|
+| `RemoteMutationOutcome` | retained compatibility-only; deprecated where operational failure provenance must survive | `RemoteMutationOutcomeV1_3` |
+| `ReliableRemoteMutationPort` | retained compatibility-only; deprecated for affected A/D mutation execution | `ReliableRemoteMutationPortV1_3` |
+| `CoherentRemoteDownload` / `CoherentRemoteReadPort` | retained compatibility-only; deprecated for affected A/B/D lazy remote reads | `CoherentRemoteDownloadV1_3` / `CoherentRemoteReadPortV1_3` |
+| `LocalTransactionResult` / `LocalTransactionalMutationPort` | retained compatibility-only; deprecated for affected B/D staging paths | `LocalTransactionResultV1_3` / `LocalTransactionalMutationPortV1_3` |
+| `ExecutionResult` / `AuthoritativeSynchronizationExecutor` | retained compatibility-only; deprecated for affected D/H execution/status flow | `ExecutionResultV1_3` / `AuthoritativeSynchronizationExecutorV1_3` |
+
+New V1.3 shared surfaces also include `OperationalFailureProvenanceV1_3`, `OperationalFailureErrorV1_3`, `operationalFailureProvenanceFromErrorV1_3`, `operationalFailureFromDriveSignalV1_3`, `RetrySafePhysicalAuthorityV1_3`, `ExecutionDispositionV1_3`, and `executionDispositionV1_3`.
+
+### 12.2 Physical-certainty / provenance invariant
+
+**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
+
+Operational provenance may influence authentication presentation, bounded retry scheduling, deferred/offline presentation, rate-limit timing, permission/quota presentation, and recovery presentation. It never proves that a dispatch-authorized mutation was not applied, converts `outcome-unknown` into `verified-not-applied`, authorizes blind redispatch, advances BASE, advances path convergence, or becomes semantic synchronization authority.
+
+Restart physical reconciliation remains authoritative. V1.3 operational provenance is not required to become durable semantic synchronization authority; restart correctness depends on durable physical intent/stage/effect authority already frozen by the predecessor contracts, not on retaining operational presentation metadata.
+
+### 12.3 One retry-timing authority
+
+V1.3 has exactly one authority for rate-limit timing: `OperationalFailureProvenanceV1_3` when `kind === "rate-limited"`. `ExecutionResultV1_3` has no independent top-level `retryAfterMs`. A downstream V1.3 consumer must derive timing from the structured rate-limit provenance only.
+
+### 12.4 Contextual Drive-signal rule
+
+`operationalFailureFromDriveSignalV1_3` maps only context-free operational failures: authentication-required, transient-failure, rate-limited, permission-denied, quota-exhausted, and explicit recovery-required. `not-found` and `conflict` return no context-free operational provenance. Their meaning remains with the existing observation, mutation, precondition, and conflict semantics of the calling context.
+
+### 12.5 Retry-safety invariant
+
+Operational retryability and physical retry safety are separate facts. A transient network cause or HTTP 429 alone never establishes physical retry safety.
+
+`ExecutionResultV1_3.status === "retryable-failure"` requires `RetrySafePhysicalAuthorityV1_3`, proving either pre-dispatch rejection or verified-not-applied physical reality. That proof establishes physical redispatch safety only; it does not authorize dispatch now while an operational deferral remains active. `uncertain` and `recovery-required` never authorize redispatch; authentication/transient/rate-limit provenance on an uncertain result changes presentation/scheduling only, and physical re-observation/reconciliation remains mandatory.
+
+### 12.6 Combined execution disposition
+
+`executionDispositionV1_3` consumes the complete `ExecutionResultV1_3` and freezes a single downstream interpretation containing primary user/retry disposition, `physicalReconciliationRequired`, applicable rate-limit timing, retry mode, and `mutationRedispatchAuthorized`.
+
+- uncertain + authentication -> authentication-required, physical reconciliation required, reauthenticate then reconcile, no redispatch;
+- uncertain + transient/rate-limit -> deferred, physical reconciliation required, reconcile before redispatch, exact structured timing when present, no redispatch;
+- uncertain + no provenance -> recovery-required, physical reconciliation required, no redispatch;
+- physically safe authentication -> authentication-required, no physical reconciliation, reauthenticate then retry, physical redispatch safe, current redispatch authorization false;
+- retryable-failure -> deferred ordinary retry opportunity, physical redispatch safe but current redispatch authorization false until scheduling/rate-limit gates establish a future opportunity;
+- recovery-required -> recovery remains mandatory regardless of operational metadata.
+
+`ExecutionDispositionV1_3.physicalRedispatchSafe` reports only absence of unresolved physical effect. `mutationRedispatchAuthorized` means authorized to dispatch now after physical and operational gates; a static failure disposition never pre-authorizes a future dispatch.
+
+### 12.7 Downstream migration requirements
+
+- **A:** adapt Drive/lazy-content operational failures into the public V1.3 provenance carrier and V1.3 remote read/mutation results; do not export private error semantics.
+- **B:** consume V1.3 lazy carrier/extractor and emit `LocalTransactionResultV1_3`; generic local I/O uncertainty remains `outcome-unknown` without fabricated remote provenance.
+- **C:** no new persistence authority is introduced; durable physical stage/recovery semantics remain predecessor authority.
+- **D:** consume V1.3 mutation/local results and emit `ExecutionResultV1_3`; ordinary retry requires explicit `RetrySafePhysicalAuthorityV1_3`.
+- **G:** adversarially prove uncertain operational failures never gain redispatch authority and predecessor physical recovery invariants remain intact.
+- **H/UI:** use `executionDispositionV1_3` rather than reason-string parsing or provenance-only interpretation.
+
+No downstream implementation is authorized by this candidate. Independent supervisor approval and explicit adoption remain required.
