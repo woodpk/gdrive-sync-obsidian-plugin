@@ -41,6 +41,7 @@ import {
 import { sha256Text } from "../util/sha256";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ExecutorRunEvidence, ProductSynchronizationExecutor } from "./production-executor";
+import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
 import type { ProductTextVersionStore } from "./text-version-store";
 
 export interface RecoverableProductionMutationDependencies {
@@ -369,7 +370,11 @@ async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: 
   if (!result.ok || result.value.completeness.status !== "complete") return { ok: false, reason: "complete current REMOTE listing unavailable for logical convergence" };
   const active = result.value.entries.filter(value => !value.trashed);
   if (descriptor.kind === "remote-file") {
-    const expected = descriptor.remoteMutation.kind === "reserved-file-create" ? descriptor.remoteMutation.reservedRemoteObjectId : descriptor.remoteMutation.candidateRemoteObjectId;
+    if (descriptor.remoteMutation.kind === "existing-file-content-update") {
+      const update = verifyPreservedRemoteUpdateConvergence(descriptor, active);
+      return update.status === "converged" ? { ok: true } : { ok: false, reason: update.reason };
+    }
+    const expected = descriptor.remoteMutation.reservedRemoteObjectId;
     const matches = active.filter(value => value.path === descriptor.targetPath);
     return matches.length === 1 && matches[0]?.remoteObjectId === expected ? { ok: true } : { ok: false, reason: "REMOTE file physical effect lacks independent conflict-free path convergence" };
   }
