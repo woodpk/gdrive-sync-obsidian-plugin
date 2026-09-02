@@ -9,16 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  build-corrected-candidate:
+  append-evidence-closure:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: phase6-sync-foundation-v1.3-failure-provenance
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Run disposable T3 builder
+      - name: Append T3 evidence closure only
         shell: bash
-        run: bash <(git show origin/foundation-v1-3-t3-builder:dev/agents/foundation-v1-3-t3-builder.sh)
+        run: bash <(git show origin/foundation-v1-3-t3-builder:dev/agents/foundation-v1-3-t3-evidence-builder.sh)
