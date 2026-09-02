@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { BinaryContentSource, ContentEvidence, DriveSignal, ManagedRemoteIdentity, PathSnapshot, RemoteObjectId, VaultPath } from "../src/contracts";
+import type { BinaryContentSource, ContentEvidence, DriveSignal, LocalMutationTransaction, LocalTransactionalMutationPort, ManagedRemoteIdentity, PathSnapshot, RemoteObjectId, VaultPath } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
@@ -10,10 +10,11 @@ import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
 import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { IntegratedProductController } from "../src/product/product-controller";
+import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler, type AssembledPlanningInput } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
 import { sha256Text } from "../src/util/sha256";
 
 const id=<T extends string>(value:string)=>contractId<T>(value);
@@ -43,6 +44,17 @@ const ok=(body:unknown,status=200)=>Promise.resolve({ok:true,value:new Response(
 function googleAdapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){
   const backing=new MemorySecrets(); backing.setSecret("brain-gdrive-paired-account","acct"); const store=new ObsidianSecretStore(backing);
   return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store);
+}
+function streamSignal(error:unknown):DriveSignal|undefined{
+  if(!error||typeof error!=="object"||!("driveSignal" in error)) return undefined;
+  const value=(error as {driveSignal?:unknown}).driveSignal;
+  return value&&typeof value==="object"&&"kind" in value?value as DriveSignal:undefined;
+}
+function signalReason(signal:DriveSignal|undefined,error:unknown):string{
+  if(!signal) return error instanceof Error?error.message:String(error);
+  if(signal.kind==="authentication-required") return `authentication-required:${signal.detail??signal.kind}`;
+  if(signal.kind==="rate-limited") return "rate-limited";
+  return "detail" in signal&&signal.detail?signal.detail:signal.kind;
 }
 
 test("B3 reserved configuration collision remains path-local while unrelated upload/download work stays executable",async()=>{
@@ -86,7 +98,7 @@ test("B3 reserved configuration collision remains path-local while unrelated upl
 interface StreamHarnessResult {
   readonly controller: IntegratedProductController;
   readonly action: Awaited<ReturnType<IntegratedProductController["request"]>>;
-  readonly state: PersistentSynchronizationStateStore;
+  readonly state: IntegratedSynchronizationStateStore;
   readonly downloadStarts: number;
   readonly replaceStarts: number;
   readonly mediaCalls: number;
@@ -135,11 +147,15 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
     },
   } as never;
 
-  const state=new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  const initial=createInitialTrustedState({stateRevision:id<"StateRevision">("state:0"),vaultIdentity:vault,deviceIdentity:device});
+  const rawState=new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const semanticGeneration=id<"SemanticStateGeneration">("semantic:group-b:1");
+  const firstFingerprint=id<"BaseFingerprint">("base:group-b:a");
+  const secondFingerprint=id<"BaseFingerprint">("base:group-b:b");
+  const initial=createInitialAuthorityState({persistenceRevision:id<"PersistenceRevision">("persistence:group-b:1"),semanticGeneration,vaultIdentity:vault,deviceIdentity:device});
   const firstBaseEntry={path:first,entityKind:"file" as const,localExisted:true,remoteExisted:true,content:firstBase,remoteObjectId:firstId};
   const secondBaseEntry={path:second,entityKind:"file" as const,localExisted:true,remoteExisted:true,content:secondBase,remoteObjectId:secondId};
-  await state.saveTrusted({...initial,changeCursor:id<"ChangeCursor">("cursor:old"),base:[firstBaseEntry,secondBaseEntry],remoteMappings:[{path:first,entityKind:"file",remoteObjectId:firstId},{path:second,entityKind:"file",remoteObjectId:secondId}]});
+  await rawState.saveTrusted({...initial,changeCursor:id<"ChangeCursor">("cursor:old"),base:[firstBaseEntry,secondBaseEntry],remoteMappings:[{path:first,entityKind:"file",remoteObjectId:firstId},{path:second,entityKind:"file",remoteObjectId:secondId}],baseAuthority:[{path:first,fingerprint:firstFingerprint},{path:second,fingerprint:secondFingerprint}],pathConvergence:[{path:first,state:{status:"converged",generation:semanticGeneration,baseFingerprint:firstFingerprint}},{path:second,state:{status:"converged",generation:semanticGeneration,baseFingerprint:secondFingerprint}}]});
+  const state=new IntegratedSynchronizationStateStore(rawState);
   const loaded=await state.load(context); assert.equal(loaded.status,"trusted");
   const snapshot=(path:VaultPath,baseEntry:typeof firstBaseEntry,localEvidence:ContentEvidence,objectId:RemoteObjectId):PathSnapshot=>({
     path,
@@ -149,10 +165,23 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
   });
   const assembly:AssembledPlanningInput={input:{snapshots:[snapshot(first,firstBaseEntry,firstBase,firstId),snapshot(second,secondBaseEntry,secondBase,secondId)],state:loaded},managedRemote:managed,remoteEnumeration:{status:"complete"},mode:"full",nextCursor:id<"ChangeCursor">("cursor:new")};
   const executor=new ProductSynchronizationExecutor(local,drive,state,context,()=>({managedRemote:managed,remoteEnumerationComplete:true}));
+  const localTransactionalMutationPort:LocalTransactionalMutationPort={
+    stageAndVerify:async(transaction,content)=>{
+      replaceStarts++;
+      try{
+        for await(const _chunk of content.openChunks()) { /* consume the exact lazy source into an isolated stage */ }
+        return {status:"staged-verified",transaction:{...transaction,stage:"staged-verified"} as LocalMutationTransaction};
+      }catch(error){
+        return {status:"outcome-unknown",reason:signalReason(streamSignal(error),error),transaction};
+      }
+    },
+    commitVerifiedStage:async transaction=>({status:"committed",transaction:{...transaction,stage:"completed"} as LocalMutationTransaction,resultingObservationToken:id<"ObservationToken">(`tok:committed:${String(transaction.path)}`)}),
+    recover:async transaction=>({status:"blocked",reason:"fixture staged transfer was not committed",transaction}),
+  };
   const controller=new IntegratedProductController({
-    vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:state,
+    vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:state,authorityStore:state,
     snapshotAssembler:{assembleFull:async()=>assembly} as never,
-    executor,conflictResolver:resolver,
+    executor,localTransactionalMutationPort,conflictResolver:resolver,
     plannerForTrigger:trigger=>new DeterministicSynchronizationPlanner(resolver,undefined,{trigger}),
     leasePort:{tryAcquire:async()=>({release:async()=>undefined})} as never,
     audit:new BoundedAuditHistory(new MemoryAuditPersistence(),50),holderId:`group-b:${signal.kind}`,
