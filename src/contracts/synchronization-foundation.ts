@@ -9,6 +9,7 @@ import type {
   MutationIntentId,
   ObservationToken,
   OperationId,
+  OperationalFailureProvenance,
   PersistenceRevision,
   RemoteIngestionBatchId,
   RemoteObjectId,
@@ -244,9 +245,9 @@ export type RemoteMutationApplicationProof =
 /** Application proof answers only whether the physical effect was safely verified, not whether the path converged. */
 export type RemoteMutationOutcome =
   | { readonly status: "verified-effect"; readonly receipt?: RemoteMutationReceipt; readonly applicationProof: RemoteMutationApplicationProof }
-  | { readonly status: "conflict-preserved"; readonly reason: string; readonly preservedRemoteObjectIds: readonly RemoteObjectId[] }
-  | { readonly status: "verified-not-applied"; readonly reason: string }
-  | { readonly status: "outcome-unknown"; readonly reason: string };
+  | { readonly status: "conflict-preserved"; readonly reason: string; readonly preservedRemoteObjectIds: readonly RemoteObjectId[]; readonly operationalFailure?: OperationalFailureProvenance }
+  | { readonly status: "verified-not-applied"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenance }
+  | { readonly status: "outcome-unknown"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenance };
 
 export type RemoteUpdateVerificationEvidence =
   | { readonly kind: "final-content-observed-only"; readonly finalContentMatchesCandidate: boolean }
@@ -280,7 +281,7 @@ export interface ReliableRemoteMutationPort {
 
 export type CoherentRemoteDownload =
   | { readonly status: "coherent"; readonly remoteObjectId: RemoteObjectId; readonly revision: RemoteRevisionId; readonly evidence: ContentEvidence; readonly content: BinaryContentSource }
-  | { readonly status: "changed-during-transfer" | "outcome-unknown"; readonly reason: string };
+  | { readonly status: "changed-during-transfer" | "outcome-unknown"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenance };
 
 export interface CoherentRemoteReadPort {
   downloadVersion(remoteObjectId: RemoteObjectId, expectedRevision: RemoteRevisionId, expectedEvidence: ContentEvidence, cancellation?: SynchronizationCancellationSignal): Promise<DriveResult<CoherentRemoteDownload>>;
@@ -390,7 +391,7 @@ export type LocalMutationTransaction =
 
 export type LocalTransactionResult =
   | { readonly status: "staged-verified" | "committed" | "recovered"; readonly transaction: LocalMutationTransaction; readonly resultingObservationToken?: ObservationToken }
-  | { readonly status: "stale" | "blocked" | "outcome-unknown"; readonly reason: string; readonly transaction: LocalMutationTransaction };
+  | { readonly status: "stale" | "blocked" | "outcome-unknown"; readonly reason: string; readonly transaction: LocalMutationTransaction; readonly operationalFailure?: OperationalFailureProvenance };
 
 export interface LocalTransactionalMutationPort {
   stageAndVerify(transaction: LocalMutationTransaction, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<LocalTransactionResult>;
