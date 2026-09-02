@@ -66,3 +66,29 @@ export interface GoogleDrivePort {
   /** @deprecated Raw transport primitive; synchronization must use ReliableRemoteMutationPort.trashExisting. */
   trash(remoteObjectId: RemoteObjectId): Promise<DriveResult<void>>;
 }
+
+/**
+ * V1.3 maps only context-free operational Drive failures. Observation/semantic
+ * results such as not-found and conflict remain owned by their calling context.
+ */
+export function operationalFailureFromDriveSignalV1_3(
+  signal: DriveSignal,
+): import("./common").OperationalFailureProvenanceV1_3 | undefined {
+  switch (signal.kind) {
+    case "authentication-required":
+      return { kind: "authentication-required", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "transient-failure":
+      return { kind: "transient-failure", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "rate-limited":
+      return { kind: "rate-limited", source: "google-drive", ...(signal.retryAfterMs === undefined ? {} : { retryAfterMs: signal.retryAfterMs }) };
+    case "permission-denied":
+      return { kind: "permission-denied", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "quota-exhausted":
+      return { kind: "quota-exhausted", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "recovery-required":
+      return { kind: "recovery-required", source: "google-drive", detail: signal.detail };
+    case "not-found":
+    case "conflict":
+      return undefined;
+  }
+}
