@@ -86,3 +86,4 @@ jobs:
           name: h-u4-c2-direct-exit-proof
           path: .ci-evidence/
           if-no-files-found: error
+          include-hidden-files: true
