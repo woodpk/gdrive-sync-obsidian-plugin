@@ -187,3 +187,55 @@ For every v1 mutating plan kind the frozen chain is now complete:
 - clean text merge: one logical operation coordinates two or more separately staged physical effects; one-side completion can never imply logical completion.
 
 No v1 mutation requires a private sidecar contract or the pre-crash in-memory plan to reconstruct unfinished physical intent.
+
+## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE
+
+This entire section is successor architecture. Sections 1–16 above are preserved byte-for-byte from the approved predecessor foundation and remain historical compatibility authority.
+
+### 17.1 Orthogonal authority model
+
+V1.3 adds a transient operational-provenance dimension without changing predecessor physical certainty, BASE, path convergence, durable dispatch ordering, or restart recovery authority.
+
+**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
+
+A result may know *why* an operation failed while still not know *whether* a mutation was physically applied. Authentication-required, transient transport failure, or rate limiting can therefore coexist with an `outcome-unknown`/`uncertain` physical state. Those causes affect presentation and scheduling only; they do not resolve physical reality.
+
+### 17.2 Provenance source validity
+
+`OperationalFailureProvenanceV1_3` is intentionally a remote/Drive operational union. Authentication, transient network/service failure, rate limiting, Drive permission denial, quota exhaustion, and explicit Drive recovery-required are sourced by their discriminant. Generic local I/O uncertainty is represented as a physically uncertain local transaction with no structured remote provenance.
+
+This prevents nonsensical local-authentication or local-Drive-rate-limit combinations by construction.
+
+### 17.3 Drive semantics remain contextual
+
+`DriveSignal.not-found` and `DriveSignal.conflict` are not globally operational failures. Their meaning depends on the synchronization operation and observation context. `operationalFailureFromDriveSignalV1_3()` therefore returns `undefined` for both. Existing reliable-create, identity, precondition, conflict, and recovery logic remains the semantic owner of those signals.
+
+### 17.4 One rate-limit timing authority
+
+The only V1.3 `retryAfterMs` authority is the `rate-limited` member of `OperationalFailureProvenanceV1_3`. `ExecutionResultV1_3` carries no independent retry timing field. Combined disposition copies timing from that provenance without creating another source of truth.
+
+### 17.5 Retry safety is a separate proof
+
+A retryable cause is not retry-safe physical authority. `RetrySafePhysicalAuthorityV1_3` explicitly proves either pre-dispatch rejection or verified-not-applied physical reality. `ExecutionResultV1_3.retryable-failure` requires that proof structurally.
+
+If a mutation may have been dispatched, the result is `uncertain`/`recovery-required`, never ordinary retryable work. A 429 or transient network cause on such a result means re-observe/reconcile first, not redispatch.
+
+### 17.6 Complete execution disposition
+
+`executionDispositionV1_3()` consumes the complete V1.3 execution result, not provenance alone. Its output fixes:
+
+- primary product/auth/offline/recovery disposition;
+- whether unresolved physical reconciliation is mandatory;
+- retry mode;
+- applicable rate-limit timing;
+- whether mutation redispatch is currently authorized.
+
+This prevents downstream A/B/D/H/G interpretations from diverging about the same result.
+
+### 17.7 Restart correctness does not depend on provenance persistence
+
+Operational provenance is transient presentation/scheduling metadata and need not be persisted as semantic synchronization authority. Restart correctness remains governed by predecessor durable operation intent, physical effect stage, verification evidence, and restart-recovery directives. If operational provenance is absent after restart, an unresolved physical state remains recovery-required until physical reality is reconciled.
+
+### 17.8 Succession boundary
+
+The predecessor mutation, remote-read, local-transaction, and execution seams remain physically present for compatibility. After V1.3 approval/adoption, new or resumed affected workstreams use the explicitly versioned V1.3 successors named in the appended contract-freeze succession section. This architecture addition itself authorizes no downstream implementation or integration.
