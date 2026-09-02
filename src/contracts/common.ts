@@ -60,7 +60,7 @@ export const contractId = <T extends string>(value: string): Brand<string, T> =>
 export type OperationalFailureProvenanceV1_3 =
   | { readonly kind: "authentication-required"; readonly source: "google-drive"; readonly detail?: string }
   | { readonly kind: "transient-failure"; readonly source: "google-drive"; readonly detail?: string }
-  | { readonly kind: "rate-limited"; readonly source: "google-drive"; readonly retryAfterMs?: number }
+  | { readonly kind: "rate-limited"; readonly source: "google-drive"; readonly retryAfterMs?: number; readonly detail?: string }
   | { readonly kind: "permission-denied"; readonly source: "google-drive"; readonly detail?: string }
   | { readonly kind: "quota-exhausted"; readonly source: "google-drive"; readonly detail?: string }
   | { readonly kind: "recovery-required"; readonly source: "google-drive"; readonly detail: string }
