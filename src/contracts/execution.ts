@@ -1,4 +1,4 @@
-import type { ContentEvidence, OperationId, OperationalFailureProvenance, RemoteObjectId, StateRevision } from "./common";
+import type { ContentEvidence, OperationId, RemoteObjectId, StateRevision } from "./common";
 import type { ExecutableOperationPrecondition, ExecutablePlannedOperation, OperationPrecondition, PlannedOperation } from "./plan";
 
 export type PreconditionValidationResult =
@@ -15,34 +15,12 @@ export interface VerifiedExecutionReceipt {
   readonly verificationEvidenceRef?: string;
 }
 
-export type RetryableOperationalFailure = Extract<OperationalFailureProvenance, { readonly kind: "transient-failure" | "rate-limited" }>;
-
 export type ExecutionResult =
   | { readonly status: "durable-verified-success"; readonly receipt: VerifiedExecutionReceipt }
-  | { readonly status: "retryable-failure"; readonly reason: string; readonly retryAfterMs?: number; readonly operationalFailure?: RetryableOperationalFailure }
+  | { readonly status: "retryable-failure"; readonly reason: string; readonly retryAfterMs?: number }
   | { readonly status: "stale-precondition"; readonly reason: string; readonly failed?: readonly OperationPrecondition[] }
-  | { readonly status: "blocking-failure" | "uncertain" | "recovery-required"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenance }
+  | { readonly status: "blocking-failure" | "uncertain" | "recovery-required"; readonly reason: string }
   | { readonly status: "cancelled"; readonly reason?: string };
-
-export type OperationalFailureDisposition =
-  | { readonly status: "authentication-required"; readonly retry: "after-reauthentication" }
-  | { readonly status: "deferred"; readonly retry: "bounded-backoff"; readonly retryAfterMs?: number }
-  | { readonly status: "blocking-failure"; readonly retry: "none" }
-  | { readonly status: "recovery-required"; readonly retry: "none" };
-
-/** Operational disposition never changes physical-effect certainty in ExecutionResult. */
-export function operationalFailureDisposition(provenance: OperationalFailureProvenance): OperationalFailureDisposition {
-  switch (provenance.kind) {
-    case "authentication-required": return { status: "authentication-required", retry: "after-reauthentication" };
-    case "transient-failure": return { status: "deferred", retry: "bounded-backoff" };
-    case "rate-limited": return { status: "deferred", retry: "bounded-backoff", ...(provenance.retryAfterMs === undefined ? {} : { retryAfterMs: provenance.retryAfterMs }) };
-    case "permission-denied":
-    case "quota-exhausted": return { status: "blocking-failure", retry: "none" };
-    case "recovery-required":
-    case "semantic-failure":
-    case "unclassified": return { status: "recovery-required", retry: "none" };
-  }
-}
 
 /** Compatibility seam used by the existing pre-foundation execution coordinator. Not authoritative for the new synchronization path. */
 export interface SynchronizationExecutor {

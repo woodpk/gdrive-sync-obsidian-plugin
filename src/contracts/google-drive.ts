@@ -3,7 +3,6 @@ import type {
   ChangeCursor,
   ContentEvidence,
   EntityKind,
-  OperationalFailureProvenance,
   ProtocolVersion,
   RemoteObjectId,
   VaultIdentity,
@@ -17,21 +16,6 @@ export type ManagedRemoteValidation = { readonly status: "valid"; readonly ident
 export interface RemoteProtocolInfo { readonly currentVersion: ProtocolVersion; readonly compatible: boolean; }
 export type DriveSignal = { readonly kind: "authentication-required" | "transient-failure" | "permission-denied"; readonly detail?: string } | { readonly kind: "rate-limited"; readonly retryAfterMs?: number } | { readonly kind: "quota-exhausted"; readonly detail?: string } | { readonly kind: "not-found"; readonly remoteObjectId?: RemoteObjectId } | { readonly kind: "conflict" | "recovery-required"; readonly detail: string };
 export type DriveResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly signal: DriveSignal };
-
-/** Converts structured Drive transport signals into the shared operational-provenance authority. */
-export function operationalFailureFromDriveSignal(signal: DriveSignal): OperationalFailureProvenance {
-  switch (signal.kind) {
-    case "authentication-required": return { kind: "authentication-required", origin: "remote", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
-    case "transient-failure": return { kind: "transient-failure", origin: "remote", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
-    case "rate-limited": return { kind: "rate-limited", origin: "remote", ...(signal.retryAfterMs === undefined ? {} : { retryAfterMs: signal.retryAfterMs }) };
-    case "permission-denied": return { kind: "permission-denied", origin: "remote", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
-    case "quota-exhausted": return { kind: "quota-exhausted", origin: "remote", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
-    case "recovery-required": return { kind: "recovery-required", origin: "remote", detail: signal.detail };
-    case "conflict": return { kind: "semantic-failure", origin: "remote", detail: signal.detail };
-    case "not-found": return { kind: "recovery-required", origin: "remote", detail: signal.remoteObjectId ? `remote object not found: ${String(signal.remoteObjectId)}` : "remote object not found" };
-  }
-}
-
 export interface RemoteEntry { readonly path: VaultPath; readonly entityKind: EntityKind; readonly remoteObjectId: RemoteObjectId; readonly content?: ContentEvidence; readonly trashed: boolean; }
 export interface RemoteListing { readonly entries: readonly RemoteEntry[]; readonly completeness: EnumerationCompleteness; }
 export type RemoteChange = { readonly kind: "upsert"; readonly entry: RemoteEntry } | { readonly kind: "removed"; readonly remoteObjectId: RemoteObjectId; readonly lastKnownPath?: VaultPath };

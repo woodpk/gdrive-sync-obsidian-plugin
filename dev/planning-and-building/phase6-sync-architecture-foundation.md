@@ -187,15 +187,3 @@ For every v1 mutating plan kind the frozen chain is now complete:
 - clean text merge: one logical operation coordinates two or more separately staged physical effects; one-side completion can never imply logical completion.
 
 No v1 mutation requires a private sidecar contract or the pre-crash in-memory plan to reconstruct unfinished physical intent.
-
-## 17. Foundation v1.3 operational-failure provenance correction
-
-**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
-
-The shared contract now carries structured operational provenance for authentication-required, transient failure, rate limiting (including `retryAfterMs`), permission denial, quota exhaustion, recovery-required, semantic failure, and conservative unclassified failure. `OperationalFailureError` is the sanctioned public lazy-content failure carrier; downstream consumers use `operationalFailureProvenanceFromError()` rather than private Workstream-A classes, undocumented properties, or reason-string parsing.
-
-`LocalTransactionResult`, `RemoteMutationOutcome`, `CoherentRemoteDownload`, and `ExecutionResult` can retain this provenance separately from their existing physical/recovery discriminants. In particular, `outcome-unknown` and execution `uncertain` remain physically uncertain even when the operational cause is authentication, transient network failure, or rate limiting.
-
-**Operational failure provenance may influence retry scheduling and user-facing status, but never proves that a dispatch-authorized/outcome-unknown physical effect was not applied.**
-
-Accordingly, operational retryability never authorizes blind redispatch. Existing durable intent/effect stages and restart reconciliation remain authoritative, and unknown/unclassified operational causes fail conservatively rather than being guessed into a retryable class.

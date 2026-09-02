@@ -1,11 +1,11 @@
 # Phase 6 Synchronization Contract Freeze Candidate
 
 Status: **candidate only — independent supervisor approval pending**  
-Contract version: `phase6-sync-foundation-v1.3-failure-provenance`
-Previous supervisor-approved foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
-Previous frozen contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`
+Contract version: `phase6-sync-foundation-v1.1`  
+Previous supervisor-approved foundation: `6984915d2989827edf00def64a04c102c4e08785` (`phase6-sync-foundation-v1`)  
+Rejected v1.1 candidate: `c9a7f9c2fe77d134bed1659111d58b9a53d3eda3`  
 Authority-store implementation checkpoint: `750100f95c8a32a6deb6909cd03ebbee3682d650`  
-Branch: `phase6-sync-foundation-v1.3-failure-provenance`
+Branch: `phase6-sync-architecture-foundation`
 
 This manifest does not authorize parallel continuation. The exact supervisor-approved workstream-base SHA will be identified externally after review and must be the single repository snapshot used by every later or resumed affected workstream.
 
@@ -62,10 +62,6 @@ Later agents must not modify `src/contracts/**` independently after approval. Co
 | `LocalIntegrityReconciliationPort` | Authoritative integrity read bypasses metadata/observation-token evidence cache and re-reads actual bytes. | B, E, G |
 | `SynchronizationFaultPoint` | Deterministic crash injection covers dispatch and local swap boundaries. | A, B, C, D, G |
 | `SemanticStateValidator` | Known codes plus fail-closed extensibility for newly discovered contradictions. | C |
-| `OperationalFailureProvenance` | Structured operational cause independent of physical-effect certainty. | A, B, D, H/UI |
-| `OperationalFailureError` / `operationalFailureProvenanceFromError` | Public lazy-content failure carrier/extractor; private A error types and reason parsing are not authority. | A, B, D |
-| `operationalFailureFromDriveSignal` | Converts structured Drive transport signals while preserving rate-limit timing. | A |
-| `operationalFailureDisposition` | Conservative user/retry disposition that cannot alter physical-effect certainty. | D, H/UI |
 
 ## 3. Fixed mutation lifecycle
 
@@ -171,19 +167,16 @@ The repository contains existing planner/executor/Drive/persistence interfaces t
 12. Physical application and logical path convergence remain distinct.
 13. Folder-create operation identity and reserved remote identity survive authoritative persistence/restart unchanged.
 14. Logical completion requires every required physical effect to reach `state-committed`.
-15. Physical-effect certainty and operational-failure provenance remain orthogonal.
-16. Operational retryability never becomes physical-effect authority.
 
 ## 9. Workstream effects
 
-- **A** has the frozen retry-safe REMOTE folder identity and verification contracts and must emit public structured operational provenance at the Drive/lazy-content boundaries.
-- **B** has the frozen LOCAL structural folder-create contracts and can preserve lazy remote-source provenance in `LocalTransactionResult` without depending on A implementation details.
-- **C** can persist and recover LOCAL and REMOTE folder-create physical effects, exact identities, stages, and verification references through the authoritative v1.1 store without a sidecar; operational provenance does not alter stage authority.
-- **D** can plan, journal, save, reload, classify, verify/recover, converge, and commit synchronization while carrying structured operational provenance into `ExecutionResult` without weakening physical certainty.
-- **G** can model folder persistence/restart, identity preservation, pre/post-dispatch classification, shared completion semantics, and the prohibition on redispatch from operational retryability without production ownership.
-- **H/UI** can surface authentication, retry/defer timing, quota/permission, and recovery disposition from public execution contracts rather than reason strings.
+- **A** has the frozen retry-safe REMOTE folder identity and verification contracts.
+- **B** has the frozen LOCAL structural folder-create contracts.
+- **C** can persist and recover LOCAL and REMOTE folder-create physical effects, exact identities, stages, and verification references through the authoritative v1.1 store without a sidecar.
+- **D** can plan, journal, save, reload, classify, verify/recover, converge, and commit empty-folder synchronization using the same authoritative v1.1 metadata/store contract.
+- **G** can model folder persistence/restart, identity preservation, pre/post-dispatch classification, and shared completion semantics without production ownership.
 
-The seven-workstream decomposition remains sound; worker count and ownership are unchanged. No workstream is authorized to resume until independent supervisor approval establishes one exact workstream-base SHA.
+The seven-workstream decomposition remains sound; worker count and ownership are unchanged. No workstream is authorized to resume until independent supervisor approval establishes one exact v1.1 workstream-base SHA.
 
 ## 10. Contract change rule
 
@@ -192,25 +185,3 @@ If an approved workstream cannot meet acceptance criteria using this surface, it
 ## 11. Approval state
 
 This remains a **candidate**, not an operative freeze. Parallel continuation remains unauthorized until the independent supervisor explicitly approves one exact candidate head and identifies that SHA as the common workstream base.
-
-## 12. Foundation v1.3 operational-failure provenance correction
-
-This section is additive to the previously frozen lifecycle and persistence authority above.
-
-**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
-
-The public contract carries structured provenance for authentication-required, transient network/service failure, rate limiting with applicable `retryAfterMs`, permission denial, quota exhaustion, recovery-required, semantic failure, and conservative unclassified failure. Lazy `BinaryContentSource` failures use the public `OperationalFailureError` carrier and `operationalFailureProvenanceFromError()` extractor. Cross-workstream implementations must not parse free-form `reason` strings, depend on a private Workstream-A error class, or inspect undocumented error properties.
-
-`RemoteMutationOutcome`, `LocalTransactionResult`, `CoherentRemoteDownload`, and `ExecutionResult` may retain operational provenance alongside their physical/recovery result. The existing `verified-not-applied`, `conflict-preserved`, `outcome-unknown`, `uncertain`, and recovery meanings remain authoritative and unchanged.
-
-`ExecutionResult.retryable-failure` may carry only transient/rate-limit structured provenance. Authentication, permission, quota, recovery, semantic, or unclassified provenance cannot be explicitly represented as retryable operational provenance. `operationalFailureDisposition()` maps unknown/unclassified causes conservatively to recovery-required with no inferred retry.
-
-**Operational failure provenance may influence retry scheduling and user-facing status, but never proves that a dispatch-authorized/outcome-unknown physical effect was not applied.**
-
-`retryAfterMs` is scheduling guidance only. Authentication, transient, or rate-limit provenance never authorizes blind redispatch. Once an effect has reached `dispatch-authorized` or another may-have-dispatched stage, restart reconciliation of physical reality remains mandatory before any new dispatch authority can be established.
-
-The complete frozen chain is:
-
-`REMOTE/LOCAL operational failure -> structured public provenance -> safe physical mutation -> durable physical certainty -> authoritative execution result -> retry/auth/offline/recovery disposition`
-
-No operational disposition in that chain becomes physical-effect authority.
