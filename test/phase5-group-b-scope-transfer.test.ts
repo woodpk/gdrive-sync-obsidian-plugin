@@ -14,6 +14,7 @@ import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler, type AssembledPlanningInput } from "../src/product/snapshot-assembler";
+import type { DurableSynchronizationAuthorityState } from "../src/state/persistent-state-store";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
 import { sha256Text } from "../src/util/sha256";
 
@@ -151,10 +152,11 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
   const semanticGeneration=id<"SemanticStateGeneration">("semantic:group-b:1");
   const firstFingerprint=id<"BaseFingerprint">("base:group-b:a");
   const secondFingerprint=id<"BaseFingerprint">("base:group-b:b");
-  const initial=createInitialAuthorityState({persistenceRevision:id<"PersistenceRevision">("persistence:group-b:1"),semanticGeneration,vaultIdentity:vault,deviceIdentity:device});
+  const initial=createInitialAuthorityState({persistenceRevision:id<"StateRevision">("persistence:group-b:1"),semanticGeneration,vaultIdentity:vault,deviceIdentity:device});
   const firstBaseEntry={path:first,entityKind:"file" as const,localExisted:true,remoteExisted:true,content:firstBase,remoteObjectId:firstId};
   const secondBaseEntry={path:second,entityKind:"file" as const,localExisted:true,remoteExisted:true,content:secondBase,remoteObjectId:secondId};
-  await rawState.saveTrusted({...initial,changeCursor:id<"ChangeCursor">("cursor:old"),base:[firstBaseEntry,secondBaseEntry],remoteMappings:[{path:first,entityKind:"file",remoteObjectId:firstId},{path:second,entityKind:"file",remoteObjectId:secondId}],baseAuthority:[{path:first,fingerprint:firstFingerprint},{path:second,fingerprint:secondFingerprint}],pathConvergence:[{path:first,state:{status:"converged",generation:semanticGeneration,baseFingerprint:firstFingerprint}},{path:second,state:{status:"converged",generation:semanticGeneration,baseFingerprint:secondFingerprint}}]});
+  const seededAuthority:DurableSynchronizationAuthorityState={...initial,changeCursor:id<"ChangeCursor">("cursor:old"),base:[firstBaseEntry,secondBaseEntry],remoteMappings:[{path:first,entityKind:"file",remoteObjectId:firstId},{path:second,entityKind:"file",remoteObjectId:secondId}],baseAuthority:[{path:first,fingerprint:firstFingerprint},{path:second,fingerprint:secondFingerprint}],pathConvergence:[{path:first,state:{status:"converged",generation:semanticGeneration,baseFingerprint:firstFingerprint}},{path:second,state:{status:"converged",generation:semanticGeneration,baseFingerprint:secondFingerprint}}]};
+  await rawState.saveTrusted(seededAuthority);
   const state=new IntegratedSynchronizationStateStore(rawState);
   const loaded=await state.load(context); assert.equal(loaded.status,"trusted");
   const snapshot=(path:VaultPath,baseEntry:typeof firstBaseEntry,localEvidence:ContentEvidence,objectId:RemoteObjectId):PathSnapshot=>({
