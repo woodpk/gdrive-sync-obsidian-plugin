@@ -115,3 +115,123 @@ Workstreams E and F have no identified direct contract-consumption change from t
 ## Candidate status
 
 This branch is **not approved**, **not merged**, and does not authorize downstream production repairs. It is ready only for independent supervisor adversarial review.
+
+## SUPERVISOR REJECTION / V1.3 APPEND-ONLY CORRECTION
+
+### Rejection authority and preserved history
+
+- Rejected candidate: `a9228e3a075ee8be45d15239694e235b43af6eeb`.
+- Approved predecessor foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`.
+- Approved predecessor contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`.
+- Explicit corrective rollback commit: `a2652a6c6a9cd6100bf6fd4842493c5aada6a8e3`.
+- The rollback is a normal descendant of the rejected candidate. No reset, force push, history rewrite, or deletion of rejected commits was used.
+- Corrected source/test/document candidate frozen for exact verification: `dbec3f7a49ebea1e41c4dd71b2171649901ee346`.
+- Corrected `src/contracts` tree: `2df0204dec7ed0dd6f8280e245624072f0eb81bd`.
+
+### Supervisor rejection findings C1–C8 and dispositions
+
+1. **C1 — duplicate retry-timing authority:** the rejected design could represent rate-limit timing both on predecessor/top-level execution result and inside structured provenance. Corrected V1.3 uses only the `rate-limited` `OperationalFailureProvenanceV1_3.retryAfterMs`; `ExecutionResultV1_3` has no independent retry timing field.
+2. **C2 — Drive semantic overclassification:** the rejected helper treated `not-found` and `conflict` as context-free operational recovery classes. Corrected `operationalFailureFromDriveSignalV1_3()` returns `undefined` for both; their meaning remains with contextual synchronization/observation/conflict logic.
+3. **C3 — invalid provenance combinations:** the rejected generic category/origin model admitted nonsensical source/category pairings and attached provenance too broadly. The corrected union makes Drive/remote source relationships structural and leaves generic local I/O uncertainty without fabricated remote provenance. Stale/blocked local transactions, changed-during-transfer reads, and conflict-preserved remote mutations do not receive indiscriminate provenance fields.
+4. **C4 — incomplete disposition composition:** the rejected provenance-only disposition helper did not compose physical execution state with operational cause. `executionDispositionV1_3()` consumes the complete `ExecutionResultV1_3` and returns primary disposition, physical-reconciliation requirement, retry mode, applicable timing, and mutation-redispatch authorization.
+5. **C5 — retryability versus physical retry safety:** corrected `RetrySafePhysicalAuthorityV1_3` separately proves no unresolved may-have-dispatched effect. `ExecutionResultV1_3.status === "retryable-failure"` structurally requires that proof; transient/429 provenance alone never authorizes redispatch.
+6. **C6 — frozen executable history edited in place:** the rejected declarations were rolled back to exact approved predecessor blobs, then V1.3 successor declarations were appended with versioned names. Previously frozen declarations are not redefined or mutated.
+7. **C7 — frozen documentation history rewritten:** both foundation documents were restored to the approved predecessor bytes and V1.3 succession/architecture material was appended after the immutable predecessor prefix.
+8. **C8 — incomplete exact-candidate verification evidence:** the corrected candidate was verified by a disposable exact-SHA workflow that literally invoked both `npm run check` and `git diff --check`, rather than substituting component commands or relying on the ordinary PR merge ref.
+
+### Exact successor and deprecated surfaces
+
+After independent V1.3 approval/adoption, predecessor surfaces remain physically present as compatibility authority but are deprecated for new/resumed affected work as follows:
+
+| Retained predecessor surface | V1.3 successor |
+|---|---|
+| `RemoteMutationOutcome` | `RemoteMutationOutcomeV1_3` |
+| `ReliableRemoteMutationPort` | `ReliableRemoteMutationPortV1_3` |
+| `CoherentRemoteDownload` / `CoherentRemoteReadPort` | `CoherentRemoteDownloadV1_3` / `CoherentRemoteReadPortV1_3` |
+| `LocalTransactionResult` / `LocalTransactionalMutationPort` | `LocalTransactionResultV1_3` / `LocalTransactionalMutationPortV1_3` |
+| `ExecutionResult` / `AuthoritativeSynchronizationExecutor` | `ExecutionResultV1_3` / `AuthoritativeSynchronizationExecutorV1_3` |
+
+Additional V1.3 public authority includes `OperationalFailureProvenanceV1_3`, `OperationalFailureErrorV1_3`, `operationalFailureProvenanceFromErrorV1_3`, `operationalFailureFromDriveSignalV1_3`, `RetrySafePhysicalAuthorityV1_3`, `ExecutionDispositionV1_3`, and `executionDispositionV1_3`.
+
+Deprecation does not delete or rewrite predecessor contract history. It prohibits new/resumed affected workstreams from using the weaker predecessor seam once the V1.3 successor has been approved and adopted.
+
+### Preserved core and retry-safety invariants
+
+**Physical-effect certainty and operational-failure provenance are orthogonal authorities.** Operational provenance may affect authentication, bounded retry scheduling, deferred/offline presentation, rate-limit timing, permission/quota presentation, or recovery presentation. It does not prove non-application, convert `outcome-unknown` into `verified-not-applied`, authorize blind redispatch, advance BASE, advance path convergence, or become semantic synchronization authority.
+
+Operational provenance need not be persisted as semantic synchronization authority. Restart correctness continues to depend on predecessor durable operation intent/stage/effect/recovery authority. An unresolved may-have-dispatched effect remains physically recoverable/reconcilable even if transient operational provenance is absent after restart.
+
+### Predictive verification
+
+The replacement `test/phase6-foundation-failure-provenance.test.ts` contains three compile-time `@ts-expect-error` negative proofs and 16 runtime V1.3 cases covering:
+
+1. Drive authentication -> public V1.3 provenance -> lazy carrier/extractor;
+2. transient Drive provenance;
+3. exact rate-limit timing `5000`;
+4. `not-found` not auto-classified operational recovery;
+5. `conflict` not auto-classified operational recovery;
+6. generic local I/O uncertainty without fabricated remote provenance;
+7. physically unknown remote mutation + transient provenance remains unknown;
+8. verified-not-applied and outcome-unknown remain distinct under one cause;
+9. uncertain + authentication => authentication disposition plus mandatory physical reconciliation and no redispatch;
+10. uncertain + rate limit => deferred disposition, timing `5000`, mandatory physical reconciliation, no redispatch;
+11. uncertain without provenance => conservative recovery;
+12. ordinary retry requires explicit no-unresolved-effect proof;
+13. contradictory/duplicate V1.3 retry timing is rejected structurally;
+14. recovery-required physical state cannot be erased by operational metadata;
+15. predecessor approved contract/document bytes remain exact immutable prefixes;
+16. V1.3 documentation succession material occurs only after the approved predecessor byte prefixes.
+
+Ordinary candidate CI at `dbec3f7a49ebea1e41c4dd71b2171649901ee346` passed typecheck, all **439/439 tests**, and production build. The V1.3 runtime cases were discovered as tests 404–419 and all passed. The `@ts-expect-error` cases were compiled by the TypeScript test build and enforce the negative type-shape claims.
+
+### Prefix-integrity proof
+
+Runtime test C15 calculates Git blob SHA-1 over the exact initial byte ranges of each final append-only file and compares them to the approved predecessor blobs:
+
+| File | Approved prefix bytes | Approved predecessor blob SHA-1 |
+|---|---:|---|
+| `src/contracts/common.ts` | 2559 | `4048ceca9bd2a5022ededf7406a736360330572c` |
+| `src/contracts/google-drive.ts` | 5457 | `dc331d4acd1e7d9c308c0df73232497bf5d85d55` |
+| `src/contracts/execution.ts` | 3107 | `7fd20c94d5852f14bc223b6e5e0280d60fbb5776` |
+| `dev/planning-and-building/phase6-sync-contract-freeze.md` | 16296 | `fe527c76137b2cd578ef7050ee3444498b21a5e0` |
+| `dev/planning-and-building/phase6-sync-architecture-foundation.md` | 14429 | `f67d8ff67ff1915610e5a21ddc3d113c94a2f94b` |
+
+`src/contracts/synchronization-foundation.ts` was restored and left completely unchanged from the predecessor, blob `fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6`. Test C16 additionally measures appended documentation headings by byte offset, avoiding Unicode character-count ambiguity.
+
+### Exact corrected-candidate proof workflow
+
+- Frozen exact candidate: `dbec3f7a49ebea1e41c4dd71b2171649901ee346`.
+- Disposable proof branch: `foundation-v1-3-exact-proof-dbec3f7`.
+- Proof-only branch head: `04c2d4eedf0edd83fd0ecbcf94cc30dc95f4dfd1`; its parent is the exact frozen candidate and its only purpose is the disposable workflow definition.
+- Workflow run: `33672336883`.
+- Job: `100388716273`.
+- Workflow explicitly checked out `dbec3f7a49ebea1e41c4dd71b2171649901ee346` with `fetch-depth: 0` and used Node 22 for the required commands.
+- Exact-candidate identity check: exit `0`.
+- `npm ci`: exit `0`.
+- `npm run typecheck`: exit `0`.
+- `npx tsc -p tsconfig.test.json`: exit `0`.
+- `npm test`: exit `0`; **439/439 passed**.
+- `npm run build`: exit `0`.
+- Literal `npm run check`: exit `0`.
+- Literal `git diff --check 96b4541b15012ac4ce0d81243b73ef779efd343e...dbec3f7a49ebea1e41c4dd71b2171649901ee346`: exit `0`.
+- Overall proof status: `0` / PASS.
+- Uploaded artifact: `foundation-v1-3-exact-candidate-proof`.
+- Artifact ID: `9863004239`.
+- Artifact size: `41913` bytes.
+- Artifact digest: `sha256:b04f5398a1de505f6ee10f301f3e28b6865ea6135ec800902466647fcd0b7c93`.
+- Artifact retention expiry: `2026-10-02T19:17:20Z`.
+
+The proof branch remains isolated and unmerged. It was not used as the corrected candidate; the workflow checked out the frozen corrected candidate SHA explicitly.
+
+### Scope / PR / stop-boundary state
+
+- Comparison from approved predecessor `96b4541b15012ac4ce0d81243b73ef779efd343e` to corrected candidate `dbec3f7a49ebea1e41c4dd71b2171649901ee346` contains only append-only V1.3 contract material, corrected predictive tests, append-only foundation/freeze documentation, and this agent evidence. `src/contracts/synchronization-foundation.ts` has no final diff because it was restored exactly.
+- No Workstream A, B, C, D, E, F, G, or H production implementation was modified.
+- No integration branch or canonical integration evidence was modified.
+- PR `#47` remains **open**, **draft**, and **unmerged**. At exact candidate verification its head was `dbec3f7a49ebea1e41c4dd71b2171649901ee346`.
+- The disposable proof branch remains present and unmerged; its workflow commit is a child of the exact candidate and is not part of the candidate contract tree.
+- H-U5-P1 remains paused. No downstream implementation, integration, or merge was started.
+
+### Corrected candidate status
+
+The authoritative corrected source/test/document candidate is `dbec3f7a49ebea1e41c4dd71b2171649901ee346`, with contract tree `2df0204dec7ed0dd6f8280e245624072f0eb81bd`. This appended evidence is post-verification closure only and does not alter the corrected candidate contract tree or executable source/test candidate.
