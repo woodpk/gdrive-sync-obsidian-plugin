@@ -1,0 +1,59 @@
+name: Foundation V1.3 T3 Exact Candidate Proof
+
+on:
+  push:
+    branches:
+      - foundation-v1-3-t3-exact-proof-05600f7
+
+permissions:
+  contents: read
+
+jobs:
+  exact-candidate-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 05600f7ca48a6726b72188005f29eddfc1191519
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture every exact-candidate gate
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          mkdir -p proof
+          overall=0
+          run_capture() {
+            label="$1"
+            shift
+            "$@" >"proof/${label}.log" 2>&1
+            rc=$?
+            printf '%s=%s\n' "$label" "$rc" | tee -a proof/statuses.txt
+            if [ "$rc" -ne 0 ]; then overall="$rc"; fi
+          }
+          candidate=05600f7ca48a6726b72188005f29eddfc1191519
+          predecessor=96b4541b15012ac4ce0d81243b73ef779efd343e
+          run_capture exact-candidate-check bash -c 'test "$(git rev-parse HEAD)" = "05600f7ca48a6726b72188005f29eddfc1191519"'
+          run_capture npm-ci npm ci
+          run_capture npm-run-typecheck npm run typecheck
+          run_capture npx-tsc-test npx tsc -p tsconfig.test.json
+          run_capture npm-test npm test
+          run_capture npm-run-build npm run build
+          run_capture npm-run-check npm run check
+          run_capture git-diff-check git diff --check "${predecessor}...${candidate}"
+          printf 'overall=%s\n' "$overall" | tee -a proof/statuses.txt
+          printf '%s\n' "$overall" > proof/overall-status.txt
+          printf '%s\n' "$candidate" > proof/exact-candidate-sha.txt
+          printf '%s\n' '0db68ced179825f929008b502335210260ca2ce3' > proof/exact-contract-tree-sha.txt
+          cat proof/statuses.txt
+          exit "$overall"
+      - name: Upload complete proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-v1-3-t3-exact-candidate-proof
+          path: proof/
+          if-no-files-found: error
