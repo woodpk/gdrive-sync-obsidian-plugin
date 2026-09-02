@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: 3f442dbe093201a6900489d6fa89c9baefb9f79b
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
