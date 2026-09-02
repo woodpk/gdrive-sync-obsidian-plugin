@@ -10,6 +10,7 @@ import { IntegratedProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
+import type { DurableSynchronizationAuthorityState } from "../src/state/persistent-state-store";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { sha256Text } from "../src/util/sha256";
@@ -147,18 +148,19 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
   const semanticGeneration = id<"SemanticStateGeneration">("semantic:controller:1");
   const baseFingerprint = id<"BaseFingerprint">("base:controller:note");
   const initial = createInitialAuthorityState({
-    persistenceRevision: id<"PersistenceRevision">("persistence:controller:1"),
+    persistenceRevision: id<"StateRevision">("persistence:controller:1"),
     semanticGeneration,
     vaultIdentity: vault,
     deviceIdentity: device,
   });
-  await rawStore.saveTrusted({
+  const seededAuthority: DurableSynchronizationAuthorityState = {
     ...initial,
     base: [{ path, entityKind: "file", localExisted: true, remoteExisted: true, content: baseEvidence, remoteObjectId: remoteId }],
     remoteMappings: [{ path, entityKind: "file", remoteObjectId: remoteId }],
     baseAuthority: [{ path, fingerprint: baseFingerprint }],
     pathConvergence: [{ path, state: { status: "converged", generation: semanticGeneration, baseFingerprint } }],
-  });
+  };
+  await rawStore.saveTrusted(seededAuthority);
   const store = new IntegratedSynchronizationStateStore(rawStore);
   const snapshot = (): PathSnapshot => ({
     path,
@@ -182,7 +184,7 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
 test("Phase 5 successful reviewed first synchronization establishes the persistent first-sync gate only after cursor commit", async () => {
   const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   await rawStore.saveTrusted(createInitialAuthorityState({
-    persistenceRevision: id<"PersistenceRevision">("persistence:controller:first:1"),
+    persistenceRevision: id<"StateRevision">("persistence:controller:first:1"),
     semanticGeneration: id<"SemanticStateGeneration">("semantic:controller:first:1"),
     vaultIdentity: vault,
     deviceIdentity: device,
