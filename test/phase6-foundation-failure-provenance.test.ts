@@ -214,11 +214,14 @@ test("foundation v1.3 C15: predecessor approved contract/document bytes remain e
 });
 
 test("foundation v1.3 C16: documentation succession material is appended after approved predecessor prefixes", () => {
-  const freeze = readFileSync("dev/planning-and-building/phase6-sync-contract-freeze.md", "utf8");
-  const architecture = readFileSync("dev/planning-and-building/phase6-sync-architecture-foundation.md", "utf8");
-  assert.ok(freeze.indexOf("## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE") >= 16296);
-  assert.ok(architecture.indexOf("## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE") >= 14429);
-  assert.match(freeze, /Deprecation does not delete or rewrite predecessor contract history/);
-  assert.match(freeze, /ReliableRemoteMutationPortV1_3/);
-  assert.match(freeze, /ExecutionResultV1_3/);
+  const freeze = readFileSync("dev/planning-and-building/phase6-sync-contract-freeze.md");
+  const architecture = readFileSync("dev/planning-and-building/phase6-sync-architecture-foundation.md");
+  const freezeHeading = Buffer.from("## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE");
+  const architectureHeading = Buffer.from("## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE");
+  assert.ok(freeze.indexOf(freezeHeading) >= 16296);
+  assert.ok(architecture.indexOf(architectureHeading) >= 14429);
+  const freezeText = freeze.toString("utf8");
+  assert.match(freezeText, /Deprecation does not delete or rewrite predecessor contract history/);
+  assert.match(freezeText, /ReliableRemoteMutationPortV1_3/);
+  assert.match(freezeText, /ExecutionResultV1_3/);
 });
