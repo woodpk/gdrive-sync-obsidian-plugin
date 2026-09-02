@@ -786,3 +786,252 @@ Compare from the prior H-U3 blocker/evidence head `0bbfb4708312bd587472ff11b88b0
 - PR #45 remains verification-only draft and unmerged.
 - H-U4 has not been started.
 - Unresolved H-U3 blocker: none.
+
+## H-U4 — FULL INTEGRATED VERIFICATION & FAILURE CLASSIFICATION
+
+### Entry / authority consumed
+
+- H-U3 source/test completion authority consumed: `84cae684607be10b57ec5569bab14a819bad822f`.
+- H-U3 evidence-only completion / H-U4 entry head: `f1b3cc37f3be3cb18fbd4ea6a554a02d56a0d66c`.
+- Writable branch remained `phase6-sync-integration-h`; no worker branch, `phase6-integration`, `main`, or `master` was modified or merged.
+- H-U4 made no production/test modification. This unit is diagnostic/classification only.
+- The H top-level entrypoint remained present and imports H-U2, H-U3, and G's nested adversarial model.
+- `src/contracts/**` at entry resolves to frozen tree `4deb82e382f7957c731ef78db52b4164571d57a3`.
+
+### Verification execution
+
+A fresh Phase 6 verification run was automatically triggered by the H-U3 evidence-only commit after H-U3 had closed, so H-U4 used that clean checked-out state rather than creating a no-op source commit.
+
+- Checked-out SHA: `f1b3cc37f3be3cb18fbd4ea6a554a02d56a0d66c`.
+- Source/test parent represented by that evidence-only commit: `84cae684607be10b57ec5569bab14a819bad822f`.
+- Workflow run: `33584177125`.
+- Job: `100104712131`.
+- Artifact: `9829465257`.
+- Artifact digest: `sha256:2b3fd9207d2476a50a9003bf8271e96a3b2c365e37170d86b421f3b51db00047`.
+
+Exact workflow commands/surfaces:
+
+1. `npm ci` — PASS.
+2. `npm run typecheck` — PASS.
+3. `mkdir -p .ci-evidence && npm test | tee .ci-evidence/full-tests.tap` — workflow shell step reports success because the pipeline lacks `pipefail`; raw TAP proves `npm test` itself is FAIL.
+4. focused callback/diagnostic/OAuth/export command — raw TAP `38 / 38 PASS`.
+5. `npm run build` — PASS.
+6. `npm run check | tee .ci-evidence/check.log` — workflow shell step reports success because the pipeline lacks `pipefail`; raw `check.log` proves `npm run check` itself is FAIL during its internal `npm test` and therefore never reaches its internal build.
+7. `git diff --check` — PASS.
+
+No extra explicit G command was required because ordinary repository execution makes G runtime execution unmistakable: G is the contiguous raw TAP block #555–#610, and stack locations point into `.test-build/test/adversarial-model/**`.
+
+### Raw repository truth
+
+Authoritative `.ci-evidence/full-tests.tap`:
+
+- tests: **656**
+- pass: **584**
+- fail: **47**
+- cancelled: **25**
+- skipped: **0**
+- todo: **0**
+
+Authoritative `.ci-evidence/check.log` repeats the same `656 / 584 / 47 / 25 / 0 / 0` test result and terminates after the internal test command. Therefore `npm run check` is genuinely failing even though the outer CI step is green.
+
+### H / G runtime discovery
+
+H integration tests execute exactly once:
+
+- #546 H-I1 PASS
+- #547 H-I2 PASS
+- #548 H-I3 PASS
+- #549 H-I4 PASS
+- #550 H-I8 PASS
+- #551 H-I5 PASS
+- #552 H-I6 primary PASS
+- #553 H-I6 durable-learning-failure PASS
+- #554 H-I7 PASS
+
+Thus H integration acceptance is **9 / 9 PASS** and no H-INTEGRATION-DEFECT is exposed by the assembled H acceptance surface.
+
+G executes at runtime as #555–#610 inclusive: **56 G-file registrations**. The historical H count convention's 54 model/replay tests plus the two trace-support checks are all present. Seeds `1`, `7`, `42`, `1337`, `12648430`, explicit replay, minimizer, and serialization all execute.
+
+### Classification evidence keys
+
+#### `OLF-STATIC` — stale literal acceptance-map fixture
+
+`test/phase5-acceptance-map.test.ts` hard-codes the scenario-31 test name `Phase5 scenario 31 local-change debounce coalesces repeated events into one automatic pass`. The live executable scheduler test is `Phase5 scenario 31 local-change debounce coalesces repeated events into one scheduler-owned automatic pass` and itself passes. Updating the evidence-map literal would preserve the intended executable-evidence assertion rather than weaken product semantics.
+
+#### `OLF-PHYSICAL` — obsolete pre-hardening physical-controller dependency graph
+
+The affected fixtures instantiate `IntegratedProductController` with legacy `ProductSynchronizationExecutor` and/or raw local/Drive mutation callbacks but omit the current frozen writable/recoverable production seams:
+- writable `SynchronizationAuthorityStoreV1_1`;
+- `ReliableRemoteMutationPort`;
+- `LocalTransactionalMutationPort`;
+- `RemoteFolderCreateRecoveryReadPort` where applicable.
+
+Current `src/product/product-controller.ts` explicitly documents omission of these seams as fail-closed for physical mutation, and its default `TrustedStateSynchronizationAuthorityStore` is intentionally read-only. `saveAuthority()`/BASE commit through that bridge returns recovery-required rather than fabricating durable authority.
+
+This is visible directly in raw failures: execution is rejected/recovery-required, mutations do not dispatch, or an async fixture waits for a legacy raw mutation callback that can no longer fire. Updating fixture construction to supply the hardened writable/recovery seams preserves the tests' asserted synchronization behavior; weakening production to call raw legacy mutations would violate the frozen safety design. H's real integrated runtime supplies these seams and H-I1–H-I8 are 9/9 PASS.
+
+#### `OLF-FAKE-AUTH` — obsolete controller-isolation fake executor / legacy state-journal assumption
+
+These fixtures inject a fake `executor.execute()` and/or instrument `stateStore.saveTrusted()` as if that were still the authoritative physical-effect/journal path, while omitting a writable `SynchronizationAuthorityStoreV1_1`. Hardened D/H orchestration persists durable intent/effect authority first and fails closed before invoking those legacy fake mutation hooks when writable authority is absent. The resulting signatures are zero fake-executor calls, expected injected throws not reached, missing mutation-complete diagnostics, or async waits cancelled.
+
+Modernization must provide a writable in-memory frozen authority seam and test the intended controller behavior through the current authoritative execution lifecycle. It must not bypass or disable durable authority.
+
+#### `G-W1` — G adversarial transition/quiescence model defect
+
+Eleven G failures all terminate in G-owned `AdversarialSyncModel.assertQuiescentOrExplicit()` with `quiescence-failed:<device>:<path>`. They cover restart-stage survival, intended-version retention, repeated move/deletion history, path isolation, watcher/integrity recovery, and bounded quiescence. G's two source files are byte-identical in H to approved G authority `6709074df443c3e29bdf88e6d40a8f11c79d154e`, so this is not H composition drift. The defect is in G's executable transition/settle/quiescence model and must be repaired by G without altering A–F/H production semantics.
+
+#### `G-W2` — G same-path concurrent-create ambiguity defect
+
+G #583 fails inside G-owned `assertInvariants()` with `duplicate-ambiguous-winner:A:same.md`. The model reaches a state its own invariant forbids instead of preserving explicit ambiguity/conflict for concurrent same-path creates. This is G-owned model behavior, byte-identical to approved G authority, and is not an H wiring surface.
+
+#### `G-W3` — G generic folder-recovery journal-routing defect
+
+G #602 expects the correct journal to reach `effect-verified`, but actual stage is `undefined` when generic recovery must route multiple folder journals by exact journal identity. This is confined to G's executable adversarial model/test authority and must be corrected there; H must not add a production backdoor or redesign frozen folder-recovery contracts.
+
+### Complete failure/cancellation ledger
+
+| TAP | Result | Source | Test | Classification | Evidence key |
+| ---: | --- | --- | --- | --- | --- |
+| #182 | FAIL | `phase5-acceptance-map.test.js` | Phase5 acceptance map has exact source-verified executable evidence for scenarios 1 through 50 | OBSOLETE-LEGACY-FIXTURE | `OLF-STATIC` |
+| #185 | FAIL | `phase5-controller.test.js` | Phase 5 successful reviewed first synchronization establishes the persistent first-sync gate only after cursor commit | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #187 | FAIL | `phase5-controller.test.js` | Phase 5 keep-local resolution revalidates and propagates local authority through journaled upload-update | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #188 | FAIL | `phase5-controller.test.js` | Phase 5 keep-remote resolution revalidates and propagates remote authority through journaled download-update | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #189 | FAIL | `phase5-controller.test.js` | Phase 5 keep-both creates a local-only conflict copy without assigning the source Drive ID, then next reconciliation plans upload-create | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #191 | FAIL | `phase5-group-a-recovery-state.test.js` | GROUP A A1 recovery preserves reconstructed trusted state while authority-incomplete conflict mutation remains blocked | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #199 | FAIL | `phase5-group-b-scope-transfer.test.js` | B4 authentication revoked after lazy transfer begins surfaces authentication-required and stops without cursor/local commit | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #200 | FAIL | `phase5-group-b-scope-transfer.test.js` | B4 transient failure after lazy transfer begins becomes offline-deferred and stops without cursor/local commit | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #201 | FAIL | `phase5-group-b-scope-transfer.test.js` | B4 rate limit after lazy transfer begins stays retryable/offline-deferred with retry taxonomy | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #202 | CANCELLED | `phase5-group-d-acceptance.test.js` | Phase5 scenario 26 local change during an active production run is deferred into a later reconciliation pass | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #203 | CANCELLED | `phase5-group-d-acceptance.test.js` | Phase5 scenario 47 notification policy emits only material user-actionable conditions | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #204 | CANCELLED | `phase5-group-d-acceptance.test.js` | Phase5 scenario 49 snapshot and planning domain is confined to the paired managed BRAIN Sync root | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #205 | FAIL | `phase5-group-d-active-run-integration.test.js` | G2 scenario 15 one properly attested ordinary deletion trashes only the remote copy without triggering bulk approval | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #207 | CANCELLED | `phase5-group-d-active-run-integration.test.js` | G2 scenario 25 remote change during an active production run is deferred to the later serialized Changes reconciliation | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #208 | FAIL | `phase5-group-d-conflict-destruction-integration.test.js` | G2 scenario 10 clean three-way text merge executes through controller and commits merged authority | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #211 | FAIL | `phase5-group-d-conflict-destruction-integration.test.js` | G2 scenario 14 stable Drive identity produces and executes identity-preserving remote move | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #212 | FAIL | `phase5-group-d-conflict-destruction-integration.test.js` | G2 scenarios 15 and 18 attested deletion is recoverable and exact checkpoint approval gates suspicious destruction | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #215 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenarios 1 and 5 local-only reviewed first sync uploads, commits cursor/base, and only then opens automatic eligibility | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #216 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 2 remote-only reviewed first sync downloads and commits authoritative cursor/base | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #217 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 3 identical first sync establishes BASE without content mutation | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #218 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 4 divergent same-path no-BASE first sync surfaces conflict and preserves both versions | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #219 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 5 scheduler ignores local changes before first-sync completion and executes them after reviewed completion | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #220 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 7 ordinary trusted local edit executes upload-update through production orchestration | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #221 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 8 ordinary trusted remote edit executes download-update through production orchestration | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #222 | FAIL | `phase5-group-d-first-sync-integration.test.js` | G2 scenario 9 transient offline failure preserves prior cursor then a later production reconciliation succeeds | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #227 | CANCELLED | `phase5-group-d-recovery-coordination-integration.test.js` | G2 scenario 27 cancellation stops future operations and leaves cursor unadvanced | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #228 | CANCELLED | `phase5-group-d-recovery-coordination-integration.test.js` | G2 scenario 28 pause blocks product-controller synchronization until resume | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #229 | CANCELLED | `phase5-group-d-recovery-coordination-integration.test.js` | G2 scenario 29 same-runtime product synchronization runs serialize rather than overlap | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #230 | CANCELLED | `phase5-group-d-recovery-coordination-integration.test.js` | G2 scenario 30 two real controller runs use separate production Web Locks leases over one shared lock boundary | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #233 | FAIL | `phase5-group-d-surface-lifecycle-integration.test.js` | G2 scenarios 44 and 45 repeated path-local failure stays isolated while safe work commits and real activity produces bounded audit records | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #235 | FAIL | `phase5-group-d-surface-lifecycle-integration.test.js` | G2 scenario 48 allowlisted portable configuration synchronizes through reserved domain while device-local and unknown configuration stay excluded | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #269 | FAIL | `phase5-second-rejection.test.js` | C1 automatic run executes the independently safe subset of a mixed attention plan | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #302 | FAIL | `phase6-alpha-full-sync-remediation.test.js` | operation-local stale precondition is isolated, safe work commits, and no immediate self-replan occurs | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #303 | FAIL | `phase6-alpha-full-sync-remediation.test.js` | a later stable no-op reconciliation resolves transient stale attention without a content mutation | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #304 | FAIL | `phase6-alpha-full-sync-remediation.test.js` | post-journal stale intent is safely retired before unrelated work continues | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #326 | FAIL | `phase6-alpha-ios-sync-diagnostics.test.js` | iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #327 | FAIL | `phase6-alpha-ios-sync-diagnostics.test.js` | sync diagnostics preserve plan/execution semantics and never export vault path or content | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #333 | FAIL | `phase6-alpha-ios-sync-diagnostics.test.js` | pending throw is Error-level at its exact execution substage and closes the run | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #335 | FAIL | `phase6-alpha-ios-sync-diagnostics.test.js` | uncertain-journal throw is Error-level at its exact execution substage and closes the run | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #339 | FAIL | `phase6-alpha-mixed-plan-isolation.test.js` | mixed automatic plan commits unrelated safe upload, retains attention, and preserves cursor/re-plan durability | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #340 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | automatic plan-to-execute lifecycle serializes and coalesces overlapping periodic and local-change triggers | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #341 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | conflict and all-blocked plans isolate affected paths without mutating them | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #342 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | global recovery and destructive approval gates cannot execute a safe subset automatically | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #343 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | stale-device destructive work is isolated while independent safe work commits without cursor advancement | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #344 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | ordinary authorized deletion still executes automatically | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #345 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | partial first-sync safe union commits progress but cannot complete baseline or cursor authority | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #346 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | transient unstable path clears from current attention after a later stable retry | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #347 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | dependency isolation skips a child of a blocked parent while unrelated work proceeds | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #348 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | attention ledger retains every current issue while bounding resolved history, deduplicating, and exporting CSV safely | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #349 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | a fresh reason authoritatively supersedes the prior current reason for that path and successful reconciliation resolves it | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #350 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | ledger persistence failure is surfaced but does not roll back authorized safe work | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #351 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | one shared plugin repository recovers after failed writes and attention failure cannot abort safe execution | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #352 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | serialized plugin repository writes keep per-call immutable payload snapshots | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #353 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | automatic lifecycle diagnostics have run IDs, aggregate partial evidence, and contain no paths or secrets | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #354 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | controller surface emits no premature completion and exactly one terminal mixed-run notice | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #355 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | notification identity suppresses the same attention but reports changed paths and reasons with identical counts | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #356 | CANCELLED | `phase6-alpha-mixed-plan-isolation.test.js` | startup-resume, local-change, and periodic automatic triggers each own a diagnostic run ID | OBSOLETE-LEGACY-FIXTURE | `OLF-FAKE-AUTH` |
+| #391 | FAIL | `phase6-alpha-plan-errors-stability.test.js` | ordinary one-time edit race retries, uploads stable content, and creates no sync-plan error row | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #392 | FAIL | `phase6-alpha-plan-errors-stability.test.js` | exhausted edit instability is isolated into the CSV while an independent safe upload commits | OBSOLETE-LEGACY-FIXTURE | `OLF-PHYSICAL` |
+| #557 | FAIL | `adversarial-model/adversarial-model.test.js` | 03 upload survives crash/restart at every durable effect stage | WORKER-DEFECT | `G-W1` |
+| #558 | FAIL | `adversarial-model/adversarial-model.test.js` | 04 download survives crash/restart at every durable effect stage | WORKER-DEFECT | `G-W1` |
+| #559 | FAIL | `adversarial-model/adversarial-model.test.js` | 05 move survives crash/restart at every durable effect stage | WORKER-DEFECT | `G-W1` |
+| #560 | FAIL | `adversarial-model/adversarial-model.test.js` | 06 trash survives crash/restart at every durable effect stage | WORKER-DEFECT | `G-W1` |
+| #564 | FAIL | `adversarial-model/adversarial-model.test.js` | 10 durable intended L1 is not substituted by later L2 | WORKER-DEFECT | `G-W1` |
+| #569 | FAIL | `adversarial-model/adversarial-model.test.js` | 15 repeated moves preserve stable remote identity | WORKER-DEFECT | `G-W1` |
+| #570 | FAIL | `adversarial-model/adversarial-model.test.js` | 16 create-delete sequence preserves acknowledged deletion history | WORKER-DEFECT | `G-W1` |
+| #572 | FAIL | `adversarial-model/adversarial-model.test.js` | 18 unresolved path A does not block safe path B progress | WORKER-DEFECT | `G-W1` |
+| #573 | FAIL | `adversarial-model/adversarial-model.test.js` | 19 missed watcher is discovered by integrity reconciliation | WORKER-DEFECT | `G-W1` |
+| #574 | FAIL | `adversarial-model/adversarial-model.test.js` | 20 Windows watcher-event loss is recoverable through authoritative integrity read | WORKER-DEFECT | `G-W1` |
+| #582 | FAIL | `adversarial-model/adversarial-model.test.js` | 28 bounded quiescence after mutation pressure stops | WORKER-DEFECT | `G-W1` |
+| #583 | FAIL | `adversarial-model/adversarial-model.test.js` | 29 concurrent same-path creates never silently select one remote winner | WORKER-DEFECT | `G-W2` |
+| #602 | FAIL | `adversarial-model/adversarial-model.test.js` | G-C2 generic recover routes multiple folder journals by exact journal identity | WORKER-DEFECT | `G-W3` |
+
+### Ledger totals / no-silent-waiver audit
+
+The table accounts for every raw non-pass result:
+
+- `OBSOLETE-LEGACY-FIXTURE`: **59 total** = 34 FAIL + 25 CANCELLED.
+  - `OLF-STATIC`: 1 FAIL.
+  - `OLF-PHYSICAL`: 24 FAIL + 8 CANCELLED.
+  - `OLF-FAKE-AUTH`: 9 FAIL + 17 CANCELLED.
+- `WORKER-DEFECT` (owner G): **13 FAIL**.
+  - `G-W1`: 11 FAIL.
+  - `G-W2`: 1 FAIL.
+  - `G-W3`: 1 FAIL.
+- `H-INTEGRATION-DEFECT`: **0**.
+- `UNRELATED-PREEXISTING`: **0**.
+
+Total accounted: **47 FAIL + 25 CANCELLED = 72 non-pass results**.
+
+The cancellation clusters are not silently waived. They are listed individually above. In the affected files, the first async test waits for a legacy execution/mutation callback that hardened fail-closed authority prevents; Node then reports that test and/or later same-file registrations as `cancelledByParent` with `Promise resolution is still pending but the event loop has already resolved`.
+
+### Focused localization / worker integrity
+
+- D's integrated aggregate remains 86/86 PASS from H-U3, including D-C13 7/7.
+- H integration remains 9/9 PASS in this H-U4 raw run.
+- G source provenance was checked directly:
+  - `test/adversarial-model/adversarial-model.test.ts` current blob equals approved G authority blob.
+  - `test/adversarial-model/support/model.ts` current blob equals approved G authority blob.
+- No non-G failure occurs in an H integration test or current D authority suite. The non-G failures are confined to obsolete controller/test constructions described above.
+- A/B/C/D/E/F focused behavior needed for localization is already exercised in the ordinary full run and H/D top-level shims; no redundant second source state was created.
+
+### Frozen boundary / repository safety
+
+At H-U4 entry/evaluated head `f1b3cc37f3be3cb18fbd4ea6a554a02d56a0d66c`:
+
+- root `src` tree: `442cf1b6a07386d6ae806b9b6123e0a621476243`;
+- `src/contracts/**` tree: `4deb82e382f7957c731ef78db52b4164571d57a3`;
+- frozen foundation contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`.
+
+Therefore frozen contracts remain byte-identical. H-U4 made no source/test repair, no contract change, and no merge.
+
+Canonical `dev/evidence/_ca-output.md` remains protected and was not modified.
+
+### Recommendation for H-U5 / supervisor routing
+
+There is **no H production integration repair to perform**.
+
+Before or in parallel with H-U5, supervisor should route the three G-owned defect packages back to G, not H:
+1. `G-W1`: transition/settle/quiescence model repair covering G #557–560, #564, #569–570, #572–574, #582.
+2. `G-W2`: concurrent same-path create ambiguity preservation, G #583.
+3. `G-W3`: exact multi-folder-journal generic recovery routing, G #602.
+
+These should remain separate causal packages unless G inspection proves a single shared cause.
+
+Recommended **H-U5** is a bounded obsolete-fixture modernization wave for the foundational `OLF-PHYSICAL` constructor family only:
+- `test/phase5-controller.test.ts`
+- `test/phase5-group-a-recovery-state.test.ts`
+- `test/phase5-group-b-scope-transfer.test.ts`
+
+Scope: replace only their obsolete controller/executor construction with the already-approved writable C/H authority and A/B recoverable mutation test seams, preserve all existing behavioral assertions, and rerun only these fixtures plus H-I1–H-I8. This package covers 8 current failures, shares one root cause, and is sized for one model turn. Do **not** combine G repair, `OLF-FAKE-AUTH`, the larger Phase5 D fixture wave, or the static acceptance-map literal in that same H-U5 turn.
+
+Subsequent fixture modernization should be separately batched by the evidence keys above after H-U5.
+
+### H-U4 disposition
+
+- Complete verification surface executed on clean H-U3 completion state.
+- Raw test/check truth inspected directly rather than trusting tee-masked workflow status.
+- Every failure and cancellation classified.
+- H integration defect count: zero.
+- Worker defect owner identified: G only.
+- No repairs performed.
+- H-U5 not started.
