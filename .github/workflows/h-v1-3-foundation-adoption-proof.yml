@@ -1,0 +1,133 @@
+name: H V1.3 Foundation Adoption Proof
+
+on:
+  push:
+    branches:
+      - h-v1-3-foundation-adoption-proof-h02
+
+jobs:
+  adoption-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7fa9dd2c95f940260594cefa2674963be3a785de
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Verify adoption authority and environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-evidence
+          : > .ci-evidence/exit-codes.txt
+
+          actual_head="$(git rev-parse HEAD)"
+          printf 'checked_out_head=%s\n' "$actual_head" > .ci-evidence/authority.txt
+          test "$actual_head" = "7fa9dd2c95f940260594cefa2674963be3a785de"
+          printf 'head_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+
+          contracts_tree="$(git rev-parse HEAD:src/contracts)"
+          printf 'src_contracts_tree=%s\n' "$contracts_tree" >> .ci-evidence/authority.txt
+          test "$contracts_tree" = "0db68ced179825f929008b502335210260ca2ce3"
+          printf 'contracts_tree_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+
+          node --version > .ci-evidence/environment.txt
+          npm --version >> .ci-evidence/environment.txt
+          cat .ci-evidence/authority.txt
+          cat .ci-evidence/environment.txt
+
+      - name: npm ci
+        shell: bash
+        run: |
+          set +e
+          npm ci > .ci-evidence/npm-ci.log 2>&1
+          rc=$?
+          set -e
+          printf 'npm_ci_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/npm-ci.log
+          exit "$rc"
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > .ci-evidence/typecheck.log 2>&1
+          rc=$?
+          set -e
+          printf 'typecheck_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/typecheck.log
+          exit "$rc"
+
+      - name: Compile tests
+        shell: bash
+        run: |
+          set +e
+          npx tsc -p tsconfig.test.json > .ci-evidence/test-compile.log 2>&1
+          rc=$?
+          set -e
+          printf 'test_compile_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/test-compile.log
+          exit "$rc"
+
+      - name: Run V1.3 predictive foundation tests
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js > .ci-evidence/foundation-tests.log 2>&1
+          rc=$?
+          set -e
+          printf 'foundation_tests_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/foundation-tests.log
+          if [ "$rc" -ne 0 ]; then
+            exit "$rc"
+          fi
+          grep -Eq '^# tests 17$' .ci-evidence/foundation-tests.log
+          grep -Eq '^# pass 17$' .ci-evidence/foundation-tests.log
+          grep -Eq '^# fail 0$' .ci-evidence/foundation-tests.log
+          grep -Eq '^# cancelled 0$' .ci-evidence/foundation-tests.log
+          grep -Eq '^# skipped 0$' .ci-evidence/foundation-tests.log
+          grep -Eq '^# todo 0$' .ci-evidence/foundation-tests.log
+          printf 'foundation_totals_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          npm run build > .ci-evidence/build.log 2>&1
+          rc=$?
+          set -e
+          printf 'build_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/build.log
+          exit "$rc"
+
+      - name: Diff check exact adoption delta
+        shell: bash
+        run: |
+          set +e
+          git diff --check 47f46b15c4edf75c12cb7b20e8a211a59af2c796...7fa9dd2c95f940260594cefa2674963be3a785de > .ci-evidence/diff-check.log 2>&1
+          rc=$?
+          set -e
+          printf 'diff_check_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/diff-check.log
+          exit "$rc"
+
+      - name: Final proof summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .ci-evidence/exit-codes.txt ]; then
+            cat .ci-evidence/exit-codes.txt
+          fi
+
+      - name: Upload adoption proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-v1-3-foundation-adoption-proof
+          path: .ci-evidence/
+          include-hidden-files: true
