@@ -2,6 +2,10 @@
 
 ## Agent
 
+`AGT-H-CA-STAGE-2A-PHASE-6-SYNC-HARDENING-SERIAL-INTEGRATION-02`
+
+Predecessor:
+
 `AGT-H-CA-STAGE-2A-PHASE-6-SYNC-HARDENING-SERIAL-INTEGRATION-01`
 
 ## Repository / branch
@@ -12,24 +16,39 @@ Writable branch: `phase6-sync-integration-h`
 
 Frozen Phase 6 v1.2 foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
 
+Approved H-U4 source/test authority: `84cae684607be10b57ec5569bab14a819bad822f`
+
+Approved H-U4 closure/evidence authority: `14b38332416096b17ccc625d12bbc4fe49ca9328`
+
 ## Entry gate
 
-Begin only after H-U4 has produced a complete failure/cancellation classification ledger and that ledger has been reviewed by the supervisor.
+H-U4 is supervisor-approved and closed.
+
+The accepted H-U4 ledger is:
+
+- `OBSOLETE-LEGACY-FIXTURE`: 34 FAIL + 25 CANCELLED = 59 non-pass results;
+- `WORKER-DEFECT — G`: 13 FAIL;
+- `H-INTEGRATION-DEFECT`: 0;
+- `UNRELATED-PREEXISTING`: 0.
+
+Do not re-run or re-derive H-U4 classification as an entry exercise.
 
 Before editing:
 
 1. verify the branch is `phase6-sync-integration-h`;
-2. read the full H evidence through H-U4;
-3. identify the exact supervisor-authorized repair class for this session;
-4. verify the working tree is clean;
-5. verify the current source/test SHA matches the post-H-U3 source authority unless H-U4 made an explicitly recorded non-semantic instrumentation change;
-6. verify `src/contracts/**` remains byte-identical to the frozen v1.2 foundation.
+2. verify approved H-U4 closure commit `14b38332416096b17ccc625d12bbc4fe49ca9328` is an ancestor of the current branch head;
+3. inspect any commits after `14b38332416096b17ccc625d12bbc4fe49ca9328` and confirm they are supervisor/tasking-only changes, not unauthorized production/test changes;
+4. read the full H evidence through H-U4, including `dev/evidence/_ca-output-AGT-H-CA-STAGE-2A-PHASE-6-SYNC-HARDENING-SERIAL-INTEGRATION-02.md`;
+5. identify the exact supervisor-authorized H-U5 repair class/package for this session;
+6. verify the working tree is clean;
+7. verify current production source and test content remains identical to the approved H-U4 source/test authority `84cae684607be10b57ec5569bab14a819bad822f`, except for any H-U5 changes made after this gate;
+8. verify `src/contracts/**` remains byte-identical to the frozen v1.2 contract tree `4deb82e382f7957c731ef78db52b4164571d57a3`.
 
-If no specific H-U4 failure class has been authorized for repair, stop with `BLOCKED — SUPERVISOR DECISION REQUIRED`.
+If no specific H-U4 failure class/package has been authorized for repair, stop with `BLOCKED — SUPERVISOR DECISION REQUIRED`.
 
 ## Mission
 
-Repair **only the bounded failure class authorized from H-U4** and verify that repair without broadening into unrelated cleanup.
+Repair **only the bounded failure class/package authorized from the approved H-U4 ledger** and verify that repair without broadening into unrelated cleanup.
 
 This prompt is intentionally narrow. It is not permission to make the whole repository green by any means necessary.
 
@@ -63,6 +82,8 @@ Requirements:
 
 Do **not** repair worker-owned production semantics in H-U5 unless the supervisor has explicitly reassigned that exact defect to H.
 
+The 13 currently accepted `WORKER-DEFECT — G` failures remain G-owned unless explicitly reassigned by the supervisor.
+
 Otherwise record the defect as externally routed and stop or proceed only with separately authorized H-owned repair classes.
 
 ### If the ledger contains `UNRELATED-PREEXISTING`
@@ -71,9 +92,9 @@ Do not repair it under this Phase 6 H task unless explicitly authorized.
 
 ## Repair method
 
-For the authorized class:
+For the authorized class/package:
 
-1. reproduce the exact failing behavior from H-U4;
+1. reproduce the exact failing behavior from the approved H-U4 evidence;
 2. confirm the causal code/fixture path;
 3. implement the smallest correct correction;
 4. run the formerly failing focused test(s);
@@ -82,11 +103,11 @@ For the authorized class:
 7. run `git diff --check`;
 8. inspect the diff for accidental unrelated changes.
 
-Do not start another unrelated failure class merely because turn capacity remains.
+Do not start another unrelated failure class/package merely because turn capacity remains.
 
 ## Capacity guard
 
-If H-U4 identified multiple independent repair classes, this H-U5 session owns **one causal repair package only**: the exact package authorized by the supervisor.
+If H-U4 identified multiple independent repair classes/packages, this H-U5 session owns **one causal repair package only**: the exact package authorized by the supervisor.
 
 If additional independent repair packages remain after this one succeeds, record them and stop. A continuation/next repair unit can then be issued from the actual new repository state.
 
@@ -113,7 +134,11 @@ Do not merge.
 
 ## Evidence
 
-Append an `H-U5` section to the H-specific evidence file recording:
+Append an `H-U5` section to:
+
+`dev/evidence/_ca-output-AGT-H-CA-STAGE-2A-PHASE-6-SYNC-HARDENING-SERIAL-INTEGRATION-02.md`
+
+Record:
 
 - exact H-U4 ledger item(s) authorized;
 - root cause;
