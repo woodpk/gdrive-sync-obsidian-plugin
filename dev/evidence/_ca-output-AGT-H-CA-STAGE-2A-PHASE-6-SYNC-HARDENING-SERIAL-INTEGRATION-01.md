@@ -629,3 +629,160 @@ This is byte-identical to frozen foundation `96b4541b15012ac4ce0d81243b73ef779ef
 - H-U4 has not been started.
 
 `BLOCKED — SUPERVISOR DECISION REQUIRED`
+
+## H-U3 RESUME — D-C13 BLOCKER RESOLUTION
+
+### Resume authority / exact delta consumed
+
+- Prior H-U3 blocker source/test SHA: `3c0de0d9c552e7b866591cbd0115e61cadb7dc86`.
+- Prior H-U3 blocker/evidence head: `0bbfb4708312bd587472ff11b88b0f3e9eb22b34`.
+- Original D software authority represented in H before this resume: `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`.
+- Approved D-C13 source/test authority consumed: `6ccd12e642f3168eeda017360289f95377935cff`.
+- D-C13 evidence-only head `89bfdf243c2c18689ba432e40fa4ba60673e530b` was **not** consumed as software authority.
+- The live H copies of every D-owned production/test file modified by D-C13 were byte-identical to the original D authority before transplant, so no integration conflict resolution was required.
+
+Exact D-C13 software paths transplanted:
+
+1. `src/product/remote-update-convergence.ts`
+2. `src/product/authoritative-production-executor-base.ts`
+3. `src/product/durable-intent-recovery.ts`
+4. `test/workstreams/orchestration/v1.2-d-c13-predecessor-preserving-update.test.ts`
+5. `test/phase6-d-orchestration-v1.2.test.ts`
+6. `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`
+7. `test/workstreams/orchestration/v1.2-production-authority-path.test.ts`
+8. `test/workstreams/orchestration/v1.2-production-identity-authority.test.ts`
+9. `test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.ts`
+
+The exact D-C13 transplant commit is:
+
+`0e49a29b9edb83c1512c46635d07afc1f8f413a7` — `integrate(H-U3): consume approved D-C13 convergence correction`
+
+Compare from prior H-U3 evidence head `0bbfb470...` to this commit contains exactly the nine authorized D-C13 paths and no evidence, contract, or unrelated worker path.
+
+One H-owned top-level verification shim was then added because D-C13 modified `v1.2-production-authority-path.test.ts` but the approved D aggregate does not import that suite:
+
+- `test/phase6-h-u3-dc13-affected-regression.test.ts`
+
+It contains only:
+
+`import "./workstreams/orchestration/v1.2-production-authority-path.test";`
+
+No H/G integration discovery structure was recreated or changed.
+
+### H-U3 integrated acceptance after D-C13
+
+Raw final TAP proves all H acceptance markers execute exactly once in the consolidated H discovery path, runtime #546 through #554, with **9/9 PASS**:
+
+- H-I1 #546 PASS.
+- H-I2 #547 PASS.
+- H-I3 #548 PASS.
+- H-I4 #549 PASS.
+- H-I8 #550 PASS.
+- **H-I5 #551 PASS.** E still reaches B's cache-bypassing integrity read and lifecycle suspension remains authoritative.
+- **H-I6 primary #552 PASS.** A Changes page traversal, D durable learning, C persistence-before-cursor ordering, restart consumption, and unrelated-conflict isolation remain correct.
+- **H-I6 durable-learning-failure #553 PASS.** Failure to durably learn the terminal batch still prevents canonical cursor advancement.
+- **H-I7 #554 PASS.** The original unweakened integrated clean-merge acceptance now succeeds against the real F -> D -> B/A -> C path.
+
+H-I7 now proves the exact intended composition: F retains genuine clean merged content; D emits independent LOCAL/REMOTE durable effects; B performs the LOCAL transactional mutation; A performs the REMOTE immutable-candidate-preservation update; D-C13 recognizes only the exact persisted predecessor + persisted candidate topology; both effects reach durable verification/convergence; and C canonical BASE/state advances only after the required effects converge. No H production workaround, REMOTE filtering, predecessor hiding, or false convergence evidence was introduced.
+
+D-C13 restart safety is independently covered by D-C13-T2: exact persisted predecessor+candidate physical reality is recognized on restart without redispatch.
+
+### D-C13 / materially affected D regression verification
+
+The updated top-level D aggregate `test/phase6-d-orchestration-v1.2.test.ts` executed as one contiguous raw TAP block #436 through #521:
+
+**86 tests / 86 pass / 0 fail**.
+
+That aggregate includes authoritative commit/effect lifecycle, production lifecycle composition, production identity authority, durable-intent recovery, effect-verified convergence, and the complete D-C13 focused suite.
+
+D-C13 focused results are exactly **7/7 PASS**:
+
+- D-C13-T1 #515 PASS — exact predecessor + candidate ordinary convergence.
+- D-C13-T2 #516 PASS — restart recognition without redispatch.
+- D-C13-T3 #517 PASS — REMOTE create remains strict exact-one convergence.
+- D-C13-T4 #518 PASS — wrong predecessor rejected.
+- D-C13-T5 #519 PASS — third same-path object rejected.
+- D-C13-T6 #520 PASS — wrong candidate identity/content rejected.
+- D-C13-T7 #521 PASS — predecessor revision mismatch rejected.
+
+The separately discovered, D-C13-modified production-authority-path suite executed raw TAP #632 through #636:
+
+**5 tests / 5 pass / 0 fail**.
+
+Therefore every D-C13-touched production regression surface required by this resume executed cleanly in the integrated H candidate. The previously observed isolated D aggregate count of 86/86 survives integration exactly.
+
+### H/G top-level runtime discovery
+
+`test/phase6-h-sync-integration.test.ts` remains unchanged from the prior H-U3 design and still imports H-U2 acceptance, H-U3 acceptance, and G's nested adversarial test exactly once. H-I1 through H-I8 markers occur once, proving H acceptance is not improperly duplicated.
+
+Raw TAP again proves G executes from `.test-build/test/adversarial-model/adversarial-model.test.js` under ordinary repository execution. Using the same count convention recorded in the historical H-U3 blocker section, G's model/replay surface is **54 runtime subtests**, now #555 through #608. Explicit passing markers include deterministic seeds `1`, `7`, `42`, `1337`, `12648430`, plus explicit recorded-trace replay.
+
+The same imported G test file additionally registers two trace-support checks immediately afterward:
+
+- #609 `simple trace minimizer retains only events needed for the same invariant failure` — PASS;
+- #610 `trace serialization is sanitized and contains no platform/user/auth secrets` — PASS.
+
+Thus the complete imported G file contributes **56 runtime test registrations** in the final candidate; 54 are the model/replay count used by the prior H-U3 evidence convention and two are trace-support checks. G execution is therefore proven, not inferred from compilation. Existing unrelated G/repository failures are not classified here; H-U4 remains their owner.
+
+### Final CI / static gates
+
+Final H-U3 resume source/test SHA:
+
+`84cae684607be10b57ec5569bab14a819bad822f`
+
+Source/test commits in this resume:
+
+- `0e49a29b9edb83c1512c46635d07afc1f8f413a7` — exact approved D-C13 software transplant.
+- `84cae684607be10b57ec5569bab14a819bad822f` — one-line H-owned discovery shim for the otherwise-undiscovered D production-authority-path regression.
+
+Final Phase 6 verification:
+
+- workflow run: `33583775096` — **success**;
+- job: `100103479758` — **success**;
+- artifact: `9829320282`;
+- artifact digest: `sha256:1b5efbd3ffccb65713240386aa08852b07813cf697327c08072f5eac67155710`;
+- `npm ci`: **success**;
+- `npm run typecheck`: **success**;
+- `npm run build`: **success**;
+- `git diff --check`: **success**.
+
+The workflow's test/check steps still pipe through `tee`; raw artifact TAP, not the green workflow badge, is the authority for counts stated above.
+
+Incidental raw whole-repository aggregate at this final H-U3 source/test SHA is:
+
+`656 tests / 584 pass / 47 fail / 25 cancelled / 0 skipped / 0 todo`.
+
+Those unrelated repository-wide failures/cancellations are deliberately not classified or repaired in this resume. H-U4 owns the full repository classification campaign.
+
+### Frozen-contract / boundary audit
+
+Final source/test root `84cae684607be10b57ec5569bab14a819bad822f` resolves `src` to:
+
+`442cf1b6a07386d6ae806b9b6123e0a621476243`
+
+and `src/contracts/**` resolves exactly to frozen tree:
+
+`4deb82e382f7957c731ef78db52b4164571d57a3`
+
+This is byte-identical to frozen foundation `96b4541b15012ac4ce0d81243b73ef779efd343e`.
+
+Compare from the prior H-U3 blocker/evidence head `0bbfb4708312bd587472ff11b88b0f3e9eb22b34` to final source/test SHA `84cae684607be10b57ec5569bab14a819bad822f` contains exactly the nine approved D-C13 software paths plus the one-line H-owned affected-regression discovery shim. No canonical evidence, contracts, or unrelated worker semantics were changed.
+
+### H-U3 resume completion state
+
+- D-C13 correctly consumed from approved source/test authority `6ccd12e642f3168eeda017360289f95377935cff`.
+- D evidence-only head `89bfdf243c2c18689ba432e40fa4ba60673e530b`: not consumed.
+- Integration conflicts: none.
+- H-I5: PASS.
+- H-I6: PASS, both cases.
+- H-I7: PASS after approved D-C13 correction; H test was not weakened.
+- D-C13 focused suite: 7/7 PASS.
+- D aggregate: 86/86 PASS.
+- D production-authority-path affected suite: 5/5 PASS.
+- G runtime discovery: proven; 54 model/replay runtime tests under prior convention, 56 total registrations from the imported G file including two trace-support tests.
+- Typecheck/build/diff: PASS.
+- Frozen contracts: unchanged.
+- Canonical `dev/evidence/_ca-output.md`: untouched.
+- PR #45 remains verification-only draft and unmerged.
+- H-U4 has not been started.
+- Unresolved H-U3 blocker: none.
