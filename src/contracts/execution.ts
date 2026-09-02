@@ -15,9 +15,11 @@ export interface VerifiedExecutionReceipt {
   readonly verificationEvidenceRef?: string;
 }
 
+export type RetryableOperationalFailure = Extract<OperationalFailureProvenance, { readonly kind: "transient-failure" | "rate-limited" }>;
+
 export type ExecutionResult =
   | { readonly status: "durable-verified-success"; readonly receipt: VerifiedExecutionReceipt }
-  | { readonly status: "retryable-failure"; readonly reason: string; readonly retryAfterMs?: number; readonly operationalFailure?: OperationalFailureProvenance }
+  | { readonly status: "retryable-failure"; readonly reason: string; readonly retryAfterMs?: number; readonly operationalFailure?: RetryableOperationalFailure }
   | { readonly status: "stale-precondition"; readonly reason: string; readonly failed?: readonly OperationPrecondition[] }
   | { readonly status: "blocking-failure" | "uncertain" | "recovery-required"; readonly reason: string; readonly operationalFailure?: OperationalFailureProvenance }
   | { readonly status: "cancelled"; readonly reason?: string };
