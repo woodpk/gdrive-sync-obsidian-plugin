@@ -51,7 +51,7 @@ class Authority implements SynchronizationAuthorityStoreV1_1 {
 }
 
 type LocalEntry = { entityKind: "file" | "folder"; hash?: string; sizeBytes?: number; token?: string };
-type RemoteEntry = { path: VaultPath; entityKind: "file" | "folder"; remoteObjectId: RemoteObjectId; hash?: string; sizeBytes?: number; trashed?: boolean };
+type RemoteEntry = { path: VaultPath; entityKind: "file" | "folder"; remoteObjectId: RemoteObjectId; hash?: string; sizeBytes?: number; content?: { hash?: string; sizeBytes?: number; revision?: string }; trashed?: boolean };
 
 function harness(initial: { local?: Record<string, LocalEntry>; remote?: RemoteEntry[]; mappings?: { path: VaultPath; entityKind: "file" | "folder"; remoteObjectId: RemoteObjectId }[] } = {}) {
   const localEntries = new Map<string, LocalEntry>(Object.entries(initial.local ?? {}));
@@ -105,13 +105,16 @@ function harness(initial: { local?: Record<string, LocalEntry>; remote?: RemoteE
     async createReserved(identity: any) {
       mutationCalls.push(`create:${identity.kind}:${String(identity.path)}`);
       remoteEntries = remoteEntries.filter(entry => entry.path !== identity.path);
-      remoteEntries.push({ path: identity.path, entityKind: identity.kind === "reserved-folder-create" ? "folder" : "file", remoteObjectId: identity.reservedRemoteObjectId, hash: String(hash), sizeBytes: 3, trashed: false });
+      remoteEntries.push({ path: identity.path, entityKind: identity.kind === "reserved-folder-create" ? "folder" : "file", remoteObjectId: identity.reservedRemoteObjectId, hash: String(hash), sizeBytes: 3, content: identity.kind === "reserved-file-create" ? { hash: String(hash), sizeBytes: 3 } : undefined, trashed: false });
       return { status: "verified-effect", applicationProof: { kind: "reserved-create", remoteObjectId: identity.reservedRemoteObjectId, path: identity.path, verifiedContent: identity.intendedContent } };
     },
     async updateExisting(identity: any) {
       mutationCalls.push(`update:${String(identity.path)}`);
-      remoteEntries = remoteEntries.filter(entry => entry.path !== identity.path);
-      remoteEntries.push({ path: identity.path, entityKind: "file", remoteObjectId: identity.candidateRemoteObjectId, hash: String(hash), sizeBytes: 3, trashed: false });
+      const predecessor = remoteEntries.find(entry => entry.path === identity.path && entry.remoteObjectId === identity.remoteObjectId);
+      remoteEntries = [
+        ...(predecessor ? [{ ...predecessor, content: { ...(predecessor.content ?? {}), revision: String(identity.expectedRevision) } }] : []),
+        { path: identity.path, entityKind: "file", remoteObjectId: identity.candidateRemoteObjectId, hash: String(hash), sizeBytes: 3, content: { hash: String(hash), sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
+      ];
       return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId, predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId] } };
     },
     async moveExisting(identity: any) {
