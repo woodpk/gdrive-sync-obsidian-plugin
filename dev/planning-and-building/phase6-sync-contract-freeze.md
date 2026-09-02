@@ -1,9 +1,10 @@
 # Phase 6 Synchronization Contract Freeze Candidate
 
 Status: **candidate only — independent supervisor approval pending**  
-Contract version: `phase6-sync-foundation-v1.3-failure-provenance`  
-Previous supervisor-approved foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`  
-Previous frozen contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`  
+Contract version: `phase6-sync-foundation-v1.3-failure-provenance`
+Previous supervisor-approved foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+Previous frozen contract tree: `4deb82e382f7957c731ef78db52b4164571d57a3`
+Authority-store implementation checkpoint: `750100f95c8a32a6deb6909cd03ebbee3682d650`  
 Branch: `phase6-sync-foundation-v1.3-failure-provenance`
 
 This manifest does not authorize parallel continuation. The exact supervisor-approved workstream-base SHA will be identified externally after review and must be the single repository snapshot used by every later or resumed affected workstream.
@@ -27,86 +28,138 @@ Later agents must not modify `src/contracts/**` independently after approval. Co
 
 ## 2. Frozen callable authority surface
 
-The previously approved v1.2 contract surface remains authoritative except for the additive operational-failure provenance correction below. Existing exact BASE, identity, canonical-content, durable mutation identity, remote-ingestion, local transaction, folder-create, recovery-stage, state-store, and execution-authority contracts remain unchanged in meaning.
-
-### v1.3 operational-failure provenance additions
-
 | Contract | Frozen guarantee | Consumers |
 |---|---|---|
-| `OperationalFailureProvenance` | Structured operational cause independent of physical-effect certainty. Distinguishes authentication, transient failure, rate limiting, permission, quota, recovery, semantic, and conservative unclassified causes. | A, B, D, H/UI |
-| `OperationalFailureError` / `operationalFailureProvenanceFromError` | Public lazy-`BinaryContentSource` failure carrier/extractor. No private A error type, undocumented property, or reason-string grammar is cross-workstream authority. | A, B, D |
-| `operationalFailureFromDriveSignal` | Converts frozen `DriveSignal` values into the shared operational provenance representation, preserving rate-limit retry timing. | A |
-| `RemoteMutationOutcome.operationalFailure` | Failure variants may retain structured operational provenance while preserving `verified-not-applied`, `conflict-preserved`, and `outcome-unknown` physical distinctions. | A, C, D |
-| `LocalTransactionResult.operationalFailure` | Failed/uncertain local transaction results may retain the operational provenance of a lazy remote content failure without changing local physical certainty. | B, C, D |
-| `CoherentRemoteDownload.operationalFailure` | Non-coherent/uncertain remote reads may retain operational provenance when applicable. | A, D |
-| `ExecutionResult.operationalFailure` | Retry/block/uncertain/recovery execution results can carry operational provenance separately from execution physical/recovery status. | D, H/UI |
-| `operationalFailureDisposition` | Provides conservative user/retry disposition. `unclassified`, semantic, and recovery causes are never guessed into retryability. | D, H/UI |
+| `ExactBaseAuthority` | Exact path + semantic generation + BASE fingerprint authority. | C, D |
+| `IdentityAuthorityProof` | Exact unique logical path/object authority under one semantic generation. | A, C, D |
+| `OperationPrecondition` | Can carry exact BASE/identity proofs. Legacy nominal markers remain compatibility-only planning DTO values. | D |
+| `ExecutableOperationPrecondition` / `ExecutablePlannedOperation` | Structurally exclude nominal `base-trusted` / `identity-unambiguous`; only this form enters the frozen authoritative execution seam. | D |
+| `AuthoritativeSynchronizationExecutor` / `AuthorityCompleteSuccessCommitter` | New synchronization execution/commit accepts only authority-complete operations. Existing legacy executor/committer interfaces are compatibility-only. | D |
+| `CanonicalFileContentProof` | Exact SHA-256 plus byte-size authority. | A, B, C, D |
+| `FileCommonStateProof` | File BASE healing requires current LOCAL/REMOTE canonical equality plus current identity/revision authority. | B, C, D |
+| `FolderCommonStateProof` / `AbsenceCommonStateProof` | Structural and absence authority remain distinct from file-content authority. | B, C, D |
+| `DurableRemoteChangeBatch` / `learnedRemoteBatches` | Multiple unresolved learned batches remain durable until safely reduced. | A, C, D |
+| `RemoteMutationIdentity` | Durable identity for file/folder create, preservation-safe file update, remote move, and remote trash; file create/update binds exact intended canonical content. | A, C, D |
+| `RemoteMutationOutcome` | `verified-effect`, `verified-not-applied`, `conflict-preserved`, and `outcome-unknown` are distinct. | A, C, D |
+| `RemoteMutationApplicationProof` | Proves safe physical materialization/effect only; not logical path convergence. | A, C, D |
+| `RemotePathConvergenceAuthority` | Separately proves conflict-free path authority or records preserved conflict. | C, D |
+| `ReliableRemoteMutationPort` | Sole authoritative synchronization mutation seam for create/update/move/trash. | A, D |
+| `GoogleDrivePort` raw mutations | Compatibility transport only; raw `create/update/move/trash` results are non-authoritative for new synchronization. | A only |
+| `RecoverablePhysicalMutationDescriptor` / `RecoverableMutationEffect` / `RecoverableOperationIntent` | v1 durable file/move/trash authority; preserved as compatibility surface for already-reviewed v1 behavior. | compatibility only for new/resumed v1.1 |
+| `SynchronizationAuthorityMetadata` / `SynchronizationAuthorityLoadResult` / `SynchronizationAuthorityStore` | v1 authoritative persistence surface; preserved for compatibility but does not authorize folder-containing v1.1 work. | compatibility only for new/resumed v1.1 |
+| `FolderCreatePathAuthority` | Exact empty-folder path/parent/path-comparison authority with expected absence. | A, B, C, D |
+| `LocalFolderCreatePhysicalMutationDescriptor` | Durable LOCAL empty-folder create identity/path/authority without file-content evidence. | B, C, D |
+| `RemoteFolderCreatePhysicalMutationDescriptor` | Durable REMOTE empty-folder create identity/path/parent plus reserved Drive identity before dispatch. | A, C, D |
+| `RecoverablePhysicalMutationDescriptorV1_1` / `RecoverableMutationEffectV1_1` / `RecoverableOperationIntentV1_1` | Authoritative v1.1 durable physical-effect family including LOCAL and REMOTE folder create while retaining v1 members. | A, B, C, D, G |
+| `SynchronizationAuthorityMetadataV1_1` | Canonical metadata for new/resumed v1.1 synchronization; `operationIntents` are folder-capable `RecoverableOperationIntentV1_1[]`. | C, D |
+| `SynchronizationAuthorityLoadResultV1_1` / `SynchronizationAuthorityStoreV1_1` | Frozen v1.1 load/save/BASE-transition authority seam; folder intent survives durable save/load without sidecars or shadow state. | C, D |
+| `recoverableOperationV1_1RestartRecoveryDirectives` | Shared restart classification for every v1.1 physical effect using durable dispatch-stage semantics. | C, D, G |
+| `recoverableOperationV1_1IsComplete` | Shared logical completion rule: every required effect must be `state-committed`. | C, D, G |
+| `verifyLocalFolderCreate` / `verifyRemoteFolderCreate` | Conservative structural/identity verification: verified effect, verified not applied where proven, conflict preserved, or outcome unknown. | A, B, C, D, G |
+| `folderCreateRestartRecoveryDirective` | Individual folder effects inherit the same durable pre-dispatch versus may-have-dispatched recovery classification. | C, D, G |
+| `folderCreateEligibleForAuthoritativeCommit` | Physical folder verification is insufficient; logical path convergence is mandatory before authoritative state commit. | C, D |
+| `LocalMutationTransaction` | Exact file create-vs-replace pre-state plus canonical new evidence and durable swap stage. | B, C, D |
+| `LocalIntegrityReconciliationPort` | Authoritative integrity read bypasses metadata/observation-token evidence cache and re-reads actual bytes. | B, E, G |
+| `SynchronizationFaultPoint` | Deterministic crash injection covers dispatch and local swap boundaries. | A, B, C, D, G |
+| `SemanticStateValidator` | Known codes plus fail-closed extensibility for newly discovered contradictions. | C |
+| `OperationalFailureProvenance` | Structured operational cause independent of physical-effect certainty. | A, B, D, H/UI |
+| `OperationalFailureError` / `operationalFailureProvenanceFromError` | Public lazy-content failure carrier/extractor; private A error types and reason parsing are not authority. | A, B, D |
+| `operationalFailureFromDriveSignal` | Converts structured Drive transport signals while preserving rate-limit timing. | A |
+| `operationalFailureDisposition` | Conservative user/retry disposition that cannot alter physical-effect certainty. | D, H/UI |
 
 ## 3. Fixed mutation lifecycle
 
-Every mutation still satisfies:
+Every v1.1 mutation must satisfy:
 
 `PLAN -> EXACT AUTHORITY -> DURABLE OPERATION/EFFECT INTENT -> DURABLE AUTHORITY STORE -> DURABLE DISPATCH AUTHORITY -> SAFE LOCAL/REMOTE MUTATION PORT -> VERIFICATION -> PATH CONVERGENCE OR CONFLICT -> BASE/STATE COMMIT -> RESTART RECOVERY`
 
-Operational failure provenance is carried alongside this lifecycle. It does not replace any stage, proof, or physical-result discriminator.
+There may be no private sidecar authority needed to make this chain executable.
 
-## 4. Physical certainty versus operational disposition
+### Upload create/update
 
-**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
+- operation reaches execution only after nominal authority is replaced by exact authority where history/identity is required;
+- exact intended file SHA-256 + size is persisted before dispatch;
+- create uses one reserved identity;
+- update uses immutable candidate preservation;
+- lost-response recovery verifies against the durable intended version, never current LOCAL.
 
-Physical certainty answers whether an effect is verified applied, verified not applied, preserved as conflict, or remains outcome-unknown/recovery-required. Operational provenance answers why the operation/read failed or was interrupted and what retry/user disposition may be appropriate.
+### Download create/update
 
-The same authentication, transient-network, or rate-limit provenance may legitimately accompany either a provably not-applied result or an outcome-unknown result. The provenance therefore cannot collapse those physical states into one another.
+- coherent remote read supplies verified source evidence;
+- local physical mutation is a durable create/replace transaction with exact pre-state and intended new evidence.
 
-**Operational failure provenance may influence retry scheduling and user-facing status, but never proves that a dispatch-authorized/outcome-unknown physical effect was not applied.**
+### Folder create / empty-directory preservation
 
-Consequences:
+- LOCAL and REMOTE folder create are first-class recoverable physical effects under the v1.1 descriptor family;
+- `SynchronizationAuthorityMetadataV1_1.operationIntents` carries those effects directly and `SynchronizationAuthorityStoreV1_1` saves/loads them as authoritative state;
+- folder proof is structural/path/identity based and never requires file hashes or a child file;
+- LOCAL durable intent records target/parent/path-normalization authority and expected absence;
+- REMOTE durable intent additionally records the intended parent Drive identity and pre-reserved Drive folder object ID before dispatch;
+- process restart loads the same operation identity, intent identity, effect identity, durable stage, folder path authority, and verification reference;
+- REMOTE restart additionally loads the exact same parent and pre-reserved intended Drive folder IDs; no identity is reconstructed from current path state;
+- `intent-persisted` is definitely pre-dispatch; `dispatch-authorized` or later means the create may have occurred and must be reconciled;
+- lost REMOTE responses reconcile the same reserved identity rather than issuing an unrelated second create;
+- same-logical-path occupancy by an incompatible or non-authoritative object is preserved as conflict/unknown rather than ordinary success;
+- a folder-containing logical operation is complete only when every required effect is `state-committed`;
+- verified physical existence does not authorize BASE/state advancement unless logical path convergence is separately established.
 
-1. `dispatch-authorized` and later uncertain stages still require physical reconciliation on restart.
-2. Authentication, transient, and rate-limit causes never authorize blind redispatch.
-3. `retryAfterMs` is scheduling guidance only; it is not physical non-application authority.
-4. Generic local I/O uncertainty may remain without operational provenance rather than fabricating a remote/network class.
-5. Unknown future operational causes are represented conservatively as `unclassified` and map to non-retry/recovery disposition until explicitly classified by a later approved contract.
+### Move
 
-## 5. Lazy content-source failure contract
+- durable descriptor carries target side, `fromPath`, `toPath`, stable remote ID where applicable, and exact identity authority;
+- remote move uses `ReliableRemoteMutationPort.moveExisting` and explicit outcome classification.
 
-A `BinaryContentSource` may fail only after `openChunks()` begins. Such a source may throw the public `OperationalFailureError` carrying `OperationalFailureProvenance`. Consumers extract only through `operationalFailureProvenanceFromError()`.
+### Trash
 
-Cross-workstream code MUST NOT:
+- durable descriptor carries target side, path, stable remote ID where applicable, and exact BASE/deletion authority;
+- remote trash uses `ReliableRemoteMutationPort.trashExisting` and explicit outcome classification.
 
-- depend on a private Workstream-A `DriveContentStreamError` class;
-- inspect an undocumented `driveSignal` property;
-- parse free-form error/reason text to infer authentication, transient, rate-limit, permission, quota, or recovery authority.
+### Clean text merge
 
-An arbitrary thrown error that is not the public carrier yields no structured provenance; callers remain physically conservative.
+A logical clean merge is not one opaque completion bit. It contains at least two separately staged physical effects. A restart after one side commits sees the other side as unfinished and cannot classify the logical operation complete.
 
-## 6. Remote mutation and local transaction contract
+## 4. V1.1 authoritative persistence traces
 
-`RemoteMutationOutcome` retains its four existing physical families. Its failure families may additionally carry `operationalFailure`.
+### LOCAL folder
 
-`LocalTransactionResult` retains staged/committed/recovered/stale/blocked/outcome-unknown semantics. Its failure family may additionally carry `operationalFailure` when, for example, remote lazy content fails during staging.
+`LocalFolderCreatePhysicalMutationDescriptor -> RecoverableMutationEffectV1_1 -> RecoverableOperationIntentV1_1 -> SynchronizationAuthorityMetadataV1_1 -> SynchronizationAuthorityStoreV1_1.saveAuthority -> restart/loadAuthority -> recoverableOperationV1_1RestartRecoveryDirectives -> verifyLocalFolderCreate -> PathConvergenceState -> folderCreateEligibleForAuthoritativeCommit`.
 
-Neither addition authorizes physical-state reinterpretation.
+The frozen store round trip preserves the durable effect stage and structural path authority without a worker-local sidecar.
 
-## 7. Execution and product disposition
+### REMOTE folder
 
-`ExecutionResult` may retain `operationalFailure` on retryable, blocking, uncertain, and recovery-required results. The physical `status` remains authoritative for durable/recovery semantics.
+`RemoteFolderCreatePhysicalMutationDescriptor -> RecoverableMutationEffectV1_1 -> RecoverableOperationIntentV1_1 -> SynchronizationAuthorityMetadataV1_1 -> SynchronizationAuthorityStoreV1_1.saveAuthority -> restart/loadAuthority -> recoverableOperationV1_1RestartRecoveryDirectives -> verifyRemoteFolderCreate -> PathConvergenceState -> folderCreateEligibleForAuthoritativeCommit`.
 
-`operationalFailureDisposition()` supplies only operational/user disposition:
+The round trip preserves `intentId`, `effectId`, `parentRemoteObjectId`, `remoteMutation.reservedRemoteObjectId`, target path/path authority, durable stage, and verification reference. A restarted process therefore reconciles the same intended Drive folder identity.
 
-- authentication-required -> reauthenticate before retry;
-- transient-failure -> bounded backoff/defer;
-- rate-limited -> bounded backoff/defer preserving applicable `retryAfterMs`;
-- permission/quota -> blocking failure;
-- recovery/semantic/unclassified -> recovery-required, no inferred retry.
+## 5. Remote application versus convergence
 
-This mapping cannot convert an `uncertain` execution result into `retryable-failure` and cannot authorize a second dispatch of an unresolved effect.
+A physical mutation may be safely materialized without the logical path being conflict-free.
 
-## 8. Retained invariants
+For example, if predecessor R0, independent RI, and writer candidate RW are all preserved, RW may have a valid `RemoteMutationApplicationProof`, while `RemotePathConvergenceAuthority` remains `conflict-preserved`. Ordinary convergence requires both verified non-destructive application and explicit conflict-free path authority.
+
+The same distinction applies to folder creation: observing the intended physical directory object is not enough to commit synchronization state unless path convergence is authoritative.
+
+## 6. Local integrity/cache invariant
+
+Fast-path metadata-based canonical evidence caching is permitted only as an optimization. Workstream B must implement an authoritative integrity path via `LocalIntegrityReconciliationPort.readFileBypassingEvidenceCache()`.
+
+At Verify/Reconcile and policy-selected integrity opportunities, the implementation must re-read bytes even if byte length and mtime are unchanged, no watcher event arrived, and the cached observation token is unchanged. A missed H0→H1 change therefore cannot make stale H0 permanent authority.
+
+## 7. Legacy compatibility rule
+
+The repository contains existing planner/executor/Drive/persistence interfaces that predate this freeze. Their presence does not authorize the new synchronization path to use weaker semantics.
+
+- `base-trusted` and `identity-unambiguous` may exist only in compatibility planning DTOs until Workstream D migrates them; `ExecutablePlannedOperation` cannot contain them.
+- existing `SynchronizationExecutor` / `AuthoritativeSuccessCommitter` remain compatibility seams for current code; new synchronization uses the authority-complete variants.
+- raw `GoogleDrivePort.create/update/move/trash` are transport primitives; new synchronization mutations use `ReliableRemoteMutationPort` only.
+- pre-v1.1 `RecoverableOperationIntent`, `SynchronizationAuthorityMetadata`, `SynchronizationAuthorityLoadResult`, and `SynchronizationAuthorityStore` remain compatibility surfaces for already-reviewed v1 behavior; they are not the authoritative persistence route for new/resumed v1.1 folder-containing synchronization.
+- new/resumed v1.1 C/D work must exchange synchronization authority through `SynchronizationAuthorityMetadataV1_1` / `SynchronizationAuthorityStoreV1_1`; routing folder intent through a private sidecar, untyped blob, cast-through-unknown, replacement store, branch-local metadata, or shadow contract is a freeze violation.
+
+## 8. Cross-contract invariants retained from accepted A–H and R1–R6 foundation
 
 1. Persistence revision and semantic authority remain distinct.
 2. File BASE healing requires canonical SHA-256 equality.
-3. Folder proof remains structural/identity authority.
+3. Folder proof is structural/identity authority and does not borrow file-content evidence.
 4. Remote-ingestion progress cannot discard unresolved learned facts.
 5. Duplicate logical paths remain explicit.
 6. Existing-object remote content update does not assume undocumented atomic Drive CAS.
@@ -114,37 +167,50 @@ This mapping cannot convert an `uncertain` execution result into `retryable-fail
 8. Local file create/replace recovery authority remains explicit.
 9. Unknown mutation outcome never becomes retryable-not-applied by assumption.
 10. Semantic contradiction always has a fail-closed representation.
-11. Physical application and logical path convergence remain distinct.
-12. Folder-create operation identity and reserved remote identity survive persistence/restart unchanged.
-13. Logical completion requires every required physical effect to reach `state-committed`.
-14. Physical-effect certainty and operational-failure provenance remain orthogonal.
-15. Operational retryability never becomes physical-effect authority.
+11. PR #33 operation-local stale isolation remains fixed.
+12. Physical application and logical path convergence remain distinct.
+13. Folder-create operation identity and reserved remote identity survive authoritative persistence/restart unchanged.
+14. Logical completion requires every required physical effect to reach `state-committed`.
+15. Physical-effect certainty and operational-failure provenance remain orthogonal.
+16. Operational retryability never becomes physical-effect authority.
 
 ## 9. Workstream effects
 
-- **A** must emit the public provenance carrier/mapping rather than exposing private error semantics across workstreams.
-- **B** can preserve lazy remote-source provenance in `LocalTransactionResult` without depending on A implementation details.
-- **C** retains existing physical/recovery state semantics; provenance does not alter durable stage authority.
-- **D** can map `RemoteMutationOutcome` / `LocalTransactionResult` to `ExecutionResult` while preserving both dimensions.
-- **H/UI** can surface authentication/deferred/rate-limit/recovery disposition from the public execution contract without guessing from strings.
-- **G** can adversarially assert that retry guidance never authorizes redispatch of an uncertain effect.
+- **A** has the frozen retry-safe REMOTE folder identity and verification contracts and must emit public structured operational provenance at the Drive/lazy-content boundaries.
+- **B** has the frozen LOCAL structural folder-create contracts and can preserve lazy remote-source provenance in `LocalTransactionResult` without depending on A implementation details.
+- **C** can persist and recover LOCAL and REMOTE folder-create physical effects, exact identities, stages, and verification references through the authoritative v1.1 store without a sidecar; operational provenance does not alter stage authority.
+- **D** can plan, journal, save, reload, classify, verify/recover, converge, and commit synchronization while carrying structured operational provenance into `ExecutionResult` without weakening physical certainty.
+- **G** can model folder persistence/restart, identity preservation, pre/post-dispatch classification, shared completion semantics, and the prohibition on redispatch from operational retryability without production ownership.
+- **H/UI** can surface authentication, retry/defer timing, quota/permission, and recovery disposition from public execution contracts rather than reason strings.
 
-No production workstream is modified by this candidate.
+The seven-workstream decomposition remains sound; worker count and ownership are unchanged. No workstream is authorized to resume until independent supervisor approval establishes one exact workstream-base SHA.
 
-## 10. Cross-contract audit
+## 10. Contract change rule
 
-The v1.3 candidate was audited across `common.ts`, `google-drive.ts`, `local-vault.ts`, `synchronization-foundation.ts`, `synchronization-folder-create-foundation.ts`, `execution.ts`, `state.ts`, `snapshot.ts`, `plan.ts`, `status-audit-actions.ts`, `conflict.ts`, and `index.ts`.
+If an approved workstream cannot meet acceptance criteria using this surface, it stops and submits `CONTRACT CHANGE REQUEST`. It must not edit or shadow the frozen contracts on its branch.
 
-The intended public chain is:
+## 11. Approval state
+
+This remains a **candidate**, not an operative freeze. Parallel continuation remains unauthorized until the independent supervisor explicitly approves one exact candidate head and identifies that SHA as the common workstream base.
+
+## 12. Foundation v1.3 operational-failure provenance correction
+
+This section is additive to the previously frozen lifecycle and persistence authority above.
+
+**Physical-effect certainty and operational-failure provenance are orthogonal authorities.**
+
+The public contract carries structured provenance for authentication-required, transient network/service failure, rate limiting with applicable `retryAfterMs`, permission denial, quota exhaustion, recovery-required, semantic failure, and conservative unclassified failure. Lazy `BinaryContentSource` failures use the public `OperationalFailureError` carrier and `operationalFailureProvenanceFromError()` extractor. Cross-workstream implementations must not parse free-form `reason` strings, depend on a private Workstream-A error class, or inspect undocumented error properties.
+
+`RemoteMutationOutcome`, `LocalTransactionResult`, `CoherentRemoteDownload`, and `ExecutionResult` may retain operational provenance alongside their physical/recovery result. The existing `verified-not-applied`, `conflict-preserved`, `outcome-unknown`, `uncertain`, and recovery meanings remain authoritative and unchanged.
+
+`ExecutionResult.retryable-failure` may carry only transient/rate-limit structured provenance. Authentication, permission, quota, recovery, semantic, or unclassified provenance cannot be explicitly represented as retryable operational provenance. `operationalFailureDisposition()` maps unknown/unclassified causes conservatively to recovery-required with no inferred retry.
+
+**Operational failure provenance may influence retry scheduling and user-facing status, but never proves that a dispatch-authorized/outcome-unknown physical effect was not applied.**
+
+`retryAfterMs` is scheduling guidance only. Authentication, transient, or rate-limit provenance never authorizes blind redispatch. Once an effect has reached `dispatch-authorized` or another may-have-dispatched stage, restart reconciliation of physical reality remains mandatory before any new dispatch authority can be established.
+
+The complete frozen chain is:
 
 `REMOTE/LOCAL operational failure -> structured public provenance -> safe physical mutation -> durable physical certainty -> authoritative execution result -> retry/auth/offline/recovery disposition`
 
-No operational disposition becomes physical-effect authority anywhere in this chain.
-
-## 11. Contract change rule
-
-If an approved workstream cannot meet acceptance criteria using this surface, it stops and submits `CONTRACT CHANGE REQUEST`. It must not edit, parse around, or shadow the frozen contracts on its branch.
-
-## 12. Approval state
-
-This remains a **candidate**, not an operative freeze. No production branch is authorized to consume it until the independent supervisor explicitly approves the candidate head and identifies that SHA as the new common workstream base.
+No operational disposition in that chain becomes physical-effect authority.
