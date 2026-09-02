@@ -167,7 +167,7 @@ function fixtureExecutor(remoteEntries: RemoteEntry[]) {
 async function seededStore() {
   const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   await raw.saveTrusted(createInitialAuthorityState({
-    persistenceRevision: id<"PersistenceRevision">("persistence:group-a:1"),
+    persistenceRevision: id<"StateRevision">("persistence:group-a:1"),
     semanticGeneration: id<"SemanticStateGeneration">("semantic:group-a:1"),
     vaultIdentity: vault,
     deviceIdentity: device,
