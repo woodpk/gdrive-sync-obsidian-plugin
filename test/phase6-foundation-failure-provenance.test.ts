@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  OperationalFailureError,
+  OperationalFailureErrorV1_3,
   contractId,
-  operationalFailureDisposition,
-  operationalFailureFromDriveSignal,
-  operationalFailureProvenanceFromError,
-  unclassifiedOperationalFailure,
+  executionDispositionV1_3,
+  operationalFailureFromDriveSignalV1_3,
+  operationalFailureProvenanceFromErrorV1_3,
   type BinaryContentSource,
-  type ExecutionResult,
+  type ExecutionResultV1_3,
   type LocalMutationTransaction,
-  type LocalTransactionResult,
-  type OperationalFailureProvenance,
-  type RemoteMutationOutcome,
+  type LocalTransactionResultV1_3,
+  type OperationalFailureProvenanceV1_3,
+  type RemoteMutationOutcomeV1_3,
 } from "../src/contracts";
 
 const operationId = contractId<"OperationId">("failure-prov-op");
@@ -33,82 +34,191 @@ const transaction: LocalMutationTransaction = {
   expectedTarget: { status: "expected-absent" },
 };
 
-async function captureLazyFailure(provenance: OperationalFailureProvenance): Promise<OperationalFailureProvenance | undefined> {
+async function captureLazyFailure(provenance: OperationalFailureProvenanceV1_3): Promise<OperationalFailureProvenanceV1_3 | undefined> {
   const content: BinaryContentSource = {
     async *openChunks() {
-      throw new OperationalFailureError(provenance);
+      throw new OperationalFailureErrorV1_3(provenance);
     },
   };
   try {
-    for await (const _chunk of content.openChunks()) {
-      void _chunk;
-    }
+    for await (const chunk of content.openChunks()) void chunk;
   } catch (error) {
-    return operationalFailureProvenanceFromError(error);
+    return operationalFailureProvenanceFromErrorV1_3(error);
   }
   return undefined;
 }
 
-test("foundation v1.3: authentication during lazy download preserves uncertainty and auth provenance", async () => {
-  const provenance = await captureLazyFailure({ kind: "authentication-required", origin: "remote", detail: "token revoked" });
-  const result: LocalTransactionResult = { status: "outcome-unknown", reason: "stage write may have begun", transaction, operationalFailure: provenance };
-  assert.equal(result.status, "outcome-unknown");
-  assert.equal(result.operationalFailure?.kind, "authentication-required");
-  assert.deepEqual(operationalFailureDisposition(result.operationalFailure!), { status: "authentication-required", retry: "after-reauthentication" });
+function gitBlobSha1(bytes: Buffer): string {
+  const header = Buffer.from(`blob ${bytes.length}\0`);
+  return createHash("sha1").update(header).update(bytes).digest("hex");
+}
+
+const predecessorPrefixes = [
+  ["src/contracts/common.ts", 2559, "4048ceca9bd2a5022ededf7406a736360330572c"],
+  ["src/contracts/google-drive.ts", 5457, "dc331d4acd1e7d9c308c0df73232497bf5d85d55"],
+  ["src/contracts/execution.ts", 3107, "7fd20c94d5852f14bc223b6e5e0280d60fbb5776"],
+  ["dev/planning-and-building/phase6-sync-contract-freeze.md", 16296, "fe527c76137b2cd578ef7050ee3444498b21a5e0"],
+  ["dev/planning-and-building/phase6-sync-architecture-foundation.md", 14429, "f67d8ff67ff1915610e5a21ddc3d113c94a2f94b"],
+] as const;
+
+// Compile-time negative proof: Drive authentication provenance cannot claim a local source.
+// @ts-expect-error V1.3 source/category combinations are invalid by construction.
+const invalidLocalAuthentication: OperationalFailureProvenanceV1_3 = { kind: "authentication-required", source: "local" };
+void invalidLocalAuthentication;
+
+// Compile-time negative proof: V1.3 execution has no second top-level retry timing authority.
+// @ts-expect-error retryAfterMs belongs only to rate-limited operationalFailure provenance.
+const contradictoryRetryTiming: ExecutionResultV1_3 = { status: "retryable-failure", reason: "429", operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 }, retryAfterMs: 1, retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied" } };
+void contradictoryRetryTiming;
+
+// Compile-time negative proof: retryable failure cannot omit physical retry-safety authority.
+// @ts-expect-error transient cause alone never proves redispatch safety.
+const retryWithoutPhysicalSafety: ExecutionResultV1_3 = { status: "retryable-failure", reason: "network", operationalFailure: { kind: "transient-failure", source: "google-drive" } };
+void retryWithoutPhysicalSafety;
+
+test("foundation v1.3 C1: Drive authentication maps to public provenance and survives lazy carrier/extractor", async () => {
+  const mapped = operationalFailureFromDriveSignalV1_3({ kind: "authentication-required", detail: "token revoked" });
+  assert.deepEqual(mapped, { kind: "authentication-required", source: "google-drive", detail: "token revoked" });
+  assert.deepEqual(await captureLazyFailure(mapped!), mapped);
 });
 
-test("foundation v1.3: transient lazy download failure remains physically uncertain and operationally deferred", async () => {
-  const provenance = await captureLazyFailure({ kind: "transient-failure", origin: "remote", detail: "network reset" });
-  const result: LocalTransactionResult = { status: "outcome-unknown", reason: "local transaction requires recovery", transaction, operationalFailure: provenance };
-  assert.equal(result.status, "outcome-unknown");
-  assert.deepEqual(operationalFailureDisposition(result.operationalFailure!), { status: "deferred", retry: "bounded-backoff" });
+test("foundation v1.3 C2: transient Drive failure maps to public provenance", () => {
+  assert.deepEqual(operationalFailureFromDriveSignalV1_3({ kind: "transient-failure", detail: "network reset" }), {
+    kind: "transient-failure", source: "google-drive", detail: "network reset",
+  });
 });
 
-test("foundation v1.3: lazy rate limit preserves exact retryAfterMs without changing physical certainty", async () => {
-  const provenance = await captureLazyFailure({ kind: "rate-limited", origin: "remote", retryAfterMs: 5000 });
-  const result: LocalTransactionResult = { status: "outcome-unknown", reason: "stage effect uncertain", transaction, operationalFailure: provenance };
-  assert.equal(result.status, "outcome-unknown");
-  assert.equal(result.operationalFailure?.kind, "rate-limited");
-  assert.equal(result.operationalFailure?.kind === "rate-limited" ? result.operationalFailure.retryAfterMs : undefined, 5000);
-  assert.deepEqual(operationalFailureDisposition(result.operationalFailure!), { status: "deferred", retry: "bounded-backoff", retryAfterMs: 5000 });
+test("foundation v1.3 C3: rate-limit mapping preserves exactly retryAfterMs 5000", () => {
+  assert.deepEqual(operationalFailureFromDriveSignalV1_3({ kind: "rate-limited", retryAfterMs: 5000 }), {
+    kind: "rate-limited", source: "google-drive", retryAfterMs: 5000,
+  });
 });
 
-test("foundation v1.3: generic local I/O uncertainty does not fabricate remote retry provenance", () => {
-  const result: LocalTransactionResult = { status: "outcome-unknown", reason: "local rename result unknown", transaction };
-  assert.equal(result.status, "outcome-unknown");
+test("foundation v1.3 C4: not-found has no context-free operational recovery provenance", () => {
+  assert.equal(operationalFailureFromDriveSignalV1_3({ kind: "not-found", remoteObjectId: contractId<"RemoteObjectId">("missing") }), undefined);
+});
+
+test("foundation v1.3 C5: conflict has no context-free operational recovery provenance", () => {
+  assert.equal(operationalFailureFromDriveSignalV1_3({ kind: "conflict", detail: "context owns meaning" }), undefined);
+});
+
+test("foundation v1.3 C6: generic local I/O uncertainty fabricates no remote provenance", () => {
+  const result: LocalTransactionResultV1_3 = { status: "outcome-unknown", reason: "local rename result unknown", transaction };
   assert.equal(result.operationalFailure, undefined);
-  assert.equal(operationalFailureProvenanceFromError(new Error("ECONNRESET-looking text is not authority")), undefined);
+  assert.equal(operationalFailureProvenanceFromErrorV1_3(new Error("ECONNRESET-looking text is not authority")), undefined);
 });
 
-test("foundation v1.3: remote lost response retains both outcome-unknown and structured failure provenance", () => {
-  const remote: RemoteMutationOutcome = {
+test("foundation v1.3 C7: physically unknown remote mutation plus transient provenance remains physically unknown", () => {
+  const result: RemoteMutationOutcomeV1_3 = {
     status: "outcome-unknown",
     reason: "response lost after dispatch",
-    operationalFailure: operationalFailureFromDriveSignal({ kind: "transient-failure", detail: "connection dropped" }),
+    operationalFailure: { kind: "transient-failure", source: "google-drive" },
   };
-  assert.equal(remote.status, "outcome-unknown");
-  assert.equal(remote.operationalFailure?.kind, "transient-failure");
+  assert.equal(result.status, "outcome-unknown");
+  assert.equal(result.operationalFailure?.kind, "transient-failure");
 });
 
-test("foundation v1.3: operational provenance cannot erase verified-not-applied versus outcome-unknown", () => {
-  const provenance = operationalFailureFromDriveSignal({ kind: "authentication-required", detail: "reauth" });
-  const notApplied: RemoteMutationOutcome = { status: "verified-not-applied", reason: "pre-dispatch authorization rejected", operationalFailure: provenance };
-  const unknown: RemoteMutationOutcome = { status: "outcome-unknown", reason: "dispatch occurred before auth failure surfaced", operationalFailure: provenance };
-  assert.notEqual(notApplied.status, unknown.status);
-  assert.equal(notApplied.operationalFailure?.kind, unknown.operationalFailure?.kind);
+test("foundation v1.3 C8: verified-not-applied and outcome-unknown remain distinct under same operational cause", () => {
+  const provenance = { kind: "authentication-required", source: "google-drive" } as const;
+  const safe: RemoteMutationOutcomeV1_3 = { status: "verified-not-applied", reason: "rejected before application", operationalFailure: provenance };
+  const unknown: RemoteMutationOutcomeV1_3 = { status: "outcome-unknown", reason: "dispatch may have occurred", operationalFailure: provenance };
+  assert.notEqual(safe.status, unknown.status);
+  assert.deepEqual(safe.operationalFailure, unknown.operationalFailure);
 });
 
-test("foundation v1.3: execution boundary retains durable recovery truth separately from user/retry disposition", () => {
-  const result: ExecutionResult = {
+test("foundation v1.3 C9: uncertain authentication surfaces auth while requiring physical reconciliation", () => {
+  const disposition = executionDispositionV1_3({
     status: "uncertain",
-    reason: "dispatch-authorized effect requires physical reconciliation",
-    operationalFailure: { kind: "rate-limited", origin: "remote", retryAfterMs: 5000 },
-  };
-  assert.equal(result.status, "uncertain");
-  assert.deepEqual(operationalFailureDisposition(result.operationalFailure!), { status: "deferred", retry: "bounded-backoff", retryAfterMs: 5000 });
+    reason: "dispatch-authorized effect unresolved",
+    operationalFailure: { kind: "authentication-required", source: "google-drive" },
+  });
+  assert.deepEqual(disposition, {
+    primary: "authentication-required",
+    physicalReconciliationRequired: true,
+    retryMode: "reauthenticate-then-reconcile",
+    mutationRedispatchAuthorized: false,
+  });
 });
 
-test("foundation v1.3: unknown future operational cause is conservative and never guessed retryable", () => {
-  const provenance = unclassifiedOperationalFailure("remote", "future provider failure category");
-  assert.deepEqual(operationalFailureDisposition(provenance), { status: "recovery-required", retry: "none" });
+test("foundation v1.3 C10: uncertain rate limit preserves timing and forbids redispatch until reconciliation", () => {
+  const disposition = executionDispositionV1_3({
+    status: "uncertain",
+    reason: "may-have-dispatched",
+    operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 },
+  });
+  assert.deepEqual(disposition, {
+    primary: "deferred",
+    physicalReconciliationRequired: true,
+    retryMode: "reconcile-before-redispatch",
+    retryAfterMs: 5000,
+    mutationRedispatchAuthorized: false,
+  });
+});
+
+test("foundation v1.3 C11: uncertain result without provenance becomes conservative recovery", () => {
+  assert.deepEqual(executionDispositionV1_3({ status: "uncertain", reason: "unknown physical reality" }), {
+    primary: "recovery-required",
+    physicalReconciliationRequired: true,
+    retryMode: "reconcile-before-redispatch",
+    mutationRedispatchAuthorized: false,
+  });
+});
+
+test("foundation v1.3 C12: ordinary retry requires explicit no-unresolved-effect physical authority", () => {
+  const result: ExecutionResultV1_3 = {
+    status: "retryable-failure",
+    reason: "verified rejection",
+    operationalFailure: { kind: "transient-failure", source: "google-drive" },
+    retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied", verificationEvidenceRef: "proof-1" },
+  };
+  assert.deepEqual(executionDispositionV1_3(result), {
+    primary: "deferred",
+    physicalReconciliationRequired: false,
+    retryMode: "ordinary-retry",
+    mutationRedispatchAuthorized: true,
+  });
+});
+
+test("foundation v1.3 C13: rate-limit timing has one execution authority", () => {
+  const result: ExecutionResultV1_3 = {
+    status: "retryable-failure",
+    reason: "429 verified not applied",
+    operationalFailure: { kind: "rate-limited", source: "google-drive", retryAfterMs: 5000 },
+    retrySafety: { status: "verified-no-unresolved-effect", basis: "verified-not-applied" },
+  };
+  assert.equal("retryAfterMs" in result, false);
+  assert.equal(executionDispositionV1_3(result).retryAfterMs, 5000);
+});
+
+test("foundation v1.3 C14: recovery-required physical state cannot be erased by operational metadata", () => {
+  assert.deepEqual(executionDispositionV1_3({
+    status: "recovery-required",
+    reason: "durable physical recovery required",
+    operationalFailure: { kind: "recovery-required", source: "google-drive", detail: "cursor invalid" },
+  }), {
+    primary: "recovery-required",
+    physicalReconciliationRequired: true,
+    retryMode: "reconcile-before-redispatch",
+    mutationRedispatchAuthorized: false,
+  });
+});
+
+test("foundation v1.3 C15: predecessor approved contract/document bytes remain exact immutable prefixes", () => {
+  for (const [file, predecessorSize, predecessorBlobSha] of predecessorPrefixes) {
+    const current = readFileSync(file);
+    assert.ok(current.length > predecessorSize, `${file} must append successor material`);
+    assert.equal(gitBlobSha1(current.subarray(0, predecessorSize)), predecessorBlobSha, `${file} predecessor prefix changed`);
+  }
+  const untouchedFoundation = readFileSync("src/contracts/synchronization-foundation.ts");
+  assert.equal(gitBlobSha1(untouchedFoundation), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
+});
+
+test("foundation v1.3 C16: documentation succession material is appended after approved predecessor prefixes", () => {
+  const freeze = readFileSync("dev/planning-and-building/phase6-sync-contract-freeze.md", "utf8");
+  const architecture = readFileSync("dev/planning-and-building/phase6-sync-architecture-foundation.md", "utf8");
+  assert.ok(freeze.indexOf("## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE") >= 16296);
+  assert.ok(architecture.indexOf("## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE") >= 14429);
+  assert.match(freeze, /Deprecation does not delete or rewrite predecessor contract history/);
+  assert.match(freeze, /ReliableRemoteMutationPortV1_3/);
+  assert.match(freeze, /ExecutionResultV1_3/);
 });
