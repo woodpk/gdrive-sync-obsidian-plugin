@@ -74,7 +74,7 @@ function mergeIntent(missing = false) {
   const intent = { logicalKind: "clean-text-merge", operationId, intentId, semanticAuthority: { generation: gen }, effects: [{ effectId: "effect:merge:local", stage: "effect-verified", verificationEvidenceRef: "proof:local", descriptor: { kind: "local-file", targetSide: "local", mutationKind: "replace", targetPath: target, localTransactionId: txid, intendedContent: v1 } }, { effectId: "effect:merge:remote", stage: "effect-verified", ...(missing ? {} : { verificationEvidenceRef: "proof:remote" }), descriptor: { kind: "remote-file", targetSide: "remote", mutationKind: "update", targetPath: target, intendedContent: v1, remoteMutation: { kind: "existing-file-content-update", intentId, remoteObjectId: predecessor, candidateRemoteObjectId: candidate, expectedRevision: id<"RemoteRevisionId">("revision:merge"), path: target, updateProtocol: "immutable-candidate-preservation", intendedContent: v1, identityAuthority: { generation: gen, status: "unique", path: target, remoteObjectId: predecessor } } } }] } as never;
   return { intent: intent as RecoverableOperationIntentV1_1, tx: tx as never };
 }
-function entry(pathValue: VaultPath = target, remoteObjectId = reserved, content: any = v1, kind: "file" | "folder" = "file"): RemoteEntry { return { path: pathValue, entityKind: kind, remoteObjectId, ...(kind === "file" ? { content: { hash: content.hash, sizeBytes: content.sizeBytes } } : {}), trashed: false }; }
+function entry(pathValue: VaultPath = target, remoteObjectId = reserved, content: any = v1, kind: "file" | "folder" = "file", remoteRevision?: string): RemoteEntry { return { path: pathValue, entityKind: kind, remoteObjectId, ...(kind === "file" ? { content: { hash: content.hash, sizeBytes: content.sizeBytes, ...(remoteRevision ? { revision: remoteRevision } : {}) } } : {}), trashed: false }; }
 function fixture(canonical: CanonicalStore, entries: () => readonly RemoteEntry[]) {
   let raw = 0;
   const local = { observe: async (pathValue: VaultPath) => ({ status: "absent", side: "local", path: pathValue }) } as unknown as LocalVaultPort;
@@ -112,7 +112,7 @@ test("D-C12 contradictory current REMOTE identity cannot replace persisted reser
 });
 
 test("D-C12 persisted update candidate identity becomes canonical", async () => {
-  const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([updateIntent()]); const f = fixture(canonical, () => [entry(target, candidate)]); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovered"); assert.equal(canonical.value.remoteMappings.find(x => x.path === target)?.remoteObjectId, candidate); assert.equal(canonical.value.base.find(x => x.path === target)?.content?.hash, h1); assert.equal(f.raw(), 0);
+  const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([updateIntent()]); const f = fixture(canonical, () => [entry(target, predecessor, v0, "file", "revision:old"), entry(target, candidate, v1)]); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovered"); assert.equal(canonical.value.remoteMappings.find(x => x.path === target)?.remoteObjectId, candidate); assert.equal(canonical.value.base.find(x => x.path === target)?.content?.hash, h1); assert.equal(f.raw(), 0);
 });
 
 test("D-C12 clean merge requires every verified durable effect and aggregate evidence is deterministic", async () => {

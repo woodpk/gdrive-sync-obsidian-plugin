@@ -31,6 +31,7 @@ import {
   type ReconstructedDurableRecovery,
 } from "./durable-intent-recovery-base";
 import type { ProductSynchronizationExecutor } from "./production-executor";
+import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
 
 export { reconstructDurableRecovery } from "./durable-intent-recovery-base";
 export type { DurableIntentRecoveryDependencies, DurableIntentRecoveryResult, ReconstructedDurableRecovery } from "./durable-intent-recovery-base";
@@ -206,9 +207,14 @@ async function observePhysicalReality(
   if (!entries) return { status: "outcome-unknown", reason: "complete REMOTE observation unavailable during durable recovery" };
   if (descriptor.kind === "remote-file") {
     const mutation = descriptor.remoteMutation;
-    const expectedId = mutation.kind === "reserved-file-create" ? mutation.reservedRemoteObjectId : mutation.candidateRemoteObjectId;
+    if (mutation.kind === "existing-file-content-update") {
+      const update = verifyPreservedRemoteUpdateConvergence(descriptor, entries);
+      return update.status === "converged"
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-update", { descriptor, predecessor: update.predecessor, candidate: update.candidate }) }
+        : { status: "outcome-unknown", reason: update.reason };
+    }
     const actual = uniqueRemote(entries, descriptor.targetPath, "file");
-    return actual?.remoteObjectId === expectedId && actual.content?.hash === descriptor.intendedContent.hash && actual.content.sizeBytes === descriptor.intendedContent.sizeBytes
+    return actual?.remoteObjectId === mutation.reservedRemoteObjectId && actual.content?.hash === descriptor.intendedContent.hash && actual.content.sizeBytes === descriptor.intendedContent.sizeBytes
       ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", { descriptor, observed: actual }) }
       : { status: "outcome-unknown", reason: "REMOTE file does not prove persisted identity/content without ambiguity" };
   }
@@ -239,6 +245,37 @@ async function verifyCurrentPhysicalReality(
 ): Promise<string | undefined> {
   const observed = await observePhysicalReality(legacy, lifecycle, intent, effect, authority, remote, dependencies, cachedEntries, false);
   return observed.status === "verified-effect" ? undefined : `${observed.status}: ${observed.reason}`;
+}
+
+async function preverifyOutstandingRemoteUpdates(
+  legacy: ProductSynchronizationExecutor,
+  authorityStore: SynchronizationAuthorityStoreV1_1,
+  remote: ManagedRemoteIdentity,
+  dependencies: DurableIntentRecoveryDependencies,
+): Promise<string | undefined> {
+  const lifecycle = new DurableEffectLifecycleCoordinator(authorityStore);
+  let loaded = await lifecycle.loadAuthority();
+  if (loaded.status !== "trusted") return loaded.reason;
+  let remotePromise: Promise<readonly RemoteEntry[] | undefined> | undefined;
+  const remoteEntries = () => remotePromise ??= completeEntries(legacy, remote);
+  for (const intent of loaded.state.operationIntents) {
+    const invalid = validateIntent(intent, loaded.state);
+    if (invalid) return invalid;
+    for (const effect of intent.effects) {
+      if ((effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown")
+        || effect.descriptor.kind !== "remote-file"
+        || effect.descriptor.remoteMutation.kind !== "existing-file-content-update") continue;
+      const observed = await observePhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries, false);
+      if (observed.status !== "verified-effect") continue;
+      const recorded = await lifecycle.recordPhysicalResult(String(intent.operationId), effect.effectId, observed);
+      if (recorded.status !== "effect-verified" && !(recorded.status === "already-progressed" && (recorded.stage === "effect-verified" || recorded.stage === "state-committed"))) {
+        return `durable REMOTE update ${effect.effectId} could not persist verified recovery (${recorded.status}${"reason" in recorded ? `: ${recorded.reason}` : ""})`;
+      }
+      loaded = await lifecycle.loadAuthority();
+      if (loaded.status !== "trusted") return loaded.reason;
+    }
+  }
+  return undefined;
 }
 
 async function preflightVerifiedEffects(
@@ -353,6 +390,8 @@ export async function recoverOutstandingDurableIntents(
   remote: ManagedRemoteIdentity,
   dependencies: DurableIntentRecoveryDependencies = {},
 ): Promise<DurableIntentRecoveryResult> {
+  const updateFailure = await preverifyOutstandingRemoteUpdates(legacy, authorityStore, remote, dependencies);
+  if (updateFailure) return { status: "recovery-required", reason: updateFailure };
   const failure = await preflightVerifiedEffects(legacy, authorityStore, remote, dependencies);
   if (failure) return { status: "recovery-required", reason: failure };
   return recoverBaseOutstandingDurableIntents(legacy, authorityStore, stateStore, stateContext, remote, dependencies);

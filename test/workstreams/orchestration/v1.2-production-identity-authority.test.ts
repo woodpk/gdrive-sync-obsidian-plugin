@@ -159,7 +159,7 @@ class WritableAuthorityStore implements SynchronizationAuthorityStoreV1_1 {
 
 function productionHarness(kind: "upload-update" | "trash-remote") {
   let canonical = trustedState();
-  let remoteEntries = [{ path: target, entityKind: "file" as const, remoteObjectId: stableRemoteId, hash: String(baseHash), sizeBytes: 3, trashed: false }];
+  let remoteEntries = [{ path: target, entityKind: "file" as const, remoteObjectId: stableRemoteId, content: { hash: baseHash, sizeBytes: 3, revision: "revision:base" }, trashed: false }];
   const seamCalls: string[] = [];
   const forbiddenRawCalls: string[] = [];
   let reserve = 0;
@@ -190,7 +190,11 @@ function productionHarness(kind: "upload-update" | "trash-remote") {
     },
     async updateExisting(descriptor: any) {
       seamCalls.push("updateExisting");
-      remoteEntries = [{ path: target, entityKind: "file", remoteObjectId: descriptor.candidateRemoteObjectId, hash: String(localHash), sizeBytes: 3, trashed: false }];
+      const predecessor = remoteEntries.find(entry => entry.remoteObjectId === descriptor.remoteObjectId);
+      remoteEntries = [
+        ...(predecessor ? [{ ...predecessor, content: { ...predecessor.content, revision: String(descriptor.expectedRevision) } }] : []),
+        { path: target, entityKind: "file", remoteObjectId: descriptor.candidateRemoteObjectId, content: { hash: localHash, sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
+      ];
       return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: descriptor.candidateRemoteObjectId, predecessorRemoteObjectId: descriptor.remoteObjectId, predecessorRevision: descriptor.expectedRevision, intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent, preservedRemoteObjectIds: [descriptor.remoteObjectId, descriptor.candidateRemoteObjectId] } };
     },
     async trashExisting(descriptor: any) {

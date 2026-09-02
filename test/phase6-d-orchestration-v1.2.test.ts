@@ -5,3 +5,4 @@ import "./workstreams/orchestration/v1.2-production-lifecycle-composition.test";
 import "./workstreams/orchestration/v1.2-production-identity-authority.test";
 import "./workstreams/orchestration/v1.2-durable-intent-recovery.test";
 import "./workstreams/orchestration/v1.2-effect-verified-convergence.test";
+import "./workstreams/orchestration/v1.2-d-c13-predecessor-preserving-update.test";
