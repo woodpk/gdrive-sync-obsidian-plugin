@@ -602,3 +602,102 @@ The repository-wide residual **30 failures / 25 cancellations** are outside the 
 Frozen-contract audit: compare `96b4541b15012ac4ce0d81243b73ef779efd343e -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains no `src/contracts/**` file changes. Direct rejected-head compare `5fe4571d6e444484c73929494bb7e5233172b0b3 -> 1275c5a39ac22ca21955bfbcbfafb99182b6052d` contains only the three Unit-1 source/test files listed above.
 
 Remaining known D dependency: **Supervisor D repair Unit 2 — durable restart routing. NOT STARTED in this unit.** Canonical D repair closure remains deferred until all serial D repair units pass independent review.
+
+# D-C13 — predecessor-preserving REMOTE update convergence compatibility
+
+## Authority and branch
+
+- Agent: `agt-CA-P6-SYNC-ORCHESTRATION-01`
+- Starting substantive D source/test authority: `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3`
+- Correction branch: `phase6-sync-orchestration-v1.2-d-c13`
+- Final verified source/test SHA before this evidence-only commit: `6ccd12e642f3168eeda017360289f95377935cff`
+- Frozen Phase 6 v1.2 foundation: `96b4541b15012ac4ce0d81243b73ef779efd343e`
+- Frozen `src/contracts/**` tree SHA: `4deb82e382f7957c731ef78db52b4164571d57a3`
+- Draft CI/review vehicle: PR #46, `phase6-sync-orchestration-v1.2-d-c13` -> `phase6-integration`; source verification occurred while the PR was open/draft/unmerged.
+
+## Supervisor-resolved compatibility rule
+
+For `existing-file-content-update` only, Workstream D now recognizes Workstream A's approved immutable-candidate-preservation result as converged only when complete current REMOTE reconciliation proves exactly two active same-path file objects: the persisted authoritative predecessor and the persisted immutable candidate. The predecessor must have the exact persisted `remoteObjectId` and `expectedRevision`; the candidate must have the exact persisted `candidateRemoteObjectId` and exact persisted intended SHA-256 hash/size; predecessor/candidate IDs must be distinct; and no third or substitute active same-path object may exist. Persisted durable descriptor authority controls the decision. This rule does not generalize two-object acceptance to create, folder-create, move, trash, or any other operation.
+
+## Implementation approach
+
+A D-owned helper, `src/product/remote-update-convergence.ts`, centralizes the exact operation-specific predecessor-plus-candidate test. `src/product/authoritative-production-executor-base.ts` invokes that helper for ordinary post-effect REMOTE convergence only when the durable remote mutation kind is `existing-file-content-update`; reserved-file create retains its strict exact-one same-path identity rule. `src/product/durable-intent-recovery.ts` uses the same helper for current physical re-observation and additionally promotes an exact `dispatch-authorized` / `outcome-unknown` update topology to durable `effect-verified` before the existing base recovery path runs, without redispatching the update. Existing `effect-verified` restart preflight uses the same observation rule, so ordinary and restarted convergence semantics agree.
+
+Four pre-existing D test fakes that modeled the former candidate-replaces-predecessor topology were mechanically corrected to preserve the predecessor and expose its persisted revision. No production semantic was weakened to satisfy those fixtures.
+
+## Exact source/test manifest from `c5e6c696...` to `6ccd12e...`
+
+Created:
+- `src/product/remote-update-convergence.ts`
+- `test/workstreams/orchestration/v1.2-d-c13-predecessor-preserving-update.test.ts`
+
+Modified production:
+- `src/product/authoritative-production-executor-base.ts`
+- `src/product/durable-intent-recovery.ts`
+
+Modified D tests:
+- `test/phase6-d-orchestration-v1.2.test.ts`
+- `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`
+- `test/workstreams/orchestration/v1.2-production-authority-path.test.ts`
+- `test/workstreams/orchestration/v1.2-production-identity-authority.test.ts`
+- `test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.ts`
+
+Deleted: none.
+
+No `src/contracts/**`, A/B/C/E/F/G/H production source, canonical `dev/evidence/_ca-output.md`, `phase6-integration`, release/tag, OAuth/Azure/Drive-scope, or physical synchronization surface was modified.
+
+## D-C13 focused regressions
+
+Raw TAP at the final source/test head records tests 457–463, all PASS:
+
+- D-C13-T1 — ordinary convergence accepts the exact persisted predecessor + candidate topology: PASS.
+- D-C13-T2 — restart recognizes the exact completed physical update without redispatch and can continue to canonical completion: PASS.
+- D-C13-T3 — REMOTE create remains strict and rejects more than one active same-path object: PASS.
+- D-C13-T4 — wrong predecessor identity: PASS by fail-closed rejection.
+- D-C13-T5 — unexpected third same-path object: PASS by fail-closed rejection.
+- D-C13-T6 — wrong candidate identity and candidate hash/size mismatch: PASS by fail-closed rejection.
+- D-C13-T7 — predecessor revision mismatch: PASS by fail-closed rejection.
+
+D-C13 focused count: **7/7 PASS**.
+
+## Regression verification and exact commands
+
+The repository's existing `Phase 6 Alpha Diagnostic Verification` workflow executed the following relevant commands on the PR #46 synthetic merge tree containing source head `6ccd12e642f3168eeda017360289f95377935cff`:
+
+- `npm ci` — PASS.
+- `npm run typecheck` — PASS.
+- `npm test | tee .ci-evidence/full-tests.tap` — workflow step completed; direct raw TAP inspection is authoritative because the pipeline does not use `pipefail`.
+- existing focused callback/diagnostic/OAuth/export command after `npx tsc --project tsconfig.test.json` — **38/38 PASS**.
+- `npm run build` — PASS.
+- `npm run check | tee .ci-evidence/check.log` — workflow step completed; direct `check.log` inspection produced the same raw test counts as the full TAP.
+- `git diff --check` — PASS.
+
+Final raw `full-tests.tap`: **507 tests / 449 pass / 33 fail / 25 cancelled / 0 skipped / 0 todo**. The 33 failures and 25 cancellations are outside the D-owned block and were not reclassified or repaired in D-C13.
+
+D-owned regression evidence from the same raw TAP:
+- all D-prefixed tests: **86/86 PASS**;
+- production authority path: tests 404–408, **5/5 PASS**;
+- authoritative commit lifecycle: tests 429–432, **4/4 PASS**;
+- production lifecycle composition: tests 434–440, **7/7 PASS**;
+- D-C10 production identity authority: tests 441–447, **7/7 PASS**;
+- durable-intent recovery: tests 448–455, **8/8 PASS**;
+- effect-verified convergence re-observation: test 456, **1/1 PASS**;
+- D-C13: tests 457–463, **7/7 PASS**.
+
+## Verification provenance
+
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Run: `33576966261`
+- Job: `100082955281`
+- Artifact: `9826978598`
+- Artifact digest: `sha256:6fe4bacc1d21740b19f27ef53ff29de41494662a6005b33922a7f45c55675a5c`
+- GitHub Actions checkout: PR #46 synthetic merge `bf7977669a0224f4e32086510327e92e8ebc0f9c`, whose checkout message proves `6ccd12e642f3168eeda017360289f95377935cff` merged into `phase6-integration @ 3005fe89f4214a9e389889769b088abfcad8293a` for verification. This is PR merge-ref verification containing the source head, not a claim of literal detached-head checkout.
+- Built `main.js`: `458305` bytes; SHA-256 `7553176959743ad1641343ddfc7db5e780640559e7d4b075c56adf540166b666`.
+
+## Frozen boundary and stop state
+
+At final source/test SHA `6ccd12e642f3168eeda017360289f95377935cff`, `src/contracts/**` remains exactly tree `4deb82e382f7957c731ef78db52b4164571d57a3`. The cumulative source/test compare from `c5e6c696850953e6f7ab2a512bf6a5e34b9fd1b3` contains only the nine authorized D implementation/test paths listed above. Canonical `dev/evidence/_ca-output.md` remains untouched. No H branch was modified or consumed, H-U3 was not resumed, H-U4 was not begun, no branch was merged, Stage 3 was not begun, and physical synchronization was not performed.
+
+Blockers within D-C13: **NONE**. The repository-wide 33 failures/25 cancellations remain unrelated cross-workstream/integration state and are explicitly outside this unit's repair authority.
+
+The exact final evidence-only commit SHA is recorded externally after this append because a content-addressed commit cannot contain its own resulting SHA.
