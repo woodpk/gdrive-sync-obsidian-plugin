@@ -1,0 +1,74 @@
+name: Foundation V1.3 Exact Candidate Proof
+
+on:
+  push:
+    branches:
+      - foundation-v1-3-exact-proof-dbec3f7
+
+permissions:
+  contents: read
+
+jobs:
+  exact-candidate-proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact corrected candidate
+        uses: actions/checkout@v4
+        with:
+          ref: dbec3f7a49ebea1e41c4dd71b2171649901ee346
+          fetch-depth: 0
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify exact candidate and capture exit states
+        id: verify
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p proof
+          : > proof/exit-states.txt
+          overall=0
+
+          run_capture() {
+            name="$1"
+            shift
+            echo "COMMAND[$name]: $*" | tee "proof/${name}.log"
+            "$@" 2>&1 | tee -a "proof/${name}.log"
+            rc=${PIPESTATUS[0]}
+            echo "$name=$rc" | tee -a proof/exit-states.txt
+            if [ "$rc" -ne 0 ]; then
+              overall=1
+            fi
+          }
+
+          echo "FOUNDATION_V1_3_CORRECTED_CANDIDATE_SHA=dbec3f7a49ebea1e41c4dd71b2171649901ee346" | tee proof/candidate.txt
+          echo "ACTUAL_HEAD=$(git rev-parse HEAD)" | tee -a proof/candidate.txt
+          test "$(git rev-parse HEAD)" = "dbec3f7a49ebea1e41c4dd71b2171649901ee346"
+          candidate_rc=$?
+          echo "exact-candidate-check=$candidate_rc" | tee -a proof/exit-states.txt
+          if [ "$candidate_rc" -ne 0 ]; then overall=1; fi
+
+          run_capture npm-ci npm ci
+          run_capture npm-run-typecheck npm run typecheck
+          run_capture npx-tsc-test npx tsc -p tsconfig.test.json
+          run_capture npm-test npm test
+          run_capture npm-run-build npm run build
+          run_capture npm-run-check npm run check
+          run_capture git-diff-check git diff --check 96b4541b15012ac4ce0d81243b73ef779efd343e...dbec3f7a49ebea1e41c4dd71b2171649901ee346
+
+          echo "overall=$overall" | tee -a proof/exit-states.txt
+          printf '%s\n' "$overall" > proof/overall-status.txt
+          sha256sum proof/*.log proof/candidate.txt proof/exit-states.txt proof/overall-status.txt > proof/SHA256SUMS.txt
+          exit "$overall"
+
+      - name: Upload complete proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-v1-3-exact-candidate-proof
+          path: proof/
+          if-no-files-found: error
+          retention-days: 30
