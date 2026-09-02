@@ -1,0 +1,88 @@
+name: H-U4 C2 Exit Proof
+
+on:
+  push:
+    branches:
+      - h-u4-c2-exit-proof-h02
+
+permissions:
+  contents: read
+
+jobs:
+  prove-exit-status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout frozen H-U4 authority
+        uses: actions/checkout@v4
+        with:
+          ref: 84cae684607be10b57ec5569bab14a819bad822f
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify frozen authority
+        shell: bash
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "H_U4_TESTED_SHA=$ACTUAL_SHA"
+          test "$ACTUAL_SHA" = "84cae684607be10b57ec5569bab14a819bad822f"
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Capture real npm exit statuses
+        shell: bash
+        run: |
+          mkdir -p .ci-evidence
+
+          set +e
+
+          npm test > .ci-evidence/npm-test-direct.log 2>&1
+          TEST_EXIT=$?
+
+          npm run check > .ci-evidence/npm-check-direct.log 2>&1
+          CHECK_EXIT=$?
+
+          set -e
+
+          printf 'npm_test_exit=%s\nnpm_run_check_exit=%s\n' \
+            "$TEST_EXIT" \
+            "$CHECK_EXIT" \
+            > .ci-evidence/exit-codes.txt
+
+          echo "H_U4_NPM_TEST_EXIT=$TEST_EXIT"
+          echo "H_U4_NPM_RUN_CHECK_EXIT=$CHECK_EXIT"
+
+          echo "=== npm test TAP summary ==="
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' \
+            .ci-evidence/npm-test-direct.log || true
+
+          echo "=== npm run check test summary ==="
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' \
+            .ci-evidence/npm-check-direct.log | tail -n 6 || true
+
+          if [ "$TEST_EXIT" -eq 0 ]; then
+            echo "ERROR: npm test unexpectedly returned zero."
+            exit 90
+          fi
+
+          if [ "$CHECK_EXIT" -eq 0 ]; then
+            echo "ERROR: npm run check unexpectedly returned zero."
+            exit 91
+          fi
+
+          echo "EXPECTED NONZERO EXIT STATUSES VERIFIED."
+
+      - name: Upload direct-execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u4-c2-direct-exit-proof
+          path: .ci-evidence/
+          if-no-files-found: error
