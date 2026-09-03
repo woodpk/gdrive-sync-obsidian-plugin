@@ -1,9 +1,7 @@
 name: D V1.3 Provenance Exact Proof
 
 on:
-  push:
-    branches:
-      - proof-d-v1.3-provenance-extension
+  pull_request:
 
 jobs:
   verify:
