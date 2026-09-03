@@ -701,3 +701,24 @@ At final source/test SHA `6ccd12e642f3168eeda017360289f95377935cff`, `src/contra
 Blockers within D-C13: **NONE**. The repository-wide 33 failures/25 cancellations remain unrelated cross-workstream/integration state and are explicitly outside this unit's repair authority.
 
 The exact final evidence-only commit SHA is recorded externally after this append because a content-addressed commit cannot contain its own resulting SHA.
+
+# D-C13 verification-evidence metadata correction
+
+This append-only correction supersedes only the artifact digest and built `main.js` identity in the immediately preceding D-C13 verification-provenance subsection. All D-C13 semantics, source/test authority, test counts, frozen-contract audit, and PASS disposition remain unchanged.
+
+- Evidence-only predecessor head: `89bfdf243c2c18689ba432e40fa4ba60673e530b`
+- Verified source/test SHA: `6ccd12e642f3168eeda017360289f95377935cff`
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Run: `33576966261`
+- Job: `100082955281`
+- Artifact ID: `9826978598`
+- Correct artifact digest: `sha256:87edbf5429698324df5313669aae9664031e9ff07ac6dca096f424867c45758a`
+- Correct built `main.js`: `556899` bytes
+- Correct built `main.js` SHA-256: `421aa1b52edc314a736ed630ee821068a023b714684003a4f89a85d159dc9745`
+- Raw TAP remains **507 tests / 449 pass / 33 fail / 25 cancelled / 0 skipped / 0 todo**.
+- D-prefixed tests remain **86/86 PASS**; D-C13 remains **7/7 PASS**.
+- Typecheck, production build, and `git diff --check` remain PASS.
+- Frozen `src/contracts/**` tree remains `4deb82e382f7957c731ef78db52b4164571d57a3`.
+- No source/test file changed after `6ccd12e642f3168eeda017360289f95377935cff`.
+- Canonical `dev/evidence/_ca-output.md` remains untouched.
+- D-C13 blockers: **none**.
