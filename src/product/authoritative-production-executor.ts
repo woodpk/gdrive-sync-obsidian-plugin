@@ -1,12 +1,20 @@
 import type {
   AuthoritativeSynchronizationExecutor,
+  AuthoritativeSynchronizationExecutorV1_3,
   AuthorityCompletePreconditionValidationResult,
   ExecutablePlannedOperation,
   ExecutionResult,
+  ExecutionResultV1_3,
   GoogleDrivePort,
+  LocalTransactionResultV1_3,
+  LocalTransactionalMutationPortV1_3,
   ManagedRemoteIdentity,
+  OperationalFailureProvenanceV1_3,
   RecoverableOperationIntentV1_1,
+  ReliableRemoteMutationPortV1_3,
+  RemoteMutationOutcomeV1_3,
   RemoteObjectId,
+  RetrySafePhysicalAuthorityV1_3,
   StateLoadContext,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
@@ -19,6 +27,12 @@ import { recoverMatchingDurableIntentToVerifiedReceipt } from "./durable-intent-
 import type { ProductSynchronizationExecutor } from "./production-executor";
 
 export type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor-base";
+
+export interface RecoverableProductionMutationDependenciesV1_3 {
+  readonly reliableRemoteMutationPort?: ReliableRemoteMutationPortV1_3;
+  readonly localTransactionalMutationPort?: LocalTransactionalMutationPortV1_3;
+  readonly remoteFolderCreateRecoveryReadPort?: RecoverableProductionMutationDependencies["remoteFolderCreateRecoveryReadPort"];
+}
 
 type LegacyRecoveryReads = {
   readonly drive: Pick<GoogleDrivePort, "listForReconciliation">;
@@ -119,4 +133,166 @@ export function createAuthoritativeProductExecutor(
   }
 
   return { validatePreconditions, execute };
+}
+
+function retrySafeVerifiedNotApplied(): RetrySafePhysicalAuthorityV1_3 {
+  return { status: "verified-no-unresolved-effect", basis: "verified-not-applied" };
+}
+
+function safeVerifiedNotAppliedResult(
+  reason: string,
+  operationalFailure: OperationalFailureProvenanceV1_3 | undefined,
+): ExecutionResultV1_3 {
+  const safety = retrySafeVerifiedNotApplied();
+  if (!operationalFailure) return { status: "blocking-failure", reason, effectSafety: safety };
+  switch (operationalFailure.kind) {
+    case "authentication-required":
+      return { status: "authentication-required", reason, operationalFailure, effectSafety: safety };
+    case "transient-failure":
+    case "rate-limited":
+      return { status: "retryable-failure", reason, operationalFailure, retrySafety: safety };
+    case "permission-denied":
+    case "quota-exhausted":
+      return { status: "blocking-failure", reason, operationalFailure, effectSafety: safety };
+    case "recovery-required":
+    case "unclassified":
+      return { status: "recovery-required", reason, operationalFailure };
+  }
+}
+
+function predecessorToV1_3(result: ExecutionResult): ExecutionResultV1_3 {
+  switch (result.status) {
+    case "durable-verified-success":
+    case "stale-precondition":
+    case "cancelled":
+      return result;
+    case "recovery-required":
+      return result;
+    case "uncertain":
+      return result;
+    case "blocking-failure":
+      return { status: "recovery-required", reason: result.reason };
+    case "retryable-failure":
+      return { status: "recovery-required", reason: result.reason };
+  }
+}
+
+/**
+ * V1.3 successor execution seam. The predecessor durable lifecycle remains the
+ * physical authority; structured operational provenance is captured orthogonally
+ * from the frozen successor ports and is never derived from reason strings.
+ */
+export function createAuthoritativeProductExecutorV1_3(
+  legacy: ProductSynchronizationExecutor,
+  authorityStore: SynchronizationAuthorityStoreV1_1,
+  identityStateStore: SynchronizationStateStore,
+  stateContext: StateLoadContext,
+  managedRemote: ManagedRemoteIdentity,
+  explicitDependencies: RecoverableProductionMutationDependenciesV1_3,
+): AuthoritativeSynchronizationExecutorV1_3 {
+  let lastRemoteOutcome: RemoteMutationOutcomeV1_3 | undefined;
+  let lastLocalResult: LocalTransactionResultV1_3 | undefined;
+
+  const remote = explicitDependencies.reliableRemoteMutationPort;
+  const local = explicitDependencies.localTransactionalMutationPort;
+  const adaptedDependencies: RecoverableProductionMutationDependencies = {
+    ...(remote ? {
+      reliableRemoteMutationPort: {
+        reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
+        reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
+        createReserved: async (...args) => {
+          const outcome = await remote.createReserved(...args);
+          lastRemoteOutcome = outcome;
+          return outcome;
+        },
+        updateExisting: async (...args) => {
+          const outcome = await remote.updateExisting(...args);
+          lastRemoteOutcome = outcome;
+          return outcome;
+        },
+        moveExisting: async (...args) => {
+          const outcome = await remote.moveExisting(...args);
+          lastRemoteOutcome = outcome;
+          return outcome;
+        },
+        trashExisting: async (...args) => {
+          const outcome = await remote.trashExisting(...args);
+          lastRemoteOutcome = outcome;
+          return outcome;
+        },
+      },
+    } : {}),
+    ...(local ? {
+      localTransactionalMutationPort: {
+        stageAndVerify: async (...args) => {
+          const result = await local.stageAndVerify(...args);
+          lastLocalResult = result;
+          return result;
+        },
+        commitVerifiedStage: async (...args) => {
+          const result = await local.commitVerifiedStage(...args);
+          lastLocalResult = result;
+          return result;
+        },
+        recover: async (...args) => {
+          const result = await local.recover(...args);
+          lastLocalResult = result;
+          return result;
+        },
+      },
+    } : {}),
+    remoteFolderCreateRecoveryReadPort: explicitDependencies.remoteFolderCreateRecoveryReadPort,
+  };
+
+  const predecessor = createAuthoritativeProductExecutor(
+    legacy,
+    authorityStore,
+    identityStateStore,
+    stateContext,
+    managedRemote,
+    adaptedDependencies,
+  );
+
+  return {
+    validatePreconditions: operation => predecessor.validatePreconditions(operation),
+    async execute(operation) {
+      lastRemoteOutcome = undefined;
+      lastLocalResult = undefined;
+      const result = await predecessor.execute(operation);
+
+      if (result.status === "uncertain") {
+        if (lastRemoteOutcome?.status === "outcome-unknown") {
+          return {
+            status: "uncertain",
+            reason: result.reason,
+            ...(lastRemoteOutcome.operationalFailure ? { operationalFailure: lastRemoteOutcome.operationalFailure } : {}),
+          };
+        }
+        if (lastLocalResult?.status === "outcome-unknown") {
+          return {
+            status: "uncertain",
+            reason: result.reason,
+            ...(lastLocalResult.operationalFailure ? { operationalFailure: lastLocalResult.operationalFailure } : {}),
+          };
+        }
+        if (lastRemoteOutcome?.status === "verified-not-applied") {
+          // A clean merge may already have a separately verified LOCAL effect;
+          // one safe REMOTE non-application cannot make the logical operation retry-safe.
+          if (operation.kind === "clean-text-merge") {
+            return {
+              status: "uncertain",
+              reason: result.reason,
+              ...(lastRemoteOutcome.operationalFailure ? { operationalFailure: lastRemoteOutcome.operationalFailure } : {}),
+            };
+          }
+          return safeVerifiedNotAppliedResult(
+            lastRemoteOutcome.reason,
+            lastRemoteOutcome.operationalFailure,
+          );
+        }
+      }
+
+      return predecessorToV1_3(result);
+    },
+  };
 }
