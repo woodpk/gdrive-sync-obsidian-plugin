@@ -190,7 +190,8 @@ export function createAuthoritativeProductExecutorV1_3(
   managedRemote: ManagedRemoteIdentity,
   explicitDependencies: RecoverableProductionMutationDependenciesV1_3,
 ): AuthoritativeSynchronizationExecutorV1_3 {
-  const observed: { remote?: RemoteMutationOutcomeV1_3; local?: LocalTransactionResultV1_3 } = {};
+  const remoteOutcomes: RemoteMutationOutcomeV1_3[] = [];
+  const localResults: LocalTransactionResultV1_3[] = [];
 
   const remote = explicitDependencies.reliableRemoteMutationPort;
   const local = explicitDependencies.localTransactionalMutationPort;
@@ -201,22 +202,22 @@ export function createAuthoritativeProductExecutorV1_3(
         reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
         createReserved: async (...args) => {
           const outcome = await remote.createReserved(...args);
-          observed.remote = outcome;
+          remoteOutcomes.push(outcome);
           return outcome;
         },
         updateExisting: async (...args) => {
           const outcome = await remote.updateExisting(...args);
-          observed.remote = outcome;
+          remoteOutcomes.push(outcome);
           return outcome;
         },
         moveExisting: async (...args) => {
           const outcome = await remote.moveExisting(...args);
-          observed.remote = outcome;
+          remoteOutcomes.push(outcome);
           return outcome;
         },
         trashExisting: async (...args) => {
           const outcome = await remote.trashExisting(...args);
-          observed.remote = outcome;
+          remoteOutcomes.push(outcome);
           return outcome;
         },
       },
@@ -225,17 +226,17 @@ export function createAuthoritativeProductExecutorV1_3(
       localTransactionalMutationPort: {
         stageAndVerify: async (...args) => {
           const result = await local.stageAndVerify(...args);
-          observed.local = result;
+          localResults.push(result);
           return result;
         },
         commitVerifiedStage: async (...args) => {
           const result = await local.commitVerifiedStage(...args);
-          observed.local = result;
+          localResults.push(result);
           return result;
         },
         recover: async (...args) => {
           const result = await local.recover(...args);
-          observed.local = result;
+          localResults.push(result);
           return result;
         },
       },
@@ -255,11 +256,11 @@ export function createAuthoritativeProductExecutorV1_3(
   return {
     validatePreconditions: operation => predecessor.validatePreconditions(operation),
     async execute(operation) {
-      delete observed.remote;
-      delete observed.local;
+      remoteOutcomes.length = 0;
+      localResults.length = 0;
       const result = await predecessor.execute(operation);
-      const remoteOutcome = observed.remote;
-      const localResult = observed.local;
+      const remoteOutcome = remoteOutcomes.at(-1);
+      const localResult = localResults.at(-1);
 
       if (result.status === "uncertain") {
         if (remoteOutcome?.status === "outcome-unknown") {
