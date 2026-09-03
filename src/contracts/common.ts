@@ -6,6 +6,15 @@ export type VaultIdentity = Brand<string, "VaultIdentity">;
 export type DeviceIdentity = Brand<string, "DeviceIdentity">;
 export type ChangeCursor = Brand<string, "ChangeCursor">;
 export type StateRevision = Brand<string, "StateRevision">;
+/** Byte-document compare-and-swap sequence. It is not synchronization authority. */
+export type PersistenceRevision = StateRevision;
+/** Changes only when authoritative synchronization facts (BASE, mappings, tombstones, or learned remote state) change. */
+export type SemanticStateGeneration = Brand<string, "SemanticStateGeneration">;
+export type BaseFingerprint = Brand<string, "BaseFingerprint">;
+export type RemoteIngestionBatchId = Brand<string, "RemoteIngestionBatchId">;
+export type MutationIntentId = Brand<string, "MutationIntentId">;
+export type LocalMutationTransactionId = Brand<string, "LocalMutationTransactionId">;
+export type RemoteRevisionId = Brand<string, "RemoteRevisionId">;
 export type OperationId = Brand<string, "OperationId">;
 export type PlanId = Brand<string, "PlanId">;
 export type ConflictId = Brand<string, "ConflictId">;
@@ -42,3 +51,30 @@ export interface VersionReference {
   readonly observationToken?: ObservationToken;
 }
 export const contractId = <T extends string>(value: string): Brand<string, T> => value as Brand<string, T>;
+
+/**
+ * V1.3 successor operational provenance. Every member is a remote/Drive
+ * operational class by construction; local I/O uncertainty is represented by
+ * the absence of this provenance rather than by fabricating remote semantics.
+ */
+export type OperationalFailureProvenanceV1_3 =
+  | { readonly kind: "authentication-required"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "transient-failure"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "rate-limited"; readonly source: "google-drive"; readonly retryAfterMs?: number; readonly detail?: string }
+  | { readonly kind: "permission-denied"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "quota-exhausted"; readonly source: "google-drive"; readonly detail?: string }
+  | { readonly kind: "recovery-required"; readonly source: "google-drive"; readonly detail: string }
+  | { readonly kind: "unclassified"; readonly source: "remote-operational"; readonly detail?: string };
+
+/** Public V1.3 carrier for operational failures raised only during lazy content consumption. */
+export class OperationalFailureErrorV1_3 extends Error {
+  readonly name = "OperationalFailureErrorV1_3";
+  constructor(readonly provenance: OperationalFailureProvenanceV1_3, message?: string) {
+    super(message ?? provenance.detail ?? provenance.kind);
+  }
+}
+
+/** Unknown errors remain unclassified by returning undefined; callers must stay conservative. */
+export function operationalFailureProvenanceFromErrorV1_3(error: unknown): OperationalFailureProvenanceV1_3 | undefined {
+  return error instanceof OperationalFailureErrorV1_3 ? error.provenance : undefined;
+}
