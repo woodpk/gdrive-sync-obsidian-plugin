@@ -109,3 +109,115 @@ D ends at the authoritative V1.3 execution result. H/UI composition was not modi
 D-C1 is closed by creation of this dedicated evidence artifact for the unchanged source/test candidate.
 
 No D source/test defect was exposed by the bounded exact-candidate verification summarized above. Dynamic verification in this D-C1 correction pass was reconciled from the existing exact-candidate GitHub Actions proof rather than re-executed by changing source/test code. Materially unavailable details are explicitly marked `NOT AVAILABLE IN THIS SESSION` above.
+
+## D-C1-E1 SUPERVISOR-DIRECTED EVIDENCE CORRECTION
+
+This section supersedes any earlier statement in this evidence artifact that characterized GitHub Actions run `33709169565`, job `100504782494`, as an overall successful verification run.
+
+### Frozen candidate identity
+
+Shared V1.3 extension base:
+
+`7fa9dd2c95f940260594cefa2674963be3a785de`
+
+Frozen V1.3 `src/contracts/**` tree:
+
+`0db68ced179825f929008b502335210260ca2ce3`
+
+D V1.3 source/test candidate:
+
+`7981717796f929d8ce155a753583fbc5ce11c87c`
+
+No D production or test modification is part of D-C1-E1.
+
+### Corrected GitHub Actions status
+
+GitHub Actions run:
+
+`33709169565`
+
+Job:
+
+`100504782494`
+
+Overall job conclusion:
+
+`FAILURE`
+
+Test step conclusion:
+
+`FAILURE`
+
+Therefore this run MUST NOT be represented as blanket successful execution evidence.
+
+### Individual verification claims
+
+Exact individual results for the previously reported selected 59-test D/foundation regression surface:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable focused V1.3 test totals from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable foundation failure-provenance regression result from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable mutation-lifecycle regression result from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable durable-recovery regression result from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable production-lifecycle-composition regression result from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact independently supportable D-C13 predecessor-preserving immutable-candidate regression result from this correction session:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Standalone native `npm run typecheck` execution for this correction:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Standalone build execution for this correction:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+Exact range-form `git diff --check` execution for this correction:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+No new execution is claimed by D-C1-E1.
+
+### Artifact status
+
+Artifact:
+
+`none produced`
+
+Artifact digest:
+
+`NOT AVAILABLE IN THIS SESSION`
+
+### Scope preservation
+
+D-C1-E1 is evidence-only.
+
+The D source/test candidate remains:
+
+`7981717796f929d8ce155a753583fbc5ce11c87c`
+
+Prior approved D work, including D-C13, is not reopened or rejected by this evidence correction.
+
+No A, B, H, G, contract, persistence, production, or test code was modified.
+
+H-U5 was not resumed.
+
+### Supervisor verification boundary
+
+Independent verification of the source/test candidate, CI logs, individual regression results, contract-tree identity, and this evidence-only commit is reserved to the supervising reviewer after this commit is returned.
