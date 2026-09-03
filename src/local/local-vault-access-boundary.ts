@@ -1,6 +1,12 @@
 import type { DataAdapter } from "obsidian";
-import type { ContentEvidence, ObservationToken, VaultPath } from "../contracts/common";
+import {
+  operationalFailureProvenanceFromErrorV1_3,
+  type ContentEvidence,
+  type ObservationToken,
+  type VaultPath,
+} from "../contracts/common";
 import type { LocalReadResult, LocalVaultPort } from "../contracts/local-vault";
+import type { LocalTransactionalMutationPortV1_3, LocalTransactionResultV1_3 } from "../contracts/execution";
 import type {
   CanonicalFileContentProof,
   LocalMutationTransaction,
@@ -45,7 +51,7 @@ function withStage(transaction: LocalMutationTransaction, stage: LocalMutationTr
  * transaction supplies stable stage/backup paths so restart recovery never
  * depends on volatile process memory.
  */
-export class ObsidianLocalMutationTransactions implements LocalTransactionalMutationPort {
+export class ObsidianLocalMutationTransactions implements LocalTransactionalMutationPort, LocalTransactionalMutationPortV1_3 {
   constructor(
     private readonly adapter: DataAdapter,
     private readonly local: LocalVaultPort,
@@ -53,9 +59,9 @@ export class ObsidianLocalMutationTransactions implements LocalTransactionalMuta
 
   async stageAndVerify(
     transaction: LocalMutationTransaction,
-    content: Parameters<LocalTransactionalMutationPort["stageAndVerify"]>[1],
+    content: Parameters<LocalTransactionalMutationPortV1_3["stageAndVerify"]>[1],
     signal?: SynchronizationCancellationSignal,
-  ): Promise<LocalTransactionResult> {
+  ): Promise<LocalTransactionResultV1_3> {
     if (cancelled(signal)) return this.blocked(transaction, "Cancellation accepted before local staging");
     const pathProblem = await this.validateTransactionPaths(transaction);
     if (pathProblem) return this.blocked(transaction, pathProblem);
@@ -78,14 +84,20 @@ export class ObsidianLocalMutationTransactions implements LocalTransactionalMuta
       }
       return { status: "staged-verified", transaction: withStage(transaction, "staged-verified"), resultingObservationToken: stageProof.read.observationToken };
     } catch (error) {
-      return this.unknown(transaction, `Local staging outcome could not be established: ${this.message(error)}`);
+      const operationalFailure = operationalFailureProvenanceFromErrorV1_3(error);
+      return {
+        status: "outcome-unknown",
+        reason: `Local staging outcome could not be established: ${this.message(error)}`,
+        transaction,
+        ...(operationalFailure ? { operationalFailure } : {}),
+      };
     }
   }
 
   async commitVerifiedStage(
     transaction: LocalMutationTransaction,
     signal?: SynchronizationCancellationSignal,
-  ): Promise<LocalTransactionResult> {
+  ): Promise<LocalTransactionResultV1_3> {
     if (cancelled(signal)) return this.blocked(transaction, "Cancellation accepted before local commit");
     const pathProblem = await this.validateTransactionPaths(transaction);
     if (pathProblem) return this.blocked(transaction, pathProblem);
@@ -106,7 +118,7 @@ export class ObsidianLocalMutationTransactions implements LocalTransactionalMuta
   async recover(
     transaction: LocalMutationTransaction,
     signal?: SynchronizationCancellationSignal,
-  ): Promise<LocalTransactionResult> {
+  ): Promise<LocalTransactionResultV1_3> {
     if (cancelled(signal)) return this.blocked(transaction, "Cancellation accepted before local recovery");
     const pathProblem = await this.validateTransactionPaths(transaction);
     if (pathProblem) return this.blocked(transaction, pathProblem);
@@ -302,7 +314,7 @@ export class ObsidianLocalMutationTransactions implements LocalTransactionalMuta
     return value;
   }
 
-  private async writeIncremental(path: VaultPath, content: Parameters<LocalTransactionalMutationPort["stageAndVerify"]>[1]): Promise<void> {
+  private async writeIncremental(path: VaultPath, content: Parameters<LocalTransactionalMutationPortV1_3["stageAndVerify"]>[1]): Promise<void> {
     await this.adapter.writeBinary(String(path), new ArrayBuffer(0));
     try {
       for await (const chunk of content.openChunks()) {
