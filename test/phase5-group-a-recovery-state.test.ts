@@ -156,7 +156,7 @@ function assertPreservedState(
   );
 }
 
-test("GROUP A A1 recovery resolutions preserve already reconstructed trusted BASE, mappings, and journal until fresh reconstruction clears recovery", async () => {
+test("GROUP A A1 recovery preserves reconstructed trusted state while authority-incomplete conflict mutation remains blocked", async () => {
   const store = await seededStore();
   let recovery = true;
   const gateEvents: boolean[] = [];
@@ -201,32 +201,22 @@ test("GROUP A A1 recovery resolutions preserve already reconstructed trusted BAS
       kind: "resolve-conflict",
       conflictId: first.conflictId,
       resolution: { kind: "keep-local" },
-    })).status, "accepted");
+    })).status, "rejected");
   }
   assert.equal(recovery, true);
   assert.equal(gateEvents.includes(false), false);
-  assertPreservedState(
-    await store.load(context),
-    ["safe-union.md", "conflict-one.bin"],
-    ["safe-union.md", "conflict-one.bin"],
-    2,
-  );
+  assertPreservedState(await store.load(context), ["safe-union.md"], ["safe-union.md"], 1);
 
   if (second && "conflictId" in second) {
     assert.equal((await controller.request({
       kind: "resolve-conflict",
       conflictId: second.conflictId,
       resolution: { kind: "keep-local" },
-    })).status, "accepted");
+    })).status, "rejected");
   }
   assert.equal(recovery, true);
   assert.equal(gateEvents.includes(false), false);
-  assertPreservedState(
-    await store.load(context),
-    ["safe-union.md", "conflict-one.bin", "conflict-two.bin"],
-    ["safe-union.md", "conflict-one.bin", "conflict-two.bin"],
-    3,
-  );
+  assertPreservedState(await store.load(context), ["safe-union.md"], ["safe-union.md"], 1);
 
   snapshots = [];
   const finalReconstruction = await controller.previewVerifyReconcile();
@@ -236,12 +226,7 @@ test("GROUP A A1 recovery resolutions preserve already reconstructed trusted BAS
   assert.deepEqual(gateEvents, [false]);
 
   const finalState = await store.load(context);
-  assertPreservedState(
-    finalState,
-    ["safe-union.md", "conflict-one.bin", "conflict-two.bin"],
-    ["safe-union.md", "conflict-one.bin", "conflict-two.bin"],
-    3,
-  );
+  assertPreservedState(finalState, ["safe-union.md"], ["safe-union.md"], 1);
   assert.equal(finalState.status, "trusted");
   if (finalState.status === "trusted") assert.equal(String(finalState.state.changeCursor), "cursor:group-a-recovery");
   assert.equal((await controller.readAuditHistory()).some(record => record.event === "recovery-completed"), true);
