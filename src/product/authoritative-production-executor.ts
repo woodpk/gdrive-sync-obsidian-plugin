@@ -167,9 +167,9 @@ function predecessorToV1_3(result: ExecutionResult): ExecutionResultV1_3 {
     case "cancelled":
       return result;
     case "recovery-required":
-      return result;
+      return { status: "recovery-required", reason: result.reason };
     case "uncertain":
-      return result;
+      return { status: "uncertain", reason: result.reason };
     case "blocking-failure":
       return { status: "recovery-required", reason: result.reason };
     case "retryable-failure":
@@ -190,8 +190,7 @@ export function createAuthoritativeProductExecutorV1_3(
   managedRemote: ManagedRemoteIdentity,
   explicitDependencies: RecoverableProductionMutationDependenciesV1_3,
 ): AuthoritativeSynchronizationExecutorV1_3 {
-  let lastRemoteOutcome: RemoteMutationOutcomeV1_3 | undefined;
-  let lastLocalResult: LocalTransactionResultV1_3 | undefined;
+  const observed: { remote?: RemoteMutationOutcomeV1_3; local?: LocalTransactionResultV1_3 } = {};
 
   const remote = explicitDependencies.reliableRemoteMutationPort;
   const local = explicitDependencies.localTransactionalMutationPort;
@@ -202,22 +201,22 @@ export function createAuthoritativeProductExecutorV1_3(
         reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
         createReserved: async (...args) => {
           const outcome = await remote.createReserved(...args);
-          lastRemoteOutcome = outcome;
+          observed.remote = outcome;
           return outcome;
         },
         updateExisting: async (...args) => {
           const outcome = await remote.updateExisting(...args);
-          lastRemoteOutcome = outcome;
+          observed.remote = outcome;
           return outcome;
         },
         moveExisting: async (...args) => {
           const outcome = await remote.moveExisting(...args);
-          lastRemoteOutcome = outcome;
+          observed.remote = outcome;
           return outcome;
         },
         trashExisting: async (...args) => {
           const outcome = await remote.trashExisting(...args);
-          lastRemoteOutcome = outcome;
+          observed.remote = outcome;
           return outcome;
         },
       },
@@ -226,17 +225,17 @@ export function createAuthoritativeProductExecutorV1_3(
       localTransactionalMutationPort: {
         stageAndVerify: async (...args) => {
           const result = await local.stageAndVerify(...args);
-          lastLocalResult = result;
+          observed.local = result;
           return result;
         },
         commitVerifiedStage: async (...args) => {
           const result = await local.commitVerifiedStage(...args);
-          lastLocalResult = result;
+          observed.local = result;
           return result;
         },
         recover: async (...args) => {
           const result = await local.recover(...args);
-          lastLocalResult = result;
+          observed.local = result;
           return result;
         },
       },
@@ -256,38 +255,40 @@ export function createAuthoritativeProductExecutorV1_3(
   return {
     validatePreconditions: operation => predecessor.validatePreconditions(operation),
     async execute(operation) {
-      lastRemoteOutcome = undefined;
-      lastLocalResult = undefined;
+      delete observed.remote;
+      delete observed.local;
       const result = await predecessor.execute(operation);
+      const remoteOutcome = observed.remote;
+      const localResult = observed.local;
 
       if (result.status === "uncertain") {
-        if (lastRemoteOutcome?.status === "outcome-unknown") {
+        if (remoteOutcome?.status === "outcome-unknown") {
           return {
             status: "uncertain",
             reason: result.reason,
-            ...(lastRemoteOutcome.operationalFailure ? { operationalFailure: lastRemoteOutcome.operationalFailure } : {}),
+            ...(remoteOutcome.operationalFailure ? { operationalFailure: remoteOutcome.operationalFailure } : {}),
           };
         }
-        if (lastLocalResult?.status === "outcome-unknown") {
+        if (localResult?.status === "outcome-unknown") {
           return {
             status: "uncertain",
             reason: result.reason,
-            ...(lastLocalResult.operationalFailure ? { operationalFailure: lastLocalResult.operationalFailure } : {}),
+            ...(localResult.operationalFailure ? { operationalFailure: localResult.operationalFailure } : {}),
           };
         }
-        if (lastRemoteOutcome?.status === "verified-not-applied") {
+        if (remoteOutcome?.status === "verified-not-applied") {
           // A clean merge may already have a separately verified LOCAL effect;
           // one safe REMOTE non-application cannot make the logical operation retry-safe.
           if (operation.kind === "clean-text-merge") {
             return {
               status: "uncertain",
               reason: result.reason,
-              ...(lastRemoteOutcome.operationalFailure ? { operationalFailure: lastRemoteOutcome.operationalFailure } : {}),
+              ...(remoteOutcome.operationalFailure ? { operationalFailure: remoteOutcome.operationalFailure } : {}),
             };
           }
           return safeVerifiedNotAppliedResult(
-            lastRemoteOutcome.reason,
-            lastRemoteOutcome.operationalFailure,
+            remoteOutcome.reason,
+            remoteOutcome.operationalFailure,
           );
         }
       }
