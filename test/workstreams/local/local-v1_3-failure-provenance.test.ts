@@ -171,5 +171,6 @@ test("B V1.3: canonical transaction wrapper preserves structured provenance retu
   const result = await canonical.stageAndVerify(transaction, failingSource(new Error("unused")));
   assert.equal(result.status, "outcome-unknown");
   if (result.status !== "outcome-unknown") return;
-  assert.deepEqual((result as LocalTransactionResultV1_3).operationalFailure, operationalFailure);
+  const unknownResult = result as Extract<LocalTransactionResultV1_3, { readonly status: "outcome-unknown" }>;
+  assert.deepEqual(unknownResult.operationalFailure, operationalFailure);
 });
