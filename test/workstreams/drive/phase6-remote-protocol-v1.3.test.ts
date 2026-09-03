@@ -107,6 +107,52 @@ test("workstream A v1.3: lazy rate limit preserves exact retry timing", async ()
   });
 });
 
+test("workstream A v1.3: post-stream remote change exposes public recovery provenance", async () => {
+  let metadataReads = 0;
+  const a = adapter(async url => {
+    const normalized = norm(url);
+    if (normalized.includes("/about?")) return ok({ user: { permissionId: "acct" } });
+    if (normalized.includes("/files/r1?") && !normalized.includes("alt=media")) {
+      metadataReads += 1;
+      return ok({
+        id: "r1",
+        name: "x.bin",
+        mimeType: "application/octet-stream",
+        parents: ["content"],
+        size: "1",
+        version: metadataReads === 1 ? "7" : "8",
+      });
+    }
+    if (normalized.includes("alt=media")) {
+      return {
+        ok: true,
+        value: new Response(new Uint8Array([97]), { status: 206 }),
+      } as DriveResult<Response>;
+    }
+    throw new Error(`unhandled ${normalized}`);
+  });
+
+  const result = await a.downloadVersion(ro("r1"), rev("7"), { revision: "7", sizeBytes: 1 });
+  assert.equal(result.ok, true);
+  assert.equal(result.ok && result.value.status, "coherent");
+  assert.equal(metadataReads, 1);
+  if (!result.ok || result.value.status !== "coherent") return;
+
+  let thrown: unknown;
+  try {
+    for await (const chunk of result.value.content.openChunks()) void chunk;
+  } catch (error) {
+    thrown = error;
+  }
+
+  assert.deepEqual(operationalFailureProvenanceFromErrorV1_3(thrown), {
+    kind: "recovery-required",
+    source: "google-drive",
+    detail: "remote-changed-during-coherent-download",
+  });
+  assert.equal(metadataReads, 2);
+});
+
 test("workstream A v1.3: arbitrary errors fabricate no Drive provenance", () => {
   assert.equal(operationalFailureProvenanceFromErrorV1_3(new Error("rate-limited-looking text")), undefined);
 });
