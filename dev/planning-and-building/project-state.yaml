@@ -2,7 +2,7 @@ schema_version: 1
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-08-28"
+  as_of: "2026-08-31"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
   purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, current repository state, accepted evidence, and later explicit user decisions."
@@ -68,85 +68,18 @@ stage_2a_phases:
       - "../evidence/_ca-output-agt-CA-P5-GROUP-D-01.md"
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_runtime_validation_required
+    status: active
     depends_on: [phase_5]
     supervisor_handoff: "phase-6-supervisor-handoff.md"
     integration_branch: "phase6-integration"
-    integrated_tested_sha: "926147bea7adc567168154c00a1250f787980430"
     integration_pr: 15
-    automated_integration_gate:
-      workflow: "Phase 1 CI"
-      run_id: 32887406318
-      job_id: 97930979816
-      pr_merge_sha: "6721bec00f4da268c971a714325e96c0ac13b9c2"
-      tests: 233
-      passed: 233
-      failed: 0
-      cancelled: 0
-      skipped: 0
-      todo: 0
-      typecheck: PASS
-      build: PASS
-    reviewed_workers:
-      - agent: "agt-CA-P6-A-01"
-        branch: "phase6-a-platform-scale"
-        reviewed_head: "88a60f538a3de6d66b2240473da25e1d25431009"
-        supervisor_review_result: "APPROVE"
-      - agent: "agt-CA-P6-B-01"
-        branch: "phase6-b-state-recovery"
-        reviewed_head: "1b0e1b09ccc770f9eb9d3a35e0a61dc944578595"
-        supervisor_review_result: "APPROVE"
-      - agent: "agt-CA-P6-C-01"
-        branch: "phase6-c-drive-security"
-        reviewed_head: "42116bf1eb14ad1bb4d9456cd06432a97c7d2328"
-        corrected_tested_head: "959f9c1c405c70975328d4c732b407b211b0b5ac"
-        supervisor_review_result: "APPROVE"
-    evidence:
-      - "../evidence/phase6-integration-manifest.md"
-      - "../evidence/phase6-agent-a-branch-output.md"
-      - "../evidence/phase6-agent-b-branch-output.md"
-      - "../evidence/phase6-agent-c-branch-output.md"
-    active_ios_local_repair:
-      status: "adapter_boundary_refactor_in_progress_physical_validation_pending"
-      branch: "phase6-alpha-ios-adapter-boundary-refactor"
-      base_sha: "523ba96cc6e975645cfd319fa7bb62b9c1399176"
-      decision: "DEC-299"
-      supersedes: "PR #26 Outcome B blanket mobile unavailable-guard architecture; PR #26 remains evidence and must not be merged or released as the solution."
-      physical_iphone_validation: pending
-    outstanding_required_validation:
-      - "real Windows Obsidian synchronization"
-      - "real iPhone/iOS Obsidian synchronization"
-      - "real-user Google OAuth on supported devices"
-      - "deployed Azure Static Web Apps callback validation"
-      - "live Google Drive synchronization/domain behavior"
-      - "physical network interruption / ambiguous remote mutation"
-      - "physical disk-full behavior"
-      - "representative physical large-vault / large-file constrained-resource testing"
-      - "live Drive rate/quota behavior where safely reproducible"
-    supervisor_review_result: pending_required_runtime_validation
+    supervisor_review_result: pending_phase6_completion
 
 post_iphone_sync_performance_optimization:
   status: planned_not_implemented
   implementation_status: "NOT IMPLEMENTED — current synchronization remains correctness-first, highly serialized, and network-chatty."
-  scheduling_gate: "Begin immediately after iPhone integration/setup is complete and the iPhone client is working correctly. This is the next planned engineering work before final Phase 6 closure and before Stage 3."
+  scheduling_gate: "Begin only after iPhone integration/setup is complete and the iPhone client is working correctly, and only after the currently active synchronization correctness foundation/remediation sequence is completed and authorized."
   objective: "Reduce unnecessary Google Drive API round trips, repeated local/remote validation work, and strictly serial transfer latency without weakening crash safety, stale-plan detection, provenance, integrity verification, recovery semantics, or mobile resource safety."
-  planned_optimizations:
-    - id: PERF-01
-      plan: "Cache and reuse invariant Google account/pairing, managed-root, content-domain-root, and portable-config-domain-root validation within a synchronization run, with explicit invalidation/revalidation when relevant remote state can have changed."
-    - id: PERF-02
-      plan: "Cache Drive folder IDs, resolved logical paths, parent chains, and parent-folder lookup/creation results within a run so sibling files do not repeatedly walk and query the same remote directory hierarchy."
-    - id: PERF-03
-      plan: "Batch or consolidate Drive metadata/path queries where the Drive API permits, eliminating avoidable N+1 child lookups and repeated parent traversal."
-    - id: PERF-04
-      plan: "Use the Drive Changes API/change cursor and persistent sync journal/state as the ordinary steady-state discovery path, reserving full remote-tree reconciliation for required startup/recovery/integrity cases and configured/on-demand full verification."
-    - id: PERF-05
-      plan: "Reuse canonical local hash/content evidence when an unchanged stable observation token proves the cached evidence is still valid; avoid unnecessary rereads/rehashes while preserving required pre-transfer and post-transfer integrity checks."
-    - id: PERF-06
-      plan: "Remove or coalesce provably redundant duplicate precondition validation where a validated result can safely remain authoritative across the journal/mutation boundary; preserve stale-plan rejection whenever evidence may have changed."
-    - id: PERF-07
-      plan: "Pipeline independent metadata and transfer preparation work where safe while preserving per-operation crash-safe journaling, deterministic state commits, and cancellation semantics."
-    - id: PERF-08
-      plan: "Introduce bounded concurrency for independent non-destructive uploads/downloads instead of strictly serial file transfer, with configurable/platform-aware limits, Drive rate/quota backpressure, and tighter iOS resource limits. This must not permit overlapping whole synchronization runs."
   acceptance_constraints:
     - "No optimization may weaken canonical content verification, durable pending journaling, verified-success state commit, recovery-required behavior, or fail-closed uncertainty handling."
     - "Remote/account/root/path caches must have explicit invalidation boundaries and may not convert stale or uncertain observations into authority."
@@ -154,29 +87,111 @@ post_iphone_sync_performance_optimization:
     - "Measure representative first-sync and steady-state wall-clock time, Drive API round trips, transfer throughput, and resource use before/after optimization using local diagnostic evidence only; no external telemetry is introduced."
 
 parallel_wave:
-  status: complete
-  historical: true
-  worker_count: 3
-  assignments:
-    - worker: "CA-P2"
-      phase: phase_2
-      scope: "Core synchronization semantics and durable state"
-      result: complete_supervisor_approved
-    - worker: "CA-P3"
-      phase: phase_3
-      scope: "Google Drive and OAuth boundary"
-      result: complete_supervisor_approved
-    - worker: "CA-P4"
-      phase: phase_4
-      scope: "Obsidian local/platform/configuration boundary"
-      result: complete_supervisor_approved
-  integration_result: "Phase 5 completed and received independent supervisory APPROVE."
+  status: historical_complete
+  historical_worker_count: 3
+  note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, whose affected workers remain paused pending approval of the corrected v1.1 foundation."
+
+sync_architecture_foundation:
+  status: "v1_1_authority_store_corrected_candidate_supervisor_re_review_pending"
+  predecessor_agent: "agt-CA-P6-SYNC-FOUNDATION-01"
+  continuation_agent: "agt-CA-P6-SYNC-FOUNDATION-CLOUD-01"
+  branch: "phase6-sync-architecture-foundation"
+  review_pr: 34
+  review_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34"
+  predecessor_pr: 33
+  predecessor_pr_state: "open_unmerged"
+  predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
+  predecessor_contract_checkpoint_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
+  cloud_reentry_start_sha: "e526d65ee64e8baf58fd7ea0439dfabcfb942c9d"
+  previously_supervisor_approved_foundation_sha: "6984915d2989827edf00def64a04c102c4e08785"
+  rejected_v1_1_candidate_sha: "c9a7f9c2fe77d134bed1659111d58b9a53d3eda3"
+  authority_store_implementation_test_checkpoint_sha: "750100f95c8a32a6deb6909cd03ebbee3682d650"
+  prior_contract_version: "phase6-sync-foundation-v1"
+  contract_version: "phase6-sync-foundation-v1.1"
+  accepted_prior_findings:
+    A_remote_update_preservation: corrected_preserved
+    B_file_common_base_authority: corrected_preserved
+    C_local_transaction_prestate: corrected_preserved
+    D_multi_batch_remote_ingestion: corrected_preserved
+    E_dispatch_durability_order: corrected_preserved
+    F_workstream_base_sha_semantics: corrected_preserved
+    G_parallel_branch_feasibility: corrected_preserved
+    H_semantic_validation_extensibility: corrected_preserved
+  reject_fix_findings:
+    R1_exact_plan_authority: corrected_preserved
+    R2_recoverable_mutation_descriptor: corrected_preserved
+    R3_safe_remote_move_trash: corrected_preserved
+    R4_application_vs_convergence: corrected_preserved
+    R5_exact_intended_remote_content: corrected_preserved
+    R6_cache_bypassing_integrity: corrected_preserved
+    CI_checkout_label: corrected_preserved_merge_ref_wording
+  folder_create_foundation:
+    descriptor_semantics: corrected_preserved
+    authority_store_integration: corrected_candidate
+    authoritative_metadata: "SynchronizationAuthorityMetadataV1_1 with folder-capable RecoverableOperationIntentV1_1 operationIntents"
+    authoritative_store: "SynchronizationAuthorityStoreV1_1 load/save/BASE transition seam"
+    old_v1_metadata_store: "compatibility_only_for_new_or_resumed_v1_1_folder_work"
+    local_round_trip: "save_load_preserves_operation_intent_effect_stage_target_and_structural_path_authority"
+    remote_round_trip: "save_load_preserves_operation_intent_effect_stage_parent_remote_id_reserved_remote_id_and_path_authority"
+    restart_helper: "recoverableOperationV1_1RestartRecoveryDirectives"
+    completion_helper: "recoverableOperationV1_1IsComplete requires all effects state-committed"
+    no_private_sidecar_required: true
+    affected_workstream_contract_readiness:
+      A_remote: sufficient_candidate
+      B_local: sufficient_candidate
+      C_state_recovery: sufficient_candidate
+      D_orchestration: sufficient_candidate
+      G_adversarial: sufficient_candidate
+  mutation_lifecycle_audit: "folder_chain_complete_from_v1_1_intent_through_authority_store_restart_verification_path_convergence_and_commit_for_local_and_remote_folder_create"
+  ci_checkout_semantics: "GitHub pull-request workflow checks out the generated PR merge ref containing the candidate head unless a workflow explicitly requests the head SHA; evidence must label it accordingly."
+  authority_store_checkpoint_verification:
+    workflow: "Phase 6 Alpha Diagnostic Verification"
+    run_id: 33355904138
+    job_id: 99377893445
+    candidate_head: "750100f95c8a32a6deb6909cd03ebbee3682d650"
+    checkout_semantics: "PR merge-ref verification containing candidate head"
+    full_tests: 413
+    full_tests_passed: 413
+    focused_tests: 38
+    focused_tests_passed: 38
+    typecheck: PASS
+    build: PASS
+    repository_check: PASS
+    diff_check: PASS
+    mobile_package_verifiers: PASS
+    main_js_bytes: 415353
+    main_js_sha256: "02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd"
+    artifact_id: 9745116592
+    artifact_digest: "sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4"
+  artifacts:
+    - "phase6-sync-architecture-foundation.md"
+    - "phase6-sync-contract-freeze.md"
+    - "phase6-sync-parallel-workstreams.md"
+    - "phase6-sync-adversarial-validation.md"
+    - "phase6-sync-folder-create-foundation-correction.md"
+    - "phase-6-supervisor-handoff.md"
+    - "project-state.yaml"
+    - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md"
+    - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md"
+  approved_workstream_base_sha: null
+  approved_workstream_base_rule: "The independent supervisor will identify one exact final v1.1 repository SHA externally after approval; every affected A-G worker must use that complete snapshot before continuation."
+  final_candidate_sha_recording_rule: "Read exact current branch head from GitHub after evidence closure; do not attempt self-referential SHA storage inside the commit that creates it."
+  parallel_implementation_authorized: false
+  affected_workers_may_resume: false
+  stage_3_started: false
+  azure_change_authorized: false
+  physical_device_validation_performed: false
+  next_valid_action: "Run final evidence-bearing verification, then return exact PR #34 head for independent supervisor re-review. Do not resume A-G."
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Continue the required supported-runtime/live Phase 6 validation through iPhone/iOS integration. Immediately after iPhone integration/setup is complete and the iPhone client is working correctly, execute the planned post-iPhone synchronization performance optimization block in this file before final Phase 6 closure. Then continue remaining Phase 6 runtime/fault/resource validation, repair and reverify any discovered defect, and do not begin Stage 3 before Phase 6 acceptance criteria are satisfied."
+  action: "Return the v1.1 folder authority-store integration correction to independent supervisor re-review. Parallel continuation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
   governing_file: "stage-1-build-decomposition.md"
   relevant_sections: ["10", "11", "17"]
   handoff: "phase-6-supervisor-handoff.md"
-  integration_evidence: "../evidence/phase6-integration-manifest.md"
+  foundation: "phase6-sync-architecture-foundation.md"
+  contract_freeze_candidate: "phase6-sync-contract-freeze.md"
+  folder_create_correction: "phase6-sync-folder-create-foundation-correction.md"
+  workstream_manifest: "phase6-sync-parallel-workstreams.md"
+  adversarial_matrix: "phase6-sync-adversarial-validation.md"

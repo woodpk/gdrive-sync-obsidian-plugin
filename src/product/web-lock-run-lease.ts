@@ -11,13 +11,20 @@ function runtimeLocks(): LockManagerLike | undefined {
   return navigatorValue?.locks;
 }
 
+// Some supported WebViews do not expose Web Locks. Within one JavaScript realm,
+// retain an exclusion fallback instead of treating missing browser API support as
+// permission for concurrent mutation runs. Separate realms still use Web Locks
+// where the platform provides the cross-instance primitive.
+const inProcessFallbackHolders = new Map<string, string>();
+
 /** Cross-instance, crash-releasing vault exclusion using the browser Web Locks API. */
 export class WebLocksRunLeasePort implements RunLeasePort {
   constructor(private readonly locks: LockManagerLike | undefined = runtimeLocks()) {}
 
-  async tryAcquire(vaultIdentity: VaultIdentity, _deviceIdentity: DeviceIdentity, _holderId: string): Promise<RunLease | undefined> {
-    if (!this.locks) return undefined;
+  async tryAcquire(vaultIdentity: VaultIdentity, _deviceIdentity: DeviceIdentity, holderId: string): Promise<RunLease | undefined> {
     const name = `brain-gdrive-sync:${String(vaultIdentity)}`;
+    if (!this.locks) return this.tryAcquireInProcess(name, holderId);
+
     let releaseGate: (() => void) | undefined;
     let resolveAcquired: ((value: boolean) => void) | undefined;
     const acquired = new Promise<boolean>(resolve => { resolveAcquired = resolve; });
@@ -34,6 +41,19 @@ export class WebLocksRunLeasePort implements RunLeasePort {
       release: async () => {
         if (!releasedOnce) { releasedOnce = true; releaseGate?.(); }
         await requestCompletion;
+      },
+    };
+  }
+
+  private async tryAcquireInProcess(name: string, holderId: string): Promise<RunLease | undefined> {
+    if (inProcessFallbackHolders.has(name)) return undefined;
+    inProcessFallbackHolders.set(name, holderId);
+    let released = false;
+    return {
+      release: async () => {
+        if (released) return;
+        released = true;
+        if (inProcessFallbackHolders.get(name) === holderId) inProcessFallbackHolders.delete(name);
       },
     };
   }
