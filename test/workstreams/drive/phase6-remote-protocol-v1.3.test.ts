@@ -28,12 +28,12 @@ class MemorySecrets {
 }
 
 class StubTransport extends GoogleHttpTransport {
-  constructor(private readonly handler: (url: string, init?: PortableRequestInit) => Promise<DriveResult<Response>>) {
+  constructor(private readonly stubHandler: (url: string, init?: PortableRequestInit) => Promise<DriveResult<Response>>) {
     const memory = new MemorySecrets();
     super(new GoogleOAuthSession({ clientId: "c", redirectUri: "https://cb" }, new ObsidianSecretStore(memory)));
   }
   override request(url: string, init: PortableRequestInit = {}): Promise<DriveResult<Response>> {
-    return this.handler(url, init);
+    return this.stubHandler(url, init);
   }
 }
 
