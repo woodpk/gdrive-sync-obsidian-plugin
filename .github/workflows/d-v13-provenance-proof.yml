@@ -1,0 +1,30 @@
+name: D V1.3 Provenance Exact Proof
+
+on:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx tsc -p tsconfig.test.json
+      - name: Focused and D regression tests
+        run: |
+          node --test \
+            .test-build/test/workstreams/orchestration/v1.3-failure-provenance-extension.test.js \
+            .test-build/test/phase6-foundation-failure-provenance.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-mutation-lifecycle.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-d-c13-predecessor-preserving-update.test.js
+      - run: npm run build
+      - run: git diff --check 7fa9dd2c95f940260594cefa2674963be3a785de...7981717796f929d8ce155a753583fbc5ce11c87c
