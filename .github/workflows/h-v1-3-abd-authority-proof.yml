@@ -1,0 +1,187 @@
+name: H V1.3 A/B/D Authority Proof
+
+on:
+  push:
+    branches:
+      - h-v1-3-abd-authority-proof-h03
+    paths:
+      - .github/workflows/h-v1-3-abd-authority-proof.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-retained-candidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4fef16f498dafba15fc1da5a63124567c5f56bcc
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Establish immutable candidate authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-evidence
+          CANDIDATE="$(git rev-parse HEAD)"
+          CONTRACTS="$(git rev-parse 4fef16f498dafba15fc1da5a63124567c5f56bcc:src/contracts)"
+          CANONICAL="$(git rev-parse 4fef16f498dafba15fc1da5a63124567c5f56bcc:dev/evidence/_ca-output.md)"
+          STATUS_BEFORE="$(git status --porcelain)"
+          {
+            echo "candidate_sha=${CANDIDATE}"
+            echo "contracts_tree=${CONTRACTS}"
+            echo "canonical_evidence_blob=${CANONICAL}"
+            echo "status_before_begin"
+            printf '%s\n' "${STATUS_BEFORE}"
+            echo "status_before_end"
+          } | tee .ci-evidence/authority.txt
+          test "${CANDIDATE}" = "4fef16f498dafba15fc1da5a63124567c5f56bcc"
+          test "${CONTRACTS}" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "${CANONICAL}" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test -z "${STATUS_BEFORE}"
+
+      - name: npm ci
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee .ci-evidence/npm-ci.log
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee .ci-evidence/typecheck.log
+
+      - name: Compile tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npx tsc -p tsconfig.test.json 2>&1 | tee .ci-evidence/test-compilation.log
+
+      - name: V1.3 foundation regression
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee .ci-evidence/foundation.log
+          grep -Eq '^# tests 17$' .ci-evidence/foundation.log
+          grep -Eq '^# pass 17$' .ci-evidence/foundation.log
+          grep -Eq '^# fail 0$' .ci-evidence/foundation.log
+
+      - name: Agent A V1.3 regression
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/workstreams/drive/phase6-remote-protocol-v1.3.test.js 2>&1 | tee .ci-evidence/agent-a.log
+          grep -Eq '^# tests 9$' .ci-evidence/agent-a.log
+          grep -Eq '^# pass 9$' .ci-evidence/agent-a.log
+          grep -Eq '^# fail 0$' .ci-evidence/agent-a.log
+
+      - name: Agent B V1.3 regression
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/workstreams/local/local-v1_3-failure-provenance.test.js 2>&1 | tee .ci-evidence/agent-b.log
+          grep -Eq '^# tests 5$' .ci-evidence/agent-b.log
+          grep -Eq '^# pass 5$' .ci-evidence/agent-b.log
+          grep -Eq '^# fail 0$' .ci-evidence/agent-b.log
+
+      - name: Agent D V1.3 regression
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/workstreams/orchestration/v1.3-failure-provenance-extension.test.js 2>&1 | tee .ci-evidence/agent-d.log
+          grep -Eq '^# tests 8$' .ci-evidence/agent-d.log
+          grep -Eq '^# pass 8$' .ci-evidence/agent-d.log
+          grep -Eq '^# fail 0$' .ci-evidence/agent-d.log
+
+      - name: H focused acceptance
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            .test-build/test/phase5-controller.test.js \
+            .test-build/test/phase5-group-a-recovery-state.test.js \
+            .test-build/test/phase5-group-b-scope-transfer.test.js \
+            2>&1 | tee .ci-evidence/h-focused.log
+          grep -Eq '^# tests 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# pass 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# fail 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# cancelled 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# skipped 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# todo 0$' .ci-evidence/h-focused.log
+
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee .ci-evidence/build.log
+
+      - name: Diff and exact nine-file manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check f7a66117e4c1645d8d32f30937776e9e8a0ba659...4fef16f498dafba15fc1da5a63124567c5f56bcc \
+            2>&1 | tee .ci-evidence/diff-check.log
+          git diff --name-only f7a66117e4c1645d8d32f30937776e9e8a0ba659...4fef16f498dafba15fc1da5a63124567c5f56bcc \
+            | sort | tee .ci-evidence/manifest-actual.txt
+          cat > .ci-evidence/manifest-expected.txt <<'EOF'
+          src/drive/google-drive-port.ts
+          src/local/local-vault-access-boundary.ts
+          src/product/authoritative-production-executor.ts
+          src/product/product-controller-base.ts
+          test/phase6-a-local-hardening.test.ts
+          test/workstreams/drive/phase6-remote-protocol-v1.3.test.ts
+          test/workstreams/drive/phase6-remote-protocol.test.ts
+          test/workstreams/local/local-v1_3-failure-provenance.test.ts
+          test/workstreams/orchestration/v1.3-failure-provenance-extension.test.ts
+          EOF
+          sort -o .ci-evidence/manifest-expected.txt .ci-evidence/manifest-expected.txt
+          diff -u .ci-evidence/manifest-expected.txt .ci-evidence/manifest-actual.txt | tee .ci-evidence/manifest-check.log
+
+      - name: Reassert immutable candidate after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE_AFTER="$(git rev-parse HEAD)"
+          TRACKED_CHANGES="$(git status --porcelain --untracked-files=no)"
+          SOURCE_TEST_CHANGES="$(git status --porcelain -- src test)"
+          CONTRACTS_AFTER="$(git rev-parse HEAD:src/contracts)"
+          CANONICAL_AFTER="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          {
+            echo "candidate_after=${CANDIDATE_AFTER}"
+            echo "contracts_after=${CONTRACTS_AFTER}"
+            echo "canonical_after=${CANONICAL_AFTER}"
+            echo "tracked_status_after_begin"
+            printf '%s\n' "${TRACKED_CHANGES}"
+            echo "tracked_status_after_end"
+            echo "source_test_status_after_begin"
+            printf '%s\n' "${SOURCE_TEST_CHANGES}"
+            echo "source_test_status_after_end"
+          } | tee .ci-evidence/final-authority.txt
+          test "${CANDIDATE_AFTER}" = "4fef16f498dafba15fc1da5a63124567c5f56bcc"
+          test "${CONTRACTS_AFTER}" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "${CANONICAL_AFTER}" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test -z "${TRACKED_CHANGES}"
+          test -z "${SOURCE_TEST_CHANGES}"
+
+      - name: Runtime versions
+        shell: bash
+        run: |
+          {
+            node --version
+            npm --version
+          } | tee .ci-evidence/runtime-versions.txt
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-v1-3-abd-authority-proof-h03
+          path: .ci-evidence/
+          include-hidden-files: true
