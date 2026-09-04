@@ -39,7 +39,7 @@ jobs:
             echo "NODE=$(node --version)"
             echo "NPM=$(npm --version)"
             echo "STATUS_BEGIN"
-            git status --porcelain
+            git status --porcelain --untracked-files=no
             echo "STATUS_END"
           } | tee proof-artifacts/preflight.log
           test "$(git rev-parse HEAD)" = "5159e6352be0f502eb4588121be67214e0ab49bd"
@@ -47,7 +47,7 @@ jobs:
           test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
           test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
           test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
-          test -z "$(git status --porcelain)"
+          test -z "$(git status --porcelain --untracked-files=no)"
 
       - name: Install exact dependencies
         shell: bash
@@ -181,7 +181,7 @@ jobs:
             echo "CONTRACT_FREEZE_BLOB=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
             echo "CONTRACT_FREEZE_PREFIX_BLOB=$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)"
             echo "STATUS_BEGIN"
-            git status --porcelain
+            git status --porcelain --untracked-files=no
             echo "STATUS_END"
           } | tee proof-artifacts/final-invariants.log
           test "$(git rev-parse HEAD)" = "5159e6352be0f502eb4588121be67214e0ab49bd"
@@ -189,7 +189,7 @@ jobs:
           test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
           test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
           test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
-          test -z "$(git status --porcelain)"
+          test -z "$(git status --porcelain --untracked-files=no)"
 
       - name: Upload H-U5-P3 proof artifact
         if: always()
