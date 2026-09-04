@@ -1,5 +1,6 @@
 import type {
   AuditRecord,
+  AuthoritativeSynchronizationExecutor,
   CheckpointId,
   ConflictAssessment,
   ConflictId,
@@ -7,6 +8,8 @@ import type {
   ConflictResolution,
   ConflictResolver,
   DeviceIdentity,
+  ExecutionResult,
+  ExecutionResultV1_3,
   OperationPrecondition,
   PathSnapshot,
   PlannedOperation,
@@ -24,7 +27,7 @@ import type {
   VaultPath,
   VersionReference,
 } from "../contracts";
-import { contractId } from "../contracts";
+import { contractId, executionDispositionV1_3 } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
@@ -33,7 +36,7 @@ import type { DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diag
 import { createInitialTrustedState, PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { sha256Text } from "../util/sha256";
 import { BoundedAuditHistory } from "./audit-history";
-import { createAuthoritativeProductExecutor } from "./authoritative-production-executor";
+import { createAuthoritativeProductExecutorV1_3, type RecoverableProductionMutationDependenciesV1_3 } from "./authoritative-production-executor";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
 import { dependsOnSkippedOperation } from "./operation-isolation";
@@ -149,6 +152,21 @@ function numbered(path: VaultPath, number: number): VaultPath {
 function authenticationReason(reason: string): string | undefined {
   const prefix = "authentication-required:";
   return reason.startsWith(prefix) ? reason.slice(prefix.length) || "authorization-required" : undefined;
+}
+function predecessorExecutionResult(result: ExecutionResultV1_3): ExecutionResult {
+  switch (result.status) {
+    case "durable-verified-success":
+    case "stale-precondition":
+    case "recovery-required":
+    case "uncertain":
+    case "cancelled":
+      return result;
+    case "authentication-required":
+    case "blocking-failure":
+      return { status: "blocking-failure", reason: result.reason };
+    case "retryable-failure":
+      return { status: "retryable-failure", reason: result.reason };
+  }
 }
 
 function globalExecutionGate(plan: SynchronizationPlan): PlanGlobalExecutionGate { return plan.globalExecutionGate; }
@@ -465,15 +483,28 @@ export class IntegratedProductController implements ProductControlPort {
       let needsReplan = false;
       let globalFailure = false;
       const authorityStore = this.options.authorityStore;
-      const coordinator = authorityStore ? new AuthorityCompleteExecutionCoordinator(
+      const v1_3Dependencies = (this.options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependenciesV1_3 }).recoverableProductionMutationDependencies;
+      let v1_3ExecutionResult: ExecutionResultV1_3 | undefined;
+      const v1_3Executor = authorityStore && v1_3Dependencies
+        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, v1_3Dependencies)
+        : undefined;
+      const coordinatorExecutor: AuthoritativeSynchronizationExecutor | undefined = v1_3Executor ? {
+        validatePreconditions: operation => v1_3Executor.validatePreconditions(operation),
+        execute: async operation => {
+          const exact = await v1_3Executor.execute(operation);
+          v1_3ExecutionResult = exact;
+          return predecessorExecutionResult(exact);
+        },
+      } : undefined;
+      const coordinator = authorityStore && coordinatorExecutor ? new AuthorityCompleteExecutionCoordinator(
         authorityStore,
-        createAuthoritativeProductExecutor(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote),
+        coordinatorExecutor,
         new StateCommitCoordinator(this.options.stateStore, this.options.stateContext),
         this.options.stateStore,
         this.options.stateContext,
       ) : undefined;
       if (!coordinator) {
-        this.setStatus({ kind: "recovery-required", reason: "authoritative synchronization store is unavailable; ordinary mutation is disabled" });
+        this.setStatus({ kind: "recovery-required", reason: "V1.3 authoritative synchronization execution dependencies are unavailable; ordinary mutation is disabled" });
         this.syncError(runId, "authority-complete-execution-unavailable", { stage: "execution-authority", classification: "authoritative-store-unavailable", result: "blocked" });
         globalFailure = true;
       }
@@ -492,6 +523,7 @@ export class IntegratedProductController implements ProductControlPort {
 
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-start");
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-precondition-validation-start");
+        v1_3ExecutionResult = undefined;
         const result = await coordinator.executeOperation(operation);
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, result.status === "committed" ? "operation-complete" : "operation-precondition-validation-failed", result.status);
         if (result.status === "committed") {
@@ -502,6 +534,29 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
+        if (v1_3ExecutionResult && v1_3ExecutionResult.status !== "durable-verified-success") {
+          const disposition = executionDispositionV1_3(v1_3ExecutionResult);
+          if (disposition.primary === "authentication-required") {
+            this.setStatus({ kind: "authentication-required", reason: v1_3ExecutionResult.reason ?? "authorization-required" });
+            globalFailure = true;
+            break;
+          }
+          if (disposition.primary === "deferred") {
+            this.setStatus({ kind: "offline-deferred", reason: v1_3ExecutionResult.reason ?? "remote synchronization deferred" });
+            globalFailure = true;
+            break;
+          }
+          if (disposition.primary === "recovery-required") {
+            this.setStatus({ kind: "recovery-required", reason: v1_3ExecutionResult.reason ?? "physical reconciliation is required" });
+            globalFailure = true;
+            break;
+          }
+          if (disposition.primary === "blocking-failure") {
+            this.setStatus({ kind: "error", code: "operation-blocked", message: v1_3ExecutionResult.reason ?? "operation blocked" });
+            globalFailure = true;
+            break;
+          }
+        }
         if (result.status === "blocked") {
           const auth = authenticationReason(result.reason);
           if (auth) { this.setStatus({ kind: "authentication-required", reason: auth }); globalFailure = true; break; }
