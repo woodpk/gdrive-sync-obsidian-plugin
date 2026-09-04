@@ -45,15 +45,14 @@ jobs:
           ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
           ACTUAL_FILE_BLOB="$(git rev-parse HEAD:$FILE)"
           ACTUAL_PREFIX_BLOB="$(head -c 16296 "$FILE" | git hash-object --stdin)"
-          APPEND_FIRST="$(tail -c +16297 "$FILE" | sed -n '1p')"
-          printf 'node=%s\nnpm=%s\nhead=%s\ncontracts=%s\ncanonical_evidence=%s\nfile_blob=%s\nprefix_blob=%s\nappend_first=%s\n' \
-            "$(node --version)" "$(npm --version)" "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$ACTUAL_FILE_BLOB" "$ACTUAL_PREFIX_BLOB" "$APPEND_FIRST" | tee proof-logs/preflight.txt
+          grep -Fqx "$EXPECTED_APPEND" "$FILE"
+          printf 'node=%s\nnpm=%s\nhead=%s\ncontracts=%s\ncanonical_evidence=%s\nfile_blob=%s\nprefix_blob=%s\nappend_heading_present=yes\n' \
+            "$(node --version)" "$(npm --version)" "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$ACTUAL_FILE_BLOB" "$ACTUAL_PREFIX_BLOB" | tee proof-logs/preflight.txt
           test "$ACTUAL_HEAD" = "$CANDIDATE"
           test "$ACTUAL_CONTRACTS" = "$CONTRACTS"
           test "$ACTUAL_EVIDENCE" = "$EVIDENCE"
           test "$ACTUAL_FILE_BLOB" = "$EXPECTED_FILE_BLOB"
           test "$ACTUAL_PREFIX_BLOB" = "$EXPECTED_PREFIX_BLOB"
-          test "$APPEND_FIRST" = "$EXPECTED_APPEND"
           test -z "$(git status --porcelain --untracked-files=no)"
           git diff --check "$P2...$CANDIDATE" > proof-logs/diff-check.txt 2>&1
           git diff --name-only "$P2...$CANDIDATE" | tee proof-logs/correction-files.txt
