@@ -1,0 +1,118 @@
+name: H-U5-P2 provenance restoration proof
+
+on:
+  push:
+    branches:
+      - h-u5-p2-provenance-restoration-proof-h04
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact provenance-corrected H head
+        uses: actions/checkout@v4
+        with:
+          ref: 740d3338e10b3cdf36a92288f2f8d8c37ee26fe3
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Provenance and invariant preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof-logs
+          CANDIDATE='740d3338e10b3cdf36a92288f2f8d8c37ee26fe3'
+          P2='4d1daea1f8551de496d29f1a56d489b4b9a813f9'
+          CONTRACTS='0db68ced179825f929008b502335210260ca2ce3'
+          EVIDENCE='d4c610ccbc6cbbd6d58f548525239bb6d61e1f73'
+          FILE='dev/planning-and-building/phase6-sync-contract-freeze.md'
+          EXPECTED_FILE_BLOB='b675e0fc9776d03892a4309231b91a4bf0a84b93'
+          EXPECTED_PREFIX_BLOB='fe527c76137b2cd578ef7050ee3444498b21a5e0'
+          EXPECTED_APPEND='## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          ACTUAL_CONTRACTS="$(git rev-parse HEAD:src/contracts)"
+          ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          ACTUAL_FILE_BLOB="$(git rev-parse HEAD:$FILE)"
+          ACTUAL_PREFIX_BLOB="$(head -c 16296 "$FILE" | git hash-object --stdin)"
+          APPEND_FIRST="$(dd if="$FILE" bs=1 skip=16296 status=none | head -n 1)"
+          printf 'node=%s\nnpm=%s\nhead=%s\ncontracts=%s\ncanonical_evidence=%s\nfile_blob=%s\nprefix_blob=%s\nappend_first=%s\n' \
+            "$(node --version)" "$(npm --version)" "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$ACTUAL_FILE_BLOB" "$ACTUAL_PREFIX_BLOB" "$APPEND_FIRST" | tee proof-logs/preflight.txt
+          test "$ACTUAL_HEAD" = "$CANDIDATE"
+          test "$ACTUAL_CONTRACTS" = "$CONTRACTS"
+          test "$ACTUAL_EVIDENCE" = "$EVIDENCE"
+          test "$ACTUAL_FILE_BLOB" = "$EXPECTED_FILE_BLOB"
+          test "$ACTUAL_PREFIX_BLOB" = "$EXPECTED_PREFIX_BLOB"
+          test "$APPEND_FIRST" = "$EXPECTED_APPEND"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git diff --check "$P2...$CANDIDATE" > proof-logs/diff-check.txt 2>&1
+          git diff --name-only "$P2...$CANDIDATE" | tee proof-logs/correction-files.txt
+
+      - name: Dependencies and test compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci > proof-logs/npm-ci.log 2>&1
+          npm run typecheck > proof-logs/typecheck.log 2>&1
+          npx tsc -p tsconfig.test.json > proof-logs/test-compile.log 2>&1
+          printf 'npm_ci=0\ntypecheck=0\ntest_compile=0\ndiff_check=0\n' > proof-logs/static-exit-codes.txt
+
+      - name: V1.3 foundation proof
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js > proof-logs/foundation.log 2>&1
+          code=$?
+          printf 'foundation_exit_code=%s\n' "$code" | tee proof-logs/foundation-exit-code.txt
+          cat proof-logs/foundation.log
+          exit "$code"
+
+      - name: H-U5-P2 critical regression gate
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js > proof-logs/h-v13-regression.log 2>&1
+          code=$?
+          printf 'h_v13_exit_code=%s\n' "$code" | tee proof-logs/h-v13-exit-code.txt
+          cat proof-logs/h-v13-regression.log
+          exit 0
+
+      - name: Final invariant recheck
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE='740d3338e10b3cdf36a92288f2f8d8c37ee26fe3'
+          CONTRACTS='0db68ced179825f929008b502335210260ca2ce3'
+          EVIDENCE='d4c610ccbc6cbbd6d58f548525239bb6d61e1f73'
+          FILE='dev/planning-and-building/phase6-sync-contract-freeze.md'
+          EXPECTED_PREFIX_BLOB='fe527c76137b2cd578ef7050ee3444498b21a5e0'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          ACTUAL_CONTRACTS="$(git rev-parse HEAD:src/contracts)"
+          ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          ACTUAL_PREFIX_BLOB="$(head -c 16296 "$FILE" | git hash-object --stdin)"
+          TRACKED_DIFF="$(git status --porcelain --untracked-files=no)"
+          printf 'head=%s\ncontracts=%s\ncanonical_evidence=%s\nprefix_blob=%s\ntracked_status=%q\n' "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$ACTUAL_PREFIX_BLOB" "$TRACKED_DIFF" | tee proof-logs/final-invariants.txt
+          test "$ACTUAL_HEAD" = "$CANDIDATE"
+          test "$ACTUAL_CONTRACTS" = "$CONTRACTS"
+          test "$ACTUAL_EVIDENCE" = "$EVIDENCE"
+          test "$ACTUAL_PREFIX_BLOB" = "$EXPECTED_PREFIX_BLOB"
+          test -z "$TRACKED_DIFF"
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p2-provenance-restoration-proof
+          path: proof-logs/
+          if-no-files-found: error
