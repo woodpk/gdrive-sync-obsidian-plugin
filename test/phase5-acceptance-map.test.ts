@@ -45,7 +45,7 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(28,"pause and resume behavior",recovery,"G2 scenario 28 pause blocks product-controller synchronization until resume"),
  e(29,"synchronization serialization within one runtime",recovery,"G2 scenario 29 same-runtime product synchronization runs serialize rather than overlap"),
  e(30,"cross-instance writer exclusion run lease",recovery,"G2 scenario 30 two real controller runs use separate production Web Locks leases over one shared lock boundary","IntegratedProductController runs using separate WebLocksRunLeasePort instances over one shared controlled Web Locks boundary"),
- e(31,"local filesystem event debounce and coalescing","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 31 local-change debounce coalesces repeated events into one automatic pass"),
+ e(31,"local filesystem event debounce and coalescing","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 31 local-change debounce coalesces repeated events into one scheduler-owned automatic pass"),
  e(32,"startup readiness and startup synchronization opportunity","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 32 replays startup opportunity when vault-ready fired before scheduler registration"),
  e(33,"periodic remote reconciliation scheduling","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 33 refresh replaces periodic timer with live cadence"),
  e(34,"manual preview followed by execution","test/phase5-controller.test.ts","Phase 5 successful reviewed first synchronization establishes the persistent first-sync gate only after cursor commit"),
