@@ -9,6 +9,7 @@ import {
   type LocalTransactionalMutationPort,
   type LocalVaultPort,
   type PersistenceRevision,
+  type RecoverableMutationEffectV1_1,
   type SemanticStateGeneration,
   type StateLoadContext,
   type StateLoadResult,
@@ -256,6 +257,56 @@ function authorityState(value: TrustedSynchronizationState): value is DurableSyn
     && Array.isArray(candidate.baseAuthority);
 }
 
+function rebaseCompletedEffectSemanticAuthority(
+  effect: RecoverableMutationEffectV1_1,
+  generation: SemanticStateGeneration,
+): RecoverableMutationEffectV1_1 {
+  const descriptor = effect.descriptor;
+  if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "existing-file-content-update") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        remoteMutation: {
+          ...descriptor.remoteMutation,
+          identityAuthority: { ...descriptor.remoteMutation.identityAuthority, generation },
+        },
+      },
+    };
+  }
+  if (descriptor.kind === "move") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        identityAuthority: { ...descriptor.identityAuthority, generation },
+      },
+    };
+  }
+  if (descriptor.kind === "trash") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        baseAuthority: { ...descriptor.baseAuthority, generation },
+        ...(descriptor.identityAuthority
+          ? { identityAuthority: { ...descriptor.identityAuthority, generation } }
+          : {}),
+      },
+    };
+  }
+  if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        pathAuthority: { ...descriptor.pathAuthority, generation },
+      },
+    };
+  }
+  return effect;
+}
+
 /**
  * A fully state-committed intent is inert: its physical effects are already
  * independently verified and its canonical state is already durable. When H's
@@ -274,56 +325,22 @@ function rebaseCompletedIntentSemanticAuthority(
       || intent.effects.length === 0
       || !intent.effects.every(effect => effect.stage === "state-committed")) return intent;
     changed = true;
-    const effects = intent.effects.map(effect => {
-      const descriptor = effect.descriptor;
-      if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "existing-file-content-update") {
-        return {
-          ...effect,
-          descriptor: {
-            ...descriptor,
-            remoteMutation: {
-              ...descriptor.remoteMutation,
-              identityAuthority: { ...descriptor.remoteMutation.identityAuthority, generation },
-            },
-          },
-        };
-      }
-      if (descriptor.kind === "move") {
-        return {
-          ...effect,
-          descriptor: {
-            ...descriptor,
-            identityAuthority: { ...descriptor.identityAuthority, generation },
-          },
-        };
-      }
-      if (descriptor.kind === "trash") {
-        return {
-          ...effect,
-          descriptor: {
-            ...descriptor,
-            baseAuthority: { ...descriptor.baseAuthority, generation },
-            ...(descriptor.identityAuthority
-              ? { identityAuthority: { ...descriptor.identityAuthority, generation } }
-              : {}),
-          },
-        };
-      }
-      if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") {
-        return {
-          ...effect,
-          descriptor: {
-            ...descriptor,
-            pathAuthority: { ...descriptor.pathAuthority, generation },
-          },
-        };
-      }
-      return effect;
-    }) as typeof intent.effects;
+    if (intent.logicalKind === "single-effect") {
+      return {
+        ...intent,
+        semanticAuthority: { ...intent.semanticAuthority, generation },
+        effects: [rebaseCompletedEffectSemanticAuthority(intent.effects[0], generation)] as const,
+      };
+    }
+    const [first, second, ...rest] = intent.effects;
     return {
       ...intent,
       semanticAuthority: { ...intent.semanticAuthority, generation },
-      effects,
+      effects: [
+        rebaseCompletedEffectSemanticAuthority(first, generation),
+        rebaseCompletedEffectSemanticAuthority(second, generation),
+        ...rest.map(effect => rebaseCompletedEffectSemanticAuthority(effect, generation)),
+      ] as const,
     };
   });
   return changed ? { ...state, operationIntents } : state;
