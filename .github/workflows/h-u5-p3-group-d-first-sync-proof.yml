@@ -1,0 +1,200 @@
+name: H-U5-P3 Group-D First-Sync Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p3-group-d-first-sync-proof-h05
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact H-U5-P3 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 5159e6352be0f502eb4588121be67214e0ab49bd
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Exact candidate and invariant preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof-artifacts
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "CONTRACTS_TREE=$(git rev-parse HEAD:src/contracts)"
+            echo "CANONICAL_EVIDENCE_BLOB=$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+            echo "CONTRACT_FREEZE_BLOB=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
+            echo "CONTRACT_FREEZE_PREFIX_BLOB=$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)"
+            echo "NODE=$(node --version)"
+            echo "NPM=$(npm --version)"
+            echo "STATUS_BEGIN"
+            git status --porcelain
+            echo "STATUS_END"
+          } | tee proof-artifacts/preflight.log
+          test "$(git rev-parse HEAD)" = "5159e6352be0f502eb4588121be67214e0ab49bd"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain)"
+
+      - name: Install exact dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci > proof-artifacts/npm-ci.log 2>&1
+          cat proof-artifacts/npm-ci.log
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck > proof-artifacts/typecheck.log 2>&1
+          cat proof-artifacts/typecheck.log
+
+      - name: Compile tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx tsc -p tsconfig.test.json > proof-artifacts/test-compile.log 2>&1
+          cat proof-artifacts/test-compile.log
+
+      - name: Candidate diff check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...5159e6352be0f502eb4588121be67214e0ab49bd > proof-artifacts/diff-check.log 2>&1
+          cat proof-artifacts/diff-check.log
+
+      - name: Focused H-U5-P3 verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node --test .test-build/test/phase5-group-d-first-sync-integration.test.js > proof-artifacts/focused.log 2>&1
+          code=$?
+          set -e
+          printf '%s\n' "$code" > proof-artifacts/focused-exit-code.txt
+          cat proof-artifacts/focused.log
+          tests=$(awk '/^# tests / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          pass=$(awk '/^# pass / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          fail=$(awk '/^# fail / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          cancelled=$(awk '/^# cancelled / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          skipped=$(awk '/^# skipped / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          todo=$(awk '/^# todo / { value=$3 } END { print value }' proof-artifacts/focused.log)
+          printf 'exit=%s\ntests=%s\npass=%s\nfail=%s\ncancelled=%s\nskipped=%s\ntodo=%s\n' "$code" "$tests" "$pass" "$fail" "$cancelled" "$skipped" "$todo" | tee proof-artifacts/focused-summary.txt
+          test "$code" -eq 0
+          test "$tests" = "8"
+          test "$pass" = "8"
+          test "$fail" = "0"
+          test "$cancelled" = "0"
+          test "$skipped" = "0"
+          test "$todo" = "0"
+
+      - name: V1.3 and H critical-regression gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js > proof-artifacts/critical.log 2>&1
+          code=$?
+          set -e
+          printf '%s\n' "$code" > proof-artifacts/critical-exit-code.txt
+          cat proof-artifacts/critical.log
+          tests=$(awk '/^# tests / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          pass=$(awk '/^# pass / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          fail=$(awk '/^# fail / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          cancelled=$(awk '/^# cancelled / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          skipped=$(awk '/^# skipped / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          todo=$(awk '/^# todo / { value=$3 } END { print value }' proof-artifacts/critical.log)
+          grep '^not ok' proof-artifacts/critical.log > proof-artifacts/critical-failures.txt || true
+          printf 'exit=%s\ntests=%s\npass=%s\nfail=%s\ncancelled=%s\nskipped=%s\ntodo=%s\n' "$code" "$tests" "$pass" "$fail" "$cancelled" "$skipped" "$todo" | tee proof-artifacts/critical-summary.txt
+          test "$code" -eq 1
+          test "$tests" = "82"
+          test "$pass" = "69"
+          test "$fail" = "13"
+          test "$cancelled" = "0"
+          test "$skipped" = "0"
+          test "$todo" = "0"
+          test "$(grep -c '^not ok' proof-artifacts/critical.log)" -eq 13
+          grep -Eq '^ok .*foundation v1\.3 C15:' proof-artifacts/critical.log
+          grep -Eq '^ok .*foundation v1\.3 C16:' proof-artifacts/critical.log
+          for marker in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do
+            grep -Eq "^ok .*${marker}" proof-artifacts/critical.log
+          done
+
+      - name: Whole-repository measurement
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          npm test > proof-artifacts/full-suite.log 2>&1
+          code=$?
+          set -e
+          printf '%s\n' "$code" > proof-artifacts/full-suite-exit-code.txt
+          cat proof-artifacts/full-suite.log
+          tests=$(awk '/^# tests / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          pass=$(awk '/^# pass / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          fail=$(awk '/^# fail / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          cancelled=$(awk '/^# cancelled / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          skipped=$(awk '/^# skipped / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          todo=$(awk '/^# todo / { value=$3 } END { print value }' proof-artifacts/full-suite.log)
+          printf 'exit=%s\ntests=%s\npass=%s\nfail=%s\ncancelled=%s\nskipped=%s\ntodo=%s\n' "$code" "$tests" "$pass" "$fail" "$cancelled" "$skipped" "$todo" | tee proof-artifacts/full-suite-summary.txt
+          test "$code" -eq 1
+          test "$tests" = "687"
+          test "$pass" = "630"
+          test "$fail" = "32"
+          test "$cancelled" = "25"
+          test "$skipped" = "0"
+          test "$todo" = "0"
+          if grep '^not ok' proof-artifacts/full-suite.log | grep -F 'phase5-group-d-first-sync-integration' > proof-artifacts/authorized-first-sync-failures.txt; then
+            echo 'Authorized first-sync fixture still has a non-pass result' >&2
+            exit 1
+          fi
+
+      - name: Build and package gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build > proof-artifacts/build.log 2>&1
+          cat proof-artifacts/build.log
+
+      - name: Final invariant recheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "CONTRACTS_TREE=$(git rev-parse HEAD:src/contracts)"
+            echo "CANONICAL_EVIDENCE_BLOB=$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+            echo "CONTRACT_FREEZE_BLOB=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
+            echo "CONTRACT_FREEZE_PREFIX_BLOB=$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)"
+            echo "STATUS_BEGIN"
+            git status --porcelain
+            echo "STATUS_END"
+          } | tee proof-artifacts/final-invariants.log
+          test "$(git rev-parse HEAD)" = "5159e6352be0f502eb4588121be67214e0ab49bd"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain)"
+
+      - name: Upload H-U5-P3 proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p3-group-d-first-sync-proof
+          path: proof-artifacts/
+          if-no-files-found: warn
