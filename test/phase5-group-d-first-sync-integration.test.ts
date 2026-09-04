@@ -82,6 +82,7 @@ class MemorySyncBoundary {
   remoteIdCounter = 0;
   localTokenCounter = 0;
   private readonly preservedRemotePredecessors = new Map<string, RemoteFile>();
+  private readonly preservedRemoteRecoveryReadsRemaining = new Map<string, number>();
   private readonly pendingRemoteCandidates = new Map<string, RemoteFile>();
   private readonly stagedLocalTransactions = new Map<string, { text: string; evidence: ContentEvidence }>();
 
@@ -174,10 +175,18 @@ class MemorySyncBoundary {
     getStartCursor: async () => ({ ok: true as const, value: cur(`cursor:${++this.cursorCounter}`) }),
     listForReconciliation: async () => {
       this.promotePendingRemoteCandidates();
+      const entries = [...this.preservedRemotePredecessors.values(), ...this.remoteFiles.values()].map(file => ({
+        path: file.path,
+        entityKind: "file" as const,
+        remoteObjectId: file.remoteObjectId,
+        content: file.evidence,
+        trashed: false,
+      }));
+      this.advancePreservedRemoteRecoveryReads();
       return {
         ok: true as const,
         value: {
-          entries: [...this.preservedRemotePredecessors.values(), ...this.remoteFiles.values()].map(file => ({ path: file.path, entityKind: "file" as const, remoteObjectId: file.remoteObjectId, content: file.evidence, trashed: false })),
+          entries,
           completeness: { status: "complete" as const },
         },
       };
@@ -345,15 +354,28 @@ class MemorySyncBoundary {
     recover: async transaction => ({ status: "blocked", reason: "fixture has no interrupted local transaction", transaction }),
   };
 
-  private preserveAndPromoteRemoteCandidate(predecessor: RemoteFile, candidate: RemoteFile): void {
-    this.preservedRemotePredecessors.set(String(predecessor.remoteObjectId), predecessor);
+  private preserveAndPromoteRemoteCandidate(predecessor: RemoteFile, candidate: RemoteFile, recoveryReads?: number): void {
+    const predecessorId = String(predecessor.remoteObjectId);
+    this.preservedRemotePredecessors.set(predecessorId, predecessor);
+    if (recoveryReads !== undefined) this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, recoveryReads);
     this.remoteFiles.set(String(candidate.path), candidate);
+  }
+
+  private advancePreservedRemoteRecoveryReads(): void {
+    for (const [predecessorId, remaining] of this.preservedRemoteRecoveryReadsRemaining) {
+      if (remaining <= 1) {
+        this.preservedRemoteRecoveryReadsRemaining.delete(predecessorId);
+        this.preservedRemotePredecessors.delete(predecessorId);
+      } else {
+        this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, remaining - 1);
+      }
+    }
   }
 
   private promotePendingRemoteCandidates(): void {
     for (const [path, candidate] of this.pendingRemoteCandidates) {
       const predecessor = this.remoteFiles.get(path);
-      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate);
+      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate, 2);
       this.pendingRemoteCandidates.delete(path);
     }
   }
