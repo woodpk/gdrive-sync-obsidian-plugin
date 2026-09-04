@@ -1,0 +1,70 @@
+name: H-U5-P3 Group-D Focused Diagnostic
+
+on:
+  push:
+    branches:
+      - h-u5-p3-group-d-first-sync-diagnostic-h05
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 76fd7d8c848cca553a5770db36453a928d3f49e4
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Compile exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "76fd7d8c848cca553a5770db36453a928d3f49e4"
+          npm ci
+          npx tsc -p tsconfig.test.json
+      - name: Run unchanged focused suite with runtime controller diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/h-u5-p3-diag.cjs <<'EOF'
+          const base = require(process.cwd() + '/.test-build/src/product/product-controller-base.js');
+          const proto = base.IntegratedProductController.prototype;
+          const originalRequest = proto.request;
+          proto.request = async function(action) {
+            const result = await originalRequest.call(this, action);
+            if (action && action.kind === 'execute-plan') {
+              console.error('H_U5_P3_DIAG_REQUEST=' + JSON.stringify({ result, surface: this.currentSurface() }));
+            }
+            return result;
+          };
+          const originalAuto = proto.runAutomatic;
+          proto.runAutomatic = async function(trigger) {
+            try {
+              return await originalAuto.call(this, trigger);
+            } finally {
+              console.error('H_U5_P3_DIAG_AUTO=' + JSON.stringify({ trigger, surface: this.currentSurface() }));
+            }
+          };
+          EOF
+          set +e
+          NODE_OPTIONS="--require=/tmp/h-u5-p3-diag.cjs" node --test .test-build/test/phase5-group-d-first-sync-integration.test.js 2>&1 | tee diagnostic.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exit=$code"
+          grep 'H_U5_P3_DIAG_' diagnostic.log || true
+          exit "$code"
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p3-group-d-first-sync-diagnostic
+          path: diagnostic.log
+          if-no-files-found: warn
