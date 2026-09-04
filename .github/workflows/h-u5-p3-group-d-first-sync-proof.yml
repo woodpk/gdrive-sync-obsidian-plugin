@@ -1,0 +1,101 @@
+name: H-U5-P3 Group-D First-Sync Production-Correction Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p3-group-d-first-sync-proof-h05-final4
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 6622d5372a6be53539059a6e013a42faa2d3b460
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Exact candidate and invariant preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "node=$(node --version)"
+          echo "npm=$(npm --version)"
+          test "$(git rev-parse HEAD)" = "6622d5372a6be53539059a6e013a42faa2d3b460"
+          test "$(git status --porcelain --untracked-files=no)" = ""
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...6622d5372a6be53539059a6e013a42faa2d3b460
+          mapfile -t changed < <(git diff --name-only 642eb005fe20b870ae242dff7bec9c6292c1dcdf...6622d5372a6be53539059a6e013a42faa2d3b460)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = "src/product/phase6-sync-integration.ts"
+          test "${changed[1]}" = "test/phase5-group-d-first-sync-integration.test.ts"
+      - name: Dependency and static gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npx tsc -p tsconfig.test.json
+          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...6622d5372a6be53539059a6e013a42faa2d3b460
+      - name: Focused H-U5-P3 verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test .test-build/test/phase5-group-d-first-sync-integration.test.js 2>&1 | tee focused.tap
+      - name: V1.3 H critical regression gate
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.tap
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "critical_exit=$code" | tee critical-exit.txt
+          exit 0
+      - name: Whole repository measurement
+        shell: bash
+        run: |
+          set +e
+          npm test 2>&1 | tee full.tap
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "full_exit=$code" | tee full-exit.txt
+          exit 0
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+      - name: Final invariant check
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "6622d5372a6be53539059a6e013a42faa2d3b460"
+          test "$(git status --porcelain --untracked-files=no)" = ""
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+      - name: Upload proof logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p3-group-d-first-sync-proof-production-correction
+          path: |
+            focused.tap
+            critical.tap
+            critical-exit.txt
+            full.tap
+            full-exit.txt
+            build.log
+          if-no-files-found: warn
