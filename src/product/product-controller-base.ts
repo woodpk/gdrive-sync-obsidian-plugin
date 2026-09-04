@@ -1,6 +1,7 @@
 import type {
   AuditRecord,
   AuthoritativeSynchronizationExecutor,
+  BinaryContentSource,
   CheckpointId,
   ConflictAssessment,
   ConflictId,
@@ -10,6 +11,7 @@ import type {
   DeviceIdentity,
   ExecutionResult,
   ExecutionResultV1_3,
+  OperationalFailureProvenanceV1_3,
   OperationPrecondition,
   PathSnapshot,
   PlannedOperation,
@@ -27,7 +29,7 @@ import type {
   VaultPath,
   VersionReference,
 } from "../contracts";
-import { contractId, executionDispositionV1_3 } from "../contracts";
+import { contractId, executionDispositionV1_3, operationalFailureProvenanceFromErrorV1_3 } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
@@ -171,6 +173,48 @@ function predecessorExecutionResult(result: ExecutionResultV1_3): ExecutionResul
 
 function readCapturedExecutionResult(capture: { result?: ExecutionResultV1_3 }): ExecutionResultV1_3 | undefined {
   return capture.result;
+}
+
+type V1_3OperationalCapture = { failure?: OperationalFailureProvenanceV1_3 };
+
+function capturingBinarySourceV1_3(source: BinaryContentSource, capture: V1_3OperationalCapture): BinaryContentSource {
+  return {
+    ...(source.sizeBytes === undefined ? {} : { sizeBytes: source.sizeBytes }),
+    async *openChunks() {
+      try {
+        for await (const chunk of source.openChunks()) yield chunk;
+      } catch (error) {
+        const failure = operationalFailureProvenanceFromErrorV1_3(error);
+        if (failure) capture.failure = failure;
+        throw error;
+      }
+    },
+  };
+}
+
+function capturingMutationDependenciesV1_3(
+  dependencies: RecoverableProductionMutationDependenciesV1_3,
+  capture: V1_3OperationalCapture,
+): RecoverableProductionMutationDependenciesV1_3 {
+  const local = dependencies.localTransactionalMutationPort;
+  if (!local) return dependencies;
+  return {
+    ...dependencies,
+    localTransactionalMutationPort: {
+      stageAndVerify: (transaction, content, cancellation) => local.stageAndVerify(transaction, capturingBinarySourceV1_3(content, capture), cancellation),
+      commitVerifiedStage: (...args) => local.commitVerifiedStage(...args),
+      recover: (...args) => local.recover(...args),
+    },
+  };
+}
+
+function readCapturedOperationalFailureV1_3(capture: V1_3OperationalCapture): OperationalFailureProvenanceV1_3 | undefined {
+  return capture.failure;
+}
+
+function operationalSurfaceReasonV1_3(result: ExecutionResultV1_3): string | undefined {
+  if (!("operationalFailure" in result) || !result.operationalFailure) return "reason" in result ? result.reason : undefined;
+  return result.operationalFailure.detail ?? result.operationalFailure.kind;
 }
 
 function globalExecutionGate(plan: SynchronizationPlan): PlanGlobalExecutionGate { return plan.globalExecutionGate; }
@@ -489,8 +533,10 @@ export class IntegratedProductController implements ProductControlPort {
       const authorityStore = this.options.authorityStore;
       const v1_3Dependencies = (this.options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependenciesV1_3 }).recoverableProductionMutationDependencies;
       const v1_3Capture: { result?: ExecutionResultV1_3 } = {};
-      const v1_3Executor = authorityStore && v1_3Dependencies
-        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, v1_3Dependencies)
+      const v1_3OperationalCapture: V1_3OperationalCapture = {};
+      const capturedV1_3Dependencies = v1_3Dependencies ? capturingMutationDependenciesV1_3(v1_3Dependencies, v1_3OperationalCapture) : undefined;
+      const v1_3Executor = authorityStore && capturedV1_3Dependencies
+        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, capturedV1_3Dependencies)
         : undefined;
       const coordinatorExecutor: AuthoritativeSynchronizationExecutor | undefined = v1_3Executor ? {
         validatePreconditions: operation => v1_3Executor.validatePreconditions(operation),
@@ -528,6 +574,7 @@ export class IntegratedProductController implements ProductControlPort {
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-start");
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-precondition-validation-start");
         delete v1_3Capture.result;
+        delete v1_3OperationalCapture.failure;
         const result = await coordinator.executeOperation(operation);
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, result.status === "committed" ? "operation-complete" : "operation-precondition-validation-failed", result.status);
         if (result.status === "committed") {
@@ -538,16 +585,21 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
-        const exactV1_3 = readCapturedExecutionResult(v1_3Capture);
+        const capturedV1_3 = readCapturedExecutionResult(v1_3Capture);
+        const capturedOperationalFailure = readCapturedOperationalFailureV1_3(v1_3OperationalCapture);
+        const exactV1_3: ExecutionResultV1_3 | undefined = capturedV1_3?.status === "uncertain" && capturedOperationalFailure
+          ? { ...capturedV1_3, operationalFailure: capturedOperationalFailure }
+          : capturedV1_3;
         if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {
           const disposition = executionDispositionV1_3(exactV1_3);
+          const surfaceReason = operationalSurfaceReasonV1_3(exactV1_3);
           if (disposition.primary === "authentication-required") {
-            this.setStatus({ kind: "authentication-required", reason: exactV1_3.reason ?? "authorization-required" });
+            this.setStatus({ kind: "authentication-required", reason: surfaceReason ?? "authorization-required" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "deferred") {
-            this.setStatus({ kind: "offline-deferred", reason: exactV1_3.reason ?? "remote synchronization deferred" });
+            this.setStatus({ kind: "offline-deferred", reason: surfaceReason ?? "remote synchronization deferred" });
             globalFailure = true;
             break;
           }
