@@ -22,6 +22,7 @@ import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
+import { enterSynchronizationLifecycle } from "../src/core/run-coordinator";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { IntegratedProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
@@ -529,6 +530,7 @@ test("G2 scenario 5 scheduler ignores local changes before first-sync completion
   assert.equal(automaticCalls, 1);
   assert.equal(h.boundary.remoteFiles.get("later.md")?.text, "later");
   scheduler.stop();
+  enterSynchronizationLifecycle("active");
 });
 
 test("G2 scenario 7 ordinary trusted local edit executes upload-update through production orchestration", async () => {
