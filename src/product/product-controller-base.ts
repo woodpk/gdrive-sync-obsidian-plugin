@@ -484,7 +484,7 @@ export class IntegratedProductController implements ProductControlPort {
       let globalFailure = false;
       const authorityStore = this.options.authorityStore;
       const v1_3Dependencies = (this.options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependenciesV1_3 }).recoverableProductionMutationDependencies;
-      let v1_3ExecutionResult: ExecutionResultV1_3 | undefined;
+      const v1_3Capture: { result?: ExecutionResultV1_3 } = {};
       const v1_3Executor = authorityStore && v1_3Dependencies
         ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, v1_3Dependencies)
         : undefined;
@@ -492,7 +492,7 @@ export class IntegratedProductController implements ProductControlPort {
         validatePreconditions: operation => v1_3Executor.validatePreconditions(operation),
         execute: async operation => {
           const exact = await v1_3Executor.execute(operation);
-          v1_3ExecutionResult = exact;
+          v1_3Capture.result = exact;
           return predecessorExecutionResult(exact);
         },
       } : undefined;
@@ -523,7 +523,7 @@ export class IntegratedProductController implements ProductControlPort {
 
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-start");
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, "operation-precondition-validation-start");
-        v1_3ExecutionResult = undefined;
+        delete v1_3Capture.result;
         const result = await coordinator.executeOperation(operation);
         this.recordExecutionStage(runId, operation, operationIndexes.get(String(operation.operationId)) ?? 0, result.status === "committed" ? "operation-complete" : "operation-precondition-validation-failed", result.status);
         if (result.status === "committed") {
@@ -534,25 +534,26 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
-        if (v1_3ExecutionResult && v1_3ExecutionResult.status !== "durable-verified-success") {
-          const disposition = executionDispositionV1_3(v1_3ExecutionResult);
+        const exactV1_3 = v1_3Capture.result;
+        if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {
+          const disposition = executionDispositionV1_3(exactV1_3);
           if (disposition.primary === "authentication-required") {
-            this.setStatus({ kind: "authentication-required", reason: v1_3ExecutionResult.reason ?? "authorization-required" });
+            this.setStatus({ kind: "authentication-required", reason: exactV1_3.reason ?? "authorization-required" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "deferred") {
-            this.setStatus({ kind: "offline-deferred", reason: v1_3ExecutionResult.reason ?? "remote synchronization deferred" });
+            this.setStatus({ kind: "offline-deferred", reason: exactV1_3.reason ?? "remote synchronization deferred" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "recovery-required") {
-            this.setStatus({ kind: "recovery-required", reason: v1_3ExecutionResult.reason ?? "physical reconciliation is required" });
+            this.setStatus({ kind: "recovery-required", reason: exactV1_3.reason ?? "physical reconciliation is required" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "blocking-failure") {
-            this.setStatus({ kind: "error", code: "operation-blocked", message: v1_3ExecutionResult.reason ?? "operation blocked" });
+            this.setStatus({ kind: "error", code: "operation-blocked", message: exactV1_3.reason ?? "operation blocked" });
             globalFailure = true;
             break;
           }
