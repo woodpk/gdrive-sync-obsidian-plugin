@@ -375,7 +375,7 @@ class MemorySyncBoundary {
   private promotePendingRemoteCandidates(): void {
     for (const [path, candidate] of this.pendingRemoteCandidates) {
       const predecessor = this.remoteFiles.get(path);
-      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate, 2);
+      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate, 4);
       this.pendingRemoteCandidates.delete(path);
     }
   }
