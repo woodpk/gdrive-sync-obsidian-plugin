@@ -1,4 +1,4 @@
-name: H-U5-P3 Group-D First-Sync Final3 Proof
+name: H-U5-P3 Scenario-9 Diagnostic
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  proof:
+  diagnostic:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact candidate
@@ -23,78 +23,48 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Exact candidate and invariant preflight
+      - name: Compile exact candidate
         shell: bash
         run: |
           set -euo pipefail
-          echo "node=$(node --version)"
-          echo "npm=$(npm --version)"
           test "$(git rev-parse HEAD)" = "d48be2891b0527cc9950a09d2cc5f35920293a87"
-          test "$(git status --porcelain --untracked-files=no)" = ""
-          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
-          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
-          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
-          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
-          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...d48be2891b0527cc9950a09d2cc5f35920293a87
-          mapfile -t changed < <(git diff --name-only 642eb005fe20b870ae242dff7bec9c6292c1dcdf...d48be2891b0527cc9950a09d2cc5f35920293a87)
-          test "${#changed[@]}" -eq 1
-          test "${changed[0]}" = "test/phase5-group-d-first-sync-integration.test.ts"
-      - name: Dependency and static gates
-        shell: bash
-        run: |
-          set -euo pipefail
           npm ci
-          npm run typecheck
           npx tsc -p tsconfig.test.json
-          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...d48be2891b0527cc9950a09d2cc5f35920293a87
-      - name: Focused H-U5-P3 verification
+      - name: Run scenario 9 with read-only runtime diagnostics
         shell: bash
         run: |
           set -euo pipefail
-          node --test .test-build/test/phase5-group-d-first-sync-integration.test.js 2>&1 | tee focused.tap
-      - name: V1.3 H critical regression gate
-        shell: bash
-        run: |
+          cat >/tmp/h-u5-p3-s9-diag.cjs <<'EOF'
+          const snap = require(process.cwd() + '/.test-build/src/product/snapshot-assembler.js');
+          const proto = snap.ProductSnapshotAssembler.prototype;
+          for (const method of ['assemble', 'assembleFull']) {
+            const original = proto[method];
+            proto[method] = async function(...args) {
+              const value = await original.apply(this, args);
+              console.error('H_U5_P3_ASSEMBLY=' + JSON.stringify({method, mode:value.mode, nextCursor:value.nextCursor, state:value.input.state.status, snapshots:value.input.snapshots.map(s => ({path:s.path, local:s.local.status, remote:s.remote.status, remoteId:s.remote.status==='present'?s.remote.remoteObjectId:undefined, remoteReason:s.remote.status==='unknown'?s.remote.reason:undefined, base:s.base.status==='trusted'?s.base.entry?.remoteObjectId:undefined}))}));
+              return value;
+            };
+          }
+          const base = require(process.cwd() + '/.test-build/src/product/product-controller-base.js');
+          const cp = base.IntegratedProductController.prototype;
+          const originalAuto = cp.runAutomatic;
+          cp.runAutomatic = async function(trigger) {
+            try { return await originalAuto.call(this, trigger); }
+            finally { console.error('H_U5_P3_SURFACE=' + JSON.stringify({trigger, surface:this.currentSurface()})); }
+          };
+          EOF
           set +e
-          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.tap
+          NODE_OPTIONS="--require=/tmp/h-u5-p3-s9-diag.cjs" node --test --test-name-pattern="G2 scenario 9" .test-build/test/phase5-group-d-first-sync-integration.test.js 2>&1 | tee diagnostic.log
           code=${PIPESTATUS[0]}
           set -e
-          echo "critical_exit=$code" | tee critical-exit.txt
+          echo "diagnostic_exit=$code" | tee diagnostic-exit.txt
           exit 0
-      - name: Whole repository measurement
-        shell: bash
-        run: |
-          set +e
-          npm test 2>&1 | tee full.tap
-          code=${PIPESTATUS[0]}
-          set -e
-          echo "full_exit=$code" | tee full-exit.txt
-          exit 0
-      - name: Build
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run build 2>&1 | tee build.log
-      - name: Final invariant check
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "d48be2891b0527cc9950a09d2cc5f35920293a87"
-          test "$(git status --porcelain --untracked-files=no)" = ""
-          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
-          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
-          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
-          test "$(head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
-      - name: Upload proof logs
+      - name: Upload diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: h-u5-p3-group-d-first-sync-proof-final3
+          name: h-u5-p3-scenario9-diagnostic
           path: |
-            focused.tap
-            critical.tap
-            critical-exit.txt
-            full.tap
-            full-exit.txt
-            build.log
-          if-no-files-found: warn
+            diagnostic.log
+            diagnostic-exit.txt
+          if-no-files-found: error
