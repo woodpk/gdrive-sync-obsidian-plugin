@@ -1,0 +1,90 @@
+name: H-U5-P3 Group-D First-Sync Final Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p3-group-d-first-sync-proof-h05-final
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify entry invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74"
+          test "$(git status --porcelain --untracked-files=no)" = ""
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          git diff --check 642eb005fe20b870ae242dff7bec9c6292c1dcdf...c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74
+          test "$(git diff --name-only 642eb005fe20b870ae242dff7bec9c6292c1dcdf...c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74 | wc -l)" -eq 1
+          test "$(git diff --name-only 642eb005fe20b870ae242dff7bec9c6292c1dcdf...c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74)" = "test/phase5-group-d-first-sync-integration.test.ts"
+      - name: Install and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npx tsc -p tsconfig.test.json
+      - name: Focused Group-D first-sync proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test .test-build/test/phase5-group-d-first-sync-integration.test.js 2>&1 | tee focused.tap
+      - name: H critical regression proof
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.tap
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "critical_exit=$code" | tee critical-exit.txt
+          exit 0
+      - name: Full repository measurement
+        shell: bash
+        run: |
+          set +e
+          npm test 2>&1 | tee full.tap
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "full_exit=$code" | tee full-exit.txt
+          exit 0
+      - name: Build proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+      - name: Final invariant check
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "c915d56bc79b71897cc3e4c3a4bf0e7e8c047e74"
+          test "$(git status --porcelain --untracked-files=no)" = ""
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+      - name: Upload proof logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p3-group-d-first-sync-proof
+          path: |
+            focused.tap
+            critical.tap
+            critical-exit.txt
+            full.tap
+            full-exit.txt
+            build.log
+          if-no-files-found: warn
