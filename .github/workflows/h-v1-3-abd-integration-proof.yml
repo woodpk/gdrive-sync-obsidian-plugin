@@ -1,0 +1,163 @@
+name: H V1.3 A-B-D Integration Proof
+
+on:
+  push:
+    branches:
+      - h-v1-3-abd-integration-proof-h03
+
+permissions:
+  contents: read
+
+jobs:
+  integration-proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e3e5ccca97fdfe1d2665ba79d50cebf8bcff8ece
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify exact candidate and frozen contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-evidence
+          : > .ci-evidence/exit-codes.txt
+          actual_head="$(git rev-parse HEAD)"
+          contracts_tree="$(git rev-parse HEAD:src/contracts)"
+          printf 'checked_out_head=%s\n' "$actual_head" > .ci-evidence/authority.txt
+          printf 'src_contracts_tree=%s\n' "$contracts_tree" >> .ci-evidence/authority.txt
+          test "$actual_head" = "e3e5ccca97fdfe1d2665ba79d50cebf8bcff8ece"
+          printf 'head_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+          test "$contracts_tree" = "0db68ced179825f929008b502335210260ca2ce3"
+          printf 'contracts_tree_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+          node --version > .ci-evidence/environment.txt
+          npm --version >> .ci-evidence/environment.txt
+          cat .ci-evidence/authority.txt
+          cat .ci-evidence/environment.txt
+      - name: npm ci
+        shell: bash
+        run: |
+          set +e
+          npm ci > .ci-evidence/npm-ci.log 2>&1
+          rc=$?
+          set -e
+          printf 'npm_ci_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/npm-ci.log
+          exit "$rc"
+      - name: Typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > .ci-evidence/typecheck.log 2>&1
+          rc=$?
+          set -e
+          printf 'typecheck_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/typecheck.log
+          exit "$rc"
+      - name: Compile tests
+        shell: bash
+        run: |
+          set +e
+          npx tsc -p tsconfig.test.json > .ci-evidence/test-compile.log 2>&1
+          rc=$?
+          set -e
+          printf 'test_compile_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/test-compile.log
+          exit "$rc"
+      - name: Foundation V1.3 regression
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js > .ci-evidence/foundation-v1-3.log 2>&1
+          rc=$?
+          set -e
+          printf 'foundation_v1_3_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/foundation-v1-3.log
+          exit "$rc"
+      - name: Agent A V1.3 regression
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/workstreams/drive/phase6-remote-protocol-v1.3.test.js > .ci-evidence/agent-a-v1-3.log 2>&1
+          rc=$?
+          set -e
+          printf 'agent_a_v1_3_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/agent-a-v1-3.log
+          exit "$rc"
+      - name: Agent B V1.3 regression
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/workstreams/local/local-v1_3-failure-provenance.test.js > .ci-evidence/agent-b-v1-3.log 2>&1
+          rc=$?
+          set -e
+          printf 'agent_b_v1_3_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/agent-b-v1-3.log
+          exit "$rc"
+      - name: Agent D V1.3 regression
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/workstreams/orchestration/v1.3-failure-provenance-extension.test.js > .ci-evidence/agent-d-v1-3.log 2>&1
+          rc=$?
+          set -e
+          printf 'agent_d_v1_3_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/agent-d-v1-3.log
+          exit "$rc"
+      - name: H-U5-P1 focused fixtures
+        shell: bash
+        run: |
+          set +e
+          node --test \
+            .test-build/test/phase5-controller.test.js \
+            .test-build/test/phase5-group-a-recovery-state.test.js \
+            .test-build/test/phase5-group-b-scope-transfer.test.js \
+            > .ci-evidence/h-focused.log 2>&1
+          rc=$?
+          set -e
+          printf 'h_focused_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/h-focused.log
+          if [ "$rc" -ne 0 ]; then exit "$rc"; fi
+          grep -Eq '^# tests 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# pass 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# fail 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# cancelled 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# skipped 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# todo 0$' .ci-evidence/h-focused.log
+          printf 'h_focused_totals_identity_exit=0\n' >> .ci-evidence/exit-codes.txt
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          npm run build > .ci-evidence/build.log 2>&1
+          rc=$?
+          set -e
+          printf 'build_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/build.log
+          exit "$rc"
+      - name: Diff check entry through candidate
+        shell: bash
+        run: |
+          set +e
+          git diff --check f7a66117e4c1645d8d32f30937776e9e8a0ba659...e3e5ccca97fdfe1d2665ba79d50cebf8bcff8ece > .ci-evidence/diff-check.log 2>&1
+          rc=$?
+          set -e
+          printf 'diff_check_exit=%s\n' "$rc" >> .ci-evidence/exit-codes.txt
+          cat .ci-evidence/diff-check.log
+          exit "$rc"
+      - name: Final proof summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .ci-evidence/exit-codes.txt ]; then cat .ci-evidence/exit-codes.txt; fi
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-v1-3-abd-integration-proof
+          path: .ci-evidence/
+          include-hidden-files: true
