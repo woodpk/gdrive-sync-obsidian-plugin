@@ -169,6 +169,10 @@ function predecessorExecutionResult(result: ExecutionResultV1_3): ExecutionResul
   }
 }
 
+function readCapturedExecutionResult(capture: { result?: ExecutionResultV1_3 }): ExecutionResultV1_3 | undefined {
+  return capture.result;
+}
+
 function globalExecutionGate(plan: SynchronizationPlan): PlanGlobalExecutionGate { return plan.globalExecutionGate; }
 
 function attentionOperations(plan: SynchronizationPlan): readonly PlannedOperation[] {
@@ -534,7 +538,7 @@ export class IntegratedProductController implements ProductControlPort {
           continue;
         }
         await this.audit("operation-failed", { planId: planned.plan.planId, operationId: operation.operationId, path: operation.path, reasonCode: result.status });
-        const exactV1_3 = v1_3Capture.result;
+        const exactV1_3 = readCapturedExecutionResult(v1_3Capture);
         if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {
           const disposition = executionDispositionV1_3(exactV1_3);
           if (disposition.primary === "authentication-required") {
