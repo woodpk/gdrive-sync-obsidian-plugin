@@ -1,0 +1,167 @@
+name: H V1.3 A-B-D Integration Repair
+
+on:
+  push:
+    branches:
+      - h-v1-3-abd-integration-proof-h03
+    paths:
+      - .github/workflows/h-v1-3-abd-integration-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-sync-integration-h
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify repair authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "e3e5ccca97fdfe1d2665ba79d50cebf8bcff8ece"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+
+      - name: Apply bounded H product disposition repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("src/product/product-controller-base.ts")
+          text = path.read_text()
+
+          replacements = []
+          replacements.append((
+              '  ExecutionResultV1_3,\n  OperationPrecondition,',
+              '  ExecutionResultV1_3,\n  OperationalFailureProvenanceV1_3,\n  OperationPrecondition,'
+          ))
+
+          replacements.append((
+              '''function readCapturedExecutionResult(capture: { result?: ExecutionResultV1_3 }): ExecutionResultV1_3 | undefined {\n  return capture.result;\n}\n\nfunction globalExecutionGate''',
+              '''function readCapturedExecutionResult(capture: { result?: ExecutionResultV1_3 }): ExecutionResultV1_3 | undefined {\n  return capture.result;\n}\n\ntype V1_3OperationalCapture = { failure?: OperationalFailureProvenanceV1_3 };\n\nfunction captureOperationalFailureV1_3(capture: V1_3OperationalCapture, value: unknown): void {\n  if (!value || typeof value !== "object" || !("operationalFailure" in value)) return;\n  const failure = (value as { readonly operationalFailure?: OperationalFailureProvenanceV1_3 }).operationalFailure;\n  if (failure) capture.failure = failure;\n}\n\nfunction readCapturedOperationalFailureV1_3(capture: V1_3OperationalCapture): OperationalFailureProvenanceV1_3 | undefined {\n  return capture.failure;\n}\n\nfunction capturingMutationDependenciesV1_3(\n  dependencies: RecoverableProductionMutationDependenciesV1_3,\n  capture: V1_3OperationalCapture,\n): RecoverableProductionMutationDependenciesV1_3 {\n  const local = dependencies.localTransactionalMutationPort;\n  if (!local) return dependencies;\n  return {\n    ...dependencies,\n    localTransactionalMutationPort: {\n      stageAndVerify: async (...args) => {\n        const result = await local.stageAndVerify(...args);\n        captureOperationalFailureV1_3(capture, result);\n        return result;\n      },\n      commitVerifiedStage: async (...args) => {\n        const result = await local.commitVerifiedStage(...args);\n        captureOperationalFailureV1_3(capture, result);\n        return result;\n      },\n      recover: async (...args) => {\n        const result = await local.recover(...args);\n        captureOperationalFailureV1_3(capture, result);\n        return result;\n      },\n    },\n  };\n}\n\nfunction operationalSurfaceReasonV1_3(result: ExecutionResultV1_3): string | undefined {\n  if (!("operationalFailure" in result) || !result.operationalFailure) return "reason" in result ? result.reason : undefined;\n  const failure = result.operationalFailure;\n  if (failure.detail) return failure.detail;\n  return failure.kind === "authentication-required" ? "authorization-required" : failure.kind;\n}\n\nfunction globalExecutionGate'''
+          ))
+
+          replacements.append((
+              '''      const v1_3Dependencies = (this.options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependenciesV1_3 }).recoverableProductionMutationDependencies;\n      const v1_3Capture: { result?: ExecutionResultV1_3 } = {};\n      const v1_3Executor = authorityStore && v1_3Dependencies\n        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, v1_3Dependencies)\n        : undefined;''',
+              '''      const v1_3Dependencies = (this.options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependenciesV1_3 }).recoverableProductionMutationDependencies;\n      const v1_3Capture: { result?: ExecutionResultV1_3 } = {};\n      const v1_3OperationalCapture: V1_3OperationalCapture = {};\n      const capturedV1_3Dependencies = v1_3Dependencies ? capturingMutationDependenciesV1_3(v1_3Dependencies, v1_3OperationalCapture) : undefined;\n      const v1_3Executor = authorityStore && capturedV1_3Dependencies\n        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, capturedV1_3Dependencies)\n        : undefined;'''
+          ))
+
+          replacements.append((
+              '''        delete v1_3Capture.result;\n        const result = await coordinator.executeOperation(operation);''',
+              '''        delete v1_3Capture.result;\n        delete v1_3OperationalCapture.failure;\n        const result = await coordinator.executeOperation(operation);'''
+          ))
+
+          replacements.append((
+              '''        const exactV1_3 = readCapturedExecutionResult(v1_3Capture);\n        if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {\n          const disposition = executionDispositionV1_3(exactV1_3);\n          if (disposition.primary === "authentication-required") {\n            this.setStatus({ kind: "authentication-required", reason: exactV1_3.reason ?? "authorization-required" });\n            globalFailure = true;\n            break;\n          }\n          if (disposition.primary === "deferred") {\n            this.setStatus({ kind: "offline-deferred", reason: exactV1_3.reason ?? "remote synchronization deferred" });''',
+              '''        const capturedV1_3 = readCapturedExecutionResult(v1_3Capture);\n        const capturedOperationalFailure = readCapturedOperationalFailureV1_3(v1_3OperationalCapture);\n        const exactV1_3: ExecutionResultV1_3 | undefined = capturedV1_3?.status === "recovery-required" && capturedOperationalFailure\n          ? { status: "uncertain", reason: capturedV1_3.reason, operationalFailure: capturedOperationalFailure }\n          : capturedV1_3;\n        if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {\n          const disposition = executionDispositionV1_3(exactV1_3);\n          const surfaceReason = operationalSurfaceReasonV1_3(exactV1_3);\n          if (disposition.primary === "authentication-required") {\n            this.setStatus({ kind: "authentication-required", reason: surfaceReason ?? "authorization-required" });\n            globalFailure = true;\n            break;\n          }\n          if (disposition.primary === "deferred") {\n            this.setStatus({ kind: "offline-deferred", reason: surfaceReason ?? "remote synchronization deferred" });'''
+          ))
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one replacement target, found {count}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "src/product/product-controller-base.ts"
+
+      - name: Commit candidate locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "woodpk"
+          git config user.email "48619728+woodpk@users.noreply.github.com"
+          git add src/product/product-controller-base.ts
+          git commit -m "fix(H): preserve V1.3 operational disposition through recovery gate"
+          mkdir -p .ci-evidence
+          printf 'candidate_sha=%s\n' "$(git rev-parse HEAD)" | tee .ci-evidence/authority.txt
+          printf 'contracts_tree=%s\n' "$(git rev-parse HEAD:src/contracts)" | tee -a .ci-evidence/authority.txt
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compile tests
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Foundation V1.3 regression
+        run: node --test .test-build/test/phase6-foundation-failure-provenance.test.js
+
+      - name: Agent A V1.3 regression
+        run: node --test .test-build/test/workstreams/drive/phase6-remote-protocol-v1.3.test.js
+
+      - name: Agent B V1.3 regression
+        run: node --test .test-build/test/workstreams/local/local-v1_3-failure-provenance.test.js
+
+      - name: Agent D V1.3 regression
+        run: node --test .test-build/test/workstreams/orchestration/v1.3-failure-provenance-extension.test.js
+
+      - name: H focused acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            .test-build/test/phase5-controller.test.js \
+            .test-build/test/phase5-group-a-recovery-state.test.js \
+            .test-build/test/phase5-group-b-scope-transfer.test.js \
+            | tee .ci-evidence/h-focused.log
+          grep -Eq '^# tests 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# pass 11$' .ci-evidence/h-focused.log
+          grep -Eq '^# fail 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# cancelled 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# skipped 0$' .ci-evidence/h-focused.log
+          grep -Eq '^# todo 0$' .ci-evidence/h-focused.log
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify bounded delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check f7a66117e4c1645d8d32f30937776e9e8a0ba659...HEAD
+          git diff --name-only f7a66117e4c1645d8d32f30937776e9e8a0ba659...HEAD | sort > .ci-evidence/delta-files.txt
+          cat > .ci-evidence/expected-files.txt <<'EOF'
+          src/drive/google-drive-port.ts
+          src/local/local-vault-access-boundary.ts
+          src/product/authoritative-production-executor.ts
+          src/product/product-controller-base.ts
+          test/phase6-a-local-hardening.test.ts
+          test/workstreams/drive/phase6-remote-protocol-v1.3.test.ts
+          test/workstreams/drive/phase6-remote-protocol.test.ts
+          test/workstreams/local/local-v1_3-failure-provenance.test.ts
+          test/workstreams/orchestration/v1.3-failure-provenance-extension.test.ts
+          EOF
+          sort -o .ci-evidence/expected-files.txt .ci-evidence/expected-files.txt
+          diff -u .ci-evidence/expected-files.txt .ci-evidence/delta-files.txt
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+
+      - name: Push verified candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:phase6-sync-integration-h
+          printf 'pushed_candidate_sha=%s\n' "$(git rev-parse HEAD)" | tee -a .ci-evidence/authority.txt
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-v1-3-abd-integration-repair
+          path: .ci-evidence/
+          include-hidden-files: true
