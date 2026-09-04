@@ -45,7 +45,7 @@ jobs:
           ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
           ACTUAL_FILE_BLOB="$(git rev-parse HEAD:$FILE)"
           ACTUAL_PREFIX_BLOB="$(head -c 16296 "$FILE" | git hash-object --stdin)"
-          APPEND_FIRST="$(dd if="$FILE" bs=1 skip=16296 status=none | head -n 1)"
+          APPEND_FIRST="$(tail -c +16297 "$FILE" | sed -n '1p')"
           printf 'node=%s\nnpm=%s\nhead=%s\ncontracts=%s\ncanonical_evidence=%s\nfile_blob=%s\nprefix_blob=%s\nappend_first=%s\n' \
             "$(node --version)" "$(npm --version)" "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$ACTUAL_FILE_BLOB" "$ACTUAL_PREFIX_BLOB" "$APPEND_FIRST" | tee proof-logs/preflight.txt
           test "$ACTUAL_HEAD" = "$CANDIDATE"
