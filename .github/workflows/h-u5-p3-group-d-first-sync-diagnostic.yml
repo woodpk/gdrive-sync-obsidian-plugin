@@ -30,7 +30,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "76fd7d8c848cca553a5770db36453a928d3f49e4"
           npm ci
           npx tsc -p tsconfig.test.json
-      - name: Run unchanged focused suite with runtime controller diagnostics
+      - name: Run unchanged focused suite with runtime authority diagnostics
         shell: bash
         run: |
           set -euo pipefail
@@ -52,6 +52,19 @@ jobs:
             } finally {
               console.error('H_U5_P3_DIAG_AUTO=' + JSON.stringify({ trigger, surface: this.currentSurface() }));
             }
+          };
+
+          const execution = require(process.cwd() + '/.test-build/src/core/execution-coordinator.js');
+          const coordinatorProto = execution.AuthorityCompleteExecutionCoordinator.prototype;
+          const originalExecute = coordinatorProto.executeOperation;
+          coordinatorProto.executeOperation = async function(operation) {
+            const result = await originalExecute.call(this, operation);
+            console.error('H_U5_P3_DIAG_COORDINATOR=' + JSON.stringify({
+              kind: operation.kind,
+              path: String(operation.path),
+              result,
+            }));
+            return result;
           };
           EOF
           set +e
