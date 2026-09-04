@@ -274,7 +274,57 @@ function rebaseCompletedIntentSemanticAuthority(
       || intent.effects.length === 0
       || !intent.effects.every(effect => effect.stage === "state-committed")) return intent;
     changed = true;
-    return { ...intent, semanticAuthority: { ...intent.semanticAuthority, generation } };
+    const effects = intent.effects.map(effect => {
+      const descriptor = effect.descriptor;
+      if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "existing-file-content-update") {
+        return {
+          ...effect,
+          descriptor: {
+            ...descriptor,
+            remoteMutation: {
+              ...descriptor.remoteMutation,
+              identityAuthority: { ...descriptor.remoteMutation.identityAuthority, generation },
+            },
+          },
+        };
+      }
+      if (descriptor.kind === "move") {
+        return {
+          ...effect,
+          descriptor: {
+            ...descriptor,
+            identityAuthority: { ...descriptor.identityAuthority, generation },
+          },
+        };
+      }
+      if (descriptor.kind === "trash") {
+        return {
+          ...effect,
+          descriptor: {
+            ...descriptor,
+            baseAuthority: { ...descriptor.baseAuthority, generation },
+            ...(descriptor.identityAuthority
+              ? { identityAuthority: { ...descriptor.identityAuthority, generation } }
+              : {}),
+          },
+        };
+      }
+      if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") {
+        return {
+          ...effect,
+          descriptor: {
+            ...descriptor,
+            pathAuthority: { ...descriptor.pathAuthority, generation },
+          },
+        };
+      }
+      return effect;
+    }) as typeof intent.effects;
+    return {
+      ...intent,
+      semanticAuthority: { ...intent.semanticAuthority, generation },
+      effects,
+    };
   });
   return changed ? { ...state, operationIntents } : state;
 }
