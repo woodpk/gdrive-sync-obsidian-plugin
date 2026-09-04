@@ -1,0 +1,136 @@
+name: H-U5-P2 OLF-STATIC proof
+
+on:
+  push:
+    branches:
+      - h-u5-p2-olf-static-proof-h04
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact H-U5-P2 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 4d1daea1f8551de496d29f1a56d489b4b9a813f9
+          fetch-depth: 0
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Candidate and invariant preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof-logs
+          CANDIDATE='4d1daea1f8551de496d29f1a56d489b4b9a813f9'
+          ENTRY='2c1b3ccbe6b4485e1461d9d740636feb057c5073'
+          CONTRACTS='0db68ced179825f929008b502335210260ca2ce3'
+          EVIDENCE='d4c610ccbc6cbbd6d58f548525239bb6d61e1f73'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          ACTUAL_CONTRACTS="$(git rev-parse HEAD:src/contracts)"
+          ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          printf 'node=%s\nnpm=%s\nhead=%s\ncontracts=%s\ncanonical_evidence=%s\n' "$(node --version)" "$(npm --version)" "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" | tee proof-logs/preflight.txt
+          test "$ACTUAL_HEAD" = "$CANDIDATE"
+          test "$ACTUAL_CONTRACTS" = "$CONTRACTS"
+          test "$ACTUAL_EVIDENCE" = "$EVIDENCE"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git diff --check "$ENTRY...$CANDIDATE" > proof-logs/diff-check.txt 2>&1
+
+      - name: Dependencies, typecheck, and test compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci > proof-logs/npm-ci.log 2>&1
+          npm run typecheck > proof-logs/typecheck.log 2>&1
+          npx tsc -p tsconfig.test.json > proof-logs/test-compile.log 2>&1
+          printf 'npm_ci=0\ntypecheck=0\ntest_compile=0\ndiff_check=0\n' > proof-logs/static-exit-codes.txt
+
+      - name: Focused OLF-STATIC verification
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase5-acceptance-map.test.js .test-build/test/phase5-scheduler-acceptance.test.js > proof-logs/focused.log 2>&1
+          code=$?
+          printf 'focused_exit_code=%s\n' "$code" | tee proof-logs/focused-exit-code.txt
+          cat proof-logs/focused.log
+          exit "$code"
+
+      - name: V1.3 and H critical regression measurement
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js > proof-logs/h-v13-regression.log 2>&1
+          code=$?
+          printf 'h_v13_exit_code=%s\n' "$code" | tee proof-logs/h-v13-exit-code.txt
+          cat proof-logs/h-v13-regression.log
+          exit 0
+
+      - name: Whole repository measurement
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          npm test > proof-logs/npm-test.log 2>&1
+          code=$?
+          printf 'npm_test_exit_code=%s\n' "$code" | tee proof-logs/npm-test-exit-code.txt
+          node <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('proof-logs/npm-test.log','utf8');
+          const keys = ['tests','pass','fail','cancelled','skipped','todo'];
+          const out = {};
+          for (const key of keys) {
+            const re = new RegExp('^# ' + key + ' (\\d+)\\s*$', 'm');
+            const m = text.match(re);
+            out[key] = m ? Number(m[1]) : null;
+          }
+          fs.writeFileSync('proof-logs/npm-test-totals.json', JSON.stringify(out, null, 2) + '\n');
+          console.log(JSON.stringify(out));
+          NODE
+          exit 0
+
+      - name: Build and package gate
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          npm run build > proof-logs/build.log 2>&1
+          code=$?
+          printf 'build_exit_code=%s\n' "$code" | tee proof-logs/build-exit-code.txt
+          cat proof-logs/build.log
+          exit "$code"
+
+      - name: Final invariant recheck
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE='4d1daea1f8551de496d29f1a56d489b4b9a813f9'
+          CONTRACTS='0db68ced179825f929008b502335210260ca2ce3'
+          EVIDENCE='d4c610ccbc6cbbd6d58f548525239bb6d61e1f73'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          ACTUAL_CONTRACTS="$(git rev-parse HEAD:src/contracts)"
+          ACTUAL_EVIDENCE="$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+          TRACKED_DIFF="$(git status --porcelain --untracked-files=no)"
+          printf 'head=%s\ncontracts=%s\ncanonical_evidence=%s\ntracked_status=%q\n' "$ACTUAL_HEAD" "$ACTUAL_CONTRACTS" "$ACTUAL_EVIDENCE" "$TRACKED_DIFF" | tee proof-logs/final-invariants.txt
+          test "$ACTUAL_HEAD" = "$CANDIDATE"
+          test "$ACTUAL_CONTRACTS" = "$CONTRACTS"
+          test "$ACTUAL_EVIDENCE" = "$EVIDENCE"
+          test -z "$TRACKED_DIFF"
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p2-olf-static-proof
+          path: proof-logs/
+          if-no-files-found: error
