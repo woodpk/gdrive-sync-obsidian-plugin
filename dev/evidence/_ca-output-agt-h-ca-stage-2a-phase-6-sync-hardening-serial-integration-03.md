@@ -208,3 +208,98 @@ The three formerly failing B4 acceptance tests now pass:
 - Disposable proof branches/workflows remain unmerged.
 - H-U5 was not resumed beyond the explicitly required 11-test focused acceptance surface.
 - H-FINAL was not started.
+
+---
+
+## H-C1 AUTHORITY RESTORATION
+
+### Reason and retained authority
+
+Independent supervisor review provisionally retained the implementation candidate exactly as-is but rejected the prior proof topology because the successful final proof generated, tested, and pushed that candidate inside the verification job after an earlier focused-test stop gate had already fired. H-C1 therefore performs verification only and does not reopen implementation.
+
+- Supervisor-provisionally-retained implementation candidate: `4fef16f498dafba15fc1da5a63124567c5f56bcc`.
+- Pre-correction H evidence head: `eb23e14f47029dfb7b097441fd58f23f649c0d07`.
+- H integration entry: `f7a66117e4c1645d8d32f30937776e9e8a0ba659`.
+- Frozen V1.3 `src/contracts/**` tree: `0db68ced179825f929008b502335210260ca2ce3`.
+- Canonical `dev/evidence/_ca-output.md` blob: `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`.
+- No source, test, contract, A/B/D worker, H-U5 fixture, or H integration implementation correction occurred during H-C1.
+
+### Candidate-before-proof topology
+
+- Disposable proof branch: `h-v1-3-abd-authority-proof-h03`.
+- Branch base: exact retained candidate `4fef16f498dafba15fc1da5a63124567c5f56bcc`.
+- Verification workflow: `.github/workflows/h-v1-3-abd-authority-proof.yml`.
+- Workflow-only commit: `721b20db77266fd707ef75c23428898dd706b1d8`.
+- Compare `4fef16f498dafba15fc1da5a63124567c5f56bcc...721b20db77266fd707ef75c23428898dd706b1d8`: exactly one added file, `.github/workflows/h-v1-3-abd-authority-proof.yml`; no production/test/contract file changed.
+- Workflow permissions: repository contents read-only.
+- Workflow explicitly checked out exact retained candidate `4fef16f498dafba15fc1da5a63124567c5f56bcc` with full history and did not edit or generate implementation.
+- Candidate working tree before verification: CLEAN.
+
+### Verification-only GitHub Actions proof
+
+- Run ID: `33836501421`.
+- Job ID: `100910006134`.
+- Result: SUCCESS.
+- Node: `v22.23.2`.
+- npm: `10.9.8`.
+- Git: `2.55.0`.
+- Proof artifact ID: `9923584752`.
+- Proof artifact digest: `sha256:0c0b11b5ccb4bb3adf1ebda0d54409014b9443e987ba22939a12ca5177558422`.
+- Proof artifact size: `6324` bytes.
+
+Required gates:
+
+- exact candidate checkout `4fef16f498dafba15fc1da5a63124567c5f56bcc`: PASS.
+- clean working tree before verification: PASS.
+- frozen contract-tree identity `0db68ced179825f929008b502335210260ca2ce3`: PASS.
+- canonical evidence identity `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`: PASS.
+- `npm ci`: PASS — 16 packages installed.
+- `npm run typecheck`: PASS.
+- `npx tsc -p tsconfig.test.json`: PASS.
+- V1.3 foundation: `17 tests / 17 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo`.
+- Workstream A V1.3: `9 tests / 9 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo`.
+- Workstream B V1.3: `5 tests / 5 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo`.
+- Workstream D V1.3: `8 tests / 8 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo`.
+- H focused acceptance: `11 tests / 11 pass / 0 fail / 0 cancelled / 0 skipped / 0 todo`.
+- `npm run build`: PASS.
+- build verifier entrypoint/syntax/local-runtime-dependencies/mobile-evaluation/package-shape: all PASS.
+- build artifact size: `695580` bytes.
+- build artifact SHA-256: `ddd155779545a002131c1db69d0179a2ea4c0d87dd7ff2cd219f35133bb38a23`.
+- `git diff --check f7a66117e4c1645d8d32f30937776e9e8a0ba659...4fef16f498dafba15fc1da5a63124567c5f56bcc`: PASS.
+- exact nine-file cumulative implementation manifest: PASS.
+- exact candidate HEAD after all verification: `4fef16f498dafba15fc1da5a63124567c5f56bcc` — PASS.
+- tracked working tree after verification: CLEAN.
+- `src/**` / `test/**` working tree after verification: CLEAN.
+- frozen contract tree after verification: PASS.
+- canonical evidence blob after verification: PASS.
+
+Exact cumulative implementation manifest verified from `f7a66117e4c1645d8d32f30937776e9e8a0ba659` through `4fef16f498dafba15fc1da5a63124567c5f56bcc`:
+
+1. `src/drive/google-drive-port.ts`
+2. `src/local/local-vault-access-boundary.ts`
+3. `src/product/authoritative-production-executor.ts`
+4. `src/product/product-controller-base.ts`
+5. `test/phase6-a-local-hardening.test.ts`
+6. `test/workstreams/drive/phase6-remote-protocol-v1.3.test.ts`
+7. `test/workstreams/drive/phase6-remote-protocol.test.ts`
+8. `test/workstreams/local/local-v1_3-failure-provenance.test.ts`
+9. `test/workstreams/orchestration/v1.3-failure-provenance-extension.test.ts`
+
+### H-C1 closure invariants
+
+- `phase6-sync-integration-h` remained exactly at required pre-closure evidence head `eb23e14f47029dfb7b097441fd58f23f649c0d07` until this evidence-only append.
+- Retained implementation authority remains `4fef16f498dafba15fc1da5a63124567c5f56bcc`; H-C1 did not alter it.
+- Disposable proof branch `h-v1-3-abd-authority-proof-h03` remains unmerged.
+- PR #45 remained OPEN / DRAFT / UNMERGED before this evidence-only append.
+- Canonical `dev/evidence/_ca-output.md` remained frozen at blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`.
+- H-U5 was not resumed.
+- H-FINAL was not started.
+
+### Corrective-unit file manifest
+
+The complete H-C1 write surface is exactly:
+
+1. Disposable branch only: `.github/workflows/h-v1-3-abd-authority-proof.yml`.
+2. Integration branch evidence closure only: `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-03.md`.
+
+No other file is authorized or changed by H-C1.
