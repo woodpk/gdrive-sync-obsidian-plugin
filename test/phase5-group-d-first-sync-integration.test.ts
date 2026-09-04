@@ -423,7 +423,7 @@ async function harness(options: { trusted?: DurableSynchronizationAuthorityState
 function trustedState(path: VaultPath, remoteObjectId: RemoteObjectId, text: string): DurableSynchronizationAuthorityState {
   const vault = id<"VaultIdentity">("vault:g2:first-sync");
   const device = id<"DeviceIdentity">("device:g2:first-sync");
-  const content = evidence(text);
+  const content = evidence(text, "r0");
   const semanticGeneration = gen("semantic:g2:trusted:0");
   const baseFingerprint = id<"BaseFingerprint">(`base:g2:${String(path)}`);
   const initial = createInitialAuthorityState({
