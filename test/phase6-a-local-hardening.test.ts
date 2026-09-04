@@ -6,6 +6,7 @@ import { LocalExclusionPolicy, defaultLocalExclusionRules } from "../src/local/e
 import { validateCrossPlatformPath } from "../src/local/path-policy";
 import "./workstreams/local/local-recovery-matrix.test";
 import "./workstreams/local/local-transaction-safety.test";
+import "./workstreams/local/local-v1_3-failure-provenance.test";
 
 const vp = (value: string): VaultPath => value as VaultPath;
 

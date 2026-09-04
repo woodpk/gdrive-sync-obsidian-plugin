@@ -1,3 +1,4 @@
+import "./phase6-remote-protocol-v1.3.test";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type BinaryContentSource, type ChangeCursor, type ContentHash, type MutationIntentId, type RemoteObjectId, type RemoteRevisionId, type SemanticStateGeneration, type VaultIdentity, type VaultPath } from "../../../src/contracts/common";
