@@ -22,10 +22,31 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc -p tsconfig.test.json
-      - name: Log execute-plan surface and audit without patching candidate source/tests
+      - name: Log pre-dispatch execution boundaries without patching candidate source/tests
         shell: bash
         run: |
           cat > h-u5-p8-diag-preload.cjs <<'EOF'
+          const runMod = require('./.test-build/src/core/run-coordinator.js');
+          const originalBegin = runMod.CoreRunCoordinator.prototype.beginRun;
+          runMod.CoreRunCoordinator.prototype.beginRun = async function(...args) {
+            const result = await originalBegin.apply(this,args);
+            console.error('H_U5_P8_BEGIN_RUN=' + JSON.stringify(result));
+            return result;
+          };
+          const execMod = require('./.test-build/src/core/execution-coordinator.js');
+          const originalExecute = execMod.AuthorityCompleteExecutionCoordinator.prototype.executeOperation;
+          execMod.AuthorityCompleteExecutionCoordinator.prototype.executeOperation = async function(operation) {
+            const result = await originalExecute.call(this, operation);
+            console.error('H_U5_P8_COORDINATED_OPERATION=' + JSON.stringify({kind:operation.kind,path:operation.path,result}));
+            return result;
+          };
+          const baseMod = require('./.test-build/src/product/product-controller-base.js');
+          const originalPlanned = baseMod.IntegratedProductController.prototype.executePlanned;
+          baseMod.IntegratedProductController.prototype.executePlanned = async function(...args) {
+            const result = await originalPlanned.apply(this,args);
+            console.error('H_U5_P8_EXECUTE_PLANNED=' + JSON.stringify({result,surface:this.currentSurface()}));
+            return result;
+          };
           const mod = require('./.test-build/src/product/product-controller.js');
           const proto = mod.IntegratedProductController.prototype;
           const original = proto.request;
