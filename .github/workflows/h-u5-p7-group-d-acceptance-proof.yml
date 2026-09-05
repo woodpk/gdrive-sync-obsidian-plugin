@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: 9309ef4fe8acd1dcd0385c6c9b5f299fd863d735
+          ref: e09e58e9b9622495f220897ae44736dd91d7075c
           persist-credentials: false
           fetch-depth: 0
 
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=9309ef4fe8acd1dcd0385c6c9b5f299fd863d735
+          CANDIDATE=e09e58e9b9622495f220897ae44736dd91d7075c
           ENTRY=16cec69e68029402c611f9b1d9c3f1026c11d8bb
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
           test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
@@ -129,7 +129,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=9309ef4fe8acd1dcd0385c6c9b5f299fd863d735
+          CANDIDATE=e09e58e9b9622495f220897ae44736dd91d7075c
           ENTRY=16cec69e68029402c611f9b1d9c3f1026c11d8bb
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
           test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
