@@ -1,0 +1,169 @@
+name: H-U5-P4 Group-D Active-Run Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p4-group-d-active-run-proof-h06
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 7523eff48f4708f577feee1de2118e783be63589
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Exact candidate and invariant preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "contracts_tree=$(git rev-parse HEAD:src/contracts)"
+            echo "canonical_evidence_blob=$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+            echo "freeze_blob=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
+            head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md > /tmp/phase6-freeze-prefix
+            echo "freeze_prefix_blob=$(git hash-object /tmp/phase6-freeze-prefix)"
+            git --version
+            node --version
+            npm --version
+            git status --porcelain --untracked-files=no
+          } | tee proof/preflight.log
+          test "$(git rev-parse HEAD)" = "7523eff48f4708f577feee1de2118e783be63589"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(git hash-object /tmp/phase6-freeze-prefix)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Static and type gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck > proof/typecheck.log 2>&1
+          cat proof/typecheck.log
+          npx tsc -p tsconfig.test.json > proof/test-typecheck.log 2>&1
+          cat proof/test-typecheck.log
+          git diff --check e59b61990c8ec37fb7b3fae4b1604f267f49fb42...7523eff48f4708f577feee1de2118e783be63589 > proof/diff-check.log 2>&1
+          cat proof/diff-check.log
+
+      - name: Focused H-U5-P4 verification
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase5-group-d-active-run-integration.test.js > proof/focused.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > proof/focused.exit
+          cat proof/focused.log
+          echo "focused_exit=$rc"
+          test "$rc" -eq 0
+          grep -Eq '^# tests 3$' proof/focused.log
+          grep -Eq '^# pass 3$' proof/focused.log
+          grep -Eq '^# fail 0$' proof/focused.log
+          grep -Eq '^# cancelled 0$' proof/focused.log
+          grep -Eq '^# skipped 0$' proof/focused.log
+          grep -Eq '^# todo 0$' proof/focused.log
+          grep -Fq 'G2 scenario 15 one properly attested ordinary deletion trashes only the remote copy without triggering bulk approval' proof/focused.log
+          grep -Fq 'G2 scenario 24 stale operation precondition refuses mutation, completes with attention, and awaits an external reconciliation trigger' proof/focused.log
+          grep -Fq 'G2 scenario 25 remote change during an active production run is deferred to the later serialized Changes reconciliation' proof/focused.log
+
+      - name: V1.3 and H critical regression gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js > proof/critical.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > proof/critical.exit
+          cat proof/critical.log
+          echo "critical_exit=$rc"
+          test "$rc" -eq 1
+          grep -Eq '^# tests 82$' proof/critical.log
+          grep -Eq '^# pass 69$' proof/critical.log
+          grep -Eq '^# fail 13$' proof/critical.log
+          grep -Eq '^# cancelled 0$' proof/critical.log
+          grep -Eq '^# skipped 0$' proof/critical.log
+          grep -Eq '^# todo 0$' proof/critical.log
+
+      - name: Whole repository measurement
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          npm test > proof/full-suite.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > proof/full-suite.exit
+          cat proof/full-suite.log
+          echo "npm_test_exit=$rc"
+          test "$rc" -eq 1
+          grep -Eq '^# tests 687$' proof/full-suite.log
+          grep -Eq '^# pass 633$' proof/full-suite.log
+          grep -Eq '^# fail 30$' proof/full-suite.log
+          grep -Eq '^# cancelled 24$' proof/full-suite.log
+          grep -Eq '^# skipped 0$' proof/full-suite.log
+          grep -Eq '^# todo 0$' proof/full-suite.log
+
+      - name: Build and package gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          npm run build > proof/build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > proof/build.exit
+          cat proof/build.log
+          echo "build_exit=$rc"
+          test "$rc" -eq 0
+
+      - name: Final invariant recheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "contracts_tree=$(git rev-parse HEAD:src/contracts)"
+            echo "canonical_evidence_blob=$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+            echo "freeze_blob=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
+            head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md > /tmp/phase6-freeze-prefix-final
+            echo "freeze_prefix_blob=$(git hash-object /tmp/phase6-freeze-prefix-final)"
+            echo "candidate_scope:"
+            git diff --name-only e59b61990c8ec37fb7b3fae4b1604f267f49fb42...7523eff48f4708f577feee1de2118e783be63589
+            echo "tracked_status:"
+            git status --porcelain --untracked-files=no
+          } | tee proof/final-invariants.log
+          test "$(git rev-parse HEAD)" = "7523eff48f4708f577feee1de2118e783be63589"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
+          test "$(git hash-object /tmp/phase6-freeze-prefix-final)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only e59b61990c8ec37fb7b3fae4b1604f267f49fb42...7523eff48f4708f577feee1de2118e783be63589)" = "test/phase5-group-d-active-run-integration.test.ts"
+
+      - name: Upload proof logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p4-group-d-active-run-proof
+          path: proof/
+          if-no-files-found: warn
