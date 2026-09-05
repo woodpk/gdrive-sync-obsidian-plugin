@@ -1,0 +1,47 @@
+name: H-U5-P6 Build Identity Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p6-group-d-recovery-coordination-proof-h08
+
+permissions:
+  contents: read
+
+jobs:
+  build-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 0eb4184df1f830824d437e77b5ba58f9b9cf0386
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install and build
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+      - name: Compute build identity
+        id: build_identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          bytes=$(wc -c < main.js | tr -d ' ')
+          sha=$(sha256sum main.js | awk '{print $1}')
+          echo "bytes=$bytes" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          printf 'BUILD_ARTIFACT_SIZE=%s\nBUILD_ARTIFACT_SHA256=%s\n' "$bytes" "$sha"
+      - name: Upload identified build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p6-build-${{ steps.build_identity.outputs.bytes }}-${{ steps.build_identity.outputs.sha }}
+          path: main.js
+          if-no-files-found: error
