@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, TAbstractFile } from "obsidian";
-import { contractId, type LocalVaultPort, type ManagedRemoteIdentity, type ObservationToken, type VaultPath } from "../src/contracts";
+import { contractId, type LocalVaultPort, type ManagedRemoteIdentity, type ObservationToken, type PersistenceRevision, type ReliableRemoteMutationPort, type SemanticStateGeneration, type VaultPath } from "../src/contracts";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
@@ -12,13 +12,14 @@ import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vaul
 import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
 import { ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
 import { IntegratedProductController } from "../src/product/product-controller";
+import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { SyncAttentionLedger, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
 import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "../src/product/sync-plan-errors-csv";
 import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "../src/product/sync-plan-errors-path";
 import { sha256Bytes } from "../src/util/sha256";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
+import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
 
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const token = (value: string) => contractId<"ObservationToken">(value) as ObservationToken;
@@ -156,6 +157,7 @@ async function controllerFixture(files: EditingFile[]) {
   const local = new CanonicalEvidenceLocalVault(inner, { staleRetryAttempts: 3, staleRetryDelayMs: 0 });
   const remote = new Map<string, { readonly id: ReturnType<typeof contractId<"RemoteObjectId">>; readonly evidence: { readonly hash: ReturnType<typeof sha256Bytes>; readonly sizeBytes: number } }>();
   const uploaded: string[] = [];
+  let rawCreateCalls = 0;
   const identity = { rootId: contractId<"RemoteObjectId">("root:stability"), vaultIdentity: contractId<"VaultIdentity">("vault:stability"), protocolVersion: contractId<"ProtocolVersion">("1") } as ManagedRemoteIdentity;
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity } }),
@@ -167,31 +169,66 @@ async function controllerFixture(files: EditingFile[]) {
         ? { ok: true as const, value: { status: "present" as const, side: "remote" as const, path, entityKind: "file" as const, remoteObjectId: value.id, content: value.evidence, stability: "stable" as const } }
         : { ok: true as const, value: { status: "absent" as const, side: "remote" as const, path } };
     },
-    create: async (_root: unknown, request: { readonly path: VaultPath; readonly content?: { openChunks(): AsyncIterable<Uint8Array> }; readonly expectedEvidence?: { readonly hash?: ReturnType<typeof sha256Bytes>; readonly sizeBytes?: number } }) => {
+    create: async () => { rawCreateCalls += 1; throw new Error("raw Drive create must not execute"); },
+  };
+  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_managed, intentId, path, intendedContent) => ({
+      ok: true,
+      value: {
+        kind: "reserved-file-create",
+        intentId,
+        reservedRemoteObjectId: contractId<"RemoteObjectId">(`remote:${String(path)}`),
+        path,
+        intendedContent,
+      },
+    }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder creation is not used by stability fixture"); },
+    createReserved: async (reserved, content) => {
+      if (reserved.kind !== "reserved-file-create" || !content) return { status: "outcome-unknown", reason: "stability fixture requires reserved file content" };
       const chunks: Uint8Array[] = [];
-      if (request.content) for await (const chunk of request.content.openChunks()) chunks.push(chunk);
+      if (content) for await (const chunk of content.openChunks()) chunks.push(chunk);
       const combined = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0));
       let offset = 0; for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.byteLength; }
       const evidence = { hash: sha256Bytes(combined), sizeBytes: combined.byteLength };
-      assert.equal(evidence.hash, request.expectedEvidence?.hash, "only the canonical stable source may upload");
-      const id = contractId<"RemoteObjectId">(`remote:${String(request.path)}`);
-      remote.set(String(request.path), { id, evidence }); uploaded.push(String(request.path));
-      return { ok: true as const, value: { remoteObjectId: id, path: request.path, evidence } };
+      assert.equal(evidence.hash, reserved.intendedContent.hash, "only the canonical stable source may upload");
+      assert.equal(evidence.sizeBytes, reserved.intendedContent.sizeBytes, "only the canonical stable source size may upload");
+      remote.set(String(reserved.path), { id: reserved.reservedRemoteObjectId, evidence });
+      uploaded.push(String(reserved.path));
+      return {
+        status: "verified-effect",
+        applicationProof: {
+          kind: "reserved-create",
+          remoteObjectId: reserved.reservedRemoteObjectId,
+          path: reserved.path,
+          verifiedContent: reserved.intendedContent,
+        },
+      };
     },
+    updateExisting: async () => { throw new Error("update is not used by stability fixture"); },
+    moveExisting: async () => { throw new Error("move is not used by stability fixture"); },
+    trashExisting: async () => { throw new Error("trash is not used by stability fixture"); },
   };
-  const state = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const rawState = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const stateContext = { expectation: "new-installation" as const, expectedVaultIdentity: identity.vaultIdentity, expectedDeviceIdentity: contractId<"DeviceIdentity">("device:stability") };
+  const seeded = await rawState.saveTrusted(createInitialAuthorityState({
+    persistenceRevision: contractId<"StateRevision">("persistence:stability:0") as unknown as PersistenceRevision,
+    semanticGeneration: contractId<"SemanticStateGeneration">("semantic:stability:0") as SemanticStateGeneration,
+    vaultIdentity: identity.vaultIdentity,
+    deviceIdentity: stateContext.expectedDeviceIdentity,
+  }));
+  assert.equal(seeded.status, "saved");
+  const state = new IntegratedSynchronizationStateStore(rawState);
   const assembler = new ProductSnapshotAssembler(local, drive as never, state, stateContext, async () => identity);
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
   let controller!: IntegratedProductController;
   const executor = new ProductSynchronizationExecutor(local, drive as never, state, stateContext, () => controller.currentRunEvidence());
   controller = new IntegratedProductController({
-    vaultIdentity: identity.vaultIdentity, deviceIdentity: stateContext.expectedDeviceIdentity, stateContext, stateStore: state,
-    snapshotAssembler: assembler, executor, conflictResolver: conflicts,
+    vaultIdentity: identity.vaultIdentity, deviceIdentity: stateContext.expectedDeviceIdentity, stateContext, stateStore: state, authorityStore: state,
+    snapshotAssembler: assembler, executor, reliableRemoteMutationPort, conflictResolver: conflicts,
     plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
     leasePort: new InMemoryRunLeasePort(), audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 50), holderId: "stability-test", attentionLedger: ledger,
   });
-  return { controller, ledger, csvPersistence, vaultStorage, uploaded };
+  return { controller, ledger, csvPersistence, vaultStorage, uploaded, rawCreateCalls: () => rawCreateCalls };
 }
 
 async function executeReviewed(controller: IntegratedProductController) {
@@ -205,6 +242,7 @@ test("ordinary one-time edit race retries, uploads stable content, and creates n
   const plan = await executeReviewed(fixture.controller);
   assert.equal(plan.operations.some(operation => operation.kind === "upload-create"), true);
   assert.deepEqual(fixture.uploaded, ["edited.md"]);
+  assert.equal(fixture.rawCreateCalls(), 0);
   assert.equal((await fixture.ledger.all()).length, 0);
   assert.equal(parseSyncAttentionRecordsCsv(fixture.vaultStorage.files.get("sync-plan-errors.csv")!).length, 0);
   fixture.csvPersistence.dispose();
@@ -216,11 +254,13 @@ test("exhausted edit instability is isolated into the CSV while an independent s
   const plan = await executeReviewed(fixture.controller);
   assert.equal(plan.operations.find(operation => operation.path === unstable.path)?.reasons[0]?.code, "local-file-not-stable");
   assert.deepEqual(fixture.uploaded, ["safe.md"]);
+  assert.equal(fixture.rawCreateCalls(), 0);
   const current = parseSyncAttentionRecordsCsv(fixture.vaultStorage.files.get("sync-plan-errors.csv")!);
   assert.equal(current.length, 1); assert.equal(String(current[0]?.path), "unstable.md"); assert.equal(current[0]?.current, true);
   unstable.persistentlyUnstable = false;
   await executeReviewed(fixture.controller);
   assert.equal(fixture.uploaded.includes("unstable.md"), true);
+  assert.equal(fixture.rawCreateCalls(), 0);
   const resolved = parseSyncAttentionRecordsCsv(fixture.vaultStorage.files.get("sync-plan-errors.csv")!);
   assert.equal(resolved.find(record => String(record.path) === "unstable.md")?.current, false);
   assert.ok(resolved.find(record => String(record.path) === "unstable.md")?.resolvedAtMs);
