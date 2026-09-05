@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: bebc0119f95a47a6f39cb291deeb00348a9ab3b4
+          ref: 26d1dacd3edce0d63c9a5565b1fdd78d11f22645
           fetch-depth: 0
           persist-credentials: false
 
@@ -39,20 +39,20 @@ jobs:
             head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md > /tmp/phase6-freeze-prefix
             echo "freeze_prefix_blob=$(git hash-object /tmp/phase6-freeze-prefix)"
             echo "candidate_scope:"
-            git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...bebc0119f95a47a6f39cb291deeb00348a9ab3b4
+            git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...26d1dacd3edce0d63c9a5565b1fdd78d11f22645
             echo "tracked_status:"
             git status --porcelain --untracked-files=no
             git --version
             node --version
             npm --version
           } | tee proof/preflight.log
-          test "$(git rev-parse HEAD)" = "bebc0119f95a47a6f39cb291deeb00348a9ab3b4"
+          test "$(git rev-parse HEAD)" = "26d1dacd3edce0d63c9a5565b1fdd78d11f22645"
           test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
           test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
           test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
           test "$(git hash-object /tmp/phase6-freeze-prefix)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
           test -z "$(git status --porcelain --untracked-files=no)"
-          test "$(git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...bebc0119f95a47a6f39cb291deeb00348a9ab3b4)" = "test/phase5-group-d-conflict-destruction-integration.test.ts"
+          test "$(git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...26d1dacd3edce0d63c9a5565b1fdd78d11f22645)" = "test/phase5-group-d-conflict-destruction-integration.test.ts"
 
       - name: Install dependencies
         run: npm ci
@@ -65,7 +65,7 @@ jobs:
           cat proof/typecheck.log
           npx tsc -p tsconfig.test.json > proof/test-typecheck.log 2>&1
           cat proof/test-typecheck.log
-          git diff --check 7d50f490382738de69efd4997fa9d2942b25b44b...bebc0119f95a47a6f39cb291deeb00348a9ab3b4 > proof/diff-check.log 2>&1
+          git diff --check 7d50f490382738de69efd4997fa9d2942b25b44b...26d1dacd3edce0d63c9a5565b1fdd78d11f22645 > proof/diff-check.log 2>&1
           cat proof/diff-check.log
 
       - name: Focused H-U5-P5 verification
@@ -168,17 +168,17 @@ jobs:
             head -c 16296 dev/planning-and-building/phase6-sync-contract-freeze.md > /tmp/phase6-freeze-prefix-final
             echo "freeze_prefix_blob=$(git hash-object /tmp/phase6-freeze-prefix-final)"
             echo "candidate_scope:"
-            git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...bebc0119f95a47a6f39cb291deeb00348a9ab3b4
+            git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...26d1dacd3edce0d63c9a5565b1fdd78d11f22645
             echo "tracked_status:"
             git status --porcelain --untracked-files=no
           } | tee proof/final-invariants.log
-          test "$(git rev-parse HEAD)" = "bebc0119f95a47a6f39cb291deeb00348a9ab3b4"
+          test "$(git rev-parse HEAD)" = "26d1dacd3edce0d63c9a5565b1fdd78d11f22645"
           test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
           test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
           test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = "b675e0fc9776d03892a4309231b91a4bf0a84b93"
           test "$(git hash-object /tmp/phase6-freeze-prefix-final)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
           test -z "$(git status --porcelain --untracked-files=no)"
-          test "$(git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...bebc0119f95a47a6f39cb291deeb00348a9ab3b4)" = "test/phase5-group-d-conflict-destruction-integration.test.ts"
+          test "$(git diff --name-only 7d50f490382738de69efd4997fa9d2942b25b44b...26d1dacd3edce0d63c9a5565b1fdd78d11f22645)" = "test/phase5-group-d-conflict-destruction-integration.test.ts"
 
       - name: Upload proof logs
         if: always()
