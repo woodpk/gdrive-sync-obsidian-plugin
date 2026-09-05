@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  export:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,20 +17,9 @@ jobs:
           ref: f1c6b1ae987f930a359f87027619f5b3ba41e898
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: '22'
-          cache: npm
-      - name: Static
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "f1c6b1ae987f930a359f87027619f5b3ba41e898"
-          npm ci
-          npm run typecheck
-          npx tsc -p tsconfig.test.json
-      - name: Focused
-        run: |
-          node --test \
-            .test-build/test/phase5-second-rejection.test.js \
-            .test-build/test/phase6-alpha-full-sync-remediation.test.js \
-            .test-build/test/phase6-alpha-mixed-plan-isolation.test.js
+          name: p9-r2-source-fixtures
+          path: |
+            test/phase6-alpha-full-sync-remediation.test.ts
+            test/phase6-alpha-mixed-plan-isolation.test.ts
