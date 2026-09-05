@@ -7,21 +7,27 @@ import type {
   LocalLifecycleEvent,
   LocalVaultChange,
   ManagedRemoteIdentity,
+  PersistenceRevision,
+  ReliableRemoteChangePort,
+  ReliableRemoteMutationPort,
   RemoteObjectId,
+  SemanticStateGeneration,
   Unsubscribe,
   VaultPath,
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { meaningfulNotification } from "../src/product/notification-policy";
 import { IntegratedProductController } from "../src/product/product-controller";
+import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSyncScheduler } from "../src/product/scheduler";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import {
-  createInitialTrustedState,
+  createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
 } from "../src/state/persistent-state-store";
@@ -145,7 +151,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity: managed } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor("cursor:group-d:first") }),
     listForReconciliation: async () => {
-      fullListingCalls += 1;
+      if (!remoteCreated) fullListingCalls += 1;
       return {
         ok: true as const,
         value: {
@@ -154,17 +160,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
         },
       };
     },
-    readChanges: async () => {
-      changesCalls += 1;
-      return {
-        ok: true as const,
-        value: {
-          changes: [],
-          nextCursor: cursor("cursor:group-d:later"),
-          completeness: { status: "complete" as const },
-        },
-      };
-    },
+    readChanges: async () => { throw new Error("legacy readChanges must not be used by this test"); },
     observe: async (_root: RemoteObjectId, candidate: VaultPath) => remoteCreated && String(candidate) === String(file)
       ? {
           ok: true as const,
@@ -179,25 +175,71 @@ test("Phase5 scenario 26 local change during an active production run is deferre
           },
         }
       : { ok: true as const, value: { status: "absent" as const, side: "remote" as const, path: candidate } },
-    create: async (_root: RemoteObjectId, request: { content?: BinaryContentSource }) => {
+    create: async () => { throw new Error("legacy raw Drive create must not be used by this test"); },
+  } as never;
+  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_identity, intentId, candidatePath, intendedContent) => ({
+      ok: true,
+      value: {
+        kind: "reserved-file-create",
+        intentId,
+        reservedRemoteObjectId: allocated,
+        path: candidatePath,
+        intendedContent,
+      },
+    }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder creation is not used by scenario 26"); },
+    createReserved: async (identity, content) => {
+      if (identity.kind !== "reserved-file-create" || !content) {
+        return { status: "outcome-unknown", reason: "scenario 26 requires reserved file-create content" };
+      }
       createCalls += 1;
-      assert.ok(request.content);
-      assert.equal(new TextDecoder().decode(await consume(request.content!)), text);
       createStartedResolve();
       await createRelease;
+      assert.equal(identity.reservedRemoteObjectId, allocated);
+      assert.equal(identity.path, file);
+      assert.equal(new TextDecoder().decode(await consume(content)), text);
       remoteCreated = true;
-      return { ok: true as const, value: { remoteObjectId: allocated, path: file, evidence } };
+      return {
+        status: "verified-effect",
+        applicationProof: {
+          kind: "reserved-create",
+          remoteObjectId: identity.reservedRemoteObjectId,
+          path: identity.path,
+          verifiedContent: identity.intendedContent,
+        },
+      };
     },
-  } as never;
+    updateExisting: async () => { throw new Error("update is not used by scenario 26"); },
+    moveExisting: async () => { throw new Error("move is not used by scenario 26"); },
+    trashExisting: async () => { throw new Error("trash is not used by scenario 26"); },
+  };
+  const reliableChanges: ReliableRemoteChangePort = {
+    async readChangePage(_identity, requestedToken) {
+      changesCalls += 1;
+      return {
+        ok: true,
+        value: {
+          kind: "terminal",
+          requestedToken,
+          changes: [],
+          newStartPageToken: cursor("cursor:group-d:later"),
+        },
+      };
+    },
+  };
 
-  const stateStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  await stateStore.saveTrusted(createInitialTrustedState({
-    stateRevision: id<"StateRevision">("state:group-d:0"),
+  const rawStateStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const seeded = await rawStateStore.saveTrusted(createInitialAuthorityState({
+    persistenceRevision: id<"StateRevision">("persistence:group-d:0") as unknown as PersistenceRevision,
+    semanticGeneration: id<"SemanticStateGeneration">("semantic:group-d:0") as SemanticStateGeneration,
     vaultIdentity: vault,
     deviceIdentity: device,
   }));
+  assert.equal(seeded.status, "saved");
+  const stateStore = new IntegratedSynchronizationStateStore(rawStateStore);
 
-  const assembler = new ProductSnapshotAssembler(local, drive, stateStore, stateContext, async () => managed);
+  const assembler = new ProductSnapshotAssembler(local, drive, stateStore, stateContext, async () => managed, () => true, () => false, undefined, reliableChanges);
   const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
   const triggers: string[] = [];
   let laterPassResolve!: () => void;
@@ -209,13 +251,15 @@ test("Phase5 scenario 26 local change during an active production run is deferre
     deviceIdentity: device,
     stateContext,
     stateStore,
+    authorityStore: stateStore,
     snapshotAssembler: assembler,
     executor,
+    reliableRemoteMutationPort,
     conflictResolver: resolver,
     plannerForTrigger: trigger => {
       triggers.push(trigger);
       if (trigger === "local-change") laterPassResolve();
-      return new DeterministicSynchronizationPlanner(resolver, undefined, { trigger });
+      return new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(resolver, undefined, { trigger }));
     },
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 50),
@@ -242,7 +286,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
   assert.deepEqual(triggers.slice(0, 2), ["periodic", "local-change"]);
   assert.equal(createCalls, 1, "the executing plan must not be mutated into a duplicate upload");
   assert.equal(fullListingCalls, 1, "the initial active pass used the required full view because no cursor existed");
-  assert.equal(changesCalls, 1, "the deferred pass reconciled from the newly committed cursor");
+  assert.equal(changesCalls, 1, "the deferred pass reconciled from the newly committed cursor through ReliableRemoteChangePort");
   const loaded = await stateStore.load(stateContext);
   assert.equal(loaded.status, "trusted");
   if (loaded.status === "trusted") {

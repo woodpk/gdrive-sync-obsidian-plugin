@@ -4,13 +4,17 @@ import type {
   BinaryContentSource,
   ChangeCursor,
   ContentEvidence,
+  LocalMutationTransaction,
+  LocalTransactionalMutationPort,
   LocalVaultChange,
   ManagedRemoteIdentity,
   ObservationToken,
+  PersistenceRevision,
+  ReliableRemoteMutationPortV1_3,
   RemoteChange,
   RemoteObjectId,
+  SemanticStateGeneration,
   StateLoadContext,
-  TrustedSynchronizationState,
   Unsubscribe,
   VaultPath,
 } from "../src/contracts";
@@ -18,14 +22,17 @@ import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
+import { enterSynchronizationLifecycle } from "../src/core/run-coordinator";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { IntegratedProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
+import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { ProductSyncScheduler } from "../src/product/scheduler";
 import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../src/product/text-version-store";
 import {
-  createInitialTrustedState,
+  createInitialAuthorityState,
+  type DurableSynchronizationAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
 } from "../src/state/persistent-state-store";
@@ -35,6 +42,8 @@ const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;
 const rid = (value: string) => id<"RemoteObjectId">(value) as RemoteObjectId;
 const cur = (value: string) => id<"ChangeCursor">(value) as ChangeCursor;
+const gen = (value: string) => id<"SemanticStateGeneration">(value) as SemanticStateGeneration;
+const prev = (value: string) => id<"StateRevision">(value) as unknown as PersistenceRevision;
 
 function evidence(text: string, revision?: string): ContentEvidence {
   return {
@@ -72,6 +81,10 @@ class MemorySyncBoundary {
   cursorCounter = 0;
   remoteIdCounter = 0;
   localTokenCounter = 0;
+  private readonly preservedRemotePredecessors = new Map<string, RemoteFile>();
+  private readonly preservedRemoteRecoveryReadsRemaining = new Map<string, number>();
+  private readonly pendingRemoteCandidates = new Map<string, RemoteFile>();
+  private readonly stagedLocalTransactions = new Map<string, { text: string; evidence: ContentEvidence }>();
 
   constructor(readonly identity: ManagedRemoteIdentity) {}
 
@@ -160,13 +173,24 @@ class MemorySyncBoundary {
         : { status: "identity-mismatch" as const },
     }),
     getStartCursor: async () => ({ ok: true as const, value: cur(`cursor:${++this.cursorCounter}`) }),
-    listForReconciliation: async () => ({
-      ok: true as const,
-      value: {
-        entries: [...this.remoteFiles.values()].map(file => ({ path: file.path, entityKind: "file" as const, remoteObjectId: file.remoteObjectId, content: file.evidence, trashed: false })),
-        completeness: { status: "complete" as const },
-      },
-    }),
+    listForReconciliation: async () => {
+      this.promotePendingRemoteCandidates();
+      const entries = [...this.preservedRemotePredecessors.values(), ...this.remoteFiles.values()].map(file => ({
+        path: file.path,
+        entityKind: "file" as const,
+        remoteObjectId: file.remoteObjectId,
+        content: file.evidence,
+        trashed: false,
+      }));
+      this.advancePreservedRemoteRecoveryReads();
+      return {
+        ok: true as const,
+        value: {
+          entries,
+          completeness: { status: "complete" as const },
+        },
+      };
+    },
     readChanges: async () => {
       const changes = [...this.remoteChanges];
       this.remoteChanges = [];
@@ -179,7 +203,7 @@ class MemorySyncBoundary {
         : { ok: true as const, value: { status: "absent" as const, side: "remote" as const, path } };
     },
     download: async (remoteObjectId: RemoteObjectId) => {
-      const file = [...this.remoteFiles.values()].find(candidate => candidate.remoteObjectId === remoteObjectId);
+      const file = [...this.remoteFiles.values(), ...this.preservedRemotePredecessors.values(), ...this.pendingRemoteCandidates.values()].find(candidate => candidate.remoteObjectId === remoteObjectId);
       if (!file) return { ok: false as const, signal: { kind: "not-found" as const, remoteObjectId } };
       return { ok: true as const, value: { remoteObjectId, content: source(file.text), evidence: file.evidence } };
     },
@@ -216,6 +240,146 @@ class MemorySyncBoundary {
     },
   };
 
+  readonly reliableRemoteMutationPort: ReliableRemoteMutationPortV1_3 = {
+    reserveFileCreateIdentity: async (_managed, intentId, path, intendedContent) => ({
+      ok: true,
+      value: {
+        kind: "reserved-file-create",
+        intentId,
+        reservedRemoteObjectId: rid(`remote:reserved:${++this.remoteIdCounter}:${String(path)}`),
+        path,
+        intendedContent,
+      },
+    }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder creation is not used by this fixture"); },
+    createReserved: async (identity, content) => {
+      if (identity.kind !== "reserved-file-create" || !content) return { status: "outcome-unknown", reason: "fixture requires file content" };
+      const text = await textOf(content);
+      const actual = evidence(text);
+      if (actual.hash !== identity.intendedContent.hash || actual.sizeBytes !== identity.intendedContent.sizeBytes) {
+        return { status: "verified-not-applied", reason: "fixture source does not match reserved content identity" };
+      }
+      const next: RemoteFile = {
+        path: identity.path,
+        text,
+        evidence: { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: `r${++this.remoteIdCounter}` },
+        remoteObjectId: identity.reservedRemoteObjectId,
+      };
+      this.remoteFiles.set(String(identity.path), next);
+      this.createRemoteCalls.push(String(identity.path));
+      return {
+        status: "verified-effect",
+        applicationProof: { kind: "reserved-create", remoteObjectId: identity.reservedRemoteObjectId, path: identity.path, verifiedContent: identity.intendedContent },
+      };
+    },
+    updateExisting: async (identity, content) => {
+      const predecessor = this.remoteFiles.get(String(identity.path));
+      if (!predecessor || predecessor.remoteObjectId !== identity.remoteObjectId || predecessor.evidence.revision !== String(identity.expectedRevision)) {
+        return { status: "verified-not-applied", reason: "fixture predecessor authority changed before update" };
+      }
+      const text = await textOf(content);
+      const actual = evidence(text);
+      if (actual.hash !== identity.intendedContent.hash || actual.sizeBytes !== identity.intendedContent.sizeBytes) {
+        return { status: "verified-not-applied", reason: "fixture source does not match intended update content" };
+      }
+      const candidate: RemoteFile = {
+        path: identity.path,
+        text,
+        evidence: { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: `r${++this.remoteIdCounter}` },
+        remoteObjectId: identity.candidateRemoteObjectId,
+      };
+      this.updateRemoteCalls.push(String(identity.path));
+      if (this.updateFailureOnce) {
+        this.updateFailureOnce = false;
+        this.pendingRemoteCandidates.set(String(identity.path), candidate);
+        return {
+          status: "outcome-unknown",
+          reason: "offline",
+          operationalFailure: { kind: "transient-failure", source: "google-drive", detail: "offline" },
+        };
+      }
+      this.preserveAndPromoteRemoteCandidate(predecessor, candidate);
+      return {
+        status: "verified-effect",
+        applicationProof: {
+          kind: "immutable-candidate-preservation",
+          candidateRemoteObjectId: identity.candidateRemoteObjectId,
+          predecessorRemoteObjectId: identity.remoteObjectId,
+          predecessorRevision: identity.expectedRevision,
+          intendedContent: identity.intendedContent,
+          verifiedContent: identity.intendedContent,
+          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
+        },
+      };
+    },
+    moveExisting: async () => { throw new Error("move is not used by this fixture"); },
+    trashExisting: async () => { throw new Error("trash is not used by this fixture"); },
+  };
+
+  readonly localTransactionalMutationPort: LocalTransactionalMutationPort = {
+    stageAndVerify: async (transaction, content) => {
+      const text = await textOf(content);
+      const actual = evidence(text);
+      if (actual.hash !== transaction.expectedNewEvidence.hash || actual.sizeBytes !== transaction.expectedNewEvidence.sizeBytes) {
+        return { status: "blocked", reason: "fixture staged bytes do not match intended content", transaction };
+      }
+      const current = this.localFiles.get(String(transaction.path));
+      if (transaction.expectedTarget.status === "expected-absent" && current) {
+        return { status: "stale", reason: "fixture target is no longer absent", transaction };
+      }
+      if (transaction.expectedTarget.status === "expected-present") {
+        if (!current || current.token !== transaction.expectedTarget.observationToken
+          || current.evidence.hash !== transaction.expectedTarget.canonicalContent.hash
+          || current.evidence.sizeBytes !== transaction.expectedTarget.canonicalContent.sizeBytes) {
+          return { status: "stale", reason: "fixture target changed before transactional staging", transaction };
+        }
+      }
+      this.stagedLocalTransactions.set(String(transaction.transactionId), { text, evidence: actual });
+      return { status: "staged-verified", transaction: { ...transaction, stage: "staged-verified" } as LocalMutationTransaction };
+    },
+    commitVerifiedStage: async transaction => {
+      const staged = this.stagedLocalTransactions.get(String(transaction.transactionId));
+      if (!staged) return { status: "outcome-unknown", reason: "fixture staged transaction is missing", transaction };
+      if (transaction.mutationKind === "create") this.createLocalCalls.push(String(transaction.path));
+      else this.replaceLocalCalls.push(String(transaction.path));
+      this.setLocal(transaction.path, staged.text);
+      this.stagedLocalTransactions.delete(String(transaction.transactionId));
+      const resulting = this.localFiles.get(String(transaction.path))!;
+      return {
+        status: "committed",
+        transaction: { ...transaction, stage: "completed" } as LocalMutationTransaction,
+        resultingObservationToken: resulting.token,
+      };
+    },
+    recover: async transaction => ({ status: "blocked", reason: "fixture has no interrupted local transaction", transaction }),
+  };
+
+  private preserveAndPromoteRemoteCandidate(predecessor: RemoteFile, candidate: RemoteFile, recoveryReads?: number): void {
+    const predecessorId = String(predecessor.remoteObjectId);
+    this.preservedRemotePredecessors.set(predecessorId, predecessor);
+    if (recoveryReads !== undefined) this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, recoveryReads);
+    this.remoteFiles.set(String(candidate.path), candidate);
+  }
+
+  private advancePreservedRemoteRecoveryReads(): void {
+    for (const [predecessorId, remaining] of this.preservedRemoteRecoveryReadsRemaining) {
+      if (remaining <= 1) {
+        this.preservedRemoteRecoveryReadsRemaining.delete(predecessorId);
+        this.preservedRemotePredecessors.delete(predecessorId);
+      } else {
+        this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, remaining - 1);
+      }
+    }
+  }
+
+  private promotePendingRemoteCandidates(): void {
+    for (const [path, candidate] of this.pendingRemoteCandidates) {
+      const predecessor = this.remoteFiles.get(path);
+      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate, 4);
+      this.pendingRemoteCandidates.delete(path);
+    }
+  }
+
   private nextToken(path: VaultPath): ObservationToken {
     return id<"ObservationToken">(`local:${++this.localTokenCounter}:${String(path)}`) as ObservationToken;
   }
@@ -223,14 +387,14 @@ class MemorySyncBoundary {
 
 interface Harness {
   boundary: MemorySyncBoundary;
-  store: PersistentSynchronizationStateStore;
+  store: IntegratedSynchronizationStateStore;
   controller: IntegratedProductController;
   context: StateLoadContext;
   setFirstSyncCompleted(value: boolean): void;
   firstSyncCompleted(): boolean;
 }
 
-async function harness(options: { trusted?: TrustedSynchronizationState; local?: readonly [string, string][]; remote?: readonly [string, string, string?][] } = {}): Promise<Harness> {
+async function harness(options: { trusted?: DurableSynchronizationAuthorityState; local?: readonly [string, string][]; remote?: readonly [string, string, string?][] } = {}): Promise<Harness> {
   const vault = id<"VaultIdentity">("vault:g2:first-sync");
   const device = id<"DeviceIdentity">("device:g2:first-sync");
   const identity: ManagedRemoteIdentity = { rootId: rid("remote:g2:root"), vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
@@ -242,8 +406,16 @@ async function harness(options: { trusted?: TrustedSynchronizationState; local?:
     expectedVaultIdentity: vault,
     expectedDeviceIdentity: device,
   };
-  const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  if (options.trusted) await store.saveTrusted(options.trusted);
+  const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const seeded = options.trusted ?? createInitialAuthorityState({
+    persistenceRevision: prev("persistence:g2:first-sync:0"),
+    semanticGeneration: gen("semantic:g2:first-sync:0"),
+    vaultIdentity: vault,
+    deviceIdentity: device,
+  });
+  const saved = await rawStore.saveTrusted(seeded);
+  assert.equal(saved.status, "saved");
+  const store = new IntegratedSynchronizationStateStore(rawStore);
   const assembler = new ProductSnapshotAssembler(boundary.local as never, boundary.drive as never, store, context, async () => identity);
   const textVersions = new ProductTextVersionStore(new MemoryTextVersionPersistence(), boundary.local as never, boundary.drive as never);
   const conflicts = new ThreeWayConflictResolver(textVersions, textVersions, device);
@@ -255,8 +427,11 @@ async function harness(options: { trusted?: TrustedSynchronizationState; local?:
     deviceIdentity: device,
     stateContext: context,
     stateStore: store,
+    authorityStore: store,
     snapshotAssembler: assembler,
     executor,
+    reliableRemoteMutationPort: boundary.reliableRemoteMutationPort,
+    localTransactionalMutationPort: boundary.localTransactionalMutationPort,
     conflictResolver: conflicts,
     plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
@@ -268,15 +443,24 @@ async function harness(options: { trusted?: TrustedSynchronizationState; local?:
   return { boundary, store, controller, context, setFirstSyncCompleted: value => { completed = value; }, firstSyncCompleted: () => completed };
 }
 
-function trustedState(path: VaultPath, remoteObjectId: RemoteObjectId, text: string): TrustedSynchronizationState {
+function trustedState(path: VaultPath, remoteObjectId: RemoteObjectId, text: string): DurableSynchronizationAuthorityState {
   const vault = id<"VaultIdentity">("vault:g2:first-sync");
   const device = id<"DeviceIdentity">("device:g2:first-sync");
-  const content = evidence(text);
-  const initial = createInitialTrustedState({ stateRevision: id<"StateRevision">("state:g2:0"), vaultIdentity: vault, deviceIdentity: device });
+  const content = evidence(text, "r0");
+  const semanticGeneration = gen("semantic:g2:trusted:0");
+  const baseFingerprint = id<"BaseFingerprint">(`base:g2:${String(path)}`);
+  const initial = createInitialAuthorityState({
+    persistenceRevision: prev("persistence:g2:trusted:0"),
+    semanticGeneration,
+    vaultIdentity: vault,
+    deviceIdentity: device,
+  });
   return {
     ...initial,
     base: [{ path, entityKind: "file", localExisted: true, remoteExisted: true, content, remoteObjectId }],
     remoteMappings: [{ path, entityKind: "file", remoteObjectId }],
+    baseAuthority: [{ path, fingerprint: baseFingerprint }],
+    pathConvergence: [{ path, state: { status: "converged", generation: semanticGeneration, baseFingerprint } }],
     changeCursor: cur("cursor:trusted:0"),
   };
 }
@@ -368,6 +552,7 @@ test("G2 scenario 5 scheduler ignores local changes before first-sync completion
   assert.equal(automaticCalls, 1);
   assert.equal(h.boundary.remoteFiles.get("later.md")?.text, "later");
   scheduler.stop();
+  enterSynchronizationLifecycle("active");
 });
 
 test("G2 scenario 7 ordinary trusted local edit executes upload-update through production orchestration", async () => {
