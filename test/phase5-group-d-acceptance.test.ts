@@ -329,7 +329,7 @@ test("Phase5 scenario 49 snapshot and planning domain is confined to the paired 
     },
     listForReconciliation: async (root: RemoteObjectId) => {
       touchedRoots.push(String(root));
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
     },
     trash: async (objectId: RemoteObjectId) => {
       trashedObjects.push(String(objectId));
