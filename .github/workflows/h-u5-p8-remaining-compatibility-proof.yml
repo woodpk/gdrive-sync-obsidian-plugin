@@ -1,0 +1,227 @@
+name: H-U5-P8 Remaining Compatibility Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p8-remaining-compatibility-proof-h10
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: dfcd4f2145b9439d30ff87ad4e7f29422a17720a
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Gate A preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=dfcd4f2145b9439d30ff87ad4e7f29422a17720a
+          ENTRY=328614dfdf136a9364dbf7e2a01766ad538f7e73
+          EXPECTED_FILES=$'test/phase5-group-d-surface-lifecycle-integration.test.ts\ntest/phase6-alpha-plan-errors-stability.test.ts\ntest/workstreams/drive/phase6-remote-protocol.test.ts'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "$EXPECTED_FILES"
+          git diff --check "$ENTRY"..."$CANDIDATE"
+          printf 'candidate=%s\nentry=%s\ncontracts_tree=%s\ncanonical_evidence=%s\ncontract_freeze_blob=%s\nprefix_sha1=%s\nchanged_files<<EOF\n%s\nEOF\n' \
+            "$CANDIDATE" "$ENTRY" "$(git rev-parse HEAD:src/contracts)" "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" \
+            "b675e0fc9776d03892a4309231b91a4bf0a84b93" "fe527c76137b2cd578ef7050ee3444498b21a5e0" \
+            "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" > proof-summary.txt
+
+      - name: Install and static verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci | tee install.log
+          npm run typecheck | tee typecheck.log
+          npx tsc -p tsconfig.test.json | tee test-compile.log
+          printf 'install_exit=0\ntypecheck_exit=0\ntest_compile_exit=0\n' >> proof-summary.txt
+
+      - name: Focused P8 compatibility gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test \
+            .test-build/test/phase5-group-d-surface-lifecycle-integration.test.js \
+            .test-build/test/phase6-alpha-plan-errors-stability.test.js \
+            .test-build/test/workstreams/drive/phase6-remote-protocol.test.js 2>&1 | tee focused.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 0
+          grep -Eq '# fail 0$' focused.log
+          grep -Eq '# cancelled 0$' focused.log
+          grep -Eq '# skipped 0$' focused.log
+          grep -Eq '# todo 0$' focused.log
+          grep -F 'G2 scenarios 44 and 45 repeated path-local failure stays isolated while safe work commits and real activity produces bounded audit records' focused.log >/dev/null
+          grep -F 'G2 scenario 48 allowlisted portable configuration synchronizes through reserved domain while device-local and unknown configuration stay excluded' focused.log >/dev/null
+          grep -F 'ordinary one-time edit race retries, uploads stable content, and creates no sync-plan error row' focused.log >/dev/null
+          grep -F 'exhausted edit instability is isolated into the CSV while an independent safe upload commits' focused.log >/dev/null
+          grep -F 'workstream A coherent download: remote revision change during transfer cannot be consumed as coherent success' focused.log >/dev/null
+          printf 'focused_exit=%s\n' "$rc" >> proof-summary.txt
+          cat focused.log >> proof-summary.txt
+
+      - name: V1.3 foundation gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee foundation.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 0
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -Eq '# cancelled 0$' foundation.log
+          grep -F 'C15' foundation.log >/dev/null
+          grep -F 'C16' foundation.log >/dev/null
+          printf 'foundation_exit=%s\n' "$rc" >> proof-summary.txt
+          cat foundation.log >> proof-summary.txt
+
+      - name: H V1.3 critical regression gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 69$' critical.log
+          grep -Eq '# fail 13$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          for marker in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do grep -F "$marker" critical.log >/dev/null; done
+          while IFS= read -r expected; do grep -F "$expected" critical.log >/dev/null; done <<'EOF'
+          03 upload survives crash/restart at every durable effect stage
+          04 download survives crash/restart at every durable effect stage
+          05 move survives crash/restart at every durable effect stage
+          06 trash survives crash/restart at every durable effect stage
+          10 durable intended L1 is not substituted by later L2
+          15 repeated moves preserve stable remote identity
+          16 create-delete sequence preserves acknowledged deletion history
+          18 unresolved path A does not block safe path B progress
+          19 missed watcher is discovered by integrity reconciliation
+          20 Windows watcher-event loss is recoverable through authoritative integrity read
+          28 bounded quiescence after mutation pressure stops
+          29 concurrent same-path creates never silently select one remote winner
+          G-C2 generic recover routes multiple folder journals by exact journal identity
+          EOF
+          printf 'critical_exit=%s\n' "$rc" >> proof-summary.txt
+          cat critical.log >> proof-summary.txt
+
+      - name: Fresh whole repository gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          npm test 2>&1 | tee whole.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 648$' whole.log
+          grep -Eq '# fail 22$' whole.log
+          grep -Eq '# cancelled 17$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          while IFS= read -r expected; do grep -F "$expected" whole.log >/dev/null; done <<'EOF'
+          03 upload survives crash/restart at every durable effect stage
+          04 download survives crash/restart at every durable effect stage
+          05 move survives crash/restart at every durable effect stage
+          06 trash survives crash/restart at every durable effect stage
+          10 durable intended L1 is not substituted by later L2
+          15 repeated moves preserve stable remote identity
+          16 create-delete sequence preserves acknowledged deletion history
+          18 unresolved path A does not block safe path B progress
+          19 missed watcher is discovered by integrity reconciliation
+          20 Windows watcher-event loss is recoverable through authoritative integrity read
+          28 bounded quiescence after mutation pressure stops
+          29 concurrent same-path creates never silently select one remote winner
+          G-C2 generic recover routes multiple folder journals by exact journal identity
+          C1 automatic run executes the independently safe subset of a mixed attention plan
+          operation-local stale precondition is isolated, safe work commits, and no immediate self-replan occurs
+          a later stable no-op reconciliation resolves transient stale attention without a content mutation
+          post-journal stale intent is safely retired before unrelated work continues
+          iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle
+          sync diagnostics preserve plan/execution semantics and never export vault path or content
+          pending throw is Error-level at its exact execution substage and closes the run
+          uncertain-journal throw is Error-level at its exact execution substage and closes the run
+          mixed automatic plan commits unrelated safe upload, retains attention, and preserves cursor/re-plan durability
+          EOF
+          printf 'whole_exit=%s\n' "$rc" >> proof-summary.txt
+          cat whole.log >> proof-summary.txt
+
+      - name: Build gate and artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build | tee build.log
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          test "$size" = "697437"
+          test "$sha" = "3ee8d4adc859e19d4b003e19c4c1afc294985d542aeaf41d54662d254beb229b"
+          printf 'BUILD_ARTIFACT_SIZE=%s\nBUILD_ARTIFACT_SHA256=%s\n' "$size" "$sha" | tee -a proof-summary.txt
+          cat build.log >> proof-summary.txt
+
+      - name: Gate H final invariants and PR state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=dfcd4f2145b9439d30ff87ad4e7f29422a17720a
+          ENTRY=328614dfdf136a9364dbf7e2a01766ad538f7e73
+          EXPECTED_FILES=$'test/phase5-group-d-surface-lifecycle-integration.test.ts\ntest/phase6-alpha-plan-errors-stability.test.ts\ntest/workstreams/drive/phase6-remote-protocol.test.ts'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "$EXPECTED_FILES"
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = "open"
+          test "$(jq -r .draft <<<"$pr")" = "true"
+          test "$(jq -r .merged <<<"$pr")" = "false"
+          test "$(jq -r .head.ref <<<"$pr")" = "phase6-sync-integration-h"
+          printf 'PR45_STATE=%s\nPR45_DRAFT=%s\nPR45_MERGED=%s\nPR45_HEAD=%s\n' \
+            "$(jq -r .state <<<"$pr")" "$(jq -r .draft <<<"$pr")" "$(jq -r .merged <<<"$pr")" "$(jq -r .head.ref <<<"$pr")" >> proof-summary.txt
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p8-remaining-compatibility-proof
+          path: |
+            proof-summary.txt
+            install.log
+            typecheck.log
+            test-compile.log
+            focused.log
+            foundation.log
+            critical.log
+            whole.log
+            build.log
+          if-no-files-found: warn
