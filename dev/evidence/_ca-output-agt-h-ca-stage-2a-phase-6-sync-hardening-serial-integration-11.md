@@ -50,10 +50,10 @@ No production source, contract, planning, workflow, canonical-evidence, or other
 - GitHub Actions run ID: `33996747191`
 - Job ID: `101388511452`
 - Workflow/job conclusion: `success`
-- Artifact ID: `9978357334`
+- Artifact ID: `9978285798`
 - Artifact name: `h-u5-p9-shared-olf-fake-auth-final-proof`
-- Artifact digest: `sha256:0daa028ff5d5b47605f4e5427b53963edf0a59d9da56c597366aba2063009f20`
-- Artifact size: `28988` bytes
+- Artifact digest: `sha256:c117529d0f8fe97f2cc3e8201c6aff7ec6e638e88a85baa6e5b5121b13fcdf9f`
+- Artifact size: `40773` bytes
 
 The proof checked out exact candidate `98927846c7e2db622eda38c005389d83be153bc6`; the proof workflow itself was not merged into `phase6-sync-integration-h`.
 
@@ -173,8 +173,8 @@ No other failure or cancellation remains.
 PASS.
 
 - build exit: `0`
-- built `main.js` size: `1124518` bytes
-- built `main.js` SHA-256: `d2524cc26940531369806b5345024624d665cb1de3bb622d7d2011a73ed92fa9`
+- built `main.js` size: `697437` bytes
+- built `main.js` SHA-256: `3ee8d4adc859e19d4b003e19c4c1afc294985d542aeaf41d54662d254beb229b`
 
 P9 changes only test source; no production source was modified.
 
