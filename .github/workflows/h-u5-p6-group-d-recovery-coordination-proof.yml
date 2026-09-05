@@ -1,5 +1,6 @@
 name: H-U5-P6 Group-D Recovery-Coordination Proof
 
+# Workflow-only proof branch; source/test checkout is pinned to the exact candidate.
 on:
   push:
     branches:
