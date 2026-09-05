@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: 291474d5fdd4f486b5f57fad37a5119d68f947ee
+          ref: b91d69f6a0460ee77fd0499b82302e8b8957eaa3
           persist-credentials: false
           fetch-depth: 0
 
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=291474d5fdd4f486b5f57fad37a5119d68f947ee
+          CANDIDATE=b91d69f6a0460ee77fd0499b82302e8b8957eaa3
           ENTRY=328614dfdf136a9364dbf7e2a01766ad538f7e73
           EXPECTED_FILES=$'test/phase5-group-d-surface-lifecycle-integration.test.ts\ntest/phase6-alpha-plan-errors-stability.test.ts\ntest/workstreams/drive/phase6-remote-protocol.test.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
@@ -191,7 +191,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=291474d5fdd4f486b5f57fad37a5119d68f947ee
+          CANDIDATE=b91d69f6a0460ee77fd0499b82302e8b8957eaa3
           ENTRY=328614dfdf136a9364dbf7e2a01766ad538f7e73
           EXPECTED_FILES=$'test/phase5-group-d-surface-lifecycle-integration.test.ts\ntest/phase6-alpha-plan-errors-stability.test.ts\ntest/workstreams/drive/phase6-remote-protocol.test.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
