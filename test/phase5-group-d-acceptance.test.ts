@@ -151,7 +151,7 @@ test("Phase5 scenario 26 local change during an active production run is deferre
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity: managed } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor("cursor:group-d:first") }),
     listForReconciliation: async () => {
-      fullListingCalls += 1;
+      if (!remoteCreated) fullListingCalls += 1;
       return {
         ok: true as const,
         value: {
