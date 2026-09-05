@@ -1,0 +1,160 @@
+name: H-U5-P7 Group-D Acceptance Proof
+
+on:
+  push:
+    branches:
+      - h-u5-p7-group-d-acceptance-proof-h09
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: c30c32d81670f8df6a17f5b620ed6b5581591ab4
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Gate A preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=c30c32d81670f8df6a17f5b620ed6b5581591ab4
+          ENTRY=16cec69e68029402c611f9b1d9c3f1026c11d8bb
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "test/phase5-group-d-acceptance.test.ts"
+          git diff --check "$ENTRY"..."$CANDIDATE"
+          printf 'candidate=%s\nentry=%s\ncontracts_tree=%s\ncanonical_evidence=%s\ncontract_freeze_blob=%s\nprefix_sha1=%s\n' \
+            "$CANDIDATE" "$ENTRY" "$(git rev-parse HEAD:src/contracts)" "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" \
+            "b675e0fc9776d03892a4309231b91a4bf0a84b93" "fe527c76137b2cd578ef7050ee3444498b21a5e0" > proof-summary.txt
+
+      - name: Install and static verification
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npx tsc -p tsconfig.test.json
+
+      - name: Focused Group-D acceptance gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test .test-build/test/phase5-group-d-acceptance.test.js | tee focused.log
+          grep -Eq '# tests 3$' focused.log
+          grep -Eq '# pass 3$' focused.log
+          grep -Eq '# fail 0$' focused.log
+          grep -Eq '# cancelled 0$' focused.log
+          grep -Eq '# skipped 0$' focused.log
+          grep -Eq '# todo 0$' focused.log
+          cat focused.log >> proof-summary.txt
+
+      - name: V1.3 foundation gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js | tee foundation.log
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -Eq '# cancelled 0$' foundation.log
+          grep -F 'C15' foundation.log >/dev/null
+          grep -F 'C16' foundation.log >/dev/null
+          cat foundation.log >> proof-summary.txt
+
+      - name: H V1.3 critical regression gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 69$' critical.log
+          grep -Eq '# fail 13$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          printf 'critical_exit=%s\n' "$rc" >> proof-summary.txt
+          cat critical.log >> proof-summary.txt
+
+      - name: Fresh whole repository gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          npm test 2>&1 | tee whole.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 643$' whole.log
+          grep -Eq '# fail 27$' whole.log
+          grep -Eq '# cancelled 17$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          printf 'whole_exit=%s\n' "$rc" >> proof-summary.txt
+          cat whole.log >> proof-summary.txt
+
+      - name: Build gate and artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build | tee build.log
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          printf 'BUILD_ARTIFACT_SIZE=%s\nBUILD_ARTIFACT_SHA256=%s\n' "$size" "$sha" | tee -a proof-summary.txt
+          cat build.log >> proof-summary.txt
+
+      - name: Gate H final invariants and PR state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=c30c32d81670f8df6a17f5b620ed6b5581591ab4
+          ENTRY=16cec69e68029402c611f9b1d9c3f1026c11d8bb
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "test/phase5-group-d-acceptance.test.ts"
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = "open"
+          test "$(jq -r .draft <<<"$pr")" = "true"
+          test "$(jq -r .merged <<<"$pr")" = "false"
+          test "$(jq -r .head.ref <<<"$pr")" = "phase6-sync-integration-h"
+          printf 'PR45_STATE=%s\nPR45_DRAFT=%s\nPR45_MERGED=%s\nPR45_HEAD=%s\n' \
+            "$(jq -r .state <<<"$pr")" "$(jq -r .draft <<<"$pr")" "$(jq -r .merged <<<"$pr")" "$(jq -r .head.ref <<<"$pr")" >> proof-summary.txt
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p7-group-d-acceptance-proof
+          path: |
+            proof-summary.txt
+            focused.log
+            foundation.log
+            critical.log
+            whole.log
+            build.log
+          if-no-files-found: warn
