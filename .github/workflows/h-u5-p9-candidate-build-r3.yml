@@ -20,7 +20,7 @@ jobs:
       - name: Construct exact one-commit candidate from P9 entry
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           ENTRY=b8d7fcef47f8ca505a4ccdb65fb8a2387c791b87
           R2=f1c6b1ae987f930a359f87027619f5b3ba41e898
           TARGET=h-u5-p9-candidate-r3-h11
@@ -28,6 +28,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --detach "$ENTRY"
+          git cat-file -e "$R2^{commit}"
           git checkout "$R2" -- \
             test/phase5-second-rejection.test.ts \
             test/phase6-alpha-full-sync-remediation.test.ts \
@@ -39,36 +40,29 @@ jobs:
           b = Path('test/phase6-alpha-full-sync-remediation.test.ts')
           text = b.read_text()
           old = 'const actualText = staleNow ? "changed" : text;'
+          print('B replacement count', text.count(old))
           assert text.count(old) == 2, text.count(old)
           text = text.replace(old, 'const actualText = text;')
           b.write_text(text)
 
           c = Path('test/phase6-alpha-mixed-plan-isolation.test.ts')
           text = c.read_text()
-          old = text
-          text = text.replace(
-              '  readonly plannerForTrigger?: PlannerFactory;\n',
-              '  readonly plannerForTrigger?: PlannerFactory;\n  readonly fixtureOperations?: readonly PlannedOperation[];\n',
-              1,
-          )
-          text = text.replace(
-              '  const allOperations = plans.flatMap(value => value.operations);',
-              '  const allOperations = options.fixtureOperations ?? plans.flatMap(value => value.operations);',
-              1,
-          )
-          text = text.replace(
-              '  if (!options.firstSync) {\n    const initial = createInitialAuthorityState({',
-              '  {\n    const initial = createInitialAuthorityState({',
-              1,
-          )
-          needle = '  const h = await harness([], { diagnostics, plannerForTrigger, beforeExecute: async candidate => {'
-          replacement = '  const h = await harness([], { diagnostics, plannerForTrigger, fixtureOperations: [...periodicPlan.operations, ...localPlan.operations], beforeExecute: async candidate => {'
-          assert text.count(needle) == 1, text.count(needle)
-          text = text.replace(needle, replacement, 1)
-          assert text != old
+          before = text
+          replacements = [
+              ('  readonly plannerForTrigger?: PlannerFactory;\n', '  readonly plannerForTrigger?: PlannerFactory;\n  readonly fixtureOperations?: readonly PlannedOperation[];\n'),
+              ('  const allOperations = plans.flatMap(value => value.operations);', '  const allOperations = options.fixtureOperations ?? plans.flatMap(value => value.operations);'),
+              ('  if (!options.firstSync) {\n    const initial = createInitialAuthorityState({', '  {\n    const initial = createInitialAuthorityState({'),
+              ('  const h = await harness([], { diagnostics, plannerForTrigger, beforeExecute: async candidate => {', '  const h = await harness([], { diagnostics, plannerForTrigger, fixtureOperations: [...periodicPlan.operations, ...localPlan.operations], beforeExecute: async candidate => {'),
+          ]
+          for needle, replacement in replacements:
+              print('C replacement count', text.count(needle), needle[:70])
+              assert text.count(needle) == 1, (needle, text.count(needle))
+              text = text.replace(needle, replacement, 1)
+          assert text != before
           c.write_text(text)
           PY
 
+          git diff --name-only
           test "$(git diff --name-only)" = $'test/phase5-second-rejection.test.ts\ntest/phase6-alpha-full-sync-remediation.test.ts\ntest/phase6-alpha-mixed-plan-isolation.test.ts'
           git diff --check
           git add \
@@ -77,6 +71,7 @@ jobs:
             test/phase6-alpha-mixed-plan-isolation.test.ts
           git commit -m "test(H): modernize P9 shared authority fixtures"
           test "$(git rev-parse HEAD^)" = "$ENTRY"
+          git diff --name-only "$ENTRY"...HEAD
           test "$(git diff --name-only "$ENTRY"...HEAD)" = $'test/phase5-second-rejection.test.ts\ntest/phase6-alpha-full-sync-remediation.test.ts\ntest/phase6-alpha-mixed-plan-isolation.test.ts'
           git diff --check "$ENTRY"...HEAD
           git push origin HEAD:refs/heads/$TARGET --force-with-lease
