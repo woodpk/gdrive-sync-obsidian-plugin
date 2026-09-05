@@ -24,6 +24,7 @@ jobs:
           ENTRY=b8d7fcef47f8ca505a4ccdb65fb8a2387c791b87
           R2=f1c6b1ae987f930a359f87027619f5b3ba41e898
           TARGET=h-u5-p9-candidate-r3-h11
+          EXPECTED=$'test/phase5-second-rejection.test.ts\ntest/phase6-alpha-full-sync-remediation.test.ts\ntest/phase6-alpha-mixed-plan-isolation.test.ts'
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -40,14 +41,11 @@ jobs:
           b = Path('test/phase6-alpha-full-sync-remediation.test.ts')
           text = b.read_text()
           old = 'const actualText = staleNow ? "changed" : text;'
-          print('B replacement count', text.count(old))
           assert text.count(old) == 2, text.count(old)
-          text = text.replace(old, 'const actualText = text;')
-          b.write_text(text)
+          b.write_text(text.replace(old, 'const actualText = text;'))
 
           c = Path('test/phase6-alpha-mixed-plan-isolation.test.ts')
           text = c.read_text()
-          before = text
           replacements = [
               ('  readonly plannerForTrigger?: PlannerFactory;\n', '  readonly plannerForTrigger?: PlannerFactory;\n  readonly fixtureOperations?: readonly PlannedOperation[];\n'),
               ('  const allOperations = plans.flatMap(value => value.operations);', '  const allOperations = options.fixtureOperations ?? plans.flatMap(value => value.operations);'),
@@ -55,24 +53,20 @@ jobs:
               ('  const h = await harness([], { diagnostics, plannerForTrigger, beforeExecute: async candidate => {', '  const h = await harness([], { diagnostics, plannerForTrigger, fixtureOperations: [...periodicPlan.operations, ...localPlan.operations], beforeExecute: async candidate => {'),
           ]
           for needle, replacement in replacements:
-              print('C replacement count', text.count(needle), needle[:70])
               assert text.count(needle) == 1, (needle, text.count(needle))
               text = text.replace(needle, replacement, 1)
-          assert text != before
           c.write_text(text)
           PY
 
-          git diff --name-only
-          test "$(git diff --name-only)" = $'test/phase5-second-rejection.test.ts\ntest/phase6-alpha-full-sync-remediation.test.ts\ntest/phase6-alpha-mixed-plan-isolation.test.ts'
-          git diff --check
           git add \
             test/phase5-second-rejection.test.ts \
             test/phase6-alpha-full-sync-remediation.test.ts \
             test/phase6-alpha-mixed-plan-isolation.test.ts
+          test "$(git diff --cached --name-only)" = "$EXPECTED"
+          git diff --check HEAD
           git commit -m "test(H): modernize P9 shared authority fixtures"
           test "$(git rev-parse HEAD^)" = "$ENTRY"
-          git diff --name-only "$ENTRY"...HEAD
-          test "$(git diff --name-only "$ENTRY"...HEAD)" = $'test/phase5-second-rejection.test.ts\ntest/phase6-alpha-full-sync-remediation.test.ts\ntest/phase6-alpha-mixed-plan-isolation.test.ts'
+          test "$(git diff --name-only "$ENTRY"...HEAD)" = "$EXPECTED"
           git diff --check "$ENTRY"...HEAD
-          git push origin HEAD:refs/heads/$TARGET --force-with-lease
+          git push origin HEAD:refs/heads/$TARGET --force
           echo "candidate=$(git rev-parse HEAD)"
