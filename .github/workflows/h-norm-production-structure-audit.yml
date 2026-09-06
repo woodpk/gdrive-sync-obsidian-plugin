@@ -1,0 +1,37 @@
+name: H-NORM production structure audit
+
+on:
+  push:
+    branches:
+      - h-norm-production-structure-audit-h13
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify exact audit entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "f4cc17db3ec3ad356e379af04f2e000bdba0282d"
+      - name: Tracked path audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== PATH MATCHES ==='
+          git ls-files 'src/**' | grep -Ei 'phase[0-9]+|workstream|integrat(ed|ion)' || true
+      - name: Content audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== CONTENT MATCHES ==='
+          git grep -nEi 'phase[0-9]+|workstream|integrat(ed|ion)' -- 'src/**' || true
+          echo '=== OWNER-LETTER CONTEXT CANDIDATES ==='
+          git grep -nE '\b(A|B|C|D|H)(\x27s|’s)?\b' -- 'src/**' || true
