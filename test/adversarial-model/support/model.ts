@@ -655,6 +655,7 @@ export class AdversarialSyncModel {
       return;
     }
     const created = this.journalFromPlan(device, action);
+    if (created.requiredBaseAuthority) d.durable.pathState.set(action.path, "unknown");
     d.durable.journals.push(created);
     d.durable.persistenceRevision++;
   }
@@ -781,8 +782,11 @@ export class AdversarialSyncModel {
     if (d.volatile.lifecycle !== "active" || d.volatile.network !== "online") return;
     d.volatile.recoveryPending = false;
     for (const journal of [...d.durable.journals]) {
-      for (const effect of journal.effects) {
+      for (let index = 0; index < journal.effects.length; index++) {
+        const effect = journal.effects[index];
+        const priorDurableEffect = journal.effects.slice(0, index).some(candidate => candidate.stage === "effect-verified" || candidate.stage === "state-committed");
         if (effect.stage === "intent-persisted") {
+          if (priorDurableEffect) continue;
           d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
           d.volatile.dirtyPaths.add(journal.path);
           d.durable.persistenceRevision++;
@@ -796,12 +800,18 @@ export class AdversarialSyncModel {
           if (this.physicalMatches(device, effect)) {
             this.markVerified(device, effect, "restart-physical-observation");
           } else if (this.effectAuthoritativelyNotApplied(device, effect)) {
+            if (priorDurableEffect) {
+              effect.stage = "intent-persisted";
+              d.durable.persistenceRevision++;
+              continue;
+            }
             d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
             d.volatile.dirtyPaths.add(journal.path);
             d.durable.persistenceRevision++;
             break;
           } else {
             d.durable.pathState.set(journal.path, "recovery");
+            break;
           }
         }
       }
