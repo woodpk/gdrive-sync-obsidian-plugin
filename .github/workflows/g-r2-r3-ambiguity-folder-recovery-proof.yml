@@ -1,0 +1,173 @@
+name: G-R2-R3 Ambiguity Folder Recovery Proof R2
+
+on:
+  push:
+    branches: [g-r2-r3-ambiguity-folder-recovery-proof-g02-r2]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 9fac1d342361cee59f23fd3199ae00f9f69cc8da
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Gate A exact scope and frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=9fac1d342361cee59f23fd3199ae00f9f69cc8da
+          E=51126acc6ef06820adb192543c67f390ed40595d
+          test "$(git rev-parse HEAD)" = "$C"
+          git cat-file -e 05600f7ca48a6726b72188005f29eddfc1191519^{commit}
+          test "$(git rev-parse HEAD:src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = fe527c76137b2cd578ef7050ee3444498b21a5e0
+          test "$(git diff --name-only "$E"..."$C")" = test/adversarial-model/support/model.ts
+          test -z "$(git diff --name-only "$E"..."$C" -- 'src/**')"
+          git diff --check "$E"..."$C"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          cat > proof-summary.txt <<EOF
+          candidate=$C
+          entry=$E
+          foundation=05600f7ca48a6726b72188005f29eddfc1191519
+          contracts_tree=$(git rev-parse HEAD:src/contracts)
+          canonical_evidence=$(git rev-parse HEAD:dev/evidence/_ca-output.md)
+          contract_freeze_blob=b675e0fc9776d03892a4309231b91a4bf0a84b93
+          prefix_sha1=fe527c76137b2cd578ef7050ee3444498b21a5e0
+          changed_files=test/adversarial-model/support/model.ts
+          EOF
+      - name: Gate B install static compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci 2>&1 | tee install.log
+          npm run typecheck 2>&1 | tee typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee test-compile.log
+          printf 'install_exit=0\ntypecheck_exit=0\ntest_compile_exit=0\n' >> proof-summary.txt
+      - name: Gate C focused 56 of 56
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/adversarial-model/adversarial-model.test.js 2>&1 | tee focused.log
+          grep -Eq '# tests 56$' focused.log
+          grep -Eq '# pass 56$' focused.log
+          grep -Eq '# fail 0$' focused.log
+          grep -Eq '# cancelled 0$' focused.log
+          grep -Eq '# skipped 0$' focused.log
+          grep -Eq '# todo 0$' focused.log
+          for m in \
+            '03 upload survives crash/restart at every durable effect stage' \
+            '04 download survives crash/restart at every durable effect stage' \
+            '05 move survives crash/restart at every durable effect stage' \
+            '06 trash survives crash/restart at every durable effect stage' \
+            '10 durable intended L1 is not substituted by later L2' \
+            '15 repeated moves preserve stable remote identity' \
+            '16 create-delete sequence preserves acknowledged deletion history' \
+            '18 unresolved path A does not block safe path B progress' \
+            '19 missed watcher is discovered by integrity reconciliation' \
+            '20 Windows watcher-event loss is recoverable through authoritative integrity read' \
+            '28 bounded quiescence after mutation pressure stops' \
+            '29 concurrent same-path creates never silently select one remote winner' \
+            'G-C2 generic recover routes multiple folder journals by exact journal identity'; do
+            grep -F "$m" focused.log >/dev/null
+            ! grep -F 'not ok' focused.log | grep -F "$m" >/dev/null
+          done
+          printf 'focused_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' focused.log >> proof-summary.txt
+      - name: Gate D foundation 17 of 17
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee foundation.log
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -F C15 foundation.log >/dev/null
+          grep -F C16 foundation.log >/dev/null
+          printf 'foundation_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' foundation.log >> proof-summary.txt
+      - name: Gate E critical 82 of 82
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 82$' critical.log
+          grep -Eq '# fail 0$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          for m in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do grep -F "$m" critical.log >/dev/null; done
+          printf 'critical_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' critical.log >> proof-summary.txt
+      - name: Gate F whole 687 of 687
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee whole.log
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 687$' whole.log
+          grep -Eq '# fail 0$' whole.log
+          grep -Eq '# cancelled 0$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          printf 'whole_exit=0\nwhole_delta=+2 pass / -2 fail\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' whole.log >> proof-summary.txt
+      - name: Gate G production identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          test "$size" = 699509
+          test "$sha" = 212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613
+          printf 'build_exit=0\nmain_js_size=%s\nmain_js_sha256=%s\n' "$size" "$sha" >> proof-summary.txt
+      - name: Gate H repository and PR invariants
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=9fac1d342361cee59f23fd3199ae00f9f69cc8da
+          E=51126acc6ef06820adb192543c67f390ed40595d
+          test "$(git rev-parse HEAD)" = "$C"
+          test "$(git diff --name-only "$E"..."$C")" = test/adversarial-model/support/model.ts
+          test -z "$(git diff --name-only "$E"..."$C" -- 'src/**')"
+          test "$(git rev-parse HEAD:src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = open
+          test "$(jq -r .draft <<<"$pr")" = true
+          test "$(jq -r .merged <<<"$pr")" = false
+          test "$(jq -r .head.ref <<<"$pr")" = phase6-sync-integration-h
+          printf 'pr45_state=open\npr45_draft=true\npr45_merged=false\npr45_head=phase6-sync-integration-h\n' >> proof-summary.txt
+      - name: Upload authoritative proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g-r2-r3-ambiguity-folder-recovery-proof
+          path: |
+            proof-summary.txt
+            install.log
+            typecheck.log
+            test-compile.log
+            focused.log
+            foundation.log
+            critical.log
+            whole.log
+            build.log
+          if-no-files-found: warn
