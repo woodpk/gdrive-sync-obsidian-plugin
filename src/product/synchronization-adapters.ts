@@ -350,7 +350,7 @@ function rebaseCompletedIntentSemanticAuthority(
  * This state adapter is the production compatibility layer between the historical
  * split-store stateRevision CAS and the single-document persistenceRevision +
  * semanticGeneration authority. Consumers observe a semantic CAS token; all physical
- * intent/effect checkpoints still advance C's independent persistence revision.
+ * intent/effect checkpoints still advance the independent persistence revision.
  */
 export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizationStateStore implements SynchronizationStateStore {
   constructor(private readonly source: PersistentSynchronizationStateStore) {
