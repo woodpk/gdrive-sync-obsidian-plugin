@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: 6fdacc23af215524473750b42edf0b12767a62f1
+          ref: 1fedd3752a7409fd3691b18456a6fe851c80a7bb
           persist-credentials: false
           fetch-depth: 0
 
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=6fdacc23af215524473750b42edf0b12767a62f1
+          CANDIDATE=1fedd3752a7409fd3691b18456a6fe851c80a7bb
           ENTRY=a0dacde6849bfdce99422a318faebe733418222c
           EXPECTED='test/adversarial-model/support/model.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
@@ -77,7 +77,7 @@ jobs:
             '20 Windows watcher-event loss is recoverable through authoritative integrity read' \
             '28 bounded quiescence after mutation pressure stops'; do
             grep -F "$marker" focused.log >/dev/null
-            if grep -E "not ok .*${marker//./\\.}" focused.log >/dev/null; then exit 1; fi
+            if grep -F "not ok" focused.log | grep -F "$marker" >/dev/null; then exit 1; fi
           done
           grep -F 'not ok' focused.log | grep -F '29 concurrent same-path creates never silently select one remote winner' >/dev/null
           grep -F 'not ok' focused.log | grep -F 'G-C2 generic recover routes multiple folder journals by exact journal identity' >/dev/null
@@ -164,7 +164,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=6fdacc23af215524473750b42edf0b12767a62f1
+          CANDIDATE=1fedd3752a7409fd3691b18456a6fe851c80a7bb
           ENTRY=a0dacde6849bfdce99422a318faebe733418222c
           EXPECTED='test/adversarial-model/support/model.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
