@@ -611,20 +611,18 @@ export class AdversarialSyncModel {
   private advance(device: DeviceId): void {
     const d = this.devices[device];
     if (d.volatile.lifecycle !== "active" || d.volatile.cancellationDelivered) return;
-    const journal = d.durable.journals.find(candidate => candidate.effects.some(effect => effect.stage !== "state-committed"));
+    const journal = d.durable.journals.find(candidate => candidate.effects.some(effect => effect.stage === "intent-persisted" || effect.stage === "effect-verified"));
     if (journal) {
-      const effect = journal.effects.find(candidate => candidate.stage !== "state-committed");
+      const effect = journal.effects.find(candidate => candidate.stage === "intent-persisted" || candidate.stage === "effect-verified");
       if (!effect) return;
       if (effect.stage === "intent-persisted") {
         effect.stage = "dispatch-authorized";
         d.durable.persistenceRevision++;
         return;
       }
-      if (effect.stage === "effect-verified") {
-        effect.stage = "state-committed";
-        d.durable.persistenceRevision++;
-        if (journal.effects.every(candidate => candidate.stage === "state-committed")) this.finalizeJournal(device, journal);
-      }
+      effect.stage = "state-committed";
+      d.durable.persistenceRevision++;
+      if (journal.effects.every(candidate => candidate.stage === "state-committed")) this.finalizeJournal(device, journal);
       return;
     }
 
@@ -858,6 +856,20 @@ export class AdversarialSyncModel {
     d.durable.persistenceRevision++;
   }
 
+  private hasIndependentAuthorizedCreateIntent(device: DeviceId, journal: Journal, remoteEffect: JournalEffect): boolean {
+    for (const [candidateDeviceId, candidateDevice] of Object.entries(this.devices) as Array<[DeviceId, DeviceState]>) {
+      for (const candidateJournal of candidateDevice.durable.journals) {
+        if (candidateDeviceId === device && candidateJournal.id === journal.id) continue;
+        for (const candidateEffect of candidateJournal.effects) {
+          if (candidateEffect.kind !== "remote-create" || candidateEffect.path !== journal.path || candidateEffect.stage === "intent-persisted") continue;
+          if (remoteEffect.remoteId && candidateEffect.remoteId === remoteEffect.remoteId) continue;
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private finalizeJournal(device: DeviceId, journal: Journal): void {
     const d = this.devices[device];
     if (journal.kind === "folder-create") return;
@@ -868,7 +880,8 @@ export class AdversarialSyncModel {
       if (!remoteEffect?.remoteId || journal.intendedHash === undefined) throw new Error("invalid-upload-finalization");
       const allowed = new Set([remoteEffect.remoteId, remoteEffect.predecessorRemoteId].filter((value): value is string => !!value));
       const independent = activeAtPath.filter(object => !allowed.has(object.id));
-      if (independent.length > 0) {
+      const concurrentCreate = remoteEffect.kind === "remote-create" && this.hasIndependentAuthorizedCreateIntent(device, journal, remoteEffect);
+      if (independent.length > 0 || concurrentCreate) {
         d.durable.pathState.set(journal.path, "conflict");
         d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
         d.volatile.dirtyPaths.delete(journal.path);
@@ -1041,14 +1054,15 @@ export class AdversarialSyncModel {
     if (!effect || (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown")) return;
     this.recoveryReads++;
     const observation = this.observeFolderRecovery(device, descriptor);
-    this.folderRecovery = verifyRemoteFolderCreate(descriptor, observation);
-    if (this.folderRecovery.status === "verified-effect") {
+    const recovery = verifyRemoteFolderCreate(descriptor, observation);
+    this.folderRecovery = recovery;
+    if (recovery.status === "verified-effect") {
       this.markVerified(device, effect, "folder-recovery-read");
-    } else if (this.folderRecovery.status === "verified-not-applied") {
+    } else if (recovery.status === "verified-not-applied") {
       d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
       d.volatile.dirtyPaths.add(journal.path);
       d.durable.persistenceRevision++;
-    } else if (this.folderRecovery.status === "conflict-preserved") {
+    } else if (recovery.status === "conflict-preserved") {
       d.durable.pathState.set(journal.path, "conflict");
     } else {
       d.durable.pathState.set(journal.path, "recovery");
