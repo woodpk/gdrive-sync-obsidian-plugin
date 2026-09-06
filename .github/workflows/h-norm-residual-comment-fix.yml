@@ -1,0 +1,52 @@
+name: H-NORM residual comment fix
+
+on:
+  push:
+    branches:
+      - h-norm-residual-comment-fix-h13
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 679d930019f62bdb0d06b0c5824aaae9eb247d7d
+          fetch-depth: 0
+      - name: Remove residual owner-history wording
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/product/synchronization-adapters.ts')
+          text = p.read_text(encoding='utf-8')
+          old = "intent/effect checkpoints still advance C's independent persistence revision."
+          new = "intent/effect checkpoints still advance the independent persistence revision."
+          if text.count(old) != 1:
+              raise SystemExit('expected exactly one residual phrase')
+          p.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          git diff --check
+          git diff --name-only
+          test "$(git diff --name-only)" = 'src/product/synchronization-adapters.ts'
+          if git grep -nE "(^|[^[:alnum:]_])(A|B|C|D|H)(['’]s|-C[0-9]+|/|[[:space:]]+(owns?|tests?|maps?|must|observes?|execution|orchestration|implementation|authority|contract|integrity|state|sync))" -- 'src/**' ':!src/contracts/**'; then
+            echo 'residual historical owner nomenclature remains outside frozen contracts' >&2
+            exit 1
+          fi
+      - name: Publish final normalized source candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote origin refs/heads/phase6-sync-integration-h | awk '{print $1}')"
+          test "$remote_head" = '679d930019f62bdb0d06b0c5824aaae9eb247d7d'
+          git config user.name 'woodpk'
+          git config user.email '48619728+woodpk@users.noreply.github.com'
+          git add src/product/synchronization-adapters.ts
+          git commit -m 'refactor(H): remove residual workstream owner wording'
+          final_candidate="$(git rev-parse HEAD)"
+          echo "H_NORM_CANDIDATE_SHA=$final_candidate"
+          git push origin HEAD:refs/heads/phase6-sync-integration-h
