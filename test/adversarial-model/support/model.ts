@@ -856,12 +856,12 @@ export class AdversarialSyncModel {
     d.durable.persistenceRevision++;
   }
 
-  private hasIndependentAuthorizedCreateIntent(device: DeviceId, journal: Journal, remoteEffect: JournalEffect): boolean {
+  private hasIndependentCreateIntent(device: DeviceId, journal: Journal, remoteEffect: JournalEffect): boolean {
     for (const [candidateDeviceId, candidateDevice] of Object.entries(this.devices) as Array<[DeviceId, DeviceState]>) {
       for (const candidateJournal of candidateDevice.durable.journals) {
         if (candidateDeviceId === device && candidateJournal.id === journal.id) continue;
         for (const candidateEffect of candidateJournal.effects) {
-          if (candidateEffect.kind !== "remote-create" || candidateEffect.path !== journal.path || candidateEffect.stage === "intent-persisted") continue;
+          if (candidateEffect.kind !== "remote-create" || candidateEffect.path !== journal.path) continue;
           if (remoteEffect.remoteId && candidateEffect.remoteId === remoteEffect.remoteId) continue;
           return true;
         }
@@ -880,7 +880,7 @@ export class AdversarialSyncModel {
       if (!remoteEffect?.remoteId || journal.intendedHash === undefined) throw new Error("invalid-upload-finalization");
       const allowed = new Set([remoteEffect.remoteId, remoteEffect.predecessorRemoteId].filter((value): value is string => !!value));
       const independent = activeAtPath.filter(object => !allowed.has(object.id));
-      const concurrentCreate = remoteEffect.kind === "remote-create" && this.hasIndependentAuthorizedCreateIntent(device, journal, remoteEffect);
+      const concurrentCreate = remoteEffect.kind === "remote-create" && this.hasIndependentCreateIntent(device, journal, remoteEffect);
       if (independent.length > 0 || concurrentCreate) {
         d.durable.pathState.set(journal.path, "conflict");
         d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
