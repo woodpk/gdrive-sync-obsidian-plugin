@@ -130,6 +130,7 @@ export interface VolatileDeviceState {
   cachedEvidence: Map<string, string | undefined>;
   dirtyPaths: Set<string>;
   plan: PlannedAction[];
+  recoveryPending: boolean;
   inFlight?: InFlightEffect;
 }
 
@@ -256,6 +257,7 @@ function makeVolatile(): VolatileDeviceState {
     cachedEvidence: new Map(),
     dirtyPaths: new Set(),
     plan: [],
+    recoveryPending: false,
   };
 }
 
@@ -322,19 +324,22 @@ export class AdversarialSyncModel {
 
   settle(device: DeviceId, maxTransitions = 80): number {
     let transitions = 0;
-    const attemptedRecoveryJournalIds = new Set<string>();
     while (transitions < maxTransitions) {
       const d = this.devices[device];
       if (d.volatile.lifecycle !== "active") break;
       const before = this.digest();
-      const recoveryJournalIds = d.durable.journals
-        .filter(journal => !attemptedRecoveryJournalIds.has(journal.id)
-          && journal.effects.some(effect => effect.stage === "dispatch-authorized" || effect.stage === "outcome-unknown"))
-        .map(journal => journal.id);
-      if (recoveryJournalIds.length > 0) {
-        for (const journalId of recoveryJournalIds) attemptedRecoveryJournalIds.add(journalId);
+      const unfinished = d.durable.journals.find(journal => journal.effects.some(effect => effect.stage !== "state-committed"));
+      const nextEffect = unfinished?.effects.find(effect => effect.stage !== "state-committed");
+
+      if (d.volatile.recoveryPending) {
         this.apply({ type: "recover", device });
-      } else if (d.durable.journals.some(j => j.effects.some(e => e.stage !== "state-committed"))) {
+      } else if (nextEffect?.stage === "outcome-unknown") {
+        this.apply({ type: "recover", device });
+      } else if (nextEffect?.stage === "dispatch-authorized") {
+        if (d.volatile.network !== "online" || d.volatile.cancellationDelivered) break;
+        this.apply({ type: "dispatch", device });
+        this.apply({ type: "transport-success", device });
+      } else if (unfinished) {
         this.apply({ type: "advance", device });
         const effect = this.currentDispatchableEffect(device);
         if (effect && d.volatile.network === "online" && !d.volatile.cancellationDelivered) {
@@ -483,6 +488,8 @@ export class AdversarialSyncModel {
     }
     d.volatile.plan = [];
     for (const path of [...paths].sort()) {
+      const pathState = d.durable.pathState.get(path);
+      if ((pathState === "conflict" || pathState === "recovery") && !d.volatile.dirtyPaths.has(path)) continue;
       const action = this.derivePlan(device, path);
       if (action) d.volatile.plan.push(action);
       if (d.volatile.dirtyPaths.has(path)) {
@@ -510,6 +517,13 @@ export class AdversarialSyncModel {
     }
 
     if (!base) {
+      const mappedElsewhere = candidates.length === 1
+        ? [...d.durable.base.values()].find(record => record.remoteId === candidates[0].id && record.path !== path)
+        : undefined;
+      if (mappedElsewhere) {
+        if (local === undefined) return undefined;
+        return { id, kind: "conflict", path, snapshotLocal: local, snapshotRemoteSignature: signature, reason: "mapped-identity-path-collision" };
+      }
       if (local === undefined && candidates.length === 0) return undefined;
       if (local !== undefined && candidates.length === 0) {
         return { id, kind: "upload-create", path, intendedHash: local, snapshotLocal: local, snapshotRemoteSignature: signature };
@@ -617,6 +631,7 @@ export class AdversarialSyncModel {
     }
     if (action.kind === "blocked") {
       d.durable.pathState.set(action.path, "recovery");
+      d.volatile.dirtyPaths.delete(action.path);
       return;
     }
     if (action.kind === "establish-base") {
@@ -750,6 +765,7 @@ export class AdversarialSyncModel {
   private recover(device: DeviceId): void {
     const d = this.devices[device];
     if (d.volatile.lifecycle !== "active" || d.volatile.network !== "online") return;
+    d.volatile.recoveryPending = false;
     for (const journal of [...d.durable.journals]) {
       for (const effect of journal.effects) {
         if (effect.stage === "intent-persisted") {
@@ -822,6 +838,7 @@ export class AdversarialSyncModel {
     const d = this.devices[device];
     if (journal.kind === "folder-create") return;
     const activeAtPath = this.remoteAtPath(journal.path);
+    let targetPath: string | undefined;
     if (journal.kind === "upload" || journal.kind === "merge") {
       const remoteEffect = journal.effects.find(effect => effect.kind === "remote-create" || effect.kind === "remote-update-candidate");
       if (!remoteEffect?.remoteId || journal.intendedHash === undefined) throw new Error("invalid-upload-finalization");
@@ -860,13 +877,35 @@ export class AdversarialSyncModel {
     } else if (journal.kind === "move") {
       const effect = journal.effects[0];
       if (!effect.targetPath || !journal.baseHash || !journal.baseRemoteId) throw new Error("invalid-move-finalization");
+      targetPath = effect.targetPath;
       d.durable.base.delete(journal.path);
       this.commitBase(device, effect.targetPath, journal.baseHash, journal.baseRemoteId);
       d.durable.pathState.set(journal.path, "converged");
     }
     d.durable.journals = d.durable.journals.filter(candidate => candidate.id !== journal.id);
-    d.volatile.dirtyPaths.delete(journal.path);
+    this.refreshDirtyFromCommittedState(device, journal.path);
+    if (targetPath) this.refreshDirtyFromCommittedState(device, targetPath);
     d.durable.starvationCycles.set(journal.path, 0);
+  }
+
+  private refreshDirtyFromCommittedState(device: DeviceId, path: string): void {
+    const d = this.devices[device];
+    const state = d.durable.pathState.get(path);
+    if (state === "conflict" || state === "recovery") {
+      d.volatile.dirtyPaths.delete(path);
+      return;
+    }
+    const base = d.durable.base.get(path);
+    const local = d.local.get(path);
+    const candidates = this.remoteAtPath(path);
+    const converged = base
+      ? local === base.hash
+        && candidates.length === 1
+        && candidates[0].id === base.remoteId
+        && candidates[0].content === base.hash
+      : local === undefined && candidates.length === 0;
+    if (converged) d.volatile.dirtyPaths.delete(path);
+    else d.volatile.dirtyPaths.add(path);
   }
 
   private commitBase(device: DeviceId, path: string, hash: string, remoteId: string): void {
@@ -899,11 +938,13 @@ export class AdversarialSyncModel {
     d.volatile.dirtyPaths = new Set();
     d.volatile.cancellationRequested = false;
     d.volatile.cancellationDelivered = false;
+    d.volatile.recoveryPending = false;
   }
 
   private restart(device: DeviceId): void {
     const d = this.devices[device];
     d.volatile = makeVolatile();
+    d.volatile.recoveryPending = d.durable.journals.some(journal => journal.effects.some(effect => effect.stage !== "state-committed"));
   }
 
   private suspend(device: DeviceId): void {
