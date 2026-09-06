@@ -1,0 +1,217 @@
+name: H-U5-P10 iOS Sync Diagnostics Proof R2
+
+on:
+  push:
+    branches:
+      - h-u5-p10-ios-sync-diagnostics-proof-h12-r2
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: a074788c56375e11e1c1ca6b7645ba499202143a
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Gate A exact candidate scope and frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=a074788c56375e11e1c1ca6b7645ba499202143a
+          ENTRY=827d37aa98972b6ac9a3d21fda109793131fda19
+          EXPECTED=$'src/core/execution-coordinator.ts\nsrc/product/authority-execution-diagnostics.ts\ntest/phase6-alpha-ios-sync-diagnostics.test.ts'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = "fe527c76137b2cd578ef7050ee3444498b21a5e0"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "$EXPECTED"
+          git diff --check "$ENTRY"..."$CANDIDATE"
+          printf 'candidate=%s\nentry=%s\ncontracts_tree=%s\ncanonical_evidence=%s\ncontract_freeze_blob=%s\nprefix_sha1=%s\n' \
+            "$CANDIDATE" "$ENTRY" "$(git rev-parse HEAD:src/contracts)" "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" \
+            "b675e0fc9776d03892a4309231b91a4bf0a84b93" "fe527c76137b2cd578ef7050ee3444498b21a5e0" > proof-summary.txt
+          printf 'changed_files<<EOF\n%s\nEOF\n' "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" >> proof-summary.txt
+
+      - name: Gate B install and static verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci 2>&1 | tee install.log
+          npm run typecheck 2>&1 | tee typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee test-compile.log
+          printf 'install_exit=0\ntypecheck_exit=0\ntest_compile_exit=0\n' >> proof-summary.txt
+
+      - name: Gate C focused P10 diagnostics verification
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-alpha-ios-sync-diagnostics.test.js 2>&1 | tee focused.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 0
+          grep -Eq '# tests 13$' focused.log
+          grep -Eq '# pass 13$' focused.log
+          grep -Eq '# fail 0$' focused.log
+          grep -Eq '# cancelled 0$' focused.log
+          grep -Eq '# skipped 0$' focused.log
+          grep -Eq '# todo 0$' focused.log
+          for marker in \
+            'iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle' \
+            'sync diagnostics preserve plan/execution semantics and never export vault path or content' \
+            'pending throw is Error-level at its exact execution substage and closes the run' \
+            'uncertain-journal throw is Error-level at its exact execution substage and closes the run'; do grep -F "$marker" focused.log >/dev/null; done
+          printf 'focused_exit=%s\n' "$rc" >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' focused.log >> proof-summary.txt
+
+      - name: Gate D V1.3 foundation
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee foundation.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 0
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -Eq '# cancelled 0$' foundation.log
+          grep -F 'C15' foundation.log >/dev/null
+          grep -F 'C16' foundation.log >/dev/null
+          printf 'foundation_exit=%s\n' "$rc" >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' foundation.log >> proof-summary.txt
+
+      - name: Gate E H V1.3 critical regression
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 69$' critical.log
+          grep -Eq '# fail 13$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          for marker in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do grep -F "$marker" critical.log >/dev/null; done
+          while IFS= read -r expected; do grep -F "$expected" critical.log >/dev/null; done <<'EOF'
+          03 upload survives crash/restart at every durable effect stage
+          04 download survives crash/restart at every durable effect stage
+          05 move survives crash/restart at every durable effect stage
+          06 trash survives crash/restart at every durable effect stage
+          10 durable intended L1 is not substituted by later L2
+          15 repeated moves preserve stable remote identity
+          16 create-delete sequence preserves acknowledged deletion history
+          18 unresolved path A does not block safe path B progress
+          19 missed watcher is discovered by integrity reconciliation
+          20 Windows watcher-event loss is recoverable through authoritative integrity read
+          28 bounded quiescence after mutation pressure stops
+          29 concurrent same-path creates never silently select one remote winner
+          G-C2 generic recover routes multiple folder journals by exact journal identity
+          EOF
+          printf 'critical_exit=%s\n' "$rc" >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' critical.log >> proof-summary.txt
+
+      - name: Gate F fresh whole repository
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          npm test 2>&1 | tee whole.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 1
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 674$' whole.log
+          grep -Eq '# fail 13$' whole.log
+          grep -Eq '# cancelled 0$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          while IFS= read -r expected; do grep -F "$expected" whole.log >/dev/null; done <<'EOF'
+          03 upload survives crash/restart at every durable effect stage
+          04 download survives crash/restart at every durable effect stage
+          05 move survives crash/restart at every durable effect stage
+          06 trash survives crash/restart at every durable effect stage
+          10 durable intended L1 is not substituted by later L2
+          15 repeated moves preserve stable remote identity
+          16 create-delete sequence preserves acknowledged deletion history
+          18 unresolved path A does not block safe path B progress
+          19 missed watcher is discovered by integrity reconciliation
+          20 Windows watcher-event loss is recoverable through authoritative integrity read
+          28 bounded quiescence after mutation pressure stops
+          29 concurrent same-path creates never silently select one remote winner
+          G-C2 generic recover routes multiple folder journals by exact journal identity
+          EOF
+          if grep -F 'iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle' whole.log | grep -F 'not ok' >/dev/null; then exit 1; fi
+          if grep -F 'sync diagnostics preserve plan/execution semantics and never export vault path or content' whole.log | grep -F 'not ok' >/dev/null; then exit 1; fi
+          if grep -F 'pending throw is Error-level at its exact execution substage and closes the run' whole.log | grep -F 'not ok' >/dev/null; then exit 1; fi
+          if grep -F 'uncertain-journal throw is Error-level at its exact execution substage and closes the run' whole.log | grep -F 'not ok' >/dev/null; then exit 1; fi
+          printf 'whole_exit=%s\n' "$rc" >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' whole.log >> proof-summary.txt
+
+      - name: Gate G production build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          printf 'build_exit=0\nmain_js_size=%s\nmain_js_sha256=%s\n' "$size" "$sha" >> proof-summary.txt
+
+      - name: Gate H final invariants and PR 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=a074788c56375e11e1c1ca6b7645ba499202143a
+          ENTRY=827d37aa98972b6ac9a3d21fda109793131fda19
+          EXPECTED=$'src/core/execution-coordinator.ts\nsrc/product/authority-execution-diagnostics.ts\ntest/phase6-alpha-ios-sync-diagnostics.test.ts'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse HEAD:src/contracts)" = "0db68ced179825f929008b502335210260ca2ce3"
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = "d4c610ccbc6cbbd6d58f548525239bb6d61e1f73"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test "$(git diff --name-only "$ENTRY"..."$CANDIDATE")" = "$EXPECTED"
+          test -z "$(git diff --name-only "$ENTRY"..."$CANDIDATE" -- 'src/contracts/**')"
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = "open"
+          test "$(jq -r .draft <<<"$pr")" = "true"
+          test "$(jq -r .merged <<<"$pr")" = "false"
+          test "$(jq -r .head.ref <<<"$pr")" = "phase6-sync-integration-h"
+          printf 'pr45_state=%s\npr45_draft=%s\npr45_merged=%s\npr45_head=%s\n' \
+            "$(jq -r .state <<<"$pr")" "$(jq -r .draft <<<"$pr")" "$(jq -r .merged <<<"$pr")" "$(jq -r .head.ref <<<"$pr")" >> proof-summary.txt
+
+      - name: Upload authoritative proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-u5-p10-ios-sync-diagnostics-proof-r2
+          path: |
+            proof-summary.txt
+            install.log
+            typecheck.log
+            test-compile.log
+            focused.log
+            foundation.log
+            critical.log
+            whole.log
+            build.log
+          if-no-files-found: warn
