@@ -265,7 +265,7 @@ async function failingAuthorityPersistenceExecution(failurePoint: "pending" | "u
           throw new Error("access_token=SENTINEL_UNCERTAIN");
         }
       }
-      return store.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
+      return store.saveAuthority(candidate as Parameters<typeof store.saveAuthority>[0], expectedPersistenceRevision, expectedSemanticGeneration);
     },
     commitBaseTransition: (transition, expectedPersistenceRevision, expectedSemanticGeneration) => store.commitBaseTransition(transition, expectedPersistenceRevision, expectedSemanticGeneration),
   };
