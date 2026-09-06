@@ -1,0 +1,282 @@
+name: H-NORM Production Structure Proof
+
+on:
+  push:
+    branches: [h-norm-production-structure-proof-h13]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact H-NORM candidate
+        uses: actions/checkout@v4
+        with:
+          ref: cb0c81b2ddb941446f821d71274aa58af28007ec
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Gate A exact candidate audit scope and frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=cb0c81b2ddb941446f821d71274aa58af28007ec
+          E=f4cc17db3ec3ad356e379af04f2e000bdba0282d
+          test "$(git rev-parse HEAD)" = "$C"
+          git cat-file -e 05600f7ca48a6726b72188005f29eddfc1191519^{commit}
+          test "$(git rev-parse HEAD:src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
+          git cat-file -e b675e0fc9776d03892a4309231b91a4bf0a84b93^{blob}
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = fe527c76137b2cd578ef7050ee3444498b21a5e0
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git diff --check "$E"..."$C"
+          test ! -e src/product/phase6-sync-integration.ts
+          test -e src/product/synchronization-adapters.ts
+
+          cat > expected-manifest.txt <<'EOF'
+          src/core/execution-coordinator-base.ts
+          src/main.ts
+          src/product/authoritative-production-executor.ts
+          src/product/canonical-local-vault.ts
+          src/product/history-modal.ts
+          src/product/operation-isolation.ts
+          src/product/plan-modal.ts
+          src/product/product-controller-base.ts
+          src/product/product-controller.ts
+          src/product/remote-update-convergence.ts
+          src/product/runtime.ts
+          src/product/scheduler.ts
+          src/product/settings-tab.ts
+          src/product/snapshot-assembler.ts
+          src/product/synchronization-adapters.ts
+          src/product/trusted-state-authority-store.ts
+          src/state/persistent-state-store.ts
+          test/phase5-acceptance-map.test.ts
+          test/phase5-auth-controller.test.ts
+          test/phase5-controller.test.ts
+          test/phase5-group-a-recovery-state.test.ts
+          test/phase5-group-b-scope-transfer.test.ts
+          test/phase5-group-d-acceptance.test.ts
+          test/phase5-group-d-active-run-integration.test.ts
+          test/phase5-group-d-conflict-destruction-integration.test.ts
+          test/phase5-group-d-first-sync-integration.test.ts
+          test/phase5-group-d-recovery-coordination-integration.test.ts
+          test/phase5-group-d-surface-lifecycle-integration.test.ts
+          test/phase5-recovery-auth.test.ts
+          test/phase5-second-rejection.test.ts
+          test/phase6-alpha-full-sync-remediation.test.ts
+          test/phase6-alpha-ios-sync-diagnostics.test.ts
+          test/phase6-alpha-mixed-plan-isolation.test.ts
+          test/phase6-alpha-oauth-lifecycle.test.ts
+          test/phase6-alpha-plan-errors-stability.test.ts
+          test/workstreams/integration/h-u2-mutation-restart-integration.test.ts
+          test/workstreams/integration/h-u3-feed-lifecycle-merge-integration.test.ts
+          test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts
+          test/workstreams/orchestration/v1.2-production-authority-path.test.ts
+          test/workstreams/orchestration/v1.2-remote-feed-authority.test.ts
+          EOF
+          sed -i 's/^          //' expected-manifest.txt
+          git diff --name-only "$E"..."$C" > actual-manifest.txt
+          diff -u expected-manifest.txt actual-manifest.txt
+          ! grep -E '^src/contracts/|^dev/|^\.github/' actual-manifest.txt
+
+          echo '=== tracked path audit ===' | tee audit.log
+          if git ls-files 'src/**' | grep -Ei 'phase[0-9]+|workstream|integrat(ed|ion)' | tee -a audit.log; then
+            echo 'unexpected path nomenclature remains' >&2
+            exit 1
+          fi
+          echo '=== content audit all src ===' | tee -a audit.log
+          git grep -nEi 'phase[0-9]+|workstream|integrat(ed|ion)' -- 'src/**' | tee -a audit.log || true
+          echo '=== content audit outside frozen contracts ===' | tee -a audit.log
+          if git grep -nEi 'phase[0-9]+|workstream|integrat(ed|ion)' -- 'src/**' ':!src/contracts/**' | tee -a audit.log; then
+            echo 'unresolved non-contract nomenclature remains' >&2
+            exit 1
+          fi
+          echo '=== historical owner forms outside frozen contracts ===' | tee -a audit.log
+          if git grep -nE "(^|[^[:alnum:]_])(A|B|C|D|H)(['’]s|-C[0-9]+|/|[[:space:]]+(owns?|tests?|maps?|must|observes?|execution|orchestration|implementation|authority|contract|integrity|state|sync))" -- 'src/**' ':!src/contracts/**' | tee -a audit.log; then
+            echo 'historical owner nomenclature remains outside frozen contracts' >&2
+            exit 1
+          fi
+          for token in Phase5ProductRuntime Phase5SettingsHost IntegratedProductController BaseIntegratedProductController IntegratedLocalTransactionalMutationPort IntegratedSynchronizationStateStore nextIntegratedSemanticGeneration rebaseIntegratedConvergence phase6-sync-integration 'phase5:'; do
+            if git grep -nF "$token" -- 'src/**'; then
+              echo "mandatory historical token remains: $token" >&2
+              exit 1
+            fi
+          done
+
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          E='f4cc17db3ec3ad356e379af04f2e000bdba0282d'
+          C='cb0c81b2ddb941446f821d71274aa58af28007ec'
+          paths=subprocess.check_output(['git','diff','--name-only',E+'...'+C,'--','test/**'],text=True).splitlines()
+          repl={
+            'Phase5ProductRuntime':'ProductRuntime',
+            'Phase5SettingsHost':'ProductSettingsHost',
+            'IntegratedLocalTransactionalMutationPort':'ScopedLocalTransactionalMutationPort',
+            'IntegratedSynchronizationStateStore':'SynchronizationStateAuthorityAdapter',
+            'nextIntegratedSemanticGeneration':'nextSemanticGeneration',
+            'rebaseIntegratedConvergence':'rebaseConvergenceGeneration',
+            'phase6-sync-integration':'synchronization-adapters',
+            'phase5:':'brain-sync:',
+            'IntegratedProductController':'ProductController',
+          }
+          for path in paths:
+            before=subprocess.check_output(['git','show',f'{E}:{path}'],text=True)
+            expected=before
+            for old,new in repl.items(): expected=expected.replace(old,new)
+            actual=Path(path).read_text(encoding='utf-8')
+            if expected != actual:
+              raise SystemExit(f'non-mechanical test delta: {path}')
+          print(f'mechanical_test_files={len(paths)}')
+          PY
+
+          printf 'candidate=%s\nentry=%s\nfoundation=%s\ncontracts_tree=%s\ncanonical_evidence=%s\ncontract_freeze_blob=%s\nprefix_sha1=%s\n' \
+            "$C" "$E" 05600f7ca48a6726b72188005f29eddfc1191519 "$(git rev-parse HEAD:src/contracts)" \
+            "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" b675e0fc9776d03892a4309231b91a4bf0a84b93 \
+            fe527c76137b2cd578ef7050ee3444498b21a5e0 > proof-summary.txt
+          printf 'candidate_manifest_count=%s\n' "$(wc -l < actual-manifest.txt)" >> proof-summary.txt
+      - name: Gate B install static compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci 2>&1 | tee install.log
+          npm run typecheck 2>&1 | tee typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee test-compile.log
+          printf 'install_exit=0\ntypecheck_exit=0\ntest_compile_exit=0\n' >> proof-summary.txt
+      - name: Gate C H V1.3 critical 82 of 82
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 82$' critical.log
+          grep -Eq '# fail 0$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          for m in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do grep -F "$m" critical.log >/dev/null; done
+          printf 'critical_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' critical.log >> proof-summary.txt
+      - name: Gate D adversarial G 56 of 56
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/adversarial-model/adversarial-model.test.js 2>&1 | tee adversarial.log
+          grep -Eq '# tests 56$' adversarial.log
+          grep -Eq '# pass 56$' adversarial.log
+          grep -Eq '# fail 0$' adversarial.log
+          grep -Eq '# cancelled 0$' adversarial.log
+          grep -Eq '# skipped 0$' adversarial.log
+          grep -Eq '# todo 0$' adversarial.log
+          for m in \
+            '03 upload survives crash/restart at every durable effect stage' \
+            '04 download survives crash/restart at every durable effect stage' \
+            '05 move survives crash/restart at every durable effect stage' \
+            '06 trash survives crash/restart at every durable effect stage' \
+            '10 durable intended L1 is not substituted by later L2' \
+            '15 repeated moves preserve stable remote identity' \
+            '16 create-delete sequence preserves acknowledged deletion history' \
+            '18 unresolved path A does not block safe path B progress' \
+            '19 missed watcher is discovered by integrity reconciliation' \
+            '20 Windows watcher-event loss is recoverable through authoritative integrity read' \
+            '28 bounded quiescence after mutation pressure stops' \
+            '29 concurrent same-path creates never silently select one remote winner' \
+            'G-C2 generic recover routes multiple folder journals by exact journal identity'; do
+            grep -F "$m" adversarial.log >/dev/null
+            ! grep -F 'not ok' adversarial.log | grep -F "$m" >/dev/null
+          done
+          printf 'adversarial_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' adversarial.log >> proof-summary.txt
+      - name: Gate E V1.3 foundation 17 of 17
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee foundation.log
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -Eq '# cancelled 0$' foundation.log
+          grep -Eq '# skipped 0$' foundation.log
+          grep -Eq '# todo 0$' foundation.log
+          grep -F C15 foundation.log >/dev/null
+          grep -F C16 foundation.log >/dev/null
+          printf 'foundation_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' foundation.log >> proof-summary.txt
+      - name: Gate F complete repository 687 of 687
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee whole.log
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 687$' whole.log
+          grep -Eq '# fail 0$' whole.log
+          grep -Eq '# cancelled 0$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          printf 'whole_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' whole.log >> proof-summary.txt
+      - name: Gate G production build and package checks
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+          build_exit=${PIPESTATUS[0]}
+          test "$build_exit" = 0
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          npm run check 2>&1 | tee check.log
+          check_exit=${PIPESTATUS[0]}
+          test "$check_exit" = 0
+          size_after=$(stat -c%s main.js)
+          sha_after=$(sha256sum main.js | awk '{print $1}')
+          test "$size" = "$size_after"
+          test "$sha" = "$sha_after"
+          printf 'build_exit=0\ncheck_exit=0\nmain_js_size=%s\nmain_js_sha256=%s\n' "$size" "$sha" >> proof-summary.txt
+      - name: Gate H final repository and PR invariants
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=cb0c81b2ddb941446f821d71274aa58af28007ec
+          E=f4cc17db3ec3ad356e379af04f2e000bdba0282d
+          test "$(git rev-parse HEAD)" = "$C"
+          diff -u expected-manifest.txt actual-manifest.txt
+          test "$(git rev-parse HEAD:src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
+          test ! -e .github/workflows/h-norm-production-structure-proof.yml
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = open
+          test "$(jq -r .draft <<<"$pr")" = true
+          test "$(jq -r .merged <<<"$pr")" = false
+          test "$(jq -r .head.ref <<<"$pr")" = phase6-sync-integration-h
+          test "$(jq -r .head.sha <<<"$pr")" = "$C"
+          printf 'pr45_state=open\npr45_draft=true\npr45_merged=false\npr45_head=phase6-sync-integration-h\npr45_candidate_head=%s\n' "$C" >> proof-summary.txt
+      - name: Upload authoritative H-NORM proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-norm-production-structure-proof
+          path: |
+            proof-summary.txt
+            expected-manifest.txt
+            actual-manifest.txt
+            audit.log
+            install.log
+            typecheck.log
+            test-compile.log
+            critical.log
+            adversarial.log
+            foundation.log
+            whole.log
+            build.log
+            check.log
+          if-no-files-found: warn
