@@ -1,0 +1,253 @@
+name: H-FINAL Authoritative Clean Verification
+
+on:
+  push:
+    branches: [h-final-authoritative-clean-verification-h14]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact frozen source test candidate
+        uses: actions/checkout@v4
+        with:
+          ref: cb0c81b2ddb941446f821d71274aa58af28007ec
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Gate A exact candidate clean tree and frozen authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=cb0c81b2ddb941446f821d71274aa58af28007ec
+          N=f4cc17db3ec3ad356e379af04f2e000bdba0282d
+          test "$(git rev-parse HEAD)" = "$C"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git cat-file -e 05600f7ca48a6726b72188005f29eddfc1191519^{commit}
+          test "$(git rev-parse HEAD:src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          test "$(git rev-parse HEAD:dev/evidence/_ca-output.md)" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
+          test "$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)" = b675e0fc9776d03892a4309231b91a4bf0a84b93
+          test "$(git cat-file blob b675e0fc9776d03892a4309231b91a4bf0a84b93 | head -c 16296 | git hash-object --stdin)" = fe527c76137b2cd578ef7050ee3444498b21a5e0
+          git diff --check "$N"..."$C"
+          test ! -e .github/workflows/h-final-authoritative-clean-verification.yml
+          node --version | tee versions.log
+          npm --version | tee -a versions.log
+          {
+            echo "proof_branch=h-final-authoritative-clean-verification-h14"
+            echo "proof_workflow=.github/workflows/h-final-authoritative-clean-verification.yml"
+            echo "proof_workflow_head=${GITHUB_SHA}"
+            echo "candidate=$C"
+            echo "norm_entry=$N"
+            echo "foundation=05600f7ca48a6726b72188005f29eddfc1191519"
+            echo "contracts_tree=$(git rev-parse HEAD:src/contracts)"
+            echo "canonical_preappend_blob=$(git rev-parse HEAD:dev/evidence/_ca-output.md)"
+            echo "contract_freeze_blob=$(git rev-parse HEAD:dev/planning-and-building/phase6-sync-contract-freeze.md)"
+            echo "contract_freeze_prefix_sha1=fe527c76137b2cd578ef7050ee3444498b21a5e0"
+            echo "node=$(node --version)"
+            echo "npm=$(npm --version)"
+            echo "gate_a_exit=0"
+          } > proof-summary.txt
+
+      - name: Gate B clean dependency and static verification
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee install.log
+          npm run typecheck 2>&1 | tee typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee test-compile.log
+          printf 'npm_ci_exit=0\ntypecheck_exit=0\ntest_compile_exit=0\n' >> proof-summary.txt
+
+      - name: Gate C complete repository 687 of 687
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee whole.log
+          grep -Eq '# tests 687$' whole.log
+          grep -Eq '# pass 687$' whole.log
+          grep -Eq '# fail 0$' whole.log
+          grep -Eq '# cancelled 0$' whole.log
+          grep -Eq '# skipped 0$' whole.log
+          grep -Eq '# todo 0$' whole.log
+          printf 'whole_exit=0\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' whole.log >> proof-summary.txt
+
+      - name: Gate D H V1.3 critical 82 of 82
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js .test-build/test/phase6-h-sync-integration.test.js 2>&1 | tee critical.log
+          grep -Eq '# tests 82$' critical.log
+          grep -Eq '# pass 82$' critical.log
+          grep -Eq '# fail 0$' critical.log
+          grep -Eq '# cancelled 0$' critical.log
+          grep -Eq '# skipped 0$' critical.log
+          grep -Eq '# todo 0$' critical.log
+          for m in H-I1 H-I2 H-I3 H-I4 H-I5 H-I6 H-I7 H-I8; do grep -F "$m" critical.log >/dev/null; done
+          printf 'critical_exit=0\nH-I1=PASS\nH-I2=PASS\nH-I3=PASS\nH-I4=PASS\nH-I5=PASS\nH-I6=PASS\nH-I7=PASS\nH-I8=PASS\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' critical.log >> proof-summary.txt
+
+      - name: Gate E G adversarial runtime 56 of 56
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/adversarial-model/adversarial-model.test.js 2>&1 | tee adversarial.log
+          grep -Eq '# tests 56$' adversarial.log
+          grep -Eq '# pass 56$' adversarial.log
+          grep -Eq '# fail 0$' adversarial.log
+          grep -Eq '# cancelled 0$' adversarial.log
+          grep -Eq '# skipped 0$' adversarial.log
+          grep -Eq '# todo 0$' adversarial.log
+          for m in \
+            '03 upload survives crash/restart at every durable effect stage' \
+            '04 download survives crash/restart at every durable effect stage' \
+            '05 move survives crash/restart at every durable effect stage' \
+            '06 trash survives crash/restart at every durable effect stage' \
+            '10 durable intended L1 is not substituted by later L2' \
+            '15 repeated moves preserve stable remote identity' \
+            '16 create-delete sequence preserves acknowledged deletion history' \
+            '18 unresolved path A does not block safe path B progress' \
+            '19 missed watcher is discovered by integrity reconciliation' \
+            '20 Windows watcher-event loss is recoverable through authoritative integrity read' \
+            '28 bounded quiescence after mutation pressure stops' \
+            '29 concurrent same-path creates never silently select one remote winner' \
+            'G-C2 generic recover routes multiple folder journals by exact journal identity'; do
+            grep -F "$m" adversarial.log >/dev/null
+            ! grep -F 'not ok' adversarial.log | grep -F "$m" >/dev/null
+          done
+          printf 'adversarial_exit=0\nG-W1=PASS\nG-W2=PASS\nG-W3=PASS\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' adversarial.log >> proof-summary.txt
+
+      - name: Gate F V1.3 foundation 17 of 17
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-foundation-failure-provenance.test.js 2>&1 | tee foundation.log
+          grep -Eq '# tests 17$' foundation.log
+          grep -Eq '# pass 17$' foundation.log
+          grep -Eq '# fail 0$' foundation.log
+          grep -Eq '# cancelled 0$' foundation.log
+          grep -Eq '# skipped 0$' foundation.log
+          grep -Eq '# todo 0$' foundation.log
+          grep -F C15 foundation.log >/dev/null
+          grep -F C16 foundation.log >/dev/null
+          printf 'foundation_exit=0\nC15=PASS\nC16=PASS\n' >> proof-summary.txt
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' foundation.log >> proof-summary.txt
+
+      - name: Gate G production build check and mobile package verifier
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+          build_exit=${PIPESTATUS[0]}
+          test "$build_exit" = 0
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          npm run check 2>&1 | tee check.log
+          check_exit=${PIPESTATUS[0]}
+          test "$check_exit" = 0
+          size_after=$(stat -c%s main.js)
+          sha_after=$(sha256sum main.js | awk '{print $1}')
+          test "$size" = "$size_after"
+          test "$sha" = "$sha_after"
+          grep -F 'BUILD_VERIFY_ENTRYPOINT=PASS' build.log >/dev/null
+          grep -F 'BUILD_VERIFY_SYNTAX=PASS' build.log >/dev/null
+          grep -F 'BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS' build.log >/dev/null
+          grep -F 'BUILD_VERIFY_MOBILE_EVALUATION=PASS' build.log >/dev/null
+          grep -F 'BUILD_VERIFY_PACKAGE_SHAPE=PASS' build.log >/dev/null
+          printf 'build_exit=0\ncheck_exit=0\nmobile_package_verifier=PASS\nmain_js_size=%s\nmain_js_sha256=%s\n' "$size" "$sha" >> proof-summary.txt
+
+      - name: Gate H integration branch and PR safety before evidence closure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=cb0c81b2ddb941446f821d71274aa58af28007ec
+          NORM_EVIDENCE=8c831c29c7822e664d923f8cfb00544adebe1311
+          ENTRY=884b65f49e1c08a3b6b2a227a1a913d13257f223
+          git fetch origin phase6-sync-integration-h phase6-integration master main 2>/dev/null || git fetch origin phase6-sync-integration-h phase6-integration master 2>/dev/null || git fetch origin phase6-sync-integration-h phase6-integration
+          test "$(git rev-parse origin/phase6-sync-integration-h)" = "$ENTRY"
+          test "$(git rev-parse "$ENTRY^")" = "$NORM_EVIDENCE"
+          test "$(git rev-parse "$NORM_EVIDENCE^")" = "$C"
+          cat > expected-post-candidate.txt <<'EOF'
+          dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md
+          dev/planning-and-building/phase6-h-final-authoritative-clean-verification-closure-task.md
+          EOF
+          git diff --name-only "$C" "$ENTRY" > actual-post-candidate.txt
+          diff -u expected-post-candidate.txt actual-post-candidate.txt
+          ! grep -E '^(src|test)/' actual-post-candidate.txt
+          test "$(git rev-parse "$ENTRY":src/contracts)" = 0db68ced179825f929008b502335210260ca2ce3
+          if git ls-tree -r --name-only "$ENTRY" | grep -Fx '.github/workflows/h-final-authoritative-clean-verification.yml'; then exit 1; fi
+          pr=$(gh api repos/${{ github.repository }}/pulls/45)
+          test "$(jq -r .state <<<"$pr")" = open
+          test "$(jq -r .draft <<<"$pr")" = true
+          test "$(jq -r .merged <<<"$pr")" = false
+          test "$(jq -r .head.ref <<<"$pr")" = phase6-sync-integration-h
+          test "$(jq -r .head.sha <<<"$pr")" = "$ENTRY"
+          for ref in phase6-integration master main; do
+            if git show-ref --verify --quiet "refs/remotes/origin/$ref"; then
+              if git merge-base --is-ancestor "$C" "origin/$ref"; then
+                echo "candidate unexpectedly reachable from $ref" >&2
+                exit 1
+              fi
+            fi
+          done
+          {
+            echo "h_final_entry_head=$ENTRY"
+            echo "h_norm_evidence_head=$NORM_EVIDENCE"
+            echo "post_candidate_manifest=PASS"
+            echo "pr45_state=open"
+            echo "pr45_draft=true"
+            echo "pr45_merged=false"
+            echo "pr45_head_ref=phase6-sync-integration-h"
+            echo "pr45_head_sha=$ENTRY"
+            echo "protected_merge_absence=PASS"
+            echo "proof_workflow_absent_from_integration=PASS"
+            echo "gate_h_exit=0"
+          } | tee branch-safety.log
+          cat branch-safety.log >> proof-summary.txt
+
+      - name: Final candidate cleanliness and artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = cb0c81b2ddb941446f821d71274aa58af28007ec
+          test -z "$(git status --porcelain --untracked-files=no)"
+          size=$(stat -c%s main.js)
+          sha=$(sha256sum main.js | awk '{print $1}')
+          test "$size" = 699431
+          test "$sha" = da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482
+          printf 'final_candidate_clean=PASS\nexpected_main_js_identity=PASS\n' >> proof-summary.txt
+          cat proof-summary.txt
+
+      - name: Upload authoritative H-FINAL proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h-final-authoritative-clean-verification
+          path: |
+            proof-summary.txt
+            versions.log
+            branch-safety.log
+            expected-post-candidate.txt
+            actual-post-candidate.txt
+            install.log
+            typecheck.log
+            test-compile.log
+            whole.log
+            critical.log
+            adversarial.log
+            foundation.log
+            build.log
+            check.log
+          if-no-files-found: warn
