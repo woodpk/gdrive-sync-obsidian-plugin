@@ -1,0 +1,31 @@
+name: H-NORM production structure audit 2
+
+on:
+  push:
+    branches:
+      - h-norm-production-structure-audit2-h13
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Exact candidate nomenclature audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '679d930019f62bdb0d06b0c5824aaae9eb247d7d'
+          echo '=== primary matches ==='
+          git grep -nEi 'phase[0-9]+|workstream|integrat(ed|ion)' -- 'src/**' || true
+          echo '=== historical owner forms ==='
+          git grep -nE "(^|[^[:alnum:]_])(A|B|C|D|H)(['’]s|-C[0-9]+|/|[[:space:]]+(owns?|tests?|maps?|must|observes?|execution|orchestration|implementation|authority|contract|integrity|state|sync))" -- 'src/**' || true
+          echo '=== mandatory tokens ==='
+          for token in Phase5ProductRuntime Phase5SettingsHost IntegratedProductController BaseIntegratedProductController IntegratedLocalTransactionalMutationPort IntegratedSynchronizationStateStore nextIntegratedSemanticGeneration rebaseIntegratedConvergence phase6-sync-integration 'phase5:'; do
+            git grep -nF "$token" -- 'src/**' || true
+          done
