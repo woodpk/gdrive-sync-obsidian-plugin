@@ -403,7 +403,21 @@ export class AdversarialSyncModel {
   }
 
   digest(): string {
-    return JSON.stringify(this.serialize());
+    return JSON.stringify({
+      state: this.serialize(),
+      volatile: {
+        A: {
+          plan: this.devices.A.volatile.plan,
+          inFlight: this.devices.A.volatile.inFlight,
+          recoveryPending: this.devices.A.volatile.recoveryPending,
+        },
+        B: {
+          plan: this.devices.B.volatile.plan,
+          inFlight: this.devices.B.volatile.inFlight,
+          recoveryPending: this.devices.B.volatile.recoveryPending,
+        },
+      },
+    });
   }
 
   private localWrite(device: DeviceId, path: string, content: string, watcher: WatcherState): void {
