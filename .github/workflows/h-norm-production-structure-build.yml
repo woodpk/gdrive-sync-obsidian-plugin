@@ -1,0 +1,169 @@
+name: H-NORM production structure build
+
+on:
+  push:
+    branches:
+      - h-norm-production-structure-build-h13
+
+permissions:
+  contents: write
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f4cc17db3ec3ad356e379af04f2e000bdba0282d
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply bounded normalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          old = root / 'src/product/phase6-sync-integration.ts'
+          new = root / 'src/product/synchronization-adapters.ts'
+          old.rename(new)
+
+          # Exact symbol/path replacements that are mechanical consumers of authorized production renames.
+          common = {
+              'Phase5ProductRuntime': 'ProductRuntime',
+              'Phase5SettingsHost': 'ProductSettingsHost',
+              'IntegratedLocalTransactionalMutationPort': 'ScopedLocalTransactionalMutationPort',
+              'IntegratedSynchronizationStateStore': 'SynchronizationStateAuthorityAdapter',
+              'nextIntegratedSemanticGeneration': 'nextSemanticGeneration',
+              'rebaseIntegratedConvergence': 'rebaseConvergenceGeneration',
+              'phase6-sync-integration': 'synchronization-adapters',
+              'phase5:': 'brain-sync:',
+          }
+          for base in (root / 'src', root / 'test'):
+              for p in base.rglob('*'):
+                  if not p.is_file():
+                      continue
+                  try:
+                      text = p.read_text(encoding='utf-8')
+                  except UnicodeDecodeError:
+                      continue
+                  changed = text
+                  for a, b in common.items():
+                      changed = changed.replace(a, b)
+                  if changed != text:
+                      p.write_text(changed, encoding='utf-8')
+
+          base_controller = root / 'src/product/product-controller-base.ts'
+          text = base_controller.read_text(encoding='utf-8')
+          text = text.replace('export class IntegratedProductController implements ProductControlPort {', 'export class ProductControllerBase implements ProductControlPort {')
+          base_controller.write_text(text, encoding='utf-8')
+
+          wrapper = root / 'src/product/product-controller.ts'
+          text = wrapper.read_text(encoding='utf-8')
+          text = text.replace('IntegratedProductController as BaseIntegratedProductController,', 'ProductControllerBase,')
+          text = text.replace('export class IntegratedProductController extends BaseIntegratedProductController {', 'export class ProductController extends ProductControllerBase {')
+          wrapper.write_text(text, encoding='utf-8')
+
+          # All remaining live consumers refer to the durable wrapper name.
+          for base in (root / 'src', root / 'test'):
+              for p in base.rglob('*.ts'):
+                  if p in (base_controller, wrapper):
+                      continue
+                  text = p.read_text(encoding='utf-8')
+                  changed = text.replace('IntegratedProductController', 'ProductController')
+                  if changed != text:
+                      p.write_text(changed, encoding='utf-8')
+
+          # Production comments/status text that encode implementation history rather than domain responsibility.
+          replacements = {
+              'src/main.ts': [
+                  ('integration blocked', 'synchronization blocked'),
+              ],
+              'src/core/execution-coordinator-base.ts': [
+                  ('Authoritative D execution boundary.', 'Authoritative execution boundary.'),
+              ],
+              'src/product/authoritative-production-executor.ts': [
+                  ('Production authoritative executor. New work delegates to the established D-C4\n * implementation.', 'Production authoritative executor. New work delegates to the established durable\n * mutation implementation.'),
+              ],
+              'src/product/canonical-local-vault.ts': [
+                  ('Phase-5 production evidence decorator, extended by Phase 6 Workstream B.', 'Production local-evidence decorator with authoritative integrity reads and transactional mutation support.'),
+              ],
+              'src/product/operation-isolation.ts': [
+                  ('D-owned durable physical-effect state machine.', 'Durable physical-effect state machine.'),
+              ],
+              'src/product/product-controller.ts': [
+                  ('// D tests use structural assembler doubles. Bind whatever methods exist. Every', '// Structural assembler doubles may omit optional bindings. Bind whatever methods exist. Every'),
+              ],
+              'src/product/remote-update-convergence.ts': [
+                  ("D-C13 compatibility rule for Workstream A's immutable-candidate-preservation", 'Compatibility rule for immutable remote-update candidate preservation'),
+              ],
+              'src/product/snapshot-assembler.ts': [
+                  ('/** D-owned orchestration binding; the store itself remains the frozen C/D contract. */', '/** Orchestration binding; the store itself remains the frozen synchronization authority contract. */'),
+              ],
+              'src/product/trusted-state-authority-store.ts': [
+                  ('Workstream C owns the concrete writable authority persistence adapter. D must', 'The concrete writable authority persistence adapter owns durable authority writes. This bridge must'),
+              ],
+              'src/state/persistent-state-store.ts': [
+                  ('/** Historical Workstream C v1 authority schema retained only for explicit migration. */', '/** Historical v1 authority schema retained only for explicit migration. */'),
+                  ('/** Authoritative phase6-sync-foundation-v1.1 persistence schema. */', '/** Authoritative v1.1 synchronization persistence schema. */'),
+                  ('/** Explicit backup-first, CAS-bound upgrade of the historical Workstream C v1 authority document. */', '/** Explicit backup-first, CAS-bound upgrade of the historical v1 authority document. */'),
+              ],
+              'src/product/synchronization-adapters.ts': [
+                  ("B's crash-safe transaction engine owns the actual filesystem mutation. H maps\n * D's logical durable transaction", 'The crash-safe transaction engine owns the actual filesystem mutation. This adapter maps\n * logical durable transactions'),
+                  ("When H's\n * split-domain bridge advances C's semantic generation", 'When the\n * split-domain state adapter advances the semantic generation'),
+                  ("H's state adapter is the production compatibility layer between D's historical\n * split-store stateRevision CAS and C's single-document persistenceRevision +\n * semanticGeneration authority. D observes", 'This state adapter is the production compatibility layer between the historical\n * split-store stateRevision CAS and the single-document persistenceRevision +\n * semanticGeneration authority. Consumers observe'),
+              ],
+          }
+          for path, pairs in replacements.items():
+              p = root / path
+              text = p.read_text(encoding='utf-8')
+              changed = text
+              for a, b in pairs:
+                  changed = changed.replace(a, b)
+              p.write_text(changed, encoding='utf-8')
+          PY
+      - name: Scope and static preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e src/product/phase6-sync-integration.ts
+          git diff --check
+          echo '=== changed files ==='
+          git status --short
+          echo '=== remaining production nomenclature matches ==='
+          git grep -nEi 'phase[0-9]+|workstream|integrat(ed|ion)' -- 'src/**' || true
+          echo '=== remaining historical owner-letter candidates ==='
+          git grep -nE '\b(A|B|C|D|H)(\x27s|’s)?\b' -- 'src/**' || true
+          if git diff --name-only | grep -E '^src/contracts/'; then
+            echo 'frozen contracts changed' >&2
+            exit 1
+          fi
+          if git diff --name-only | grep -E '^dev/|^\.github/'; then
+            echo 'unauthorized candidate surface changed' >&2
+            exit 1
+          fi
+      - name: Install and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npx tsc -p tsconfig.test.json
+      - name: Commit and publish candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote origin refs/heads/phase6-sync-integration-h | awk '{print $1}')"
+          test "$remote_head" = 'f4cc17db3ec3ad356e379af04f2e000bdba0282d'
+          git config user.name 'woodpk'
+          git config user.email '48619728+woodpk@users.noreply.github.com'
+          git add src test
+          git commit -m 'refactor(H): normalize production synchronization structure'
+          candidate="$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD^)" = 'f4cc17db3ec3ad356e379af04f2e000bdba0282d'
+          echo "H_NORM_CANDIDATE_SHA=$candidate"
+          git push origin HEAD:refs/heads/phase6-sync-integration-h
