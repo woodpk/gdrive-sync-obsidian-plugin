@@ -1,0 +1,36 @@
+name: H-NORM consumer audit
+
+on:
+  push:
+    branches:
+      - h-norm-production-structure-audit-h13
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Targeted live consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for token in \
+            'Phase5ProductRuntime' \
+            'Phase5SettingsHost' \
+            'IntegratedProductController' \
+            'BaseIntegratedProductController' \
+            'IntegratedLocalTransactionalMutationPort' \
+            'IntegratedSynchronizationStateStore' \
+            'nextIntegratedSemanticGeneration' \
+            'rebaseIntegratedConvergence' \
+            'phase6-sync-integration' \
+            'phase5:'; do
+            echo "=== $token ==="
+            git grep -nF "$token" -- 'src/**' 'test/**' || true
+          done
