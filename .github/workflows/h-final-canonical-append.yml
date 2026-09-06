@@ -18,7 +18,9 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Verify pre-append authority and perform literal EOF append
+      - name: Verify append commit and push canonical-only closure atomically
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -49,7 +51,7 @@ jobs:
 - `npm run build`: PASS; `npm run check`: PASS; deterministic entrypoint, syntax, local-runtime-dependency, mobile-evaluation, and package-shape verifiers all PASS.
 - Final `main.js`: `699431` bytes; SHA-256 `da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482`.
 - Frozen `src/contracts/**` tree: `0db68ced179825f929008b502335210260ca2ce3`.
-- Canonical historical content before this section was Git blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73` and is preserved below this commit boundary as a byte-identical prefix; this closure is a true EOF-only append with zero historical-byte modification.
+- Canonical historical content before this section was Git blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73` and is preserved as a byte-identical prefix; this closure is a true EOF-only append with zero historical-byte modification.
 - Source/test remained frozen throughout H-FINAL; no H-FINAL repair was performed.
 - PR #45 remained open, draft, and unmerged through the technical proof and evidence-closure preparation; final post-closure PR/head state is verified separately after this commit.
 - The H candidate was not merged. Stage 3, release work, post-iPhone optimization, and physical iPhone/Google Drive synchronization were not begun.
@@ -67,39 +69,16 @@ EOF
           deletions=$(awk '{print $2}' <<<"$numstat")
           test "$additions" -gt 0
           test "$deletions" = 0
-          ! git diff -- "$CANON" | grep '^-' | grep -v '^---' >/dev/null
-          {
-            echo "pre_blob=$pre_blob"
-            echo "pre_size=$pre_size"
-            echo "post_size=$post_size"
-            echo "prefix_identity=PASS"
-            echo "canonical_only_manifest=PASS"
-            echo "deletions=0"
-            echo "heading_count=1"
-            echo "diff_check=PASS"
-          } | tee canonical-append-proof.txt
+          if git diff -- "$CANON" | grep '^-' | grep -v '^---' >/dev/null; then exit 1; fi
 
-      - name: Commit and push canonical-only closure
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git diff --name-only)" = dev/evidence/_ca-output.md
           git config user.name "woodpk"
           git config user.email "48619728+woodpk@users.noreply.github.com"
-          git add -- dev/evidence/_ca-output.md
+          git add -- "$CANON"
           git commit -m "evidence(H-FINAL): append canonical Phase 6 H closure"
           closure_head=$(git rev-parse HEAD)
-          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = dev/evidence/_ca-output.md
-          echo "closure_head=$closure_head" | tee -a canonical-append-proof.txt
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = "$CANON"
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_HEAD"
           gh auth setup-git
           git push origin HEAD:phase6-sync-integration-h
-
-      - name: Upload canonical append proof
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: h-final-canonical-append-proof
-          path: canonical-append-proof.txt
-          if-no-files-found: warn
+          echo "H_FINAL_CLOSURE_HEAD=$closure_head"
+          echo "PRE_BLOB=$pre_blob PRE_SIZE=$pre_size POST_SIZE=$post_size ADDITIONS=$additions DELETIONS=$deletions PREFIX=PASS DIFF_CHECK=PASS HEADING_COUNT=1"
