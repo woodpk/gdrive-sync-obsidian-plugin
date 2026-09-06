@@ -200,6 +200,10 @@ export function resolveAuthorityCompleteOperation(
   return { status: "ready", operation: { ...operation, authorityComplete: true, preconditions } };
 }
 
+type AuthorityPersistenceFailureDiagnostics = {
+  readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => "pending-journal-failed" | "uncertain-state-journal-failed" | undefined;
+};
+
 /**
  * Authority-complete production boundary. The executor owns durable physical
  * intent/dispatch/verification; this coordinator alone owns the transition from
@@ -255,7 +259,12 @@ export class AuthorityCompleteExecutionCoordinator {
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
-    catch (error) { this.observe(executable, "content-mutation-failed", "threw", error); throw error; }
+    catch (error) {
+      const diagnosticStore = this.authorityStore as SynchronizationAuthorityStoreV1_1 & AuthorityPersistenceFailureDiagnostics;
+      const stage = diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error) ?? "content-mutation-failed";
+      this.observe(executable, stage, "threw", error);
+      throw error;
+    }
 
     if (execution.status === "durable-verified-success") {
       this.observe(executable, "content-mutation-complete", execution.status);
