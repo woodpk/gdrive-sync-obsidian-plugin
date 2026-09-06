@@ -5,7 +5,7 @@ import {
   noteDeferredReconciliationAcrossLifecycle,
   synchronizationLifecycleState,
 } from "../core/run-coordinator";
-import type { IntegratedProductController } from "./product-controller";
+import type { ProductController } from "./product-controller";
 
 export interface AutomaticSyncSettings {
   readonly startupResumeEnabled: boolean;
@@ -43,7 +43,7 @@ export class ProductSyncScheduler {
 
   constructor(
     private readonly local: LocalVaultPort,
-    private readonly controller: IntegratedProductController,
+    private readonly controller: ProductController,
     private readonly settings: () => AutomaticSyncSettings,
     private readonly integrity?: LocalIntegrityReconciliationPort,
   ) {}

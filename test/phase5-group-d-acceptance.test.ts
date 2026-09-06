@@ -21,8 +21,8 @@ import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { meaningfulNotification } from "../src/product/notification-policy";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSyncScheduler } from "../src/product/scheduler";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
@@ -237,16 +237,16 @@ test("Phase5 scenario 26 local change during an active production run is deferre
     deviceIdentity: device,
   }));
   assert.equal(seeded.status, "saved");
-  const stateStore = new IntegratedSynchronizationStateStore(rawStateStore);
+  const stateStore = new SynchronizationStateAuthorityAdapter(rawStateStore);
 
   const assembler = new ProductSnapshotAssembler(local, drive, stateStore, stateContext, async () => managed, () => true, () => false, undefined, reliableChanges);
   const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
   const triggers: string[] = [];
   let laterPassResolve!: () => void;
   const laterPassPlanned = new Promise<void>(resolve => { laterPassResolve = resolve; });
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive, stateStore, stateContext, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext,

@@ -9,8 +9,8 @@ import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
 import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
 import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler, type AssembledPlanningInput } from "../src/product/snapshot-assembler";
@@ -97,9 +97,9 @@ test("B3 reserved configuration collision remains path-local while unrelated upl
 });
 
 interface StreamHarnessResult {
-  readonly controller: IntegratedProductController;
-  readonly action: Awaited<ReturnType<IntegratedProductController["request"]>>;
-  readonly state: IntegratedSynchronizationStateStore;
+  readonly controller: ProductController;
+  readonly action: Awaited<ReturnType<ProductController["request"]>>;
+  readonly state: SynchronizationStateAuthorityAdapter;
   readonly downloadStarts: number;
   readonly replaceStarts: number;
   readonly mediaCalls: number;
@@ -158,7 +158,7 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
   const secondBaseEntry={path:second,entityKind:"file" as const,localExisted:true,remoteExisted:true,content:secondBase,remoteObjectId:secondId};
   const seededAuthority:DurableSynchronizationAuthorityState={...initial,changeCursor:id<"ChangeCursor">("cursor:old"),base:[firstBaseEntry,secondBaseEntry],remoteMappings:[{path:first,entityKind:"file",remoteObjectId:firstId},{path:second,entityKind:"file",remoteObjectId:secondId}],baseAuthority:[{path:first,fingerprint:firstFingerprint},{path:second,fingerprint:secondFingerprint}],pathConvergence:[{path:first,state:{status:"converged",generation:semanticGeneration,baseFingerprint:firstFingerprint}},{path:second,state:{status:"converged",generation:semanticGeneration,baseFingerprint:secondFingerprint}}]};
   await rawState.saveTrusted(seededAuthority);
-  const state=new IntegratedSynchronizationStateStore(rawState);
+  const state=new SynchronizationStateAuthorityAdapter(rawState);
   const loaded=await state.load(context); assert.equal(loaded.status,"trusted");
   const snapshot=(path:VaultPath,baseEntry:typeof firstBaseEntry,localEvidence:ContentEvidence,objectId:RemoteObjectId):PathSnapshot=>({
     path,
@@ -181,7 +181,7 @@ async function runLazyFailure(signal:DriveSignal):Promise<StreamHarnessResult>{
     commitVerifiedStage:async transaction=>({status:"committed",transaction:{...transaction,stage:"completed"} as LocalMutationTransaction,resultingObservationToken:id<"ObservationToken">(`tok:committed:${String(transaction.path)}`)}),
     recover:async transaction=>({status:"blocked",reason:"fixture staged transfer was not committed",transaction}),
   };
-  const controller=new IntegratedProductController({
+  const controller=new ProductController({
     vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:state,authorityStore:state,
     snapshotAssembler:{assembleFull:async()=>assembly} as never,
     executor,localTransactionalMutationPort,conflictResolver:resolver,

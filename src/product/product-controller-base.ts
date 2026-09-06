@@ -265,7 +265,7 @@ function executionFailureBoundary(stage: ExecutionLifecycleStage): { readonly st
   }
 }
 
-export class IntegratedProductController implements ProductControlPort {
+export class ProductControllerBase implements ProductControlPort {
   private surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
   private readonly runs: CoreRunCoordinator;

@@ -8,7 +8,7 @@ import {
   type SynchronizationAuthorityStoreV1_1,
 } from "../contracts";
 import {
-  IntegratedProductController as BaseIntegratedProductController,
+  ProductControllerBase,
   type ProductControllerOptions as BaseProductControllerOptions,
 } from "./product-controller-base";
 import { authoritativeDiagnostics, withExecutionLifecycleObserver } from "./authority-execution-diagnostics";
@@ -73,7 +73,7 @@ function authorityLearningAssembler(
   options: ProductControllerOptions,
   recoveryDependencies: DurableIntentRecoveryDependencies,
 ): ProductSnapshotAssembler {
-  // D tests use structural assembler doubles. Bind whatever methods exist. Every
+  // Structural assembler doubles may omit optional bindings. Bind whatever methods exist. Every
   // production assembly entry is wrapped so durable intent recovery is complete
   // before the base controller can invoke the current planner.
   const structural = assembler as ProductSnapshotAssembler & {
@@ -135,7 +135,7 @@ function authorityLearningAssembler(
  * default trusted-state bridge is read-only, so persistence-dependent work fails
  * closed rather than silently using raw legacy mutation or fake authority saves.
  */
-export class IntegratedProductController extends BaseIntegratedProductController {
+export class ProductController extends ProductControllerBase {
   constructor(options: ProductControllerOptions) {
     const diagnostics = authoritativeDiagnostics(options.diagnostics);
     const rawAuthorityStore = options.authorityStore ?? new TrustedStateSynchronizationAuthorityStore(options.stateStore, options.stateContext);

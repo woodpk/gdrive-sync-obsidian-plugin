@@ -23,8 +23,8 @@ import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { InMemoryRunLeasePort } from "../src/core/run-coordinator";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import {
@@ -105,26 +105,26 @@ function state(entries: readonly SeedEntry[]): DurableSynchronizationAuthoritySt
   };
 }
 
-async function storeFor(entries: readonly SeedEntry[]): Promise<IntegratedSynchronizationStateStore> {
+async function storeFor(entries: readonly SeedEntry[]): Promise<SynchronizationStateAuthorityAdapter> {
   const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const saved = await raw.saveTrusted(state(entries));
   assert.equal(saved.status, "saved");
-  return new IntegratedSynchronizationStateStore(raw);
+  return new SynchronizationStateAuthorityAdapter(raw);
 }
 
 async function makeController(
   local: any,
   drive: any,
-  store: IntegratedSynchronizationStateStore,
+  store: SynchronizationStateAuthorityAdapter,
   reliableRemoteMutationPort: ReliableRemoteMutationPort,
   localTransactionalMutationPort?: LocalTransactionalMutationPort,
-): Promise<IntegratedProductController> {
+): Promise<ProductController> {
   const reliableChanges = typeof drive.readChangePage === "function" ? drive as ReliableRemoteChangePort : undefined;
   const assembler = new ProductSnapshotAssembler(local, drive, store, context, async () => identity, () => true, () => false, undefined, reliableChanges);
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive, store, context, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,

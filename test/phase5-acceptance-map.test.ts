@@ -19,8 +19,8 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(2,"remote-only first synchronization",first,"G2 scenario 2 remote-only reviewed first sync downloads and commits authoritative cursor/base"),
  e(3,"identical local/remote first synchronization",first,"G2 scenario 3 identical first sync establishes BASE without content mutation"),
  e(4,"divergent same-path content with no trusted BASE",first,"G2 scenario 4 divergent same-path no-BASE first sync surfaces conflict and preserves both versions"),
- e(5,"automatic synchronization remains disabled until reviewed successful first synchronization",first,"G2 scenario 5 scheduler ignores local changes before first-sync completion and executes them after reviewed completion","ProductSyncScheduler plus reviewed IntegratedProductController completion gate"),
- e(6,"additional device requires explicit validated pairing",surface,"G2 scenario 6 Phase5 runtime pairing consumes validated managed-root identity and refuses invalid pairing","Phase5ProductRuntime pairing workflow and managed-root validation"),
+ e(5,"automatic synchronization remains disabled until reviewed successful first synchronization",first,"G2 scenario 5 scheduler ignores local changes before first-sync completion and executes them after reviewed completion","ProductSyncScheduler plus reviewed ProductController completion gate"),
+ e(6,"additional device requires explicit validated pairing",surface,"G2 scenario 6 Phase5 runtime pairing consumes validated managed-root identity and refuses invalid pairing","ProductRuntime pairing workflow and managed-root validation"),
  e(7,"local edit produces upload/update",first,"G2 scenario 7 ordinary trusted local edit executes upload-update through production orchestration"),
  e(8,"remote edit produces download/update",first,"G2 scenario 8 ordinary trusted remote edit executes download-update through production orchestration"),
  e(9,"offline operation followed by reconnect and reconciliation",first,"G2 scenario 9 transient offline failure preserves prior cursor then a later production reconciliation succeeds"),
@@ -44,7 +44,7 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(27,"safe cancellation of active synchronization",recovery,"G2 scenario 27 cancellation stops future operations and leaves cursor unadvanced"),
  e(28,"pause and resume behavior",recovery,"G2 scenario 28 pause blocks product-controller synchronization until resume"),
  e(29,"synchronization serialization within one runtime",recovery,"G2 scenario 29 same-runtime product synchronization runs serialize rather than overlap"),
- e(30,"cross-instance writer exclusion run lease",recovery,"G2 scenario 30 two real controller runs use separate production Web Locks leases over one shared lock boundary","IntegratedProductController runs using separate WebLocksRunLeasePort instances over one shared controlled Web Locks boundary"),
+ e(30,"cross-instance writer exclusion run lease",recovery,"G2 scenario 30 two real controller runs use separate production Web Locks leases over one shared lock boundary","ProductController runs using separate WebLocksRunLeasePort instances over one shared controlled Web Locks boundary"),
  e(31,"local filesystem event debounce and coalescing","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 31 local-change debounce coalesces repeated events into one scheduler-owned automatic pass"),
  e(32,"startup readiness and startup synchronization opportunity","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 32 replays startup opportunity when vault-ready fired before scheduler registration"),
  e(33,"periodic remote reconciliation scheduling","test/phase5-scheduler-acceptance.test.ts","Phase5 scenario 33 refresh replaces periodic timer with live cadence"),
@@ -61,10 +61,10 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(44,"repeated individual-path failure remains isolated from unrelated work",surface,"G2 scenarios 44 and 45 repeated path-local failure stays isolated while safe work commits and real activity produces bounded audit records"),
  e(45,"real synchronization activity produces bounded audit history evidence",surface,"G2 scenarios 44 and 45 repeated path-local failure stays isolated while safe work commits and real activity produces bounded audit records"),
  e(46,"audit history remains metadata-only without vault-content leakage","test/phase5-product.test.ts","Phase 5 audit history is bounded and stores only frozen metadata records"),
- e(47,"notifications occur only for meaningful conditions",surface,"G2 scenario 47 Phase5 runtime-owned notification subscription suppresses ordinary progress and delivers recovery","IntegratedProductController surface → Phase5ProductRuntime-owned MeaningfulNotificationFilter → ProductRuntimeHost.notify"),
+ e(47,"notifications occur only for meaningful conditions",surface,"G2 scenario 47 Phase5 runtime-owned notification subscription suppresses ordinary progress and delivers recovery","ProductController surface → ProductRuntime-owned MeaningfulNotificationFilter → ProductRuntimeHost.notify"),
  e(48,"selective portable Obsidian configuration synchronization",surface,"G2 scenario 48 allowlisted portable configuration synchronizes through reserved domain while device-local and unknown configuration stay excluded","ProductPathScope, ScopedLocalVault, snapshot/planner/controller/executor"),
  e(49,"canonical external BRAIN asset repository remains outside synchronization scope","test/phase5-group-d-acceptance.test.ts","Phase5 scenario 49 snapshot and planning domain is confined to the paired managed BRAIN Sync root"),
- e(50,"disable unload or deauthorization does not delete synchronized content",surface,"G2 scenario 50 Phase5 deauthorization and disposal clear authority without local or Drive deletion","Phase5ProductRuntime.deauthorize and disposeProduct"),
+ e(50,"disable unload or deauthorization does not delete synchronized content",surface,"G2 scenario 50 Phase5 deauthorization and disposal clear authority without local or Drive deletion","ProductRuntime.deauthorize and disposeProduct"),
 ] as const;
 
 test("Phase5 acceptance map has exact source-verified executable evidence for scenarios 1 through 50",async()=>{

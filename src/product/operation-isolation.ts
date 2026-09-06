@@ -80,7 +80,7 @@ function findEffect(authority: SynchronizationAuthorityMetadataV1_1, operationId
 }
 
 /**
- * D-owned durable physical-effect state machine. Persistence is deliberately
+ * Durable physical-effect state machine. Persistence is deliberately
  * separated from dispatch so production can durably authorize an exact effect,
  * checkpoint LOCAL transaction progress, and reconcile restart states without
  * ever interpreting dispatch-authorized/outcome-unknown as blind retry authority.

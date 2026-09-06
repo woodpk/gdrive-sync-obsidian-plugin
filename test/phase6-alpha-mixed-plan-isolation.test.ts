@@ -4,8 +4,8 @@ import type { BinaryContentSource, ChangeCursor, ContentEvidence, DeviceIdentity
 import { contractId } from "../src/contracts";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import type { AuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController, type PlannerFactory } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController, type PlannerFactory } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
 import { createSyncAttentionCsvFile, parseSyncAttentionRecordsCsv, SyncAttentionLedger, SYNC_ATTENTION_CSV_FILENAME, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
@@ -53,8 +53,8 @@ class MemoryAttention implements SyncAttentionPersistence {
 }
 
 interface ControllerHarness {
-  readonly controller: IntegratedProductController;
-  readonly state: IntegratedSynchronizationStateStore;
+  readonly controller: ProductController;
+  readonly state: SynchronizationStateAuthorityAdapter;
   readonly executed: PlannedOperation[];
   readonly ledger: SyncAttentionLedger;
   readonly persistence: MemoryAttention;
@@ -94,7 +94,7 @@ async function harness(plans: readonly SynchronizationPlan[], options: {
     const saved = await rawState.saveTrusted(seededAuthority);
     assert.equal(saved.status, "saved");
   }
-  const state = new IntegratedSynchronizationStateStore(rawState);
+  const state = new SynchronizationStateAuthorityAdapter(rawState);
   let planIndex = 0;
   const executed: PlannedOperation[] = [];
   const memory = options.persistence instanceof MemoryAttention ? options.persistence : new MemoryAttention();
@@ -139,9 +139,9 @@ async function harness(plans: readonly SynchronizationPlan[], options: {
   };
   const stateContext = options.firstSync ? { expectation: "new-installation" as const, expectedVaultIdentity: vault, expectedDeviceIdentity: device } : context;
   const assembly = async () => ({ input: { snapshots: [], state: await state.load(stateContext) }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const, nextCursor: id<"ChangeCursor">("cursor:candidate") as ChangeCursor });
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive, state, stateContext, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext, stateStore: state, authorityStore: state, snapshotAssembler: { assemble: assembly, assembleFull: assembly } as never, executor, reliableRemoteMutationPort, conflictResolver: { assess: async () => ({ kind: "none" as const }) }, plannerForTrigger: options.plannerForTrigger ?? (() => new ProductionSynchronizationPlanner({ plan: async () => plans[Math.min(planIndex++, plans.length - 1)]! })), leasePort: { tryAcquire: async () => ({ release: async () => undefined }) }, audit: new BoundedAuditHistory(options.auditPersistence ?? new MemoryAuditPersistence(), 50), holderId: "mixed-plan-test", attentionLedger: ledger, diagnostics: options.diagnostics, onTrustedBaselineEstablished: options.onBaseline });
+  controller = new ProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext, stateStore: state, authorityStore: state, snapshotAssembler: { assemble: assembly, assembleFull: assembly } as never, executor, reliableRemoteMutationPort, conflictResolver: { assess: async () => ({ kind: "none" as const }) }, plannerForTrigger: options.plannerForTrigger ?? (() => new ProductionSynchronizationPlanner({ plan: async () => plans[Math.min(planIndex++, plans.length - 1)]! })), leasePort: { tryAcquire: async () => ({ release: async () => undefined }) }, audit: new BoundedAuditHistory(options.auditPersistence ?? new MemoryAuditPersistence(), 50), holderId: "mixed-plan-test", attentionLedger: ledger, diagnostics: options.diagnostics, onTrustedBaselineEstablished: options.onBaseline });
   return { controller, state, executed, ledger, persistence: memory };
 }
 

@@ -21,8 +21,8 @@ import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
 import { beginManualSyncDiagnostics, presentManualSyncPreview } from "../src/diagnostics/sync-diagnostics";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState, createInitialTrustedState } from "../src/state/persistent-state-store";
@@ -78,7 +78,7 @@ async function makeWritableAuthority(label: string) {
     deviceIdentity: device,
   });
   assert.equal((await rawStore.saveTrusted(initial)).status, "saved");
-  return new IntegratedSynchronizationStateStore(rawStore);
+  return new SynchronizationStateAuthorityAdapter(rawStore);
 }
 
 async function readSource(content: BinaryContentSource): Promise<string> {
@@ -140,9 +140,9 @@ async function successfulManualRun() {
   };
   const assembler = new ProductSnapshotAssembler(local as never, drive as never, store, context, async () => managed, undefined, undefined, diagnostics);
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local as never, drive as never, store, context, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
@@ -189,7 +189,7 @@ async function planningOnlyController(diagnostics: DiagnosticLogger, samePlanEve
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
   let planNumber = 0;
   const assembly = { input: { snapshots: [], state: trusted }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor: {} as never,
@@ -293,9 +293,9 @@ async function failingAuthorityPersistenceExecution(failurePoint: "pending" | "u
     trashExisting: async () => { throw new Error("trash is not used by failure fixture"); },
   };
   const assembly = { input: { snapshots: [], state: loaded }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local as never, drive as never, store, context, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store, authorityStore,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor,
@@ -310,7 +310,7 @@ async function failingAuthorityPersistenceExecution(failurePoint: "pending" | "u
   assert.ok(preview);
   controller.recordPreviewPresented(preview.planId, runId);
   controller.recordExecuteClick(preview.planId, runId);
-  let request: Awaited<ReturnType<IntegratedProductController["request"]>> | undefined;
+  let request: Awaited<ReturnType<ProductController["request"]>> | undefined;
   let thrown: unknown;
   try { request = await controller.requestPreviewAction({ kind: "execute-plan", planId: preview.planId }, runId); }
   catch (error) { thrown = error; }
@@ -360,7 +360,7 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
     failureScope: () => "global" as const,
   };
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: scriptedStore as never,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor: executor as never,
@@ -376,7 +376,7 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
   assert.ok(preview);
   controller.recordPreviewPresented(preview.planId, runId);
   controller.recordExecuteClick(preview.planId, runId);
-  let request: Awaited<ReturnType<IntegratedProductController["request"]>> | undefined;
+  let request: Awaited<ReturnType<ProductController["request"]>> | undefined;
   let thrown: unknown;
   try { request = await controller.requestPreviewAction({ kind: "execute-plan", planId: preview.planId }, runId); }
   catch (error) { thrown = error; }
@@ -449,7 +449,7 @@ test("manual sync planning failure is terminal, correlated, and metadata-only", 
   const { diagnostics } = await makeLogger();
   const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,

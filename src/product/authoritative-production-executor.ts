@@ -86,8 +86,8 @@ async function outstandingIntent(authorityStore: SynchronizationAuthorityStoreV1
 }
 
 /**
- * Production authoritative executor. New work delegates to the established D-C4
- * implementation. A matching persisted physical intent, however, is a restart
+ * Production authoritative executor. New work delegates to the established durable
+ * mutation implementation. A matching persisted physical intent, however, is a restart
  * record: it bypasses ordinary pre-dispatch validation and is recovered only as
  * far as effect-verified. Canonical BASE/state commit and state-committed durable
  * finalization remain owned by AuthorityCompleteExecutionCoordinator.

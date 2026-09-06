@@ -8,7 +8,7 @@ import { beginManualSyncDiagnostics, presentManualSyncPreview } from "./diagnost
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
-import { Phase5ProductRuntime } from "./product/runtime";
+import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
 
@@ -16,7 +16,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
   private dataRepository?: PluginDataRepository;
   private diagnostics?: DiagnosticLogger;
-  private runtime?: Phase5ProductRuntime;
+  private runtime?: ProductRuntime;
   private statusEl?: HTMLElement;
   private unsubscribeStatus?: () => void;
   private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
@@ -35,7 +35,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("BRAIN sync: setup required");
 
-    this.runtime = new Phase5ProductRuntime({
+    this.runtime = new ProductRuntime({
       app: this.app,
       plugin: this,
       diagnostics: this.diagnostics,
@@ -373,7 +373,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
   private refreshStatus(): void {
     const status = this.runtime?.productController()?.currentSurface().status.kind;
-    this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "integration blocked" : "setup required")}`);
+    this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "synchronization blocked" : "setup required")}`);
   }
   private noticeError(prefix: string, error: unknown): void {
     const safe = normalizeDiagnosticError(error).safeMessage ?? "An error occurred.";

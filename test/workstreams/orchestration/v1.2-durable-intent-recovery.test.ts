@@ -6,7 +6,7 @@ import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/executi
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
 import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "../../../src/product/durable-intent-recovery";
-import { IntegratedProductController } from "../../../src/product/product-controller";
+import { ProductController } from "../../../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../../../src/product/production-executor";
 
 const id = <T extends string>(v: string) => contractId<T>(v);
@@ -123,6 +123,6 @@ test("D-C11 controller recovers outstanding durable work before a fresh planner 
   const canonical = new CanonicalStore(); const authority = new AuthorityStore([createIntent()]); const f = fixture(canonical, () => [entry()]); let assemblyCalls = 0, plannerCalls = 0;
   const assembler = { async assembleFull() { assemblyCalls++; return { input: { snapshots: [], state: await canonical.load() }, managedRemote, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, mode: "full" }; } };
   const plan = { planId: id<"PlanId">("plan:noop") as any, trigger: "manual", operations: [{ operationId: id<"OperationId">("op:fresh-noop"), kind: "noop", path: target, destructive: false, preconditions: [], reasons: [] }], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" } as any;
-  const controller = new IntegratedProductController({ vaultIdentity: vault as never, deviceIdentity: device as never, stateContext: context, stateStore: canonical as never, authorityStore: authority, snapshotAssembler: assembler as never, executor: f.executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ async plan() { plannerCalls++; assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed"); assert.equal(canonical.value.base[0]?.content?.hash, h1); return plan; } }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:d-c11" });
+  const controller = new ProductController({ vaultIdentity: vault as never, deviceIdentity: device as never, stateContext: context, stateStore: canonical as never, authorityStore: authority, snapshotAssembler: assembler as never, executor: f.executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ async plan() { plannerCalls++; assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed"); assert.equal(canonical.value.base[0]?.content?.hash, h1); return plan; } }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:d-c11" });
   const preview = await controller.previewManual(); assert.ok(preview); assert.equal(preview?.planId, plan.planId); assert.equal(plannerCalls, 1); assert.equal(assemblyCalls, 2); assert.equal(f.raw(), 0);
 });

@@ -6,9 +6,9 @@ import type {
   RemoteObjectId, SynchronizationPlan, VersionReference,
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
-import { IntegratedProductController } from "../src/product/product-controller";
+import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import type { DurableSynchronizationAuthorityState } from "../src/state/persistent-state-store";
 import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
@@ -161,7 +161,7 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
     pathConvergence: [{ path, state: { status: "converged", generation: semanticGeneration, baseFingerprint } }],
   };
   await rawStore.saveTrusted(seededAuthority);
-  const store = new IntegratedSynchronizationStateStore(rawStore);
+  const store = new SynchronizationStateAuthorityAdapter(rawStore);
   const snapshot = (): PathSnapshot => ({
     path,
     local: { status: "present", side: "local", path, entityKind: "file", content: localEvidence, stability: "stable", observationToken: id<"ObservationToken">("local-token") },
@@ -170,9 +170,9 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
     remoteEnumeration: { status: "complete" }, identity: { status: "unambiguous" },
   });
   const assembler = { assembleFull: async () => ({ input: { snapshots: [snapshot()], state: await store.load(trustedContext) }, managedRemote, remoteEnumeration: { status: "complete" as const }, mode: "full" as const }), assemble: async () => ({ input: { snapshots: [snapshot()], state: await store.load(trustedContext) }, managedRemote, remoteEnumeration: { status: "complete" as const }, mode: "incremental" as const }) } as never;
-  let controller: IntegratedProductController;
+  let controller: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive, store, trustedContext, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: trustedContext, stateStore: store, authorityStore: store, snapshotAssembler: assembler,
     executor, reliableRemoteMutationPort, localTransactionalMutationPort,
     conflictResolver: { assess: async () => assessment }, plannerForTrigger: () => ({ plan: async () => unresolvedPlan(path, conflict) }), leasePort: lease,
@@ -189,10 +189,10 @@ test("Phase 5 successful reviewed first synchronization establishes the persiste
     vaultIdentity: vault,
     deviceIdentity: device,
   }));
-  const store = new IntegratedSynchronizationStateStore(rawStore);
+  const store = new SynchronizationStateAuthorityAdapter(rawStore);
   const cursor = id<"ChangeCursor">("cursor:first"); let completed = 0;
   const assembly = { input: { snapshots: [], state: { status: "uninitialized" as const } }, managedRemote, remoteEnumeration: { status: "complete" as const }, nextCursor: cursor, mode: "full" as const };
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: newContext, stateStore: store, authorityStore: store, snapshotAssembler: { assembleFull: async () => assembly, assemble: async () => assembly } as never,
     executor: new ProductSynchronizationExecutor({} as never, {} as never, store, newContext, () => ({ managedRemote, remoteEnumerationComplete: true })),
     conflictResolver: { assess: async () => ({ kind: "none" as const }) }, plannerForTrigger: trigger => ({ plan: async () => ({ planId: id<"PlanId">("plan:first"), trigger, operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }),

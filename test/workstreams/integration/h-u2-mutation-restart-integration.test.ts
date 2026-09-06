@@ -37,7 +37,7 @@ import { CanonicalEvidenceLocalVault } from "../../../src/product/canonical-loca
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
 import { recoverOutstandingDurableIntents } from "../../../src/product/durable-intent-recovery";
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../../../src/product/path-scope";
-import { IntegratedLocalTransactionalMutationPort, IntegratedSynchronizationStateStore } from "../../../src/product/phase6-sync-integration";
+import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdapter } from "../../../src/product/synchronization-adapters";
 import { TrustedStateSynchronizationAuthorityStore } from "../../../src/product/trusted-state-authority-store";
 import {
   MemoryStateByteStorage,
@@ -109,17 +109,17 @@ async function cState(options: {
   };
   const saved = await raw.saveTrusted(state);
   assert.equal(saved.status, "saved", "C authority fixture must itself be semantically valid");
-  return { storage, raw, state: new IntegratedSynchronizationStateStore(raw) };
+  return { storage, raw, state: new SynchronizationStateAuthorityAdapter(raw) };
 }
 
-async function trusted(store: IntegratedSynchronizationStateStore) {
+async function trusted(store: SynchronizationStateAuthorityAdapter) {
   const loaded = await store.load(context);
   assert.equal(loaded.status, "trusted");
   if (loaded.status !== "trusted") throw new Error("expected trusted integrated C state");
   return loaded.state;
 }
 
-async function authority(store: IntegratedSynchronizationStateStore) {
+async function authority(store: SynchronizationStateAuthorityAdapter) {
   const loaded = await store.loadAuthority();
   assert.equal(loaded.status, "trusted");
   if (loaded.status !== "trusted") throw new Error("expected trusted C authority");
@@ -321,7 +321,7 @@ function simpleLocal(path: VaultPath, bytes: Uint8Array): LocalVaultPort {
 
 function coordinator(
   legacy: ReturnType<typeof remoteLegacy>,
-  state: IntegratedSynchronizationStateStore,
+  state: SynchronizationStateAuthorityAdapter,
   dependencies: { reliableRemoteMutationPort?: unknown; localTransactionalMutationPort?: unknown; remoteFolderCreateRecoveryReadPort?: unknown } = {},
   authorityStore: unknown = state,
 ) {
@@ -494,7 +494,7 @@ test("H-I3 C-persisted dispatch-authorized create restarts through D observation
     trashExisting: async () => { throw new Error("restart must not redispatch trash"); },
   };
   const restartedRaw = new PersistentSynchronizationStateStore(c.storage);
-  const restartedState = new IntegratedSynchronizationStateStore(restartedRaw);
+  const restartedState = new SynchronizationStateAuthorityAdapter(restartedRaw);
   const legacy = remoteLegacy(simpleLocal(path, bytes), world);
   const firstRestart = await coordinator(legacy, restartedState, { reliableRemoteMutationPort: mutationSpy }).executeOperation(uploadCreate(path, intended, "h-u2-restart"));
   assert.equal(firstRestart.status, "committed");
@@ -509,7 +509,7 @@ test("H-I3 C-persisted dispatch-authorized create restarts through D observation
   const semanticBefore = current.semanticGeneration;
   const persistenceBefore = current.persistenceRevision;
   const secondRaw = new PersistentSynchronizationStateStore(c.storage);
-  const secondState = new IntegratedSynchronizationStateStore(secondRaw);
+  const secondState = new SynchronizationStateAuthorityAdapter(secondRaw);
   const repeated = await recoverOutstandingDurableIntents(legacy as never, secondState, secondState, context, managedRemote, {});
   assert.equal(repeated.status, "recovered");
   if (repeated.status === "recovered") { assert.equal(repeated.changed, false); assert.equal(repeated.recoveredCount, 0); }
@@ -527,7 +527,7 @@ test("H-I4 D LOCAL mutation uses H logical mapping and B crash-safe transaction 
   const rawLocal = new MemoryLocal();
   const scope = new ProductPathScope(vp(".obsidian"), () => ({ userExclusionPatterns: [] }));
   const scoped = new ScopedLocalVault(rawLocal, scope);
-  const hTransaction = new IntegratedLocalTransactionalMutationPort(rawLocal.adapter, rawLocal, scope);
+  const hTransaction = new ScopedLocalTransactionalMutationPort(rawLocal.adapter, rawLocal, scope);
   const canonicalLocal = new CanonicalEvidenceLocalVault(scoped, {}, hTransaction);
   const world = new DriveWorld();
   world.addFile(String(remoteId), String(logical), intended, "1");

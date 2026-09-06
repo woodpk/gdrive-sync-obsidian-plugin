@@ -238,7 +238,7 @@ export function resolveAuthorityCompleteOperation(
 }
 
 /**
- * Authoritative D execution boundary. It loads exact semantic authority and the
+ * Authoritative execution boundary. It loads exact semantic authority and the
  * frozen trusted identity mapping state independently, replaces planning-only
  * markers, revalidates the exact operation, performs only an authority-complete
  * mutation, and commits only a verified receipt.

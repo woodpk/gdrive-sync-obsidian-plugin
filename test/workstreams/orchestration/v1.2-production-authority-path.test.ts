@@ -28,7 +28,7 @@ import {
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { BoundedAuditHistory } from "../../../src/product/audit-history";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
-import { IntegratedProductController } from "../../../src/product/product-controller";
+import { ProductController } from "../../../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../../../src/product/production-executor";
 import type { AssembledPlanningInput } from "../../../src/product/snapshot-assembler";
 import { TrustedStateSynchronizationAuthorityStore } from "../../../src/product/trusted-state-authority-store";
@@ -144,7 +144,7 @@ test("D actual controller plus product executor has no nominal-only ordinary mut
   const executor = realExecutor({ onRawUpdate: () => { raw += 1; } });
   const plan: SynchronizationPlan = { planId: id<"PlanId">("plan:production-boundary") as PlanId, trigger: "manual", operations: [plannedNominal()], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" };
   const assembly: AssembledPlanningInput = { input: { snapshots: [], state: { status: "trusted", state: trustedState() } }, managedRemote, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, mode: "full" };
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext, stateStore: stateStore({ ...trustedState(), remoteMappings: [] }) as never,
     snapshotAssembler: { assembleFull: async () => assembly } as never, executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
     plannerForTrigger: () => ({ plan: async () => plan }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as unknown as BoundedAuditHistory, holderId: "test:production-authority",

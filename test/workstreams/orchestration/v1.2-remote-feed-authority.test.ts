@@ -22,7 +22,7 @@ import {
   type VaultPath,
 } from "../../../src/contracts";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
-import { IntegratedProductController } from "../../../src/product/product-controller";
+import { ProductController } from "../../../src/product/product-controller";
 import { ProductSnapshotAssembler } from "../../../src/product/snapshot-assembler";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
@@ -104,7 +104,7 @@ function conflictOperation(sequence: number): PlannedOperation {
 function controller(state: MutableStateStore, authority: WritableAuthority, reliable: ReliableRemoteChangePort, actualConflict = false) {
   const assembler = new ProductSnapshotAssembler(local(), drive(), state as never, context, async () => identity, () => true, () => false, undefined, reliable);
   let plans = 0;
-  return new IntegratedProductController({
+  return new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority,
     snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
     plannerForTrigger: () => ({ plan: async () => {
@@ -164,7 +164,7 @@ test("D repeated already-learned terminal batch is idempotent", async () => {
   const savedBatch: DurableRemoteChangeBatch = authority.value.learnedRemoteBatches[0]!;
   const count = authority.value.learnedRemoteBatches.length;
   const duplicateAssembler = { bindAuthorityStore: () => undefined, assemble: async () => ({ input: { snapshots: [], state: { status: "trusted", state: state.value } }, managedRemote: identity, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, nextCursor: savedBatch.checkpoint.terminalStartToken, remoteChangeBatch: savedBatch, mode: "incremental" }) } as never;
-  const duplicate = new IntegratedProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority, snapshotAssembler: duplicateAssembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:duplicate"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:duplicate" });
+  const duplicate = new ProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, authorityStore: authority, snapshotAssembler: duplicateAssembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:duplicate"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:duplicate" });
   await duplicate.runAutomatic("periodic");
   assert.equal(authority.value.learnedRemoteBatches.length, count);
 });
@@ -172,7 +172,7 @@ test("D repeated already-learned terminal batch is idempotent", async () => {
 test("D absent writable authority store cannot advance terminal REMOTE feed checkpoint", async () => {
   const state = new MutableStateStore(); const calls: string[] = [];
   const assembler = new ProductSnapshotAssembler(local(), drive(), state as never, context, async () => identity, () => true, () => false, undefined, pages(calls));
-  const c = new IntegratedProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:no-write"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:no-write" });
+  const c = new ProductController({ vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: state as never, snapshotAssembler: assembler, executor: {} as never, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ plan: async () => ({ planId: id<"PlanId">("plan:no-write"), trigger: "periodic", operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:no-write" });
   await c.runAutomatic("periodic");
   assert.equal(c.currentSurface().status.kind, "recovery-required"); assert.equal(state.value.changeCursor, cursor("cursor:0"));
 });

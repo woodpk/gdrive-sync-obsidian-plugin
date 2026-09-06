@@ -43,7 +43,7 @@ function changeTouches(change: LocalVaultChange, path: VaultPath): boolean {
 }
 
 /**
- * Phase-5 production evidence decorator, extended by Phase 6 Workstream B.
+ * Production local-evidence decorator with authoritative integrity reads and transactional mutation support.
  * Stable files receive canonical SHA-256 evidence. Ordinary observations may
  * use the opaque observation-token cache; authoritative integrity reads never
  * do. The class can also front the frozen crash-safe transaction port so

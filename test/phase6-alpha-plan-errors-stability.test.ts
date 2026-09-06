@@ -11,8 +11,8 @@ import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audi
 import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vault";
 import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
 import { ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { SyncAttentionLedger, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
@@ -217,12 +217,12 @@ async function controllerFixture(files: EditingFile[]) {
     deviceIdentity: stateContext.expectedDeviceIdentity,
   }));
   assert.equal(seeded.status, "saved");
-  const state = new IntegratedSynchronizationStateStore(rawState);
+  const state = new SynchronizationStateAuthorityAdapter(rawState);
   const assembler = new ProductSnapshotAssembler(local, drive as never, state, stateContext, async () => identity);
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive as never, state, stateContext, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: identity.vaultIdentity, deviceIdentity: stateContext.expectedDeviceIdentity, stateContext, stateStore: state, authorityStore: state,
     snapshotAssembler: assembler, executor, reliableRemoteMutationPort, conflictResolver: conflicts,
     plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
@@ -231,7 +231,7 @@ async function controllerFixture(files: EditingFile[]) {
   return { controller, ledger, csvPersistence, vaultStorage, uploaded, rawCreateCalls: () => rawCreateCalls };
 }
 
-async function executeReviewed(controller: IntegratedProductController) {
+async function executeReviewed(controller: ProductController) {
   const plan = await controller.previewManual(); assert.ok(plan);
   const result = await controller.request({ kind: "execute-plan", planId: plan.planId }); assert.equal(result.status, "accepted");
   return plan;
@@ -417,14 +417,14 @@ test("unrecoverable replacement residue fails initialization without fabricating
 });
 
 async function loadRuntimeClass() {
-  return (await import("../src/product/runtime")).Phase5ProductRuntime;
+  return (await import("../src/product/runtime")).ProductRuntime;
 }
 
 async function recoverRelocation(
   vault: MemoryVault,
   initial: ReturnType<typeof withManagedSyncPlanErrorsExclusion>,
 ) {
-  const Phase5ProductRuntime = await loadRuntimeClass();
+  const ProductRuntime = await loadRuntimeClass();
   let settings = initial;
   const persisted: typeof initial[] = [];
   const host = {
@@ -435,7 +435,7 @@ async function recoverRelocation(
     saveSettings: async (next: typeof initial) => { settings = structuredClone(next); persisted.push(structuredClone(next)); },
     notify: () => undefined,
   };
-  const runtime = new Phase5ProductRuntime(host);
+  const runtime = new ProductRuntime(host);
   await runtime.initialize();
   return { runtime, settings: () => settings, persisted };
 }
@@ -485,12 +485,12 @@ for (const scenario of [
 }
 
 test("live relocation durably journals both exclusions before copying and clears them only after finalization", async () => {
-  const Phase5ProductRuntime = await loadRuntimeClass();
+  const ProductRuntime = await loadRuntimeClass();
   const vault = new MemoryVault(), source = "sync-plan-errors.csv", destination = "99-System/sync-plan-errors.csv";
   vault.files.set(source, recordsCsv("preserved.md"));
   let settings = withManagedSyncPlanErrorsExclusion({ ...DEFAULT_SETTINGS, deviceIdentity: "device:live", userExclusionPatterns: ["private/**"] });
   const writes: Array<{ readonly settings: typeof settings; readonly sourceExists: boolean; readonly destinationExists: boolean }> = [];
-  const runtime = new Phase5ProductRuntime({
+  const runtime = new ProductRuntime({
     app: { ...vault.app, secretStorage: { getSecret: () => null } } as unknown as App,
     plugin: {} as never,
     settings: () => settings,

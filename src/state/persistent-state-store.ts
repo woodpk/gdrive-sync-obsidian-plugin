@@ -57,14 +57,14 @@ export interface DurableRemoteBatchReduction {
   readonly durableFactRefs: readonly string[];
 }
 
-/** Historical Workstream C v1 authority schema retained only for explicit migration. */
+/** Historical v1 authority schema retained only for explicit migration. */
 export interface DurableSynchronizationAuthorityStateV1 extends TrustedSynchronizationState, SynchronizationAuthorityMetadata {
   readonly authoritySchemaVersion: 1;
   readonly baseAuthority: readonly DurableBaseAuthorityEntry[];
   readonly learnedRemoteReductions: readonly DurableRemoteBatchReduction[];
 }
 
-/** Authoritative phase6-sync-foundation-v1.1 persistence schema. */
+/** Authoritative v1.1 synchronization persistence schema. */
 export interface DurableSynchronizationAuthorityState extends TrustedSynchronizationState, SynchronizationAuthorityMetadataV1_1 {
   readonly authoritySchemaVersion: 2;
   readonly baseAuthority: readonly DurableBaseAuthorityEntry[];
@@ -498,7 +498,7 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     return { status: "migrated", backup };
   }
 
-  /** Explicit backup-first, CAS-bound upgrade of the historical Workstream C v1 authority document. */
+  /** Explicit backup-first, CAS-bound upgrade of the historical v1 authority document. */
   async migrateAuthorityV1ToV1_1(): Promise<AuthorityV1MigrationResult> {
     if (!this.storage.compareAndSwap) return { status: "recovery-required", reason: "v1 authority migration requires atomic compare-and-swap storage" };
     const sourceBytes = await this.storage.read(); if (!sourceBytes) return { status: "recovery-required", reason: "authority state is missing" };

@@ -24,9 +24,9 @@ import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { enterSynchronizationLifecycle } from "../src/core/run-coordinator";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
+import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { ProductSyncScheduler } from "../src/product/scheduler";
 import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../src/product/text-version-store";
@@ -387,8 +387,8 @@ class MemorySyncBoundary {
 
 interface Harness {
   boundary: MemorySyncBoundary;
-  store: IntegratedSynchronizationStateStore;
-  controller: IntegratedProductController;
+  store: SynchronizationStateAuthorityAdapter;
+  controller: ProductController;
   context: StateLoadContext;
   setFirstSyncCompleted(value: boolean): void;
   firstSyncCompleted(): boolean;
@@ -415,14 +415,14 @@ async function harness(options: { trusted?: DurableSynchronizationAuthorityState
   });
   const saved = await rawStore.saveTrusted(seeded);
   assert.equal(saved.status, "saved");
-  const store = new IntegratedSynchronizationStateStore(rawStore);
+  const store = new SynchronizationStateAuthorityAdapter(rawStore);
   const assembler = new ProductSnapshotAssembler(boundary.local as never, boundary.drive as never, store, context, async () => identity);
   const textVersions = new ProductTextVersionStore(new MemoryTextVersionPersistence(), boundary.local as never, boundary.drive as never);
   const conflicts = new ThreeWayConflictResolver(textVersions, textVersions, device);
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   let completed = Boolean(options.trusted);
   const executor = new ProductSynchronizationExecutor(boundary.local as never, boundary.drive as never, store, context, () => controller.currentRunEvidence(), textVersions);
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
@@ -465,7 +465,7 @@ function trustedState(path: VaultPath, remoteObjectId: RemoteObjectId, text: str
   };
 }
 
-async function executeReviewed(controller: IntegratedProductController) {
+async function executeReviewed(controller: ProductController) {
   const plan = await controller.previewManual();
   assert.ok(plan);
   const result = await controller.request({ kind: "execute-plan", planId: plan.planId });

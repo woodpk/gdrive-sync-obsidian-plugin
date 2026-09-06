@@ -18,8 +18,8 @@ import { BoundedAuditHistory } from "./audit-history";
 import { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
 import { MeaningfulNotificationFilter } from "./notification-policy";
 import { ProductPathScope, ScopedLocalVault } from "./path-scope";
-import { IntegratedLocalTransactionalMutationPort, IntegratedSynchronizationStateStore } from "./phase6-sync-integration";
-import { IntegratedProductController } from "./product-controller";
+import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
+import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
@@ -54,11 +54,11 @@ export interface ProductRuntimeHost {
   notify(message: string): void;
 }
 
-export class Phase5ProductRuntime {
+export class ProductRuntime {
   private local?: LocalVaultPort;
   private boundary?: ReturnType<typeof createObsidianGoogleDriveBoundary>;
   private state?: PersistentSynchronizationStateStore;
-  private controller?: IntegratedProductController;
+  private controller?: ProductController;
   private scheduler?: ProductSyncScheduler;
   private audit?: BoundedAuditHistory;
   private attention?: SyncAttentionLedger;
@@ -68,7 +68,7 @@ export class Phase5ProductRuntime {
   private readonly notifications = new MeaningfulNotificationFilter();
 
   constructor(private readonly host: ProductRuntimeHost) {}
-  productController(): IntegratedProductController | undefined { return this.controller; }
+  productController(): ProductController | undefined { return this.controller; }
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
   async initialize(): Promise<void> {
@@ -166,7 +166,7 @@ export class Phase5ProductRuntime {
       () => this.operationalExclusions,
     );
     const scopedLocal = new ScopedLocalVault(rawLocal, scope);
-    const localTransactions = new IntegratedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
+    const localTransactions = new ScopedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
     const canonicalLocal = new CanonicalEvidenceLocalVault(scopedLocal, {}, localTransactions);
     this.local = canonicalLocal;
 
@@ -179,7 +179,7 @@ export class Phase5ProductRuntime {
       expectedDeviceIdentity: deviceIdentity,
     };
     const durableState = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
-    this.state = new IntegratedSynchronizationStateStore(durableState);
+    this.state = new SynchronizationStateAuthorityAdapter(durableState);
     diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
     const snapshots = new ProductSnapshotAssembler(
@@ -203,9 +203,9 @@ export class Phase5ProductRuntime {
     this.audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
     diagnostics.trace("runtime", "audit-store-ready", { stage: "audit-store", storeReady: true });
 
-    let controller: IntegratedProductController;
+    let controller: ProductController;
     const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence(), textVersions);
-    controller = new IntegratedProductController({
+    controller = new ProductController({
       vaultIdentity,
       deviceIdentity,
       stateContext,
@@ -220,7 +220,7 @@ export class Phase5ProductRuntime {
       plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
       leasePort: new WebLocksRunLeasePort(),
       audit: this.audit,
-      holderId: `phase5:${String(deviceIdentity)}:${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+      holderId: `brain-sync:${String(deviceIdentity)}:${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
       automaticExecutionAllowed: plan => {
         const live = this.host.settings();
         if (!live.firstSyncCompleted || live.recoveryInProgress) return { allowed: false, reason: "Automatic synchronization remains disabled until trustworthy synchronization state is established." };

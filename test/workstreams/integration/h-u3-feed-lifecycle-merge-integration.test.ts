@@ -41,8 +41,8 @@ import { GoogleHttpTransport, type PortableRequestInit } from "../../../src/driv
 import { CanonicalEvidenceLocalVault } from "../../../src/product/canonical-local-vault";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
 import { ProductPathScope, ScopedLocalVault } from "../../../src/product/path-scope";
-import { IntegratedLocalTransactionalMutationPort, IntegratedSynchronizationStateStore } from "../../../src/product/phase6-sync-integration";
-import { IntegratedProductController } from "../../../src/product/product-controller";
+import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdapter } from "../../../src/product/synchronization-adapters";
+import { ProductController } from "../../../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../../../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../../../src/product/snapshot-assembler";
 import { ProductSyncScheduler } from "../../../src/product/scheduler";
@@ -119,15 +119,15 @@ async function cState(options: {
   };
   const saved = await raw.saveTrusted(state);
   assert.equal(saved.status, "saved");
-  return { storage, raw, state: new IntegratedSynchronizationStateStore(raw) };
+  return { storage, raw, state: new SynchronizationStateAuthorityAdapter(raw) };
 }
-async function trusted(store: IntegratedSynchronizationStateStore) {
+async function trusted(store: SynchronizationStateAuthorityAdapter) {
   const loaded = await store.load(context);
   assert.equal(loaded.status, "trusted");
   if (loaded.status !== "trusted") throw new Error("expected trusted C state");
   return loaded.state;
 }
-async function authority(store: IntegratedSynchronizationStateStore) {
+async function authority(store: SynchronizationStateAuthorityAdapter) {
   const loaded = await store.loadAuthority();
   assert.equal(loaded.status, "trusted");
   if (loaded.status !== "trusted") throw new Error("expected trusted C authority");
@@ -286,7 +286,7 @@ function noOpPlanner(capture?: (snapshots: readonly unknown[]) => void) {
   } };
 }
 function controllerFor(options: { state: unknown; authorityStore: SynchronizationAuthorityStoreV1_1; assembler: ProductSnapshotAssembler; capture?: (snapshots: readonly unknown[]) => void }) {
-  return new IntegratedProductController({
+  return new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
@@ -303,7 +303,7 @@ function controllerFor(options: { state: unknown; authorityStore: Synchronizatio
 }
 class CursorMirrorFailure {
   cursorSaveAttempts = 0;
-  constructor(private readonly delegate: IntegratedSynchronizationStateStore) {}
+  constructor(private readonly delegate: SynchronizationStateAuthorityAdapter) {}
   load(ctx: StateLoadContext) { return this.delegate.load(ctx); }
   async saveTrusted(_candidate: TrustedSynchronizationState, _expected?: StateRevision) {
     this.cursorSaveAttempts += 1;
@@ -312,7 +312,7 @@ class CursorMirrorFailure {
 }
 class DurableLearningFailure implements SynchronizationAuthorityStoreV1_1 {
   saveAttempts = 0;
-  constructor(private readonly delegate: IntegratedSynchronizationStateStore) {}
+  constructor(private readonly delegate: SynchronizationStateAuthorityAdapter) {}
   loadAuthority() { return this.delegate.loadAuthority(); }
   async saveAuthority(_candidate: SynchronizationAuthorityMetadataV1_1, _expected: PersistenceRevision): Promise<SynchronizationAuthoritySaveResult> {
     this.saveAttempts += 1;
@@ -346,7 +346,7 @@ test("H-I6 A Changes traverse all pages; C durable learning precedes cursor mirr
   assert.ok(cursorFailure.cursorSaveAttempts >= 1);
   assert.equal(first.currentSurface().status.kind, "recovery-required");
 
-  const restarted = new IntegratedSynchronizationStateStore(new PersistentSynchronizationStateStore(c.storage));
+  const restarted = new SynchronizationStateAuthorityAdapter(new PersistentSynchronizationStateStore(c.storage));
   const world2 = new FeedWorld();
   const a2 = world2.createAdapter();
   let captured: readonly unknown[] = [];
@@ -491,7 +491,7 @@ test("H-I7 F clean merge requires independent B LOCAL and A REMOTE durable verif
   rawLocal.files.set(String(path), encoder.encode(localText));
   const scope = new ProductPathScope(vp(".obsidian"), () => ({ userExclusionPatterns: [] }));
   const scoped = new ScopedLocalVault(rawLocal, scope);
-  const localTransactions = new IntegratedLocalTransactionalMutationPort(rawLocal.adapter, rawLocal, scope);
+  const localTransactions = new ScopedLocalTransactionalMutationPort(rawLocal.adapter, rawLocal, scope);
   const canonicalLocal = new CanonicalEvidenceLocalVault(scoped, {}, localTransactions);
   const localObservation = await canonicalLocal.observe(path);
   assert.equal(localObservation.status, "present");

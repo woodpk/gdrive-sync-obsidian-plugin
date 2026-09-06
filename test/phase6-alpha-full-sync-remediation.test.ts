@@ -19,8 +19,8 @@ import type {
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { SyncAttentionLedger, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
@@ -102,7 +102,7 @@ async function controllerHarness(planOrPlans: SynchronizationPlan | readonly Syn
   } : { ...initial, changeCursor: oldCursor };
   const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   assert.equal((await rawStore.saveTrusted(seeded)).status, "saved");
-  const store = new IntegratedSynchronizationStateStore(rawStore);
+  const store = new SynchronizationStateAuthorityAdapter(rawStore);
 
   const persistence = new MemoryAttentionPersistence();
   const ledger = new SyncAttentionLedger(persistence, 20);
@@ -188,9 +188,9 @@ async function controllerHarness(planOrPlans: SynchronizationPlan | readonly Syn
     remoteEnumeration: { status: "complete" as const }, localEnumeration: { status: "complete" as const },
     mode: "incremental" as const, nextCursor: id<"ChangeCursor">("cursor:candidate") as ChangeCursor,
   };
-  let controller!: IntegratedProductController;
+  let controller!: ProductController;
   const executor = new ProductSynchronizationExecutor(local, drive, store, context, () => controller.currentRunEvidence());
-  controller = new IntegratedProductController({
+  controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store, authorityStore: store,
     snapshotAssembler: { assemble: async () => assembly } as never,
     executor, reliableRemoteMutationPort,

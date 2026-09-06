@@ -1,6 +1,6 @@
 import { App, Modal, Setting } from "obsidian";
 import type { CheckpointId, SynchronizationPlan } from "../contracts";
-import type { IntegratedProductController } from "./product-controller";
+import type { ProductController } from "./product-controller";
 
 export class PlanPreviewModal extends Modal {
   private executionPending = false;
@@ -8,7 +8,7 @@ export class PlanPreviewModal extends Modal {
   constructor(
     app: App,
     private readonly plan: SynchronizationPlan,
-    private readonly controller: IntegratedProductController,
+    private readonly controller: ProductController,
     private readonly diagnosticRunId?: number,
   ) { super(app); }
 

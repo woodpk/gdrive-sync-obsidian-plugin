@@ -35,7 +35,7 @@ import { CONFIG_REMOTE_NAMESPACE, ProductPathScope } from "./path-scope";
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const normalize = (value: string) => value.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/\/$/, "");
 
-export function nextIntegratedSemanticGeneration(current: SemanticStateGeneration): SemanticStateGeneration {
+export function nextSemanticGeneration(current: SemanticStateGeneration): SemanticStateGeneration {
   const value = String(current);
   const match = /^(.*?)(\d+)$/.exec(value);
   const next = match ? `${match[1]}${Number(match[2]) + 1}` : `${value}:1`;
@@ -47,7 +47,7 @@ function semanticStateRevision(generation: SemanticStateGeneration): StateRevisi
 }
 
 /** Carry unchanged converged-path authority through one exact semantic CAS. */
-export function rebaseIntegratedConvergence(
+export function rebaseConvergenceGeneration(
   state: DurableSynchronizationAuthorityState,
   generation: SemanticStateGeneration,
 ): DurableSynchronizationAuthorityState {
@@ -69,12 +69,12 @@ function physicalArtifactPath(target: VaultPath, role: "stage" | "backup", seed:
 }
 
 /**
- * B's crash-safe transaction engine owns the actual filesystem mutation. H maps
- * D's logical durable transaction into physical sibling artifacts so selective
+ * The crash-safe transaction engine owns the actual filesystem mutation. This adapter maps
+ * logical durable transactions into physical sibling artifacts so selective
  * configuration paths resolve correctly and staging/backup files remain inside
  * the repository's operational exclusion patterns.
  */
-export class IntegratedLocalTransactionalMutationPort implements LocalTransactionalMutationPort {
+export class ScopedLocalTransactionalMutationPort implements LocalTransactionalMutationPort {
   private readonly delegate: ObsidianLocalMutationTransactions;
 
   constructor(
@@ -223,7 +223,7 @@ function reconcileCanonicalAuthority(
   };
   if (!semanticChanged) return candidate;
 
-  const nextGeneration = nextIntegratedSemanticGeneration(current.semanticGeneration);
+  const nextGeneration = nextSemanticGeneration(current.semanticGeneration);
   const changed = new Set(changedCanonicalPaths(current, legacyCandidate).map(String));
   let baseAuthority = candidate.baseAuthority.filter(entry => !changed.has(String(entry.path)));
   let pathConvergence = candidate.pathConvergence.filter(entry => !changed.has(String(entry.path)));
@@ -242,7 +242,7 @@ function reconcileCanonicalAuthority(
   }
 
   candidate = { ...candidate, baseAuthority, pathConvergence };
-  return rebaseIntegratedConvergence(candidate, nextGeneration);
+  return rebaseConvergenceGeneration(candidate, nextGeneration);
 }
 
 function authorityState(value: TrustedSynchronizationState): value is DurableSynchronizationAuthorityState {
@@ -309,8 +309,8 @@ function rebaseCompletedEffectSemanticAuthority(
 
 /**
  * A fully state-committed intent is inert: its physical effects are already
- * independently verified and its canonical state is already durable. When H's
- * split-domain bridge advances C's semantic generation for that canonical commit,
+ * independently verified and its canonical state is already durable. When the
+ * split-domain state adapter advances the semantic generation for that canonical commit,
  * keep only that completed journal record aligned with the new generation so a
  * later restart treats it as idempotently complete rather than stale work. Never
  * rebase an intent that could still authorize or recover a physical mutation.
@@ -347,12 +347,12 @@ function rebaseCompletedIntentSemanticAuthority(
 }
 
 /**
- * H's state adapter is the production compatibility layer between D's historical
- * split-store stateRevision CAS and C's single-document persistenceRevision +
- * semanticGeneration authority. D observes a semantic CAS token; all physical
+ * This state adapter is the production compatibility layer between the historical
+ * split-store stateRevision CAS and the single-document persistenceRevision +
+ * semanticGeneration authority. Consumers observe a semantic CAS token; all physical
  * intent/effect checkpoints still advance C's independent persistence revision.
  */
-export class IntegratedSynchronizationStateStore extends PersistentSynchronizationStateStore implements SynchronizationStateStore {
+export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizationStateStore implements SynchronizationStateStore {
   constructor(private readonly source: PersistentSynchronizationStateStore) {
     super(new MemoryStateByteStorage(), source.currentSchemaVersion);
   }
@@ -411,11 +411,11 @@ export class IntegratedSynchronizationStateStore extends PersistentSynchronizati
     }
     const semanticChanged = authorityProjection(loaded.state) !== authorityProjection(state);
     const targetGeneration = semanticChanged
-      ? nextIntegratedSemanticGeneration(loaded.state.semanticGeneration)
+      ? nextSemanticGeneration(loaded.state.semanticGeneration)
       : loaded.state.semanticGeneration;
     const withCompletedIntents = rebaseCompletedIntentSemanticAuthority(state, targetGeneration);
     const candidate = semanticChanged
-      ? rebaseIntegratedConvergence(withCompletedIntents, targetGeneration)
+      ? rebaseConvergenceGeneration(withCompletedIntents, targetGeneration)
       : withCompletedIntents;
     return this.source.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
   }
@@ -433,7 +433,7 @@ export class IntegratedSynchronizationStateStore extends PersistentSynchronizati
       : { status: "recovery-required", issues: loaded.issues };
     const staleConvergence = loaded.state.pathConvergence.some(entry => entry.state.status === "converged" && entry.state.generation !== loaded.state.semanticGeneration);
     if (!staleConvergence) return first;
-    const candidate = rebaseIntegratedConvergence(loaded.state, nextIntegratedSemanticGeneration(loaded.state.semanticGeneration));
+    const candidate = rebaseConvergenceGeneration(loaded.state, nextSemanticGeneration(loaded.state.semanticGeneration));
     return this.source.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
   }
 

@@ -92,7 +92,7 @@ export class ProductSnapshotAssembler {
     authorityStore?: SynchronizationAuthorityStoreV1_1,
   ) { this.authorityStore = authorityStore; }
 
-  /** D-owned orchestration binding; the store itself remains the frozen C/D contract. */
+  /** Orchestration binding; the store itself remains the frozen synchronization authority contract. */
   bindAuthorityStore(authorityStore: SynchronizationAuthorityStoreV1_1): void { this.authorityStore = authorityStore; }
 
   async assemble(preferIncremental = true, runId?: number): Promise<AssembledPlanningInput> {

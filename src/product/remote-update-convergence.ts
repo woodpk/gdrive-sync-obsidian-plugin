@@ -7,7 +7,7 @@ export type PreservedRemoteUpdateConvergence =
   | { readonly status: "not-converged"; readonly reason: string };
 
 /**
- * D-C13 compatibility rule for Workstream A's immutable-candidate-preservation
+ * Compatibility rule for immutable remote-update candidate preservation
  * existing-file update. This is intentionally operation-specific: no other
  * same-path multi-object topology is accepted here.
  */

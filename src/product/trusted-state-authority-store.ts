@@ -93,7 +93,7 @@ function recoveryIssue(detail: string) {
  * authority, but it is intentionally NOT a persistence adapter for operation
  * intents, physical effect stages, LOCAL transactions, or learned REMOTE batches.
  *
- * Workstream C owns the concrete writable authority persistence adapter. D must
+ * The concrete writable authority persistence adapter owns durable authority writes. This bridge must
  * fail closed rather than acknowledge an authority transition that was not
  * durably written.
  */

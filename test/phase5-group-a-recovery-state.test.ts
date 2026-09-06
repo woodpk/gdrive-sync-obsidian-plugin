@@ -16,8 +16,8 @@ import { contractId } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import type { AssembledPlanningInput } from "../src/product/snapshot-assembler";
 import {
   createInitialAuthorityState,
@@ -172,7 +172,7 @@ async function seededStore() {
     vaultIdentity: vault,
     deviceIdentity: device,
   }));
-  return new IntegratedSynchronizationStateStore(raw);
+  return new SynchronizationStateAuthorityAdapter(raw);
 }
 
 function assertPreservedState(
@@ -237,7 +237,7 @@ test("GROUP A A1 recovery preserves reconstructed trusted state while authority-
     trashExisting: async () => { throw new Error("trash is not used by this fixture"); },
   };
 
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,

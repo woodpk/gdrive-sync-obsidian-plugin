@@ -19,8 +19,8 @@ import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
-import { IntegratedSynchronizationStateStore } from "../src/product/phase6-sync-integration";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../src/product/text-version-store";
@@ -123,11 +123,11 @@ function state(vault:any,device:any,entries:readonly {path:VaultPath;remoteObjec
 async function make(entries:readonly {path:string;base:string;local?:string;remote?:string;remotePath?:string;remoteObjectId?:string}[],opts:{stale?:boolean}={}){
   const vault=id<"VaultIdentity">("vault:g2:conflict"),device=id<"DeviceIdentity">("device:g2:conflict"),identity={rootId:rid("root:g2:conflict"),vaultIdentity:vault,protocolVersion:id<"ProtocolVersion">("1")} as ManagedRemoteIdentity,b=new Boundary(identity);const bases=[] as {path:VaultPath;remoteObjectId:RemoteObjectId;text:string}[];
   for(const x of entries){const p=vp(x.path),r=rid(x.remoteObjectId??`rid:${x.path}`);bases.push({path:p,remoteObjectId:r,text:x.base});if(x.local!==undefined)b.setLocal(p,x.local);if(x.remote!==undefined)b.setRemote(vp(x.remotePath??x.path),x.remote,r);}
-  const rawStore=new PersistentSynchronizationStateStore(new MemoryStateByteStorage()),st=state(vault,device,bases,opts.stale);await rawStore.saveTrusted(st);const store=new IntegratedSynchronizationStateStore(rawStore),context:StateLoadContext={expectation:"existing-pairing",expectedVaultIdentity:vault,expectedDeviceIdentity:device};
+  const rawStore=new PersistentSynchronizationStateStore(new MemoryStateByteStorage()),st=state(vault,device,bases,opts.stale);await rawStore.saveTrusted(st);const store=new SynchronizationStateAuthorityAdapter(rawStore),context:StateLoadContext={expectation:"existing-pairing",expectedVaultIdentity:vault,expectedDeviceIdentity:device};
   const assembler=new ProductSnapshotAssembler(b.l as never,b.d as never,store,context,async()=>identity);
   const versions=new ProductTextVersionStore(new MemoryTextVersionPersistence(),b.l as never,b.d as never);for(const x of entries)await versions.persistText({path:vp(x.path),entityKind:"file",content:ev(x.base),remoteObjectId:rid(x.remoteObjectId??`rid:${x.path}`)},x.base);
-  const conflicts=new ThreeWayConflictResolver(versions,versions,device);let controller!:IntegratedProductController;const executor=new ProductSynchronizationExecutor(b.l as never,b.d as never,store,context,()=>controller.currentRunEvidence(),versions);
-  controller=new IntegratedProductController({vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:store,authorityStore:store,snapshotAssembler:assembler,executor,reliableRemoteMutationPort:b.reliableRemoteMutationPort,localTransactionalMutationPort:b.localTransactionalMutationPort,conflictResolver:conflicts,plannerForTrigger:t=>new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts,undefined,{trigger:t})),leasePort:{tryAcquire:async()=>({release:async()=>undefined})} as never,audit:new BoundedAuditHistory(new MemoryAuditPersistence(),100),holderId:"g2-conflict"});
+  const conflicts=new ThreeWayConflictResolver(versions,versions,device);let controller!:ProductController;const executor=new ProductSynchronizationExecutor(b.l as never,b.d as never,store,context,()=>controller.currentRunEvidence(),versions);
+  controller=new ProductController({vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:store,authorityStore:store,snapshotAssembler:assembler,executor,reliableRemoteMutationPort:b.reliableRemoteMutationPort,localTransactionalMutationPort:b.localTransactionalMutationPort,conflictResolver:conflicts,plannerForTrigger:t=>new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts,undefined,{trigger:t})),leasePort:{tryAcquire:async()=>({release:async()=>undefined})} as never,audit:new BoundedAuditHistory(new MemoryAuditPersistence(),100),holderId:"g2-conflict"});
   return{b,store,context,controller};
 }
 async function preview(h:Awaited<ReturnType<typeof make>>){const p=await h.controller.previewManual();assert.ok(p);return p;}
