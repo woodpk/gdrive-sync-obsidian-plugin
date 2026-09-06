@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: 7e4a00a1c4ef1a3722c95a61d6732e8dbf478745
+          ref: 6fdacc23af215524473750b42edf0b12767a62f1
           persist-credentials: false
           fetch-depth: 0
 
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=7e4a00a1c4ef1a3722c95a61d6732e8dbf478745
+          CANDIDATE=6fdacc23af215524473750b42edf0b12767a62f1
           ENTRY=a0dacde6849bfdce99422a318faebe733418222c
           EXPECTED='test/adversarial-model/support/model.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
@@ -164,7 +164,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE=7e4a00a1c4ef1a3722c95a61d6732e8dbf478745
+          CANDIDATE=6fdacc23af215524473750b42edf0b12767a62f1
           ENTRY=a0dacde6849bfdce99422a318faebe733418222c
           EXPECTED='test/adversarial-model/support/model.ts'
           test "$(git rev-parse HEAD)" = "$CANDIDATE"
