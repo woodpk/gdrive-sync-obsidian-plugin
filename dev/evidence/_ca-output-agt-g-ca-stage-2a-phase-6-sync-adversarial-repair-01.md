@@ -66,15 +66,15 @@ No production source changed.
 
 - Proof branch: `g-r1-adversarial-transition-quiescence-proof-g01`
 - Proof workflow: `.github/workflows/g-r1-adversarial-transition-quiescence-proof.yml`
-- Proof branch workflow commit: `6a5f2635f04501323fb0642c14c560f20af204ee`
+- Proof branch workflow commit: `6a5f34953576b31f950ee5a125eb5d9100ca3f0b`
 - Exact candidate checked out by workflow: `1fedd3752a7409fd3691b18456a6fe851c80a7bb`
 - GitHub Actions run ID: `34012563107`
 - Job ID: `101430768907`
 - Workflow/job conclusion: `success`
-- Proof artifact ID: `9982912760`
+- Proof artifact ID: `9982913394`
 - Proof artifact name: `g-r1-adversarial-transition-quiescence-proof`
-- Proof artifact digest: `sha256:1c110193590acc7ed8b2da47dcea25faf02728837783fb76bbf76b1916e15ac4`
-- Proof artifact size: `8082` bytes
+- Proof artifact digest: `sha256:0b781de290fe6d8de6d865864e1abda0e05f8024efbffd79e82ab5289170ec80`
+- Proof artifact size: `40389` bytes
 
 The authoritative workflow used Node 22, `actions/checkout@v4` with `persist-credentials: false` and full history, and performed no source/test/contract patching.
 
