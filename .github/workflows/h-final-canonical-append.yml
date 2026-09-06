@@ -33,30 +33,26 @@ jobs:
           pre_size=$(wc -c < canonical-preappend.bin)
           pre_blob=$(git hash-object canonical-preappend.bin)
           test "$pre_blob" = d4c610ccbc6cbbd6d58f548525239bb6d61e1f73
-
-          cat >> "$CANON" <<'EOF'
-
----
-
-## Phase 6 H Integration Closure — H-FINAL
-
-- Final frozen source/test SHA: `cb0c81b2ddb941446f821d71274aa58af28007ec`.
-- Approved H-NORM evidence head: `8c831c29c7822e664d923f8cfb00544adebe1311`.
-- Dedicated H-FINAL evidence: `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14.md` at Evidence commit 1 `32f3551b20927f1db11db12740a2098f79a4e901`; that file contains the detailed integrated A–G/H authority lineage.
-- Authoritative H-FINAL proof: branch `h-final-authoritative-clean-verification-h14`; workflow `.github/workflows/h-final-authoritative-clean-verification.yml`; workflow-only head `7d71bfb6e11bc776754789a697ffe11048dccf18`; run `34060210064`; job `101559272769`; artifact `9997224891` (`h-final-authoritative-clean-verification`), digest `sha256:29b321813c6de305e0045849b26196635d9de097ae17c50050aa8951bd7b1302`, size `69645` bytes.
-- Whole repository: `687 / 687 PASS`; fail/cancelled/skipped/todo `0 / 0 / 0 / 0`.
-- H/V1.3 critical: `82 / 82 PASS`; H-I1 through H-I8 all PASS.
-- Adversarial G: `56 / 56 PASS`; G-W1, G-W2, and G-W3 all PASS.
-- V1.3 foundation: `17 / 17 PASS`; C15 and C16 PASS.
-- `npm run build`: PASS; `npm run check`: PASS; deterministic entrypoint, syntax, local-runtime-dependency, mobile-evaluation, and package-shape verifiers all PASS.
-- Final `main.js`: `699431` bytes; SHA-256 `da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482`.
-- Frozen `src/contracts/**` tree: `0db68ced179825f929008b502335210260ca2ce3`.
-- Canonical historical content before this section was Git blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73` and is preserved as a byte-identical prefix; this closure is a true EOF-only append with zero historical-byte modification.
-- Source/test remained frozen throughout H-FINAL; no H-FINAL repair was performed.
-- PR #45 remained open, draft, and unmerged through the technical proof and evidence-closure preparation; final post-closure PR/head state is verified separately after this commit.
-- The H candidate was not merged. Stage 3, release work, post-iPhone optimization, and physical iPhone/Google Drive synchronization were not begun.
-EOF
-
+          {
+            printf '\n---\n\n'
+            printf '%s\n' '## Phase 6 H Integration Closure — H-FINAL'
+            printf '\n'
+            printf '%s\n' '- Final frozen source/test SHA: `cb0c81b2ddb941446f821d71274aa58af28007ec`.'
+            printf '%s\n' '- Approved H-NORM evidence head: `8c831c29c7822e664d923f8cfb00544adebe1311`.'
+            printf '%s\n' '- Dedicated H-FINAL evidence: `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14.md` at Evidence commit 1 `32f3551b20927f1db11db12740a2098f79a4e901`; that file contains the detailed integrated A–G/H authority lineage.'
+            printf '%s\n' '- Authoritative H-FINAL proof: branch `h-final-authoritative-clean-verification-h14`; workflow `.github/workflows/h-final-authoritative-clean-verification.yml`; workflow-only head `7d71bfb6e11bc776754789a697ffe11048dccf18`; run `34060210064`; job `101559272769`; artifact `9997224891` (`h-final-authoritative-clean-verification`), digest `sha256:29b321813c6de305e0045849b26196635d9de097ae17c50050aa8951bd7b1302`, size `69645` bytes.'
+            printf '%s\n' '- Whole repository: `687 / 687 PASS`; fail/cancelled/skipped/todo `0 / 0 / 0 / 0`.'
+            printf '%s\n' '- H/V1.3 critical: `82 / 82 PASS`; H-I1 through H-I8 all PASS.'
+            printf '%s\n' '- Adversarial G: `56 / 56 PASS`; G-W1, G-W2, and G-W3 all PASS.'
+            printf '%s\n' '- V1.3 foundation: `17 / 17 PASS`; C15 and C16 PASS.'
+            printf '%s\n' '- `npm run build`: PASS; `npm run check`: PASS; deterministic entrypoint, syntax, local-runtime-dependency, mobile-evaluation, and package-shape verifiers all PASS.'
+            printf '%s\n' '- Final `main.js`: `699431` bytes; SHA-256 `da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482`.'
+            printf '%s\n' '- Frozen `src/contracts/**` tree: `0db68ced179825f929008b502335210260ca2ce3`.'
+            printf '%s\n' '- Canonical historical content before this section was Git blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73` and is preserved as a byte-identical prefix; this closure is a true EOF-only append with zero historical-byte modification.'
+            printf '%s\n' '- Source/test remained frozen throughout H-FINAL; no H-FINAL repair was performed.'
+            printf '%s\n' '- PR #45 remained open, draft, and unmerged through the technical proof and evidence-closure preparation; final post-closure PR/head state is verified separately after this commit.'
+            printf '%s\n' '- The H candidate was not merged. Stage 3, release work, post-iPhone optimization, and physical iPhone/Google Drive synchronization were not begun.'
+          } >> "$CANON"
           post_size=$(wc -c < "$CANON")
           test "$post_size" -gt "$pre_size"
           cmp -n "$pre_size" canonical-preappend.bin "$CANON"
@@ -70,7 +66,6 @@ EOF
           test "$additions" -gt 0
           test "$deletions" = 0
           if git diff -- "$CANON" | grep '^-' | grep -v '^---' >/dev/null; then exit 1; fi
-
           git config user.name "woodpk"
           git config user.email "48619728+woodpk@users.noreply.github.com"
           git add -- "$CANON"
