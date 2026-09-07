@@ -26,7 +26,7 @@ Preserve LOCAL/REMOTE/BASE/common separation; persistence revision versus semant
 
 ## 4. V1.1 authoritative folder persistence
 
-`src/contracts/synchronization-folder-create-foundation.ts`, exported through `src/contracts/index.ts`, now contains the complete authoritative v1.1 folder path:
+`../../src/contracts/synchronization-folder-create-foundation.ts`, exported through `src/contracts/index.ts`, now contains the complete authoritative v1.1 folder path:
 
 - `RecoverablePhysicalMutationDescriptorV1_1` / `RecoverableMutationEffectV1_1` / `RecoverableOperationIntentV1_1`;
 - `SynchronizationAuthorityMetadataV1_1`, whose `operationIntents` are folder-capable;
@@ -57,7 +57,7 @@ No private persistence sidecar, untyped blob, cast-through-unknown authority, re
 
 ## 6. Predictive coverage and checkpoint verification
 
-Existing `test/phase6-folder-create-foundation.test.ts` remains passing. New `test/phase6-folder-authority-store-foundation.test.ts` proves LOCAL/REMOTE metadata admission, save/restart/load, exact REMOTE reserved-ID preservation, shared restart directives, shared completion semantics, and C/D exchange through only the frozen v1.1 metadata/store contract.
+Existing `../../test/phase6-folder-create-foundation.test.ts` remains passing. New `test/phase6-folder-authority-store-foundation.test.ts` proves LOCAL/REMOTE metadata admission, save/restart/load, exact REMOTE reserved-ID preservation, shared restart directives, shared completion semantics, and C/D exchange through only the frozen v1.1 metadata/store contract.
 
 At checkpoint `750100f95c8a32a6deb6909cd03ebbee3682d650`, `Phase 6 Alpha Diagnostic Verification` run `33355904138`, job `99377893445`, completed successfully as **PR merge-ref verification containing candidate head**. Artifact `9745116592` records:
 
@@ -68,7 +68,7 @@ At checkpoint `750100f95c8a32a6deb6909cd03ebbee3682d650`, `Phase 6 Alpha Diagnos
 - full repository check: PASS, including repeated 413/413 suite;
 - `git diff --check`: PASS;
 - all build/mobile/package verifiers: PASS;
-- `main.js`: `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
+- `../../main.js`: `415353` bytes, SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`.
 
 ## 7. A/B/C/D/G contract readiness
 

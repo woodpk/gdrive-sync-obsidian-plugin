@@ -10,7 +10,7 @@ Rule: one production/test file has at most one parallel workstream owner.
 - `src/contracts/**` is frozen and prohibited to every workstream.
 - Contract gaps require a persisted `CONTRACT CHANGE REQUEST`; branch-local contract copies/semantic shadowing are prohibited.
 - PR #33 operation-local stale isolation, safe-subset progress, exact pending retirement, coherent per-pass observation, scoped uncertainty, diagnostic privacy, `drive.file`, safe union, destructive gates, path isolation, portable configuration, and mobile boundaries remain fixed.
-- Workstream-local fakes/adapters are permitted only inside each stream's new-test namespace. `src/testing/fakes.ts` remains integration-owned.
+- Workstream-local fakes/adapters are permitted only inside each stream's new-test namespace. `../../src/testing/fakes.ts` remains integration-owned.
 - Each branch must typecheck/build against frozen seams without waiting for another workstream.
 - Existing cross-subsystem tests listed as integration-owned are immutable during the parallel wave.
 - No workstream merges itself. No release, Azure change, physical-device synchronization, or Stage 3 work is authorized.
@@ -26,17 +26,17 @@ Agent ID: `agt-CA-P6-SYNC-REMOTE-01`
 Objective: implement lossless Drive ingestion, explicit path/object ambiguity, retry-safe create, preservation-safe file update, recovery-safe move/trash, coherent downloads, and explicit provenance migration.
 
 Production ownership:
-- `src/drive/google-drive-port.ts`
-- `src/drive/transport.ts`
-- `src/drive/runtime.ts`
-- `src/drive/obsidian-http.ts`
-- `src/drive/index.ts`
+- `../../src/drive/google-drive-port.ts`
+- `../../src/drive/transport.ts`
+- `../../src/drive/runtime.ts`
+- `../../src/drive/obsidian-http.ts`
+- `../../src/drive/index.ts`
 
 Existing-test ownership:
-- `test/phase3-changes.test.ts`
-- `test/phase3-drive.test.ts`
-- `test/phase3-transport.test.ts`
-- `test/phase5-group-b-drive-domain.test.ts`
+- `../../test/phase3-changes.test.ts`
+- `../../test/phase3-drive.test.ts`
+- `../../test/phase3-transport.test.ts`
+- `../../test/phase5-group-b-drive-domain.test.ts`
 
 Permitted new tests: `test/workstreams/drive/**`
 
@@ -67,27 +67,27 @@ Agent ID: `agt-CA-P6-SYNC-LOCAL-01`
 Objective: implement truthful cross-platform observation, durable local create/replace recovery, exact provenance, and cache-bypassing integrity reconciliation.
 
 Production ownership:
-- `src/local/config-policy.ts`
-- `src/local/desktop-external-reference-guard.ts`
-- `src/local/desktop-local-vault.ts`
-- `src/local/exclusions.ts`
-- `src/local/local-vault-access-boundary.ts`
-- `src/local/mobile-vault-access-boundary.ts`
-- `src/local/obsidian-local-vault.ts`
-- `src/local/path-policy.ts`
-- `src/product/canonical-local-vault.ts`
+- `../../src/local/config-policy.ts`
+- `../../src/local/desktop-external-reference-guard.ts`
+- `../../src/local/desktop-local-vault.ts`
+- `../../src/local/exclusions.ts`
+- `../../src/local/local-vault-access-boundary.ts`
+- `../../src/local/mobile-vault-access-boundary.ts`
+- `../../src/local/obsidian-local-vault.ts`
+- `../../src/local/path-policy.ts`
+- `../../src/product/canonical-local-vault.ts`
 
 Existing-test ownership:
-- `test/desktop-bounded-local-read.test.ts`
-- `test/desktop-external-reference-guard.test.ts`
-- `test/local-failure-semantics.test.ts`
-- `test/local-policy.test.ts`
-- `test/mobile-safety.test.ts`
-- `test/obsidian-local-vault.test.ts`
-- `test/phase6-a-local-hardening.test.ts`
-- `test/phase6-alpha-ios-adapter-boundary.test.ts`
-- `test/phase6-alpha-ios-content-reader.test.ts`
-- `test/phase6-alpha-portable-collision.test.ts`
+- `../../test/desktop-bounded-local-read.test.ts`
+- `../../test/desktop-external-reference-guard.test.ts`
+- `../../test/local-failure-semantics.test.ts`
+- `../../test/local-policy.test.ts`
+- `../../test/mobile-safety.test.ts`
+- `../../test/obsidian-local-vault.test.ts`
+- `../../test/phase6-a-local-hardening.test.ts`
+- `../../test/phase6-alpha-ios-adapter-boundary.test.ts`
+- `../../test/phase6-alpha-ios-content-reader.test.ts`
+- `../../test/phase6-alpha-portable-collision.test.ts`
 
 Permitted new tests: `test/workstreams/local/**`
 
@@ -116,17 +116,17 @@ Agent ID: `agt-CA-P6-SYNC-STATE-01`
 Objective: implement semantic generation, exact BASE healing, lossless remote-ingestion backlog, durable per-effect mutation recovery, semantic validation/migration, and stale-device authority storage.
 
 Production ownership:
-- `src/state/indexeddb-state-storage.ts`
-- `src/state/persistent-state-store.ts`
-- `src/state/state-policy.ts`
-- `src/core/commit-coordinator.ts`
+- `../../src/state/indexeddb-state-storage.ts`
+- `../../src/state/persistent-state-store.ts`
+- `../../src/state/state-policy.ts`
+- `../../src/core/commit-coordinator.ts`
 
 Existing-test ownership:
-- `test/phase2-state.test.ts`
-- `test/phase2-state-hardening.test.ts`
-- `test/phase2-safety-policy.test.ts`
-- `test/phase5-group-a-recovery-state.test.ts`
-- `test/phase6-b-crash-state.test.ts`
+- `../../test/phase2-state.test.ts`
+- `../../test/phase2-state-hardening.test.ts`
+- `../../test/phase2-safety-policy.test.ts`
+- `../../test/phase5-group-a-recovery-state.test.ts`
+- `../../test/phase6-b-crash-state.test.ts`
 
 Permitted new tests: `test/workstreams/state/**`
 
@@ -145,7 +145,7 @@ Required outputs:
 
 Dependencies: none branch-locally; A/B/D represented by fixtures/fakes.  
 Integration seam: C is sole durable authority implementation.  
-Branch-local fakes: `test/workstreams/state/**`; no `src/testing/fakes.ts` changes.  
+Branch-local fakes: `test/workstreams/state/**`; no `../../src/testing/fakes.ts` changes.  
 Prohibited files: all others, especially contracts/Drive/local/execution/runtime/merge.  
 Acceptance gates: migration/property tests; multi-batch table; per-effect crash/restart matrix for upload/download/move/trash/merge; semantic-corruption fixtures; full verification.
 
@@ -156,36 +156,36 @@ Agent ID: `agt-CA-P6-SYNC-ORCHESTRATION-01`
 Objective: consume frozen exact authority and mutation/recovery seams while preserving safe-subset progress, destructive gates, cursor correctness, BASE healing, and PR #33 behavior.
 
 Production ownership:
-- `src/core/destructive-safety.ts`
-- `src/core/execution-coordinator.ts`
-- `src/core/planner.ts`
-- `src/core/production-planner.ts`
-- `src/core/semantic-identifiers.ts`
-- `src/product/operation-isolation.ts`
-- `src/product/path-scope.ts`
-- `src/product/product-controller.ts`
-- `src/product/production-executor.ts`
-- `src/product/snapshot-assembler.ts`
+- `../../src/core/destructive-safety.ts`
+- `../../src/core/execution-coordinator.ts`
+- `../../src/core/planner.ts`
+- `../../src/core/production-planner.ts`
+- `../../src/core/semantic-identifiers.ts`
+- `../../src/product/operation-isolation.ts`
+- `../../src/product/path-scope.ts`
+- `../../src/product/product-controller.ts`
+- `../../src/product/production-executor.ts`
+- `../../src/product/snapshot-assembler.ts`
 
 Existing-test ownership:
-- `test/phase2-planner.test.ts`
-- `test/phase2-planner-edge.test.ts`
-- `test/phase5-auth-controller.test.ts`
-- `test/phase5-controller.test.ts`
-- `test/phase5-group-d-acceptance.test.ts`
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
-- `test/phase5-group-d-first-sync-integration.test.ts`
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`
-- `test/phase5-recovery-auth.test.ts`
-- `test/phase5-second-rejection.test.ts`
-- `test/phase6-alpha-full-sync-remediation.test.ts`
-- `test/phase6-alpha-mixed-plan-isolation.test.ts`
-- `test/phase6-b-destructive-safety.test.ts`
+- `../../test/phase2-planner.test.ts`
+- `../../test/phase2-planner-edge.test.ts`
+- `../../test/phase5-auth-controller.test.ts`
+- `../../test/phase5-controller.test.ts`
+- `../../test/phase5-group-d-acceptance.test.ts`
+- `../../test/phase5-group-d-active-run-integration.test.ts`
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts`
+- `../../test/phase5-group-d-first-sync-integration.test.ts`
+- `../../test/phase5-group-d-recovery-coordination-integration.test.ts`
+- `../../test/phase5-recovery-auth.test.ts`
+- `../../test/phase5-second-rejection.test.ts`
+- `../../test/phase6-alpha-full-sync-remediation.test.ts`
+- `../../test/phase6-alpha-mixed-plan-isolation.test.ts`
+- `../../test/phase6-b-destructive-safety.test.ts`
 
 Permitted new tests: `test/workstreams/orchestration/**`
 
-Integration-owned compatibility test: `test/phase2-execution.test.ts`; immutable during parallel work.
+Integration-owned compatibility test: `../../test/phase2-execution.test.ts`; immutable during parallel work.
 
 Frozen inputs: authority/common/ingestion/ambiguity/mutation/recovery/cancellation/merge contracts plus plan/execution/status contracts.
 
@@ -206,7 +206,7 @@ Required outputs:
 Dependencies: none branch-locally; local contract fakes represent A/B/C/F.  
 Integration seam: consumes only frozen public ports/results.  
 Branch-local fakes: `test/workstreams/orchestration/**`.  
-Prohibited files: all others, including contracts/C/F/E production and integration-owned `test/phase2-execution.test.ts`.  
+Prohibited files: all others, including contracts/C/F/E production and integration-owned `../../test/phase2-execution.test.ts`.  
 Acceptance gates: exact-authority planner/executor tests; per-mutation lifecycle table; materialization-vs-convergence cases; destructive/recovery gates; PR #33 regressions; full verification.
 
 ## 6. E — Runtime / Lifecycle
@@ -216,17 +216,17 @@ Agent ID: `agt-CA-P6-SYNC-LIFECYCLE-01`
 Objective: coordinate startup/resume/suspend/unload, cooperative cancellation, trigger coalescing, and mandatory reconciliation opportunities without assuming iOS background time.
 
 Production ownership:
-- `src/core/run-coordinator.ts`
-- `src/product/runtime.ts`
-- `src/product/scheduler.ts`
-- `src/product/web-lock-run-lease.ts`
-- `src/main.ts`
+- `../../src/core/run-coordinator.ts`
+- `../../src/product/runtime.ts`
+- `../../src/product/scheduler.ts`
+- `../../src/product/web-lock-run-lease.ts`
+- `../../src/main.ts`
 
 Existing-test ownership:
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-- `test/phase5-scheduler-acceptance.test.ts`
-- `test/phase6-alpha-diagnostic-logging.test.ts`
-- `test/phase6-alpha-ios-sync-diagnostics.test.ts`
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`
+- `../../test/phase5-scheduler-acceptance.test.ts`
+- `../../test/phase6-alpha-diagnostic-logging.test.ts`
+- `../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 
 Permitted new tests: `test/workstreams/lifecycle/**`
 
@@ -247,11 +247,11 @@ Agent ID: `agt-CA-P6-SYNC-MERGE-01`
 Objective: make three-way text handling resource-bounded/iOS-safe while preserving all complete versions when auto-merge cannot run safely.
 
 Production ownership:
-- `src/core/conflict-resolver.ts`
-- `src/product/text-version-store.ts`
+- `../../src/core/conflict-resolver.ts`
+- `../../src/product/text-version-store.ts`
 
 Existing-test ownership:
-- `test/phase2-conflict.test.ts`
+- `../../test/phase2-conflict.test.ts`
 
 Permitted new tests: `test/workstreams/merge/**`
 
@@ -298,10 +298,10 @@ Acceptance gates: deterministic seeds, minimized traces, zero production diff, i
 Prohibited to A–G unless supervisor serializes a change:
 - all `src/contracts/**`;
 - `src/diagnostics/**`;
-- `src/drive/auth.ts`, `src/drive/oauth-return.ts`;
+- `../../src/drive/auth.ts`, `src/drive/oauth-return.ts`;
 - shared product settings/audit/history/plan/error-state modules not explicitly assigned;
-- `src/testing/fakes.ts`, `src/util/sha256.ts`;
-- `test/phase2-execution.test.ts` and every existing test not explicitly assigned above;
+- `../../src/testing/fakes.ts`, `src/util/sha256.ts`;
+- `../../test/phase2-execution.test.ts` and every existing test not explicitly assigned above;
 - foundation planning/evidence artifacts except each worker's dedicated evidence file.
 
 ## 10. Parallel feasibility audit
@@ -310,7 +310,7 @@ Production ownership remains pairwise disjoint. Existing-test ownership remains 
 
 The R1–R6 contract corrections do not require changing worker count. A can implement all remote mutations behind safe ports; B has an explicit integrity seam; C can persist every physical effect/intended version; D can upgrade legacy planning DTOs into exact executable authority without changing contracts; G can model all new cases without production changes.
 
-Specific C/D boundary remains: C owns `src/core/commit-coordinator.ts`, D owns `src/core/execution-coordinator.ts`, and `test/phase2-execution.test.ts` remains integration-owned. Each stream proves new behavior in its own namespace while preserving public compatibility.
+Specific C/D boundary remains: C owns `../../src/core/commit-coordinator.ts`, D owns `src/core/execution-coordinator.ts`, and `test/phase2-execution.test.ts` remains integration-owned. Each stream proves new behavior in its own namespace while preserving public compatibility.
 
 If any workstream cannot pass branch-local typecheck/build/owned gates without another stream's file, it stops with `CONTRACT CHANGE REQUEST`.
 

@@ -7,7 +7,7 @@
 - Integration branch: `phase6-sync-integration-h`
 - Supervisor-approved pre-task H-U5-P9 evidence-bearing head: `bf7ff70082c556dd69bb1047894456c40f3ce203`
 - `H_U5_P10_ENTRY_HEAD`: `827d37aa98972b6ac9a3d21fda109793131fda19`
-- Approved-head → entry verification: exactly one planning-only file was added: `dev/planning-and-building/phase6-h-u5-p10-ios-sync-diagnostics-fixture-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
+- Approved-head → entry verification: exactly one planning-only file was added: `../agents/phase6-h-u5-p10-ios-sync-diagnostics-fixture-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
 
 ## Corrected causal classification
 

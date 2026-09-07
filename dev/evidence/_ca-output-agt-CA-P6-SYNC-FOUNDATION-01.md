@@ -20,10 +20,10 @@
 - `dev/planning-and-building/agent-led-software-product-construction-manual.md`
 - `dev/planning-and-building/target-system-specification.md`
 - `dev/planning-and-building/decision-register.yaml`
-- `dev/planning-and-building/stage-1-build-decomposition.md`, including its requirement/invariant/evidence coverage and dependency checks
-- `dev/planning-and-building/phase-1-shared-contracts.md`
+- `../agents/stage-1-build-decomposition.md`, including its requirement/invariant/evidence coverage and dependency checks
+- `../agents/phase-1-shared-contracts.md`
 - `dev/planning-and-building/project-state.yaml`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase-6-supervisor-handoff.md`
 - `dev/evidence/_ca-output.md`
 - `dev/evidence/_ca-output-agt-CA-P6-FULL-SYNC-REMEDIATION-01.md`
 - `dev/evidence/phase6-integration-manifest.md`
@@ -60,7 +60,7 @@ Parallel implementation wave: **NOT AUTHORIZED — independent supervisor approv
 
 ## 2026-08-30 — Checkpoint 1: implementation audit, protocol research, and contract skeleton
 
-The actual production implementation was inspected across contracts, persistent state, commit/execution/planning, Drive, snapshot/controller/runtime, local Windows/iOS adapter boundaries, and merge/text retention. Every Section 9 finding was classified from code evidence. The complete 20-item disposition and governing correction are persisted in `dev/planning-and-building/phase6-sync-architecture-foundation.md`.
+The actual production implementation was inspected across contracts, persistent state, commit/execution/planning, Drive, snapshot/controller/runtime, local Windows/iOS adapter boundaries, and merge/text retention. Every Section 9 finding was classified from code evidence. The complete 20-item disposition and governing correction are persisted in `../agents/phase6-sync-architecture-foundation.md`.
 
 Material confirmed mechanisms include: persistence CAS reused as semantic authority; no BASE healing for `equal-current-content`; no restart consumer for pending/uncertain journals; one-page/collapsed Drive Changes tokens; unresolved paths pinning cursor progress; non-atomic read/compare/later-update; server-assigned retry-unsafe create; listed duplicate paths collapsed in snapshot maps; nominal `identity-unambiguous`; non-exact `base-trusted`; non-persistent local swap recovery; verification after local swap; unpinned ranged downloads; Drive PATCH during observation; event/lifecycle gaps; no self-mutation provenance; cancellation only between operations; unbounded O(n*m) text merge/materialization; no production stale-device transition; and shallow persisted-state semantic validation.
 
@@ -70,10 +70,10 @@ Candidate shared contracts and focused architecture tests were added. Initial ve
 
 Created planning artifacts:
 
-- `dev/planning-and-building/phase6-sync-architecture-foundation.md`
-- `dev/planning-and-building/phase6-sync-contract-freeze.md`
-- `dev/planning-and-building/phase6-sync-parallel-workstreams.md`
-- `dev/planning-and-building/phase6-sync-adversarial-validation.md`
+- `../agents/phase6-sync-architecture-foundation.md`
+- `../agents/phase6-sync-contract-freeze.md`
+- `../agents/phase6-sync-parallel-workstreams.md`
+- `../agents/phase6-sync-adversarial-validation.md`
 
 Created code/test artifact:
 
@@ -85,7 +85,7 @@ Modified shared/project artifacts:
 - `src/contracts/common.ts`
 - `src/contracts/index.ts`
 - `dev/planning-and-building/project-state.yaml`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase-6-supervisor-handoff.md`
 - `dev/evidence/_ca-output.md`
 - this dedicated evidence file
 

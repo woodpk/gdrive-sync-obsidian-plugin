@@ -12,7 +12,7 @@
 
 The approved authority → entry comparison proved exactly one planning-only addition:
 
-- `dev/planning-and-building/phase6-h-norm-production-structure-normalization-task.md`
+- `../agents/phase6-h-norm-production-structure-normalization-task.md`
 
 No source, test, contract, evidence, workflow, or other planning change existed in that entry delta.
 

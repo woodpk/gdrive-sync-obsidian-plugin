@@ -105,9 +105,9 @@ The first obsolete physical-controller fixture package is complete/preserved.
 
 Do not redo or broaden work in:
 
-- `test/phase5-controller.test.ts`;
-- `test/phase5-group-a-recovery-state.test.ts`;
-- `test/phase5-group-b-scope-transfer.test.ts`.
+- `../../test/phase5-controller.test.ts`;
+- `../../test/phase5-group-a-recovery-state.test.ts`;
+- `../../test/phase5-group-b-scope-transfer.test.ts`.
 
 Do not reinterpret their prior H-U4 failures as current authority requiring another repair.
 
@@ -121,7 +121,7 @@ H-U4 classified one independent stale acceptance-map failure as:
 
 The affected test is:
 
-`test/phase5-acceptance-map.test.ts`
+`../../test/phase5-acceptance-map.test.ts`
 
 H-U4 failure:
 
@@ -155,7 +155,7 @@ It is not a G worker defect.
 
 This unit authorizes exactly one test-source modification:
 
-`test/phase5-acceptance-map.test.ts`
+`../../test/phase5-acceptance-map.test.ts`
 
 Change only scenario 31's `testName` value so it exactly matches the current executable scheduler test name:
 
@@ -165,7 +165,7 @@ Preserve:
 
 - scenario number `31`;
 - scenario meaning;
-- `testFile` = `test/phase5-scheduler-acceptance.test.ts`;
+- `testFile` = `../../test/phase5-scheduler-acceptance.test.ts`;
 - orchestration meaning;
 - every other acceptance-map row;
 - the acceptance-map source-verification behavior;
@@ -194,10 +194,10 @@ Before editing:
 1. confirm the live branch is `phase6-sync-integration-h` and record `H_U5_P2_ENTRY_HEAD`;
 2. compare the approved pre-task authority `ac6afd51b2eb23fd94cecaa7e502735e38e93d22` to the live entry head and verify only authorized tasking/planning history was added;
 3. verify `src/contracts/**` still resolves to tree `0db68ced179825f929008b502335210260ca2ce3`;
-4. verify canonical `dev/evidence/_ca-output.md` still resolves to blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+4. verify canonical `../evidence/_ca-output.md` still resolves to blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
 5. fetch and inspect:
-   - `test/phase5-acceptance-map.test.ts`;
-   - `test/phase5-scheduler-acceptance.test.ts`;
+   - `../../test/phase5-acceptance-map.test.ts`;
+   - `../../test/phase5-scheduler-acceptance.test.ts`;
    - the H-U4 evidence containing classification key `OLF-STATIC`;
 6. confirm the stale literal and live executable name are exactly the strings stated in this task.
 
@@ -209,7 +209,7 @@ Do not execute the full repository just to rediscover the H-U4 defect before edi
 
 Modify only:
 
-`test/phase5-acceptance-map.test.ts`
+`../../test/phase5-acceptance-map.test.ts`
 
 After the correction is committed/pushed on `phase6-sync-integration-h`, record the resulting SHA as:
 
@@ -222,7 +222,7 @@ Then compare:
 Acceptance:
 
 - exactly one changed file;
-- that file is `test/phase5-acceptance-map.test.ts`;
+- that file is `../../test/phase5-acceptance-map.test.ts`;
 - the diff is limited to the scenario-31 stale test-name literal unless a mechanically necessary line-format change is unavoidable;
 - no `src/**` file changes;
 - no other `test/**` file changes;
@@ -284,7 +284,7 @@ Verify:
 
 - `git rev-parse HEAD == H_U5_P2_CANDIDATE_SHA`;
 - `src/contracts/**` tree = `0db68ced179825f929008b502335210260ca2ce3`;
-- canonical `dev/evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+- canonical `../evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
 - tracked working tree clean before test execution.
 
 Print Node/npm versions.
@@ -405,13 +405,13 @@ Do not begin a second repair cycle against unrelated repository failures.
 
 After the P2 candidate is verified, create or append only the successor H-04 evidence record:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-04.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-04.md`
 
 Do not modify predecessor H-01, H-02, or H-03 evidence files.
 
 Do not modify canonical:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Record:
 
@@ -420,7 +420,7 @@ Record:
 - `H_U5_P2_CANDIDATE_SHA`;
 - classification `OBSOLETE-LEGACY-FIXTURE / OLF-STATIC`;
 - exact stale and corrected scenario-31 strings;
-- confirmation only `test/phase5-acceptance-map.test.ts` changed in the implementation candidate;
+- confirmation only `../../test/phase5-acceptance-map.test.ts` changed in the implementation candidate;
 - focused OLF-STATIC proof counts and real exit code;
 - V1.3/H critical-regression results and any inherited G qualification;
 - current full-repository measured totals and real npm exit code;
@@ -439,7 +439,7 @@ Commit/push only that evidence file after the verified candidate and record the 
 
 Then verify:
 
-- `H_U5_P2_ENTRY_HEAD...H_U5_P2_CANDIDATE_SHA` = only `test/phase5-acceptance-map.test.ts`;
+- `H_U5_P2_ENTRY_HEAD...H_U5_P2_CANDIDATE_SHA` = only `../../test/phase5-acceptance-map.test.ts`;
 - `H_U5_P2_CANDIDATE_SHA...H_U5_P2_EVIDENCE_SHA` = only the H-04 evidence file;
 - frozen contracts unchanged;
 - canonical evidence unchanged;
@@ -476,9 +476,9 @@ Do not:
 - redo H-U5-P1;
 - modify production code;
 - modify `src/contracts/**`;
-- modify `test/phase5-scheduler-acceptance.test.ts`;
-- modify any test other than `test/phase5-acceptance-map.test.ts` in the implementation candidate;
-- modify canonical `dev/evidence/_ca-output.md`;
+- modify `../../test/phase5-scheduler-acceptance.test.ts`;
+- modify any test other than `../../test/phase5-acceptance-map.test.ts` in the implementation candidate;
+- modify canonical `../evidence/_ca-output.md`;
 - modify predecessor H evidence files;
 - modify worker branches;
 - modify `phase6-integration`, `main`, or `master`;

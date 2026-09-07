@@ -13,7 +13,7 @@
 
 Approved-head -> entry delta was verified to contain only:
 
-- `dev/planning-and-building/phase6-h-u5-p7-group-d-acceptance-fixtures-task.md`
+- `../agents/phase6-h-u5-p7-group-d-acceptance-fixtures-task.md`
 
 Entry -> candidate implementation/test delta was verified to contain exactly:
 

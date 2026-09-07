@@ -7,7 +7,7 @@
 - Integration branch: `phase6-sync-integration-h`
 - Independently supervisor-approved pre-task authority: `117a940d82eb0352f46c7fdafa93d48dfa294cc8`
 - `G_R2_R3_ENTRY_HEAD`: `51126acc6ef06820adb192543c67f390ed40595d`
-- Approved-head → entry verification: exactly one planning-only file was added: `dev/planning-and-building/phase6-g-r2-r3-ambiguity-folder-journal-recovery-task.md`; no source, test, contract, evidence, workflow, or other planning file changed.
+- Approved-head → entry verification: exactly one planning-only file was added: `../agents/phase6-g-r2-r3-ambiguity-folder-journal-recovery-task.md`; no source, test, contract, evidence, workflow, or other planning file changed.
 - `G_R2_R3_CANDIDATE_SHA`: `4b70eb2a15711c6e83aad809e623c400e50b4e01`
 - Final evidence-bearing H head: the evidence-only commit containing this file; its concrete commit SHA is recorded separately in the final completion response because a commit cannot self-contain its own SHA.
 

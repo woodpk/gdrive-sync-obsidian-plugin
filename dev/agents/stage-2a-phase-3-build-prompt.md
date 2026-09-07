@@ -12,24 +12,24 @@ You are a coding/build agent, not the product authority and not the overall cons
 
 Before modifying the repository, completely read these repository files:
 
-1. `dev/planning-and-building/agent-led-software-product-construction-manual.md`
-   2. `dev/planning-and-building/target-system-specification.md`
-   3. `dev/planning-and-building/decision-register.yaml`
-   4. `dev/planning-and-building/stage-1-build-decomposition.md`
-   5. `dev/planning-and-building/phase-1-shared-contracts.md`
-   6. `dev/planning-and-building/project-state.yaml`
-   7. `dev/security-prompt-header.md`
-   8. `dev/evidence/_ca-output.md`
+1. `../planning-and-building/agent-led-software-product-construction-manual.md`
+   2. `../planning-and-building/target-system-specification.md`
+   3. `../planning-and-building/decision-register.yaml`
+   4. `stage-1-build-decomposition.md`
+   5. `phase-1-shared-contracts.md`
+   6. `../planning-and-building/project-state.yaml`
+   7. `../security-prompt-header.md`
+   8. `../evidence/_ca-output.md`
 
 Treat authority in this order: later explicit user decisions; target-system specification; decision register; Stage 1 decomposition; frozen Phase 1 contracts/build-session contract; actual repository as implementation-state evidence. Donor/reference behavior never overrides target authority.
 
 Then inspect the actual repository at the assigned baseline, especially:
 
-- `src/contracts/common.ts`;
-  - `src/contracts/google-drive.ts`;
-  - `src/contracts/snapshot.ts`;
-  - `src/contracts/state.ts` where cursor/durability semantics intersect the boundary;
-  - `src/testing/fakes.ts`;
+- `../../src/contracts/common.ts`;
+  - `../../src/contracts/google-drive.ts`;
+  - `../../src/contracts/snapshot.ts`;
+  - `../../src/contracts/state.ts` where cursor/durability semantics intersect the boundary;
+  - `../../src/testing/fakes.ts`;
   - current tests;
   - package/build configuration and Obsidian typings;
   - any Phase 3 implementation already present.
@@ -66,7 +66,7 @@ The implementation must be compatible with both Windows desktop Obsidian and iPh
 
 ## Frozen Drive Contract
 
-`src/contracts/google-drive.ts` is a frozen Phase 1 cross-workstream contract and is **read-only for this worker** unless the supervisor explicitly approves a contract revision.
+`../../src/contracts/google-drive.ts` is a frozen Phase 1 cross-workstream contract and is **read-only for this worker** unless the supervisor explicitly approves a contract revision.
 
 The current `GoogleDrivePort` requires production support for:
 
@@ -266,20 +266,20 @@ Implement the smallest coherent Phase 3 production modules and tests necessary t
 
 Expected existing integration points are:
 
-- frozen `GoogleDrivePort` and related types in `src/contracts/google-drive.ts`;
-  - `BinaryContentSource` and common IDs/evidence in `src/contracts/common.ts`;
-  - remote observation/completeness types in `src/contracts/snapshot.ts`;
+- frozen `GoogleDrivePort` and related types in `../../src/contracts/google-drive.ts`;
+  - `BinaryContentSource` and common IDs/evidence in `../../src/contracts/common.ts`;
+  - remote observation/completeness types in `../../src/contracts/snapshot.ts`;
   - cursor/state semantics consumed from the frozen state contract without changing it;
-  - existing test seam `createGoogleDriveFake` in `src/testing/fakes.ts`.
+  - existing test seam `createGoogleDriveFake` in `../../src/testing/fakes.ts`.
 
 You may:
 
-- create Phase 3-owned modules under `src/` for OAuth, token/secret handling, Drive HTTP/API transport, managed-remote layout/protocol, changes, transfer, retry/backoff, and the production `GoogleDrivePort` implementation;
+- create Phase 3-owned modules under `../../src` for OAuth, token/secret handling, Drive HTTP/API transport, managed-remote layout/protocol, changes, transfer, retry/backoff, and the production `GoogleDrivePort` implementation;
   - extend non-frozen fakes/fixtures needed for adapter tests;
-  - add Phase 3 tests under `test/`;
+  - add Phase 3 tests under `../../test`;
   - add narrowly justified mobile-compatible dependencies;
   - update package/build configuration when mechanically necessary;
-  - append Phase 3 evidence to `dev/evidence/_ca-output.md`.
+  - append Phase 3 evidence to `../evidence/_ca-output.md`.
 
 Exact private file/module/class names are engineering discretion after inspection.
 
@@ -444,7 +444,7 @@ Use verification methods actually available in this customer-facing ChatGPT envi
 Required procedure:
 
 1. push your branch;
-   2. open a pull request from `stage-2a-phase-3-drive-oauth` to `master` to trigger `.github/workflows/phase1-ci.yml`;
+   2. open a pull request from `stage-2a-phase-3-drive-oauth` to `master` to trigger `../../.github/workflows/phase1-ci.yml`;
    3. do **not** merge it;
    4. inspect the actual workflow run, jobs, step results, and decoded logs;
    5. verify `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` all executed and passed;
@@ -456,7 +456,7 @@ Do not substitute ad hoc snippets for the repository gate when GitHub Actions is
 
 Before reporting completion, append a clearly delimited section for **Stage 2A Build Session 03 / Phase 3** to:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Do not erase prior Phase 1 evidence.
 
@@ -507,7 +507,7 @@ When finished, respond concisely with:
    4. live Windows/iPhone authorization evidence actually obtained, or the exact permitted carry-forward limitation;
    5. complete created/modified/deleted file manifest;
    6. branch and final pushed commit SHA;
-   7. `dev/evidence/_ca-output.md` update status;
+   7. `../evidence/_ca-output.md` update status;
    8. any remaining blocker or frozen-contract change request.
 
 Do not claim supervisory approval. Stop after Phase 3 implementation, evidence, push, and PR verification.

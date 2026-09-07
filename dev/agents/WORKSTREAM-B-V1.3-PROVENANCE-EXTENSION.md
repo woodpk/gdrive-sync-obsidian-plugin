@@ -102,17 +102,17 @@ Do not weaken target/stage/backup separation, SHA-256/size verification, create 
 
 Primary authorized production files:
 
-- `src/local/local-vault-access-boundary.ts`
-- `src/product/canonical-local-vault.ts`
+- `../../src/local/local-vault-access-boundary.ts`
+- `../../src/product/canonical-local-vault.ts`
 
 Authorized tests:
 
-- `test/workstreams/local/local-transaction-safety.test.ts`
-- `test/workstreams/local/local-recovery-matrix.test.ts`
+- `../../test/workstreams/local/local-transaction-safety.test.ts`
+- `../../test/workstreams/local/local-recovery-matrix.test.ts`
 - one new focused B V1.3 test under `test/workstreams/local/**`.
 
 If default test discovery genuinely requires it, one test-only import change is allowed in:
-`test/phase6-a-local-hardening.test.ts`
+`../../test/phase6-a-local-hardening.test.ts`
 
 Authorized evidence:
 `dev/evidence/_ca-output-agt-CA-P6-SYNC-LOCAL-V1.3-EXT-01.md`

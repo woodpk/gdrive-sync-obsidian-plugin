@@ -26,7 +26,7 @@ Your exact assignment is:
 
 This is **Session 5** of the fixed remaining plan in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 If successful, the complete repository automated test state must reach:
 
@@ -50,7 +50,7 @@ At that head:
 - H/V1.3 critical is `82 / 80 pass / 2 fail / 0 cancelled`;
 - whole repository is `687 / 685 pass / 2 fail / 0 cancelled`;
 - the only failures are G-W2 and G-W3;
-- production build is PASS, `main.js` size `699509`, SHA-256 `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
+- production build is PASS, `../../main.js` size `699509`, SHA-256 `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
 - PR #45 is open, draft, unmerged, headed by `phase6-sync-integration-h`.
 
 This tasking document is one planning-only commit after that approved head.
@@ -60,7 +60,7 @@ At startup:
 1. resolve live `phase6-sync-integration-h` head as `G_R2_R3_ENTRY_HEAD`;
 2. compare `117a940d82eb0352f46c7fdafa93d48dfa294cc8...G_R2_R3_ENTRY_HEAD`;
 3. require that the delta contains only:
-   - `dev/planning-and-building/phase6-g-r2-r3-ambiguity-folder-journal-recovery-task.md`;
+   - `phase6-g-r2-r3-ambiguity-folder-journal-recovery-task.md`;
 4. require no source, test, contract, evidence, workflow, or other planning change.
 
 If not exact, stop:
@@ -70,11 +70,11 @@ If not exact, stop:
 Before editing, read completely:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
-5. `test/adversarial-model/support/model.ts`
-6. `test/adversarial-model/adversarial-model.test.ts`
+4. `../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
+5. `../../test/adversarial-model/support/model.ts`
+6. `../../test/adversarial-model/adversarial-model.test.ts`
 7. frozen folder-create verifier contracts used by the model.
 
 ---
@@ -83,12 +83,12 @@ Before editing, read completely:
 
 You may modify only:
 
-1. `test/adversarial-model/support/model.ts`
-2. `test/adversarial-model/adversarial-model.test.ts`
+1. `../../test/adversarial-model/support/model.ts`
+2. `../../test/adversarial-model/adversarial-model.test.ts`
 
 After the source/test candidate is complete, you may create/update only:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
 
 No other tracked file is authorized.
 
@@ -97,7 +97,7 @@ Forbidden:
 - all `src/**` production changes;
 - all `src/contracts/**` changes;
 - every non-G test;
-- canonical `dev/evidence/_ca-output.md`;
+- canonical `../evidence/_ca-output.md`;
 - other evidence files;
 - planning files;
 - integration-branch workflow files.
@@ -254,7 +254,7 @@ Do not amend the candidate with evidence.
 
 Then create one evidence-only commit containing only:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
 
 Record the final evidence-bearing H head separately.
 
@@ -317,7 +317,7 @@ Run and require PASS:
 
 Run the complete compiled equivalent of:
 
-`test/adversarial-model/adversarial-model.test.ts`
+`../../test/adversarial-model/adversarial-model.test.ts`
 
 Required:
 
@@ -387,7 +387,7 @@ Run production build and require PASS.
 
 Because this is test-only G repair, production artifact identity must remain exactly:
 
-- `main.js` size: `699509` bytes
+- `../../main.js` size: `699509` bytes
 - SHA-256: `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`
 
 If production identity changes, stop and diagnose before closure.
@@ -411,7 +411,7 @@ Verify:
 
 Create/update only:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
 
 Record at minimum:
 

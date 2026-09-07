@@ -20,7 +20,7 @@ You are the **H-FINAL authoritative verification / evidence-closure agent** for 
 
 This is **Session 7 — H-FINAL**, the final session in the fixed remaining-session plan:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 All planned repair and normalization work is complete and independently supervisor-approved.
 
@@ -58,8 +58,8 @@ At the approved H-NORM boundary:
 - fail / cancelled / skipped / todo: `0 / 0 / 0 / 0`;
 - production build: PASS;
 - `npm run check`: PASS;
-- normalized `main.js`: `699431` bytes;
-- normalized `main.js` SHA-256: `da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482`;
+- normalized `../../main.js`: `699431` bytes;
+- normalized `../../main.js` SHA-256: `da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482`;
 - frozen authorities are unchanged;
 - PR #45 is open, draft, unmerged, headed by `phase6-sync-integration-h`.
 
@@ -73,7 +73,7 @@ At startup:
    - base: `8c831c29c7822e664d923f8cfb00544adebe1311`
    - head: `H_FINAL_ENTRY_HEAD`;
 4. require that the delta contains **only**:
-   - `dev/planning-and-building/phase6-h-final-authoritative-clean-verification-closure-task.md`;
+   - `phase6-h-final-authoritative-clean-verification-closure-task.md`;
 5. require no `src/**`, `test/**`, contract, evidence, workflow, or other planning change.
 
 If that entry gate is not exact, stop:
@@ -123,12 +123,12 @@ There is no automatic new repair session after H-FINAL. Any defect requires expl
 Read completely before execution:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_task-AGT-H-H-U6-FINAL-CLOSURE.md`
-5. `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
+4. `../evidence/_task-AGT-H-H-U6-FINAL-CLOSURE.md`
+5. `../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
 6. the current complete canonical evidence file:
-   - `dev/evidence/_ca-output.md`
+   - `../evidence/_ca-output.md`
 7. the H-specific evidence lineage needed to reconstruct the exact A–G/H authority manifest actually integrated.
 
 When older closure/task documents contain obsolete v1.2 baseline/status language, treat that old baseline/status as historical only. The exact current V1.3 authorities and current source/test SHA in this task control.
@@ -155,7 +155,7 @@ Frozen `src/contracts/**` tree:
 
 Before H-FINAL closure append, canonical:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 must still have Git blob:
 
@@ -196,7 +196,7 @@ After every technical gate passes, H-FINAL may create/update exactly these closu
 1. dedicated H-FINAL evidence:
    - `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14.md`
 2. canonical evidence, by **strict append-only EOF addition**:
-   - `dev/evidence/_ca-output.md`
+   - `../evidence/_ca-output.md`
 
 No other integration-branch file may change.
 
@@ -216,7 +216,7 @@ Record that commit as:
 
 Only after Evidence commit 1 is complete and verified, append the canonical H closure and create one second evidence-only commit changing exactly:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Record that final commit as:
 
@@ -381,7 +381,7 @@ Required:
 
 - all applicable commands exit `0`;
 - build artifact exists;
-- record actual `main.js` size and SHA-256.
+- record actual `../../main.js` size and SHA-256.
 
 Expected normalized artifact identity, absent unexplained toolchain nondeterminism:
 
@@ -428,7 +428,7 @@ Record in H-FINAL evidence:
 - artifact size;
 - raw/summary artifact contents supporting the reported totals;
 - exact Node/npm versions;
-- `main.js` size/hash.
+- `../../main.js` size/hash.
 
 Download/inspect the authoritative artifact when necessary to reconcile proof-summary values with GitHub artifact metadata.
 
@@ -483,7 +483,7 @@ It must record at minimum:
 13. adversarial `56 / 56`, including G-W1/W2/W3 PASS;
 14. V1.3 foundation `17 / 17`, C15/C16 PASS;
 15. build/check/mobile-package verification;
-16. `main.js` size/hash;
+16. `../../main.js` size/hash;
 17. frozen contract-tree verification;
 18. canonical pre-append blob verification;
 19. contract-freeze blob/prefix verification;
@@ -514,7 +514,7 @@ Only after:
 
 may you append one H integration closure section to:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 ### 11.1 Pre-append invariant
 
@@ -551,7 +551,7 @@ Append one concise section titled clearly as the Phase 6 H integration closure a
 - H/V1.3 critical: `82 / 82 PASS`, H-I1–H-I8 PASS;
 - adversarial G: `56 / 56 PASS`;
 - V1.3 foundation: `17 / 17 PASS`, C15/C16 PASS;
-- build/check PASS and final `main.js` size/hash;
+- build/check PASS and final `../../main.js` size/hash;
 - frozen `src/contracts/**` tree:
   `0db68ced179825f929008b502335210260ca2ce3`;
 - statement that canonical historical content was preserved as a byte-identical prefix;
@@ -574,7 +574,7 @@ Before committing canonical closure, prove:
 
 Commit as **Evidence commit 2**, changing exactly:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Record resulting final head:
 
@@ -627,7 +627,7 @@ Return a concise but complete final report containing:
 - G adversarial totals + G-W1/W2/W3;
 - V1.3 foundation totals + C15/C16;
 - build/check/mobile-package status;
-- final `main.js` size/hash;
+- final `../../main.js` size/hash;
 - frozen-authority verification;
 - canonical pre/post append proof and exact append-only manifest;
 - PR #45 final state/head;

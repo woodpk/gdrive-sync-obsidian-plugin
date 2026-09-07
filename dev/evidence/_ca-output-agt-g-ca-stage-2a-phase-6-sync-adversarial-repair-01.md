@@ -7,7 +7,7 @@
 - Integration branch: `phase6-sync-integration-h`
 - Supervisor-approved pre-task authority SHA: `03c2d7d478553427f56b4e827487081328d479f2`
 - `G_R1_ENTRY_HEAD`: `a0dacde6849bfdce99422a318faebe733418222c`
-- Approved-head → entry verification: exactly one planning-only file was added: `dev/planning-and-building/phase6-g-r1-adversarial-transition-settle-quiescence-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
+- Approved-head → entry verification: exactly one planning-only file was added: `../agents/phase6-g-r1-adversarial-transition-settle-quiescence-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
 - `G_R1_CANDIDATE_SHA`: `1fedd3752a7409fd3691b18456a6fe851c80a7bb`
 - Final evidence-bearing H head: the evidence-only commit containing this file; its concrete commit SHA is recorded separately in the final completion response because a commit cannot self-contain its own SHA.
 

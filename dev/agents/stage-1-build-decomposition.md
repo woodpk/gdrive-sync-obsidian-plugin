@@ -5,7 +5,7 @@
 **Status:** Authoritative Stage 1 build decomposition  
 **Project:** `woodpk/gdrive-sync-obsidian-plugin`  
 **Workflow:** Workflow A — Stage 0 → Stage 1 → Stage 2A → Stage 3  
-**Governing manual:** `agent-led-software-product-construction-manual.md`  
+**Governing manual:** `../planning-and-building/agent-led-software-product-construction-manual.md`  
 **Target-system authority:** `target-system-specification.md`  
 **Decision authority:** `decision-register.yaml`  
 **Date:** 2026-08-23
@@ -598,4 +598,4 @@ The minimum sound build decomposition contains **six phases**.
 
 Phase 1 is the prerequisite contract/foundation gate. Phases 2, 3, and 4 form the safe parallel construction wave. Phase 5 is the required integration/product-workflow gate. Phase 6 is the integrated hardening and Stage 3 readiness gate.
 
-This decomposition, together with `target-system-specification.md` and `decision-register.yaml`, supplies the persisted Stage 1 authority needed for Workflow A supervised construction. Stage 2A may now expand Phase 1 against the actual repository state when authorized.
+This decomposition, together with `../planning-and-building/target-system-specification.md` and `decision-register.yaml`, supplies the persisted Stage 1 authority needed for Workflow A supervised construction. Stage 2A may now expand Phase 1 against the actual repository state when authorized.

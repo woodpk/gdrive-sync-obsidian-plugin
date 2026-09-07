@@ -23,8 +23,8 @@ Before creating the H commit, the two planning documents and the complete predec
 - `H_V1_3_ADOPTION_SHA`: `7fa9dd2c95f940260594cefa2674963be3a785de`
 - Adoption delta: exactly 6 files, 605 additions, 0 deletions.
 - Adopted paths:
-  - `dev/planning-and-building/phase6-sync-architecture-foundation.md`
-  - `dev/planning-and-building/phase6-sync-contract-freeze.md`
+  - `../agents/phase6-sync-architecture-foundation.md`
+  - `../agents/phase6-sync-contract-freeze.md`
   - `src/contracts/common.ts`
   - `src/contracts/execution.ts`
   - `src/contracts/google-drive.ts`

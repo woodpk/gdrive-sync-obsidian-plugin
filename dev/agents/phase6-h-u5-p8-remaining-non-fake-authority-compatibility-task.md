@@ -32,7 +32,7 @@ Your exact assignment is:
 
 This is **Session 1** of the fixed post-P7 plan in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 Do not broaden the package.
 
@@ -50,7 +50,7 @@ The supervisor then committed the fixed remaining-session plan as a planning-onl
 
 That commit changes only:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 This tasking document is committed after that planning head. Therefore the live branch head you receive should be one additional planning-only commit later.
 
@@ -62,13 +62,13 @@ At startup:
    - base: `cdfaa46947e24f210293dfc170a6319472c18370`
    - head: `H_U5_P8_ENTRY_HEAD`
 4. require that this delta contains **only**:
-   - `dev/planning-and-building/phase6-h-u5-p8-remaining-non-fake-authority-compatibility-task.md`
+   - `phase6-h-u5-p8-remaining-non-fake-authority-compatibility-task.md`
 5. also compare:
    - base: `8f75956eaa0161b5d4744ba0a303f5555408d613`
    - head: `H_U5_P8_ENTRY_HEAD`
 6. require that this larger post-P7 delta contains exactly the two supervisor planning files:
-   - `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
-   - `dev/planning-and-building/phase6-h-u5-p8-remaining-non-fake-authority-compatibility-task.md`
+   - `phase6-h-remaining-test-failure-fix-plan.md`
+   - `phase6-h-u5-p8-remaining-non-fake-authority-compatibility-task.md`
 
 If any unapproved `src/**`, `test/**`, contract, or evidence change exists in either post-approval planning delta, stop immediately with:
 
@@ -79,7 +79,7 @@ Do not silently adopt any other branch-tip change as authority.
 Before editing, read:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
 4. the three owned test files
 5. the already-approved hardened-fixture precedents named in Section 5 below.
@@ -102,7 +102,7 @@ Frozen `src/contracts/**` tree:
 
 Canonical evidence file:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Canonical evidence blob:
 
@@ -138,13 +138,13 @@ Do **not** weaken production fail-closed behavior to make a legacy fixture pass.
 
 You may modify only these three test files:
 
-1. `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-2. `test/phase6-alpha-plan-errors-stability.test.ts`
-3. `test/workstreams/drive/phase6-remote-protocol.test.ts`
+1. `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`
+2. `../../test/phase6-alpha-plan-errors-stability.test.ts`
+3. `../../test/workstreams/drive/phase6-remote-protocol.test.ts`
 
 You may also create/update only your own evidence file after the implementation candidate is fixed:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
 
 No other tracked file is authorized.
 
@@ -152,7 +152,7 @@ Specifically forbidden without supervisor re-authorization:
 
 - all `src/**` production changes;
 - all `src/contracts/**` changes;
-- `dev/evidence/_ca-output.md`;
+- `../evidence/_ca-output.md`;
 - any other `dev/evidence/**` file;
 - any other `test/**` file;
 - any planning document;
@@ -194,7 +194,7 @@ H-U5-P8 owns exactly five of the current 27 whole-suite failures. It owns **none
 
 ## 5. EXACT REPAIR WORK
 
-### 5.1 File A — `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+### 5.1 File A — `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`
 
 Current H-U5-P8 failures:
 
@@ -221,7 +221,7 @@ Required characteristics:
 
 Do not change Scenario 6, Scenario 47, or Scenario 50 semantics merely because they share the file.
 
-### 5.2 File B — `test/phase6-alpha-plan-errors-stability.test.ts`
+### 5.2 File B — `../../test/phase6-alpha-plan-errors-stability.test.ts`
 
 Current H-U5-P8 failures:
 
@@ -246,7 +246,7 @@ Required characteristics:
 - preserve the second test's requirement that persistent instability is path-local, the independent safe upload commits, attention is written, and a later stable retry resolves the attention record and uploads the formerly unstable path;
 - preserve all other tests in this file unchanged in semantics.
 
-### 5.3 File C — `test/workstreams/drive/phase6-remote-protocol.test.ts`
+### 5.3 File C — `../../test/workstreams/drive/phase6-remote-protocol.test.ts`
 
 Current H-U5-P8 failure:
 
@@ -280,11 +280,11 @@ Required correction:
 
 Use these already-approved H-U5 test modernizations as construction references, not as permission to copy unrelated semantics:
 
-- `test/phase5-group-d-first-sync-integration.test.ts` — approved P3
-- `test/phase5-group-d-active-run-integration.test.ts` — approved P4
-- `test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5; useful reference for both `LocalTransactionalMutationPort` and `ReliableRemoteMutationPort`
-- `test/phase5-group-d-recovery-coordination-integration.test.ts` — approved P6
-- `test/phase5-group-d-acceptance.test.ts` — approved P7; useful reference for current authority seeding and reserved remote create
+- `../../test/phase5-group-d-first-sync-integration.test.ts` — approved P3
+- `../../test/phase5-group-d-active-run-integration.test.ts` — approved P4
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5; useful reference for both `LocalTransactionalMutationPort` and `ReliableRemoteMutationPort`
+- `../../test/phase5-group-d-recovery-coordination-integration.test.ts` — approved P6
+- `../../test/phase5-group-d-acceptance.test.ts` — approved P7; useful reference for current authority seeding and reserved remote create
 
 Use the smallest compatible fixture adaptation. Do not transplant unrelated scenario machinery.
 
@@ -308,7 +308,7 @@ After the candidate is fixed, do not amend it with evidence text. Evidence must 
 
 The candidate-to-evidence-head delta must contain exactly:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
 
 ---
 
@@ -380,9 +380,9 @@ All must pass.
 
 Run the compiled equivalents of all three owned files:
 
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`
-- `test/phase6-alpha-plan-errors-stability.test.ts`
-- `test/workstreams/drive/phase6-remote-protocol.test.ts`
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`
+- `../../test/phase6-alpha-plan-errors-stability.test.ts`
+- `../../test/workstreams/drive/phase6-remote-protocol.test.ts`
 
 Required result:
 
@@ -480,7 +480,7 @@ Absent unrelated drift, the remaining 22 failures after P8 must consist only of:
   - `uncertain-journal throw is Error-level at its exact execution substage and closes the run`
   - `mixed automatic plan commits unrelated safe upload, retains attention, and preserves cursor/re-plan durability`
 
-The 17 cancellations should remain the already-classified downstream cascade in `test/phase6-alpha-mixed-plan-isolation.test.ts`; P8 does not own that repair.
+The 17 cancellations should remain the already-classified downstream cascade in `../../test/phase6-alpha-mixed-plan-isolation.test.ts`; P8 does not own that repair.
 
 Any new or differently classified failure/cancellation is a blocker pending diagnosis.
 
@@ -491,7 +491,7 @@ Run the established production build.
 Required:
 
 - build PASS;
-- record `main.js` byte size;
+- record `../../main.js` byte size;
 - record SHA-256.
 
 Because H-U5-P8 is test-only, absent unrelated toolchain drift the production artifact should remain identical to the approved P7 build:
@@ -527,7 +527,7 @@ Do not merge or mark the PR ready for review.
 
 After all gates are classified, write:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
 
 The evidence must include at minimum:
 

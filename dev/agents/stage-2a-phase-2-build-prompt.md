@@ -12,18 +12,18 @@ You are a coding/build agent, not the product authority and not the overall cons
 
 Before modifying the repository, completely read these repository files:
 
-1. `dev/planning-and-building/agent-led-software-product-construction-manual.md`
-   2. `dev/planning-and-building/target-system-specification.md`
-   3. `dev/planning-and-building/decision-register.yaml`
-   4. `dev/planning-and-building/stage-1-build-decomposition.md`
-   5. `dev/planning-and-building/phase-1-shared-contracts.md`
-   6. `dev/planning-and-building/project-state.yaml`
-   7. `dev/security-prompt-header.md`
-   8. `dev/evidence/_ca-output.md`
+1. `../planning-and-building/agent-led-software-product-construction-manual.md`
+   2. `../planning-and-building/target-system-specification.md`
+   3. `../planning-and-building/decision-register.yaml`
+   4. `stage-1-build-decomposition.md`
+   5. `phase-1-shared-contracts.md`
+   6. `../planning-and-building/project-state.yaml`
+   7. `../security-prompt-header.md`
+   8. `../evidence/_ca-output.md`
 
 Treat authority in this order: later explicit user decisions; target-system specification; decision register; Stage 1 decomposition; frozen Phase 1 contracts/build-session contract; actual repository as implementation-state evidence. Donor/reference behavior never overrides target authority.
 
-Then inspect the actual repository at the assigned baseline, including all of `src/contracts/**`, `src/testing/fakes.ts`, current tests, package/build configuration, and any Phase 2 implementation already present. Do not infer current implementation from this prompt when direct repository inspection can establish it.
+Then inspect the actual repository at the assigned baseline, including all of `src/contracts/**`, `../../src/testing/fakes.ts`, current tests, package/build configuration, and any Phase 2 implementation already present. Do not infer current implementation from this prompt when direct repository inspection can establish it.
 
 ## Repository Baseline and Isolation
 
@@ -59,16 +59,16 @@ The Phase 1 cross-workstream contracts are frozen and are **read-only for this w
 
 Relevant frozen modules include:
 
-- `src/contracts/common.ts`
-  - `src/contracts/snapshot.ts`
-  - `src/contracts/plan.ts`
-  - `src/contracts/state.ts`
-  - `src/contracts/conflict.ts`
-  - `src/contracts/execution.ts`
-  - `src/contracts/local-vault.ts`
-  - `src/contracts/google-drive.ts`
-  - `src/contracts/status-audit-actions.ts`
-  - `src/contracts/index.ts`
+- `../../src/contracts/common.ts`
+  - `../../src/contracts/snapshot.ts`
+  - `../../src/contracts/plan.ts`
+  - `../../src/contracts/state.ts`
+  - `../../src/contracts/conflict.ts`
+  - `../../src/contracts/execution.ts`
+  - `../../src/contracts/local-vault.ts`
+  - `../../src/contracts/google-drive.ts`
+  - `../../src/contracts/status-audit-actions.ts`
+  - `../../src/contracts/index.ts`
 
 Important current semantics include:
 
@@ -228,16 +228,16 @@ Do not implement final trigger scheduling/UI orchestration; that belongs to Phas
 
 Implement the smallest coherent Phase 2 production modules and tests necessary to satisfy this phase.
 
-Expected existing integration points are the frozen contracts listed above and the existing test seams in `src/testing/fakes.ts`.
+Expected existing integration points are the frozen contracts listed above and the existing test seams in `../../src/testing/fakes.ts`.
 
 You may:
 
-- create Phase 2-owned production modules under `src/` for planning, change classification, conflict/merge, destructive safety, state persistence/recovery, and execution/commit coordination;
+- create Phase 2-owned production modules under `../../src` for planning, change classification, conflict/merge, destructive safety, state persistence/recovery, and execution/commit coordination;
   - extend non-frozen fakes/fixtures needed for deterministic testing;
-  - add Phase 2 tests under `test/`;
+  - add Phase 2 tests under `../../test`;
   - add narrowly justified dependencies for merge/state implementation when they are compatible with the mobile/runtime constraints;
   - update package/build configuration only when mechanically necessary for Phase 2;
-  - append Phase 2 evidence to `dev/evidence/_ca-output.md`.
+  - append Phase 2 evidence to `../evidence/_ca-output.md`.
 
 Exact private module/file names, class decomposition, helper functions, algorithms, storage representation, and dependency-injection mechanics remain your engineering discretion after inspection.
 
@@ -400,7 +400,7 @@ Use verification methods actually available in this customer-facing ChatGPT envi
 Required procedure:
 
 1. push your branch;
-   2. open a pull request from `stage-2a-phase-2-core-sync-state` to `master` to trigger `.github/workflows/phase1-ci.yml`;
+   2. open a pull request from `stage-2a-phase-2-core-sync-state` to `master` to trigger `../../.github/workflows/phase1-ci.yml`;
    3. do **not** merge it;
    4. inspect the actual workflow run, jobs, step results, and decoded logs;
    5. verify that `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` all executed and passed;
@@ -412,7 +412,7 @@ Do not substitute ad hoc snippets for the repository gate when GitHub Actions is
 
 Before reporting completion, append a clearly delimited section for **Stage 2A Build Session 02 / Phase 2** to:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Do not erase prior Phase 1 evidence.
 
@@ -458,7 +458,7 @@ When finished, respond concisely with:
    3. verification PR number, workflow run ID/job ID, commands, test count, and results;
    4. complete created/modified/deleted file manifest;
    5. branch and final pushed commit SHA;
-   6. `dev/evidence/_ca-output.md` update status;
+   6. `../evidence/_ca-output.md` update status;
    7. any remaining blocker, frozen-contract change request, or explicitly deferred integration/real-device limitation.
 
 Do not claim supervisory approval. Stop after Phase 2 implementation, evidence, push, and PR verification.

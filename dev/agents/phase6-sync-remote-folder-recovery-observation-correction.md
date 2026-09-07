@@ -15,7 +15,7 @@ The supervisor determined that no product decision is required and authorized on
 
 ## 2. New frozen seam
 
-`src/contracts/synchronization-folder-create-foundation.ts` now defines:
+`../../src/contracts/synchronization-folder-create-foundation.ts` now defines:
 
 - `RemoteFolderCreateRecoveryReadPort` — a dedicated read-only recovery seam accepting the persisted `RemoteFolderCreatePhysicalMutationDescriptor` and returning an authoritative `RemoteFolderCreateObservation`;
 - `recoverRemoteFolderCreate()` — a shared helper that performs the read then delegates to the unchanged `verifyRemoteFolderCreate()` verifier.
@@ -63,7 +63,7 @@ This candidate defines shared contract authority only.
 
 ## 7. Predictive coverage
 
-`test/phase6-folder-remote-recovery-observation-foundation.test.ts` covers:
+`../../test/phase6-folder-remote-recovery-observation-foundation.test.ts` covers:
 
 1. correct reserved folder / correct parent;
 2. correct reserved folder / wrong parent;

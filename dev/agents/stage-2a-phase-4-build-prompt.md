@@ -12,25 +12,25 @@ You are a coding/build agent, not the product authority and not the overall cons
 
 Before modifying the repository, completely read these repository files:
 
-1. `dev/planning-and-building/agent-led-software-product-construction-manual.md`
-2. `dev/planning-and-building/target-system-specification.md`
-3. `dev/planning-and-building/decision-register.yaml`
-4. `dev/planning-and-building/stage-1-build-decomposition.md`
-5. `dev/planning-and-building/phase-1-shared-contracts.md`
-6. `dev/planning-and-building/project-state.yaml`
-7. `dev/security-prompt-header.md`
-8. `dev/evidence/_ca-output.md`
+1. `../planning-and-building/agent-led-software-product-construction-manual.md`
+2. `../planning-and-building/target-system-specification.md`
+3. `../planning-and-building/decision-register.yaml`
+4. `stage-1-build-decomposition.md`
+5. `phase-1-shared-contracts.md`
+6. `../planning-and-building/project-state.yaml`
+7. `../security-prompt-header.md`
+8. `../evidence/_ca-output.md`
 
 Treat authority in this order: later explicit user decisions; target-system specification; decision register; Stage 1 decomposition; frozen Phase 1 contracts/build-session contract; actual repository as implementation-state evidence. Donor/reference behavior never overrides target authority.
 
 Then inspect the actual repository at the assigned baseline, especially:
 
-- `src/contracts/common.ts`;
-- `src/contracts/local-vault.ts`;
-- `src/contracts/snapshot.ts`;
-- `src/testing/fakes.ts`;
+- `../../src/contracts/common.ts`;
+- `../../src/contracts/local-vault.ts`;
+- `../../src/contracts/snapshot.ts`;
+- `../../src/testing/fakes.ts`;
 - current tests;
-- `src/main.ts` only to understand existing plugin foundation, not to implement Phase 5 orchestration;
+- `../../src/main.ts` only to understand existing plugin foundation, not to implement Phase 5 orchestration;
 - installed/current Obsidian typings and package configuration;
 - any Phase 4 implementation already present.
 
@@ -66,7 +66,7 @@ The concrete implementation must satisfy the frozen `LocalVaultPort` on both Win
 
 ## Frozen Local Contract
 
-`src/contracts/local-vault.ts` is a frozen Phase 1 cross-workstream contract and is **read-only for this worker** unless the supervisor explicitly approves a contract revision.
+`../../src/contracts/local-vault.ts` is a frozen Phase 1 cross-workstream contract and is **read-only for this worker** unless the supervisor explicitly approves a contract revision.
 
 The current `LocalVaultPort` requires production support for:
 
@@ -285,20 +285,20 @@ Implement the smallest coherent Phase 4 production modules and tests necessary t
 
 Expected existing integration points are:
 
-- frozen `LocalVaultPort` and related types in `src/contracts/local-vault.ts`;
-- `BinaryContentSource`, `ContentEvidence`, `ObservationToken`, and `VaultPath` in `src/contracts/common.ts`;
-- observation/completeness types in `src/contracts/snapshot.ts`;
-- existing `createLocalVaultFake` seam in `src/testing/fakes.ts`;
+- frozen `LocalVaultPort` and related types in `../../src/contracts/local-vault.ts`;
+- `BinaryContentSource`, `ContentEvidence`, `ObservationToken`, and `VaultPath` in `../../src/contracts/common.ts`;
+- observation/completeness types in `../../src/contracts/snapshot.ts`;
+- existing `createLocalVaultFake` seam in `../../src/testing/fakes.ts`;
 - Obsidian package typings already present in the repository.
 
 You may:
 
-- create Phase 4-owned modules under `src/` for Obsidian local I/O, path compatibility, exclusions, config policy, lifecycle/change observation, safe staging/replacement, and the production `LocalVaultPort` implementation;
+- create Phase 4-owned modules under `../../src` for Obsidian local I/O, path compatibility, exclusions, config policy, lifecycle/change observation, safe staging/replacement, and the production `LocalVaultPort` implementation;
 - extend non-frozen fakes/fixtures needed for tests;
-- add Phase 4 tests under `test/`;
+- add Phase 4 tests under `../../test`;
 - add narrowly justified mobile-compatible dependencies;
 - update package/build configuration only when mechanically necessary;
-- append Phase 4 evidence to `dev/evidence/_ca-output.md`.
+- append Phase 4 evidence to `../evidence/_ca-output.md`.
 
 Exact private module/file/class names remain engineering discretion after repository/API inspection.
 
@@ -497,7 +497,7 @@ Use verification methods actually available in this customer-facing ChatGPT envi
 Required procedure:
 
 1. push your branch;
-2. open a pull request from `stage-2a-phase-4-obsidian-local` to `master` to trigger `.github/workflows/phase1-ci.yml`;
+2. open a pull request from `stage-2a-phase-4-obsidian-local` to `master` to trigger `../../.github/workflows/phase1-ci.yml`;
 3. do **not** merge it;
 4. inspect the actual workflow run, jobs, step results, and decoded logs;
 5. verify `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` all executed and passed;
@@ -515,7 +515,7 @@ Phase 4 must nevertheless prove every behavior that can be verified through curr
 
 Before reporting completion, append a clearly delimited section for **Stage 2A Build Session 04 / Phase 4** to:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Do not erase prior Phase 1 evidence.
 
@@ -568,7 +568,7 @@ When finished, respond concisely with:
 5. real Windows/iPhone evidence actually obtained or exact permitted carry-forward limitation;
 6. complete created/modified/deleted file manifest;
 7. branch and final pushed commit SHA;
-8. `dev/evidence/_ca-output.md` update status;
+8. `../evidence/_ca-output.md` update status;
 9. any remaining blocker or frozen-contract change request.
 
 Do not claim supervisory approval. Stop after Phase 4 implementation, evidence, push, and PR verification.

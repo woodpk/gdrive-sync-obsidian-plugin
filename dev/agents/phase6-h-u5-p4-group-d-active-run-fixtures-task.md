@@ -70,7 +70,7 @@ Restored contract-freeze whole-file blob:
 
 `b675e0fc9776d03892a4309231b91a4bf0a84b93`
 
-Required immutable predecessor prefix hash for the first 16,296 bytes of `dev/planning-and-building/phase6-sync-contract-freeze.md`:
+Required immutable predecessor prefix hash for the first 16,296 bytes of `phase6-sync-contract-freeze.md`:
 
 `fe527c76137b2cd578ef7050ee3444498b21a5e0`
 
@@ -113,9 +113,9 @@ The foundational `OLF-PHYSICAL` constructor-fixture modernization package is com
 
 Preserve and use as references where appropriate:
 
-- `test/phase5-controller.test.ts`;
-- `test/phase5-group-a-recovery-state.test.ts`;
-- `test/phase5-group-b-scope-transfer.test.ts`.
+- `../../test/phase5-controller.test.ts`;
+- `../../test/phase5-group-a-recovery-state.test.ts`;
+- `../../test/phase5-group-b-scope-transfer.test.ts`.
 
 ## H-U5-P2
 
@@ -131,7 +131,7 @@ P3 also exposed and repaired one genuine H-owned production defect in completed-
 
 Preserve:
 
-- `test/phase5-group-d-first-sync-integration.test.ts` at the approved P3 state;
+- `../../test/phase5-group-d-first-sync-integration.test.ts` at the approved P3 state;
 - `src/product/phase6-sync-integration.ts` at the approved P3 production-correction state;
 - all P3 assertions and semantics.
 
@@ -184,7 +184,7 @@ H-U4 classified the affected Group-D active-run fixture family under:
 
 Authorized file:
 
-`test/phase5-group-d-active-run-integration.test.ts`
+`../../test/phase5-group-d-active-run-integration.test.ts`
 
 The current file contains three scenarios:
 
@@ -205,7 +205,7 @@ The historical H-U4 classification and the fresh P3 run are causally consistent:
 
 # 5. CAUSAL DEFECT TO REPAIR
 
-The current shared helper in `test/phase5-group-d-active-run-integration.test.ts` still constructs:
+The current shared helper in `../../test/phase5-group-d-active-run-integration.test.ts` still constructs:
 
 - direct `PersistentSynchronizationStateStore` usage;
 - `ProductSnapshotAssembler` over that raw store;
@@ -231,7 +231,7 @@ The fixture must be modernized; production fail-closed semantics must not be wea
 
 This unit initially authorizes exactly one implementation/test file modification:
 
-`test/phase5-group-d-active-run-integration.test.ts`
+`../../test/phase5-group-d-active-run-integration.test.ts`
 
 Modernize only that file's shared construction and minimal in-memory physical-effect bookkeeping so all three existing scenarios execute against the current hardened controller/executor authority model.
 
@@ -291,12 +291,12 @@ Before editing:
 1. confirm the live branch and record `H_U5_P4_ENTRY_HEAD`;
 2. verify the post-`8eab8ac...` delta is tasking/planning-only as specified above;
 3. verify `src/contracts/**` tree remains exactly `0db68ced179825f929008b502335210260ca2ce3`;
-4. verify canonical `dev/evidence/_ca-output.md` remains blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
-5. verify `dev/planning-and-building/phase6-sync-contract-freeze.md` remains whole-file blob `b675e0fc9776d03892a4309231b91a4bf0a84b93` and first-16,296-byte prefix hash `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
+4. verify canonical `../evidence/_ca-output.md` remains blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+5. verify `phase6-sync-contract-freeze.md` remains whole-file blob `b675e0fc9776d03892a4309231b91a4bf0a84b93` and first-16,296-byte prefix hash `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
 6. inspect in full:
-   - `test/phase5-group-d-active-run-integration.test.ts`;
-   - current approved `test/phase5-group-d-first-sync-integration.test.ts` as the closest Group-D hardened-fixture reference;
-   - current approved `test/phase5-controller.test.ts` as the foundational constructor-fixture reference;
+   - `../../test/phase5-group-d-active-run-integration.test.ts`;
+   - current approved `../../test/phase5-group-d-first-sync-integration.test.ts` as the closest Group-D hardened-fixture reference;
+   - current approved `../../test/phase5-controller.test.ts` as the foundational constructor-fixture reference;
    - the current controller/executor constructor surfaces required to understand authority and physical mutation dependencies;
    - the P3 production correction only as needed to avoid regressing it.
 
@@ -308,7 +308,7 @@ Do not run the full repository merely to rediscover the known current P4 baselin
 
 Modify only:
 
-`test/phase5-group-d-active-run-integration.test.ts`
+`../../test/phase5-group-d-active-run-integration.test.ts`
 
 After the fixture correction is committed/pushed on `phase6-sync-integration-h`, record the resulting SHA as:
 
@@ -321,7 +321,7 @@ Then compare:
 Initial acceptance:
 
 - exactly one changed file;
-- that file is `test/phase5-group-d-active-run-integration.test.ts`;
+- that file is `../../test/phase5-group-d-active-run-integration.test.ts`;
 - no `src/**` changes;
 - no other `test/**` changes;
 - no planning/evidence changes in the implementation commit.
@@ -382,7 +382,7 @@ Verify:
 
 - `git rev-parse HEAD == H_U5_P4_CANDIDATE_SHA`;
 - `src/contracts/**` tree = `0db68ced179825f929008b502335210260ca2ce3`;
-- canonical `dev/evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+- canonical `../evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
 - contract-freeze whole-file blob = `b675e0fc9776d03892a4309231b91a4bf0a84b93`;
 - contract-freeze first-16,296-byte prefix hash = `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
 - tracked working tree clean.
@@ -529,7 +529,7 @@ Upload focused, critical, full-suite, and build logs as a single proof artifact 
 
 Only after the candidate passes the required P4 gates, create/update exactly:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-06.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-06.md`
 
 Record at minimum:
 
@@ -560,7 +560,7 @@ must contain exactly the H-06 evidence file and no source/test/planning change.
 
 Do not modify:
 
-- canonical `dev/evidence/_ca-output.md`;
+- canonical `../evidence/_ca-output.md`;
 - H-01/H-02/H-03/H-04/H-05 evidence;
 - any prior task file.
 
@@ -572,11 +572,11 @@ P4 does not authorize repair of any other H-U4 family, including:
 
 ## Remaining OLF-PHYSICAL after P4
 
-- `test/phase5-group-d-acceptance.test.ts`;
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`;
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`;
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`;
-- `test/phase6-alpha-plan-errors-stability.test.ts`.
+- `../../test/phase5-group-d-acceptance.test.ts`;
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts`;
+- `../../test/phase5-group-d-recovery-coordination-integration.test.ts`;
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`;
+- `../../test/phase6-alpha-plan-errors-stability.test.ts`.
 
 ## OLF-FAKE-AUTH
 

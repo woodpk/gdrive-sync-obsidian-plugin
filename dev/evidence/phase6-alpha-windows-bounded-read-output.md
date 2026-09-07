@@ -16,7 +16,7 @@ The following current repository authorities were read completely before impleme
 1. `dev/planning-and-building/agent-led-software-product-construction-manual.md`
 2. `dev/planning-and-building/target-system-specification.md`
 3. `dev/planning-and-building/decision-register.yaml`
-4. `dev/planning-and-building/phase-6-supervisor-handoff.md`
+4. `../agents/phase-6-supervisor-handoff.md`
 5. `dev/planning-and-building/project-state.yaml`
 6. `dev/evidence/_ca-output.md`
 7. `dev/evidence/phase6-integration-manifest.md`

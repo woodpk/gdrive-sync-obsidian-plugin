@@ -7,7 +7,7 @@
 - Integration branch: `phase6-sync-integration-h`
 - Supervisor-approved pre-task H-U5-P8 evidence-bearing head: `6cf861d6a8514d65f67f1daf8cede465eab963bb`
 - `H_U5_P9_ENTRY_HEAD`: `b8d7fcef47f8ca505a4ccdb65fb8a2387c791b87`
-- Approved-head → entry verification: exactly one changed file, `dev/planning-and-building/phase6-h-u5-p9-shared-olf-fake-auth-controller-fixture-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
+- Approved-head → entry verification: exactly one changed file, `../agents/phase6-h-u5-p9-shared-olf-fake-auth-controller-fixture-task.md`; no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed.
 
 ## Pre-edit causal classification
 

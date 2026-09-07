@@ -32,7 +32,7 @@ Your exact assignment is:
 
 This is **Session 4 — G-R1** of the fixed remaining-session plan in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 Do not broaden the package.
 
@@ -52,7 +52,7 @@ At that approved head:
 - H/V1.3 critical remains `82 / 69 / 13 / 0`;
 - H-I1 through H-I8 PASS;
 - production build PASS;
-- `main.js` is `699509` bytes with SHA-256 `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
+- `../../main.js` is `699509` bytes with SHA-256 `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
 - frozen contract/evidence authorities remain exact;
 - PR #45 remains open, draft, and unmerged.
 
@@ -66,7 +66,7 @@ At startup:
    - base: `03c2d7d478553427f56b4e827487081328d479f2`
    - head: `G_R1_ENTRY_HEAD`
 4. require that this delta contains **only**:
-   - `dev/planning-and-building/phase6-g-r1-adversarial-transition-settle-quiescence-task.md`
+   - `phase6-g-r1-adversarial-transition-settle-quiescence-task.md`
 5. require that no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed in that delta.
 
 If that exact entry condition is not satisfied, stop with:
@@ -78,11 +78,11 @@ Do not silently substitute another branch tip or SHA as authority.
 Before editing, read completely:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
-5. `test/adversarial-model/support/model.ts`
-6. `test/adversarial-model/adversarial-model.test.ts`
+4. `../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
+5. `../../test/adversarial-model/support/model.ts`
+6. `../../test/adversarial-model/adversarial-model.test.ts`
 7. the frozen contracts imported by the G model, especially folder-create recovery authority used by the test surface.
 
 You may inspect any production source read-only where needed to understand the behavior being modeled. Inspection does not grant write authority.
@@ -105,7 +105,7 @@ Frozen `src/contracts/**` tree:
 
 Canonical evidence file:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Canonical evidence blob:
 
@@ -166,12 +166,12 @@ Do not turn unresolved paths into `conflict` or `recovery` merely as a blanket e
 
 You may modify only:
 
-1. `test/adversarial-model/support/model.ts`
-2. `test/adversarial-model/adversarial-model.test.ts`
+1. `../../test/adversarial-model/support/model.ts`
+2. `../../test/adversarial-model/adversarial-model.test.ts`
 
 After the implementation candidate is fixed, you may create/update only your own evidence file:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
 
 No other tracked file is authorized.
 
@@ -180,7 +180,7 @@ Explicitly forbidden without supervisor re-authorization:
 - all `src/**` production files;
 - all `src/contracts/**`;
 - any non-G test file;
-- canonical `dev/evidence/_ca-output.md`;
+- canonical `../evidence/_ca-output.md`;
 - any other evidence file;
 - any planning file;
 - any workflow file on `phase6-sync-integration-h`.
@@ -199,7 +199,7 @@ Do not self-authorize production changes.
 
 At the approved P10 baseline, the repository has exactly 13 failures, all in:
 
-`test/adversarial-model/adversarial-model.test.ts`
+`../../test/adversarial-model/adversarial-model.test.ts`
 
 G-R1 owns exactly these **11 G-W1 failures**:
 
@@ -370,7 +370,7 @@ The existing `attemptedRecoveryJournalIds` mechanism may be revised if needed, b
 
 ## 8. TEST CHANGES
 
-`test/adversarial-model/adversarial-model.test.ts` is owned because a model correction may require:
+`../../test/adversarial-model/adversarial-model.test.ts` is owned because a model correction may require:
 
 - adding focused regression assertions for the repaired G-W1 transition mechanics;
 - tightening assertions so the repaired state machine cannot regress;
@@ -394,8 +394,8 @@ Perform G-R1 as one bounded G-owned source/test candidate.
 Before committing:
 
 - verify changed files are a subset of exactly:
-  - `test/adversarial-model/support/model.ts`
-  - `test/adversarial-model/adversarial-model.test.ts`
+  - `../../test/adversarial-model/support/model.ts`
+  - `../../test/adversarial-model/adversarial-model.test.ts`
 - run `git diff --check`;
 - confirm no `src/**`, contract, planning, workflow, canonical-evidence, other test, or evidence file changed.
 
@@ -407,7 +407,7 @@ After the candidate is fixed, do not amend it with evidence.
 
 Evidence must be a later evidence-only commit containing exactly:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
 
 Record the final evidence-bearing H head separately.
 
@@ -477,7 +477,7 @@ All must PASS.
 
 Run the compiled equivalent of:
 
-`test/adversarial-model/adversarial-model.test.ts`
+`../../test/adversarial-model/adversarial-model.test.ts`
 
 Required classification:
 
@@ -566,7 +566,7 @@ Run production build.
 
 Because G-R1 is test-only, production artifact identity is expected to remain exactly the approved P10 build:
 
-- `main.js`: `699509` bytes
+- `../../main.js`: `699509` bytes
 - SHA-256: `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`
 
 Required:
@@ -594,7 +594,7 @@ Verify:
 
 Create/update only:
 
-`dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
+`../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-01.md`
 
 Record at minimum:
 
@@ -627,7 +627,7 @@ Record at minimum:
 
 Cross-check run/job/artifact identifiers against authoritative GitHub metadata before committing evidence.
 
-Do not edit canonical `dev/evidence/_ca-output.md`.
+Do not edit canonical `../evidence/_ca-output.md`.
 
 ---
 
