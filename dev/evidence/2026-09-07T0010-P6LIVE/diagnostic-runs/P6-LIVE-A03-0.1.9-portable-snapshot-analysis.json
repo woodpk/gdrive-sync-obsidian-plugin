@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "taskId": "codex-desktop-p6-a03-portable-config-diagnosis-01",
+  "analysisType": "read-only reconstruction",
+  "exactHistoricalInMemoryPathSnapshotsPersisted": false,
+  "directHistoricalEvidence": {
+    "stateStatus": "uninitialized",
+    "baseEntryExistsForAnyExaminedPath": false,
+    "actualA03Operations": {
+      "__brain_sync_portable_config__/app.json": "unresolved-conflict",
+      "__brain_sync_portable_config__/appearance.json": "noop",
+      "__brain_sync_portable_config__/core-plugins.json": "noop",
+      "__brain_sync_portable_config__/hotkeys.json": "noop"
+    },
+    "appConflictReasonCode": "opaque-binary",
+    "appConflictSummary": "Concurrent changes require preservation and explicit resolution."
+  },
+  "enumeration": {
+    "local": {
+      "status": "complete-for-four-path-reconstruction",
+      "exactHistoricalFlagPersisted": false,
+      "pathScopedUncertainty": false
+    },
+    "remote": {
+      "status": "complete",
+      "currentPortableDomainObjectCount": 3,
+      "pathScopedUncertainty": false
+    }
+  },
+  "snapshots": [
+    {
+      "path": "__brain_sync_portable_config__/app.json",
+      "local": {
+        "status": "present",
+        "entityKind": "file",
+        "sizeBytes": 376,
+        "hash": "sha256:633ad96b092359349fe8a91c5343b3631b197e16da775e4e5c04c28be5babeea",
+        "stability": "stable",
+        "observationToken": null
+      },
+      "remote": {
+        "status": "present",
+        "entityKind": "file",
+        "remoteObjectId": "17BEbRR4zvjNN7ul3bjOfr37rTiY3gBN3",
+        "sizeBytes": 351,
+        "hash": "sha256:ce2304324355039203028525c098a12887521a851c24bbaa6aee3a14700f8891",
+        "currentRevisionId": "0B0aJZGoaaV1YK3ZrOEllemE0VVVOcnJGUFVHVGxJRlhaMDJnPQ",
+        "stability": "stable"
+      },
+      "base": {
+        "status": "uninitialized",
+        "entryExists": false
+      },
+      "identity": "unambiguous",
+      "uncertainty": null,
+      "impliedPlannerBranch": "both present; content evidence differs; no BASE -> conflict resolver; no BASE -> opaque-binary -> unresolved-conflict",
+      "expectedFirstSyncResult": "unresolved-conflict",
+      "actualA03Result": "unresolved-conflict",
+      "match": true
+    },
+    {
+      "path": "__brain_sync_portable_config__/appearance.json",
+      "local": {
+        "status": "present",
+        "entityKind": "file",
+        "sizeBytes": 54,
+        "hash": "sha256:1a52f8414c696c6a8d6a1985c64ca76755d4c9c12b750a4143f2d6eaf764dd4d",
+        "stability": "stable",
+        "observationToken": null
+      },
+      "remote": {
+        "status": "present",
+        "entityKind": "file",
+        "remoteObjectId": "1z7wDF4GGvg1WcS6Mh11ITIVBQdpSnt6q",
+        "sizeBytes": 54,
+        "hash": "sha256:1a52f8414c696c6a8d6a1985c64ca76755d4c9c12b750a4143f2d6eaf764dd4d",
+        "currentRevisionId": "0B0aJZGoaaV1Ya3JNdUdqS2lveDBIc2FHay9VSGxJdC9LNU9zPQ",
+        "stability": "stable"
+      },
+      "base": {
+        "status": "uninitialized",
+        "entryExists": false
+      },
+      "identity": "unambiguous",
+      "uncertainty": null,
+      "impliedPlannerBranch": "both present; same canonical hash and size -> noop (safe-union-identical)",
+      "expectedFirstSyncResult": "noop",
+      "actualA03Result": "noop",
+      "match": true
+    },
+    {
+      "path": "__brain_sync_portable_config__/core-plugins.json",
+      "local": {
+        "status": "present",
+        "entityKind": "file",
+        "sizeBytes": 696,
+        "hash": "sha256:763cf20a921fd9955735b278006820b90b207b2fc04d9e79ca648279c7c14276",
+        "stability": "stable",
+        "observationToken": null
+      },
+      "remote": {
+        "status": "present",
+        "entityKind": "file",
+        "remoteObjectId": "1LXZbo-vH99JncKPqzFQdinigKjbLQ6U-",
+        "sizeBytes": 696,
+        "hash": "sha256:763cf20a921fd9955735b278006820b90b207b2fc04d9e79ca648279c7c14276",
+        "currentRevisionId": "0B0aJZGoaaV1YRHV0KzhSSlRNMVlUL3dkczk3TmhNU05ZWlRJPQ",
+        "stability": "stable"
+      },
+      "base": {
+        "status": "uninitialized",
+        "entryExists": false
+      },
+      "identity": "unambiguous",
+      "uncertainty": null,
+      "impliedPlannerBranch": "both present; same canonical hash and size -> noop (safe-union-identical)",
+      "expectedFirstSyncResult": "noop",
+      "actualA03Result": "noop",
+      "match": true
+    },
+    {
+      "path": "__brain_sync_portable_config__/hotkeys.json",
+      "local": {
+        "status": "absent",
+        "entityKind": null,
+        "sizeBytes": null,
+        "hash": null,
+        "stability": "stable-absence",
+        "observationToken": null
+      },
+      "remote": {
+        "status": "absent",
+        "entityKind": null,
+        "remoteObjectId": null,
+        "sizeBytes": null,
+        "hash": null,
+        "currentRevisionId": null,
+        "stability": null
+      },
+      "base": {
+        "status": "uninitialized",
+        "entryExists": false
+      },
+      "identity": "unambiguous",
+      "uncertainty": null,
+      "impliedPlannerBranch": "both absent; no BASE -> noop (both-absent)",
+      "expectedFirstSyncResult": "noop",
+      "actualA03Result": "noop",
+      "match": true
+    }
+  ],
+  "primaryClassification": "LIVE_TEST_BASELINE_CONTAMINATION",
+  "codeRepairRequired": false,
+  "a03RerunRequired": true,
+  "rerunPrecondition": "Supervisor-authorized cleanup/reset must establish the intended clean REMOTE portable-config baseline; this diagnostic does not authorize or perform that mutation."
+}
