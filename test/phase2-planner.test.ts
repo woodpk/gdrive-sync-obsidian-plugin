@@ -3,7 +3,7 @@ import test from "node:test";
 import { contractId, type BaseEntry, type ContentHash, type DeviceIdentity, type PathSnapshot, type RemoteObjectId, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DestructiveSafetyPolicy } from "../src/core/destructive-safety";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../src/core/planner";
 
 const path = (s: string) => contractId<"VaultPath">(s) as VaultPath;
 const hash = (s: string) => contractId<"ContentHash">(s) as ContentHash;
@@ -216,7 +216,7 @@ test("C3 file-to-folder and folder-to-file transitions relative to BASE are neve
   assert.equal(second.operations[0].reasons[0].code, "entity-kind-transition");
 });
 
-test("C3 non-empty local folder rename orders the remote parent move before descendant moves", async () => {
+test("C3 non-empty local folder rename physically moves only the ancestor and records descendant convergence", async () => {
   const oldFolder = path("old-folder");
   const newFolder = path("new-folder");
   const oldChild = path("old-folder/child.md");
@@ -237,9 +237,16 @@ test("C3 non-empty local folder rename orders the remote parent move before desc
   });
 
   const moves = plan.operations.filter(operation => operation.kind === "identity-preserving-move" && operation.targetSide === "remote");
-  assert.equal(moves.length, 2);
+  assert.equal(moves.length, 1);
   assert.equal(moves[0].fromPath, oldFolder);
   assert.equal(moves[0].toPath, newFolder);
-  assert.equal(moves[1].fromPath, oldChild);
-  assert.equal(moves[1].toPath, newChild);
+
+  const descendant = plan.operations.find(operation => operation.path === newChild);
+  assert.ok(descendant);
+  assert.equal(descendant.kind, "noop");
+  assert.equal(descendant.fromPath, oldChild);
+  assert.equal(descendant.toPath, newChild);
+  assert.equal(descendant.reasons[0]?.code, TRANSITIVELY_CARRIED_MOVE_REASON);
+  assert.ok(plan.operations.indexOf(moves[0]) < plan.operations.indexOf(descendant));
+  assert.equal(plan.operations.some(operation => operation.kind === "identity-preserving-move" && operation.fromPath === oldChild && operation.toPath === newChild), false);
 });
