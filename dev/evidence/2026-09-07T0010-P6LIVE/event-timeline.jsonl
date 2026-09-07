@@ -1,0 +1,9 @@
+{"testId":"P6-LIVE-A01","event":"installed-release-identity-verified","result":"PASS","mainJsSize":699431,"manifestSize":275,"secretsRecorded":false}
+{"testId":"P6-LIVE-A02","event":"manual-diagnostic-settings-checkpoint-required","reason":"Windows UI automation unavailable"}
+{"testId":"P6-LIVE-A02","event":"diagnostic-settings-verified","logLevel":"trace","consoleMirror":true,"retention":5000,"unrelatedControlledSettingsUnchanged":true}
+{"testId":"P6-LIVE-A02","event":"runtime-initialization-demonstrated","result":"PASS","pairingPresent":true,"deviceIdentityPresent":true,"vaultIdentityPresent":true,"secretsRecorded":false}
+{"testId":"P6-LIVE-A03","event":"before-baseline-reconcile","timestamp":"2026-09-07T00:15:40.1129047-04:00","auditCount":70,"pluginDataSize":13400,"pluginDataSha256":"7f0ff2f5b429c704787f0e2698b91b3408625c0bea12706aaf0bc855b8cd3b40"}
+{"testId":"P6-LIVE-A03","event":"baseline-reconcile-did-not-present-plan","observedStatus":"recovery-required","latestAuditEvent":"sync-cancelled","firstSyncCompleted":false,"recoveryInProgress":false,"recoveryBackupIdPresent":false,"result":"BLOCKED"}
+{"testId":"P6-LIVE-A03","event":"sync-diagnostics-export-analyzed","stateRevision":"state:18","authorityMigrationRequired":true,"operationCount":9,"completedOperationCount":9,"validationNamespaceFilesystemEventCount":0,"credentialPatternScanPassed":true}
+{"testId":"P6-LIVE-A03","event":"device-diagnostic-log-analyzed","recordCount":51,"runtimeInitializationResult":"product-ready","authenticationResult":"authenticated","syncControllerRunObserved":false,"syncPlanObserved":false,"syncExecutionObserved":false,"driveOperationObserved":false,"credentialPatternScanPassed":true}
+{"testId":"P6-LIVE-A03","event":"campaign-stopped-at-safety-gate","cause":"durable-state-authority-migration-required","recoveryActionAuthorized":false}

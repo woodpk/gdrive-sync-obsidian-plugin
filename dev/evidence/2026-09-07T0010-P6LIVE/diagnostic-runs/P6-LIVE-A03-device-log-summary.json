@@ -1,0 +1,24 @@
+{
+  "testId": "P6-LIVE-A03",
+  "rawLogFile": "P6-LIVE-A03-device-diagnostic-log.jsonl",
+  "rawLogBytes": 12829,
+  "rawLogSha256": "146a789b8eb82802bfbdf1856b422760ce272dd2602081f21b9d4ce3176bd673",
+  "credentialPatternScanPassed": true,
+  "recordCount": 51,
+  "parseErrorCount": 0,
+  "sequenceRange": [1, 51],
+  "levelCounts": {
+    "trace": 37,
+    "debug": 7,
+    "info": 7
+  },
+  "runtimeInitializationResult": "product-ready",
+  "desktopAdapterCreated": true,
+  "stateStoreReady": true,
+  "auditStoreReady": true,
+  "authenticationResult": "authenticated",
+  "syncControllerRunObserved": false,
+  "syncPlanObserved": false,
+  "syncExecutionObserved": false,
+  "driveOperationObserved": false
+}

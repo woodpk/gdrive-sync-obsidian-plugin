@@ -1,0 +1,1176 @@
+{
+  "settings": {
+    "oauthClientId": "938597287799-r9og91e51p27u7ice2ob52q4pjrm7qq3.apps.googleusercontent.com",
+    "oauthRedirectUri": "https://witty-water-08743b310.7.azurestaticapps.net",
+    "remoteRootId": "1kwJe5rq6DFhcZFBa-JjC0X0AaN3gbW1B",
+    "vaultIdentity": "vault:658641f0-a189-4e10-b076-4f6ab92087ed",
+    "deviceIdentity": "device:b95a836c5e2dd07d478c33a26eda9daa",
+    "firstSyncCompleted": false,
+    "recoveryInProgress": false,
+    "recoveryBackupId": "",
+    "userExclusionPatterns": [
+      "sync-plan-errors.csv"
+    ],
+    "syncPlanErrorsDirectory": "",
+    "managedSyncPlanErrorsExclusion": "sync-plan-errors.csv",
+    "syncPlanErrorsRelocation": null,
+    "scopeReconcileRequired": false,
+    "startupResumeEnabled": false,
+    "localChangeEnabled": false,
+    "periodicEnabled": false,
+    "periodicIntervalMinutes": 15,
+    "localDebounceMs": 1500,
+    "wifiOnlyAutomatic": true,
+    "wifiOnlyLargeTransfers": true,
+    "largeTransferThresholdBytes": 26214400,
+    "auditRetention": 500,
+    "diagnosticLogLevel": "trace",
+    "diagnosticConsoleMirror": true,
+    "diagnosticRetention": 5000
+  },
+  "audit": [
+    {
+      "id": "c75c3fa5-c187-4eef-b530-33c4f367b11b",
+      "event": "conflict-created",
+      "advisoryAtMs": 1787935489995,
+      "path": "__brain_sync_portable_config__/app.json",
+      "reasonCode": "opaque-binary"
+    },
+    {
+      "id": "817f913c-d33b-4165-a762-15af38c51e30",
+      "event": "plan-created",
+      "advisoryAtMs": 1787935489999,
+      "planId": "plan:5401aa6efcc415daaa14da18d1b68cb7c6eafb9a984050210a763bea8646b7a4",
+      "count": 4
+    },
+    {
+      "id": "eedc033e-f6f3-491e-8840-2d8c57b63d89",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787935613717
+    },
+    {
+      "id": "2df4a0b2-3d03-4847-bfd6-4be878111612",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787938574790
+    },
+    {
+      "id": "b4538b96-54f4-48f3-9489-048ee4292fda",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787939712687
+    },
+    {
+      "id": "9fff1134-4c7b-4dfc-8198-2d97f17b045a",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787947791787
+    },
+    {
+      "id": "2ff6b337-0ae4-4f74-94a3-cc0cf59d086a",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787949793575
+    },
+    {
+      "id": "93b1ee39-0d9b-46df-a7c5-40b12401be13",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787951772293
+    },
+    {
+      "id": "2b97a830-6367-4ba1-9d2f-f9ef6b09a459",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787952369815
+    },
+    {
+      "id": "cc7e40b2-37f0-4385-a34f-0b1dae5c40af",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787956740650
+    },
+    {
+      "id": "8e32c269-0f3b-4311-b3a8-53af6620adb4",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1787981094301
+    },
+    {
+      "id": "fe2219ff-eb70-4e33-8d3a-ae3ffadc55f0",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788015495423
+    },
+    {
+      "id": "7b03372e-ab41-450e-916c-92eb2af0ae40",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788016002926
+    },
+    {
+      "id": "c692c915-c791-4383-8447-c6f5633c19ba",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788016326141
+    },
+    {
+      "id": "70f6b1b2-0b7b-4380-bb63-ecfc54e306ae",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788024656933
+    },
+    {
+      "id": "db7b0d7b-4499-4903-a4ac-d03c7d5d4dec",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788027294968
+    },
+    {
+      "id": "b1829128-0336-479b-b766-76a92e660a02",
+      "event": "conflict-created",
+      "advisoryAtMs": 1788035519750,
+      "path": "__brain_sync_portable_config__/app.json",
+      "reasonCode": "opaque-binary"
+    },
+    {
+      "id": "874e74a7-3575-4dbd-871a-6de3e6a8f508",
+      "event": "plan-created",
+      "advisoryAtMs": 1788035519754,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "count": 10
+    },
+    {
+      "id": "7d57844d-9222-4ec5-a7a3-bd84fa39561e",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035538604,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:c255aaa37a27dac99c2507789b5bc101744607a5323061079f95ff83a49256a2",
+      "path": "Logs.md"
+    },
+    {
+      "id": "a8fe91cc-3b4c-4cc5-a102-6f6eaf3bea89",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035538609,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:d758926b30a8ccc43eebe9d40480caa2b5963164edbccc919f782fc64d6742b4",
+      "path": "__brain_sync_portable_config__/appearance.json"
+    },
+    {
+      "id": "8da635a5-7015-4b2e-b904-3aa694de73f4",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035538615,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:8d85943c7fc20a259adde688591c7375318cff8124e02568636e578bb1a618d3",
+      "path": "__brain_sync_portable_config__/core-plugins.json"
+    },
+    {
+      "id": "7d2355f6-afec-4bb9-a67d-4689d1e2f92e",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035538620,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:d1b0527a46060c0e334d5ee697d72e0c89685c94cc7003b243d377d5e5e803f9",
+      "path": "__brain_sync_portable_config__/hotkeys.json"
+    },
+    {
+      "id": "bf8be261-4d45-47f4-934d-d499260c29cb",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035544980,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:5ebf778b0e15d03457064219ad53c2f7b0434b474f23a0f1446176b4f0841947",
+      "path": "test-file-01.md"
+    },
+    {
+      "id": "efc401ee-dda8-4452-827e-97b21a82862d",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035551544,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:9bb18e34f269c9982fba8daf41be17f39af9b5cd970e5982f560c9e6cbc5f3b2",
+      "path": "test-file-02.md"
+    },
+    {
+      "id": "65f2bf34-1eb8-4c99-87d5-f66d33591217",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035557730,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:f05c19719e2e4bba5416a4b9a85f73749cc2ea692076401e00dd043179819728",
+      "path": "test-file-03.md"
+    },
+    {
+      "id": "c5cd0825-432c-4d16-b46e-a90cea86b146",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035563674,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:d057b5df108e9dd67981d66cb09a5001fa224c2b0b58465d7c71f5241bdcdb93",
+      "path": "test-file-04.md"
+    },
+    {
+      "id": "ba039ddb-3ecb-4052-a9c5-77513ea28b61",
+      "event": "operation-completed",
+      "advisoryAtMs": 1788035569896,
+      "planId": "plan:7bb10072e13074714bec4a8f60656d89ca64c77281218ae7afd424e9f53ef08d",
+      "operationId": "op:44755009a59a3e459f49c4df61c8a5f442f46108e49f22e5ff7e63f3aa5589ff",
+      "path": "test-file-05.md"
+    },
+    {
+      "id": "9222ee44-d675-41f0-8db6-fa85b0952acb",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788035777064
+    },
+    {
+      "id": "3b484eba-c948-474d-8f74-d4395daa4023",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788041203597
+    },
+    {
+      "id": "0e8440b2-acd7-42f2-a62a-28792b9ffdfd",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788041209575
+    },
+    {
+      "id": "391b205b-2be1-4cb7-8ad3-6eaeb56ece96",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788044062181
+    },
+    {
+      "id": "23471994-91ce-4091-a0b3-401a02002125",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788046732804
+    },
+    {
+      "id": "a72d77bd-1d4a-488a-afed-f158feb89b51",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788047289167
+    },
+    {
+      "id": "11b29a37-f5bb-49f0-b88d-57477bd401f8",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788048109577
+    },
+    {
+      "id": "6d3d20fc-a415-4cf0-ad13-6c2da689cafb",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788049823796
+    },
+    {
+      "id": "fdbda36a-d11e-409e-98b6-a8acc8d47d60",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788050354751
+    },
+    {
+      "id": "54b02200-e661-4744-9256-0cdbd1dc1961",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788051724864
+    },
+    {
+      "id": "d09cf3d9-f659-42cf-98a7-ff0ebfc3a7ce",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788052038129
+    },
+    {
+      "id": "8066a2e7-a46f-4cf1-a045-d3488f5728fa",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788052774454
+    },
+    {
+      "id": "4583d087-12a5-4097-b6b4-380264010fcc",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788052904690
+    },
+    {
+      "id": "ac0fbea2-5ff1-46db-8184-a50145abed5c",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788053377541
+    },
+    {
+      "id": "d838bdd5-81e3-4a43-af45-f6ee3d628524",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788054351273
+    },
+    {
+      "id": "e8c6ed02-976c-4986-90d5-c82bf4c454af",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788061550903
+    },
+    {
+      "id": "a4ef8a1a-f488-4c22-bbc0-1d4eee9ff742",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788063348767
+    },
+    {
+      "id": "fba21c1d-9128-4714-ba39-60d4765a2548",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788065920211
+    },
+    {
+      "id": "14cb36b1-0761-4683-86b7-028c42b4f830",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788071431255
+    },
+    {
+      "id": "b58c1554-a780-4373-a182-7c77b27c9e32",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788096379750
+    },
+    {
+      "id": "e5747a0c-a897-4513-b2fb-4c6033c7d51c",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788099250005
+    },
+    {
+      "id": "d7e1ec5a-1ec3-4b46-b872-ba3784ec3bd0",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788099378116
+    },
+    {
+      "id": "8342bdbe-4f13-4f35-beee-5d729658e818",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788100329636
+    },
+    {
+      "id": "8e2c46ea-84a5-4f6d-93f4-b8cafc50a8d4",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788101767891
+    },
+    {
+      "id": "73dece9f-4a72-46fa-9bec-be7423c95739",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788102327955
+    },
+    {
+      "id": "1225c33a-d952-4100-97f7-94f4813af116",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788105193667
+    },
+    {
+      "id": "434aeb3f-7d46-4dcc-8601-20bdb5f1f823",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788108864746
+    },
+    {
+      "id": "14faa28b-f6a9-4c3c-9dd9-0ae23303b70e",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788117982842
+    },
+    {
+      "id": "226cf129-f5b0-4452-ac3b-f26a4d4f3f9b",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788123322093
+    },
+    {
+      "id": "0d30e643-4f87-4947-9ff2-82cfb45b0c6c",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788125353070
+    },
+    {
+      "id": "a6b61d74-91ee-4c27-93f5-91f7a32838c3",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788129645115
+    },
+    {
+      "id": "63b647f7-cf9b-4268-a1b0-87fa49b1bacb",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788129645116
+    },
+    {
+      "id": "87143544-d179-4cb6-b095-939e31e9d46f",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788285044256
+    },
+    {
+      "id": "fb78308f-e39e-4ab3-80ce-4d5439aaef2f",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788285044257
+    },
+    {
+      "id": "9a989877-6857-4c95-b1da-16946d931909",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788298303677
+    },
+    {
+      "id": "2d06d644-2921-4851-b627-e5a5d50995eb",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788298303677
+    },
+    {
+      "id": "a65f418a-0f0c-4253-a4d2-e45a2528f506",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788733660286
+    },
+    {
+      "id": "caba9c9e-7834-4a4a-a50d-672f220522a2",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788738701326
+    },
+    {
+      "id": "1995cbf5-9ced-435a-a52a-9400f2b68fca",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788740988128
+    },
+    {
+      "id": "47db3ce9-9c00-4955-bcaf-fa16107f15b0",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788748323086
+    },
+    {
+      "id": "8af5c944-e151-4e11-a89f-cb8af2a2bf18",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788748323087
+    },
+    {
+      "id": "a2d46d32-708d-4f59-b5b1-f1405114e132",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788753826888
+    },
+    {
+      "id": "3dcf80b2-3a5e-484d-846b-dc3d2a4d2807",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788754538426
+    },
+    {
+      "id": "3d17fce6-d4d0-4df8-850e-f6be77671b50",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788754741272
+    },
+    {
+      "id": "71c1634a-cde7-411b-bc87-74306ccbd276",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788754805470
+    },
+    {
+      "id": "e5c7ed7f-cf22-4559-b2c3-cf7934c9e225",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788754805470
+    },
+    {
+      "id": "0e92475d-1916-4e9f-b338-e84291b0c8d3",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788754916453
+    },
+    {
+      "id": "4675b368-fa17-4b9c-93b7-39f4e89f2af5",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788755298514
+    },
+    {
+      "id": "bffef71d-b40b-4af4-81d2-f78ca67620aa",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788755588376
+    },
+    {
+      "id": "d83403dd-7038-4359-8703-c58f5d38fe52",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788758034030
+    },
+    {
+      "id": "922d5b76-2f1f-4dfd-bb8c-a6984c1c90d8",
+      "event": "sync-cancelled",
+      "advisoryAtMs": 1788758034030
+    }
+  ],
+  "diagnostics": {
+    "records": [
+      {
+        "timestamp": "2026-09-07T03:41:43.112Z",
+        "sequence": 1,
+        "level": "info",
+        "component": "runtime",
+        "event": "runtime-initialized",
+        "platform": "desktop",
+        "fields": {
+          "result": "product-ready"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.468Z",
+        "sequence": 2,
+        "level": "info",
+        "component": "oauth.settings",
+        "event": "authentication-attempt-started",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 0.3,
+        "fields": {
+          "source": "settings-button"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.469Z",
+        "sequence": 3,
+        "level": "trace",
+        "component": "oauth.settings",
+        "event": "authenticate-click-handler-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 1.6,
+        "fields": {
+          "source": "settings-button"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.469Z",
+        "sequence": 4,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "plugin-authenticate-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 1.9,
+        "fields": {
+          "stage": "plugin-authenticate"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.469Z",
+        "sequence": 5,
+        "level": "debug",
+        "component": "oauth.plugin",
+        "event": "authentication-preconditions",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 2,
+        "fields": {
+          "operation": "authenticate",
+          "clientIdConfigured": true,
+          "redirectUriConfigured": true,
+          "clientSecretConfigured": true,
+          "runtimeInitialized": true,
+          "callbackRegistrationActive": true,
+          "browserApiPresent": true,
+          "launcher": "system-browser",
+          "target": "_blank"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.470Z",
+        "sequence": 6,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "runtime-initialize-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 2,
+        "fields": {
+          "stage": "runtime-initialize"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.470Z",
+        "sequence": 7,
+        "level": "trace",
+        "component": "runtime",
+        "event": "initialize-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 2.1,
+        "fields": {
+          "stage": "runtime-initialize"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.470Z",
+        "sequence": 8,
+        "level": "debug",
+        "component": "runtime",
+        "event": "initialize-context",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 2.1,
+        "fields": {
+          "operation": "initialize",
+          "clientIdConfigured": true,
+          "redirectUriConfigured": true,
+          "clientSecretConfigured": true,
+          "deviceIdentityPresent": true,
+          "vaultIdentityPresent": true,
+          "remoteRootPresent": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.492Z",
+        "sequence": 9,
+        "level": "trace",
+        "component": "runtime",
+        "event": "initialize-dispose-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 24.7,
+        "fields": {
+          "stage": "dispose-previous-runtime"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.492Z",
+        "sequence": 10,
+        "level": "trace",
+        "component": "runtime",
+        "event": "device-identity-ready",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 24.8,
+        "fields": {
+          "stage": "device-identity",
+          "deviceIdentityPresent": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.510Z",
+        "sequence": 11,
+        "level": "trace",
+        "component": "runtime",
+        "event": "oauth-boundary-create-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 42.7,
+        "fields": {
+          "stage": "oauth-boundary"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.510Z",
+        "sequence": 12,
+        "level": "trace",
+        "component": "runtime",
+        "event": "oauth-boundary-create-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 42.9,
+        "fields": {
+          "stage": "oauth-boundary",
+          "runtimeInitialized": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.510Z",
+        "sequence": 13,
+        "level": "trace",
+        "component": "runtime",
+        "event": "local-adapter-create-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 42.9,
+        "fields": {
+          "stage": "local-adapter"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.511Z",
+        "sequence": 14,
+        "level": "trace",
+        "component": "runtime",
+        "event": "local-adapter-create-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 43.3,
+        "fields": {
+          "stage": "local-adapter",
+          "result": "desktop-adapter"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.511Z",
+        "sequence": 15,
+        "level": "trace",
+        "component": "runtime",
+        "event": "configuration-directory-ready",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 43.4,
+        "fields": {
+          "stage": "path-scope"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.511Z",
+        "sequence": 16,
+        "level": "trace",
+        "component": "runtime",
+        "event": "state-store-ready",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 43.5,
+        "fields": {
+          "stage": "state-store",
+          "storeReady": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.511Z",
+        "sequence": 17,
+        "level": "trace",
+        "component": "runtime",
+        "event": "audit-store-ready",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 43.6,
+        "fields": {
+          "stage": "audit-store",
+          "storeReady": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 18,
+        "level": "trace",
+        "component": "runtime",
+        "event": "scheduler-started",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.1,
+        "fields": {
+          "stage": "scheduler"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 19,
+        "level": "info",
+        "component": "runtime",
+        "event": "runtime-initialized",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.1,
+        "fields": {
+          "result": "product-ready"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 20,
+        "level": "trace",
+        "component": "runtime",
+        "event": "initialize-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.2,
+        "fields": {
+          "result": "product-ready"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 21,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "runtime-initialize-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.3,
+        "fields": {
+          "stage": "runtime-initialize",
+          "runtimeInitialized": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 22,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "runtime-authenticate-call-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.4,
+        "fields": {
+          "stage": "runtime-authenticate"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 23,
+        "level": "trace",
+        "component": "oauth.runtime",
+        "event": "runtime-authenticate-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.5,
+        "fields": {
+          "stage": "runtime-authenticate"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 24,
+        "level": "debug",
+        "component": "oauth.runtime",
+        "event": "authentication-context",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.5,
+        "fields": {
+          "operation": "authenticate",
+          "runtimeInitialized": true,
+          "clientIdConfigured": true,
+          "redirectUriConfigured": true,
+          "clientSecretConfigured": true,
+          "callbackRegistrationActive": true,
+          "browserApiPresent": true,
+          "launcher": "system-browser",
+          "target": "_blank",
+          "transactionPrepared": false,
+          "scopeExact": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 25,
+        "level": "debug",
+        "component": "oauth.transaction",
+        "event": "transaction-preparation-started",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.7,
+        "fields": {
+          "operation": "begin-authorization",
+          "clientIdConfigured": true,
+          "redirectUriConfigured": true,
+          "scopeExact": true,
+          "transactionPrepared": false
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 26,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "begin-authorization-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.7,
+        "fields": {
+          "stage": "transaction-preparation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 27,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-state-generation-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.8,
+        "fields": {
+          "stage": "state-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.512Z",
+        "sequence": 28,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-state-generation-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 44.9,
+        "fields": {
+          "stage": "state-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.513Z",
+        "sequence": 29,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-verifier-generation-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 45,
+        "fields": {
+          "stage": "verifier-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.513Z",
+        "sequence": 30,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-verifier-generation-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 45.1,
+        "fields": {
+          "stage": "verifier-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.513Z",
+        "sequence": 31,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-sha256-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 45.1,
+        "fields": {
+          "stage": "challenge-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.515Z",
+        "sequence": 32,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "pkce-sha256-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 47.2,
+        "fields": {
+          "stage": "challenge-generation"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.515Z",
+        "sequence": 33,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "authorization-request-construction-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 47.3,
+        "fields": {
+          "stage": "request-construction"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 34,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "authorization-request-constructed",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48,
+        "fields": {
+          "stage": "request-construction",
+          "transactionPrepared": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 35,
+        "level": "debug",
+        "component": "oauth.transaction",
+        "event": "transaction-preparation-completed",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48.1,
+        "fields": {
+          "operation": "begin-authorization",
+          "clientIdConfigured": true,
+          "redirectUriConfigured": true,
+          "scopeExact": true,
+          "transactionPrepared": true,
+          "result": "prepared"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 36,
+        "level": "trace",
+        "component": "oauth.transaction",
+        "event": "begin-authorization-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48.2,
+        "fields": {
+          "stage": "transaction-preparation",
+          "result": "prepared"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 37,
+        "level": "info",
+        "component": "oauth.browser",
+        "event": "browser-launch-requested",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48.3
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 38,
+        "level": "debug",
+        "component": "oauth.browser",
+        "event": "browser-launch-context",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48.4,
+        "fields": {
+          "target": "_blank",
+          "launcher": "system-browser",
+          "browserApiPresent": true,
+          "runtimeInitialized": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.516Z",
+        "sequence": 39,
+        "level": "trace",
+        "component": "oauth.browser",
+        "event": "browser-launch-invoke",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 48.4,
+        "fields": {
+          "target": "_blank",
+          "launcher": "system-browser"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.518Z",
+        "sequence": 40,
+        "level": "trace",
+        "component": "oauth.browser",
+        "event": "browser-launch-return",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 50.1,
+        "fields": {
+          "result": "javascript-call-returned"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.518Z",
+        "sequence": 41,
+        "level": "trace",
+        "component": "oauth.runtime",
+        "event": "runtime-authenticate-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 50.2,
+        "fields": {
+          "stage": "runtime-authenticate",
+          "result": "authorization-launch-call-returned"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.518Z",
+        "sequence": 42,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "runtime-authenticate-call-return",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 50.2,
+        "fields": {
+          "stage": "runtime-authenticate",
+          "result": "authorization-launch-call-returned"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.518Z",
+        "sequence": 43,
+        "level": "info",
+        "component": "oauth.plugin",
+        "event": "authentication-method-returned",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 50.2,
+        "fields": {
+          "result": "authorization-launch-call-returned"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:05.518Z",
+        "sequence": 44,
+        "level": "trace",
+        "component": "oauth.plugin",
+        "event": "plugin-authenticate-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 50.3,
+        "fields": {
+          "stage": "plugin-authenticate",
+          "result": "awaiting-callback"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.409Z",
+        "sequence": 45,
+        "level": "info",
+        "component": "oauth.callback",
+        "event": "callback-received",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 31941.4
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.409Z",
+        "sequence": 46,
+        "level": "debug",
+        "component": "oauth.callback",
+        "event": "callback-context",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 31941.5,
+        "fields": {
+          "operation": "complete-authorization",
+          "codePresent": true,
+          "statePresent": true,
+          "errorPresent": false,
+          "callbackRegistrationActive": true,
+          "runtimeInitialized": true
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.409Z",
+        "sequence": 47,
+        "level": "trace",
+        "component": "oauth.callback",
+        "event": "callback-processing-start",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 31941.5,
+        "fields": {
+          "stage": "callback-processing"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.409Z",
+        "sequence": 48,
+        "level": "trace",
+        "component": "oauth.callback",
+        "event": "runtime-callback-enter",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 31941.6,
+        "fields": {
+          "stage": "callback-processing"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.478Z",
+        "sequence": 49,
+        "level": "trace",
+        "component": "oauth.callback",
+        "event": "runtime-callback-exit",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 32010.8,
+        "fields": {
+          "stage": "callback-processing",
+          "result": "completed"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.478Z",
+        "sequence": 50,
+        "level": "trace",
+        "component": "oauth.callback",
+        "event": "callback-processing-complete",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 32010.8,
+        "fields": {
+          "stage": "callback-processing",
+          "result": "completed"
+        }
+      },
+      {
+        "timestamp": "2026-09-07T04:20:37.478Z",
+        "sequence": 51,
+        "level": "info",
+        "component": "oauth.callback",
+        "event": "authentication-attempt-completed",
+        "attemptId": 1,
+        "platform": "desktop",
+        "elapsedMs": 32010.8,
+        "fields": {
+          "result": "authenticated"
+        }
+      }
+    ],
+    "nextSequence": 52,
+    "nextAttemptId": 2,
+    "nextRunId": 1
+  },
+  "syncAttention": []
+}
