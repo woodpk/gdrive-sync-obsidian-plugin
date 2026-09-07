@@ -2,6 +2,7 @@ import type {
   AuthoritativeSynchronizationExecutor,
   AuthoritativeSynchronizationExecutorV1_3,
   AuthorityCompletePreconditionValidationResult,
+  ContentEvidence,
   ExecutablePlannedOperation,
   ExecutionResult,
   ExecutionResultV1_3,
@@ -38,6 +39,26 @@ type LegacyRecoveryReads = {
   readonly drive: Pick<GoogleDrivePort, "listForReconciliation">;
   readonly recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies;
 };
+
+const TRANSITIVELY_CARRIED_MOVE_REASON = "ancestor-folder-move-carried-descendant";
+
+function transitivelyCarriedMove(operation: ExecutablePlannedOperation): boolean {
+  return operation.kind === "noop"
+    && Boolean(operation.fromPath)
+    && Boolean(operation.toPath)
+    && Boolean(operation.remoteObjectId)
+    && Boolean(operation.contentVersion)
+    && operation.reasons.some(reason => reason.code === TRANSITIVELY_CARRIED_MOVE_REASON);
+}
+
+function evidenceEqual(actual: ContentEvidence | undefined, expected: ContentEvidence | undefined, entityKind: "file" | "folder"): boolean {
+  if (entityKind === "folder") return true;
+  if (!actual || !expected) return false;
+  if (expected.hash && actual.hash !== expected.hash) return false;
+  if (expected.sizeBytes !== undefined && actual.sizeBytes !== expected.sizeBytes) return false;
+  if (expected.revision !== undefined && actual.revision !== undefined && actual.revision !== expected.revision) return false;
+  return Boolean(expected.hash || expected.revision);
+}
 
 function expectedOperationShape(intent: RecoverableOperationIntentV1_1): { readonly kind: ExecutablePlannedOperation["kind"]; readonly path: ExecutablePlannedOperation["path"]; readonly remoteObjectId?: RemoteObjectId } | undefined {
   const first = intent.effects[0]?.descriptor;
@@ -103,16 +124,64 @@ export function createAuthoritativeProductExecutor(
   const base = createBaseAuthoritativeProductExecutor(legacy, authorityStore, identityStateStore, stateContext, managedRemote, explicitDependencies);
   const configured = explicitDependencies ?? (legacy as unknown as LegacyRecoveryReads).recoverableProductionMutationDependencies ?? {};
 
+  async function validateTransitivelyCarriedMove(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
+    const version = operation.contentVersion;
+    const fromPath = operation.fromPath;
+    const toPath = operation.toPath;
+    const remoteObjectId = operation.remoteObjectId;
+    if (!version || !fromPath || !toPath || !remoteObjectId || version.path !== toPath || version.remoteObjectId !== remoteObjectId) {
+      return { status: "recovery-required", reason: "transitively carried descendant lacks exact from/to/version identity authority" };
+    }
+    const loaded = await identityStateStore.load(stateContext);
+    if (loaded.status !== "trusted") return { status: "recovery-required", reason: "trusted canonical state unavailable while verifying transitively carried descendant" };
+    const oldBase = loaded.state.base.filter(entry => entry.path === fromPath);
+    const byPath = loaded.state.remoteMappings.filter(mapping => mapping.path === fromPath);
+    const byId = loaded.state.remoteMappings.filter(mapping => mapping.remoteObjectId === remoteObjectId);
+    if (oldBase.length !== 1
+      || oldBase[0]?.remoteObjectId !== remoteObjectId
+      || oldBase[0]?.entityKind !== version.entityKind
+      || !evidenceEqual(oldBase[0]?.content, version.content, version.entityKind)
+      || byPath.length !== 1
+      || byId.length !== 1
+      || byPath[0]?.remoteObjectId !== remoteObjectId
+      || byId[0]?.path !== fromPath) {
+      return { status: "stale", failed: [] };
+    }
+    const [localCurrent, remoteCurrent] = await Promise.all([
+      legacy.versionStillCurrent("local", version, managedRemote),
+      legacy.versionStillCurrent("remote", version, managedRemote),
+    ]);
+    return localCurrent && remoteCurrent ? { status: "valid" } : { status: "stale", failed: [] };
+  }
+
   async function validatePreconditions(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
     const existing = await outstandingIntent(authorityStore, operation);
     if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };
     if (existing.status === "found") return { status: "valid" };
+    if (transitivelyCarriedMove(operation)) return validateTransitivelyCarriedMove(operation);
     return base.validatePreconditions(operation);
   }
 
   async function execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {
     const existing = await outstandingIntent(authorityStore, operation);
     if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };
+    if (existing.status === "none" && transitivelyCarriedMove(operation)) {
+      const validation = await validateTransitivelyCarriedMove(operation);
+      if (validation.status === "stale") return { status: "stale-precondition", reason: "transitively carried descendant is not exactly converged at the post-ancestor destination", failed: validation.failed };
+      if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
+      if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
+      return {
+        status: "durable-verified-success",
+        receipt: {
+          operationId: operation.operationId,
+          durable: true,
+          integrityVerified: true,
+          evidence: operation.contentVersion?.content,
+          resultingRemoteObjectId: operation.remoteObjectId,
+          verificationEvidenceRef: `transitive-folder-move:${String(operation.operationId)}:${String(operation.remoteObjectId)}`,
+        },
+      };
+    }
     if (existing.status === "none") return base.execute(operation);
 
     const recovery = await recoverMatchingDurableIntentToVerifiedReceipt(
