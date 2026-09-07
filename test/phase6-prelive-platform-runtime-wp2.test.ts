@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 import { contractId, type PersistenceRevision, type SemanticStateGeneration, type VaultIdentity } from "../src/contracts";
 import { ProductController } from "../src/product/product-controller";
@@ -68,7 +69,7 @@ test("controller quiescence does not settle while an in-flight run promise remai
 });
 
 test("runtime teardown stops scheduler and awaits quiescence before resource disposal", () => {
-  const source = readFileSync(new URL("../src/product/runtime.ts", import.meta.url), "utf8");
+  const source = readFileSync(resolve(process.cwd(), "src/product/runtime.ts"), "utf8");
   const stop = source.indexOf("this.scheduler?.stop()");
   const quiesce = source.indexOf("await controller.beginRuntimeDisposal()");
   const dispose = source.indexOf("disposable?.dispose?.()", quiesce);
@@ -76,7 +77,7 @@ test("runtime teardown stops scheduler and awaits quiescence before resource dis
 });
 
 test("preview execution has pending guard and finally-reset while failure leaves modal open", () => {
-  const source = readFileSync(new URL("../src/product/plan-modal.ts", import.meta.url), "utf8");
+  const source = readFileSync(resolve(process.cwd(), "src/product/plan-modal.ts"), "utf8");
   assert.match(source, /if \(this\.executionPending\) return;/);
   assert.match(source, /button\.setDisabled\(true\)/);
   assert.match(source, /catch \{/);
