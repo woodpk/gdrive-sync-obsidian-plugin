@@ -199,6 +199,68 @@ test("C1 absent new-installation state previews first-sync safe union without pe
   assert.equal((await store.loadAuthority()).status, "trusted");
 });
 
+test("C1-R1 uninitialized recovery reconstruction still traverses durable-intent recovery", async () => {
+  const context: StateLoadContext = {
+    expectation: "new-installation",
+    expectedVaultIdentity: vault,
+    expectedDeviceIdentity: device,
+  };
+  const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const store = new SynchronizationStateAuthorityAdapter(rawStore);
+  const tracked = trackingAuthority(store);
+  const local = localPort();
+  const drive = drivePort();
+  let controller!: ProductController;
+  let plannerCalls = 0;
+  const recoveryAssembly = {
+    input: { snapshots: [], state: { status: "uninitialized" } },
+    managedRemote,
+    remoteEnumeration: { status: "complete" },
+    mode: "full",
+    reconstruction: true,
+    recoveryReason: "test recovery",
+  } as const;
+  const executor = new ProductSynchronizationExecutor(local, drive, store, context, () => controller.currentRunEvidence());
+  controller = new ProductController({
+    vaultIdentity: vault,
+    deviceIdentity: device,
+    stateContext: context,
+    stateStore: store,
+    authorityStore: tracked.authorityStore,
+    snapshotAssembler: {
+      assemble: async () => recoveryAssembly,
+      assembleFull: async () => recoveryAssembly,
+      assembleRecovery: async () => recoveryAssembly,
+    } as never,
+    executor,
+    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
+    plannerForTrigger: trigger => ({
+      plan: async () => {
+        plannerCalls += 1;
+        return {
+          planId: id<"PlanId">(`plan:c1:recovery:${trigger}`),
+          trigger,
+          operations: [],
+          executionDisposition: "safe-auto-eligible",
+          recoveryCheckpointRequired: false,
+          globalExecutionGate: "none",
+        };
+      },
+    } as never),
+    leasePort: lease,
+    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
+    holderId: "c1-reconstruction",
+    recoveryActive: () => true,
+  });
+
+  assert.equal(tracked.loads(), 0);
+  const preview = await controller.previewVerifyReconcile();
+  assert.equal(preview, undefined);
+  assert.ok(tracked.loads() > 0);
+  assert.equal(plannerCalls, 0);
+  assert.equal(controller.currentSurface().status.kind, "recovery-required");
+});
+
 test("C1 existing trusted authority planning still invokes durable-intent recovery", async () => {
   const context: StateLoadContext = {
     expectation: "existing-pairing",
