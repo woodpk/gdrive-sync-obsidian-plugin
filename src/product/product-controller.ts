@@ -7,6 +7,7 @@ import {
   type StateRevision,
   type SynchronizationAuthorityStoreV1_1,
 } from "../contracts";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import {
   ProductControllerBase,
   type ProductControllerOptions as BaseProductControllerOptions,
@@ -140,6 +141,7 @@ function authorityLearningAssembler(
 
 export class ProductController extends ProductControllerBase {
   private readonly inFlight = new Set<Promise<unknown>>();
+  private readonly runtimeDiagnostics?: DiagnosticLogger;
   private disposing = false;
 
   constructor(options: ProductControllerOptions) {
@@ -162,6 +164,27 @@ export class ProductController extends ProductControllerBase {
       ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
       authorityStore,
     });
+    this.runtimeDiagnostics = diagnostics.logger;
+  }
+
+  override previewManual(runId?: Parameters<ProductControllerBase["previewManual"]>[0]): ReturnType<ProductControllerBase["previewManual"]> {
+    if (this.disposing) {
+      if (runId !== undefined) {
+        this.runtimeDiagnostics?.syncInfo("sync.controller", "sync-run-deferred", runId, {
+          stage: "runtime-disposal",
+          result: "runtime-stopping",
+          classification: "runtime-disposal",
+        });
+        this.runtimeDiagnostics?.endSyncRun(runId);
+      }
+      return Promise.resolve(undefined);
+    }
+    return this.track(super.previewManual(runId));
+  }
+
+  override previewVerifyReconcile(): ReturnType<ProductControllerBase["previewVerifyReconcile"]> {
+    if (this.disposing) return Promise.resolve(undefined);
+    return this.track(super.previewVerifyReconcile());
   }
 
   override runAutomatic(trigger: Parameters<ProductControllerBase["runAutomatic"]>[0]): Promise<void> {
