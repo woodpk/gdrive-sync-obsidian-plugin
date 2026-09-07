@@ -94,6 +94,7 @@ function authorityLearningAssembler(
       if (!original) return Reflect.get(target, property, receiver);
       return async (...args: never[]) => {
         let assembly = await original(...args);
+        if (assembly.input.state.status === "uninitialized") return assembly;
         await persistLearnedRemoteBatch(assembly, authorityStore, options);
 
         const recovery = await recoverOutstandingDurableIntents(
