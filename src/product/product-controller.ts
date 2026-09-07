@@ -207,6 +207,13 @@ export class ProductController extends ProductControllerBase {
     return this.track(super.requestPreviewAction(action, diagnosticRunId));
   }
 
+  override resolveWithCurrentLocal(
+    id: Parameters<ProductControllerBase["resolveWithCurrentLocal"]>[0],
+  ): ReturnType<ProductControllerBase["resolveWithCurrentLocal"]> {
+    if (this.disposing) return Promise.resolve({ status: "rejected", reason: "synchronization runtime is stopping" });
+    return this.track(super.resolveWithCurrentLocal(id));
+  }
+
   async beginRuntimeDisposal(): Promise<void> {
     if (!this.disposing) {
       this.disposing = true;
