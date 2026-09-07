@@ -19,7 +19,7 @@
 - `dev/planning-and-building/target-system-specification.md`
 - `dev/planning-and-building/decision-register.yaml`
 - `dev/planning-and-building/project-state.yaml`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase-6-supervisor-handoff.md`
 
 The current task is a Stage 2A Phase 6 remediation loop, not Stage 3. The target specification remains authoritative over current code, tests, and earlier debugging conclusions. Locked behavior includes serialized/coalesced runs, immutable plan intent, path-local failure isolation, independent safe-path progress, trustworthy BASE/history, conservative cursor/state advancement, crash-safe verified commit ordering, and no weakening of stale-plan, deletion, conflict, recovery, identity, or transfer-integrity protections.
 

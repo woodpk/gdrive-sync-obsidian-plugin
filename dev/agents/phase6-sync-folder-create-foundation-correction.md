@@ -14,7 +14,7 @@ Parallel continuation: **not authorized pending independent supervisor re-review
 
 The first v1.1 correction added folder-capable recoverable descriptor/effect/intent types, but supervisor re-review correctly found that the authoritative metadata/store path remained typed only to the old v1 `RecoverableOperationIntent[]` family. Candidate `c9a7f9c2fe77d134bed1659111d58b9a53d3eda3` therefore could not durably carry folder-create intent through Workstream C/D persistence without a sidecar or shadow contract.
 
-The bounded correction preserves all accepted A–H, R1–R6, and folder verification semantics. It adds an explicit authoritative v1.1 metadata/store/recovery/completion surface in `src/contracts/synchronization-folder-create-foundation.ts`. The old v1 metadata/store and recoverable-intent family remain compatibility-only for already-reviewed v1 behavior.
+The bounded correction preserves all accepted A–H, R1–R6, and folder verification semantics. It adds an explicit authoritative v1.1 metadata/store/recovery/completion surface in `../../src/contracts/synchronization-folder-create-foundation.ts`. The old v1 metadata/store and recoverable-intent family remain compatibility-only for already-reviewed v1 behavior.
 
 The authoritative v1.1 lifecycle is:
 
@@ -24,7 +24,7 @@ No private sidecar, untyped blob, cast-through-unknown authority, replacement wo
 
 ## 2. Shared folder-create authority
 
-`src/contracts/synchronization-folder-create-foundation.ts` provides:
+`../../src/contracts/synchronization-folder-create-foundation.ts` provides:
 
 - `FolderCreatePathAuthority` — exact target, parent, normalized comparison key, and expected absence;
 - `LocalFolderCreatePhysicalMutationDescriptor` — durable LOCAL folder-create identity/path authority;
@@ -69,9 +69,9 @@ The round-trip test saves a `dispatch-authorized` REMOTE folder create, construc
 
 ## 6. Predictive coverage
 
-Existing `test/phase6-folder-create-foundation.test.ts` remains unchanged and passing.
+Existing `../../test/phase6-folder-create-foundation.test.ts` remains unchanged and passing.
 
-New `test/phase6-folder-authority-store-foundation.test.ts` proves:
+New `../../test/phase6-folder-authority-store-foundation.test.ts` proves:
 
 1. LOCAL folder intent fits authoritative v1.1 metadata without unsafe casts;
 2. REMOTE folder intent fits authoritative v1.1 metadata with its reserved Drive identity;
@@ -80,7 +80,7 @@ New `test/phase6-folder-authority-store-foundation.test.ts` proves:
 5. shared v1.1 completion requires every required effect to be `state-committed`;
 6. C and D can exchange persisted folder intent solely through the frozen v1.1 metadata/store contract, with shared pre-dispatch versus may-have-dispatched restart classification.
 
-At implementation checkpoint `750100f95c8a32a6deb6909cd03ebbee3682d650`, `Phase 6 Alpha Diagnostic Verification` run `33355904138`, job `99377893445`, completed successfully as PR merge-ref verification containing that candidate head. Artifact `9745116592` records **413/413 full tests passing**, **38/38 workflow-focused tests passing**, production build/check/diff verification passing, all five build/mobile/package verifiers passing, `main.js` `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`, and artifact digest `sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4`.
+At implementation checkpoint `750100f95c8a32a6deb6909cd03ebbee3682d650`, `Phase 6 Alpha Diagnostic Verification` run `33355904138`, job `99377893445`, completed successfully as PR merge-ref verification containing that candidate head. Artifact `9745116592` records **413/413 full tests passing**, **38/38 workflow-focused tests passing**, production build/check/diff verification passing, all five build/mobile/package verifiers passing, `../../main.js` `415353` bytes with SHA-256 `02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd`, and artifact digest `sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4`.
 
 ## 7. Workstream contract readiness
 

@@ -11,18 +11,18 @@ This manifest does not authorize parallel continuation. The exact supervisor-app
 
 ## 1. Frozen files
 
-- `src/contracts/common.ts`
-- `src/contracts/synchronization-foundation.ts`
-- `src/contracts/synchronization-folder-create-foundation.ts`
-- `src/contracts/state.ts`
-- `src/contracts/snapshot.ts`
-- `src/contracts/plan.ts`
-- `src/contracts/local-vault.ts`
-- `src/contracts/google-drive.ts`
-- `src/contracts/execution.ts`
-- `src/contracts/conflict.ts`
-- `src/contracts/status-audit-actions.ts`
-- `src/contracts/index.ts`
+- `../../src/contracts/common.ts`
+- `../../src/contracts/synchronization-foundation.ts`
+- `../../src/contracts/synchronization-folder-create-foundation.ts`
+- `../../src/contracts/state.ts`
+- `../../src/contracts/snapshot.ts`
+- `../../src/contracts/plan.ts`
+- `../../src/contracts/local-vault.ts`
+- `../../src/contracts/google-drive.ts`
+- `../../src/contracts/execution.ts`
+- `../../src/contracts/conflict.ts`
+- `../../src/contracts/status-audit-actions.ts`
+- `../../src/contracts/index.ts`
 
 Later agents must not modify `src/contracts/**` independently after approval. Compatibility adapters belong in the owning workstream.
 

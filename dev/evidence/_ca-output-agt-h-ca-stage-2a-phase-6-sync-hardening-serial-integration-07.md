@@ -17,7 +17,7 @@ The approved P4 head to H-U5-P5 entry delta was inspected before implementation:
 
 - base: `ab9c9c862143dbfe4cb8510c521f8e40ab733f06`
 - head: `7d50f490382738de69efd4997fa9d2942b25b44b`
-- only changed path: `dev/planning-and-building/phase6-h-u5-p5-group-d-conflict-destruction-fixtures-task.md`
+- only changed path: `../agents/phase6-h-u5-p5-group-d-conflict-destruction-fixtures-task.md`
 - no unapproved `src/**` or `test/**` change was present.
 
 ## Exact candidate change manifest

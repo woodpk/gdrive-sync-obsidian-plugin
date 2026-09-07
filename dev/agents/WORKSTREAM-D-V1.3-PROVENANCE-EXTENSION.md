@@ -136,10 +136,10 @@ If H's current wrapper exposes only predecessor port typing, do not edit H. Prov
 
 Primary authorized D production files:
 
-- `src/product/authoritative-production-executor-base.ts`
-- `src/product/authoritative-production-executor.ts`
-- `src/core/execution-coordinator-base.ts`
-- `src/core/execution-coordinator.ts`
+- `../../src/product/authoritative-production-executor-base.ts`
+- `../../src/product/authoritative-production-executor.ts`
+- `../../src/core/execution-coordinator-base.ts`
+- `../../src/core/execution-coordinator.ts`
 
 Modify only the minimum subset actually required.
 
@@ -147,7 +147,7 @@ If another D-owned production file is mechanically necessary, STOP and report th
 
 Authorized tests:
 
-- create `test/workstreams/orchestration/v1.3-failure-provenance-extension.test.ts`;
+- create `../../test/workstreams/orchestration/v1.3-failure-provenance-extension.test.ts`;
 - run existing D regressions, but do not rewrite them except for a narrowly necessary compile-only adaptation.
 
 Authorized evidence:

@@ -118,13 +118,13 @@ Do not weaken stable IDs, exact revisions/evidence, immutable-candidate updates,
 ## 4. SCOPE
 
 Primary authorized production file:
-`src/drive/google-drive-port.ts`
+`../../src/drive/google-drive-port.ts`
 
 If another `src/drive/**` support file is truly required, STOP first and report the exact reason before expanding.
 
 Authorized tests:
 
-- `test/workstreams/drive/phase6-remote-protocol.test.ts`
+- `../../test/workstreams/drive/phase6-remote-protocol.test.ts`
 - one new focused A V1.3 test under `test/workstreams/drive/**` if useful.
 
 Authorized evidence:
@@ -137,7 +137,7 @@ Do NOT modify:
 - D orchestration/product files
 - H integration files
 - G adversarial model
-- canonical `dev/evidence/_ca-output.md`
+- canonical `../evidence/_ca-output.md`
 - package/release metadata.
 
 ---

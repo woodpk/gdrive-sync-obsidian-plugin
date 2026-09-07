@@ -17,7 +17,7 @@ The approved H-U5-P5 head to H-U5-P6 entry delta was inspected before implementa
 
 - base: `4c2335dd2a754bbe04a8f68d2c71abc4f9977b00`
 - head: `76be983a142e1a3934acfa968f1b8d43e2557e65`
-- only changed path: `dev/planning-and-building/phase6-h-u5-p6-group-d-recovery-coordination-fixtures-task.md`
+- only changed path: `../agents/phase6-h-u5-p6-group-d-recovery-coordination-fixtures-task.md`
 - no unapproved `src/**` or `test/**` change was present.
 
 ## Exact candidate change manifest

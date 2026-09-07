@@ -38,7 +38,7 @@ This is one classified `OBSOLETE-LEGACY-FIXTURE / OLF-PHYSICAL` repair package.
 
 The target file is:
 
-`test/phase5-group-d-recovery-coordination-integration.test.ts`
+`../../test/phase5-group-d-recovery-coordination-integration.test.ts`
 
 Do not broaden the package.
 
@@ -63,7 +63,7 @@ At startup:
    - base: `4c2335dd2a754bbe04a8f68d2c71abc4f9977b00`
    - head: `H_U5_P6_ENTRY_HEAD`
 4. require that the post-approval delta consists only of this supervisor-created planning/tasking file:
-   - `dev/planning-and-building/phase6-h-u5-p6-group-d-recovery-coordination-fixtures-task.md`
+   - `phase6-h-u5-p6-group-d-recovery-coordination-fixtures-task.md`
 5. if any unapproved `src/**` or `test/**` change exists in that delta, stop immediately with:
 
 `BLOCKED — SUPERVISOR DECISION REQUIRED`
@@ -146,10 +146,10 @@ The intended correction is therefore to bring the fixture forward to current pro
 
 Already-approved modernized tests on this branch provide the implementation pattern. Inspect and reuse the established fixture-wiring approach rather than inventing a new architecture. Useful precedent includes:
 
-- `test/phase5-controller.test.ts`
-- `test/phase5-group-d-first-sync-integration.test.ts`
-- `test/phase5-group-d-active-run-integration.test.ts`
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`
+- `../../test/phase5-controller.test.ts`
+- `../../test/phase5-group-d-first-sync-integration.test.ts`
+- `../../test/phase5-group-d-active-run-integration.test.ts`
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts`
 
 Use those only as precedent for binding old fixtures to current production interfaces. Do not copy unrelated scenario logic or assertions.
 
@@ -159,7 +159,7 @@ Use those only as precedent for binding old fixtures to current production inter
 
 The only implementation/test file you are initially authorized to modify is:
 
-`test/phase5-group-d-recovery-coordination-integration.test.ts`
+`../../test/phase5-group-d-recovery-coordination-integration.test.ts`
 
 Within that file, make only the minimum fixture/harness changes required to execute the eight existing scenarios through current hardened production interfaces.
 
@@ -290,7 +290,7 @@ Before authoritative verification, compare:
 
 The implementation/test delta must contain exactly one file:
 
-`test/phase5-group-d-recovery-coordination-integration.test.ts`
+`../../test/phase5-group-d-recovery-coordination-integration.test.ts`
 
 The supervisor-created tasking file belongs only to the approved-head-to-entry planning delta and is not part of the implementation delta.
 
@@ -350,7 +350,7 @@ Before test execution, prove:
    - `fe527c76137b2cd578ef7050ee3444498b21a5e0`
 6. worktree is clean before verification;
 7. `H_U5_P6_ENTRY_HEAD` → `H_U5_P6_CANDIDATE_SHA` changes exactly:
-   - `test/phase5-group-d-recovery-coordination-integration.test.ts`
+   - `../../test/phase5-group-d-recovery-coordination-integration.test.ts`
 
 Any invariant mismatch is a hard blocker.
 
@@ -369,7 +369,7 @@ All must pass.
 
 Run the compiled equivalent of:
 
-`test/phase5-group-d-recovery-coordination-integration.test.ts`
+`../../test/phase5-group-d-recovery-coordination-integration.test.ts`
 
 Expected result after correct fixture modernization:
 
@@ -494,7 +494,7 @@ Preserve the proof artifact/logs needed to make the result independently reviewa
 
 Only after the candidate has completed the required bounded verification may you create/update your H-U5-P6 evidence file:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-08.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-08.md`
 
 Record at minimum:
 
@@ -524,7 +524,7 @@ Record at minimum:
 
 Do not alter:
 
-- canonical `dev/evidence/_ca-output.md`;
+- canonical `../evidence/_ca-output.md`;
 - any H-01 through H-07 evidence file.
 
 After evidence closure, the candidate-to-evidence delta should contain only your H-08 evidence file.

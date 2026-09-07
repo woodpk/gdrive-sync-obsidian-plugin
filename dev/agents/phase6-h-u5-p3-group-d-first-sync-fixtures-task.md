@@ -105,11 +105,11 @@ The first foundational `OLF-PHYSICAL` constructor-fixture package is complete.
 
 Preserve the approved modernized fixture patterns in:
 
-- `test/phase5-controller.test.ts`;
-- `test/phase5-group-a-recovery-state.test.ts`;
-- `test/phase5-group-b-scope-transfer.test.ts`.
+- `../../test/phase5-controller.test.ts`;
+- `../../test/phase5-group-a-recovery-state.test.ts`;
+- `../../test/phase5-group-b-scope-transfer.test.ts`.
 
-In particular, `test/phase5-controller.test.ts` now demonstrates the approved test-side construction pattern using current durable/writable authority and explicit recoverable mutation seams. Treat that file as an implementation reference, not as new repair scope.
+In particular, `../../test/phase5-controller.test.ts` now demonstrates the approved test-side construction pattern using current durable/writable authority and explicit recoverable mutation seams. Treat that file as an implementation reference, not as new repair scope.
 
 ## H-U5-P2
 
@@ -135,7 +135,7 @@ H-U4 classified the affected file under:
 
 Authorized file:
 
-`test/phase5-group-d-first-sync-integration.test.ts`
+`../../test/phase5-group-d-first-sync-integration.test.ts`
 
 H-U4 recorded eight failing tests in this file:
 
@@ -166,7 +166,7 @@ Production correctly fails closed when those seams are absent.
 
 The test fixture is stale.
 
-The approved H-U5-P1 modernization in `test/phase5-controller.test.ts` demonstrates the intended direction:
+The approved H-U5-P1 modernization in `../../test/phase5-controller.test.ts` demonstrates the intended direction:
 
 - use the existing integrated synchronization-state authority adapter rather than inventing a shadow store;
 - provide an explicit `ReliableRemoteMutationPort` test seam for physical remote mutations;
@@ -182,7 +182,7 @@ Do not copy P1 code mechanically if the first-sync harness needs a smaller or sl
 
 This unit authorizes exactly one implementation/test file modification:
 
-`test/phase5-group-d-first-sync-integration.test.ts`
+`../../test/phase5-group-d-first-sync-integration.test.ts`
 
 Modernize only that file's fixture/harness construction so all eight existing tests execute through the current hardened controller/executor authority model.
 
@@ -225,11 +225,11 @@ Before editing:
 1. confirm the live branch and record `H_U5_P3_ENTRY_HEAD`;
 2. verify the post-`2a4f18f...` delta is tasking/planning-only as specified above;
 3. verify `src/contracts/**` tree remains exactly `0db68ced179825f929008b502335210260ca2ce3`;
-4. verify canonical `dev/evidence/_ca-output.md` remains blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
-5. verify `dev/planning-and-building/phase6-sync-contract-freeze.md` still has the restored approved whole-file blob `b675e0fc9776d03892a4309231b91a4bf0a84b93` and first-16,296-byte prefix hash `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
+4. verify canonical `../evidence/_ca-output.md` remains blob `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+5. verify `phase6-sync-contract-freeze.md` still has the restored approved whole-file blob `b675e0fc9776d03892a4309231b91a4bf0a84b93` and first-16,296-byte prefix hash `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
 6. inspect in full:
-   - `test/phase5-group-d-first-sync-integration.test.ts`;
-   - current `test/phase5-controller.test.ts` as the approved P1 fixture-modernization reference;
+   - `../../test/phase5-group-d-first-sync-integration.test.ts`;
+   - current `../../test/phase5-controller.test.ts` as the approved P1 fixture-modernization reference;
    - the current controller/executor constructor surfaces needed to understand required dependencies;
    - H-U4 evidence for the eight first-sync failures.
 
@@ -241,7 +241,7 @@ Do not run the full repository merely to rediscover the eight H-U4 failures befo
 
 Modify only:
 
-`test/phase5-group-d-first-sync-integration.test.ts`
+`../../test/phase5-group-d-first-sync-integration.test.ts`
 
 After the correction is committed/pushed on `phase6-sync-integration-h`, record the resulting SHA as:
 
@@ -254,7 +254,7 @@ Then compare:
 Acceptance:
 
 - exactly one changed file;
-- that file is `test/phase5-group-d-first-sync-integration.test.ts`;
+- that file is `../../test/phase5-group-d-first-sync-integration.test.ts`;
 - no `src/**` changes;
 - no other `test/**` changes;
 - no planning/evidence changes in the implementation commit.
@@ -315,7 +315,7 @@ Verify:
 
 - `git rev-parse HEAD == H_U5_P3_CANDIDATE_SHA`;
 - `src/contracts/**` tree = `0db68ced179825f929008b502335210260ca2ce3`;
-- canonical `dev/evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
+- canonical `../evidence/_ca-output.md` blob = `d4c610ccbc6cbbd6d58f548525239bb6d61e1f73`;
 - contract-freeze whole-file blob = `b675e0fc9776d03892a4309231b91a4bf0a84b93`;
 - contract-freeze first-16,296-byte prefix hash = `fe527c76137b2cd578ef7050ee3444498b21a5e0`;
 - tracked working tree clean.
@@ -443,7 +443,7 @@ Do not convert it into the entire remaining Group-D modernization wave.
 
 If the disposable workflow has one bounded mechanical defect that prevents the intended commands from running, correct only that disposable workflow and rerun once.
 
-If verification reveals a semantic issue outside `test/phase5-group-d-first-sync-integration.test.ts`, stop and report it.
+If verification reveals a semantic issue outside `../../test/phase5-group-d-first-sync-integration.test.ts`, stop and report it.
 
 Do not begin a second repair cycle against another file merely because turn capacity remains.
 
@@ -453,13 +453,13 @@ Do not begin a second repair cycle against another file merely because turn capa
 
 After successful P3 verification, create/update only the successor H-05 evidence record:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-05.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-05.md`
 
 Do not modify predecessor H-01, H-02, H-03, or H-04 evidence files.
 
 Do not modify canonical:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Record:
 
@@ -489,7 +489,7 @@ Commit/push only that H-05 evidence file after the verified candidate and record
 
 Then verify:
 
-- `H_U5_P3_ENTRY_HEAD...H_U5_P3_CANDIDATE_SHA` = only `test/phase5-group-d-first-sync-integration.test.ts`;
+- `H_U5_P3_ENTRY_HEAD...H_U5_P3_CANDIDATE_SHA` = only `../../test/phase5-group-d-first-sync-integration.test.ts`;
 - `H_U5_P3_CANDIDATE_SHA...H_U5_P3_EVIDENCE_SHA` = only the H-05 evidence file;
 - frozen contracts unchanged;
 - canonical evidence unchanged;
@@ -506,12 +506,12 @@ Remaining classified work includes, at minimum:
 
 ## Other `OLF-PHYSICAL` fixtures
 
-- `test/phase5-group-d-acceptance.test.ts`;
-- `test/phase5-group-d-active-run-integration.test.ts`;
-- `test/phase5-group-d-conflict-destruction-integration.test.ts`;
-- `test/phase5-group-d-recovery-coordination-integration.test.ts`;
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts`;
-- `test/phase6-alpha-plan-errors-stability.test.ts`.
+- `../../test/phase5-group-d-acceptance.test.ts`;
+- `../../test/phase5-group-d-active-run-integration.test.ts`;
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts`;
+- `../../test/phase5-group-d-recovery-coordination-integration.test.ts`;
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`;
+- `../../test/phase6-alpha-plan-errors-stability.test.ts`.
 
 ## `OLF-FAKE-AUTH`
 
@@ -534,8 +534,8 @@ Do not:
 - modify production `src/**`;
 - modify `src/contracts/**`;
 - modify the contract-freeze document;
-- modify canonical `dev/evidence/_ca-output.md`;
-- modify any test other than `test/phase5-group-d-first-sync-integration.test.ts` in the implementation candidate;
+- modify canonical `../evidence/_ca-output.md`;
+- modify any test other than `../../test/phase5-group-d-first-sync-integration.test.ts` in the implementation candidate;
 - modify predecessor H evidence;
 - modify worker branches;
 - modify `phase6-integration`, `main`, or `master`;

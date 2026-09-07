@@ -4,7 +4,7 @@
 
 `H-U5-P2 COMPLETE — READY FOR SUPERVISOR REVIEW`
 
-The authorized H-U5-P2 OLF-STATIC correction is implemented and focused-verified. The initially observed non-P2 V1.3 documentation-prefix regression was subsequently resolved under explicit supervisor authorization by restoring only `dev/planning-and-building/phase6-sync-contract-freeze.md` to the approved H-authority blob while preserving its V1.3 append-only succession material. C15 was not modified.
+The authorized H-U5-P2 OLF-STATIC correction is implemented and focused-verified. The initially observed non-P2 V1.3 documentation-prefix regression was subsequently resolved under explicit supervisor authorization by restoring only `../agents/phase6-sync-contract-freeze.md` to the approved H-authority blob while preserving its V1.3 append-only succession material. C15 was not modified.
 
 ## Identity / authority
 
@@ -23,7 +23,7 @@ The authorized H-U5-P2 OLF-STATIC correction is implemented and focused-verified
 
 ## Entry inspection
 
-Comparison `ac6afd51b2eb23fd94cecaa7e502735e38e93d22...2c1b3ccbe6b4485e1461d9d740636feb057c5073` showed two supervisor/planning-history commits and no `src/**` or `test/**` changes. The second planning commit included planning/evidence material such as `dev/planning-and-building/phase6-sync-contract-freeze.md`; no implementation or test source changed before H-U5-P2.
+Comparison `ac6afd51b2eb23fd94cecaa7e502735e38e93d22...2c1b3ccbe6b4485e1461d9d740636feb057c5073` showed two supervisor/planning-history commits and no `src/**` or `test/**` changes. The second planning commit included planning/evidence material such as `../agents/phase6-sync-contract-freeze.md`; no implementation or test source changed before H-U5-P2.
 
 Entry invariants were confirmed:
 
@@ -117,13 +117,13 @@ H integration markers remained green. Thirteen failures were the already worker-
 - expected prefix Git blob: `fe527c76137b2cd578ef7050ee3444498b21a5e0`
 - actual prefix Git blob before restoration: `f7b569580d18219d08d73549f3c7459875c73211`
 
-Repository history established that `dev/planning-and-building/phase6-sync-contract-freeze.md` had been reformatted/reflowed by post-authority commit `2c1b3ccbe6b4485e1461d9d740636feb057c5073`. H-U5-P2 stopped and requested supervisor disposition rather than modifying that file without authority.
+Repository history established that `../agents/phase6-sync-contract-freeze.md` had been reformatted/reflowed by post-authority commit `2c1b3ccbe6b4485e1461d9d740636feb057c5073`. H-U5-P2 stopped and requested supervisor disposition rather than modifying that file without authority.
 
 ## Supervisor-authorized planning-document provenance restoration
 
 The supervisor explicitly authorized restoration of only:
 
-- `dev/planning-and-building/phase6-sync-contract-freeze.md`
+- `../agents/phase6-sync-contract-freeze.md`
 
 The supervisor explicitly prohibited updating C15 and retained P2 candidate `4d1daea1f8551de496d29f1a56d489b4b9a813f9` as accepted.
 
@@ -134,7 +134,7 @@ The restoration used the exact file blob already present at approved H authority
 - V1.3 append heading retained: `## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE`
 - provenance correction commit: `740d3338e10b3cdf36a92288f2f8d8c37ee26fe3`
 
-Comparison `f7d76a9142d9e0575a55e29b78af1bc68feb3acb...740d3338e10b3cdf36a92288f2f8d8c37ee26fe3` contains exactly one changed file: `dev/planning-and-building/phase6-sync-contract-freeze.md`.
+Comparison `f7d76a9142d9e0575a55e29b78af1bc68feb3acb...740d3338e10b3cdf36a92288f2f8d8c37ee26fe3` contains exactly one changed file: `../agents/phase6-sync-contract-freeze.md`.
 
 No `src/**`, `src/contracts/**`, `test/**`, C15, other planning document, canonical evidence file, or predecessor H evidence file was changed by the restoration.
 

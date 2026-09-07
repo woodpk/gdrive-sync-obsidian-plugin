@@ -32,7 +32,7 @@ Your exact assignment is:
 
 This is **Session 2 — H-U5-P9** of the fixed remaining-session plan in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 Do not broaden the package.
 
@@ -56,7 +56,7 @@ At startup:
    - base: `6cf861d6a8514d65f67f1daf8cede465eab963bb`
    - head: `H_U5_P9_ENTRY_HEAD`
 4. require that this delta contains **only**:
-   - `dev/planning-and-building/phase6-h-u5-p9-shared-olf-fake-auth-controller-fixture-task.md`
+   - `phase6-h-u5-p9-shared-olf-fake-auth-controller-fixture-task.md`
 5. require that no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed in that delta.
 
 If the live branch does not satisfy that exact entry condition, stop immediately with:
@@ -68,9 +68,9 @@ Do not silently substitute a newer branch tip, alternate SHA, or unrelated commi
 Before editing, read completely:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
+4. `../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-10.md`
 5. all three owned P9 test files
 6. the already-approved hardened-fixture precedents named in Section 7 below.
 
@@ -94,7 +94,7 @@ Frozen `src/contracts/**` tree:
 
 Canonical evidence file:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Canonical evidence blob:
 
@@ -132,13 +132,13 @@ Do **not** weaken production fail-closed behavior to make these fixtures pass.
 
 You may modify only these three test files:
 
-1. `test/phase5-second-rejection.test.ts`
-2. `test/phase6-alpha-full-sync-remediation.test.ts`
-3. `test/phase6-alpha-mixed-plan-isolation.test.ts`
+1. `../../test/phase5-second-rejection.test.ts`
+2. `../../test/phase6-alpha-full-sync-remediation.test.ts`
+3. `../../test/phase6-alpha-mixed-plan-isolation.test.ts`
 
 After the source/test candidate is fixed, you may create/update only your own evidence file:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
 
 No other tracked file is authorized.
 
@@ -146,7 +146,7 @@ Specifically forbidden without supervisor re-authorization:
 
 - all `src/**` production changes;
 - all `src/contracts/**` changes;
-- `dev/evidence/_ca-output.md`;
+- `../evidence/_ca-output.md`;
 - any other `dev/evidence/**` file;
 - any other `test/**` file;
 - any planning document;
@@ -190,21 +190,21 @@ Of the 22 current whole-suite failures:
 - the later, separately planned P10 owns exactly **4 iOS diagnostics failures**;
 - G owns exactly **13 adversarial-model failures**.
 
-P9 also owns the **17 downstream cancellations** in `test/phase6-alpha-mixed-plan-isolation.test.ts`. Those cancellations are one cascade behind the leading stale fixture failure, not 17 independent defects.
+P9 also owns the **17 downstream cancellations** in `../../test/phase6-alpha-mixed-plan-isolation.test.ts`. Those cancellations are one cascade behind the leading stale fixture failure, not 17 independent defects.
 
 ### Exact P9 currently failing tests
 
-`test/phase5-second-rejection.test.ts`
+`../../test/phase5-second-rejection.test.ts`
 
 - `second rejection: O4 item-eligible request still executes only safe items`
 
-`test/phase6-alpha-full-sync-remediation.test.ts`
+`../../test/phase6-alpha-full-sync-remediation.test.ts`
 
 - `full-sync durable intent: acknowledged operation is not replayed across restart`
 - `crash-point matrix: pre-physical intent replays once and converges`
 - `crash-point matrix: post-physical pre-ack replay verifies then suppresses duplicate`
 
-`test/phase6-alpha-mixed-plan-isolation.test.ts`
+`../../test/phase6-alpha-mixed-plan-isolation.test.ts`
 
 - `mixed automatic plan commits safe subset while unsafe action remains pending`
 - plus 17 downstream cancellations after that leading failure blocks normal file completion.
@@ -239,7 +239,7 @@ Do not manufacture a fixture-only explanation if the product is actually wrong.
 
 ## 6. EXACT REPAIR WORK
 
-### 6.1 File A — `test/phase5-second-rejection.test.ts`
+### 6.1 File A — `../../test/phase5-second-rejection.test.ts`
 
 Owned failure:
 
@@ -261,7 +261,7 @@ Required characteristics:
 
 Do not convert the test into a direct unit test of a fake executor. It must continue to exercise the real integrated controller behavior under the hardened authority lifecycle.
 
-### 6.2 File B — `test/phase6-alpha-full-sync-remediation.test.ts`
+### 6.2 File B — `../../test/phase6-alpha-full-sync-remediation.test.ts`
 
 Owned failures:
 
@@ -288,7 +288,7 @@ Required characteristics:
 
 Forbidden shortcuts include resetting durable authority between simulated restarts, pre-marking the operation complete, bypassing recovery, or weakening call-count/convergence assertions.
 
-### 6.3 File C — `test/phase6-alpha-mixed-plan-isolation.test.ts`
+### 6.3 File C — `../../test/phase6-alpha-mixed-plan-isolation.test.ts`
 
 Leading owned failure:
 
@@ -334,14 +334,14 @@ If, after the shared authority repair, any formerly cancelled test now reveals a
 
 Use the already-approved H-U5 fixture modernizations as construction references, not as permission to transplant unrelated scenario behavior:
 
-- `test/phase5-controller.test.ts` — approved P1 controller-fixture precedent
-- `test/phase5-group-d-first-sync-integration.test.ts` — approved P3
-- `test/phase5-group-d-active-run-integration.test.ts` — approved P4
-- `test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5
-- `test/phase5-group-d-recovery-coordination-integration.test.ts` — approved P6
-- `test/phase5-group-d-acceptance.test.ts` — approved P7
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts` — approved P8 current-authority fixture precedent
-- `test/phase6-alpha-plan-errors-stability.test.ts` — approved P8 current-authority fixture precedent
+- `../../test/phase5-controller.test.ts` — approved P1 controller-fixture precedent
+- `../../test/phase5-group-d-first-sync-integration.test.ts` — approved P3
+- `../../test/phase5-group-d-active-run-integration.test.ts` — approved P4
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5
+- `../../test/phase5-group-d-recovery-coordination-integration.test.ts` — approved P6
+- `../../test/phase5-group-d-acceptance.test.ts` — approved P7
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts` — approved P8 current-authority fixture precedent
+- `../../test/phase6-alpha-plan-errors-stability.test.ts` — approved P8 current-authority fixture precedent
 
 Prefer the smallest compatible fixture adaptation. Do not copy unrelated scenario machinery or create a new production fallback for legacy tests.
 
@@ -367,7 +367,7 @@ Evidence must be a later evidence-only commit.
 
 The candidate-to-evidence-head delta must contain exactly:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
 
 No other file may change in the evidence commit.
 
@@ -443,9 +443,9 @@ All must pass.
 
 Run the compiled equivalents of all three owned files together and, where useful for diagnosis, individually:
 
-- `test/phase5-second-rejection.test.ts`
-- `test/phase6-alpha-full-sync-remediation.test.ts`
-- `test/phase6-alpha-mixed-plan-isolation.test.ts`
+- `../../test/phase5-second-rejection.test.ts`
+- `../../test/phase6-alpha-full-sync-remediation.test.ts`
+- `../../test/phase6-alpha-mixed-plan-isolation.test.ts`
 
 Required result:
 
@@ -513,7 +513,7 @@ Expected P9 delta:
 The 17 residual failures must consist exactly of:
 
 - the same 13 previously classified G-owned adversarial-model failures; and
-- the four already-planned H-U5-P10 failures in `test/phase6-alpha-ios-sync-diagnostics.test.ts`.
+- the four already-planned H-U5-P10 failures in `../../test/phase6-alpha-ios-sync-diagnostics.test.ts`.
 
 No other failure or cancellation is acceptable.
 
@@ -527,8 +527,8 @@ Required result: PASS.
 
 Record:
 
-- built `main.js` size;
-- built `main.js` SHA-256.
+- built `../../main.js` size;
+- built `../../main.js` SHA-256.
 
 A changed build artifact is not automatically a defect, but any change must be explained because P9 is test-only.
 
@@ -553,7 +553,7 @@ Before evidence closure, prove:
 
 Create/update only:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
 
 The evidence must record at minimum:
 
@@ -572,7 +572,7 @@ The evidence must record at minimum:
 12. H/V1.3 critical results and exact residual G ownership;
 13. fresh whole-suite totals and the exact P9 delta from P8;
 14. confirmation that the only non-G failures left are the four planned P10 iOS diagnostics failures;
-15. build result, `main.js` size, and SHA-256;
+15. build result, `../../main.js` size, and SHA-256;
 16. proof workflow branch and workflow path;
 17. authoritative GitHub Actions run ID and job ID;
 18. workflow conclusion;
@@ -581,7 +581,7 @@ The evidence must record at minimum:
 21. PR #45 state;
 22. explicit confirmation that no production source was modified.
 
-Do not edit canonical `dev/evidence/_ca-output.md`.
+Do not edit canonical `../evidence/_ca-output.md`.
 
 ---
 

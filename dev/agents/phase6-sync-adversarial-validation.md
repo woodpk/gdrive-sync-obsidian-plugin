@@ -1,7 +1,7 @@
 # Phase 6 Synchronization Adversarial Validation Matrix
 
 Status: **foundation test design — comprehensive simulator not yet implemented**  
-Fault-point authority: `SYNCHRONIZATION_FAULT_POINTS` in `src/contracts/synchronization-foundation.ts`.
+Fault-point authority: `SYNCHRONIZATION_FAULT_POINTS` in `../../src/contracts/synchronization-foundation.ts`.
 
 ## Matrix
 
@@ -53,7 +53,7 @@ Fault-point authority: `SYNCHRONIZATION_FAULT_POINTS` in `src/contracts/synchron
 
 ## Foundation predictive tests
 
-`test/phase6-sync-architecture-foundation.test.ts` proves the shared representations themselves, not later production implementations. In addition to the accepted predecessor cases it now predicts the reject/fix lifecycle requirements:
+`../../test/phase6-sync-architecture-foundation.test.ts` proves the shared representations themselves, not later production implementations. In addition to the accepted predecessor cases it now predicts the reject/fix lifecycle requirements:
 
 - nominal `base-trusted` and `identity-unambiguous` cannot enter the authority-complete execution seam;
 - exact BASE and identity proofs can be carried directly by an executable operation;

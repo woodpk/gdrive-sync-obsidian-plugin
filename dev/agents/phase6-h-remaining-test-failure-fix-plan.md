@@ -30,7 +30,7 @@ The sequence below activates only after independent supervisor review approves P
 
 ## 2. Complete planning-directory review performed before writing
 
-Before this plan was written, every line of every file already present in `dev/planning-and-building/` at snapshot `8f75956eaa0161b5d4744ba0a303f5555408d613` was read.
+Before this plan was written, every line of every file already present in `../planning-and-building` at snapshot `8f75956eaa0161b5d4744ba0a303f5555408d613` was read.
 
 That directory contained 26 pre-existing files covering:
 
@@ -60,7 +60,7 @@ The following documents contain execution-state language that is now stale relat
    - says A–G remain paused and the next action is PR #34 v1.1 foundation re-review;
    - that execution status is superseded by the later approved V1.3 foundation/adoption, A/B/D implementation, H integration, H-U4 classification, and H-U5 repair history.
 
-2. `project-state.yaml`
+2. `../planning-and-building/project-state.yaml`
    - labels itself `authoritative_current_progress` as of 2026-08-31;
    - still says the v1.1 authority-store candidate awaits supervisor re-review, parallel implementation is unauthorized, affected workers may not resume, and PR #34 review is the next action;
    - those progress/next-action fields are superseded for the current H execution lineage by this document and later accepted evidence.
@@ -107,8 +107,8 @@ P7's own `DO NOT START H-U5-P8 OR H-FINAL` stop remains operative until P7 recei
 
 This plan does **not** supersede:
 
-- `target-system-specification.md` product requirements;
-- locked product decisions in `decision-register.yaml`;
+- `../planning-and-building/target-system-specification.md` product requirements;
+- locked product decisions in `../planning-and-building/decision-register.yaml`;
 - `stage-1-build-decomposition.md` Phase 6 hardening / Stage 3 readiness boundary;
 - frozen `src/contracts/**` authority;
 - V1.3 physical-effect certainty versus operational-failure provenance separation;
@@ -164,7 +164,7 @@ The last supervisor-approved pre-P7 whole-suite baseline was:
 - cancelled: 20
 - skipped/todo: 0
 
-P7 is scoped to the three cancelled tests in `test/phase5-group-d-acceptance.test.ts`.
+P7 is scoped to the three cancelled tests in `../../test/phase5-group-d-acceptance.test.ts`.
 
 If P7 is independently approved with exactly its tasked effect, the fixed post-P7 accounting baseline for the remaining plan is:
 
@@ -174,7 +174,7 @@ If P7 is independently approved with exactly its tasked effect, the fixed post-P
 - cancelled: **17**
 - skipped/todo: **0**
 
-Those 17 cancellations are not 17 separate code defects. They are the downstream cancellation cascade in `test/phase6-alpha-mixed-plan-isolation.test.ts` behind its first failing fake-authority fixture.
+Those 17 cancellations are not 17 separate code defects. They are the downstream cancellation cascade in `../../test/phase6-alpha-mixed-plan-isolation.test.ts` behind its first failing fake-authority fixture.
 
 Of the 27 failures:
 
@@ -193,13 +193,13 @@ The sessions below account for every one of those outcomes.
 
 ### Exact owned test files
 
-1. `test/phase5-group-d-surface-lifecycle-integration.test.ts`
+1. `../../test/phase5-group-d-surface-lifecycle-integration.test.ts`
    - 2 current failures
 
-2. `test/phase6-alpha-plan-errors-stability.test.ts`
+2. `../../test/phase6-alpha-plan-errors-stability.test.ts`
    - 2 current failures
 
-3. `test/workstreams/drive/phase6-remote-protocol.test.ts`
+3. `../../test/workstreams/drive/phase6-remote-protocol.test.ts`
    - 1 current failure
 
 ### Exact causal work
@@ -247,13 +247,13 @@ Production changes are initially prohibited. A genuine production defect exposed
 
 ### Exact owned test files
 
-1. `test/phase5-second-rejection.test.ts`
+1. `../../test/phase5-second-rejection.test.ts`
    - 1 current failure
 
-2. `test/phase6-alpha-full-sync-remediation.test.ts`
+2. `../../test/phase6-alpha-full-sync-remediation.test.ts`
    - 3 current failures
 
-3. `test/phase6-alpha-mixed-plan-isolation.test.ts`
+3. `../../test/phase6-alpha-mixed-plan-isolation.test.ts`
    - 1 current failure + 17 downstream cancellations
 
 ### Exact causal work
@@ -303,7 +303,7 @@ Production changes are initially prohibited. Genuine production defects are esca
 
 ### Exact owned test file
 
-`test/phase6-alpha-ios-sync-diagnostics.test.ts`
+`../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 
 ### Current outcomes
 
@@ -349,8 +349,8 @@ At that point all remaining failures must be exactly the 13 classified G-owned a
 
 Only G-owned adversarial model/test surfaces:
 
-- `test/adversarial-model/support/model.ts`
-- `test/adversarial-model/adversarial-model.test.ts`
+- `../../test/adversarial-model/support/model.ts`
+- `../../test/adversarial-model/adversarial-model.test.ts`
 
 No production source ownership.
 
@@ -397,8 +397,8 @@ The only remaining failures must then be G-W2 and G-W3.
 
 Same bounded G surfaces as G-R1:
 
-- `test/adversarial-model/support/model.ts`
-- `test/adversarial-model/adversarial-model.test.ts`
+- `../../test/adversarial-model/support/model.ts`
+- `../../test/adversarial-model/adversarial-model.test.ts`
 
 No production source ownership.
 
@@ -449,7 +449,7 @@ This session was already explicitly authorized by the supervisor/user as a pre-H
 Inspect all `src/**` for temporary phase/workstream/integration nomenclature and at minimum disposition:
 
 - `src/product/phase6-sync-integration.ts`;
-- production runtime class `Phase5ProductRuntime` in `src/product/runtime.ts`;
+- production runtime class `Phase5ProductRuntime` in `../../src/product/runtime.ts`;
 - production lease/holder identifier prefixed `phase5:`;
 - any additional production module/exported symbol/runtime identifier/import whose name is a temporary phase/workstream/integration artifact rather than an enduring domain responsibility.
 

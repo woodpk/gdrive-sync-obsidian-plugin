@@ -28,7 +28,7 @@ Your exact assignment is:
 
 This is **Session 6 — H-NORM** in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 H-FINAL is a later separate session. Do not begin it.
 
@@ -48,8 +48,8 @@ At that approved head:
 - H/V1.3 critical: `82 / 82 PASS`, including H-I1 through H-I8;
 - whole repository: `687 / 687 PASS`, with zero fail/cancelled/skipped/todo;
 - production build: PASS;
-- `main.js`: `699509` bytes;
-- `main.js` SHA-256: `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
+- `../../main.js`: `699509` bytes;
+- `../../main.js` SHA-256: `212cc1af1f785a6c1b34f9e4789a3b0eacae4c5ed0f5e647d9864e3b8e621613`;
 - frozen V1.3 authorities remain exact;
 - PR #45 is open, draft, unmerged, headed by `phase6-sync-integration-h`.
 
@@ -63,7 +63,7 @@ At startup:
    - base: `ec6c66d1a2c7eb8485d1c9a624ac77f448d93695`
    - head: `H_NORM_ENTRY_HEAD`;
 4. require that the delta contains **only**:
-   - `dev/planning-and-building/phase6-h-norm-production-structure-normalization-task.md`;
+   - `phase6-h-norm-production-structure-normalization-task.md`;
 5. require no source, test, contract, evidence, workflow, or other planning change.
 
 If that exact entry condition is false, stop:
@@ -75,10 +75,10 @@ Do not substitute another SHA or silently absorb intervening work.
 Before editing, read completely:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_task-AGT-H-H-U6-FINAL-CLOSURE.md` for the already-authorized normalization-before-final-closure requirement, while treating its older Phase 6 baseline/status values as historical rather than current authority
-5. `dev/evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
+4. `../evidence/_task-AGT-H-H-U6-FINAL-CLOSURE.md` for the already-authorized normalization-before-final-closure requirement, while treating its older Phase 6 baseline/status values as historical rather than current authority
+5. `../evidence/_ca-output-agt-g-ca-stage-2a-phase-6-sync-adversarial-repair-02.md`
 6. every production file identified by the audit in Section 4
 7. every live source/test import or reference that must change mechanically because a normalized production module or symbol is renamed.
 
@@ -200,7 +200,7 @@ Whether the two responsibilities remain in one domain module or are split into t
 
 In:
 
-`src/product/runtime.ts`
+`../../src/product/runtime.ts`
 
 The runtime class must no longer be phase-numbered.
 
@@ -275,14 +275,14 @@ A test-only textual reference to an old production symbol may be updated when ne
 
 After the source/test candidate is fixed, you may create/update only your evidence file:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
 
 ### 6.4 Forbidden surfaces
 
 Without supervisor re-authorization, do not modify:
 
 - `src/contracts/**`;
-- canonical `dev/evidence/_ca-output.md`;
+- canonical `../evidence/_ca-output.md`;
 - any prior evidence file;
 - any planning file;
 - persisted test fixtures/data except a mechanically necessary import/reference change as described above;
@@ -335,7 +335,7 @@ Do not place evidence edits in the source/test candidate.
 
 After the candidate is fixed, create one later evidence-only commit containing only:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
 
 Record the final evidence-bearing H head separately.
 
@@ -460,7 +460,7 @@ Run:
 
 Require success for every available required command.
 
-Record actual normalized `main.js` byte size and SHA-256.
+Record actual normalized `../../main.js` byte size and SHA-256.
 
 The H-NORM production artifact **is allowed to have a different byte hash/size** from G-R2/R3 because production module/symbol/comment names may change. Do not require byte identity with `699509` / `212cc...`.
 
@@ -486,7 +486,7 @@ Prove:
 
 Create/update only:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-13.md`
 
 Record at minimum:
 
@@ -513,7 +513,7 @@ Record at minimum:
 21. foundation `17/17` including C15/C16;
 22. whole repository `687/687`;
 23. build/check results;
-24. actual new `main.js` size and SHA-256;
+24. actual new `../../main.js` size and SHA-256;
 25. proof branch/workflow/head commit;
 26. run ID/job ID/conclusion;
 27. artifact ID/name/digest/size copied from authoritative GitHub metadata after run completion;

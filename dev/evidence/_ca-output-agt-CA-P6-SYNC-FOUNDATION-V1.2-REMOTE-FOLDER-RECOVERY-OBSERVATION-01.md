@@ -25,7 +25,7 @@ The following reviewed blobs are frozen for this evidence-only correction:
   - blob `1a2fdaa27a959f4c61737b69a168fb002dcb54f5`
 - `test/phase6-folder-remote-recovery-observation-foundation.test.ts`
   - blob `83b6c34cad59f7b400f470ddcd2b934486a88360`
-- `dev/planning-and-building/phase6-sync-remote-folder-recovery-observation-correction.md`
+- `../agents/phase6-sync-remote-folder-recovery-observation-correction.md`
   - blob `713773932761a9daf922e1699ea59a2c9e02d748`
 
 No production, test, contract, planning/foundation, dependency, package, or workflow modification is authorized by this correction.

@@ -10,9 +10,9 @@ Your job is to implement **only Phase 1 — Repository Foundation and Frozen Sha
 
 Before modifying the repository, completely read these repository files:
 
-1. `agent-led-software-product-construction-manual.md`
-2. `target-system-specification.md`
-3. `decision-register.yaml`
+1. `../planning-and-building/agent-led-software-product-construction-manual.md`
+2. `../planning-and-building/target-system-specification.md`
+3. `../planning-and-building/decision-register.yaml`
 4. `stage-1-build-decomposition.md`
 5. `../security-prompt-header.md`
 

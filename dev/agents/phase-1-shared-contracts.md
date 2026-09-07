@@ -20,7 +20,7 @@ No donor source file is copied into Phase 1, so no donor source/license text is 
 - `../../tsconfig.json` — strict repository TypeScript checking.
 - `../../tsconfig.build.json` — CommonJS Obsidian entry-point compilation.
 - `../../tsconfig.test.json` — isolated CommonJS contract-test compilation.
-- `../../scripts/finalize-build.mjs` — build-tooling-only finalization that places emitted `main.js` at the plugin root.
+- `../../scripts/finalize-build.mjs` — build-tooling-only finalization that places emitted `../../main.js` at the plugin root.
 - `../../manifest.json` — private Obsidian plugin manifest with `isDesktopOnly: false`.
 - `../../versions.json` — plugin/minimum-Obsidian compatibility mapping.
 - `../../src/main.ts` — minimal loadable entry point with no Phase 2+ synchronization behavior.
@@ -182,7 +182,7 @@ GitHub Actions run `32662762609` first verified the complete Phase 1 implementat
 
 GitHub Actions run `32662829150` then performed the final clean-checkout gate from the committed lockfile: `npm ci` passed, strict TypeScript checking passed, all 14 Phase 1 contract/mobile-safety tests passed, and the production build passed.
 
-The supervisor-authorized Phase 5 receipt revision and its directly affected execution/commit behavior are verified by the Phase 5 clean-checkout evidence recorded in `../../dev/evidence/_ca-output-CA-P5.md` once that corrective evidence receipt is finalized.
+The supervisor-authorized Phase 5 receipt revision and its directly affected execution/commit behavior are verified by the Phase 5 clean-checkout evidence recorded in `../evidence/_ca-output-CA-P5.md` once that corrective evidence receipt is finalized.
 
 ## Verification Status
 

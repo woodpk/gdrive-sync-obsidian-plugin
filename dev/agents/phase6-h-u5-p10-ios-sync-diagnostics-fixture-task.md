@@ -28,11 +28,11 @@ You are **not** authorized to begin G-R1, combined G-R2/R3, production-structure
 
 Your exact assignment is:
 
-> Repair the four remaining H-U5-P10 iOS synchronization-diagnostics failures by modernizing the stale legacy fake-authority/controller fixture in `test/phase6-alpha-ios-sync-diagnostics.test.ts` onto the already-approved writable synchronization-authority / integrated H execution lifecycle, while preserving diagnostic stage ordering, correlation, plan/execution meaning, privacy, exact Error-level failure-stage reporting, terminal closure, and frozen V1.3 disposition/provenance semantics. Production semantics must not change.
+> Repair the four remaining H-U5-P10 iOS synchronization-diagnostics failures by modernizing the stale legacy fake-authority/controller fixture in `../../test/phase6-alpha-ios-sync-diagnostics.test.ts` onto the already-approved writable synchronization-authority / integrated H execution lifecycle, while preserving diagnostic stage ordering, correlation, plan/execution meaning, privacy, exact Error-level failure-stage reporting, terminal closure, and frozen V1.3 disposition/provenance semantics. Production semantics must not change.
 
 This is **Session 3 — H-U5-P10** of the fixed remaining-session plan in:
 
-`dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+`phase6-h-remaining-test-failure-fix-plan.md`
 
 **P10 is the final planned H-U5-P session. There is no P11.**
 
@@ -60,7 +60,7 @@ At startup:
    - base: `bf7ff70082c556dd69bb1047894456c40f3ce203`
    - head: `H_U5_P10_ENTRY_HEAD`
 4. require that the delta contains **only**:
-   - `dev/planning-and-building/phase6-h-u5-p10-ios-sync-diagnostics-fixture-task.md`
+   - `phase6-h-u5-p10-ios-sync-diagnostics-fixture-task.md`
 5. require that no `src/**`, `test/**`, contract, evidence, workflow, or other planning file changed in that delta.
 
 If the live branch does not satisfy that exact entry condition, stop immediately with:
@@ -72,11 +72,11 @@ Do not silently substitute a newer branch tip, alternate SHA, or unrelated commi
 Before editing, read completely:
 
 1. `software-products-dev-manual-agent-led.md`
-2. `dev/planning-and-building/phase6-h-remaining-test-failure-fix-plan.md`
+2. `phase6-h-remaining-test-failure-fix-plan.md`
 3. this tasking document
-4. `dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
+4. `../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-11.md`
 5. the complete owned test file:
-   - `test/phase6-alpha-ios-sync-diagnostics.test.ts`
+   - `../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 6. the approved fixture precedents in Section 7.
 
 You may inspect production source and frozen contracts read-only as needed to understand current interfaces. Inspection does not authorize modification.
@@ -99,7 +99,7 @@ Frozen `src/contracts/**` tree:
 
 Canonical evidence file:
 
-`dev/evidence/_ca-output.md`
+`../evidence/_ca-output.md`
 
 Canonical evidence blob:
 
@@ -137,11 +137,11 @@ Do **not** weaken production fail-closed behavior to make the fixture pass.
 
 You may modify only:
 
-`test/phase6-alpha-ios-sync-diagnostics.test.ts`
+`../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 
 After the source/test candidate is fixed, you may create/update only your own evidence file:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
 
 No other tracked file is authorized.
 
@@ -149,7 +149,7 @@ Specifically forbidden without supervisor re-authorization:
 
 - all `src/**` production changes;
 - all `src/contracts/**` changes;
-- `dev/evidence/_ca-output.md`;
+- `../evidence/_ca-output.md`;
 - any other `dev/evidence/**` file;
 - any other `test/**` file;
 - any planning document;
@@ -326,7 +326,7 @@ Preserve exactly:
 
 ### 6.6 Preserve all currently passing diagnostics tests
 
-Every other test in `test/phase6-alpha-ios-sync-diagnostics.test.ts` is part of the focused acceptance surface.
+Every other test in `../../test/phase6-alpha-ios-sync-diagnostics.test.ts` is part of the focused acceptance surface.
 
 Do not:
 
@@ -350,13 +350,13 @@ Use the already-approved H-U5 fixture modernizations as construction references,
 
 Most relevant current-authority precedents include:
 
-- `test/phase5-second-rejection.test.ts` — approved P9
-- `test/phase6-alpha-full-sync-remediation.test.ts` — approved P9
-- `test/phase6-alpha-mixed-plan-isolation.test.ts` — approved P9
-- `test/phase5-group-d-surface-lifecycle-integration.test.ts` — approved P8
-- `test/phase6-alpha-plan-errors-stability.test.ts` — approved P8
-- `test/phase5-group-d-acceptance.test.ts` — approved P7
-- `test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5
+- `../../test/phase5-second-rejection.test.ts` — approved P9
+- `../../test/phase6-alpha-full-sync-remediation.test.ts` — approved P9
+- `../../test/phase6-alpha-mixed-plan-isolation.test.ts` — approved P9
+- `../../test/phase5-group-d-surface-lifecycle-integration.test.ts` — approved P8
+- `../../test/phase6-alpha-plan-errors-stability.test.ts` — approved P8
+- `../../test/phase5-group-d-acceptance.test.ts` — approved P7
+- `../../test/phase5-group-d-conflict-destruction-integration.test.ts` — approved P5
 
 P9's accepted pattern is especially relevant:
 
@@ -375,7 +375,7 @@ Perform the one-file repair as one bounded H-U5-P10 source/test candidate.
 
 Before creating the implementation candidate:
 
-- verify only `test/phase6-alpha-ios-sync-diagnostics.test.ts` changed from `H_U5_P10_ENTRY_HEAD`;
+- verify only `../../test/phase6-alpha-ios-sync-diagnostics.test.ts` changed from `H_U5_P10_ENTRY_HEAD`;
 - run `git diff --check`;
 - confirm no `src/**`, contract, planning, workflow, canonical-evidence, other test, or evidence file changed.
 
@@ -389,7 +389,7 @@ Evidence must be a later evidence-only commit.
 
 The candidate-to-evidence-head delta must contain exactly:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
 
 No other file may change in the evidence commit.
 
@@ -447,7 +447,7 @@ Before test execution, prove:
    - `fe527c76137b2cd578ef7050ee3444498b21a5e0`
 6. tracked worktree is clean before verification;
 7. `H_U5_P10_ENTRY_HEAD` → `H_U5_P10_CANDIDATE_SHA` changes exactly:
-   - `test/phase6-alpha-ios-sync-diagnostics.test.ts`
+   - `../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 8. `git diff --check H_U5_P10_ENTRY_HEAD...H_U5_P10_CANDIDATE_SHA` passes.
 
 Any invariant mismatch is a hard blocker.
@@ -466,7 +466,7 @@ All must pass.
 
 Run the compiled equivalent of the **entire** owned file:
 
-`test/phase6-alpha-ios-sync-diagnostics.test.ts`
+`../../test/phase6-alpha-ios-sync-diagnostics.test.ts`
 
 Required result:
 
@@ -566,8 +566,8 @@ Required result: PASS.
 
 Record:
 
-- built `main.js` size;
-- built `main.js` SHA-256.
+- built `../../main.js` size;
+- built `../../main.js` SHA-256.
 
 Because P10 is test-only, absent unrelated toolchain drift the production artifact is expected to remain identical to approved P9:
 
@@ -597,7 +597,7 @@ Before evidence closure, prove:
 
 Create/update only:
 
-`dev/evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
+`../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-12.md`
 
 The evidence must record at minimum:
 
@@ -620,7 +620,7 @@ The evidence must record at minimum:
 16. H/V1.3 critical results and exact residual G ownership;
 17. fresh whole-suite totals and exact P9 → P10 delta;
 18. confirmation that **all residual failures are G-owned and no non-G failure/cancellation remains**;
-19. build result, `main.js` size, and SHA-256;
+19. build result, `../../main.js` size, and SHA-256;
 20. proof workflow branch and workflow path;
 21. authoritative GitHub Actions run ID and job ID;
 22. workflow conclusion;
@@ -633,7 +633,7 @@ The evidence must record at minimum:
 
 Before committing the evidence, cross-check every run/job/artifact/build identifier against the authoritative GitHub run/artifact output so the evidence does not repeat the P9 provenance mistake.
 
-Do not edit canonical `dev/evidence/_ca-output.md`.
+Do not edit canonical `../evidence/_ca-output.md`.
 
 ---
 

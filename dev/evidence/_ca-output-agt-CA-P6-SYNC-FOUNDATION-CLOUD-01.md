@@ -103,11 +103,11 @@ Created: none before this evidence record.
 Modified:
 - `src/contracts/synchronization-foundation.ts`
 - `test/phase6-sync-architecture-foundation.test.ts`
-- `dev/planning-and-building/phase6-sync-architecture-foundation.md`
-- `dev/planning-and-building/phase6-sync-contract-freeze.md`
-- `dev/planning-and-building/phase6-sync-parallel-workstreams.md`
-- `dev/planning-and-building/phase6-sync-adversarial-validation.md`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase6-sync-architecture-foundation.md`
+- `../agents/phase6-sync-contract-freeze.md`
+- `../agents/phase6-sync-parallel-workstreams.md`
+- `../agents/phase6-sync-adversarial-validation.md`
+- `../agents/phase-6-supervisor-handoff.md`
 - `dev/planning-and-building/project-state.yaml`
 
 Deleted: none.
@@ -257,11 +257,11 @@ Important evidence wording correction: these GitHub pull-request runs check out 
 - `src/contracts/google-drive.ts`
 - `src/contracts/local-vault.ts`
 - `test/phase6-sync-architecture-foundation.test.ts`
-- `dev/planning-and-building/phase6-sync-architecture-foundation.md`
-- `dev/planning-and-building/phase6-sync-contract-freeze.md`
-- `dev/planning-and-building/phase6-sync-parallel-workstreams.md`
-- `dev/planning-and-building/phase6-sync-adversarial-validation.md`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase6-sync-architecture-foundation.md`
+- `../agents/phase6-sync-contract-freeze.md`
+- `../agents/phase6-sync-parallel-workstreams.md`
+- `../agents/phase6-sync-adversarial-validation.md`
+- `../agents/phase-6-supervisor-handoff.md`
 - `dev/planning-and-building/project-state.yaml`
 - evidence records only thereafter.
 
