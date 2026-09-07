@@ -5,10 +5,10 @@ import {
   type ManagedRemoteIdentity,
   type MutationIntentId,
   type OperationId,
-  type PersistenceRevision,
   type RecoverableOperationIntentV1_1,
   type SemanticStateGeneration,
   type StateLoadContext,
+  type StateRevision,
 } from "../src/contracts";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { ProductController } from "../src/product/product-controller";
@@ -97,9 +97,7 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
     assembleFull: async () => { assemblyCalls += 1; return recoveryAssembly; },
     assembleRecovery: async () => { assemblyCalls += 1; return recoveryAssembly; },
   } as never;
-  const local = {
-    observe: async (path: any) => ({ status: "absent", side: "local", path }),
-  } as never;
+  const local = { observe: async (path: any) => ({ status: "absent", side: "local", path }) } as never;
   const drive = {
     observe: async (_root: any, path: any) => ({ ok: true, value: { status: "absent", side: "remote", path } }),
     listForReconciliation: async () => ({ ok: true, value: { entries: [], completeness: { status: "complete" } } }),
@@ -144,7 +142,7 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
   const generation = id<"SemanticStateGeneration">("semantic:c1:r1:1") as SemanticStateGeneration;
   const trusted: DurableSynchronizationAuthorityState = {
     ...createInitialAuthorityState({
-      persistenceRevision: id<"PersistenceRevision">("persistence:c1:r1:1") as PersistenceRevision,
+      persistenceRevision: id<"StateRevision">("persistence:c1:r1:1") as StateRevision,
       semanticGeneration: generation,
       vaultIdentity: vault,
       deviceIdentity: device,
