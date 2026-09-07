@@ -92,10 +92,21 @@ function localPort() {
   } as never;
 }
 
-function drivePort() {
+function drivePort(created: () => boolean = () => false) {
   return {
-    observe: async (_root: unknown, candidate: VaultPath) => ({ ok: true, value: { status: "absent", side: "remote", path: candidate } }),
-    listForReconciliation: async () => ({ ok: true, value: { entries: [], completeness: { status: "complete" } } }),
+    observe: async (_root: unknown, candidate: VaultPath) => ({
+      ok: true,
+      value: created() && candidate === path
+        ? { status: "present", side: "remote", path, entityKind: "file", content, stability: "stable", remoteObjectId: remoteId }
+        : { status: "absent", side: "remote", path: candidate },
+    }),
+    listForReconciliation: async () => ({
+      ok: true,
+      value: {
+        entries: created() ? [{ path, entityKind: "file", content, remoteObjectId: remoteId }] : [],
+        completeness: { status: "complete" },
+      },
+    }),
   } as never;
 }
 
@@ -109,7 +120,8 @@ test("C1 absent new-installation state previews first-sync safe union without pe
   const store = new SynchronizationStateAuthorityAdapter(rawStore);
   const tracked = trackingAuthority(store);
   const local = localPort();
-  const drive = drivePort();
+  let remoteCreated = false;
+  const drive = drivePort(() => remoteCreated);
   let controller!: ProductController;
   let mutationObservedTrustedAuthority = false;
   let mutationCount = 0;
@@ -125,6 +137,7 @@ test("C1 absent new-installation state previews first-sync safe union without pe
       assert.equal(beforeMutation.status, "trusted");
       mutationCount += 1;
       assert.equal(identity.kind, "reserved-file-create");
+      remoteCreated = true;
       return {
         status: "verified-effect",
         applicationProof: {
@@ -193,7 +206,13 @@ test("C1 absent new-installation state previews first-sync safe union without pe
   assert.equal(mutationCount, 0);
 
   const result = await controller.request({ kind: "execute-plan", planId: preview.planId });
-  assert.equal(result.status, "accepted");
+  assert.equal(
+    result.status,
+    "accepted",
+    result.status === "rejected"
+      ? `${result.reason}; controller-status=${JSON.stringify(controller.currentSurface().status)}`
+      : undefined,
+  );
   assert.equal(mutationObservedTrustedAuthority, true);
   assert.equal(mutationCount, 1);
   assert.equal((await store.loadAuthority()).status, "trusted");
