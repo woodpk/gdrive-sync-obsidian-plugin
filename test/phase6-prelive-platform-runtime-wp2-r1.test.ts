@@ -39,16 +39,12 @@ test("R3-R1 runtime disposal waits for a blocked direct preview and rejects late
   basePrototype.request = async () => ({ status: "accepted" });
 
   try {
-    const controller = Object.create(ProductController.prototype) as ProductController & {
-      inFlight: Set<Promise<unknown>>;
-      disposing: boolean;
-      runtimeDiagnostics?: undefined;
-    };
+    const controller = Object.create(ProductController.prototype) as any;
     controller.inFlight = new Set<Promise<unknown>>();
     controller.disposing = false;
     controller.runtimeDiagnostics = undefined;
 
-    const firstPreview = controller.previewVerifyReconcile();
+    const firstPreview = ProductController.prototype.previewVerifyReconcile.call(controller);
     await Promise.resolve();
     assert.equal(assemblyTouches, 1, "direct preview must enter assembly before disposal starts");
 
@@ -76,7 +72,7 @@ test("R3-R1 runtime disposal waits for a blocked direct preview and rejects late
     assert.equal(localDisposals, 0, "runtime dependencies must remain live while the direct preview is blocked");
     assert.equal(attentionDisposals, 0, "state-adjacent persistence must remain live while the direct preview is blocked");
 
-    const refused = await controller.previewVerifyReconcile();
+    const refused = await ProductController.prototype.previewVerifyReconcile.call(controller);
     assert.equal(refused, undefined);
     assert.equal(assemblyTouches, 1, "a preview requested after disposal begins must not touch assembly dependencies");
 
