@@ -36,7 +36,7 @@ const hash = id<"ContentHash">("sha256:folder-child") as ContentHash;
 const vault = id<"VaultIdentity">("vault-folder-r1") as VaultIdentity;
 const device = id<"DeviceIdentity">("device-folder-r1") as DeviceIdentity;
 const generation = id<"SemanticStateGeneration">("semantic:folder-r1:1") as SemanticStateGeneration;
-const persistence = id<"PersistenceRevision">("persistence:folder-r1:1") as PersistenceRevision;
+const persistence = id<"StateRevision">("persistence:folder-r1:1") as unknown as PersistenceRevision;
 const rootId = rid("root-folder-r1");
 const folderId = rid("remote-folder-r1");
 const childId = rid("remote-child-r1");
@@ -45,10 +45,7 @@ const context: StateLoadContext = { expectation: "existing-pairing", expectedVau
 const managedRemote: ManagedRemoteIdentity = { rootId, vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
 
 function base(path: string, entityKind: "file" | "folder", remoteObjectId: RemoteObjectId): BaseEntry {
-  return {
-    path: vp(path), entityKind, localExisted: true, remoteExisted: true, remoteObjectId,
-    ...(entityKind === "file" ? { content: childContent } : {}),
-  };
+  return { path: vp(path), entityKind, localExisted: true, remoteExisted: true, remoteObjectId, ...(entityKind === "file" ? { content: childContent } : {}) };
 }
 
 async function seededState() {
@@ -78,18 +75,14 @@ async function seededState() {
 
 function present(side: "local" | "remote", path: string, entityKind: "file" | "folder", remoteObjectId?: RemoteObjectId) {
   return {
-    status: "present" as const,
-    side,
-    path: vp(path),
-    entityKind,
-    stability: "stable" as const,
+    status: "present" as const, side, path: vp(path), entityKind, stability: "stable" as const,
     ...(remoteObjectId ? { remoteObjectId } : {}),
     ...(entityKind === "file" ? { content: childContent } : {}),
     ...(side === "local" ? { observationToken: id<"ObservationToken">(`obs:${path}`) as ObservationToken } : {}),
   };
 }
 function absent(side: "local" | "remote", path: string) { return { status: "absent" as const, side, path: vp(path) }; }
-function snap(path: string, local: ReturnType<typeof present> | ReturnType<typeof absent>, remote: ReturnType<typeof present> | ReturnType<typeof absent>, prior?: BaseEntry): PathSnapshot {
+function snap(path: string, local: any, remote: any, prior?: BaseEntry): PathSnapshot {
   return { path: vp(path), local, remote, base: { status: "trusted", entry: prior }, remoteEnumeration: { status: "complete" }, identity: { status: "unambiguous" } };
 }
 
@@ -109,11 +102,11 @@ function snapshots(direction: "local-to-remote" | "remote-to-local", parent: Bas
 }
 
 function convergedPorts(moveCounts: { local: number; remote: number }) {
-  const localEntries = new Map<string, ReturnType<typeof present>>([
+  const localEntries = new Map<string, any>([
     ["new", present("local", "new", "folder", folderId)],
     ["new/child.md", present("local", "new/child.md", "file", childId)],
   ]);
-  const remoteEntries = new Map<string, ReturnType<typeof present>>([
+  const remoteEntries = new Map<string, any>([
     ["new", present("remote", "new", "folder", folderId)],
     ["new/child.md", present("remote", "new/child.md", "file", childId)],
   ]);
@@ -150,14 +143,10 @@ async function run(direction: "local-to-remote" | "remote-to-local") {
   assert.equal(carriedChild?.reasons[0]?.code, TRANSITIVELY_CARRIED_MOVE_REASON);
 
   const parentCommit = await new StateCommitCoordinator(state, context).commitVerifiedSuccess(parentMove!, {
-    operationId: parentMove!.operationId,
-    durable: true,
-    integrityVerified: true,
-    resultingRemoteObjectId: folderId,
-    verificationEvidenceRef: `test-parent:${direction}`,
+    operationId: parentMove!.operationId, durable: true, integrityVerified: true,
+    resultingRemoteObjectId: folderId, verificationEvidenceRef: `test-parent:${direction}`,
   });
   assert.equal(parentCommit.status, "committed");
-
   const afterParent = await state.load(context);
   assert.equal(afterParent.status, "trusted");
   if (afterParent.status !== "trusted") throw new Error("trusted post-parent state required");
@@ -181,10 +170,5 @@ async function run(direction: "local-to-remote" | "remote-to-local") {
   assert.equal(final.state.remoteMappings.filter(mapping => mapping.path === vp("new/child.md") && mapping.remoteObjectId === childId).length, 1);
 }
 
-test("C3-R1 local folder rename propagated to REMOTE completes descendant convergence without duplicate child move", async () => {
-  await run("local-to-remote");
-});
-
-test("C3-R1 remote folder rename propagated to LOCAL completes descendant convergence without duplicate child move", async () => {
-  await run("remote-to-local");
-});
+test("C3-R1 local folder rename propagated to REMOTE completes descendant convergence without duplicate child move", async () => { await run("local-to-remote"); });
+test("C3-R1 remote folder rename propagated to LOCAL completes descendant convergence without duplicate child move", async () => { await run("remote-to-local"); });
