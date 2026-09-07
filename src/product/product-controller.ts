@@ -53,8 +53,6 @@ async function persistLearnedRemoteBatch(
     const saved = await authorityStore.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
     if (saved.status !== "saved") throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch was fully read but could not be durably learned (${saved.status})`);
   }
-  // The learned batch is primary feed authority. The canonical cursor is only a
-  // mirror and can move after, never before, the durable batch save.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const state = await options.stateStore.load(options.stateContext);
     if (state.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
@@ -84,12 +82,6 @@ function authorityLearningAssembler(
   options: ProductControllerOptions,
   recoveryDependencies: DurableIntentRecoveryDependencies,
 ): ProductSnapshotAssembler {
-  // Structural assembler doubles may omit optional bindings. Bind whatever methods exist. Every
-  // production ordinary assembly entry is wrapped so durable intent recovery is complete
-  // before the base controller can invoke the current planner. Reconstruction bypasses that
-  // recovery only while the persisted canonical state is objectively recovery-required; once
-  // reviewed recovery has replaced it with trusted authority, outstanding durable intents drain
-  // before any further reconstruction planning.
   const structural = assembler as ProductSnapshotAssembler & {
     bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
   };
@@ -122,9 +114,6 @@ function authorityLearningAssembler(
         );
         if (recovery.status === "recovery-required") throw new SnapshotAssemblyError("recovery-required", recovery.reason);
 
-        // Recovery may commit canonical BASE, finalize effects, or retire an
-        // unattempted intent. Refresh the exact same assembly mode once so the
-        // current planner consumes post-recovery reality rather than stale input.
         if (recovery.changed) {
           assembly = await original(...args);
           if (assembly.reconstruction) {
@@ -149,13 +138,9 @@ function authorityLearningAssembler(
   });
 }
 
-/**
- * Production controller entrypoint. A caller-supplied writable frozen authority
- * store is required for physical mutation and durable REMOTE feed progress. The
- * default trusted-state bridge is read-only, so persistence-dependent work fails
- * closed rather than silently using raw legacy mutation or fake authority saves.
- */
 export class ProductController extends ProductControllerBase {
+  private readonly inFlight = new Set<Promise<unknown>>();
+
   constructor(options: ProductControllerOptions) {
     const diagnostics = authoritativeDiagnostics(options.diagnostics);
     const rawAuthorityStore = options.authorityStore ?? new TrustedStateSynchronizationAuthorityStore(options.stateStore, options.stateContext);
@@ -176,5 +161,30 @@ export class ProductController extends ProductControllerBase {
       ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
       authorityStore,
     });
+  }
+
+  override runAutomatic(trigger: Parameters<ProductControllerBase["runAutomatic"]>[0]): Promise<void> {
+    return this.track(super.runAutomatic(trigger));
+  }
+
+  override request(action: Parameters<ProductControllerBase["request"]>[0]): ReturnType<ProductControllerBase["request"]> {
+    return this.track(super.request(action));
+  }
+
+  override requestPreviewAction(
+    action: Parameters<ProductControllerBase["requestPreviewAction"]>[0],
+    diagnosticRunId?: Parameters<ProductControllerBase["requestPreviewAction"]>[1],
+  ): ReturnType<ProductControllerBase["requestPreviewAction"]> {
+    return this.track(super.requestPreviewAction(action, diagnosticRunId));
+  }
+
+  async awaitQuiescence(): Promise<void> {
+    while (this.inFlight.size > 0) await Promise.allSettled([...this.inFlight]);
+  }
+
+  private track<T>(promise: Promise<T>): Promise<T> {
+    this.inFlight.add(promise);
+    void promise.finally(() => this.inFlight.delete(promise)).catch(() => undefined);
+    return promise;
   }
 }
