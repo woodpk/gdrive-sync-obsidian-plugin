@@ -186,3 +186,39 @@ test("D clean merge tracks each physical effect independently across crash/resta
   assert.equal(second.status, "effect-verified");
   assert.equal(dispatcher.calls.length, 2, "already committed first merge effect is never replayed while second resumes");
 });
+
+test("C2 verified non-application retires a no-effect durable intent and permits renewed planning authority", async () => {
+  const store = new MemoryStore();
+  const dispatcher = new RecordingDispatcher({ status: "verified-not-applied", reason: "authoritative absence proves mutation did not occur" });
+  const lifecycle = new DurableEffectLifecycleCoordinator(store, dispatcher);
+  const intent = singleIntent("remote-file");
+  assert.equal((await lifecycle.persistIntent(intent)).status, "persisted");
+
+  const result = await lifecycle.dispatchPersistedEffect(String(intent.operationId), "effect:remote-file");
+  assert.equal(result.status, "verified-not-applied");
+  assert.equal(store.state.operationIntents.length, 0, "proven non-effect must retire rather than persist outcome-unknown");
+  assert.equal(dispatcher.calls.length, 1);
+
+  const replanned = await lifecycle.persistIntent(intent);
+  assert.equal(replanned.status, "persisted", "renewed planning authority may persist a fresh exact intent after proven non-effect retirement");
+});
+
+test("C2 verified non-application cannot retire a partially progressed multi-effect operation", async () => {
+  const store = new MemoryStore();
+  const lifecycle = new DurableEffectLifecycleCoordinator(store);
+  const merge: RecoverableOperationIntentV1_1 = {
+    logicalKind: "clean-text-merge",
+    operationId: operationId("partial-non-effect"), intentId: intentId("partial-non-effect"), semanticAuthority: { generation },
+    effects: [effect("local-file"), effect("remote-file")],
+  };
+  await lifecycle.persistIntent(merge);
+  assert.equal((await lifecycle.authorizePersistedEffect(String(merge.operationId), "effect:local-file")).status, "dispatch-authorized");
+  assert.equal((await lifecycle.recordPhysicalResult(String(merge.operationId), "effect:local-file", { status: "verified-effect", verificationEvidenceRef: "verify:local" })).status, "effect-verified");
+  assert.equal((await lifecycle.authorizePersistedEffect(String(merge.operationId), "effect:remote-file")).status, "dispatch-authorized");
+
+  const result = await lifecycle.recordPhysicalResult(String(merge.operationId), "effect:remote-file", { status: "verified-not-applied", reason: "remote write did not occur" });
+  assert.equal(result.status, "verified-not-applied");
+  assert.equal(store.state.operationIntents.length, 1, "partial physical progress must remain durable and fail-closed");
+  assert.equal(store.state.operationIntents[0]?.effects[0]?.stage, "effect-verified");
+  assert.equal(store.state.operationIntents[0]?.effects[1]?.stage, "outcome-unknown");
+});

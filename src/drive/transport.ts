@@ -35,6 +35,9 @@ function portableBody(body: PortableRequestInit["body"]): BodyInit | null | unde
   if (!(body instanceof Uint8Array)) return body;
   return body.slice().buffer as ArrayBuffer;
 }
+function automaticReplaySafe(init: PortableRequestInit): boolean {
+  return (init.method ?? "GET").toUpperCase() !== "POST";
+}
 
 export class GoogleHttpTransport {
   private readonly semaphore: Semaphore;
@@ -49,20 +52,29 @@ export class GoogleHttpTransport {
 
   request(url: string, init: PortableRequestInit = {}, retry = true): Promise<DriveResult<Response>> {
     return this.semaphore.run(async () => {
+      const replaySafe = retry && automaticReplaySafe(init);
       for (let attempt = 0; attempt < this.policy.maxAttempts; attempt++) {
         const token = await this.oauth.accessToken();
-        if (!token) return { ok: false, signal: { kind: "authentication-required", detail: "missing-or-expired-token" } };
+        if (!token) {
+          return this.oauth.accessTokenFailure() === "transient"
+            ? { ok: false, signal: { kind: "transient-failure", detail: "oauth-refresh-deferred" } }
+            : { ok: false, signal: { kind: "authentication-required", detail: "missing-or-expired-token" } };
+        }
         let response: Response;
         try {
           const headers = new Headers(init.headers); headers.set("authorization", `Bearer ${token}`);
           const { body, ...rest } = init;
           response = await this.fetcher(url, { ...rest, headers, body: portableBody(body) });
         } catch {
-          if (!retry || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "transient-failure", detail: "network-failure" } };
+          if (!replaySafe || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "transient-failure", detail: "network-failure" } };
           await this.delay(attempt); continue;
         }
         if (response.ok || response.status === 308) return { ok: true, value: response };
-        if (response.status === 401) { this.oauth.clearTokens(); return { ok: false, signal: { kind: "authentication-required", detail: "google-rejected-token" } }; }
+        if (response.status === 401) {
+          this.oauth.invalidateAccessToken();
+          if (replaySafe && attempt + 1 < this.policy.maxAttempts) continue;
+          return { ok: false, signal: { kind: "authentication-required", detail: "google-rejected-token" } };
+        }
         const reason = await errorReason(response);
         if (response.status === 404) return { ok: false, signal: { kind: "not-found" } };
         if (response.status === 409 || response.status === 412) return { ok: false, signal: { kind: "conflict", detail: reason } };
@@ -70,12 +82,12 @@ export class GoogleHttpTransport {
         if (quotaReason(reason)) return { ok: false, signal: { kind: "quota-exhausted", detail: reason } };
         if (response.status === 429 || rateReason(reason)) {
           const serverDelay = retryAfterMs(response, this.now());
-          if (!retry || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "rate-limited", retryAfterMs: serverDelay } };
+          if (!replaySafe || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "rate-limited", retryAfterMs: serverDelay } };
           await this.delay(attempt, serverDelay); continue;
         }
         if (response.status === 403) return { ok: false, signal: { kind: "permission-denied", detail: reason } };
         if (response.status >= 500) {
-          if (!retry || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "transient-failure", detail: reason } };
+          if (!replaySafe || attempt + 1 >= this.policy.maxAttempts) return { ok: false, signal: { kind: "transient-failure", detail: reason } };
           await this.delay(attempt, retryAfterMs(response, this.now())); continue;
         }
         return { ok: false, signal: { kind: "transient-failure", detail: reason } };

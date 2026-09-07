@@ -85,6 +85,7 @@ function checksum(value: string): string {
 }
 function isString(value: unknown): value is string { return typeof value === "string" && value.length > 0; }
 function isPathString(value: unknown): value is string { return typeof value === "string"; }
+function isNonEmptyPath(value: unknown): value is string { return isString(value); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function unique(values: readonly string[]): boolean { return new Set(values).size === values.length; }
 function bytesEqual(a: Uint8Array | undefined, b: Uint8Array | undefined): boolean {
@@ -118,6 +119,32 @@ function hasAuthorityMarker(state: unknown): state is Record<string, unknown> & 
 }
 
 function isStage(value: unknown): value is RecoverableMutationEffectV1_1["stage"] { return typeof value === "string" && stages.includes(value as RecoverableMutationEffectV1_1["stage"]); }
+function isCanonicalContentProof(value: unknown): boolean {
+  return isRecord(value)
+    && value.algorithm === "sha256"
+    && isString(value.hash)
+    && Number.isSafeInteger(value.sizeBytes)
+    && Number(value.sizeBytes) >= 0;
+}
+function isIdentityAuthority(value: unknown): boolean {
+  return isRecord(value)
+    && value.status === "unique"
+    && isString(value.generation)
+    && isNonEmptyPath(value.path)
+    && isString(value.remoteObjectId);
+}
+function isBaseAuthority(value: unknown): boolean {
+  return isRecord(value)
+    && isString(value.generation)
+    && isNonEmptyPath(value.path)
+    && isString(value.fingerprint);
+}
+function canonicalContentEqual(a: unknown, b: unknown): boolean {
+  return isRecord(a) && isRecord(b)
+    && a.algorithm === b.algorithm
+    && a.hash === b.hash
+    && a.sizeBytes === b.sizeBytes;
+}
 
 function isFolderDescriptorShape(descriptor: unknown): boolean {
   if (!isRecord(descriptor)) return false;
@@ -132,9 +159,55 @@ function isFolderDescriptorShape(descriptor: unknown): boolean {
   return mutation.kind === "reserved-folder-create" && isString(mutation.intentId) && isString(mutation.reservedRemoteObjectId) && isPathString(mutation.path);
 }
 
+function isRemoteFileMutationShape(value: unknown): boolean {
+  if (!isRecord(value) || !isString(value.intentId) || !isNonEmptyPath(value.path)) return false;
+  if (value.kind === "reserved-file-create") {
+    return isString(value.reservedRemoteObjectId) && isCanonicalContentProof(value.intendedContent);
+  }
+  if (value.kind === "existing-file-content-update") {
+    return isString(value.remoteObjectId)
+      && isString(value.expectedRevision)
+      && value.updateProtocol === "immutable-candidate-preservation"
+      && isString(value.candidateRemoteObjectId)
+      && isCanonicalContentProof(value.intendedContent)
+      && isIdentityAuthority(value.identityAuthority);
+  }
+  return false;
+}
+
 function isV1DescriptorShape(descriptor: unknown): boolean {
-  if (!isRecord(descriptor) || !isString(descriptor.kind)) return false;
-  return ["local-file", "remote-file", "move", "trash"].includes(descriptor.kind);
+  if (!isRecord(descriptor)) return false;
+  switch (descriptor.kind) {
+    case "local-file":
+      return descriptor.targetSide === "local"
+        && (descriptor.mutationKind === "create" || descriptor.mutationKind === "replace")
+        && isNonEmptyPath(descriptor.targetPath)
+        && isString(descriptor.localTransactionId)
+        && isCanonicalContentProof(descriptor.intendedContent);
+    case "remote-file":
+      return descriptor.targetSide === "remote"
+        && (descriptor.mutationKind === "create" || descriptor.mutationKind === "update")
+        && isNonEmptyPath(descriptor.targetPath)
+        && isRemoteFileMutationShape(descriptor.remoteMutation)
+        && isCanonicalContentProof(descriptor.intendedContent);
+    case "move":
+      return (descriptor.targetSide === "local" || descriptor.targetSide === "remote")
+        && isNonEmptyPath(descriptor.fromPath)
+        && isNonEmptyPath(descriptor.toPath)
+        && descriptor.fromPath !== descriptor.toPath
+        && (descriptor.remoteObjectId === undefined || isString(descriptor.remoteObjectId))
+        && isIdentityAuthority(descriptor.identityAuthority)
+        && (descriptor.targetSide !== "remote" || isString(descriptor.remoteObjectId));
+    case "trash":
+      return (descriptor.targetSide === "local" || descriptor.targetSide === "remote")
+        && isNonEmptyPath(descriptor.path)
+        && (descriptor.remoteObjectId === undefined || isString(descriptor.remoteObjectId))
+        && isBaseAuthority(descriptor.baseAuthority)
+        && (descriptor.identityAuthority === undefined || isIdentityAuthority(descriptor.identityAuthority))
+        && (descriptor.targetSide !== "remote" || (isString(descriptor.remoteObjectId) && isIdentityAuthority(descriptor.identityAuthority)));
+    default:
+      return false;
+  }
 }
 
 function isEffectV1_1Shape(effect: unknown): effect is RecoverableMutationEffectV1_1 {
@@ -167,8 +240,11 @@ function isAuthorityCommonShape(state: unknown): state is TrustedSynchronization
 export function isDurableSynchronizationAuthorityStateV1(state: unknown): state is DurableSynchronizationAuthorityStateV1 {
   if (!isAuthorityCommonShape(state) || !isRecord(state) || state.authoritySchemaVersion !== 1) return false;
   return state.operationIntents.every(intent => {
-    if (!isRecord(intent) || !Array.isArray(intent.effects)) return false;
-    return intent.effects.every(effect => isRecord(effect) && isRecord(effect.descriptor) && !["local-folder-create", "remote-folder-create"].includes(String(effect.descriptor.kind)));
+    if (!isRecord(intent) || !isString(intent.operationId) || !isString(intent.intentId) || !isRecord(intent.semanticAuthority) || !isString(intent.semanticAuthority.generation) || !Array.isArray(intent.effects)) return false;
+    if (intent.logicalKind === "single-effect" && intent.effects.length !== 1) return false;
+    if (intent.logicalKind === "clean-text-merge" && intent.effects.length < 2) return false;
+    if (intent.logicalKind !== "single-effect" && intent.logicalKind !== "clean-text-merge") return false;
+    return intent.effects.every(effect => isRecord(effect) && isString(effect.effectId) && isStage(effect.stage) && isV1DescriptorShape(effect.descriptor));
   });
 }
 
@@ -214,6 +290,38 @@ function folderJournalIssues(intent: RecoverableOperationIntentV1_1, effect: Rec
   return issues;
 }
 
+function physicalDescriptorIssues(intent: RecoverableOperationIntentV1_1, effect: RecoverableMutationEffectV1_1): SemanticStateValidationIssue[] {
+  const descriptor = effect.descriptor;
+  if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") return [];
+  const issues: SemanticStateValidationIssue[] = [];
+  const generation = intent.semanticAuthority.generation;
+  if (descriptor.kind === "local-file") {
+    if (descriptor.targetSide !== "local" || !isString(descriptor.localTransactionId) || !isCanonicalContentProof(descriptor.intendedContent)) issues.push(issue("other-semantic-inconsistency", "local-file descriptor lacks complete target/transaction/content authority", descriptor.targetPath, "journal-descriptor"));
+    return issues;
+  }
+  if (descriptor.kind === "remote-file") {
+    const mutation = descriptor.remoteMutation;
+    if (descriptor.targetSide !== "remote" || mutation.path !== descriptor.targetPath || !canonicalContentEqual(mutation.intendedContent, descriptor.intendedContent)) issues.push(issue("other-semantic-inconsistency", "remote-file descriptor disagrees with operation/path/content intent", descriptor.targetPath, "journal-descriptor"));
+    if (descriptor.mutationKind === "create" && mutation.kind !== "reserved-file-create") issues.push(issue("other-semantic-inconsistency", "remote create descriptor must use reserved-file-create identity", descriptor.targetPath, "journal-descriptor"));
+    if (descriptor.mutationKind === "update") {
+      if (mutation.kind !== "existing-file-content-update") issues.push(issue("other-semantic-inconsistency", "remote update descriptor must use existing-file-content-update identity", descriptor.targetPath, "journal-descriptor"));
+      else if (mutation.identityAuthority.generation !== generation || mutation.identityAuthority.path !== descriptor.targetPath || mutation.identityAuthority.remoteObjectId !== mutation.remoteObjectId) issues.push(issue("other-semantic-inconsistency", "remote update identity authority is inconsistent", descriptor.targetPath, "journal-descriptor"));
+    }
+    return issues;
+  }
+  if (descriptor.kind === "move") {
+    const identity = descriptor.identityAuthority;
+    if (identity.generation !== generation || identity.path !== descriptor.fromPath || (descriptor.remoteObjectId !== undefined && descriptor.remoteObjectId !== identity.remoteObjectId) || (descriptor.targetSide === "remote" && descriptor.remoteObjectId !== identity.remoteObjectId)) issues.push(issue("other-semantic-inconsistency", "move descriptor identity/from-path authority is inconsistent", descriptor.fromPath, "journal-descriptor"));
+    return issues;
+  }
+  const base = descriptor.baseAuthority;
+  if (base.generation !== generation || base.path !== descriptor.path) issues.push(issue("other-semantic-inconsistency", "trash BASE authority is inconsistent with durable operation authority", descriptor.path, "journal-descriptor"));
+  const identity = descriptor.identityAuthority;
+  if (identity && (identity.generation !== generation || identity.path !== descriptor.path || (descriptor.remoteObjectId !== undefined && identity.remoteObjectId !== descriptor.remoteObjectId))) issues.push(issue("other-semantic-inconsistency", "trash identity authority is inconsistent", descriptor.path, "journal-descriptor"));
+  if (descriptor.targetSide === "remote" && (!descriptor.remoteObjectId || !identity || identity.remoteObjectId !== descriptor.remoteObjectId)) issues.push(issue("other-semantic-inconsistency", "remote trash lacks exact remote identity authority", descriptor.path, "journal-descriptor"));
+  return issues;
+}
+
 /** Fail-closed semantic validator for the authoritative v1.1 durable state. */
 export class DurableSemanticStateValidator implements SemanticStateValidator<DurableSynchronizationAuthorityState> {
   constructor(private readonly extensionChecks: readonly ((state: DurableSynchronizationAuthorityState) => string | undefined)[] = []) {}
@@ -243,6 +351,7 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
       for (const effect of intent.effects) {
         if ((effect.stage === "effect-verified" || effect.stage === "state-committed") && !isString(effect.verificationEvidenceRef)) issues.push(issue("journal-reference-incomplete", "verified/committed effect lacks durable verification reference", undefined, "journal-verification"));
         issues.push(...folderJournalIssues(intent, effect));
+        issues.push(...physicalDescriptorIssues(intent, effect));
       }
     }
     const batchIds = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.batchId));

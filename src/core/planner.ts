@@ -25,6 +25,7 @@ export interface PlannerOptions {
 }
 
 const branded = <T extends string>(value: string) => contractId<T>(value);
+export const TRANSITIVELY_CARRIED_MOVE_REASON = "ancestor-folder-move-carried-descendant";
 
 function observed(snapshot: PathSnapshot, side: "local" | "remote"): VersionReference | undefined {
   const value = snapshot[side];
@@ -47,6 +48,84 @@ function evidenceEqual(a: ContentEvidence | undefined, b: ContentEvidence | unde
 
 function sameVersion(a: VersionReference, b: VersionReference): boolean {
   return a.entityKind === b.entityKind && evidenceEqual(a.content, b.content, a.entityKind);
+}
+
+function sameAsBase(version: VersionReference, base: BaseEntry): boolean {
+  return version.entityKind === base.entityKind && evidenceEqual(version.content, base.content, base.entityKind);
+}
+
+function normalizedPath(value: VaultPath | undefined): string | undefined {
+  return value === undefined ? undefined : String(value).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+}
+
+function strictAncestor(parent: string, child: string): boolean {
+  return parent.length < child.length && child.startsWith(`${parent}/`);
+}
+
+function exactTransitiveDestination(parent: PlannedOperation, child: PlannedOperation): boolean {
+  const parentFrom = normalizedPath(parent.fromPath);
+  const parentTo = normalizedPath(parent.toPath);
+  const childFrom = normalizedPath(child.fromPath);
+  const childTo = normalizedPath(child.toPath);
+  if (!parentFrom || !parentTo || !childFrom || !childTo || !strictAncestor(parentFrom, childFrom)) return false;
+  return childTo === `${parentTo}${childFrom.slice(parentFrom.length)}`;
+}
+
+function orderNestedMoves(operations: readonly PlannedOperation[]): PlannedOperation[] {
+  const ordered = [...operations];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let childIndex = 0; childIndex < ordered.length; childIndex += 1) {
+      const child = ordered[childIndex];
+      if (child.kind !== "identity-preserving-move" || !child.toPath) continue;
+      const childDestination = normalizedPath(child.toPath);
+      if (!childDestination) continue;
+      for (let parentIndex = childIndex + 1; parentIndex < ordered.length; parentIndex += 1) {
+        const parent = ordered[parentIndex];
+        if (parent.kind !== "identity-preserving-move" || parent.targetSide !== child.targetSide || !parent.toPath) continue;
+        const parentDestination = normalizedPath(parent.toPath);
+        if (!parentDestination || !strictAncestor(parentDestination, childDestination)) continue;
+        ordered.splice(parentIndex, 1);
+        ordered.splice(childIndex, 0, parent);
+        changed = true;
+        break;
+      }
+      if (changed) break;
+    }
+  }
+  return ordered;
+}
+
+function coalesceTransitivelyCarriedMoves(operations: readonly PlannedOperation[], state: StateLoadResult): PlannedOperation[] {
+  if (state.status !== "trusted") return [...operations];
+  const baseByPath = new Map(state.state.base.map(entry => [String(entry.path), entry]));
+  const ordered = orderNestedMoves(operations);
+  return ordered.map((operation, index) => {
+    if (operation.kind !== "identity-preserving-move" || !operation.fromPath || !operation.toPath || !operation.remoteObjectId) return operation;
+    const ancestor = ordered.slice(0, index).find(candidate => {
+      if (candidate.kind !== "identity-preserving-move" || candidate.targetSide !== operation.targetSide || !candidate.fromPath || !candidate.toPath) return false;
+      return baseByPath.get(String(candidate.fromPath))?.entityKind === "folder" && exactTransitiveDestination(candidate, operation);
+    });
+    if (!ancestor) return operation;
+    const prior = baseByPath.get(String(operation.fromPath));
+    if (!prior || prior.remoteObjectId !== operation.remoteObjectId) return operation;
+    return {
+      ...operation,
+      kind: "noop",
+      contentVersion: {
+        path: operation.toPath,
+        entityKind: prior.entityKind,
+        content: prior.content,
+        remoteObjectId: prior.remoteObjectId,
+      },
+      preconditions: [],
+      reasons: [{
+        code: TRANSITIVELY_CARRIED_MOVE_REASON,
+        summary: "An authoritative ancestor folder move physically carries this descendant; exact post-move convergence must be verified before trusted descendant state is rebased without duplicate dispatch.",
+      }],
+    };
+  });
 }
 
 function makeOperation(path: VaultPath, index: number, kind: PlannedOperation["kind"], extra: Partial<Omit<PlannedOperation, "operationId" | "kind" | "path">> = {}): PlannedOperation {
@@ -136,6 +215,11 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
         continue;
       }
 
+      if (baseEntry && ((local && local.entityKind !== baseEntry.entityKind) || (remote && remote.entityKind !== baseEntry.entityKind))) {
+        operations.push(blocked(snapshot.path, index++, "entity-kind-transition", "The path changed between file and folder relative to trusted BASE; preserve both sides and require explicit structural resolution rather than inferring overwrite or deletion."));
+        continue;
+      }
+
       if (!local && !remote) {
         operations.push(makeOperation(snapshot.path, index++, "noop", baseEntry ? { preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, { kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }], reasons: [{ code: "both-deleted", summary: "Both sides are reliably absent from trusted prior state; record a durable tombstone transition." }] } : { reasons: [{ code: "both-absent", summary: "Neither side currently contains the never-established path." }] }));
         continue;
@@ -144,7 +228,7 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       if (!local && remote) {
         if (!baseEntry?.localExisted || !baseEntry.remoteExisted) {
           operations.push(makeOperation(snapshot.path, index++, "download-create", { targetSide: "local", contentVersion: remote, remoteObjectId: remote.remoteObjectId, preconditions: [{ kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, ...remoteVersionPreconditions(remote)], reasons: [{ code: "safe-union-remote-only", summary: "Remote-only content is copied locally during safe union." }] }));
-        } else if (!evidenceEqual(remote.content, baseEntry.content, remote.entityKind)) {
+        } else if (!sameAsBase(remote, baseEntry)) {
           operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, undefined, remote)));
         } else {
           operations.push(makeOperation(snapshot.path, index++, "trash-remote", { targetSide: "remote", remoteObjectId: remote.remoteObjectId ?? baseEntry.remoteObjectId, destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "local", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }, ...remoteVersionPreconditions(remote)], reasons: [{ code: "attested-local-deletion", summary: "Trusted prior existence plus reliable local absence authorizes recoverable remote trash." }] }));
@@ -156,7 +240,7 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
         if (!baseEntry?.localExisted || !baseEntry.remoteExisted) {
           if (snapshot.local.status === "present" && snapshot.local.stability !== "stable") operations.push(blocked(snapshot.path, index++, "local-file-not-stable", "Local content is not stable enough to upload."));
           else operations.push(makeOperation(snapshot.path, index++, "upload-create", { targetSide: "remote", contentVersion: local, preconditions: [{ kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, ...localVersionPreconditions(local), { kind: "file-stable", path: snapshot.path }], reasons: [{ code: "safe-union-local-only", summary: "Local-only content is copied remotely during safe union." }] }));
-        } else if (!evidenceEqual(local.content, baseEntry.content, local.entityKind)) {
+        } else if (!sameAsBase(local, baseEntry)) {
           operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, baseVersion, local, undefined)));
         } else {
           operations.push(makeOperation(snapshot.path, index++, "trash-local", { targetSide: "local", destructive: true, preconditions: [{ kind: "base-trusted" }, { kind: "path-observation", side: "remote", path: snapshot.path, expected: "absent" }, { kind: "remote-enumeration-complete" }, ...localVersionPreconditions(local)], reasons: [{ code: "attested-remote-deletion", summary: "Trusted prior existence plus complete remote absence authorizes recoverable local trash." }] }));
@@ -170,8 +254,8 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
       }
       if (!baseEntry) { operations.push(conflictOperation(snapshot.path, index++, await this.conflicts.assess(snapshot.path, undefined, local, remote))); continue; }
 
-      const localChanged = !evidenceEqual(local!.content, baseEntry.content, local!.entityKind);
-      const remoteChanged = !evidenceEqual(remote!.content, baseEntry.content, remote!.entityKind);
+      const localChanged = !sameAsBase(local!, baseEntry);
+      const remoteChanged = !sameAsBase(remote!, baseEntry);
       if (!localChanged && !remoteChanged) operations.push(makeOperation(snapshot.path, index++, "noop", { reasons: [{ code: "unchanged-from-base", summary: "Both sides match the trusted base." }] }));
       else if (localChanged && !remoteChanged) {
         if (snapshot.local.status === "present" && snapshot.local.stability !== "stable") operations.push(blocked(snapshot.path, index++, "local-file-not-stable", "Local modification is not stable enough to upload."));
@@ -230,15 +314,16 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
   }
 
   private finish(state: StateLoadResult, totalManagedPaths: number, operations: PlannedOperation[]): SynchronizationPlan {
-    const safety = this.destructiveSafety.assess(operations, { totalManagedPaths, recentAverageDestructiveOperations: this.options.recentAverageDestructiveOperations, stateCondition: state.status === "trusted" ? "trusted" : state.status === "uninitialized" ? "reconstructed" : "untrusted" });
-    const hasRecoveryRequired = operations.some(operation => operation.kind === "recovery-required");
+    const orderedOperations = coalesceTransitivelyCarriedMoves(operations, state);
+    const safety = this.destructiveSafety.assess(orderedOperations, { totalManagedPaths, recentAverageDestructiveOperations: this.options.recentAverageDestructiveOperations, stateCondition: state.status === "trusted" ? "trusted" : state.status === "uninitialized" ? "reconstructed" : "untrusted" });
+    const hasRecoveryRequired = orderedOperations.some(operation => operation.kind === "recovery-required");
     let executionDisposition: PlanExecutionDisposition = "safe-auto-eligible";
     let globalExecutionGate: PlanGlobalExecutionGate = "none";
     if (hasRecoveryRequired) { executionDisposition = "blocked"; globalExecutionGate = "globally-blocked"; }
-    else if (operations.some(operation => operation.kind === "blocked-unsafe" || operation.kind === "unresolved-conflict") || safety.requiresApproval) executionDisposition = "requires-user-approval";
+    else if (orderedOperations.some(operation => operation.kind === "blocked-unsafe" || operation.kind === "unresolved-conflict") || safety.requiresApproval) executionDisposition = "requires-user-approval";
     if (!hasRecoveryRequired && safety.requiresApproval) globalExecutionGate = "destructive-approval-required";
     const trigger = this.options.trigger ?? "verify-reconcile";
     const recoveryCheckpointRequired = safety.recoveryCheckpointRequired;
-    return { planId: semanticPlanId({ trigger, operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate }), trigger, operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate };
+    return { planId: semanticPlanId({ trigger, operations: orderedOperations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate }), trigger, operations: orderedOperations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate };
   }
 }

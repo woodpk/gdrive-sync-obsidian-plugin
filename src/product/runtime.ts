@@ -479,8 +479,10 @@ export class ProductRuntime {
 
   async disposeProduct(): Promise<void> {
     this.scheduler?.stop(); this.scheduler = undefined;
+    const controller = this.controller;
+    if (controller) await controller.beginRuntimeDisposal();
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
-    await this.controller?.request({ kind: "cancel-active-sync" }); this.controller = undefined;
+    this.controller = undefined;
     this.attentionPersistence?.dispose(); this.attentionPersistence = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
     disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;

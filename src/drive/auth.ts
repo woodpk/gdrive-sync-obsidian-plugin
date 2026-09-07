@@ -54,6 +54,7 @@ export type OAuthCompletion =
   };
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 export type Clock = () => number;
+export type OAuthAccessTokenFailure = "transient" | "authentication-required";
 
 interface OAuthTransaction { readonly state: string; readonly verifier: string; readonly expiresAtMs: number; }
 interface TokenResponse { access_token?: string; refresh_token?: string; expires_in?: number; token_type?: string; scope?: string; error?: string; error_description?: string; }
@@ -130,6 +131,7 @@ export class GoogleOAuthSession {
   static readonly TOKEN_SECRET_ID = "brain-gdrive-oauth-tokens";
   private transaction?: OAuthTransaction;
   private diagnostics?: DiagnosticLogger;
+  private accessFailure?: OAuthAccessTokenFailure;
   constructor(
     readonly config: OAuthClientConfiguration,
     private readonly secrets: ObsidianSecretStore,
@@ -252,15 +254,8 @@ export class GoogleOAuthSession {
       };
     }
     const previous = this.tokens();
-    const previousRefreshToken =
-      previous && hasExactRequiredDriveScope(previous.scope)
-        ? previous.refreshToken
-        : undefined;
-
-    if (previous && !hasExactRequiredDriveScope(previous.scope)) {
-      this.clearTokens();
-    }
-
+    const previousRefreshToken = previous && hasExactRequiredDriveScope(previous.scope) ? previous.refreshToken : undefined;
+    if (previous && !hasExactRequiredDriveScope(previous.scope)) this.clearTokens();
     const tokens: OAuthTokens = {
       accessToken: parsed.access_token,
       refreshToken: parsed.refresh_token ?? previousRefreshToken,
@@ -273,37 +268,64 @@ export class GoogleOAuthSession {
         ok: false,
         reason: "token-exchange-failed",
         detail: "oauth-scope-grant-not-exact-drive-file",
-        diagnostic: {
-          phase: "token-exchange",
-          classification: "scope-grant-not-exact-drive-file",
-          httpStatus: response.status,
-        },
+        diagnostic: { phase: "token-exchange", classification: "scope-grant-not-exact-drive-file", httpStatus: response.status },
       };
     }
     this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(tokens));
+    this.accessFailure = undefined;
     return { ok: true };
   }
 
   tokens(): OAuthTokens | undefined { return decodeTokens(this.secrets.get(GoogleOAuthSession.TOKEN_SECRET_ID)); }
-  clearTokens(): void { this.secrets.delete(GoogleOAuthSession.TOKEN_SECRET_ID); }
+  clearTokens(): void { this.secrets.delete(GoogleOAuthSession.TOKEN_SECRET_ID); this.accessFailure = "authentication-required"; }
+  accessTokenFailure(): OAuthAccessTokenFailure | undefined { return this.accessFailure; }
+
+  invalidateAccessToken(): void {
+    const current = this.tokens();
+    if (!current) return;
+    if (!hasExactRequiredDriveScope(current.scope) || !current.refreshToken) { this.clearTokens(); return; }
+    this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens({ ...current, accessToken: "", expiresAtMs: 0 }));
+    this.accessFailure = undefined;
+  }
 
   async accessToken(): Promise<string | undefined> {
     const current = this.tokens();
-    if (!current) return undefined;
+    if (!current) { this.accessFailure = "authentication-required"; return undefined; }
     if (!hasExactRequiredDriveScope(current.scope)) { this.clearTokens(); return undefined; }
-    if (current.expiresAtMs - this.now() > 60_000) return current.accessToken;
+    if (current.expiresAtMs - this.now() > 60_000 && current.accessToken) { this.accessFailure = undefined; return current.accessToken; }
     if (!current.refreshToken) { this.clearTokens(); return undefined; }
     const body = new URLSearchParams({ client_id: this.config.clientId, refresh_token: current.refreshToken, grant_type: "refresh_token" });
     const clientSecret = this.config.clientSecretStorageKey ? this.secrets.get(this.config.clientSecretStorageKey) : undefined;
     if (clientSecret) body.set("client_secret", clientSecret);
+    let response: Response;
     try {
-      const response = await this.fetcher(GOOGLE_TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
-      const parsed = await response.json() as TokenResponse;
-      if (!response.ok || !parsed.access_token || !parsed.expires_in) { this.clearTokens(); return undefined; }
-      const refreshed: OAuthTokens = { accessToken: parsed.access_token, refreshToken: current.refreshToken, expiresAtMs: this.now() + parsed.expires_in * 1000, tokenType: parsed.token_type ?? current.tokenType, scope: parsed.scope ?? current.scope };
-      if (!hasExactRequiredDriveScope(refreshed.scope)) { this.clearTokens(); return undefined; }
-      this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(refreshed));
-      return refreshed.accessToken;
-    } catch { return undefined; }
+      response = await this.fetcher(GOOGLE_TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
+    } catch {
+      this.accessFailure = "transient";
+      return undefined;
+    }
+    let parsed: TokenResponse | undefined;
+    try { parsed = tokenResponse(JSON.parse(await response.text())); }
+    catch { parsed = undefined; }
+    if (!parsed) { this.accessFailure = "transient"; return undefined; }
+    if (!response.ok || !parsed.access_token || !parsed.expires_in) {
+      if (parsed.error === "invalid_grant") {
+        this.clearTokens();
+      } else {
+        this.accessFailure = response.status === 429 || response.status >= 500 || response.status === 200 ? "transient" : "authentication-required";
+      }
+      return undefined;
+    }
+    const refreshed: OAuthTokens = {
+      accessToken: parsed.access_token,
+      refreshToken: current.refreshToken,
+      expiresAtMs: this.now() + parsed.expires_in * 1000,
+      tokenType: parsed.token_type ?? current.tokenType,
+      scope: parsed.scope ?? current.scope,
+    };
+    if (!hasExactRequiredDriveScope(refreshed.scope)) { this.clearTokens(); return undefined; }
+    this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(refreshed));
+    this.accessFailure = undefined;
+    return refreshed.accessToken;
   }
 }
