@@ -12,6 +12,7 @@ record:
     - "phase-6-supervisor-handoff.md progress/next-action language through the pre-H-FINAL foundation/integration campaign"
     - "earlier project-state.yaml Phase 6 foundation and worker-resumption status"
     - "the 2026-09-07 project-state entry that incorrectly classified the first live reset condition as a required backward-compatibility product repair"
+    - "the subsequent reset-pending project-state entry now superseded by the completed clean-state reset and newly confirmed first-sync defect"
     - "earlier chat-session progress summaries when they conflict with this record or the repository"
   repository_conventions:
     coding_agent_task_prompts: "dev/agents/"
@@ -26,7 +27,7 @@ current_design_goal:
     - "dev/planning-and-building/target-system-specification.md"
     - "dev/planning-and-building/decision-register.yaml"
     - "dev/agents/stage-1-build-decomposition.md"
-  alignment_finding: "The design goal remains aligned. Backward compatibility with disposable pre-current-architecture synchronization-state data is not a product requirement for this intentionally pared-down development/test environment."
+  alignment_finding: "The design goal remains aligned. Backward compatibility with disposable pre-current-architecture synchronization-state data is not a product requirement for this intentionally pared-down development/test environment. The current blocker is instead a defect in the clean first-sync path of the current architecture."
   no_product_goal_change_required: true
 
 stage_state:
@@ -61,45 +62,45 @@ stage_2a_phases:
     prior_dynamically_tested_implementation_sha: "3aab3647b57baad7df0b31cc40042325fcfa0e4f"
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_physical_platform_validation_reset_authorized
+    status: active_blocked_by_current_architecture_first_sync_defect
     depends_on: [phase_5]
     integration_branch: "phase6-integration"
     authoritative_promoted_h_final_closure_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
     frozen_h_final_source_test_sha: "cb0c81b2ddb941446f821d71274aa58af28007ec"
     automated_hardening_status: complete_supervisor_approved_and_promoted
-    physical_windows_validation: "restart_pending_after_controlled_legacy_sync_state_reset"
-    physical_iphone_ios_validation: pending
-    physical_google_drive_sync_validation: pending
+    physical_windows_validation: "FAILED_BLOCKED_AT_A03_AFTER_CLEAN_RESET"
+    physical_iphone_ios_validation: pending_not_started
+    physical_google_drive_sync_validation: blocked_before_current_architecture_first_sync_execution
     full_stage_1_phase_6_completion_gate: not_yet_satisfied
-    supervisor_result: "The first Windows live-validation baseline encountered legacy pre-current-architecture IndexedDB synchronization state. The user explicitly determined that this legacy synchronization state is disposable and backward compatibility with it is not required. Preserve data.json and existing authentication/pairing configuration, reset only the obsolete synchronization-state current-state record, and restart live validation against the current architecture."
+    supervisor_result: "The legacy IndexedDB state was successfully removed while preserving plugin configuration/authentication. The resulting clean current-architecture state reports uninitialized as expected, but release 0.1.8 Verify/Reconcile incorrectly enters recovery-required before producing the first-sync preview. This is a confirmed current-product defect requiring a bounded source correction."
 
 current_repository_state:
   code_repository: "woodpk/gdrive-sync-obsidian-plugin"
   phase6_integration_branch:
+    latest_live_evidence_tip_before_this_state_refresh: "ac61e9824eb581754e5aee1b265bfd0f768b7fc4"
     authoritative_h_final_code_and_evidence_candidate_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
     reconciled_pre_release_planning_tasking_reference_sha: "1e30616ca928dc8664e47525301c50cfc6bc7048"
-    latest_tasking_tip_before_live_reset_state_correction: "c6155d17f3a451a789a213b72fa8223f6f66e18e"
-    note: "Later tasking/planning/evidence commits advanced the integration branch without changing the accepted H-FINAL product bytes. No product source repair is currently authorized by the legacy-state reset decision."
+    note: "Later tasking/planning/evidence commits advanced the integration branch without changing the accepted H-FINAL product bytes. A source correction is now required for the confirmed current first-sync planning defect."
   h_integration_branch:
     branch: "phase6-sync-integration-h"
     h_final_closure_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
   frozen_contracts_tree: "0db68ced179825f929008b502335210260ca2ce3"
-  final_production_artifact:
+  h_final_production_artifact:
     file: "main.js"
     bytes: 699431
     sha256: "da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482"
   release_0_1_8:
-    status: published_prerelease_active_for_live_validation
+    status: published_prerelease_blocked_by_confirmed_current_first_sync_defect
     prep_sha: "371b18f5574ef4ed56cd5f22c4a2cea26fae8c95"
     evidence_sha: "aa96b63c86a01d288a10e0369720ce7f29dcc31d"
     tag: "0.1.8"
     release_id: 383806642
     main_js_sha256: "da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482"
     manifest_sha256: "f5860b515a5f8a6fa195d81e5f9741e6e6b5ac81b29401e64ad171275eeda477"
-    note: "Release and installed bytes were independently confirmed correct. Continue validation on 0.1.8 after the controlled test-state reset; no rerelease is required for this disposition."
+    note: "Release and installed bytes were independently confirmed correct. Do not continue live synchronization on 0.1.8 until the first-sync source defect is corrected and a new validation build is installed."
 
 phase_6_automated_closure:
-  status: complete
+  status: complete_but_not_sufficient_for_phase6_acceptance
   agent: "agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14"
   h_final_entry_head: "884b65f49e1c08a3b6b2a227a1a913d13257f223"
   source_test_sha: "cb0c81b2ddb941446f821d71274aa58af28007ec"
@@ -126,83 +127,85 @@ phase_6_automated_closure:
     build_verify_local_runtime_dependencies: PASS
     build_verify_mobile_evaluation: PASS
     build_verify_package_shape: PASS
-  residual_automated_failures: 0
-  source_or_test_changes_after_frozen_candidate: false
+  residual_automated_failures_at_h_final: 0
+  physical_device_validation_performed_at_h_final: false
   stage_3_performed: false
+  live_validation_lesson: "The all-green synthetic suite did not prove the complete production first-sync orchestration path from a physically clean uninitialized IndexedDB state."
 
 phase_6_first_live_validation_attempt:
   validation_session: "2026-09-07T0010-P6LIVE"
-  evidence_source: "user-supplied live-validation archive; session-summary.md reviewed first, then focused diagnostics/state evidence"
-  stopped_at:
-    test_id: "P6-LIVE-A03"
-    scenario: "Baseline Verify/Reconcile"
-    observed_status: recovery-required
-    plan_created: false
-    execution_started: false
-    physical_sync_mutation_started: false
-    iphone_testing_started: false
-  validated_before_stop:
-    release_identity: PASS
-    installed_main_js_hash: PASS
-    installed_manifest_hash: PASS
-    device_identity_present: true
-    vault_identity_present: true
-    managed_remote_pairing_present: true
-    authentication_functional: true
-  legacy_state_condition:
-    legacy_trusted_sync_state_present: true
-    authorityMigrationRequired: true
-    firstSyncCompleted: false
-    recoveryInProgress: false
-    authority_schema_marker_present: false
-  classification: "authorized disposable test-environment legacy synchronization state; not a required backward-compatibility product defect"
-  safety_finding: "Current runtime correctly failed closed rather than treating legacy non-authoritative state as deletion authority. No ordinary BRAIN content or Google Drive data was mutated by the failed baseline."
-  user_decision_2026_09_07:
+  failing_gate: "P6-LIVE-A03"
+  observed_status: recovery-required
+  classification_after_supervisor_review: "legacy pre-current-architecture synchronization state present; disposable in this development/test environment"
+  physical_sync_mutation_started: false
+  user_decision:
     backward_compatibility_required: false
     preserve_data_json: true
     preserve_existing_authentication_if_functional: true
-    preserve_current_vault_device_remote_pairing_configuration: true
     discard_obsolete_legacy_sync_authority_state: true
-    restart_live_validation_after_reset: true
 
 controlled_clean_state_reset:
-  status: authorized_current_action
-  objective: "Remove only the obsolete persisted synchronization current-state authority record so release 0.1.8 initializes its current synchronization architecture from an uninitialized state, while preserving data.json, OAuth/secret-storage authentication, vault identity, device identity, remote-root pairing, user settings, diagnostics, and ordinary vault content."
-  runtime_basis:
-    state_database_name: "brain-google-drive-sync:<vaultIdentity>:<deviceIdentity>"
-    object_store: "sync-state"
-    active_state_key: "current-state"
-    state_context_rule: "firstSyncCompleted=false AND recoveryInProgress=false => expectation=new-installation"
-    current_live_evidence_meets_rule: true
-  required_safety:
-    - "Back up the existing IndexedDB current-state bytes before deletion without exposing their contents."
-    - "Prefer one atomic IndexedDB read-write transaction that copies current-state to a uniquely named reset-backup key and deletes only current-state."
-    - "Do not delete the IndexedDB database itself."
-    - "Do not delete unrelated backup keys."
-    - "Do not delete or edit data.json as part of the reset."
-    - "Verify data.json is byte-for-byte unchanged across the reset while Obsidian/plugin persistence is quiescent."
-    - "Do not clear Obsidian SecretStorage or OAuth tokens."
-    - "Do not deauthorize Google Drive."
-    - "Do not clear vaultIdentity, deviceIdentity, remoteRootId, oauthClientId, or oauthRedirectUri."
-    - "Do not change ordinary BRAIN vault files as part of the reset."
-    - "Leave the separately keyed text-version cache intact unless later evidence independently proves it causal; retained text is hash/size validated and is not the current blocker."
-    - "After reset, reinitialize/reload the plugin and verify authentication/pairing continuity before any synchronization execution."
-    - "Re-run P6-LIVE-A01 through P6-LIVE-A03. Continue the live campaign only if A03 no longer enters recovery-required and the preview is safe."
+  status: complete
+  validation_session: "2026-09-07T011436-P6RESET"
+  evidence_location: "dev/evidence/2026-09-07T011436-P6RESET"
+  result:
+    legacy_current_state_removed: true
+    reset_backup_retained: true
+    data_json_preserved: true
+    authentication_configuration_preserved: true
+    vault_device_remote_pairing_preserved: true
+    diagnostic_state_after_reset: "uninitialized"
+    runtime_after_reenable: "idle-ready"
+  post_reset_action: "Verify/Reconcile attempted only to reproduce A03; no first-sync plan was produced. Plugin then disabled. No further Sync, Authenticate, or recovery action is authorized before source correction."
+
+phase_6_current_live_blocker:
+  status: confirmed_blocking_product_defect
+  test_id: "P6-LIVE-A03"
+  title: "Clean uninitialized first-sync planning incorrectly enters recovery-required"
+  live_observation: "After the controlled reset, diagnostics correctly report {status: uninitialized}. Re-enabling reaches idle-ready. Verify/Reconcile immediately changes to recovery-required without producing a plan."
+  causal_repository_finding:
+    - "PersistentSynchronizationStateStore.load() correctly returns uninitialized when StateLoadContext.expectation is new-installation and no state bytes exist."
+    - "ProductController authorityLearningAssembler wraps normal assembly and unconditionally invokes recoverOutstandingDurableIntents before the base controller can plan."
+    - "DurableEffectLifecycleCoordinator.loadAuthority() intentionally converts every non-trusted authority result, including uninitialized, into recovery-required."
+    - "Therefore a legitimate clean first-sync state is routed through restart-recovery logic that presupposes existing durable authority."
+    - "SynchronizationStateAuthorityAdapter.saveTrusted() already contains the intended current-architecture initialization path: when authority is uninitialized it creates and persists createInitialAuthorityState(...) with authoritySchemaVersion=2."
+    - "ProductControllerBase.ensureTrustedState() invokes stateStore.saveTrusted(...) only at reviewed plan execution, so first-sync preview can remain non-mutating while execution establishes current authority."
+  defect_scope: "current first-sync orchestration only; not legacy migration"
+  required_repair:
+    - "A genuinely uninitialized first-sync assembly must reach normal safe-union planning and preview without durable-intent recovery being treated as required."
+    - "Do not create or write synchronization authority merely to display the preview."
+    - "At reviewed execution, retain the existing adapter-mediated atomic initialization into current v1.1 authority before any authoritative mutation proceeds."
+    - "Continue running durable-intent recovery before planning when current writable authority is trusted/existing; do not weaken restart recovery for an existing installation."
+    - "Recovery-required/corrupt/missing-existing-state semantics remain fail-closed."
+    - "Add a regression that begins with truly absent state bytes/new-installation and proves Verify/Reconcile produces a first-sync plan instead of recovery-required."
+    - "Add/retain proof that first-sync preview itself does not persist state and that reviewed execution establishes current authority before physical mutation."
+  likely_primary_file: "src/product/product-controller.ts"
+  directly_related_files:
+    - "src/product/operation-isolation.ts (behavioral dependency; change only if mechanically necessary)"
+    - "src/product/product-controller-base.ts (execution initialization path; change only if mechanically necessary)"
+    - "targeted product/integration tests"
+  contracts_change_expected: false
 
 phase_6_remaining_completion_requirements:
   authority: "dev/agents/stage-1-build-decomposition.md Phase 6 acceptance requirements plus dev/planning-and-building/target-system-specification.md §13"
   required_before_stage_3:
-    - id: controlled_clean_state_reset
-      status: current
-      requirement: "Reset only obsolete IndexedDB synchronization current-state while preserving data.json/auth/pairing and prove clean current-architecture initialization."
+    - id: repair_clean_first_sync_planning
+      status: blocking_current
+      requirement: "Correct and independently verify the clean uninitialized first-sync planning path without weakening durable recovery or causing preview-time state writes."
+    - id: publish_corrected_validation_build
+      status: pending_after_repair
+      requirement: "Publish a new prerelease from the independently approved corrected source/test candidate; do not overwrite or force-move 0.1.8."
+    - id: install_corrected_desktop_build
+      status: pending_after_release
+      requirement: "Update the Windows test installation while preserving current clean configuration/authentication state."
     - id: real_windows_runtime
-      status: pending_restart_after_reset
-      requirement: "Restart controlled Windows physical validation at A01-A03, then continue required Windows workflows if the baseline passes."
+      status: blocked_until_repair
+      requirement: "Restart controlled Windows physical validation at A03 and continue required Windows workflows only after the first-sync preview/execution path is proven."
     - id: real_iphone_ios_runtime
-      status: pending
-      requirement: "Exercise required iPhone/iOS workflows after Windows baseline is safe, including same-device authentication, upload, download, conflict handling, interruption/resume, and UI-critical flows."
+      status: pending_not_started
+      requirement: "Exercise required iPhone/iOS workflows after Windows baseline is safe, including same-device authentication, pairing, upload, download, conflict handling, interruption/resume, and UI-critical flows."
     - id: live_google_drive_boundary
-      status: pending
+      status: pending_after_windows_baseline
       requirement: "Validate the real user-owned Google Drive/OAuth/managed-remote boundary without weakening drive.file, same-device authentication, remote identity, recovery, or destructive-safety rules."
     - id: constrained_mobile_scale
       status: pending
@@ -211,12 +214,11 @@ phase_6_remaining_completion_requirements:
       status: pending
       requirement: "Reconcile Target Specification §13.1-§13.7 completion evidence and ensure no material requirement remains unassigned or unsupported before Stage 3 handoff."
   hard_boundary:
-    - "Do not delete data.json merely to obtain a clean sync-state test."
-    - "Do not clear authentication/SecretStorage if current credentials remain functional."
-    - "Do not treat the discarded legacy state as a product migration requirement unless the user later changes scope."
-    - "Do not declare Stage 2A complete solely because the automated suite is green."
-    - "Do not begin Stage 3 until the Phase 6 physical/completion-evidence gates pass."
-    - "Do not weaken synchronization safety to make physical validation easier."
+    - "Keep the Windows plugin disabled until a corrected build is ready for validation."
+    - "Do not run Sync, Authenticate, or recovery on release 0.1.8 after the reproduced clean-state blocker."
+    - "Do not reintroduce legacy migration work; it is outside current product requirements."
+    - "Do not weaken durable recovery or initialize authority merely to make preview pass."
+    - "Do not begin Stage 3 until the blocker is corrected and remaining Phase 6 gates pass."
 
 post_iphone_sync_performance_optimization:
   status: planned_not_implemented
@@ -224,7 +226,7 @@ post_iphone_sync_performance_optimization:
   scheduling_gate: "May begin only after iPhone integration/setup is complete and the iPhone client is working correctly."
 
 historical_phase_6_construction:
-  status: complete_through_h_final_automated_integration
+  status: complete_through_h_final_automated_integration_but_not_phase6_acceptance
   note: "Foundation v1.1/v1.2/v1.3, A-G workstreams, H-U1 through H-U5, G repairs, H-NORM, and H-FINAL remain accepted historical construction evidence."
   canonical_evidence:
     - "dev/evidence/_ca-output.md"
@@ -233,8 +235,7 @@ historical_phase_6_construction:
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Execute the bounded controlled clean-state reset on the Windows test installation: preserve data.json/auth/pairing, atomically back up and delete only the legacy IndexedDB sync-state current-state key, reinitialize release 0.1.8, and restart the physical live-validation campaign at A01-A03."
-  first_supervisor_deliverable: "Issue the reset/revalidation Codex task under dev/agents/ using the actual runtime database naming and preservation rules."
-  completion_rule: "If the clean current architecture initializes normally, continue objective live Windows/iPhone/Drive validation. Correct product code only if a defect in the current architecture is then independently demonstrated."
+  action: "Issue one bounded rejection/fix coding task for the clean-uninitialized first-sync planning defect, verify it with targeted regression plus required repository checks, independently review the correction, then publish a new validation prerelease and resume Windows live validation at A03."
+  first_supervisor_deliverable: "Create the shortest deterministic corrective work order under dev/agents/, anchored to the exact current phase6-integration evidence/state SHA, with no diagnostic redelegation or unrelated refactoring."
   stage_3_authorized_now: false
   performance_optimization_authorized_now: false
