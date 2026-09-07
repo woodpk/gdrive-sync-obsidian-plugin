@@ -12,6 +12,8 @@ import type {
 } from "../contracts";
 import { contractId } from "../contracts";
 
+const TRANSITIVELY_CARRIED_MOVE_REASON = "ancestor-folder-move-carried-descendant";
+
 function nextRevision(current: StateRevision): StateRevision {
   const value = String(current);
   const match = /^(.*?)(\d+)$/.exec(value);
@@ -22,6 +24,15 @@ function nextRevision(current: StateRevision): StateRevision {
 function upsertJournal(state: TrustedSynchronizationState, entry: OperationJournalEntry): readonly OperationJournalEntry[] {
   const retained = state.operations.filter(item => item.operationId !== entry.operationId);
   return [...retained, entry];
+}
+
+function transitivelyCarriedMove(operation: PlannedOperation): boolean {
+  return operation.kind === "noop"
+    && Boolean(operation.fromPath)
+    && Boolean(operation.toPath)
+    && Boolean(operation.remoteObjectId)
+    && Boolean(operation.contentVersion)
+    && operation.reasons.some(reason => reason.code === TRANSITIVELY_CARRIED_MOVE_REASON);
 }
 
 function applySuccessfulOperation(state: TrustedSynchronizationState, operation: PlannedOperation, receipt: VerifiedExecutionReceipt): TrustedSynchronizationState {
@@ -85,6 +96,19 @@ function applySuccessfulOperation(state: TrustedSynchronizationState, operation:
       mappings = mappings.filter(mapping => mapping.remoteObjectId !== remoteObjectId && mapping.path !== operation.path);
       mappings.push({ path: operation.path, remoteObjectId, entityKind });
     }
+  } else if (transitivelyCarriedMove(operation) && operation.fromPath && operation.toPath && operation.contentVersion && remoteObjectId) {
+    base = base.filter(entry => entry.path !== operation.fromPath && entry.path !== operation.toPath);
+    base.push({
+      path: operation.toPath,
+      entityKind: operation.contentVersion.entityKind,
+      localExisted: true,
+      remoteExisted: true,
+      content: receipt.evidence ?? operation.contentVersion.content,
+      remoteObjectId,
+    });
+    mappings = mappings.filter(mapping => mapping.remoteObjectId !== remoteObjectId && mapping.path !== operation.fromPath && mapping.path !== operation.toPath);
+    mappings.push({ path: operation.toPath, remoteObjectId, entityKind: operation.contentVersion.entityKind });
+    tombstones = tombstones.filter(entry => entry.path !== operation.fromPath && entry.path !== operation.toPath);
   } else if (operation.kind === "identity-preserving-move" && operation.fromPath && operation.toPath) {
     base = base.filter(entry => entry.path !== operation.fromPath && entry.path !== operation.toPath);
     base.push({
@@ -143,6 +167,19 @@ export class StateCommitCoordinator implements AuthoritativeSuccessCommitter {
     const loaded = await this.store.load(this.context);
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `trusted state unavailable during success commit: ${loaded.status}` };
     if (expectedStateRevision && loaded.state.stateRevision !== expectedStateRevision) return { status: "stale-state", actualRevision: loaded.state.stateRevision };
+    if (transitivelyCarriedMove(operation)) {
+      const oldBase = loaded.state.base.filter(entry => entry.path === operation.fromPath);
+      const byPath = loaded.state.remoteMappings.filter(mapping => mapping.path === operation.fromPath);
+      const byId = loaded.state.remoteMappings.filter(mapping => mapping.remoteObjectId === operation.remoteObjectId);
+      if (oldBase.length !== 1
+        || oldBase[0]?.remoteObjectId !== operation.remoteObjectId
+        || byPath.length !== 1
+        || byId.length !== 1
+        || byPath[0]?.remoteObjectId !== operation.remoteObjectId
+        || byId[0]?.path !== operation.fromPath) {
+        return { status: "recovery-required", reason: "verified carried descendant no longer has one exact canonical predecessor to rebase" };
+      }
+    }
 
     const priorJournal = loaded.state.operations.find(item => item.operationId === operation.operationId);
     const updatedEffectState = applySuccessfulOperation(loaded.state, operation, receipt);
