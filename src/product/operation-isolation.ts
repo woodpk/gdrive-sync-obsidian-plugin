@@ -144,14 +144,18 @@ export class DurableEffectLifecycleCoordinator {
 
   /**
    * Record a physical result after dispatch OR conservative restart reconciliation.
-   * Only an exact verified-effect may advance to effect-verified. All ambiguous or
-   * conflicting post-dispatch states remain outcome-unknown and restart-recoverable.
+   * Exact verified effects advance to effect-verified. A verified non-effect may
+   * retire the whole operation only when no sibling effect has crossed dispatch;
+   * that proves the logical operation had no physical effect and forces renewed
+   * planning authority. Ambiguous, conflict-preserved, and partially progressed
+   * operations remain outcome-unknown and restart-recoverable.
    */
   async recordPhysicalResult(operationId: string, effectId: string, physical: PhysicalEffectDispatchResult): Promise<DurableEffectLifecycleResult> {
     const loaded = await this.authorityStore.loadAuthority();
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
-    const effect = findEffect(loaded.state, operationId, effectId);
-    if (!effect) return { status: "recovery-required", reason: "persisted physical effect not found while recording outcome" };
+    const intent = loaded.state.operationIntents.find(existing => String(existing.operationId) === operationId);
+    const effect = intent?.effects.find(candidate => candidate.effectId === effectId);
+    if (!intent || !effect) return { status: "recovery-required", reason: "persisted physical effect not found while recording outcome" };
     if (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown") {
       if (effect.stage === "effect-verified" || effect.stage === "state-committed") {
         return { status: "already-progressed", stage: effect.stage, recoveryAction: restartRecoveryDirective(effect).action };
@@ -167,6 +171,20 @@ export class DurableEffectLifecycleCoordinator {
       }));
       const saved = await this.save(verified, loaded.state);
       return saved.status === "persisted" ? { status: "effect-verified", authority: saved.authority } : saved;
+    }
+
+    if (physical.status === "verified-not-applied") {
+      const siblingProgressed = intent.effects.some(candidate => candidate.effectId !== effectId && candidate.stage !== "intent-persisted");
+      if (!siblingProgressed) {
+        const retired: SynchronizationAuthorityMetadataV1_1 = {
+          ...loaded.state,
+          operationIntents: loaded.state.operationIntents.filter(existing => String(existing.operationId) !== operationId),
+          localTransactions: loaded.state.localTransactions.filter(transaction => String(transaction.operationId) !== operationId),
+        };
+        const saved = await this.save(retired, loaded.state);
+        if (saved.status !== "persisted") return saved;
+        return { status: "verified-not-applied", reason: physical.reason, authority: saved.authority };
+      }
     }
 
     const uncertain = replaceIntentEffect(loaded.state, operationId, effectId, current => ({ ...current, stage: "outcome-unknown" }));
