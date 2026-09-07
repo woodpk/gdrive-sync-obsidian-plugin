@@ -2,15 +2,30 @@ schema_version: 1
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-08-31"
+  as_of: "2026-09-06"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
-  purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, current repository state, accepted evidence, and later explicit user decisions."
+  purpose: "Canonical current execution/progress state for supervisor re-entry. Product and architecture authority remain in target-system-specification.md, decision-register.yaml, stage-1-build-decomposition.md, frozen shared contracts, actual repository state, accepted evidence, and later explicit user decisions."
   supersedes_progress_metadata:
     - "decision-register.yaml record.stage_state when that metadata is stale"
     - "phase-1-shared-contracts.md completion/verification status language when that progress language is stale"
-    - "stage-2a-phase-1-build-prompt.md completion-pending language after Phase 1 supervisory approval"
-    - "earlier project-state.yaml readiness/blockage metadata superseded by completed Phase 1-5 supervisory approvals"
+    - "phase-6-supervisor-handoff.md progress/next-action language through the pre-H-FINAL foundation/integration campaign"
+    - "earlier project-state.yaml Phase 6 foundation and worker-resumption status"
+    - "earlier chat-session progress summaries when they conflict with this record or the repository"
+  repository_conventions:
+    coding_agent_task_prompts: "dev/agents/"
+    planning_specs_decisions: "dev/planning-and-building/"
+    authority: "Later explicit user directory decision dated 2026-09-06. New coding-agent tasking prompts must use dev/agents/. Plans, specifications, decision documents, decomposition, and general development records remain under dev/planning-and-building/."
+
+current_design_goal:
+  status: aligned
+  target: "Complete the specified private/local-first BRAIN Obsidian Google Drive synchronization plugin for Windows and iPhone/iOS with correctness, recoverability, conflict safety, destructive-operation safety, and same-device user-owned Google authentication, then submit the completed product to independent Stage 3 validation."
+  governing_authorities:
+    - "target-system-specification.md"
+    - "decision-register.yaml"
+    - "stage-1-build-decomposition.md"
+  alignment_finding: "The design goal remains aligned with the authoritative Stage 1 target and six-phase Workflow A decomposition. The prior project-state progress record was stale; the goal itself was not."
+  no_product_goal_change_required: true
 
 stage_state:
   stage_0: complete
@@ -18,180 +33,163 @@ stage_state:
   stage_1_build_decomposition: complete
   stage_2a: active
   stage_3: pending
+  stage_3_started: false
 
 stage_2a_phases:
   phase_1:
     name: "Repository Foundation and Frozen Shared Contracts"
     status: complete_supervisor_approved
-    frozen_contract_handoff: "phase-1-shared-contracts.md"
-    coding_agent_evidence: "../evidence/_ca-output.md"
-    supervisor_review_result: "APPROVE"
   phase_2:
     name: "Core Synchronization Semantics and Durable State"
     status: complete_supervisor_approved
     depends_on: [phase_1]
-    coding_agent_evidence: "../evidence/_ca-output-CA-P2.md"
-    supervisor_review_result: "APPROVE"
   phase_3:
     name: "Google Drive and OAuth Boundary"
     status: complete_supervisor_approved
     depends_on: [phase_1]
-    coding_agent_evidence: "../evidence/_ca-output-CA-P3.md"
-    supervisor_review_result: "APPROVE"
   phase_4:
     name: "Obsidian Local, Platform, and Configuration Boundary"
     status: complete_supervisor_approved
     depends_on: [phase_1]
-    coding_agent_evidence: "../evidence/_ca-output-CA-P4.md"
-    supervisor_review_result: "APPROVE"
   phase_5:
     name: "Integrated Synchronization Product and User Workflows"
     status: complete_supervisor_approved
     depends_on: [phase_2, phase_3, phase_4]
-    dynamically_tested_implementation_sha: "3aab3647b57baad7df0b31cc40042325fcfa0e4f"
-    authoritative_ci:
-      workflow: "Phase 1 CI"
-      run_id: 32854213913
-      job_id: 97822114191
-      tests: 209
-      passed: 209
+    prior_dynamically_tested_implementation_sha: "3aab3647b57baad7df0b31cc40042325fcfa0e4f"
+  phase_6:
+    name: "Cross-Platform Hardening and Stage 3 Readiness"
+    status: active_physical_platform_and_completion_evidence_pending
+    depends_on: [phase_5]
+    integration_branch: "phase6-integration"
+    authoritative_promoted_h_final_closure_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
+    frozen_final_source_test_sha: "cb0c81b2ddb941446f821d71274aa58af28007ec"
+    automated_hardening_status: complete_supervisor_approved_and_promoted
+    physical_windows_validation: pending
+    physical_iphone_ios_validation: pending
+    physical_google_drive_sync_validation: pending
+    full_stage_1_phase_6_completion_gate: not_yet_satisfied
+    supervisor_result: "Automated H-FINAL candidate independently approved and exact-SHA promoted; Phase 6 remains open because the Stage 1 decomposition requires real Windows/iPhone evidence and complete target-specification completion evidence before Stage 3."
+
+current_repository_state:
+  code_repository: "woodpk/gdrive-sync-obsidian-plugin"
+  phase6_integration_branch:
+    code_and_evidence_candidate_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
+    promotion_method: "non-force exact-SHA fast-forward from 3005fe89f4214a9e389889769b088abfcad8293a"
+    promoted_on: "2026-09-06"
+    note: "Later planning-only project-state commits may advance the branch tip without changing the authoritative H-FINAL source/test candidate."
+  h_integration_branch:
+    branch: "phase6-sync-integration-h"
+    h_final_closure_sha: "669e01273acc55def047da4b9d9a0532726d68c0"
+  verification_pr_45:
+    purpose: "Historical verification-only H PR"
+    current_state: closed_merged_by_base_fast_forward
+    explicit_pr_merge_operation_used: false
+    note: "GitHub marked PR #45 merged/closed automatically when phase6-integration was fast-forwarded to the PR head SHA."
+  frozen_contracts_tree: "0db68ced179825f929008b502335210260ca2ce3"
+  final_production_artifact:
+    file: "main.js"
+    bytes: 699431
+    sha256: "da4fbe6cb3dc704b48cba3a1d37245aca0f32a3fba9c5970ae7aab4c9ddf9482"
+
+phase_6_automated_closure:
+  status: complete
+  agent: "agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14"
+  h_final_entry_head: "884b65f49e1c08a3b6b2a227a1a913d13257f223"
+  source_test_sha: "cb0c81b2ddb941446f821d71274aa58af28007ec"
+  h_specific_evidence_head: "32f3551b20927f1db11db12740a2098f79a4e901"
+  closure_head: "669e01273acc55def047da4b9d9a0532726d68c0"
+  authoritative_ci:
+    workflow: ".github/workflows/h-final-authoritative-clean-verification.yml"
+    proof_branch: "h-final-authoritative-clean-verification-h14"
+    workflow_only_head: "7d71bfb6e11bc776754789a697ffe11048dccf18"
+    run_id: 34060210064
+    job_id: 101559272769
+    conclusion: success
+    artifact_id: 9997224891
+    artifact_name: "h-final-authoritative-clean-verification"
+    artifact_digest: "sha256:29b321813c6de305e0045849b26196635d9de097ae17c50050aa8951bd7b1302"
+    artifact_size_bytes: 69645
+  verification:
+    whole_repository:
+      total: 687
+      passed: 687
       failed: 0
       cancelled: 0
       skipped: 0
       todo: 0
-      build: PASS
-    supervisor_review_result: "APPROVE"
-    evidence:
-      - "../evidence/_ca-output.md"
-      - "../evidence/_ca-output-CA-P5.md"
-      - "../evidence/_ca-blocker.md"
-      - "../evidence/_ca-output-agt-CA-P5-GROUP-D-01.md"
-  phase_6:
-    name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active
-    depends_on: [phase_5]
-    supervisor_handoff: "phase-6-supervisor-handoff.md"
-    integration_branch: "phase6-integration"
-    integration_pr: 15
-    supervisor_review_result: pending_phase6_completion
+    h_v1_3_critical:
+      total: 82
+      passed: 82
+      failed: 0
+    g_adversarial:
+      total: 56
+      passed: 56
+      failed: 0
+    v1_3_foundation:
+      total: 17
+      passed: 17
+      failed: 0
+      c15: PASS
+      c16: PASS
+    typecheck: PASS
+    test_typescript_compilation: PASS
+    build: PASS
+    repository_check: PASS
+    build_verify_entrypoint: PASS
+    build_verify_syntax: PASS
+    build_verify_local_runtime_dependencies: PASS
+    build_verify_mobile_evaluation: PASS
+    build_verify_package_shape: PASS
+  residual_automated_failures: 0
+  source_or_test_changes_after_frozen_candidate: false
+  physical_device_validation_performed: false
+  stage_3_performed: false
+
+phase_6_remaining_completion_requirements:
+  authority: "stage-1-build-decomposition.md §10.3/§10.6 plus target-system-specification.md §13"
+  required_before_stage_3:
+    - id: real_windows_runtime
+      status: pending
+      requirement: "Exercise required Windows desktop Obsidian workflows on a real supported runtime."
+    - id: real_iphone_ios_runtime
+      status: pending
+      requirement: "Exercise required iPhone/iOS Obsidian workflows on a real supported runtime, including same-device authentication, initial pairing, upload, download, conflict handling, interruption/resume, and UI-critical flows."
+    - id: live_google_drive_boundary
+      status: pending
+      requirement: "Validate the real user-owned Google Drive/OAuth/managed-remote boundary without weakening drive.file, same-device authentication, remote identity, recovery, or destructive-safety rules."
+    - id: constrained_mobile_scale
+      status: pending
+      requirement: "Establish representative mobile/constrained large-vault and large-file resource evidence sufficient for Phase 6 acceptance."
+    - id: completion_evidence_traceability
+      status: pending
+      requirement: "Reconcile Target Specification §13.1-§13.7 completion evidence and ensure no material requirement remains unassigned or unsupported before the Stage 3 handoff."
+  hard_boundary:
+    - "Do not declare Stage 2A complete solely because the 687-test automated suite is green."
+    - "Do not begin Stage 3 until the Phase 6 completion gate above is satisfied or authoritative planning is explicitly changed."
+    - "Do not weaken synchronization safety to make physical validation easier."
 
 post_iphone_sync_performance_optimization:
   status: planned_not_implemented
-  implementation_status: "NOT IMPLEMENTED — current synchronization remains correctness-first, highly serialized, and network-chatty."
-  scheduling_gate: "Begin only after iPhone integration/setup is complete and the iPhone client is working correctly, and only after the currently active synchronization correctness foundation/remediation sequence is completed and authorized."
   objective: "Reduce unnecessary Google Drive API round trips, repeated local/remote validation work, and strictly serial transfer latency without weakening crash safety, stale-plan detection, provenance, integrity verification, recovery semantics, or mobile resource safety."
+  scheduling_gate: "May begin only after iPhone integration/setup is complete and the iPhone client is working correctly. The synchronization correctness foundation/remediation sequence is now complete."
   acceptance_constraints:
     - "No optimization may weaken canonical content verification, durable pending journaling, verified-success state commit, recovery-required behavior, or fail-closed uncertainty handling."
     - "Remote/account/root/path caches must have explicit invalidation boundaries and may not convert stale or uncertain observations into authority."
     - "Concurrency must be bounded, cancellation-safe, retry-safe, and compatible with Drive rate limiting and iOS memory constraints."
     - "Measure representative first-sync and steady-state wall-clock time, Drive API round trips, transfer throughput, and resource use before/after optimization using local diagnostic evidence only; no external telemetry is introduced."
 
-parallel_wave:
-  status: historical_complete
-  historical_worker_count: 3
-  note: "Earlier Stage 2A parallel construction completed and is distinct from the proposed Phase 6 synchronization A-G wave, whose affected workers remain paused pending approval of the corrected v1.1 foundation."
-
-sync_architecture_foundation:
-  status: "v1_1_authority_store_corrected_candidate_supervisor_re_review_pending"
-  predecessor_agent: "agt-CA-P6-SYNC-FOUNDATION-01"
-  continuation_agent: "agt-CA-P6-SYNC-FOUNDATION-CLOUD-01"
-  branch: "phase6-sync-architecture-foundation"
-  review_pr: 34
-  review_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/34"
-  predecessor_pr: 33
-  predecessor_pr_state: "open_unmerged"
-  predecessor_reviewed_head: "85d509d90d475717d609c559fad870f64b956e9e"
-  predecessor_contract_checkpoint_sha: "8b575e7439fdd601166e3bdb6e335992364da3fc"
-  cloud_reentry_start_sha: "e526d65ee64e8baf58fd7ea0439dfabcfb942c9d"
-  previously_supervisor_approved_foundation_sha: "6984915d2989827edf00def64a04c102c4e08785"
-  rejected_v1_1_candidate_sha: "c9a7f9c2fe77d134bed1659111d58b9a53d3eda3"
-  authority_store_implementation_test_checkpoint_sha: "750100f95c8a32a6deb6909cd03ebbee3682d650"
-  prior_contract_version: "phase6-sync-foundation-v1"
-  contract_version: "phase6-sync-foundation-v1.1"
-  accepted_prior_findings:
-    A_remote_update_preservation: corrected_preserved
-    B_file_common_base_authority: corrected_preserved
-    C_local_transaction_prestate: corrected_preserved
-    D_multi_batch_remote_ingestion: corrected_preserved
-    E_dispatch_durability_order: corrected_preserved
-    F_workstream_base_sha_semantics: corrected_preserved
-    G_parallel_branch_feasibility: corrected_preserved
-    H_semantic_validation_extensibility: corrected_preserved
-  reject_fix_findings:
-    R1_exact_plan_authority: corrected_preserved
-    R2_recoverable_mutation_descriptor: corrected_preserved
-    R3_safe_remote_move_trash: corrected_preserved
-    R4_application_vs_convergence: corrected_preserved
-    R5_exact_intended_remote_content: corrected_preserved
-    R6_cache_bypassing_integrity: corrected_preserved
-    CI_checkout_label: corrected_preserved_merge_ref_wording
-  folder_create_foundation:
-    descriptor_semantics: corrected_preserved
-    authority_store_integration: corrected_candidate
-    authoritative_metadata: "SynchronizationAuthorityMetadataV1_1 with folder-capable RecoverableOperationIntentV1_1 operationIntents"
-    authoritative_store: "SynchronizationAuthorityStoreV1_1 load/save/BASE transition seam"
-    old_v1_metadata_store: "compatibility_only_for_new_or_resumed_v1_1_folder_work"
-    local_round_trip: "save_load_preserves_operation_intent_effect_stage_target_and_structural_path_authority"
-    remote_round_trip: "save_load_preserves_operation_intent_effect_stage_parent_remote_id_reserved_remote_id_and_path_authority"
-    restart_helper: "recoverableOperationV1_1RestartRecoveryDirectives"
-    completion_helper: "recoverableOperationV1_1IsComplete requires all effects state-committed"
-    no_private_sidecar_required: true
-    affected_workstream_contract_readiness:
-      A_remote: sufficient_candidate
-      B_local: sufficient_candidate
-      C_state_recovery: sufficient_candidate
-      D_orchestration: sufficient_candidate
-      G_adversarial: sufficient_candidate
-  mutation_lifecycle_audit: "folder_chain_complete_from_v1_1_intent_through_authority_store_restart_verification_path_convergence_and_commit_for_local_and_remote_folder_create"
-  ci_checkout_semantics: "GitHub pull-request workflow checks out the generated PR merge ref containing the candidate head unless a workflow explicitly requests the head SHA; evidence must label it accordingly."
-  authority_store_checkpoint_verification:
-    workflow: "Phase 6 Alpha Diagnostic Verification"
-    run_id: 33355904138
-    job_id: 99377893445
-    candidate_head: "750100f95c8a32a6deb6909cd03ebbee3682d650"
-    checkout_semantics: "PR merge-ref verification containing candidate head"
-    full_tests: 413
-    full_tests_passed: 413
-    focused_tests: 38
-    focused_tests_passed: 38
-    typecheck: PASS
-    build: PASS
-    repository_check: PASS
-    diff_check: PASS
-    mobile_package_verifiers: PASS
-    main_js_bytes: 415353
-    main_js_sha256: "02f258642be1595e68052e7de189c1bc64e603f984418cdd65224b982e05a1bd"
-    artifact_id: 9745116592
-    artifact_digest: "sha256:02e82a061ef7077cade14cfca3405a04492505c72c2d957eb2114c3a7718dcd4"
-  artifacts:
-    - "phase6-sync-architecture-foundation.md"
-    - "phase6-sync-contract-freeze.md"
-    - "phase6-sync-parallel-workstreams.md"
-    - "phase6-sync-adversarial-validation.md"
-    - "phase6-sync-folder-create-foundation-correction.md"
-    - "phase-6-supervisor-handoff.md"
-    - "project-state.yaml"
-    - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-01.md"
-    - "../evidence/_ca-output-agt-CA-P6-SYNC-FOUNDATION-CLOUD-01.md"
-  approved_workstream_base_sha: null
-  approved_workstream_base_rule: "The independent supervisor will identify one exact final v1.1 repository SHA externally after approval; every affected A-G worker must use that complete snapshot before continuation."
-  final_candidate_sha_recording_rule: "Read exact current branch head from GitHub after evidence closure; do not attempt self-referential SHA storage inside the commit that creates it."
-  parallel_implementation_authorized: false
-  affected_workers_may_resume: false
-  stage_3_started: false
-  azure_change_authorized: false
-  physical_device_validation_performed: false
-  next_valid_action: "Run final evidence-bearing verification, then return exact PR #34 head for independent supervisor re-review. Do not resume A-G."
+historical_phase_6_construction:
+  status: complete_through_h_final_automated_integration
+  note: "The earlier foundation v1.1/v1.2/v1.3, A-G workstreams, H-U1 through H-U5, G repairs, H-NORM, and H-FINAL campaigns are historical completed construction evidence. Their old review/resumption instructions are no longer current next-action authority."
+  canonical_evidence:
+    - "../evidence/_ca-output.md"
+    - "../evidence/_ca-output-agt-h-ca-stage-2a-phase-6-sync-hardening-serial-integration-14.md"
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Return the v1.1 folder authority-store integration correction to independent supervisor re-review. Parallel continuation remains unauthorized until the reviewer explicitly approves one exact workstream-base SHA."
-  governing_file: "stage-1-build-decomposition.md"
-  relevant_sections: ["10", "11", "17"]
-  handoff: "phase-6-supervisor-handoff.md"
-  foundation: "phase6-sync-architecture-foundation.md"
-  contract_freeze_candidate: "phase6-sync-contract-freeze.md"
-  folder_create_correction: "phase6-sync-folder-create-foundation-correction.md"
-  workstream_manifest: "phase6-sync-parallel-workstreams.md"
-  adversarial_matrix: "phase6-sync-adversarial-validation.md"
+  action: "Begin the Phase 6 real-platform validation gate against the promoted H-FINAL candidate, starting with controlled Windows/iPhone setup, same-device Google authentication/pairing, and safe live synchronization scenarios needed to establish the missing physical-platform evidence."
+  first_supervisor_deliverable: "Prepare the bounded real-device validation task/instructions under dev/agents/ using the actual promoted repository state; do not place new coding-agent tasking prompts under dev/planning-and-building/."
+  completion_rule: "Record objective physical-platform evidence, correct only confirmed Phase 6 defects if discovered, then complete the remaining §13 evidence/traceability gate before authorizing Stage 3."
+  stage_3_authorized_now: false
+  post_iphone_optimization_note: "Once the iPhone client is demonstrably working correctly, the already-planned performance optimization becomes eligible under its separate gate."
