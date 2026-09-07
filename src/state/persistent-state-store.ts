@@ -301,7 +301,7 @@ function physicalDescriptorIssues(intent: RecoverableOperationIntentV1_1, effect
   }
   if (descriptor.kind === "remote-file") {
     const mutation = descriptor.remoteMutation;
-    if (descriptor.targetSide !== "remote" || mutation.intentId !== intent.intentId || mutation.path !== descriptor.targetPath || !canonicalContentEqual(mutation.intendedContent, descriptor.intendedContent)) issues.push(issue("other-semantic-inconsistency", "remote-file descriptor disagrees with operation/path/content intent", descriptor.targetPath, "journal-descriptor"));
+    if (descriptor.targetSide !== "remote" || mutation.path !== descriptor.targetPath || !canonicalContentEqual(mutation.intendedContent, descriptor.intendedContent)) issues.push(issue("other-semantic-inconsistency", "remote-file descriptor disagrees with operation/path/content intent", descriptor.targetPath, "journal-descriptor"));
     if (descriptor.mutationKind === "create" && mutation.kind !== "reserved-file-create") issues.push(issue("other-semantic-inconsistency", "remote create descriptor must use reserved-file-create identity", descriptor.targetPath, "journal-descriptor"));
     if (descriptor.mutationKind === "update") {
       if (mutation.kind !== "existing-file-content-update") issues.push(issue("other-semantic-inconsistency", "remote update descriptor must use existing-file-content-update identity", descriptor.targetPath, "journal-descriptor"));
