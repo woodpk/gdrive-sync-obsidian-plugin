@@ -140,6 +140,7 @@ function authorityLearningAssembler(
 
 export class ProductController extends ProductControllerBase {
   private readonly inFlight = new Set<Promise<unknown>>();
+  private disposing = false;
 
   constructor(options: ProductControllerOptions) {
     const diagnostics = authoritativeDiagnostics(options.diagnostics);
@@ -164,10 +165,14 @@ export class ProductController extends ProductControllerBase {
   }
 
   override runAutomatic(trigger: Parameters<ProductControllerBase["runAutomatic"]>[0]): Promise<void> {
+    if (this.disposing) return Promise.resolve();
     return this.track(super.runAutomatic(trigger));
   }
 
   override request(action: Parameters<ProductControllerBase["request"]>[0]): ReturnType<ProductControllerBase["request"]> {
+    if (this.disposing && action.kind !== "cancel-active-sync" && action.kind !== "pause") {
+      return Promise.resolve({ status: "rejected", reason: "synchronization runtime is stopping" });
+    }
     return this.track(super.request(action));
   }
 
@@ -175,7 +180,17 @@ export class ProductController extends ProductControllerBase {
     action: Parameters<ProductControllerBase["requestPreviewAction"]>[0],
     diagnosticRunId?: Parameters<ProductControllerBase["requestPreviewAction"]>[1],
   ): ReturnType<ProductControllerBase["requestPreviewAction"]> {
+    if (this.disposing) return Promise.resolve({ status: "rejected", reason: "synchronization runtime is stopping" });
     return this.track(super.requestPreviewAction(action, diagnosticRunId));
+  }
+
+  async beginRuntimeDisposal(): Promise<void> {
+    if (!this.disposing) {
+      this.disposing = true;
+      await super.request({ kind: "pause" });
+      await super.request({ kind: "cancel-active-sync" });
+    }
+    await this.awaitQuiescence();
   }
 
   async awaitQuiescence(): Promise<void> {
