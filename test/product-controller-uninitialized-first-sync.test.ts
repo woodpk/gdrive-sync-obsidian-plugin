@@ -199,9 +199,9 @@ test("C1 absent new-installation state previews first-sync safe union without pe
   assert.equal((await store.loadAuthority()).status, "trusted");
 });
 
-test("C1-R1 uninitialized recovery reconstruction still traverses durable-intent recovery", async () => {
+test("C1-R1 recovery-required reconstruction reaches reviewed planning without preview-time authority recovery or state replacement", async () => {
   const context: StateLoadContext = {
-    expectation: "new-installation",
+    expectation: "existing-pairing",
     expectedVaultIdentity: vault,
     expectedDeviceIdentity: device,
   };
@@ -218,7 +218,7 @@ test("C1-R1 uninitialized recovery reconstruction still traverses durable-intent
     remoteEnumeration: { status: "complete" },
     mode: "full",
     reconstruction: true,
-    recoveryReason: "test recovery",
+    recoveryReason: "persisted recovery gate",
   } as const;
   const executor = new ProductSynchronizationExecutor(local, drive, store, context, () => controller.currentRunEvidence());
   controller = new ProductController({
@@ -253,11 +253,13 @@ test("C1-R1 uninitialized recovery reconstruction still traverses durable-intent
     recoveryActive: () => true,
   });
 
+  assert.equal((await store.load(context)).status, "recovery-required");
   assert.equal(tracked.loads(), 0);
   const preview = await controller.previewVerifyReconcile();
-  assert.equal(preview, undefined);
-  assert.ok(tracked.loads() > 0);
-  assert.equal(plannerCalls, 0);
+  assert.ok(preview);
+  assert.equal(plannerCalls, 1);
+  assert.equal(tracked.loads(), 0, "explicit reconstruction preview must not traverse durable-intent recovery before review");
+  assert.equal((await store.load(context)).status, "recovery-required", "preview must not replace untrusted persisted state with trusted state");
   assert.equal(controller.currentSurface().status.kind, "recovery-required");
 });
 
