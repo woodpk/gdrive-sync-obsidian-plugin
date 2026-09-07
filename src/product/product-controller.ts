@@ -74,8 +74,10 @@ function authorityLearningAssembler(
   recoveryDependencies: DurableIntentRecoveryDependencies,
 ): ProductSnapshotAssembler {
   // Structural assembler doubles may omit optional bindings. Bind whatever methods exist. Every
-  // production assembly entry is wrapped so durable intent recovery is complete
-  // before the base controller can invoke the current planner.
+  // production ordinary assembly entry is wrapped so durable intent recovery is complete
+  // before the base controller can invoke the current planner. Explicit reconstruction is
+  // deliberately exempt: recovery-required canonical state must reach the reviewed
+  // reconstruction flow before any replacement/trust transition is allowed.
   const structural = assembler as ProductSnapshotAssembler & {
     bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
   };
@@ -94,7 +96,8 @@ function authorityLearningAssembler(
       if (!original) return Reflect.get(target, property, receiver);
       return async (...args: never[]) => {
         let assembly = await original(...args);
-        if (assembly.input.state.status === "uninitialized" && !assembly.reconstruction) return assembly;
+        if (assembly.reconstruction) return assembly;
+        if (assembly.input.state.status === "uninitialized") return assembly;
         await persistLearnedRemoteBatch(assembly, authorityStore, options);
 
         const recovery = await recoverOutstandingDurableIntents(
@@ -112,6 +115,7 @@ function authorityLearningAssembler(
         // current planner consumes post-recovery reality rather than stale input.
         if (recovery.changed) {
           assembly = await original(...args);
+          if (assembly.reconstruction) return assembly;
           await persistLearnedRemoteBatch(assembly, authorityStore, options);
           const residual = await recoverOutstandingDurableIntents(
             options.executor,
