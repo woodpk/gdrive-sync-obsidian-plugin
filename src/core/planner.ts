@@ -25,6 +25,7 @@ export interface PlannerOptions {
 }
 
 const branded = <T extends string>(value: string) => contractId<T>(value);
+export const TRANSITIVELY_CARRIED_MOVE_REASON = "ancestor-folder-move-carried-descendant";
 
 function observed(snapshot: PathSnapshot, side: "local" | "remote"): VersionReference | undefined {
   const value = snapshot[side];
@@ -61,6 +62,16 @@ function strictAncestor(parent: string, child: string): boolean {
   return parent.length < child.length && child.startsWith(`${parent}/`);
 }
 
+function exactTransitiveDestination(parent: PlannedOperation, child: PlannedOperation): boolean {
+  const parentFrom = normalizedPath(parent.fromPath);
+  const parentTo = normalizedPath(parent.toPath);
+  const childFrom = normalizedPath(child.fromPath);
+  const childTo = normalizedPath(child.toPath);
+  if (!parentFrom || !parentTo || !childFrom || !childTo || !strictAncestor(parentFrom, childFrom)) return false;
+  const suffix = childFrom.slice(parentFrom.length);
+  return childTo === `${parentTo}${suffix}`;
+}
+
 /** Preserve existing plan order except where a later move creates an ancestor destination needed by an earlier descendant move. */
 function orderNestedMoves(operations: readonly PlannedOperation[]): PlannedOperation[] {
   const ordered = [...operations];
@@ -86,6 +97,52 @@ function orderNestedMoves(operations: readonly PlannedOperation[]): PlannedOpera
     }
   }
   return ordered;
+}
+
+/**
+ * A folder move carries its subtree physically on the target side. Keep one durable
+ * physical ancestor move, but retain descendant logical operations as exact state-only
+ * convergence checks so BASE/mappings are rebased only after both sides prove the
+ * descendant at the new path with the same stable remote identity/content authority.
+ */
+function coalesceTransitivelyCarriedMoves(
+  operations: readonly PlannedOperation[],
+  state: StateLoadResult,
+): PlannedOperation[] {
+  if (state.status !== "trusted") return [...operations];
+  const baseByPath = new Map(state.state.base.map(entry => [String(entry.path), entry]));
+  const ordered = orderNestedMoves(operations);
+  return ordered.map((operation, index) => {
+    if (operation.kind !== "identity-preserving-move" || !operation.fromPath || !operation.toPath || !operation.remoteObjectId) return operation;
+    const ancestor = ordered.slice(0, index).find(candidate => {
+      if (candidate.kind !== "identity-preserving-move" || candidate.targetSide !== operation.targetSide || !candidate.fromPath || !candidate.toPath) return false;
+      const ancestorBase = baseByPath.get(String(candidate.fromPath));
+      return ancestorBase?.entityKind === "folder" && exactTransitiveDestination(candidate, operation);
+    });
+    if (!ancestor) return operation;
+    const prior = baseByPath.get(String(operation.fromPath));
+    if (!prior || prior.remoteObjectId !== operation.remoteObjectId) return operation;
+    const contentVersion: VersionReference = {
+      path: operation.toPath,
+      entityKind: prior.entityKind,
+      content: prior.content,
+      remoteObjectId: prior.remoteObjectId,
+    };
+    return {
+      ...operation,
+      kind: "noop",
+      path: operation.toPath,
+      contentVersion,
+      preconditions: [
+        { kind: "base-trusted" },
+        { kind: "identity-unambiguous", path: operation.toPath },
+      ],
+      reasons: [{
+        code: TRANSITIVELY_CARRIED_MOVE_REASON,
+        summary: "An authoritative ancestor folder move physically carries this descendant; verify exact post-move convergence and rebase trusted descendant state without redispatching a duplicate move.",
+      }],
+    };
+  });
 }
 
 function makeOperation(path: VaultPath, index: number, kind: PlannedOperation["kind"], extra: Partial<Omit<PlannedOperation, "operationId" | "kind" | "path">> = {}): PlannedOperation {
@@ -274,7 +331,7 @@ export class DeterministicSynchronizationPlanner implements SynchronizationPlann
   }
 
   private finish(state: StateLoadResult, totalManagedPaths: number, operations: PlannedOperation[]): SynchronizationPlan {
-    const orderedOperations = orderNestedMoves(operations);
+    const orderedOperations = coalesceTransitivelyCarriedMoves(operations, state);
     const safety = this.destructiveSafety.assess(orderedOperations, { totalManagedPaths, recentAverageDestructiveOperations: this.options.recentAverageDestructiveOperations, stateCondition: state.status === "trusted" ? "trusted" : state.status === "uninitialized" ? "reconstructed" : "untrusted" });
     const hasRecoveryRequired = orderedOperations.some(operation => operation.kind === "recovery-required");
     let executionDisposition: PlanExecutionDisposition = "safe-auto-eligible";
