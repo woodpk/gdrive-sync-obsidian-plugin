@@ -1,15 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type {
-  BinaryContentSource,
-  ContentEvidence,
-  ManagedRemoteIdentity,
-  PersistenceRevision,
-  ReliableRemoteMutationPort,
-  StateLoadContext,
-  SynchronizationAuthorityStoreV1_1,
-  VaultPath,
-} from "../src/contracts";
+import type { BinaryContentSource, ContentEvidence, ManagedRemoteIdentity, StateLoadContext, VaultPath } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { ProductController } from "../src/product/product-controller";
@@ -44,27 +35,27 @@ const lease = { tryAcquire: async () => ({ release: async () => undefined }) } a
 
 function trackingAuthority(store: SynchronizationStateAuthorityAdapter) {
   let loads = 0;
-  const authorityStore: SynchronizationAuthorityStoreV1_1 = {
+  const authorityStore = {
     loadAuthority: async () => { loads += 1; return store.loadAuthority(); },
-    saveAuthority: (...args) => store.saveAuthority(...args),
-    commitBaseTransition: (...args) => store.commitBaseTransition(...args),
-  };
+    saveAuthority: (...args: any[]) => (store.saveAuthority as any)(...args),
+    commitBaseTransition: (...args: any[]) => (store.commitBaseTransition as any)(...args),
+  } as never;
   return { authorityStore, loads: () => loads };
 }
 
-function planner(trigger: "manual" | "startup-resume" | "local-change" | "periodic" | "verify-reconcile") {
+function planner(trigger: string) {
   return {
     plan: async () => ({
       planId: id<"PlanId">(`plan:c1:${trigger}`),
       trigger,
       operations: [{
         operationId: id<"OperationId">(`op:c1:${trigger}`),
-        kind: "upload-create" as const,
+        kind: "upload-create",
         path,
-        targetSide: "remote" as const,
+        targetSide: "remote",
         contentVersion: {
           path,
-          entityKind: "file" as const,
+          entityKind: "file",
           content,
           observationToken: id<"ObservationToken">("observation:c1:first-sync"),
         },
@@ -72,30 +63,30 @@ function planner(trigger: "manual" | "startup-resume" | "local-change" | "period
         preconditions: [],
         reasons: [{ code: "safe-union-local-only", summary: "Local-only first-sync content is copied to the managed remote." }],
       }],
-      executionDisposition: "requires-user-approval" as const,
+      executionDisposition: "requires-user-approval",
       recoveryCheckpointRequired: false,
-      globalExecutionGate: "none" as const,
+      globalExecutionGate: "none",
     }),
-  };
+  } as never;
 }
 
 function localPort() {
   return {
     observe: async (candidate: VaultPath) => candidate === path
       ? {
-        status: "present" as const,
-        side: "local" as const,
+        status: "present",
+        side: "local",
         path,
-        entityKind: "file" as const,
+        entityKind: "file",
         content,
-        stability: "stable" as const,
+        stability: "stable",
         observationToken: id<"ObservationToken">("observation:c1:first-sync"),
       }
-      : { status: "absent" as const, side: "local" as const, path: candidate },
+      : { status: "absent", side: "local", path: candidate },
     readFile: async () => ({
       content: source,
       evidence: content,
-      stability: "stable" as const,
+      stability: "stable",
       observationToken: id<"ObservationToken">("observation:c1:first-sync"),
     }),
   } as never;
@@ -103,8 +94,8 @@ function localPort() {
 
 function drivePort() {
   return {
-    observe: async (_root: unknown, candidate: VaultPath) => ({ ok: true as const, value: { status: "absent" as const, side: "remote" as const, path: candidate } }),
-    listForReconciliation: async () => ({ ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } }),
+    observe: async (_root: unknown, candidate: VaultPath) => ({ ok: true, value: { status: "absent", side: "remote", path: candidate } }),
+    listForReconciliation: async () => ({ ok: true, value: { entries: [], completeness: { status: "complete" } } }),
   } as never;
 }
 
@@ -122,13 +113,13 @@ test("C1 absent new-installation state previews first-sync safe union without pe
   let controller!: ProductController;
   let mutationObservedTrustedAuthority = false;
   let mutationCount = 0;
-  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
-    reserveFileCreateIdentity: async (_managed, intentId, targetPath, intendedContent) => ({
+  const reliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_managed: any, intentId: any, targetPath: any, intendedContent: any) => ({
       ok: true,
       value: { kind: "reserved-file-create", intentId, reservedRemoteObjectId: remoteId, path: targetPath, intendedContent },
     }),
     reserveFolderCreateIdentity: async () => { throw new Error("folder creation is outside this regression"); },
-    createReserved: async identity => {
+    createReserved: async (identity: any) => {
       const beforeMutation = await store.loadAuthority();
       mutationObservedTrustedAuthority = beforeMutation.status === "trusted";
       assert.equal(beforeMutation.status, "trusted");
@@ -140,39 +131,39 @@ test("C1 absent new-installation state previews first-sync safe union without pe
           kind: "reserved-create",
           remoteObjectId: remoteId,
           path,
-          verifiedContent: identity.kind === "reserved-file-create" ? identity.intendedContent : undefined,
+          verifiedContent: identity.intendedContent,
         },
-      } as never;
+      };
     },
     updateExisting: async () => { throw new Error("update is outside this regression"); },
     moveExisting: async () => { throw new Error("move is outside this regression"); },
     trashExisting: async () => { throw new Error("trash is outside this regression"); },
-  };
+  } as never;
   const assembly = {
     input: {
       snapshots: [{
         path,
         local: {
-          status: "present" as const,
-          side: "local" as const,
+          status: "present",
+          side: "local",
           path,
-          entityKind: "file" as const,
+          entityKind: "file",
           content,
-          stability: "stable" as const,
+          stability: "stable",
           observationToken: id<"ObservationToken">("observation:c1:first-sync"),
         },
-        remote: { status: "absent" as const, side: "remote" as const, path },
-        base: { status: "uninitialized" as const },
-        remoteEnumeration: { status: "complete" as const },
-        identity: { status: "unambiguous" as const },
+        remote: { status: "absent", side: "remote", path },
+        base: { status: "uninitialized" },
+        remoteEnumeration: { status: "complete" },
+        identity: { status: "unambiguous" },
       }],
-      state: { status: "uninitialized" as const },
+      state: { status: "uninitialized" },
     },
     managedRemote,
-    remoteEnumeration: { status: "complete" as const },
+    remoteEnumeration: { status: "complete" },
     nextCursor: id<"ChangeCursor">("cursor:c1:first-sync"),
-    mode: "full" as const,
-  };
+    mode: "full",
+  } as const;
   const assembler = { assemble: async () => assembly, assembleFull: async () => assembly, assembleRecovery: async () => assembly } as never;
   const executor = new ProductSynchronizationExecutor(local, drive, store, context, () => controller.currentRunEvidence());
   controller = new ProductController({
@@ -184,7 +175,7 @@ test("C1 absent new-installation state previews first-sync safe union without pe
     snapshotAssembler: assembler,
     executor,
     reliableRemoteMutationPort,
-    conflictResolver: { assess: async () => ({ kind: "none" as const }) },
+    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
     plannerForTrigger: trigger => planner(trigger),
     leasePort: lease,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
@@ -216,7 +207,7 @@ test("C1 existing trusted authority planning still invokes durable-intent recove
   };
   const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const seeded = await rawStore.saveTrusted(createInitialAuthorityState({
-    persistenceRevision: id<"PersistenceRevision">("persistence:c1:trusted") as PersistenceRevision,
+    persistenceRevision: id<"PersistenceRevision">("persistence:c1:trusted") as never,
     semanticGeneration: id<"SemanticStateGeneration">("semantic:c1:trusted"),
     vaultIdentity: vault,
     deviceIdentity: device,
@@ -242,17 +233,17 @@ test("C1 existing trusted authority planning still invokes durable-intent recove
     authorityStore: tracked.authorityStore,
     snapshotAssembler: { assemble, assembleFull: assemble, assembleRecovery: assemble } as never,
     executor,
-    conflictResolver: { assess: async () => ({ kind: "none" as const }) },
+    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
     plannerForTrigger: trigger => ({
       plan: async () => ({
         planId: id<"PlanId">(`plan:c1:trusted:${trigger}`),
         trigger,
         operations: [],
-        executionDisposition: "safe-auto-eligible" as const,
+        executionDisposition: "safe-auto-eligible",
         recoveryCheckpointRequired: false,
-        globalExecutionGate: "none" as const,
+        globalExecutionGate: "none",
       }),
-    }),
+    } as never),
     leasePort: lease,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
     holderId: "c1-trusted",
