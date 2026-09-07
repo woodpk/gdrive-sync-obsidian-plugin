@@ -67,6 +67,17 @@ async function persistLearnedRemoteBatch(
   throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but cursor mirror repeatedly raced with trusted-state persistence");
 }
 
+async function reconstructionMayBypassDurableRecovery(
+  assembly: AssembledPlanningInput,
+  options: ProductControllerOptions,
+): Promise<boolean> {
+  if (!assembly.reconstruction) return false;
+  const persisted = await options.stateStore.load(options.stateContext);
+  if (persisted.status === "recovery-required") return true;
+  if (persisted.status === "trusted") return false;
+  throw new SnapshotAssemblyError("recovery-required", `reconstruction requires persisted recovery-required or trusted recovery-in-progress state; found ${persisted.status}`);
+}
+
 function authorityLearningAssembler(
   assembler: ProductSnapshotAssembler,
   authorityStore: SynchronizationAuthorityStoreV1_1,
@@ -75,9 +86,10 @@ function authorityLearningAssembler(
 ): ProductSnapshotAssembler {
   // Structural assembler doubles may omit optional bindings. Bind whatever methods exist. Every
   // production ordinary assembly entry is wrapped so durable intent recovery is complete
-  // before the base controller can invoke the current planner. Explicit reconstruction is
-  // deliberately exempt: recovery-required canonical state must reach the reviewed
-  // reconstruction flow before any replacement/trust transition is allowed.
+  // before the base controller can invoke the current planner. Reconstruction bypasses that
+  // recovery only while the persisted canonical state is objectively recovery-required; once
+  // reviewed recovery has replaced it with trusted authority, outstanding durable intents drain
+  // before any further reconstruction planning.
   const structural = assembler as ProductSnapshotAssembler & {
     bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
   };
@@ -96,8 +108,8 @@ function authorityLearningAssembler(
       if (!original) return Reflect.get(target, property, receiver);
       return async (...args: never[]) => {
         let assembly = await original(...args);
-        if (assembly.reconstruction) return assembly;
-        if (assembly.input.state.status === "uninitialized") return assembly;
+        if (await reconstructionMayBypassDurableRecovery(assembly, options)) return assembly;
+        if (!assembly.reconstruction && assembly.input.state.status === "uninitialized") return assembly;
         await persistLearnedRemoteBatch(assembly, authorityStore, options);
 
         const recovery = await recoverOutstandingDurableIntents(
@@ -115,7 +127,10 @@ function authorityLearningAssembler(
         // current planner consumes post-recovery reality rather than stale input.
         if (recovery.changed) {
           assembly = await original(...args);
-          if (assembly.reconstruction) return assembly;
+          if (assembly.reconstruction) {
+            const persisted = await options.stateStore.load(options.stateContext);
+            if (persisted.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", `trusted recovery-in-progress state became ${persisted.status} during durable recovery refresh`);
+          }
           await persistLearnedRemoteBatch(assembly, authorityStore, options);
           const residual = await recoverOutstandingDurableIntents(
             options.executor,
