@@ -111,7 +111,12 @@ function localExact(version: VersionReference): OperationPrecondition[] {
   return preconditions;
 }
 function remoteExact(version: VersionReference): OperationPrecondition[] {
-  const preconditions: OperationPrecondition[] = [];
+  const preconditions: OperationPrecondition[] = [{
+    kind: "path-observation",
+    side: "remote",
+    path: version.path,
+    expected: "present",
+  }];
   if (version.remoteObjectId) preconditions.push({
     kind: "remote-object",
     remoteObjectId: version.remoteObjectId,
