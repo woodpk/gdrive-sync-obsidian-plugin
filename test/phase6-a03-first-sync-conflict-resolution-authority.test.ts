@@ -482,3 +482,53 @@ test("C1 durable effect-verified retry recovers the reviewed first-sync update w
   assert.equal(second.status, "durable-verified-success");
   assert.equal(h.boundary.updateCalls.length, 1, "matching durable intent recovery must not dispatch the REMOTE update twice");
 });
+
+test("C1 genuine first-sync multi-conflict provenance survives synthetic resolution subplans", async () => {
+  const h = await harness({
+    local: [["alpha.bin", "LOCAL-A"], ["beta.bin", "LOCAL-B"]],
+    remote: [["alpha.bin", "REMOTE-A", "remote:alpha"], ["beta.bin", "REMOTE-B", "remote:beta"]],
+  });
+  const plan = await h.controller.previewManual();
+  assert.ok(plan);
+  assert.equal(plan.operations.filter(operation => operation.kind === "unresolved-conflict").length, 2);
+  assert.equal((await h.controller.request({ kind: "execute-plan", planId: plan.planId })).status, "accepted");
+
+  const conflicts = h.controller.currentSurface().conflicts.filter((value): value is Exclude<typeof value, { kind: "none" | "clean-merge" }> => "conflictId" in value);
+  const alpha = conflicts.find(value => String(value.path) === "alpha.bin");
+  const beta = conflicts.find(value => String(value.path) === "beta.bin");
+  assert.ok(alpha && beta);
+
+  const first = await h.controller.request({ kind: "resolve-conflict", conflictId: alpha.conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(first.status, "accepted", first.status === "rejected" ? first.reason : undefined);
+  const second = await h.controller.request({ kind: "resolve-conflict", conflictId: beta.conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(second.status, "accepted", second.status === "rejected" ? second.reason : undefined);
+  assert.deepEqual(h.boundary.updateCalls, ["alpha.bin", "beta.bin"]);
+});
+
+test("C1 fresh real replan replaces prior first-sync conflict-origin provenance", async () => {
+  const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
+  const plan = await h.controller.previewManual();
+  assert.ok(plan);
+  assert.equal((await h.controller.request({ kind: "execute-plan", planId: plan.planId })).status, "accepted");
+  const conflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
+  assert.ok(conflict && "conflictId" in conflict);
+
+  const internal = h.controller as any;
+  assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), true);
+  const replanned = await h.controller.previewManual();
+  assert.ok(replanned);
+  assert.notEqual(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), true, "fresh real planning must replace prior first-sync provenance rather than retain stale eligibility");
+});
+
+test("C1 missing registered conflict-origin provenance fails closed", async () => {
+  const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
+  const conflictId = await registerAndExecuteFirstSyncConflict(h);
+  const internal = h.controller as any;
+  internal.reviewedFirstSyncConflictOrigins.delete(String(conflictId));
+
+  const result = await h.controller.request({ kind: "resolve-conflict", conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(result.status, "rejected");
+  assert.deepEqual(h.boundary.updateCalls, []);
+  const reasons = internal.planned?.plan.operations.flatMap((operation: any) => operation.reasons.map((reason: any) => reason.code)) ?? [];
+  assert.equal(reasons.includes("reviewed-first-sync-resolution"), false);
+});
