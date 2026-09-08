@@ -67,6 +67,7 @@ const REVIEWED_FIRST_SYNC_RESOLUTION_REASONS = new Set([
 function reviewedFirstSyncResolutionShape(operation: PlannedOperation): boolean {
   if (operation.kind !== "upload-update" && operation.kind !== "download-update") return false;
   if (!operation.reasons.some(reason => REVIEWED_FIRST_SYNC_RESOLUTION_REASONS.has(reason.code))) return false;
+  if (!operation.reasons.some(reason => reason.code === "reviewed-first-sync-resolution")) return false;
   if (!operation.preconditions.some(precondition => precondition.kind === "base-trusted")) return false;
   if (!operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous" && precondition.path === operation.path)) return false;
 

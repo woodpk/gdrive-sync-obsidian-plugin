@@ -704,7 +704,8 @@ export class ProductControllerBase implements ProductControlPort {
       await this.createPlan("manual", true, true);
       return { status: "rejected", reason: "conflict evidence changed; a fresh plan is required before resolution" };
     }
-    const operations = await this.resolutionOperations(id, assessment, resolution);
+    const reviewedFirstSyncResolution = !current.assembly.reconstruction && current.assembly.input.state.status === "uninitialized";
+    const operations = await this.resolutionOperations(id, assessment, resolution, reviewedFirstSyncResolution);
     if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
     const executionDisposition = "requires-user-approval" as const;
     const recoveryCheckpointRequired = false;
@@ -747,7 +748,12 @@ export class ProductControllerBase implements ProductControlPort {
     throw new Error("unable to allocate a collision-free conflict-copy path");
   }
 
-  private async resolutionOperations(_id: ConflictId, assessment: Exclude<ConflictAssessment, { kind: "none" }>, resolution: ConflictResolution): Promise<readonly PlannedOperation[]> {
+  private async resolutionOperations(
+    _id: ConflictId,
+    assessment: Exclude<ConflictAssessment, { kind: "none" }>,
+    resolution: ConflictResolution,
+    reviewedFirstSyncResolution: boolean,
+  ): Promise<readonly PlannedOperation[]> {
     const path = assessment.path;
     if (assessment.kind === "clean-merge") {
       if (resolution.kind !== "accept-clean-merge") return [];
@@ -791,16 +797,19 @@ export class ProductControllerBase implements ProductControlPort {
     const remote = assessment.preserved.remote.version;
     const remoteId = remote.remoteObjectId;
     if (!remoteId) return [];
+    const reviewedFirstSyncReason = reviewedFirstSyncResolution
+      ? [{ code: "reviewed-first-sync-resolution", summary: "Resolution originated from a reviewed non-reconstruction uninitialized first-sync plan." }]
+      : [];
     const keepLocal = this.operation(1, {
       kind: "upload-update", path, targetSide: "remote", remoteObjectId: remoteId, contentVersion: local, destructive: false,
       preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(local), ...remoteExact(remote), { kind: "file-stable", path: local.path }],
-      reasons: [{ code: "user-keep-local", summary: "User selected the exact preserved local version." }],
+      reasons: [{ code: "user-keep-local", summary: "User selected the exact preserved local version." }, ...reviewedFirstSyncReason],
     });
     if (resolution.kind === "keep-local") return [keepLocal];
     if (resolution.kind === "keep-remote") return [this.operation(0, {
       kind: "download-update", path, targetSide: "local", remoteObjectId: remoteId, contentVersion: remote, destructive: false,
       preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(local), ...remoteExact(remote)],
-      reasons: [{ code: "user-keep-remote", summary: "User selected the exact preserved remote version." }],
+      reasons: [{ code: "user-keep-remote", summary: "User selected the exact preserved remote version." }, ...reviewedFirstSyncReason],
     })];
     if (resolution.kind === "keep-both") {
       const copy = await this.freeConflictPath(path, assessment.preserved.remote);
@@ -815,7 +824,7 @@ export class ProductControllerBase implements ProductControlPort {
       return [this.operation(0, {
         kind: "upload-update", path, targetSide: "remote", remoteObjectId: remoteId, contentVersion: resolution.resolvedVersion, destructive: false,
         preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(resolution.resolvedVersion), ...remoteExact(remote), { kind: "file-stable", path: resolution.resolvedVersion.path }],
-        reasons: [{ code: "user-manual-resolution", summary: "Use the exact current local file as manual resolution." }],
+        reasons: [{ code: "user-manual-resolution", summary: "Use the exact current local file as manual resolution." }, ...reviewedFirstSyncReason],
       })];
     }
     return [];

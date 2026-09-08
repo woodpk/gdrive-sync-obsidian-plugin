@@ -148,7 +148,8 @@ function resultReason(value: unknown, fallback: string): string {
 function reviewedFirstSyncResolutionCandidate(operation: ExecutablePlannedOperation): boolean {
   return (operation.kind === "upload-update" || operation.kind === "download-update")
     && !operation.preconditions.some(value => value.kind === "base-authority")
-    && operation.reasons.some(reason => REVIEWED_FIRST_SYNC_RESOLUTION_REASONS.has(reason.code));
+    && operation.reasons.some(reason => REVIEWED_FIRST_SYNC_RESOLUTION_REASONS.has(reason.code))
+    && operation.reasons.some(reason => reason.code === "reviewed-first-sync-resolution");
 }
 
 function reviewedFirstSyncRecoveryIntentMatches(
