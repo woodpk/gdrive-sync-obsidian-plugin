@@ -12,6 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
+      GH_TOKEN: ${{ github.token }}
       RELEASE_INPUT_SHA: 05a99001607f48896062d0aac6ee507fc892691a
       APPROVED_C1_R1_SHA: 145ff6898225c5737fea7dfbab2b79dc4ae7b02f
       RELEASE_BRANCH: phase6-real-platform-release-0.1.10
