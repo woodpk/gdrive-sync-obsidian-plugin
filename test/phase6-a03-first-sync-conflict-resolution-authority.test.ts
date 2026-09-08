@@ -247,9 +247,13 @@ async function harness(options: { base?: { path: string; text: string; remoteObj
     }
     : initial;
   const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  assert.equal((await rawStore.saveTrusted(seeded)).status, "saved");
+  if (options.base) assert.equal((await rawStore.saveTrusted(seeded)).status, "saved");
   const store = new SynchronizationStateAuthorityAdapter(rawStore);
-  const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
+  const context: StateLoadContext = {
+    expectation: options.base ? "existing-pairing" : "new-installation",
+    expectedVaultIdentity: vault,
+    expectedDeviceIdentity: device,
+  };
   const assembler = new ProductSnapshotAssembler(boundary.local as never, boundary.drive as never, store, context, async () => identity);
   const versions = new ProductTextVersionStore(new MemoryTextVersionPersistence(), boundary.local as never, boundary.drive as never);
   const conflicts = new ThreeWayConflictResolver(versions, versions, device);
