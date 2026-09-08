@@ -20,6 +20,8 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Test TypeScript compile
+        run: npx tsc -p tsconfig.test.json
       - name: Full tests
         shell: bash
         run: |
