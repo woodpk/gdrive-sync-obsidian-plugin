@@ -259,8 +259,8 @@ async function harness(options: {
   const store = new SynchronizationStateAuthorityAdapter(rawStore);
   const stateLoads: string[] = [];
   const originalLoad = store.load.bind(store);
-  (store as any).load = async (...args: any[]) => {
-    const loaded = await originalLoad(...args);
+  (store as any).load = async (loadContext: StateLoadContext) => {
+    const loaded = await originalLoad(loadContext);
     stateLoads.push(loaded.status);
     return loaded;
   };
