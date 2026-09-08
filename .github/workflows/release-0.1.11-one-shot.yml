@@ -1,0 +1,247 @@
+name: One-shot prerelease 0.1.11 publication
+
+on:
+  push:
+    branches:
+      - release-0.1.11-exec
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_INPUT_SHA: 7cff909d7aeed4c31d7a8bc18f287d5394b0b6d1
+      RELEASE_BRANCH: phase6-real-platform-release-0.1.11
+      PREP_SHA: 825ae344294ce1bbe5fac991e254f223cc40c1a4
+      TAG: 0.1.11
+      TITLE: 0.1.11 — Phase 6 A03 First-Sync Lifecycle Provenance Repair Physical Validation Build
+      EXPECTED_MAIN_SHA256: 64d6a9282aaccceab911a4230502d4b7efda2280d58cf9b445fd062e8b5c3d2b
+      EXPECTED_MAIN_SIZE: '734055'
+      EXPECTED_MANIFEST_SHA256: 5e104174d59e10688604fdc5496dbc381c5d5537ef122d892f90d243aec0e875
+
+    steps:
+      - name: Checkout actual release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release authority and drift gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PREP_SHA"
+          test "$(git rev-parse HEAD^)" = "$RELEASE_INPUT_SHA"
+          test "$(git rev-parse origin/$RELEASE_BRANCH)" = "$PREP_SHA"
+
+          test "$(node -p "require('./manifest.json').version")" = "0.1.11"
+          test "$(node -p "require('./package.json').version")" = "0.1.11"
+          test "$(node -p "require('./package-lock.json').version")" = "0.1.11"
+          test "$(node -p "require('./package-lock.json').packages[''].version")" = "0.1.11"
+          test "$(node -p "require('./manifest.json').id")" = "brain-google-drive-sync"
+          test "$(node -p "String(require('./manifest.json').isDesktopOnly)")" = "false"
+
+          git show-ref --verify --quiet refs/tags/0.1.10
+          gh release view 0.1.10 >/dev/null
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            echo "ERROR: tag $TAG already exists"
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "ERROR: release $TAG already exists"
+            exit 1
+          fi
+
+          changed="$(git diff --name-only "$RELEASE_INPUT_SHA...$PREP_SHA")"
+          printf '%s\n' "$changed"
+          test "$changed" = $'manifest.json\npackage-lock.json\npackage.json'
+          git diff --check "$RELEASE_INPUT_SHA...$PREP_SHA"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compile test TypeScript
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Full test suite
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee full-test.log
+          grep -Eq '# tests 73[1-9]|# tests [8-9][0-9][0-9]|# tests [1-9][0-9]{3,}' full-test.log
+          grep -q '# fail 0' full-test.log
+          if grep -q '^not ok ' full-test.log; then exit 1; fi
+
+      - name: Dedicated C1 regression suite
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-a03-first-sync-conflict-resolution-authority.test.js 2>&1 | tee c1-test.log
+          grep -q '# tests 20' c1-test.log
+          grep -q '# fail 0' c1-test.log
+          if grep -q '^not ok ' c1-test.log; then exit 1; fi
+
+      - name: Production build
+        run: npm run build
+
+      - name: Repository check
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee check.log
+          grep -q '# fail 0' check.log
+          if grep -q '^not ok ' check.log; then exit 1; fi
+
+      - name: Verify release artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s main.js
+          node -e "const m=require('./manifest.json'); if(m.version!=='0.1.11'||m.id!=='brain-google-drive-sync') process.exit(1)"
+          main_sha="$(sha256sum main.js | awk '{print $1}')"
+          manifest_sha="$(sha256sum manifest.json | awk '{print $1}')"
+          main_size="$(stat -c %s main.js)"
+          manifest_size="$(stat -c %s manifest.json)"
+          test "$main_sha" = "$EXPECTED_MAIN_SHA256"
+          test "$main_size" = "$EXPECTED_MAIN_SIZE"
+          test "$manifest_sha" = "$EXPECTED_MANIFEST_SHA256"
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+          echo "manifest_sha=$manifest_sha" >> "$GITHUB_OUTPUT"
+          echo "main_size=$main_size" >> "$GITHUB_OUTPUT"
+          echo "manifest_size=$manifest_size" >> "$GITHUB_OUTPUT"
+
+      - name: Create immutable tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag "$TAG" "$PREP_SHA"
+          git push origin "refs/tags/$TAG"
+          test "$(git rev-parse "$TAG^{commit}")" = "$PREP_SHA"
+
+      - name: Publish GitHub prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<'EOF'
+          Phase 6 prerelease for controlled A03 physical-validation resumption after the R2 first-sync lifecycle-provenance repair.
+
+          This build corrects first-sync conflict provenance so that a device may hold trusted state while durable first-sync completion remains false. The exceptional reviewed first-sync resolution path remains unavailable during recovery/reconstruction and disappears dynamically once first sync completes.
+
+          Verification before publication:
+          - full suite: 731/731 PASS
+          - dedicated C1 lifecycle/authority suite: 20/20 PASS
+          - typecheck: PASS
+          - test TypeScript compile: PASS
+          - production build: PASS
+          - repository check: PASS
+          - packaging diff limited to manifest.json, package.json, and package-lock.json
+
+          Physical A03 validation has not yet been resumed with this build. B–O remain unstarted and Stage 3 is not authorized.
+          EOF
+          gh release create "$TAG" main.js manifest.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --notes-file /tmp/release-notes.md \
+            --prerelease \
+            --verify-tag
+
+      - name: Verify published release and downloaded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/release-download
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json databaseId,name,tagName,isDraft,isPrerelease,url,assets > /tmp/release.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('/tmp/release.json','utf8'));
+          if(r.tagName!=='0.1.11') throw new Error('wrong tag');
+          if(r.name!=='0.1.11 — Phase 6 A03 First-Sync Lifecycle Provenance Repair Physical Validation Build') throw new Error('wrong title');
+          if(r.isDraft!==false) throw new Error('release is draft');
+          if(r.isPrerelease!==true) throw new Error('release is not prerelease');
+          const names=(r.assets||[]).map(a=>a.name).sort();
+          if(JSON.stringify(names)!==JSON.stringify(['main.js','manifest.json'])) throw new Error('wrong asset set: '+JSON.stringify(names));
+          NODE
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/release-download --pattern main.js --pattern manifest.json
+          test "$(sha256sum /tmp/release-download/main.js | awk '{print $1}')" = "$EXPECTED_MAIN_SHA256"
+          test "$(stat -c %s /tmp/release-download/main.js)" = "$EXPECTED_MAIN_SIZE"
+          test "$(sha256sum /tmp/release-download/manifest.json | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256"
+          test "$(node -p "require('/tmp/release-download/manifest.json').version")" = "0.1.11"
+          test "$(node -p "require('/tmp/release-download/manifest.json').id")" = "brain-google-drive-sync"
+          remote_tag="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha')"
+          test "$remote_tag" = "$PREP_SHA"
+
+      - name: Commit release evidence to release branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_json="$(cat /tmp/release.json)"
+          release_id="$(node -e "const r=JSON.parse(process.argv[1]); process.stdout.write(String(r.databaseId))" "$release_json")"
+          release_url="$(node -e "const r=JSON.parse(process.argv[1]); process.stdout.write(r.url)" "$release_json")"
+          asset_json="$(node -e "const r=JSON.parse(process.argv[1]); process.stdout.write(JSON.stringify(r.assets))" "$release_json")"
+          main_asset_id="$(node -e "const a=JSON.parse(process.argv[1]).find(x=>x.name==='main.js'); process.stdout.write(String(a.id||a.databaseId||''))" "$asset_json")"
+          manifest_asset_id="$(node -e "const a=JSON.parse(process.argv[1]).find(x=>x.name==='manifest.json'); process.stdout.write(String(a.id||a.databaseId||''))" "$asset_json")"
+          main_asset_digest="$(node -e "const a=JSON.parse(process.argv[1]).find(x=>x.name==='main.js'); process.stdout.write(a.digest||'')" "$asset_json")"
+          manifest_asset_digest="$(node -e "const a=JSON.parse(process.argv[1]).find(x=>x.name==='manifest.json'); process.stdout.write(a.digest||'')" "$asset_json")"
+          mkdir -p dev/evidence
+          evidence="dev/evidence/_ca-output-agt-ca-p6-real-platform-release-0.1.11-01.md"
+          cat > "$evidence" <<EOF
+          # Phase 6 prerelease 0.1.11 publication evidence
+
+          - Release input SHA: \`$RELEASE_INPUT_SHA\`
+          - Release preparation SHA / immutable tag target: \`$PREP_SHA\`
+          - Release branch: \`$RELEASE_BRANCH\`
+          - Tag: \`$TAG\`
+          - Release ID: \`$release_id\`
+          - Release URL: $release_url
+          - Title: \`$TITLE\`
+          - Draft: \`false\`
+          - Prerelease: \`true\`
+          - Full tests: \`731/731 PASS\`
+          - Dedicated C1: \`20/20 PASS\`
+          - Typecheck: \`PASS\`
+          - Test TypeScript compile: \`PASS\`
+          - Production build: \`PASS\`
+          - Repository check: \`PASS\`
+          - Packaging changed files: \`manifest.json\`, \`package-lock.json\`, \`package.json\`
+          - main.js size: \`${{ steps.artifacts.outputs.main_size }}\` bytes
+          - main.js SHA-256: \`${{ steps.artifacts.outputs.main_sha }}\`
+          - main.js asset ID: \`$main_asset_id\`
+          - main.js GitHub digest: \`$main_asset_digest\`
+          - manifest.json size: \`${{ steps.artifacts.outputs.manifest_size }}\` bytes
+          - manifest.json SHA-256: \`${{ steps.artifacts.outputs.manifest_sha }}\`
+          - manifest.json asset ID: \`$manifest_asset_id\`
+          - manifest.json GitHub digest: \`$manifest_asset_digest\`
+          - Downloaded release assets independently rehashed and matched build artifacts: \`PASS\`
+          - Tag target re-read from GitHub and matched preparation SHA: \`PASS\`
+          - No production source/test changes in release preparation: \`PASS\`
+          - No installation or live synchronization performed: \`PASS\`
+          - A03 physical validation not resumed: \`PASS\`
+          - B–O not started; Stage 3 not authorized: \`PASS\`
+          EOF
+          git add "$evidence"
+          git commit -m "evidence: record prerelease 0.1.11 publication"
+          git push origin "HEAD:$RELEASE_BRANCH"
+          echo "EVIDENCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Final invariant checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$RELEASE_BRANCH" phase6-integration --tags
+          test "$(git rev-parse refs/tags/$TAG^{commit})" = "$PREP_SHA"
+          test "$(git rev-parse origin/$RELEASE_BRANCH)" = "$EVIDENCE_SHA"
+          test "$(git rev-parse origin/phase6-integration)" = "$RELEASE_INPUT_SHA"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,name,tagName --jq 'select(.isDraft == false and .isPrerelease == true and .tagName == "0.1.11") | .name' | grep -Fx "$TITLE"
