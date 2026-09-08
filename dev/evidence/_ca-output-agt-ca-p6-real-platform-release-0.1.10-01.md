@@ -6,6 +6,7 @@
 - Release branch: `phase6-real-platform-release-0.1.10`
 - Observed pre-release versions: manifest/package/package-lock top/root = `0.1.9`
 - Version change: `0.1.9 -> 0.1.10` in `manifest.json`, `package.json`, and package-lock top/root only.
+- Textual diff note: JSON serialization expanded the existing `package.json` `keywords` array from one-line to multiline formatting; keyword values and all non-version metadata remained unchanged.
 - RELEASE_0_1_10_PREP_SHA: `d5a84fdeb1a21d048c9b5db8196e87b59a03f06f`
 
 ## Verification
