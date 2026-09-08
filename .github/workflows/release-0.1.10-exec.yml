@@ -1,0 +1,293 @@
+name: Phase 6 release 0.1.10 execution
+
+on:
+  push:
+    branches:
+      - phase6-release-0.1.10-exec
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_INPUT_SHA: 05a99001607f48896062d0aac6ee507fc892691a
+      APPROVED_C1_R1_SHA: 145ff6898225c5737fea7dfbab2b79dc4ae7b02f
+      RELEASE_BRANCH: phase6-real-platform-release-0.1.10
+      RELEASE_TAG: 0.1.10
+      RELEASE_TITLE: 0.1.10 — Phase 6 A03 Conflict-Resolution Repair Physical Validation Build
+      EVIDENCE_PATH: dev/evidence/_ca-output-agt-ca-p6-real-platform-release-0.1.10-01.md
+    steps:
+      - name: Checkout exact release branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase6-real-platform-release-0.1.10
+          fetch-depth: 0
+
+      - name: Entry and drift gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_INPUT_SHA"
+          test "$(git rev-parse HEAD^1)" = "73153a8144a8ec43a061b48ebe80e6bb5d853157"
+          test "$(git rev-parse HEAD^2)" = "$APPROVED_C1_R1_SHA"
+          git merge-base --is-ancestor "$APPROVED_C1_R1_SHA" "$RELEASE_INPUT_SHA"
+          test "$(git ls-remote origin refs/tags/0.1.9 | awk '{print $1}')" = "f0369d342a65294e8f4b14c44009b93f4157654a"
+          test -z "$(git ls-remote origin refs/tags/0.1.10)"
+          ! gh release view 0.1.10 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          node <<'NODE'
+          const fs=require('fs');
+          const manifest=JSON.parse(fs.readFileSync('manifest.json','utf8'));
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          for (const [label,value] of [['manifest',manifest.version],['package',pkg.version],['lock-top',lock.version],['lock-root',lock.packages?.['']?.version]]) {
+            if (value !== '0.1.9') throw new Error(`${label} expected 0.1.9, got ${value}`);
+          }
+          if (manifest.id !== 'brain-google-drive-sync') throw new Error('manifest id drift');
+          if (manifest.name !== 'BRAIN Google Drive Sync') throw new Error('manifest name drift');
+          if (manifest.minAppVersion !== '1.11.4') throw new Error('manifest minAppVersion drift');
+          if (manifest.isDesktopOnly !== false) throw new Error('manifest mobile compatibility drift');
+          NODE
+          gh release view 0.1.9 --repo "$GITHUB_REPOSITORY" --json id,tagName,name,isDraft,isPrerelease,url > /tmp/release-019-before.json
+          test "$(gh api repos/$GITHUB_REPOSITORY/branches/phase6-integration --jq .commit.sha)" = "b042227329d76153f36d3dcc789851c04790c34f"
+
+      - name: Prepare version metadata and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          node <<'NODE'
+          const fs=require('fs');
+          for (const p of ['manifest.json','package.json','package-lock.json']) {
+            const x=JSON.parse(fs.readFileSync(p,'utf8'));
+            if (p==='manifest.json' || p==='package.json') x.version='0.1.10';
+            else { x.version='0.1.10'; x.packages[''].version='0.1.10'; }
+            fs.writeFileSync(p, JSON.stringify(x,null,2)+'\n');
+          }
+          NODE
+          node <<'NODE'
+          const fs=require('fs');
+          const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          if ([m.version,p.version,l.version,l.packages[''].version].some(v=>v!=='0.1.10')) throw new Error('version bump inconsistent');
+          if (m.id!=='brain-google-drive-sync'||m.name!=='BRAIN Google Drive Sync'||m.minAppVersion!=='1.11.4'||m.isDesktopOnly!==false) throw new Error('manifest identity drift');
+          NODE
+          mapfile -t changed < <(git diff --name-only)
+          printf '%s\n' "${changed[@]}" | sort > /tmp/changed.txt
+          printf '%s\n' manifest.json package-lock.json package.json | sort > /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+          git add manifest.json package.json package-lock.json
+          git commit -m "release: prepare 0.1.10 prerelease"
+          PREP_SHA="$(git rev-parse HEAD)"
+          echo "PREP_SHA=$PREP_SHA" >> "$GITHUB_ENV"
+          git push origin "HEAD:$RELEASE_BRANCH"
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .release-evidence
+          npm run typecheck 2>&1 | tee .release-evidence/typecheck.log
+
+      - name: Test TypeScript compile
+        shell: bash
+        run: |
+          set -o pipefail
+          npx tsc -p tsconfig.test.json 2>&1 | tee .release-evidence/test-tsc.log
+
+      - name: Full tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee .release-evidence/full-tests.tap
+
+      - name: Focused C1 tests
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-a03-first-sync-conflict-resolution-authority.test.js 2>&1 | tee .release-evidence/focused-c1.tap
+
+      - name: Production build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee .release-evidence/build.log
+
+      - name: Repository check
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee .release-evidence/check.log
+
+      - name: Raw acceptance and diff gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check "$RELEASE_INPUT_SHA...$PREP_SHA"
+          test -s main.js
+          node -e "const m=require('./manifest.json'); if(m.version!=='0.1.10'||m.id!=='brain-google-drive-sync') process.exit(1)"
+          ! grep -q '^not ok ' .release-evidence/full-tests.tap
+          ! grep -q '^not ok ' .release-evidence/focused-c1.tap
+          ! grep -q '^not ok ' .release-evidence/check.log
+          grep -q '# fail 0' .release-evidence/full-tests.tap
+          grep -q '# fail 0' .release-evidence/focused-c1.tap
+          grep -q '# fail 0' .release-evidence/check.log
+          FULL_TESTS="$(grep '# tests ' .release-evidence/full-tests.tap | tail -1 | awk '{print $3}')"
+          C1_TESTS="$(grep '# tests ' .release-evidence/focused-c1.tap | tail -1 | awk '{print $3}')"
+          CHECK_TESTS="$(grep '# tests ' .release-evidence/check.log | tail -1 | awk '{print $3}')"
+          test "$FULL_TESTS" -ge 727
+          test "$C1_TESTS" -eq 16
+          test "$CHECK_TESTS" -ge 727
+          echo "FULL_TESTS=$FULL_TESTS" >> "$GITHUB_ENV"
+          echo "C1_TESTS=$C1_TESTS" >> "$GITHUB_ENV"
+          echo "CHECK_TESTS=$CHECK_TESTS" >> "$GITHUB_ENV"
+          git diff --name-only "$RELEASE_INPUT_SHA...$PREP_SHA" | sort > /tmp/release-diff.txt
+          printf '%s\n' manifest.json package-lock.json package.json | sort > /tmp/release-expected.txt
+          diff -u /tmp/release-expected.txt /tmp/release-diff.txt
+          MAIN_SIZE="$(stat -c%s main.js)"
+          MAIN_SHA="$(sha256sum main.js | awk '{print $1}')"
+          MANIFEST_SIZE="$(stat -c%s manifest.json)"
+          MANIFEST_SHA="$(sha256sum manifest.json | awk '{print $1}')"
+          echo "MAIN_SIZE=$MAIN_SIZE" >> "$GITHUB_ENV"
+          echo "MAIN_SHA=$MAIN_SHA" >> "$GITHUB_ENV"
+          echo "MANIFEST_SIZE=$MANIFEST_SIZE" >> "$GITHUB_ENV"
+          echo "MANIFEST_SHA=$MANIFEST_SHA" >> "$GITHUB_ENV"
+
+      - name: Tag and publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git ls-remote origin refs/tags/$RELEASE_TAG)"
+          git tag "$RELEASE_TAG" "$PREP_SHA"
+          git push origin "refs/tags/$RELEASE_TAG"
+          cat > /tmp/release-body.md <<'EOF'
+          Phase 6 prerelease for controlled resumption of physical validation after the C1-R1 first-sync conflict-resolution authority repair.
+
+          The repaired candidate fixes the A03 first-sync conflict-resolution authority deadlock while preserving ordinary BASE/identity authority, recovery fail-closed behavior, exact conflict evidence validation, and durable retry safety. The supervisor-approved candidate passed the complete executable verification surface before promotion, including 727/727 repository tests and the focused C1 authority suite.
+
+          This 0.1.10 release preparation changes release metadata only and independently re-runs the full verification surface before publication.
+
+          This release is for physical Windows/iPhone validation. A03 has not yet been resumed, later Phase 6 live tests remain pending, Phase 6 is not complete, and Stage 3 has not begun.
+          EOF
+          gh release create "$RELEASE_TAG" main.js manifest.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$RELEASE_TITLE" \
+            --notes-file /tmp/release-body.md \
+            --prerelease \
+            --verify-tag
+
+      - name: Independently verify published release and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/tags/$RELEASE_TAG | awk '{print $1}')" = "$PREP_SHA"
+          mkdir -p /tmp/release-download
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/release-download --pattern main.js --pattern manifest.json
+          test "$(stat -c%s /tmp/release-download/main.js)" = "$MAIN_SIZE"
+          test "$(sha256sum /tmp/release-download/main.js | awk '{print $1}')" = "$MAIN_SHA"
+          test "$(stat -c%s /tmp/release-download/manifest.json)" = "$MANIFEST_SIZE"
+          test "$(sha256sum /tmp/release-download/manifest.json | awk '{print $1}')" = "$MANIFEST_SHA"
+          node -e "const m=require('/tmp/release-download/manifest.json'); if(m.version!=='0.1.10'||m.id!=='brain-google-drive-sync') process.exit(1)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > /tmp/release.json
+          node <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('/tmp/release.json','utf8'));
+          if (r.tag_name!=='0.1.10'||r.name!=='0.1.10 — Phase 6 A03 Conflict-Resolution Repair Physical Validation Build'||r.draft!==false||r.prerelease!==true) throw new Error('release metadata mismatch');
+          const names=r.assets.map(a=>a.name).sort();
+          if (JSON.stringify(names)!==JSON.stringify(['main.js','manifest.json'])) throw new Error(`unexpected assets: ${names}`);
+          NODE
+          test "$(gh api repos/$GITHUB_REPOSITORY/branches/phase6-integration --jq .commit.sha)" = "b042227329d76153f36d3dcc789851c04790c34f"
+          gh release view 0.1.9 --repo "$GITHUB_REPOSITORY" --json id,tagName,name,isDraft,isPrerelease,url > /tmp/release-019-after.json
+          diff -u /tmp/release-019-before.json /tmp/release-019-after.json
+          RELEASE_ID="$(jq -r .id /tmp/release.json)"
+          RELEASE_URL="$(jq -r .html_url /tmp/release.json)"
+          MAIN_ASSET_ID="$(jq -r '.assets[]|select(.name=="main.js")|.id' /tmp/release.json)"
+          MAIN_DIGEST="$(jq -r '.assets[]|select(.name=="main.js")|.digest // "null"' /tmp/release.json)"
+          MANIFEST_ASSET_ID="$(jq -r '.assets[]|select(.name=="manifest.json")|.id' /tmp/release.json)"
+          MANIFEST_DIGEST="$(jq -r '.assets[]|select(.name=="manifest.json")|.digest // "null"' /tmp/release.json)"
+          if [ "$MAIN_DIGEST" != "null" ]; then test "$MAIN_DIGEST" = "sha256:$MAIN_SHA"; fi
+          if [ "$MANIFEST_DIGEST" != "null" ]; then test "$MANIFEST_DIGEST" = "sha256:$MANIFEST_SHA"; fi
+          echo "RELEASE_ID=$RELEASE_ID" >> "$GITHUB_ENV"
+          echo "RELEASE_URL=$RELEASE_URL" >> "$GITHUB_ENV"
+          echo "MAIN_ASSET_ID=$MAIN_ASSET_ID" >> "$GITHUB_ENV"
+          echo "MAIN_DIGEST=$MAIN_DIGEST" >> "$GITHUB_ENV"
+          echo "MANIFEST_ASSET_ID=$MANIFEST_ASSET_ID" >> "$GITHUB_ENV"
+          echo "MANIFEST_DIGEST=$MANIFEST_DIGEST" >> "$GITHUB_ENV"
+
+      - name: Write and commit release evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dev/evidence
+          cat > "$EVIDENCE_PATH" <<EOF
+          # Phase 6 A03 Repair Prerelease 0.1.10 Evidence
+
+          - Agent: \`agt-ca-p6-real-platform-release-0.1.10-01\`
+          - RELEASE_INPUT_SHA: \`$RELEASE_INPUT_SHA\`
+          - APPROVED_C1_R1_SHA: \`$APPROVED_C1_R1_SHA\`
+          - Release branch: \`$RELEASE_BRANCH\`
+          - Observed pre-release versions: manifest/package/package-lock top/root = \`0.1.9\`
+          - Version change: \`0.1.9 -> 0.1.10\` in \`manifest.json\`, \`package.json\`, and package-lock top/root only.
+          - RELEASE_0_1_10_PREP_SHA: \`$PREP_SHA\`
+
+          ## Verification
+
+          - \`npm ci\`: PASS
+          - \`npm run typecheck\`: PASS
+          - \`npx tsc -p tsconfig.test.json\`: PASS
+          - \`npm test\`: PASS — $FULL_TESTS tests, # fail 0, zero not ok
+          - Focused C1 suite: PASS — $C1_TESTS tests, # fail 0, zero not ok
+          - \`npm run build\`: PASS
+          - \`npm run check\`: PASS — embedded $CHECK_TESTS tests, # fail 0, zero not ok
+          - \`git diff --check RELEASE_INPUT_SHA...RELEASE_0_1_10_PREP_SHA\`: PASS
+          - Release-preparation changed files: \`manifest.json\`, \`package.json\`, \`package-lock.json\` only
+
+          ## Release artifacts
+
+          - \`main.js\`: size $MAIN_SIZE bytes; SHA-256 \`$MAIN_SHA\`; asset ID \`$MAIN_ASSET_ID\`; GitHub digest \`$MAIN_DIGEST\`
+          - \`manifest.json\`: size $MANIFEST_SIZE bytes; SHA-256 \`$MANIFEST_SHA\`; asset ID \`$MANIFEST_ASSET_ID\`; GitHub digest \`$MANIFEST_DIGEST\`
+
+          ## Publication
+
+          - Tag: \`0.1.10\` -> \`$PREP_SHA\`
+          - Release URL: $RELEASE_URL
+          - Release ID: \`$RELEASE_ID\`
+          - \`prerelease=true\`
+          - \`draft=false\`
+          - Published assets independently downloaded and matched local sizes/SHA-256 values.
+          - Existing \`0.1.9\` tag/release verified unchanged.
+          - \`phase6-integration\` remained at \`b042227329d76153f36d3dcc789851c04790c34f\` during release execution.
+
+          ## Scope confirmations
+
+          - No \`src/**\`, \`test/**\`, contract, script, workflow, or product-behavior changes occurred in release preparation.
+          - No plugin installation or live synchronization occurred.
+          - A03 was not resumed.
+          - B–O were not begun.
+          - Stage 3 was not begun and remains unauthorized.
+          EOF
+          git add "$EVIDENCE_PATH"
+          git commit -m "evidence: record 0.1.10 prerelease publication"
+          EVIDENCE_SHA="$(git rev-parse HEAD)"
+          echo "EVIDENCE_SHA=$EVIDENCE_SHA" >> "$GITHUB_ENV"
+          git push origin "HEAD:$RELEASE_BRANCH"
+          test "$(git ls-remote origin refs/tags/$RELEASE_TAG | awk '{print $1}')" = "$PREP_SHA"
+
+      - name: Final release summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RELEASE_0_1_10_PREP_SHA=$PREP_SHA"
+          echo "RELEASE_0_1_10_EVIDENCE_SHA=$EVIDENCE_SHA"
+          echo "TAG_TARGET=$PREP_SHA"
+          echo "RELEASE_URL=$RELEASE_URL"
+          echo "RELEASE_ID=$RELEASE_ID"
+          echo "MAIN_ASSET_ID=$MAIN_ASSET_ID MAIN_SIZE=$MAIN_SIZE MAIN_SHA=$MAIN_SHA MAIN_DIGEST=$MAIN_DIGEST"
+          echo "MANIFEST_ASSET_ID=$MANIFEST_ASSET_ID MANIFEST_SIZE=$MANIFEST_SIZE MANIFEST_SHA=$MANIFEST_SHA MANIFEST_DIGEST=$MANIFEST_DIGEST"
+          echo "FULL_TESTS=$FULL_TESTS C1_TESTS=$C1_TESTS CHECK_TESTS=$CHECK_TESTS"
