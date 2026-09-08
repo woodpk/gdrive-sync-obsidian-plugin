@@ -446,6 +446,7 @@ test("C1 durable effect-verified retry recovers the reviewed first-sync update w
   const localVersion = assessment.preserved.local.version;
   const remoteVersion = assessment.preserved.remote.version;
   const planned = updateOperation("user-keep-local");
+  planned.reasons = [...planned.reasons, { code: "reviewed-first-sync-resolution", summary: "reviewed first-sync resolution" }];
   planned.path = vp("collision.bin");
   planned.remoteObjectId = remoteVersion.remoteObjectId;
   planned.contentVersion = localVersion;
