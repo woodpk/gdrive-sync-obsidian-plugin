@@ -284,11 +284,7 @@ async function registerAndExecuteFirstSyncConflict(h: Harness, path = "collision
   const conflict = plan.operations.find(operation => operation.kind === "unresolved-conflict" && String(operation.path) === path);
   assert.ok(conflict);
   const before = await h.store.load(h.context);
-  assert.equal(before.status, "trusted");
-  if (before.status === "trusted") {
-    assert.equal(before.state.base.some(entry => String(entry.path) === path), false);
-    assert.equal(before.state.remoteMappings.some(entry => String(entry.path) === path), false);
-  }
+  assert.equal(before.status, "uninitialized");
   assert.equal((await h.controller.request({ kind: "execute-plan", planId: plan.planId })).status, "accepted");
   const assessment = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === path);
   assert.ok(assessment && "conflictId" in assessment);
