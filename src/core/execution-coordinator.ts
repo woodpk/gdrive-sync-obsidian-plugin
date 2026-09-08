@@ -70,19 +70,19 @@ function reviewedFirstSyncResolutionShape(operation: PlannedOperation): boolean 
   if (!operation.preconditions.some(precondition => precondition.kind === "base-trusted")) return false;
   if (!operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous" && precondition.path === operation.path)) return false;
 
-  const localPresent = operation.preconditions.find(precondition => precondition.kind === "path-observation" && precondition.side === "local" && precondition.path === operation.path && precondition.expected === "present");
-  const remotePresent = operation.preconditions.find(precondition => precondition.kind === "path-observation" && precondition.side === "remote" && precondition.path === operation.path && precondition.expected === "present");
-  const localContent = operation.preconditions.find(precondition => precondition.kind === "content-evidence" && precondition.side === "local" && precondition.path === operation.path);
-  const remoteContent = operation.preconditions.find(precondition => precondition.kind === "content-evidence" && precondition.side === "remote" && precondition.path === operation.path);
-  const remoteObject = operation.preconditions.find(precondition => precondition.kind === "remote-object" && precondition.path === operation.path);
-  if (!localPresent || !remotePresent || !localContent?.expected.hash || localContent.expected.sizeBytes === undefined || !remoteContent?.expected.hash || remoteContent.expected.sizeBytes === undefined || !remoteObject) return false;
+  const localPresent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "path-observation" }> => precondition.kind === "path-observation" && precondition.side === "local" && precondition.path === operation.path && precondition.expected === "present");
+  const remotePresent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "path-observation" }> => precondition.kind === "path-observation" && precondition.side === "remote" && precondition.path === operation.path && precondition.expected === "present");
+  const localContent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "content-evidence" }> => precondition.kind === "content-evidence" && precondition.side === "local" && precondition.path === operation.path);
+  const remoteContent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "content-evidence" }> => precondition.kind === "content-evidence" && precondition.side === "remote" && precondition.path === operation.path);
+  const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+  const remoteObject = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "remote-object" }> => precondition.kind === "remote-object" && precondition.remoteObjectId === expectedRemoteObjectId);
+  if (!localPresent || !remotePresent || !localContent?.expected.hash || localContent.expected.sizeBytes === undefined || !remoteContent?.expected.hash || remoteContent.expected.sizeBytes === undefined || !remoteObject || !expectedRemoteObjectId) return false;
   if (operation.kind === "upload-update") {
     if (!localPresent.observationToken || !operation.preconditions.some(precondition => precondition.kind === "file-stable" && precondition.path === operation.path)) return false;
     if (!operation.remoteObjectId || remoteObject.remoteObjectId !== operation.remoteObjectId || !remoteObject.expectedRevision) return false;
     if (!operation.contentVersion || operation.contentVersion.path !== operation.path || operation.contentVersion.entityKind !== "file" || operation.contentVersion.content?.hash !== localContent.expected.hash) return false;
   } else {
-    const expectedRemoteObjectId = operation.contentVersion?.remoteObjectId ?? operation.remoteObjectId;
-    if (!expectedRemoteObjectId || remoteObject.remoteObjectId !== expectedRemoteObjectId) return false;
+    if (remoteObject.remoteObjectId !== expectedRemoteObjectId) return false;
     if (!operation.contentVersion || operation.contentVersion.path !== operation.path || operation.contentVersion.entityKind !== "file" || operation.contentVersion.content?.hash !== remoteContent.expected.hash) return false;
   }
   return true;
