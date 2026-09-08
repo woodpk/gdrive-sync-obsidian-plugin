@@ -216,6 +216,7 @@ class Boundary {
   } as never;
 }
 
+type FirstSyncLifecycle = { firstSyncCompleted: boolean; recoveryInProgress: boolean };
 type Harness = {
   boundary: Boundary;
   store: SynchronizationStateAuthorityAdapter;
@@ -223,9 +224,16 @@ type Harness = {
   controller: ProductController;
   vault: any;
   device: any;
+  lifecycle: FirstSyncLifecycle;
+  stateLoads: string[];
 };
 
-async function harness(options: { base?: { path: string; text: string; remoteObjectId: string }; local?: readonly [string, string][]; remote?: readonly [string, string, string][] } = {}): Promise<Harness> {
+async function harness(options: {
+  base?: { path: string; text: string; remoteObjectId: string };
+  local?: readonly [string, string][];
+  remote?: readonly [string, string, string][];
+  lifecycle?: Partial<FirstSyncLifecycle>;
+} = {}): Promise<Harness> {
   const vault = id<"VaultIdentity">("vault:a03:c1");
   const device = id<"DeviceIdentity">("device:a03:c1");
   const identity: ManagedRemoteIdentity = { rootId: rid("root:a03:c1"), vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
@@ -249,6 +257,18 @@ async function harness(options: { base?: { path: string; text: string; remoteObj
   const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   if (options.base) assert.equal((await rawStore.saveTrusted(seeded)).status, "saved");
   const store = new SynchronizationStateAuthorityAdapter(rawStore);
+  const stateLoads: string[] = [];
+  const originalLoad = store.load.bind(store);
+  (store as any).load = async (...args: any[]) => {
+    const loaded = await originalLoad(...args);
+    stateLoads.push(loaded.status);
+    return loaded;
+  };
+  const lifecycle: FirstSyncLifecycle = {
+    firstSyncCompleted: Boolean(options.base),
+    recoveryInProgress: false,
+    ...options.lifecycle,
+  };
   const context: StateLoadContext = {
     expectation: options.base ? "existing-pairing" : "new-installation",
     expectedVaultIdentity: vault,
@@ -274,8 +294,10 @@ async function harness(options: { base?: { path: string; text: string; remoteObj
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 100),
     holderId: "a03-c1",
+    firstSyncActive: () => !lifecycle.firstSyncCompleted && !lifecycle.recoveryInProgress,
+    recoveryActive: () => lifecycle.recoveryInProgress,
   });
-  return { boundary, store, context, controller, vault, device };
+  return { boundary, store, context, controller, vault, device, lifecycle, stateLoads };
 }
 
 async function registerAndExecuteFirstSyncConflict(h: Harness, path = "collision.bin") {
@@ -505,19 +527,94 @@ test("C1 genuine first-sync multi-conflict provenance survives synthetic resolut
   assert.deepEqual(h.boundary.updateCalls, ["alpha.bin", "beta.bin"]);
 });
 
-test("C1 fresh real replan replaces prior first-sync conflict-origin provenance", async () => {
-  const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
-  const plan = await h.controller.previewManual();
-  assert.ok(plan);
-  assert.equal((await h.controller.request({ kind: "execute-plan", planId: plan.planId })).status, "accepted");
+test("C1 fresh trusted-state Verify/Reconcile retains first-sync provenance until durable first-sync completion", async () => {
+  const h = await harness({
+    local: [["collision.bin", "LOCAL"], ["safe-local.bin", "SAFE"]],
+    remote: [["collision.bin", "REMOTE", "remote:collision"]],
+  });
+  assert.equal(h.lifecycle.firstSyncCompleted, false);
+  assert.equal(h.lifecycle.recoveryInProgress, false);
+
+  const initial = await h.controller.previewManual();
+  assert.ok(initial);
+  assert.equal((await h.controller.request({ kind: "execute-plan", planId: initial.planId })).status, "accepted");
+  const afterSafeWork = await h.store.load(h.context);
+  assert.equal(afterSafeWork.status, "trusted");
+  if (afterSafeWork.status === "trusted") {
+    assert.equal(afterSafeWork.state.base.some(entry => String(entry.path) === "safe-local.bin"), true);
+    assert.equal(afterSafeWork.state.base.some(entry => String(entry.path) === "collision.bin"), false);
+    assert.equal(afterSafeWork.state.remoteMappings.some(entry => String(entry.path) === "collision.bin"), false);
+  }
+
+  h.stateLoads.length = 0;
+  const fresh = await h.controller.previewVerifyReconcile();
+  assert.ok(fresh);
+  assert.equal(h.stateLoads[0], "trusted", "fresh Verify/Reconcile must actually load the now-trusted persistent state");
   const conflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
   assert.ok(conflict && "conflictId" in conflict);
-
   const internal = h.controller as any;
-  assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), true);
-  const replanned = await h.controller.previewManual();
-  assert.ok(replanned);
-  assert.notEqual(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), true, "fresh real planning must replace prior first-sync provenance rather than retain stale eligibility");
+  assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), true, "trusted state does not end the durable first-sync lifecycle");
+
+  const result = await h.controller.request({ kind: "resolve-conflict", conflictId: conflict.conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(result.status, "accepted", result.status === "rejected" ? result.reason : undefined);
+  assert.deepEqual(h.boundary.updateCalls, ["collision.bin"]);
+  const committed = await h.store.load(h.context);
+  assert.equal(committed.status, "trusted");
+  if (committed.status === "trusted") {
+    assert.equal(committed.state.base.some(entry => String(entry.path) === "collision.bin" && entry.content?.hash === sha256Text("LOCAL")), true);
+    assert.equal(committed.state.remoteMappings.some(entry => String(entry.path) === "collision.bin"), true);
+  }
+});
+
+test("C1 completed first-sync lifecycle dynamically removes no-BASE bootstrap provenance on a fresh plan", async () => {
+  const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
+  const initial = await h.controller.previewManual();
+  assert.ok(initial);
+  assert.equal((await h.controller.request({ kind: "execute-plan", planId: initial.planId })).status, "accepted");
+  const firstConflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
+  assert.ok(firstConflict && "conflictId" in firstConflict);
+  const internal = h.controller as any;
+  assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(firstConflict.conflictId)), true);
+
+  h.lifecycle.firstSyncCompleted = true;
+  h.stateLoads.length = 0;
+  const fresh = await h.controller.previewVerifyReconcile();
+  assert.ok(fresh);
+  assert.equal(h.stateLoads[0], "trusted");
+  const freshConflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
+  assert.ok(freshConflict && "conflictId" in freshConflict);
+  assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(freshConflict.conflictId)), false, "fresh planning must observe lifecycle completion dynamically");
+
+  const result = await h.controller.request({ kind: "resolve-conflict", conflictId: freshConflict.conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(result.status, "rejected");
+  assert.deepEqual(h.boundary.updateCalls, []);
+});
+
+test("C1 recovery and reconstruction remain ineligible for reviewed first-sync bootstrap provenance", async t => {
+  await t.test("recovery-active lifecycle", async () => {
+    const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
+    const plan = await h.controller.previewManual();
+    assert.ok(plan);
+    const internal = h.controller as any;
+    const conflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
+    assert.ok(conflict && "conflictId" in conflict);
+    h.lifecycle.recoveryInProgress = true;
+    await internal.refreshConflicts(plan, internal.planned.assembly);
+    assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), false);
+  });
+
+  await t.test("reconstruction assembly", async () => {
+    const h = await harness({ local: [["collision.bin", "LOCAL"]], remote: [["collision.bin", "REMOTE", "remote:collision"]] });
+    const plan = await h.controller.previewManual();
+    assert.ok(plan);
+    const internal = h.controller as any;
+    const conflict = h.controller.currentSurface().conflicts.find(value => "conflictId" in value && String(value.path) === "collision.bin");
+    assert.ok(conflict && "conflictId" in conflict);
+    assert.equal(h.lifecycle.firstSyncCompleted, false);
+    assert.equal(h.lifecycle.recoveryInProgress, false);
+    await internal.refreshConflicts(plan, { ...internal.planned.assembly, reconstruction: true });
+    assert.equal(internal.reviewedFirstSyncConflictOrigins.get(String(conflict.conflictId)), false);
+  });
 });
 
 test("C1 missing registered conflict-origin provenance fails closed", async () => {
