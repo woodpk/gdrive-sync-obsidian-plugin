@@ -21,13 +21,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Full tests
-        run: mkdir -p .ci-evidence && npm test | tee .ci-evidence/full-tests.tap
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .ci-evidence
+          npm test | tee .ci-evidence/full-tests.tap
+      - name: Focused C1 first-sync conflict-resolution authority tests
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase6-a03-first-sync-conflict-resolution-authority.test.js | tee .ci-evidence/focused-c1-tests.tap
       - name: Focused callback, diagnostic, OAuth, and export tests
-        run: node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js | tee .ci-evidence/focused-tests.tap
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js | tee .ci-evidence/focused-tests.tap
       - name: Production build
         run: npm run build
       - name: Full repository check
-        run: npm run check | tee .ci-evidence/check.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check | tee .ci-evidence/check.log
       - name: Diff whitespace check
         run: git diff --check
       - name: Record artifact identity
@@ -42,6 +57,7 @@ jobs:
             main.js
             manifest.json
             .ci-evidence/full-tests.tap
+            .ci-evidence/focused-c1-tests.tap
             .ci-evidence/focused-tests.tap
             .ci-evidence/check.log
             .ci-evidence/main-js-size.txt
