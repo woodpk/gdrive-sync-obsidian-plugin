@@ -226,6 +226,10 @@ export class ProductRuntime {
         if (!live.firstSyncCompleted || live.recoveryInProgress) return { allowed: false, reason: "Automatic synchronization remains disabled until trustworthy synchronization state is established." };
         return automaticNetworkDecision(plan, live, Platform.isMobile);
       },
+      firstSyncActive: () => {
+        const live = this.host.settings();
+        return !live.firstSyncCompleted && !live.recoveryInProgress;
+      },
       recoveryActive: () => this.host.settings().recoveryInProgress,
       onRecoveryGateChanged: async (active, backupId) => {
         const live = this.host.settings();

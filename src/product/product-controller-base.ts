@@ -60,6 +60,7 @@ export interface ProductControllerOptions {
   readonly audit: BoundedAuditHistory;
   readonly holderId: string;
   readonly automaticExecutionAllowed?: (plan: SynchronizationPlan) => AutomaticExecutionDecision;
+  readonly firstSyncActive?: () => boolean;
   readonly onTrustedBaselineEstablished?: () => Promise<void>;
   readonly recoveryActive?: () => boolean;
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
@@ -487,7 +488,7 @@ export class ProductControllerBase implements ProductControlPort {
   private async refreshConflicts(plan: SynchronizationPlan, assembly: AssembledPlanningInput): Promise<void> {
     const fresh = new Map<string, ConflictAssessment>();
     const freshFirstSyncOrigins = new Map<string, boolean>();
-    const reviewedFirstSyncOrigin = !assembly.reconstruction && assembly.input.state.status === "uninitialized";
+    const reviewedFirstSyncOrigin = !assembly.reconstruction && this.options.firstSyncActive?.() === true;
     for (const operation of plan.operations) {
       if (operation.kind !== "unresolved-conflict" && operation.kind !== "clean-text-merge") continue;
       const snapshot = assembly.input.snapshots.find(candidate => candidate.path === operation.path);
@@ -807,7 +808,7 @@ export class ProductControllerBase implements ProductControlPort {
     const remoteId = remote.remoteObjectId;
     if (!remoteId) return [];
     const reviewedFirstSyncReason = reviewedFirstSyncResolution
-      ? [{ code: "reviewed-first-sync-resolution", summary: "Resolution originated from a reviewed non-reconstruction uninitialized first-sync plan." }]
+      ? [{ code: "reviewed-first-sync-resolution", summary: "Resolution originated from a reviewed non-reconstruction active first-sync plan." }]
       : [];
     const keepLocal = this.operation(1, {
       kind: "upload-update", path, targetSide: "remote", remoteObjectId: remoteId, contentVersion: local, destructive: false,
