@@ -275,6 +275,7 @@ export class ProductControllerBase implements ProductControlPort {
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
   private readonly runs: CoreRunCoordinator;
   private readonly conflictRegistry = new Map<string, ConflictAssessment>();
+  private readonly reviewedFirstSyncConflictOrigins = new Map<string, boolean>();
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
   private pendingAutomaticTrigger?: AutomaticTrigger;
@@ -485,17 +486,24 @@ export class ProductControllerBase implements ProductControlPort {
 
   private async refreshConflicts(plan: SynchronizationPlan, assembly: AssembledPlanningInput): Promise<void> {
     const fresh = new Map<string, ConflictAssessment>();
+    const freshFirstSyncOrigins = new Map<string, boolean>();
+    const reviewedFirstSyncOrigin = !assembly.reconstruction && assembly.input.state.status === "uninitialized";
     for (const operation of plan.operations) {
       if (operation.kind !== "unresolved-conflict" && operation.kind !== "clean-text-merge") continue;
       const snapshot = assembly.input.snapshots.find(candidate => candidate.path === operation.path);
       if (!snapshot) continue;
       const assessment = await this.options.conflictResolver.assess(snapshot.path, baseVersion(snapshot), observedVersion(snapshot, "local"), observedVersion(snapshot, "remote"));
       const key = assessmentKey(assessment);
-      if (key) fresh.set(String(key), assessment);
+      if (key) {
+        fresh.set(String(key), assessment);
+        freshFirstSyncOrigins.set(String(key), reviewedFirstSyncOrigin);
+      }
       if (assessment.kind !== "none" && assessment.kind !== "clean-merge") await this.audit("conflict-created", { path: assessment.path, reasonCode: assessment.kind });
     }
     this.conflictRegistry.clear();
+    this.reviewedFirstSyncConflictOrigins.clear();
     for (const [key, value] of fresh) this.conflictRegistry.set(key, value);
+    for (const [key, value] of freshFirstSyncOrigins) this.reviewedFirstSyncConflictOrigins.set(key, value);
   }
 
   private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number, automaticPlanned?: PlannedRun): Promise<RunOutcome> {
@@ -704,7 +712,7 @@ export class ProductControllerBase implements ProductControlPort {
       await this.createPlan("manual", true, true);
       return { status: "rejected", reason: "conflict evidence changed; a fresh plan is required before resolution" };
     }
-    const reviewedFirstSyncResolution = !current.assembly.reconstruction && current.assembly.input.state.status === "uninitialized";
+    const reviewedFirstSyncResolution = this.reviewedFirstSyncConflictOrigins.get(String(id)) === true;
     const operations = await this.resolutionOperations(id, assessment, resolution, reviewedFirstSyncResolution);
     if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
     const executionDisposition = "requires-user-approval" as const;
@@ -717,6 +725,7 @@ export class ProductControllerBase implements ProductControlPort {
     this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false, attentionPersistenceFailed: false };
     if (await this.executePlanned(true) !== "complete") return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
     this.conflictRegistry.delete(String(id));
+    this.reviewedFirstSyncConflictOrigins.delete(String(id));
     this.surface = { ...this.surface, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
     await this.audit("conflict-resolved", { path: assessment.path, reasonCode: resolution.kind });
     if (this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "conflict resolution was preserved; run a fresh reviewed Verify/Reconcile before recovery can complete" });
@@ -870,7 +879,7 @@ export class ProductControllerBase implements ProductControlPort {
       if (error.code === "authentication-required") this.setStatus({ kind: "authentication-required", reason: error.message });
       else if (error.code === "transient-failure" || error.code === "rate-limited") this.setStatus({ kind: "offline-deferred", reason: error.message });
       else if (["missing-root", "identity-mismatch", "incompatible-protocol", "ambiguous", "recovery-required", "not-found"].includes(error.code)) this.setStatus({ kind: "recovery-required", reason: error.message });
-      else this.setStatus({ kind: "error", code: error.code, message: error.message });
+      else this.setStatus({ kind: "error", code: error.code, message: error instanceof Error ? error.message : String(error) });
       return;
     }
     this.setStatus({ kind: "error", code: "planning-failed", message: error instanceof Error ? error.message : String(error) });
