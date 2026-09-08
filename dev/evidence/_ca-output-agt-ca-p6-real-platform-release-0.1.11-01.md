@@ -1,0 +1,32 @@
+# Phase 6 prerelease 0.1.11 publication evidence
+
+- Release input SHA: `7cff909d7aeed4c31d7a8bc18f287d5394b0b6d1`
+- Release preparation SHA / immutable tag target: `825ae344294ce1bbe5fac991e254f223cc40c1a4`
+- Release branch: `phase6-real-platform-release-0.1.11`
+- Tag: `0.1.11`
+- Release ID: `385118769`
+- Release URL: https://github.com/woodpk/gdrive-sync-obsidian-plugin/releases/tag/0.1.11
+- Title: `0.1.11 — Phase 6 A03 First-Sync Lifecycle Provenance Repair Physical Validation Build`
+- Draft: `false`
+- Prerelease: `true`
+- Full tests: `731/731 PASS`
+- Dedicated C1: `20/20 PASS`
+- Typecheck: `PASS`
+- Test TypeScript compile: `PASS`
+- Production build: `PASS`
+- Repository check: `PASS`
+- Packaging changed files: `manifest.json`, `package-lock.json`, `package.json`
+- main.js size: `734055` bytes
+- main.js SHA-256: `64d6a9282aaccceab911a4230502d4b7efda2280d58cf9b445fd062e8b5c3d2b`
+- main.js asset ID: `RA_kwDOUBoUmc4g30TH`
+- main.js GitHub digest: `sha256:64d6a9282aaccceab911a4230502d4b7efda2280d58cf9b445fd062e8b5c3d2b`
+- manifest.json size: `276` bytes
+- manifest.json SHA-256: `5e104174d59e10688604fdc5496dbc381c5d5537ef122d892f90d243aec0e875`
+- manifest.json asset ID: `RA_kwDOUBoUmc4g30TJ`
+- manifest.json GitHub digest: `sha256:5e104174d59e10688604fdc5496dbc381c5d5537ef122d892f90d243aec0e875`
+- Downloaded release assets independently rehashed and matched build artifacts: `PASS`
+- Tag target re-read from GitHub and matched preparation SHA: `PASS`
+- No production source/test changes in release preparation: `PASS`
+- No installation or live synchronization performed: `PASS`
+- A03 physical validation not resumed: `PASS`
+- B–O not started; Stage 3 not authorized: `PASS`
