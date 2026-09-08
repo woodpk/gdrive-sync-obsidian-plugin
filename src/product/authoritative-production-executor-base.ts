@@ -34,6 +34,7 @@ import {
   type SynchronizationAuthorityMetadataV1_1,
   type SynchronizationAuthorityStoreV1_1,
   type SynchronizationStateStore,
+  type TrustedSynchronizationState,
   type VaultPath,
   type VersionReference,
   type VerifiedExecutionReceipt,
@@ -63,6 +64,8 @@ type PreparedEffect = {
   readonly localTransaction?: LocalMutationTransaction;
 };
 type Convergence = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+
+type TrustedLoad = { readonly status: "trusted"; readonly state: TrustedSynchronizationState };
 
 const cid = <T extends string>(value: string) => contractId<T>(value);
 const internal = (legacy: ProductSynchronizationExecutor) => legacy as unknown as LegacyReads;
@@ -148,10 +151,38 @@ function reviewedFirstSyncResolutionCandidate(operation: ExecutablePlannedOperat
     && operation.reasons.some(reason => REVIEWED_FIRST_SYNC_RESOLUTION_REASONS.has(reason.code));
 }
 
+function reviewedFirstSyncRecoveryIntentMatches(
+  operation: ExecutablePlannedOperation,
+  authority: SynchronizationAuthorityMetadataV1_1,
+): boolean {
+  const intent = authority.operationIntents.find(value => value.operationId === operation.operationId);
+  if (!intent || intent.semanticAuthority.generation !== authority.semanticGeneration) return false;
+  if (!intent.effects.some(effect => effect.stage !== "intent-persisted")) return false;
+  const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+  const expectedHash = operation.contentVersion?.content?.hash;
+  if (!expectedRemoteObjectId || !expectedHash || intent.effects.length !== 1) return false;
+  const descriptor = intent.effects[0]!.descriptor;
+  if (operation.kind === "upload-update") {
+    return descriptor.kind === "remote-file"
+      && descriptor.mutationKind === "update"
+      && descriptor.targetPath === operation.path
+      && descriptor.remoteMutation.kind === "existing-file-content-update"
+      && descriptor.remoteMutation.remoteObjectId === expectedRemoteObjectId
+      && descriptor.remoteMutation.identityAuthority.generation === authority.semanticGeneration
+      && descriptor.remoteMutation.identityAuthority.path === operation.path
+      && descriptor.remoteMutation.identityAuthority.remoteObjectId === expectedRemoteObjectId
+      && descriptor.intendedContent.hash === expectedHash;
+  }
+  return descriptor.kind === "local-file"
+    && descriptor.mutationKind === "replace"
+    && descriptor.targetPath === operation.path
+    && descriptor.intendedContent.hash === expectedHash;
+}
+
 async function reviewedFirstSyncResolutionEvidenceCurrent(
   operation: ExecutablePlannedOperation,
   authority: SynchronizationAuthorityMetadataV1_1,
-  identityState: Awaited<ReturnType<SynchronizationStateStore["load"]>> & { status: "trusted" },
+  identityState: TrustedLoad,
   legacy: ProductSynchronizationExecutor,
   managedRemote: ManagedRemoteIdentity,
 ): Promise<boolean> {
@@ -163,11 +194,11 @@ async function reviewedFirstSyncResolutionEvidenceCurrent(
   const currentPath = authority.pathConvergence.find(value => value.path === operation.path)?.state;
   if (currentPath?.status === "converged" && currentPath.generation === authority.semanticGeneration) return false;
 
-  const localPresent = operation.preconditions.find(value => value.kind === "path-observation" && value.side === "local" && value.path === operation.path && value.expected === "present");
-  const remotePresent = operation.preconditions.find(value => value.kind === "path-observation" && value.side === "remote" && value.path === operation.path && value.expected === "present");
-  const localContent = operation.preconditions.find(value => value.kind === "content-evidence" && value.side === "local" && value.path === operation.path)?.expected;
-  const remoteContent = operation.preconditions.find(value => value.kind === "content-evidence" && value.side === "remote" && value.path === operation.path)?.expected;
-  const remoteObject = operation.preconditions.find(value => value.kind === "remote-object" && value.path === operation.path && value.remoteObjectId === expectedRemoteObjectId);
+  const localPresent = operation.preconditions.find((value): value is Extract<ExecutableOperationPrecondition, { kind: "path-observation" }> => value.kind === "path-observation" && value.side === "local" && value.path === operation.path && value.expected === "present");
+  const remotePresent = operation.preconditions.find((value): value is Extract<ExecutableOperationPrecondition, { kind: "path-observation" }> => value.kind === "path-observation" && value.side === "remote" && value.path === operation.path && value.expected === "present");
+  const localContent = operation.preconditions.find((value): value is Extract<ExecutableOperationPrecondition, { kind: "content-evidence" }> => value.kind === "content-evidence" && value.side === "local" && value.path === operation.path)?.expected;
+  const remoteContent = operation.preconditions.find((value): value is Extract<ExecutableOperationPrecondition, { kind: "content-evidence" }> => value.kind === "content-evidence" && value.side === "remote" && value.path === operation.path)?.expected;
+  const remoteObject = operation.preconditions.find((value): value is Extract<ExecutableOperationPrecondition, { kind: "remote-object" }> => value.kind === "remote-object" && value.remoteObjectId === expectedRemoteObjectId);
   if (!localPresent || !remotePresent || !localContent?.hash || localContent.sizeBytes === undefined || !remoteContent?.hash || remoteContent.sizeBytes === undefined || !remoteObject) return false;
   if (operation.kind === "upload-update") {
     const proof = identityAuthority(operation);
@@ -180,8 +211,8 @@ async function reviewedFirstSyncResolutionEvidenceCurrent(
   const matches = listing.value.entries.filter(entry => !entry.trashed && entry.path === operation.path);
   if (matches.length !== 1) return false;
   const currentRemote = matches[0]!;
-  if (currentRemote.remoteObjectId !== expectedRemoteObjectId || currentRemote.entityKind !== "file") return false;
-  if (currentRemote.content?.hash !== remoteContent.hash || currentRemote.content.sizeBytes !== remoteContent.sizeBytes) return false;
+  if (currentRemote.remoteObjectId !== expectedRemoteObjectId || currentRemote.entityKind !== "file" || !currentRemote.content) return false;
+  if (currentRemote.content.hash !== remoteContent.hash || currentRemote.content.sizeBytes !== remoteContent.sizeBytes) return false;
   if (remoteObject.expectedRevision !== undefined && currentRemote.content.revision !== remoteObject.expectedRevision) return false;
   return true;
 }
@@ -643,9 +674,10 @@ export function createAuthoritativeProductExecutor(
     if (authorityLoad.status !== "trusted") return { status: "recovery-required", reason: "current authoritative synchronization metadata unavailable" };
     if (identityLoad.status !== "trusted") return { status: "recovery-required", reason: "current trusted remote identity mappings unavailable" };
     const bootstrapCandidate = reviewedFirstSyncResolutionCandidate(operation);
-    const bootstrapCurrent = bootstrapCandidate
+    const bootstrapRecovery = bootstrapCandidate && reviewedFirstSyncRecoveryIntentMatches(operation, authorityLoad.state);
+    const bootstrapCurrent = bootstrapRecovery || (bootstrapCandidate
       ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, legacy, managedRemote)
-      : false;
+      : false);
     if (bootstrapCandidate && !bootstrapCurrent) return { status: "stale", failed: operation.preconditions };
 
     const failed: ExecutableOperationPrecondition[] = [];
@@ -669,6 +701,7 @@ export function createAuthoritativeProductExecutor(
       }
     }
     if (failed.length) return { status: "stale", failed };
+    if (bootstrapRecovery) return { status: "valid" };
     const ordinary = await legacy.validatePreconditions(operation);
     if (ordinary.status === "valid") return { status: "valid" };
     if (ordinary.status === "stale") {
