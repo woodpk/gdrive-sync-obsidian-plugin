@@ -879,7 +879,7 @@ export class ProductControllerBase implements ProductControlPort {
       if (error.code === "authentication-required") this.setStatus({ kind: "authentication-required", reason: error.message });
       else if (error.code === "transient-failure" || error.code === "rate-limited") this.setStatus({ kind: "offline-deferred", reason: error.message });
       else if (["missing-root", "identity-mismatch", "incompatible-protocol", "ambiguous", "recovery-required", "not-found"].includes(error.code)) this.setStatus({ kind: "recovery-required", reason: error.message });
-      else this.setStatus({ kind: "error", code: error.code, message: error instanceof Error ? error.message : String(error) });
+      else this.setStatus({ kind: "error", code: error.code, message: error.message });
       return;
     }
     this.setStatus({ kind: "error", code: "planning-failed", message: error instanceof Error ? error.message : String(error) });
