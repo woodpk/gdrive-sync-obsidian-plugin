@@ -58,6 +58,51 @@ function uniqueTrustedIdentityMapping(
     : undefined;
 }
 
+const REVIEWED_FIRST_SYNC_RESOLUTION_REASONS = new Set([
+  "user-keep-local",
+  "user-keep-remote",
+  "user-manual-resolution",
+]);
+
+function reviewedFirstSyncResolutionShape(operation: PlannedOperation): boolean {
+  if (operation.kind !== "upload-update" && operation.kind !== "download-update") return false;
+  if (!operation.reasons.some(reason => REVIEWED_FIRST_SYNC_RESOLUTION_REASONS.has(reason.code))) return false;
+  if (!operation.reasons.some(reason => reason.code === "reviewed-first-sync-resolution")) return false;
+  if (!operation.preconditions.some(precondition => precondition.kind === "base-trusted")) return false;
+  if (!operation.preconditions.some(precondition => precondition.kind === "identity-unambiguous" && precondition.path === operation.path)) return false;
+
+  const localPresent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "path-observation" }> => precondition.kind === "path-observation" && precondition.side === "local" && precondition.path === operation.path && precondition.expected === "present");
+  const remotePresent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "path-observation" }> => precondition.kind === "path-observation" && precondition.side === "remote" && precondition.path === operation.path && precondition.expected === "present");
+  const localContent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "content-evidence" }> => precondition.kind === "content-evidence" && precondition.side === "local" && precondition.path === operation.path);
+  const remoteContent = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "content-evidence" }> => precondition.kind === "content-evidence" && precondition.side === "remote" && precondition.path === operation.path);
+  const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+  const remoteObject = operation.preconditions.find((precondition): precondition is Extract<OperationPrecondition, { kind: "remote-object" }> => precondition.kind === "remote-object" && precondition.remoteObjectId === expectedRemoteObjectId);
+  if (!localPresent || !remotePresent || !localContent?.expected.hash || localContent.expected.sizeBytes === undefined || !remoteContent?.expected.hash || remoteContent.expected.sizeBytes === undefined || !remoteObject || !expectedRemoteObjectId) return false;
+  if (operation.kind === "upload-update") {
+    if (!localPresent.observationToken || !operation.preconditions.some(precondition => precondition.kind === "file-stable" && precondition.path === operation.path)) return false;
+    if (!operation.remoteObjectId || remoteObject.remoteObjectId !== operation.remoteObjectId || !remoteObject.expectedRevision) return false;
+    if (!operation.contentVersion || operation.contentVersion.path !== operation.path || operation.contentVersion.entityKind !== "file" || operation.contentVersion.content?.hash !== localContent.expected.hash) return false;
+  } else {
+    if (remoteObject.remoteObjectId !== expectedRemoteObjectId) return false;
+    if (!operation.contentVersion || operation.contentVersion.path !== operation.path || operation.contentVersion.entityKind !== "file" || operation.contentVersion.content?.hash !== remoteContent.expected.hash) return false;
+  }
+  return true;
+}
+
+function reviewedFirstSyncResolutionMayBootstrapAuthority(
+  operation: PlannedOperation,
+  authority: SynchronizationAuthorityMetadataV1_1,
+  canonical: TrustedSynchronizationState,
+): boolean {
+  if (!reviewedFirstSyncResolutionShape(operation)) return false;
+  const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
+  if (!expectedRemoteObjectId) return false;
+  if (canonical.base.some(entry => entry.path === operation.path)) return false;
+  if (canonical.remoteMappings.some(mapping => mapping.path === operation.path || mapping.remoteObjectId === expectedRemoteObjectId)) return false;
+  const pathAuthority = authority.pathConvergence.find(entry => entry.path === operation.path)?.state;
+  return !pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration;
+}
+
 function physicalOperation(operation: PlannedOperation): boolean {
   return [
     "upload-create",
@@ -82,12 +127,6 @@ function exactContentMatches(
   return true;
 }
 
-/**
- * Prove that this exact durable physical receipt has already crossed the
- * canonical synchronization-state boundary. The completed journal binds the
- * operation to the durable aggregate verification reference; the state-shape
- * checks prevent a journal marker alone from authorizing replay suppression.
- */
 function exactCanonicalCommitAlreadyApplied(
   state: TrustedSynchronizationState,
   operation: ExecutablePlannedOperation,
@@ -151,16 +190,17 @@ function exactCanonicalCommitAlreadyApplied(
   return false;
 }
 
-/** Replace compatibility-only planner markers with independently established exact frozen authority. */
 export function resolveAuthorityCompleteOperation(
   operation: PlannedOperation,
   authority: SynchronizationAuthorityMetadataV1_1,
   trustedRemoteMappings: readonly RemoteObjectMapping[] = [],
+  reviewedFirstSyncResolutionBootstrap = false,
 ): AuthorityResolutionResult {
   const preconditions: ExecutableOperationPrecondition[] = [];
   const requiresIdentity = operationRequiresIdentityAuthority(operation);
   for (const precondition of operation.preconditions) {
     if (precondition.kind === "base-trusted") {
+      if (reviewedFirstSyncResolutionBootstrap) continue;
       const authorityPath = baseAuthorityPath(operation);
       const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
       if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
@@ -182,19 +222,30 @@ export function resolveAuthorityCompleteOperation(
   if (requiresIdentity) {
     const expectedRemoteObjectId = operation.remoteObjectId ?? operation.contentVersion?.remoteObjectId;
     const authorityPath = identityAuthorityPath(operation);
-    const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
-    if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
-      return { status: "incomplete-authority", reason: `current-generation path authority unavailable for ${String(authorityPath)}` };
+    if (reviewedFirstSyncResolutionBootstrap) {
+      if (!expectedRemoteObjectId) return { status: "incomplete-authority", reason: `reviewed first-sync resolution lacks exact REMOTE identity for ${String(authorityPath)}` };
+      const proof: IdentityAuthorityProof = {
+        generation: authority.semanticGeneration,
+        status: "unique",
+        path: authorityPath,
+        remoteObjectId: expectedRemoteObjectId,
+      };
+      preconditions.push({ kind: "identity-authority", proof });
+    } else {
+      const pathAuthority = authority.pathConvergence.find(entry => entry.path === authorityPath)?.state;
+      if (!pathAuthority || pathAuthority.status !== "converged" || pathAuthority.generation !== authority.semanticGeneration) {
+        return { status: "incomplete-authority", reason: `current-generation path authority unavailable for ${String(authorityPath)}` };
+      }
+      const mapping = uniqueTrustedIdentityMapping(authorityPath, expectedRemoteObjectId, trustedRemoteMappings);
+      if (!mapping) return { status: "incomplete-authority", reason: `unique trusted remote identity mapping unavailable for ${String(authorityPath)}` };
+      const proof: IdentityAuthorityProof = {
+        generation: authority.semanticGeneration,
+        status: "unique",
+        path: mapping.path,
+        remoteObjectId: mapping.remoteObjectId,
+      };
+      preconditions.push({ kind: "identity-authority", proof });
     }
-    const mapping = uniqueTrustedIdentityMapping(authorityPath, expectedRemoteObjectId, trustedRemoteMappings);
-    if (!mapping) return { status: "incomplete-authority", reason: `unique trusted remote identity mapping unavailable for ${String(authorityPath)}` };
-    const proof: IdentityAuthorityProof = {
-      generation: authority.semanticGeneration,
-      status: "unique",
-      path: mapping.path,
-      remoteObjectId: mapping.remoteObjectId,
-    };
-    preconditions.push({ kind: "identity-authority", proof });
   }
 
   return { status: "ready", operation: { ...operation, authorityComplete: true, preconditions } };
@@ -204,12 +255,6 @@ type AuthorityPersistenceFailureDiagnostics = {
   readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => "pending-journal-failed" | "uncertain-state-journal-failed" | undefined;
 };
 
-/**
- * Authority-complete production boundary. The executor owns durable physical
- * intent/dispatch/verification; this coordinator alone owns the transition from
- * verified physical effects into canonical BASE/state, and only after that
- * canonical CAS succeeds may durable effects advance to state-committed.
- */
 export class AuthorityCompleteExecutionCoordinator {
   private readonly observer?: ExecutionLifecycleObserver;
 
@@ -240,8 +285,9 @@ export class AuthorityCompleteExecutionCoordinator {
     const mappings = operationRequiresIdentityAuthority(operation)
       ? canonicalAtStart.state.remoteMappings
       : [];
+    const reviewedFirstSyncResolutionBootstrap = reviewedFirstSyncResolutionMayBootstrapAuthority(operation, loaded.state, canonicalAtStart.state);
 
-    const resolved = resolveAuthorityCompleteOperation(operation, loaded.state, mappings);
+    const resolved = resolveAuthorityCompleteOperation(operation, loaded.state, mappings, reviewedFirstSyncResolutionBootstrap);
     if (resolved.status !== "ready") return this.complete(operation, { status: "recovery-required", reason: resolved.reason });
     const executable = resolved.operation;
 

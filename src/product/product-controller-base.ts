@@ -111,7 +111,12 @@ function localExact(version: VersionReference): OperationPrecondition[] {
   return preconditions;
 }
 function remoteExact(version: VersionReference): OperationPrecondition[] {
-  const preconditions: OperationPrecondition[] = [];
+  const preconditions: OperationPrecondition[] = [{
+    kind: "path-observation",
+    side: "remote",
+    path: version.path,
+    expected: "present",
+  }];
   if (version.remoteObjectId) preconditions.push({
     kind: "remote-object",
     remoteObjectId: version.remoteObjectId,
@@ -270,6 +275,7 @@ export class ProductControllerBase implements ProductControlPort {
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
   private readonly runs: CoreRunCoordinator;
   private readonly conflictRegistry = new Map<string, ConflictAssessment>();
+  private readonly reviewedFirstSyncConflictOrigins = new Map<string, boolean>();
   private planned?: PlannedRun;
   private runEvidence?: ExecutorRunEvidence;
   private pendingAutomaticTrigger?: AutomaticTrigger;
@@ -480,17 +486,24 @@ export class ProductControllerBase implements ProductControlPort {
 
   private async refreshConflicts(plan: SynchronizationPlan, assembly: AssembledPlanningInput): Promise<void> {
     const fresh = new Map<string, ConflictAssessment>();
+    const freshFirstSyncOrigins = new Map<string, boolean>();
+    const reviewedFirstSyncOrigin = !assembly.reconstruction && assembly.input.state.status === "uninitialized";
     for (const operation of plan.operations) {
       if (operation.kind !== "unresolved-conflict" && operation.kind !== "clean-text-merge") continue;
       const snapshot = assembly.input.snapshots.find(candidate => candidate.path === operation.path);
       if (!snapshot) continue;
       const assessment = await this.options.conflictResolver.assess(snapshot.path, baseVersion(snapshot), observedVersion(snapshot, "local"), observedVersion(snapshot, "remote"));
       const key = assessmentKey(assessment);
-      if (key) fresh.set(String(key), assessment);
+      if (key) {
+        fresh.set(String(key), assessment);
+        freshFirstSyncOrigins.set(String(key), reviewedFirstSyncOrigin);
+      }
       if (assessment.kind !== "none" && assessment.kind !== "clean-merge") await this.audit("conflict-created", { path: assessment.path, reasonCode: assessment.kind });
     }
     this.conflictRegistry.clear();
+    this.reviewedFirstSyncConflictOrigins.clear();
     for (const [key, value] of fresh) this.conflictRegistry.set(key, value);
+    for (const [key, value] of freshFirstSyncOrigins) this.reviewedFirstSyncConflictOrigins.set(key, value);
   }
 
   private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number, automaticPlanned?: PlannedRun): Promise<RunOutcome> {
@@ -699,7 +712,8 @@ export class ProductControllerBase implements ProductControlPort {
       await this.createPlan("manual", true, true);
       return { status: "rejected", reason: "conflict evidence changed; a fresh plan is required before resolution" };
     }
-    const operations = await this.resolutionOperations(id, assessment, resolution);
+    const reviewedFirstSyncResolution = this.reviewedFirstSyncConflictOrigins.get(String(id)) === true;
+    const operations = await this.resolutionOperations(id, assessment, resolution, reviewedFirstSyncResolution);
     if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
     const executionDisposition = "requires-user-approval" as const;
     const recoveryCheckpointRequired = false;
@@ -711,6 +725,7 @@ export class ProductControllerBase implements ProductControlPort {
     this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false, attentionPersistenceFailed: false };
     if (await this.executePlanned(true) !== "complete") return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
     this.conflictRegistry.delete(String(id));
+    this.reviewedFirstSyncConflictOrigins.delete(String(id));
     this.surface = { ...this.surface, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
     await this.audit("conflict-resolved", { path: assessment.path, reasonCode: resolution.kind });
     if (this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "conflict resolution was preserved; run a fresh reviewed Verify/Reconcile before recovery can complete" });
@@ -742,7 +757,12 @@ export class ProductControllerBase implements ProductControlPort {
     throw new Error("unable to allocate a collision-free conflict-copy path");
   }
 
-  private async resolutionOperations(_id: ConflictId, assessment: Exclude<ConflictAssessment, { kind: "none" }>, resolution: ConflictResolution): Promise<readonly PlannedOperation[]> {
+  private async resolutionOperations(
+    _id: ConflictId,
+    assessment: Exclude<ConflictAssessment, { kind: "none" }>,
+    resolution: ConflictResolution,
+    reviewedFirstSyncResolution: boolean,
+  ): Promise<readonly PlannedOperation[]> {
     const path = assessment.path;
     if (assessment.kind === "clean-merge") {
       if (resolution.kind !== "accept-clean-merge") return [];
@@ -786,16 +806,19 @@ export class ProductControllerBase implements ProductControlPort {
     const remote = assessment.preserved.remote.version;
     const remoteId = remote.remoteObjectId;
     if (!remoteId) return [];
+    const reviewedFirstSyncReason = reviewedFirstSyncResolution
+      ? [{ code: "reviewed-first-sync-resolution", summary: "Resolution originated from a reviewed non-reconstruction uninitialized first-sync plan." }]
+      : [];
     const keepLocal = this.operation(1, {
       kind: "upload-update", path, targetSide: "remote", remoteObjectId: remoteId, contentVersion: local, destructive: false,
       preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(local), ...remoteExact(remote), { kind: "file-stable", path: local.path }],
-      reasons: [{ code: "user-keep-local", summary: "User selected the exact preserved local version." }],
+      reasons: [{ code: "user-keep-local", summary: "User selected the exact preserved local version." }, ...reviewedFirstSyncReason],
     });
     if (resolution.kind === "keep-local") return [keepLocal];
     if (resolution.kind === "keep-remote") return [this.operation(0, {
       kind: "download-update", path, targetSide: "local", remoteObjectId: remoteId, contentVersion: remote, destructive: false,
       preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(local), ...remoteExact(remote)],
-      reasons: [{ code: "user-keep-remote", summary: "User selected the exact preserved remote version." }],
+      reasons: [{ code: "user-keep-remote", summary: "User selected the exact preserved remote version." }, ...reviewedFirstSyncReason],
     })];
     if (resolution.kind === "keep-both") {
       const copy = await this.freeConflictPath(path, assessment.preserved.remote);
@@ -810,7 +833,7 @@ export class ProductControllerBase implements ProductControlPort {
       return [this.operation(0, {
         kind: "upload-update", path, targetSide: "remote", remoteObjectId: remoteId, contentVersion: resolution.resolvedVersion, destructive: false,
         preconditions: [{ kind: "base-trusted" }, { kind: "identity-unambiguous", path }, ...localExact(resolution.resolvedVersion), ...remoteExact(remote), { kind: "file-stable", path: resolution.resolvedVersion.path }],
-        reasons: [{ code: "user-manual-resolution", summary: "Use the exact current local file as manual resolution." }],
+        reasons: [{ code: "user-manual-resolution", summary: "Use the exact current local file as manual resolution." }, ...reviewedFirstSyncReason],
       })];
     }
     return [];
