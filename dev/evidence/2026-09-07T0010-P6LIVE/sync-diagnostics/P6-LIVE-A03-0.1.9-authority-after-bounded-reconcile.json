@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "authoritySchemaVersion": 2,
+  "stateRevision": "state:42",
+  "persistenceRevision": "state:42",
+  "semanticGeneration": "semantic:12",
+  "baseCount": 12,
+  "remoteMappingCount": 12,
+  "tombstoneCount": 0,
+  "operationRecordCount": 25,
+  "knownDeviceCount": 1,
+  "learnedRemoteBatchCount": 0,
+  "pendingAuthorityOperationCount": 0,
+  "localTransactionCount": 0,
+  "portableAppBasePresent": false,
+  "portableAppMappingPresent": false,
+  "secretValuesRecorded": false
+}
