@@ -22,7 +22,7 @@ Do not begin Stage 3.
 
 ## 1. CONFIRMED R1 FAILURE
 
-The prior R1 successfully fixed the `$PSScriptRoot` parameter-binding problem, but the verifier still exits before creating the disposable directory or launching the watcher.
+R1 fixed the `$PSScriptRoot` parameter-binding defect, but the verifier still exited before creating the disposable directory or launching the watcher.
 
 Confirmed failure:
 
@@ -32,66 +32,77 @@ $PSVersionTable.PSVersion.ToString() + | + $PSVersionTable.PSEdition
 You must provide a value expression following the '+' operator.
 ```
 
-The verifier's nested `powershell.exe -Command` runtime query loses the quoted `"|"` argument during command-line parsing.
+The nested `powershell.exe -Command` runtime query is unnecessary and its quoting is invalid under the actual Windows PowerShell 5.1 command-line path.
 
-## 2. REQUIRED CORRECTION
+## 2. ROOT-CAUSE AUDIT — DO NOT PATCH ONLY THE LAST ERROR
 
-Keep the correction bounded to:
+Before editing, inspect the ENTIRE verifier as Windows PowerShell 5.1 code. Treat the following as known/high-probability defects that must be corrected or explicitly disproven before execution:
+
+1. **Nested runtime query** — remove it. The verifier is itself required to run under Windows PowerShell 5.1 Desktop, so assert the current host directly from `$PSVersionTable`.
+
+2. **Backslash is not PowerShell's string escape character.** Audit every string that uses `\"`, `\\`, or similar C/JSON-style escaping. In PowerShell single-quoted strings, backslashes are literal characters. In particular, the current verifier's manually quoted `Start-Process` arguments use forms like `'\"{0}\"'`, which can produce literal backslash-quote sequences rather than valid native-process quoting.
+
+3. **`Start-Process -ArgumentList` quoting** — make subprocess launch robust for repository/temp paths containing spaces and Unicode. Do not rely on an array of incorrectly pre-escaped strings. Use a Windows PowerShell 5.1-safe construction and prove the watcher receives each intended argument exactly. If useful, use `System.Diagnostics.ProcessStartInfo` or one correctly quoted argument string rather than layered quoting.
+
+4. **Path literals with doubled backslashes** — audit expected relative-path strings such as `Nested Space\\子` and `Nested Space\\子\\nested.txt`. In PowerShell these contain two literal separators; the watcher will normally report one separator. Construct paths with `Join-Path` or single `\` separators and compare normalized relative paths.
+
+5. **Synchronous/native exit-code handling** — ensure `$LASTEXITCODE`, process `ExitCode`, `HasExited`, and `Refresh()` are read only in contexts where they are valid and cannot retain stale values from a prior command.
+
+6. **FileSystemWatcher timing/races** — fixed sleeps alone must not make the verifier flaky. Prefer bounded polling/deadlines for required events/log records. Duplicate events are acceptable; missing required semantic events are not.
+
+7. **Unicode/spaces** — verify both script path and disposable paths containing spaces/Unicode survive all process-boundary argument parsing intact.
+
+8. **JSON/CSV parsing on Windows PowerShell 5.1** — validate the actual emitted JSONL and CSV using 5.1-compatible cmdlets/types; do not assume PowerShell 7 behavior.
+
+9. **Stop/cleanup** — ensure stop-flag shutdown, event-subscriber cleanup, watcher disposal, child-process termination checks, and disposable-directory deletion all execute even after a failed assertion.
+
+10. **Privacy/containment** — retain the existing requirements: no absolute validation-root leakage, no plugin-state contents in logs, sibling-prefix (`Vault` vs `Vault-Other`) and normalized `..` escapes rejected, rename old/new paths handled through the same containment helper.
+
+You are authorized to correct ALL verifier-only PowerShell 5.1 plumbing, quoting, timing, assertion, and cleanup defects discovered in this audit in this same task.
+
+Do not stop after the first verifier-only failure. Iterate locally until the verifier reaches every substantive watcher assertion.
+
+## 3. FILE SCOPE
+
+Primary authorized file:
 
 `dev/evidence/2026-09-07T0010-P6LIVE/verify-watchers-windows-powershell.ps1`
 
-Do not change `watchers.ps1` unless execution reaches the actual watcher and proves a separate watcher defect; if that occurs, STOP and report it rather than silently broadening scope.
+Do not change `watchers.ps1` merely to make the verifier pass.
 
-Remove the fragile nested `powershell.exe -Command` runtime-version query.
-
-Because the verifier itself is required to be launched under the actual Windows PowerShell 5.1 Desktop runtime, validate the current host directly with `$PSVersionTable`, for example by deriving the version and edition from the verifier process itself and asserting:
-
-- version starts with `5.1.`;
-- edition is `Desktop`.
-
-Continue to use `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` when the verifier intentionally launches the watcher subprocess.
-
-## 3. AVOID ANOTHER ONE-ERROR LOOP
-
-Before rerunning, inspect the complete verifier for Windows PowerShell 5.1 command-line/quoting compatibility, especially:
-
-- `Start-Process -ArgumentList` construction;
-- paths containing spaces and Unicode;
-- nested process invocation;
-- JSON parsing;
-- stop-flag shutdown;
-- cleanup and exit-code handling.
-
-You are authorized to correct additional **verifier-only plumbing/quoting defects** discovered during this R2 execution so the verifier can reach and execute all substantive watcher assertions in one task.
-
-Do not stop after each verifier-harness defect if it is plainly verifier-only and can be corrected without touching product code or watcher behavior. Iterate locally on the verifier until either:
-
-1. all substantive watcher assertions execute and PASS; or
-2. execution reaches the actual watcher and reveals a genuine watcher defect or another condition that would require changing `watchers.ps1` or broader scope.
-
-If case 2 occurs, stop and report the exact failure without changing `watchers.ps1`.
+If, after the verifier itself is demonstrably sound, execution reaches the actual watcher and proves a genuine watcher defect, STOP and report that exact defect. Do not silently broaden scope into watcher changes.
 
 ## 4. REQUIRED WINDOWS VERIFICATION
 
-Run the final verifier from exact R2 repair HEAD under the actual Windows PowerShell 5.1 Desktop runtime.
+Run the final verifier under the machine's actual Windows PowerShell 5.1 Desktop runtime.
 
-The verifier must reach and exercise all of its substantive scenarios, including at minimum:
+The verifier must reach and exercise all substantive scenarios:
 
+- current-host runtime assertion: Windows PowerShell 5.1 / Desktop;
+- watcher subprocess launch with paths containing spaces/Unicode;
 - create event;
 - change event;
-- rename event with old/new relative paths;
+- rename event with correct old/new relative paths;
 - delete event;
 - nested Unicode/spaced path;
-- sibling-prefix containment rejection (`Vault` vs `Vault-Other`);
+- sibling-prefix containment rejection;
+- normalized escape/outside-root rejection;
 - plugin-state size/SHA-256 telemetry without content leakage;
 - resource CSV sampling;
 - stop-flag shutdown;
-- watcher process clean exit;
-- disposable cleanup;
+- watcher clean exit;
+- event subscriber/watcher cleanup;
+- disposable directory cleanup;
 - no absolute validation-root leakage;
-- no `GetRelativePath` runtime exception.
+- no unsupported `Path.GetRelativePath` runtime exception.
 
-PASS requires verifier exit code `0` and JSON result `PASS`.
+PASS requires:
+
+- verifier exit code `0`;
+- JSON result `PASS`;
+- every substantive assertion actually reached;
+- no hidden/ignored stderr exception;
+- no surviving watcher process or disposable verification directory.
 
 ## 5. COMPLETION REPORT
 
@@ -105,7 +116,7 @@ Return:
 - Windows PowerShell version and edition;
 - verifier exit code;
 - verifier JSON result;
-- substantive assertion summary/counts;
+- substantive assertion/event counts;
 - watcher process exit/cleanup result;
 - confirmation working tree is clean;
 - confirmation no real BRAIN sync, Google Drive mutation, reset, reinstall, reauthentication, B01, later B–O, or Stage 3 work occurred.
@@ -114,6 +125,6 @@ If all assertions pass, end exactly:
 
 `PHASE 6 WINDOWS WATCHER COMPATIBILITY REPAIR R2 VERIFIED PASS — READY FOR SUPERVISOR REVIEW — B01 NOT STARTED`
 
-If execution reaches a genuine watcher defect or otherwise cannot complete without broader scope, end exactly:
+If a genuine watcher defect is reached, end exactly:
 
-`PHASE 6 WINDOWS WATCHER COMPATIBILITY REPAIR R2 BLOCKED — SUPERVISOR DECISION REQUIRED — B01 NOT STARTED`
+`PHASE 6 WINDOWS WATCHER COMPATIBILITY REPAIR R2 BLOCKED — GENUINE WATCHER DEFECT — SUPERVISOR DECISION REQUIRED — B01 NOT STARTED`
