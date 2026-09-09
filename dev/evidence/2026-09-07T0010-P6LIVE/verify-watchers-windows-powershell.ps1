@@ -1,7 +1,11 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string]$WatcherPath = (Join-Path $PSScriptRoot 'watchers.ps1')
+    [string]$WatcherPath
 )
+
+if ([string]::IsNullOrEmpty($WatcherPath)) {
+    $WatcherPath = Join-Path -Path $PSScriptRoot -ChildPath 'watchers.ps1'
+}
 
 $ErrorActionPreference = 'Stop'
 
