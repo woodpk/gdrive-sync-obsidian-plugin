@@ -3,9 +3,13 @@ import test from "node:test";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
 import {
   DiagnosticLogger,
+  diagnosticPathKey,
+  renderDiagnosticOccupantIds,
+  type DiagnosticComponent,
   type DiagnosticLogLevel,
   type DiagnosticPersistence,
   type DiagnosticStoreState,
+  type SafeDiagnosticFields,
 } from "../src/diagnostics/diagnostic-logger";
 import { instrumentAuthorizationBrowserLauncher } from "../src/diagnostics/oauth-diagnostics";
 
@@ -184,4 +188,175 @@ test("rich Error records preserve safe diagnosis fields at Error-only detail", a
   assert.equal(event.fields?.runtimeInitialized, true);
   assert.equal(event.fields?.retryable, true);
   assert.doesNotMatch(logger.renderText(), /SENTINEL_CODE/);
+});
+
+test("structured observability vocabulary records every required bounded causal field", async () => {
+  const { logger } = await loggerAt("trace");
+  const runId = logger.beginSyncRun("contract-test");
+  const fields: SafeDiagnosticFields = {
+    planId: "plan-1",
+    operationId: "operation-1",
+    intentId: "intent-1",
+    effectId: "effect-1",
+    requestId: "request-1",
+    pathKey: diagnosticPathKey("Folder/Example.md"),
+    remoteObjectId: "remote-1",
+    candidateRemoteObjectId: "remote-2",
+    predecessorRemoteObjectId: "remote-0",
+    contentHash: "sha256:0123456789abcdef",
+    sizeBytes: 42,
+    expectedRevision: "rev-1",
+    observedRevision: "rev-2",
+    endpointClass: "files.update",
+    httpStatus: 200,
+    attemptNumber: 2,
+    maxAttempts: 4,
+    latencyMs: 12.5,
+    retryDelayMs: 250,
+    replaySafe: true,
+    retryDecision: "retry",
+    driveSignal: "rate-limit",
+    providerRequestId: "provider-request-1",
+    observationSource: "post-update-verify",
+    occupancyCount: 3,
+    occupantRemoteObjectIds: renderDiagnosticOccupantIds(["remote-c", "remote-a", "remote-b"]),
+    trashed: false,
+    candidateVerified: true,
+    predecessorVerified: false,
+    convergenceStatus: "converged",
+    fromStage: "mutation-issued",
+    toStage: "verified",
+    persistenceRevision: "persist-7",
+    semanticGeneration: 9,
+    stateRevision: "state-11",
+    semanticChanged: true,
+    commitStatus: "committed",
+    batchId: "change-batch-3",
+    changeCount: 5,
+    verificationEvidenceRef: "verify-17",
+  };
+  logger.syncInfo("drive.http", "structured-contract", runId, fields);
+  const event = logger.snapshot().at(-1)!;
+  assert.deepEqual(Object.keys(event.fields ?? {}).sort(), Object.keys(fields).sort());
+  assert.equal(event.runId, runId);
+  assert.equal(logger.renderText(), logger.renderText());
+});
+
+test("new component taxonomy separates transport, semantic Drive, effect, state/CAS, recovery, and bundle surfaces", async () => {
+  const { logger } = await loggerAt("trace");
+  const components: readonly DiagnosticComponent[] = [
+    "drive.http",
+    "drive.semantic",
+    "sync.effect",
+    "state.authority",
+    "state.cas",
+    "recovery.durable",
+    "diagnostics.bundle",
+  ];
+  for (const component of components) logger.info(component, "component-contract", { result: "ok" });
+  assert.deepEqual(logger.snapshot().map(event => event.component), components);
+  assert.equal(logger.renderText(), logger.renderText());
+});
+
+test("diagnostic path key is normalized, deterministic, portable, and opaque", () => {
+  const canonical = diagnosticPathKey("./Folder/Café.md");
+  const equivalent = diagnosticPathKey("Folder\\Cafe\u0301.md");
+  assert.equal(canonical, equivalent);
+  assert.match(canonical, /^path-sha256:[0-9a-f]{64}$/);
+  assert.doesNotMatch(canonical, /Folder|Caf|md/i);
+});
+
+test("occupant remote object representation is deterministic, unique, sorted, and bounded", () => {
+  const first = renderDiagnosticOccupantIds(["remote-z", "remote-a", "remote-a", "remote-c", "remote-b"]);
+  const second = renderDiagnosticOccupantIds(["remote-c", "remote-b", "remote-z", "remote-a"]);
+  assert.equal(first, second);
+  assert.deepEqual(JSON.parse(first), ["remote-a", "remote-b", "remote-c", "remote-z"]);
+});
+
+test("current synchronization run correlation is discoverable and ending one exact run cannot clear another", async () => {
+  const { logger } = await loggerAt("trace");
+  assert.equal(logger.currentSyncRunId(), undefined);
+  const first = logger.beginSyncRun("first");
+  assert.equal(logger.currentSyncRunId(), first);
+  const second = logger.beginSyncRun("second");
+  assert.equal(logger.currentSyncRunId(), second);
+  logger.endSyncRun(first);
+  assert.equal(logger.currentSyncRunId(), second);
+  logger.endSyncRun(second);
+  assert.equal(logger.currentSyncRunId(), undefined);
+  logger.info("diagnostics", "outside-sync-run", { result: "ok" });
+  assert.equal(logger.snapshot().at(-1)?.runId, undefined);
+});
+
+test("prior valid persisted events remain loadable without current-run leakage", async () => {
+  const persistence = new MemoryDiagnostics();
+  persistence.state = {
+    records: [{
+      timestamp: "2023-11-14T22:13:20.000Z",
+      sequence: 7,
+      level: "info",
+      component: "drive",
+      event: "legacy-event",
+      platform: "desktop",
+      fields: { operation: "legacy-operation" },
+    }],
+    nextSequence: 8,
+    nextAttemptId: 3,
+  };
+  const logger = new DiagnosticLogger({
+    persistence,
+    level: "trace",
+    retentionLimit: 100,
+    consoleMirror: false,
+    platform: "desktop",
+  });
+  await logger.initialize();
+  assert.equal(logger.snapshot()[0]?.event, "legacy-event");
+  assert.equal(logger.snapshot()[0]?.fields?.operation, "legacy-operation");
+  assert.equal(logger.currentSyncRunId(), undefined);
+  assert.equal(logger.beginSyncRun("after-reload"), 1);
+});
+
+test("structured privacy boundary drops raw path/body/content fields and redacts authorization and query material", async () => {
+  const { logger } = await loggerAt("trace");
+  logger.info("diagnostics", "privacy-contract", {
+    pathKey: diagnosticPathKey("Private/Client-Notes.md"),
+    safeMessage: "Authorization: Bearer SENTINEL_AUTH password=SENTINEL_PASSWORD https://www.googleapis.com/drive/v3/files?fields=SENTINEL_QUERY",
+    rawPath: "SENTINEL_RAW_PATH",
+    requestBody: "SENTINEL_REQUEST_BODY",
+    responseBody: "SENTINEL_RESPONSE_BODY",
+    rawNoteContent: "SENTINEL_NOTE_CONTENT",
+    rawBinaryContent: "SENTINEL_BINARY_CONTENT",
+  } as never);
+  const exported = logger.renderText();
+  for (const sentinel of [
+    "SENTINEL_AUTH",
+    "SENTINEL_PASSWORD",
+    "SENTINEL_QUERY",
+    "SENTINEL_RAW_PATH",
+    "SENTINEL_REQUEST_BODY",
+    "SENTINEL_RESPONSE_BODY",
+    "SENTINEL_NOTE_CONTENT",
+    "SENTINEL_BINARY_CONTENT",
+  ]) assert.equal(exported.includes(sentinel), false, `${sentinel} must be absent`);
+  assert.match(exported, /path-sha256:[0-9a-f]{64}/);
+});
+
+test("diagnostic persistence failure remains non-authoritative and does not throw through flush", async () => {
+  const logger = new DiagnosticLogger({
+    persistence: {
+      async loadDiagnostics(): Promise<unknown> { return undefined; },
+      async saveDiagnostics(): Promise<void> { throw new Error("synthetic persistence failure"); },
+    },
+    level: "trace",
+    retentionLimit: 100,
+    consoleMirror: false,
+    platform: "mobile",
+  });
+  await logger.initialize();
+  const runId = logger.beginSyncRun("persistence-failure");
+  logger.syncInfo("sync.execute", "still-recorded", runId, { result: "ok" });
+  await assert.doesNotReject(logger.flush());
+  assert.ok(logger.snapshot().some(event => event.event === "still-recorded"));
+  assert.equal(logger.currentSyncRunId(), runId);
 });
