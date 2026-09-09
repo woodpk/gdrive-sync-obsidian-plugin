@@ -34,7 +34,7 @@ import type { ProductSynchronizationExecutor } from "./production-executor";
 import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
 
 export { reconstructDurableRecovery } from "./durable-intent-recovery-base";
-export type { DurableIntentRecoveryDependencies, DurableIntentRecoveryResult, ReconstructedDurableRecovery } from "./durable-intent-recovery-base";
+export type { DurableIntentRecoveryDependencies, DurableIntentRecoveryResult, RemoteUpdateFinalizationPort, ReconstructedDurableRecovery } from "./durable-intent-recovery-base";
 
 export type DurableIntentVerifiedRecoveryResult =
   | { readonly status: "verified"; readonly receipt: VerifiedExecutionReceipt }
@@ -210,8 +210,10 @@ async function observePhysicalReality(
     if (mutation.kind === "existing-file-content-update") {
       const update = verifyPreservedRemoteUpdateConvergence(descriptor, entries);
       return update.status === "converged"
-        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-update", { descriptor, predecessor: update.predecessor, candidate: update.candidate }) }
-        : { status: "outcome-unknown", reason: update.reason };
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-update", { descriptor, candidate: update.candidate }) }
+        : { status: "outcome-unknown", reason: update.status === "predecessor-retirement-required"
+          ? "REMOTE update predecessor remains live and requires bounded retirement"
+          : update.reason };
     }
     const actual = uniqueRemote(entries, descriptor.targetPath, "file");
     return actual?.remoteObjectId === mutation.reservedRemoteObjectId && actual.content?.hash === descriptor.intendedContent.hash && actual.content.sizeBytes === descriptor.intendedContent.sizeBytes
@@ -265,6 +267,16 @@ async function preverifyOutstandingRemoteUpdates(
       if ((effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown")
         || effect.descriptor.kind !== "remote-file"
         || effect.descriptor.remoteMutation.kind !== "existing-file-content-update") continue;
+      const entries = await remoteEntries();
+      if (!entries) return `durable REMOTE update ${effect.effectId} lacks complete REMOTE observation`;
+      const convergence = verifyPreservedRemoteUpdateConvergence(effect.descriptor, entries);
+      if (convergence.status === "predecessor-retirement-required") {
+        const finalizer = dependencies.remoteUpdateFinalizationPort?.finalizeExistingUpdate;
+        if (!finalizer) return `durable REMOTE update ${effect.effectId} requires predecessor retirement but the recovery finalizer is unavailable`;
+        const outcome = await finalizer.call(dependencies.remoteUpdateFinalizationPort, effect.descriptor.remoteMutation);
+        if (outcome.status !== "verified-effect") return `durable REMOTE update ${effect.effectId} predecessor retirement did not verify (${outcome.status}: ${outcome.reason})`;
+        remotePromise = undefined;
+      }
       const observed = await observePhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries, false);
       if (observed.status !== "verified-effect") continue;
       const recorded = await lifecycle.recordPhysicalResult(String(intent.operationId), effect.effectId, observed);
@@ -295,6 +307,18 @@ async function preflightVerifiedEffects(
     for (const effect of intent.effects) {
       if (effect.stage !== "effect-verified") continue;
       if (!effect.verificationEvidenceRef) return `effect-verified durable effect ${effect.effectId} lacks verification evidence`;
+      if (effect.descriptor.kind === "remote-file" && effect.descriptor.remoteMutation.kind === "existing-file-content-update") {
+        const entries = await remoteEntries();
+        if (!entries) return `effect-verified durable REMOTE update ${effect.effectId} lacks complete REMOTE observation`;
+        const convergence = verifyPreservedRemoteUpdateConvergence(effect.descriptor, entries);
+        if (convergence.status === "predecessor-retirement-required") {
+          const finalizer = dependencies.remoteUpdateFinalizationPort?.finalizeExistingUpdate;
+          if (!finalizer) return `effect-verified durable REMOTE update ${effect.effectId} requires predecessor retirement but the recovery finalizer is unavailable`;
+          const outcome = await finalizer.call(dependencies.remoteUpdateFinalizationPort, effect.descriptor.remoteMutation);
+          if (outcome.status !== "verified-effect") return `effect-verified durable REMOTE update ${effect.effectId} predecessor retirement did not verify (${outcome.status}: ${outcome.reason})`;
+          remotePromise = undefined;
+        }
+      }
       const failure = await verifyCurrentPhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries);
       if (failure) return `${effect.effectId}: effect-verified physical reality is not currently converged (${failure})`;
     }

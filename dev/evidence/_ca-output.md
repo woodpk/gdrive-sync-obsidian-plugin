@@ -2037,8 +2037,6 @@ The exact final evidence-bearing candidate SHA and final PR merge-ref verificati
 
 **PARALLEL IMPLEMENTATION NOT AUTHORIZED — independent supervisor re-review required.**
 
----
-
 ## 2026-08-31 — Foundation v1.2 verification-evidence rejection correction
 
 Agent `agt-CA-P6-SYNC-ORCHESTRATION-01` performed an evidence-only repair on branch `phase6-sync-foundation-v1.2-remote-folder-recovery-observation` from rejected candidate `344a4720bf4c356de757464ae19a7b7fe8e14ad2`. The reviewed contract implementation, predictive test source, and bounded planning correction required no modification.
@@ -2075,3 +2073,19 @@ The commit containing this append-only closure cannot self-contain its own conte
 - Source/test remained frozen throughout H-FINAL; no H-FINAL repair was performed.
 - PR #45 remained open, draft, and unmerged through the technical proof and evidence-closure preparation; final post-closure PR/head state is verified separately after this commit.
 - The H candidate was not merged. Stage 3, release work, post-iPhone optimization, and physical iPhone/Google Drive synchronization were not begun.
+
+---
+
+## 2026-09-09 — Phase 6 B01 duplicate remote identity root cause / repair candidate
+
+Agent `codex-desktop-p6-b01-duplicate-remote-identity-root-cause-repair-01` started branch `phase6-b01-duplicate-remote-identity-root-cause-repair` from exact supervisor input `715ae47bd805eca6ab0ddd164ad3967598015a3d`.
+
+Root cause is proven. A03 `Keep local` used the general immutable-candidate `upload-update` path: it created candidate `1dY96IomB5CC76N0UtyLclKvIzgZSMXKu` but the production adapter and operation-local convergence verifier treated predecessor `17BEbRR4zvjNN7ul3bjOfr37rTiY3gBN3` plus candidate as converged while both remained live under the same parent/name. BASE/mapping correctly advanced to the 376-byte candidate, but the next ordinary listing correctly returned both objects and the planner correctly blocked the unexplained duplicate. This is a general remote-update defect, not an `app.json` special case and not a snapshot/planner defect.
+
+The repair keeps immutable candidate materialization, then recoverably trashes only the exact persisted predecessor when and only when predecessor plus candidate are the complete live topology. It verifies trash and sole live candidate before effect success/BASE commit, provides idempotent restart finalization without content redispatch, and preserves fail-closed blocking for any extra or inconsistent object.
+
+Verification: typecheck PASS; focused affected production/Drive/recovery regressions 55/55 PASS; build and all five package verifiers PASS; `git diff --check` PASS. Full Windows `npm run check` was executed and reached 729/732 tests: the only failures are the two established drive-prefix expectations and untouched frozen-prefix raw-byte verification under `core.autocrlf=true`; separate build PASS. No repair-affected test failed.
+
+No Drive object was mutated. The installed `0.1.11` plugin was not patched/reinstalled, B01 was not rerun, and B02–O/iPhone/Stage 3 were not started. Live remediation remains behind supervisor review plus separately authorized prerelease/install. Detailed evidence: `dev/evidence/2026-09-07T0010-P6LIVE/B01-duplicate-remote-identity-root-cause-repair-20260909-142237/`.
+
+**PHASE 6 B01 DUPLICATE REMOTE IDENTITY ROOT CAUSE PROVEN — REPAIR CANDIDATE READY FOR SUPERVISOR REVIEW — B01 NOT RERUN**

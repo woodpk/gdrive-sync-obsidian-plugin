@@ -449,7 +449,9 @@ async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: 
   if (descriptor.kind === "remote-file") {
     if (descriptor.remoteMutation.kind === "existing-file-content-update") {
       const update = verifyPreservedRemoteUpdateConvergence(descriptor, active);
-      return update.status === "converged" ? { ok: true } : { ok: false, reason: update.reason };
+      return update.status === "converged" ? { ok: true } : { ok: false, reason: update.status === "predecessor-retirement-required"
+        ? "REMOTE update predecessor remains live after mutation dispatch"
+        : update.reason };
     }
     const expected = descriptor.remoteMutation.reservedRemoteObjectId;
     const matches = active.filter(value => value.path === descriptor.targetPath);

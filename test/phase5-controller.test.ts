@@ -73,10 +73,9 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
     listForReconciliation: async () => ({
       ok: true as const,
       value: {
-        entries: [
-          { path, entityKind: "file" as const, remoteObjectId: remoteId, content: remoteEvidence, trashed: false },
-          ...(candidateRemoteObjectId && candidateEvidence ? [{ path, entityKind: "file" as const, remoteObjectId: candidateRemoteObjectId, content: candidateEvidence, trashed: false }] : []),
-        ],
+        entries: candidateRemoteObjectId && candidateEvidence
+          ? [{ path, entityKind: "file" as const, remoteObjectId: candidateRemoteObjectId, content: candidateEvidence, trashed: false }]
+          : [{ path, entityKind: "file" as const, remoteObjectId: remoteId, content: remoteEvidence, trashed: false }],
         completeness: { status: "complete" as const },
       },
     }),

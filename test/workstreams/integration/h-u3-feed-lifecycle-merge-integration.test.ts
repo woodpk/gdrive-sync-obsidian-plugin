@@ -464,6 +464,13 @@ class MergeWorld {
         this.files.set(this.candidateId, { id: this.candidateId, name: this.pendingName, mimeType: "application/octet-stream", parents: ["content"], trashed: false, size: String(intended.sizeBytes), sha256Checksum: String(intended.hash).replace(/^sha256:/, ""), version: "1", appProperties: provenance() });
         return fail("transient-failure", "upload-response-lost");
       }
+      if (init.method === "PATCH") {
+        const fileId = /\/files\/([^/?]+)\?/.exec(u)?.[1];
+        const file = fileId ? this.files.get(fileId) : undefined;
+        if (!file) return fail("not-found");
+        file.trashed = true;
+        return fail("transient-failure", "retirement-response-lost");
+      }
       const direct = /\/files\/([^/?]+)\?/.exec(u)?.[1];
       if (direct) { const file = this.files.get(direct); return file ? ok(file) : fail("not-found"); }
       const parent = /'([^']+)' in parents/.exec(u)?.[1];

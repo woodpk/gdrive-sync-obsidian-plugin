@@ -112,7 +112,7 @@ test("D-C12 contradictory current REMOTE identity cannot replace persisted reser
 });
 
 test("D-C12 persisted update candidate identity becomes canonical", async () => {
-  const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([updateIntent()]); const f = fixture(canonical, () => [entry(target, predecessor, v0, "file", "revision:old"), entry(target, candidate, v1)]); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovered"); assert.equal(canonical.value.remoteMappings.find(x => x.path === target)?.remoteObjectId, candidate); assert.equal(canonical.value.base.find(x => x.path === target)?.content?.hash, h1); assert.equal(f.raw(), 0);
+  const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([updateIntent()]); const f = fixture(canonical, () => [entry(target, candidate, v1)]); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovered"); assert.equal(canonical.value.remoteMappings.find(x => x.path === target)?.remoteObjectId, candidate); assert.equal(canonical.value.base.find(x => x.path === target)?.content?.hash, h1); assert.equal(f.raw(), 0);
 });
 
 test("D-C12 clean merge requires every verified durable effect and aggregate evidence is deterministic", async () => {
