@@ -190,9 +190,7 @@ function productionHarness(kind: "upload-update" | "trash-remote") {
     },
     async updateExisting(descriptor: any) {
       seamCalls.push("updateExisting");
-      const predecessor = remoteEntries.find(entry => entry.remoteObjectId === descriptor.remoteObjectId);
       remoteEntries = [
-        ...(predecessor ? [{ ...predecessor, content: { ...predecessor.content, revision: String(descriptor.expectedRevision) } }] : []),
         { path: target, entityKind: "file", remoteObjectId: descriptor.candidateRemoteObjectId, content: { hash: localHash, sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
       ];
       return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: descriptor.candidateRemoteObjectId, predecessorRemoteObjectId: descriptor.remoteObjectId, predecessorRevision: descriptor.expectedRevision, intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent, preservedRemoteObjectIds: [descriptor.remoteObjectId, descriptor.candidateRemoteObjectId] } };

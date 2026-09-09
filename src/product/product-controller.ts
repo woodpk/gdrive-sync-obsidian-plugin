@@ -14,7 +14,7 @@ import {
 } from "./product-controller-base";
 import { authoritativeDiagnostics, withExecutionLifecycleObserver } from "./authority-execution-diagnostics";
 import type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor";
-import { recoverOutstandingDurableIntents, type DurableIntentRecoveryDependencies } from "./durable-intent-recovery";
+import { recoverOutstandingDurableIntents, type DurableIntentRecoveryDependencies, type RemoteUpdateFinalizationPort } from "./durable-intent-recovery";
 import { SnapshotAssemblyError, type AssembledPlanningInput, type ProductSnapshotAssembler } from "./snapshot-assembler";
 import { TrustedStateSynchronizationAuthorityStore } from "./trusted-state-authority-store";
 
@@ -156,6 +156,7 @@ export class ProductController extends ProductControllerBase {
     const recoveryDependencies: DurableIntentRecoveryDependencies = {
       localTransactionalMutationPort: options.localTransactionalMutationPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
+      remoteUpdateFinalizationPort: options.reliableRemoteMutationPort as (ReliableRemoteMutationPort & RemoteUpdateFinalizationPort) | undefined,
     };
     (options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies }).recoverableProductionMutationDependencies = dependencies;
     super({
