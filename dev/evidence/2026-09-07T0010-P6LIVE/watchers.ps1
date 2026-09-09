@@ -4,8 +4,103 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PluginDataPath,
     [Parameter(Mandatory = $true)]
-    [string]$EvidencePath
+    [string]$EvidencePath,
+    [Parameter(Mandatory = $false)]
+    [string]$RelativePathProbe
 )
+
+function Get-ContainedRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+        [Parameter(Mandatory = $true)]
+        [string]$CandidatePath
+    )
+
+    $rootFull = [System.IO.Path]::GetFullPath($RootPath)
+    $candidateFull = [System.IO.Path]::GetFullPath($CandidatePath)
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    $alternateSeparator = [System.IO.Path]::AltDirectorySeparatorChar
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    $pathRoot = [System.IO.Path]::GetPathRoot($rootFull)
+
+    if ([string]::Equals($rootFull, $pathRoot, $comparison)) {
+        $normalizedRoot = $rootFull
+    }
+    else {
+        $normalizedRoot = $rootFull.TrimEnd([char[]]@($separator, $alternateSeparator))
+    }
+
+    if ([string]::Equals($candidateFull, $normalizedRoot, $comparison)) {
+        return '.'
+    }
+
+    $rootPrefix = if ($normalizedRoot[$normalizedRoot.Length - 1] -eq $separator) {
+        $normalizedRoot
+    }
+    else {
+        $normalizedRoot + $separator
+    }
+
+    if (-not $candidateFull.StartsWith($rootPrefix, $comparison)) {
+        throw 'outside-validation-root'
+    }
+
+    $relativePath = $candidateFull.Substring($rootPrefix.Length)
+    if ($alternateSeparator -ne $separator) {
+        $relativePath = $relativePath.Replace($alternateSeparator, $separator)
+    }
+    return $relativePath
+}
+
+function Get-RelativePathResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [string]$CandidatePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CandidatePath)) {
+        return [pscustomobject]@{
+            RelativePath = $null
+            Contained = $false
+            PathError = 'event-path-missing'
+        }
+    }
+
+    try {
+        return [pscustomobject]@{
+            RelativePath = Get-ContainedRelativePath -RootPath $RootPath -CandidatePath $CandidatePath
+            Contained = $true
+            PathError = $null
+        }
+    }
+    catch {
+        $pathError = if ($_.Exception.Message -eq 'outside-validation-root') {
+            'outside-validation-root'
+        }
+        else {
+            'relative-path-unavailable'
+        }
+        return [pscustomobject]@{
+            RelativePath = $null
+            Contained = $false
+            PathError = $pathError
+        }
+    }
+}
+
+if ($PSBoundParameters.ContainsKey('RelativePathProbe')) {
+    $probe = Get-RelativePathResult -RootPath $ValidationPath -CandidatePath $RelativePathProbe
+    ([ordered]@{
+        relativePath = $probe.RelativePath
+        contained = $probe.Contained
+        pathError = $probe.PathError
+    } | ConvertTo-Json -Compress)
+    return
+}
 
 $ErrorActionPreference = 'Continue'
 $fsLog = Join-Path $EvidencePath 'filesystem-events.jsonl'
@@ -43,13 +138,23 @@ try {
             $now = [DateTimeOffset]::Now.ToString('o')
             if ($evt.SourceIdentifier -like 'validation-*') {
                 $args = $evt.SourceEventArgs
+                $pathResult = Get-RelativePathResult -RootPath $ValidationPath -CandidatePath $args.FullPath
                 $record = [ordered]@{
                     timestamp = $now
                     action = $evt.SourceIdentifier.Substring('validation-'.Length)
-                    relativePath = if ($args.FullPath) { [System.IO.Path]::GetRelativePath($ValidationPath, $args.FullPath) } else { $null }
+                    relativePath = $pathResult.RelativePath
+                }
+                if (-not $pathResult.Contained) {
+                    $record.pathContained = $false
+                    $record.pathError = $pathResult.PathError
                 }
                 if ($evt.SourceIdentifier -eq 'validation-renamed') {
-                    $record.oldRelativePath = [System.IO.Path]::GetRelativePath($ValidationPath, $args.OldFullPath)
+                    $oldPathResult = Get-RelativePathResult -RootPath $ValidationPath -CandidatePath $args.OldFullPath
+                    $record.oldRelativePath = $oldPathResult.RelativePath
+                    if (-not $oldPathResult.Contained) {
+                        $record.oldPathContained = $false
+                        $record.oldPathError = $oldPathResult.PathError
+                    }
                 }
                 ($record | ConvertTo-Json -Compress) | Add-Content -LiteralPath $fsLog -Encoding utf8
             }
