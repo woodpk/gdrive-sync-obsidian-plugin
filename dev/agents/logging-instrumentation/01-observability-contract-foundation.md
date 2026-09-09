@@ -2,118 +2,109 @@
 
 ## 0. Agent Identity and Assignment
 
-You are:
-
-`agt-ca-p6-log01-observability-contract-foundation-01`
-
-Repository:
-
-`woodpk/gdrive-sync-obsidian-plugin`
-
-Task classification:
-
-`IMPLEMENTATION — SHARED CONTRACT FOUNDATION`
+- Agent: `agt-ca-p6-log01-observability-contract-foundation-01`
+- Repository: `woodpk/gdrive-sync-obsidian-plugin`
+- Work package: `LOG-01`
+- Task classification: `IMPLEMENTATION — SHARED CONTRACT FOUNDATION`
+- Prompt maturity: `EXECUTION-READY`
 
 Assignment:
 
-> Upgrade the existing local `DiagnosticLogger` into the frozen structured-observability contract required by the Phase 6 logging-instrumentation build session: define the complete safe event/component/field vocabulary, deterministic correlation/resource helpers, bounded retention/rendering behavior, and sync-run correlation primitives needed by later HTTP, Drive, execution, state/recovery, and bundle consumers, while preserving current diagnostic behavior and synchronization semantics.
+> Evolve the existing local `DiagnosticLogger` into the frozen structured-observability contract for the Phase 6 logging-instrumentation session: define the safe event/component/field vocabulary, causal-correlation primitives, deterministic path-privacy helper, bounded rendering/persistence semantics, and focused tests required by all later transport, Drive, execution, state/recovery, and diagnostic-bundle instrumentation while preserving current diagnostic compatibility and synchronization semantics.
 
-This work package owns the shared observability contract. It does not instrument Google HTTP, Google Drive mutation semantics, durable execution, state/recovery, or the final diagnostic bundle.
+This task owns the shared observability contract only. Do not implement the later consumer instrumentation.
 
 ## 1. Base / Drift Gate
 
 Use exactly:
 
-`LOG01_BASE_SHA = 3735b29153016550d7eabb8727780d9bae40c30f`
+`LOG01_BASE_SHA = 9385e19fc021005b45e5046a3b5e074e10965e26`
 
 Required branch:
 
-`phase6-logging-01-observability-foundation`
+`phase6-logging-log01-observability-foundation`
 
 Before modifying anything:
 
 1. Verify repository identity is `woodpk/gdrive-sync-obsidian-plugin`.
-2. Verify `HEAD`/task input is exactly `3735b29153016550d7eabb8727780d9bae40c30f`.
-3. Verify the working tree is clean.
-4. Inspect the current `src/diagnostics/diagnostic-logger.ts`, directly related diagnostic helpers/tests, and call sites necessary to understand backward compatibility.
-5. Create the required branch from exactly `LOG01_BASE_SHA`.
+2. Check out exactly `LOG01_BASE_SHA` and verify `HEAD` equals it.
+3. Verify the working tree is clean before creating the task branch.
+4. Create the required branch from exactly `LOG01_BASE_SHA`.
+5. Inspect `src/diagnostics/diagnostic-logger.ts`, directly related diagnostic persistence/export helpers, focused diagnostic tests, and the existing sync-run begin/end call sites necessary to preserve compatibility.
 
-Do not substitute `phase6-integration`, `main`, a newer branch tip, or any later tasking/evidence commit.
+Do not substitute `phase6-integration`, `main`, a newer branch tip, a later tasking-document commit, or any approximate predecessor. The tasking documents were published after this implementation baseline; their publication commits are not implementation authority.
 
-The tasking document itself may exist only on a later supervisor branch state; that does not change the implementation base. If the exact implementation base cannot be checked out cleanly, stop and report the blocker.
+If the exact base cannot be established or material product-code drift exists relative to the supplied task, stop and report it.
 
 ## 2. Governing Authority
 
-Correctness is governed in this order:
+Correctness is governed by:
 
-1. Later explicit owner/supervisor decisions.
-2. `BRAIN Google Drive Sync Plugin — Target-System Specification`, especially safety, recoverability, no-telemetry-by-default, secret exclusion, and verify-before-state-commit invariants.
-3. `Agent-Led Software Product Construction Manual` / `software-products-dev-manual-agent-led.md`.
-4. The supervisor session plan `dev/agents/logging-instrumentation/00-logging-instrumentation-session-orchestration.md` as supplied with this task.
-5. This prompt.
-6. Repository implementation/tests as current-state evidence.
+1. Later explicit supervisor decisions.
+2. `BRAIN Google Drive Sync Plugin — Target-System Specification`, especially mobile-safe runtime behavior, local diagnostics, content minimization, no external telemetry by default, state diagnostic export, explainability, and synchronization safety invariants.
+3. `software-products-dev-manual-agent-led.md`.
+4. `build-session-task-batching-rubric.md`, Drive file ID `1Zp20YD-JfYtHe1hcCmHYsJXk9yZHXD7BlohBZzvdibw`, revision `ANLCKQl8g7Bl_Hhvt6x4506kVoDb19P0l-wUH7EhJktLXwxmm90Iw4qm5OMAPMNTQQMqJpWyEUc3YaDC8xugJpne45Q9bmjmDq7wxXksyw0`.
+5. The Phase 6 logging-instrumentation session contract supplied with this task.
+6. This prompt.
+7. Repository implementation/tests as current-state evidence.
 
-The supervisor-owned architectural decision is already made: this plugin will use one local, bounded, structured diagnostic plane built by evolving the existing `DiagnosticLogger`. Do not redesign that decision.
+The supervisor-owned architectural decision is frozen: extend the existing local `DiagnosticLogger`; do not introduce a second logger, telemetry service, or external observability backend.
 
 ## 3. Temporal / Dependency Context
 
-This is `LOG-01`, Wave `W0`, the serial foundation of a mixed-temporal session.
+This is Wave `W0`, the serial foundation of a mixed-temporal session.
 
-- No predecessor implementation work package exists.
-- Your output will be reviewed before any downstream instrumentation implementation is authorized.
-- After approval, `LOG-02` Google HTTP tracing, `LOG-04` execution tracing, and `LOG-05` state/recovery tracing will execute in parallel from your exact approved SHA.
-- Those agents must consume your contract read-only; therefore your schema meanings, safety rules, and exported helpers must be coherent and complete enough for those consumers.
-- Integration ownership remains with the supervisor.
+- There is no predecessor implementation work package.
+- `LOG-02`, `LOG-04`, and `LOG-05` are preplanned parallel consumers of the exact supervisor-approved output of this work package.
+- Those consumers must treat your approved schema, field meanings, path-privacy rules, and correlation semantics as frozen.
+- The supervisor performs review and later integration.
+- Completion of `LOG-01` does not authorize any downstream work automatically.
 
-Local completion is not session approval. Stop after this work package.
+Your output must therefore be coherent enough that three independent consumers can use it without redesigning shared semantics.
 
 ## 4. Scope
 
-### 4.1 In scope
-
-Own the shared structured-diagnostic foundation, centered on:
+In scope:
 
 - `src/diagnostics/diagnostic-logger.ts`;
-- narrowly necessary new files under `src/diagnostics/` if separating helper/contract logic materially improves clarity;
-- focused tests for the diagnostic contract;
-- narrowly necessary updates to existing diagnostic-only helper/call-site typing caused directly by the contract expansion.
+- narrowly necessary new shared diagnostic contract/helper files under `src/diagnostics/`;
+- focused tests proving the shared contract;
+- directly consequential diagnostic-only typing/call-site adjustments required to keep existing diagnostics compiling and compatible.
 
-The required result is a backward-compatible diagnostic contract that later agents can consume without independently inventing:
+The required result is one backward-compatible structured diagnostic contract that later agents can consume for:
 
-- component names;
+- component taxonomy;
 - safe field names and meanings;
-- correlation identifiers;
-- path-redaction/correlation behavior;
-- rendering/serialization behavior;
-- retention behavior;
-- secret/content exclusion rules.
+- causal IDs;
+- deterministic path correlation without raw path retention;
+- safe string sanitization/redaction;
+- deterministic rendering/parsing;
+- bounded local retention;
+- current synchronization-run correlation.
 
-### 4.2 Out of scope
+Out of scope:
 
-Do not implement:
-
-- `GoogleHttpTransport` request tracing;
-- `GoogleDriveAdapter` semantic-operation tracing;
-- sync executor/durable-effect instrumentation;
-- state/CAS/recovery instrumentation;
-- final diagnostic-bundle construction;
-- new UI/commands;
-- live validation;
-- any synchronization bug repair.
+- Google HTTP request tracing;
+- Google Drive semantic-operation tracing;
+- executor/durable-effect tracing;
+- state/CAS/recovery tracing;
+- diagnostic-bundle UI/export construction;
+- any synchronization behavior repair;
+- live testing or Drive mutation.
 
 ## 5. Required Behavior
 
-### 5.1 Single logging plane
+### 5.1 Single local logging plane
 
-The existing `DiagnosticLogger` remains the authoritative structured diagnostic plane. Preserve existing callers and persisted records where safely possible. Do not introduce a second logger or competing event store.
+The existing `DiagnosticLogger` remains the single structured diagnostic plane. Preserve existing public behavior and persisted records where safely possible. Do not create a competing event store.
 
-### 5.2 Structured causal vocabulary
+### 5.2 Frozen causal vocabulary
 
-The frozen contract must support later events that can be correlated across the full chain:
+The approved contract must be able to describe this chain:
 
-`sync run -> plan -> operation -> durable intent -> physical effect -> Drive request -> physical observation -> convergence -> durable state transition -> canonical commit/recovery -> final result`
+`run -> plan -> operation -> durable intent -> effect -> Drive request -> semantic observation -> convergence -> state/CAS transition -> recovery/commit -> final result`
 
-At minimum the safe field vocabulary must support these meanings with stable names and scalar values compatible with the current structured event model:
+At minimum, provide stable safe fields or equivalent bounded typed representation for these meanings:
 
 - `planId`
 - `operationId`
@@ -140,7 +131,7 @@ At minimum the safe field vocabulary must support these meanings with stable nam
 - `providerRequestId`
 - `observationSource`
 - `occupancyCount`
-- `occupantIds`
+- deterministic bounded occupant-ID representation
 - `trashed`
 - `candidateVerified`
 - `predecessorVerified`
@@ -154,175 +145,148 @@ At minimum the safe field vocabulary must support these meanings with stable nam
 - `commitStatus`
 - `batchId`
 - `changeCount`
-- `cursorKey`
 - `verificationEvidenceRef`
 
-Preserve the current useful fields. Do not remove or silently reinterpret existing field meanings.
+Preserve useful existing fields and meanings. Do not silently repurpose prior fields.
 
 ### 5.3 Component taxonomy
 
-Extend the component vocabulary sufficiently to distinguish at least:
+Extend the component vocabulary only as needed to clearly separate:
 
-- raw/sanitized Google HTTP transport activity;
-- semantic Google Drive mutation/observation activity;
-- synchronization execution/durable-effect lifecycle;
-- authoritative state/CAS activity;
-- durable recovery activity;
-- diagnostic bundle/export activity.
+- Google HTTP transport;
+- semantic Google Drive operations;
+- synchronization execution/durable effects;
+- authoritative state/CAS;
+- durable recovery;
+- diagnostic bundle/export.
 
-Use deterministic, concise component identifiers consistent with the existing naming style. Once added in this work package, their meanings are frozen for downstream consumers.
+Choose concise names consistent with the existing style. Once approved, these names and meanings are frozen for later consumers.
 
-### 5.4 Correlation behavior
+### 5.4 Synchronization-run correlation
 
-Preserve the existing `runId` model and provide a safe way for deeply nested instrumentation to determine the currently active synchronization run when one exists, without Node-only async-context APIs.
+Preserve existing explicit `sync*` APIs and provide the smallest mobile-safe way for nested instrumentation to discover the currently active synchronization run when one exists.
 
-Requirements:
+Required semantics:
 
-- existing explicit `sync*` methods remain valid;
-- beginning a sync run establishes current run correlation;
-- ending that exact run removes its current-run authority without corrupting another active run if one exists;
-- diagnostic calls outside a synchronization run continue to work without manufacturing a run ID;
-- correlation state must not affect synchronization behavior.
-
-Choose the smallest browser/mobile-safe implementation that satisfies these semantics after inspecting actual run usage.
+- `beginSyncRun` establishes current run correlation;
+- ending the exact run removes its authority without corrupting a different active run;
+- diagnostics outside a synchronization run do not manufacture a run ID;
+- correlation state is diagnostic only and cannot alter synchronization behavior;
+- do not use Node-only async-context APIs.
 
 ### 5.5 Deterministic path privacy
 
-Raw vault paths must not be retained by the structured observability component.
+Provide an exported deterministic helper that converts a logical/path string into an opaque diagnostic `pathKey`.
 
-Provide a deterministic exported helper for converting a logical/path string into an opaque diagnostic `pathKey` suitable for equality/correlation across events and restarts on the same codebase. The result must:
+It must:
 
-- not contain the original path text;
-- be deterministic for the same normalized input;
-- be collision-resistant for practical diagnostic use;
-- use existing portable hashing utilities rather than Node-only crypto;
-- never require secret storage.
+- never contain the original path text;
+- normalize consistently before hashing;
+- return the same value for the same normalized path across runs;
+- use portable existing hashing utilities rather than Node-only crypto;
+- require no secret key;
+- be sufficiently collision-resistant for diagnostic correlation.
 
-Tests must prove that recognizable input path fragments do not appear in the result.
+Raw vault paths must not be persisted in the new structured trace.
 
 ### 5.6 Secret/content safety
 
-Retain and strengthen the existing sanitization boundary. Structured diagnostics must reject, redact, or omit:
+Retain and strengthen the allowlisted structured-field boundary. Diagnostics must redact, reject, or omit:
 
 - bearer/authorization material;
-- access/refresh tokens;
+- OAuth access/refresh tokens;
 - client secrets;
-- OAuth authorization codes/state;
-- PKCE verifier/challenge material;
-- cookies/password-like assignments;
+- authorization code/state and PKCE material;
+- cookies/password-like values;
 - raw URLs containing query parameters;
-- request bodies;
-- raw file contents.
+- request/response bodies;
+- raw note/binary contents.
 
-Do not create generic arbitrary-object logging that bypasses the safe field allowlist.
+Do not add arbitrary-object logging that can bypass the allowlist. Safe string fields must continue through sanitization/truncation.
 
-IDs and metadata required for synchronization reconstruction may remain as explicit allowed fields, but text values still pass through existing sanitization/truncation behavior.
+### 5.7 Persistence and compatibility
 
-### 5.7 Persistence and failure semantics
-
-- Keep diagnostic retention bounded.
-- Existing persisted diagnostic records must remain loadable when they satisfy the prior schema.
-- New optional fields/components must serialize/render deterministically.
-- Diagnostic persistence failure must remain non-authoritative and must not change synchronization mutation/state semantics.
-- Diagnostics must never be written into the vault sync namespace or Google Drive.
+- Retention remains bounded.
+- Existing valid persisted events remain loadable.
+- New fields/components render deterministically.
+- Diagnostic persistence is local and outside the synchronized vault/Drive domain.
+- A persistence/export failure must not become synchronization authority or change mutation/state behavior.
 
 ## 6. Ownership and Shared Contracts
 
-### 6.1 Owned surfaces
-
 You are the sole semantic owner of:
 
-- shared diagnostic component taxonomy;
-- shared diagnostic safe-field taxonomy;
-- field meanings introduced by this task;
-- deterministic path diagnostic-key behavior;
-- sync-run correlation primitive exposed by `DiagnosticLogger`;
-- diagnostic serialization/redaction behavior directly changed by this task.
+- shared diagnostic component names introduced here;
+- shared safe-field names and meanings;
+- deterministic path-key semantics;
+- synchronization-run diagnostic correlation primitive;
+- diagnostic serialization/redaction behavior changed by this task.
 
-### 6.2 Protected surfaces
-
-Do not modify synchronization semantics in:
+Protected surfaces:
 
 - `src/drive/transport.ts`;
 - `src/drive/google-drive-port.ts`;
-- planner/executor/state/recovery logic except compile-only call-site adjustments strictly required by your diagnostic contract;
-- `src/product/runtime.ts`, `src/drive/runtime.ts`, or `src/main.ts` for downstream instrumentation wiring;
-- release/build versioning.
+- synchronization planner/executor/state/recovery semantics;
+- `src/drive/runtime.ts` and `src/product/runtime.ts` composition wiring;
+- `src/main.ts` operator commands;
+- release/version files.
 
-If your proposed contract cannot be implemented without substantial changes to those protected surfaces, stop and report the incompatibility rather than expanding scope.
+A tiny compile-only adjustment outside the owned diagnostic surface is allowed only when directly forced by the contract change and must be listed in evidence. If substantial protected-surface changes are required, stop.
 
-### 6.3 Frozen output contract
-
-After supervisor approval, downstream agents may not independently:
-
-- rename your component/field identifiers;
-- change their meanings;
-- weaken redaction;
-- add convenience variants that create competing semantics;
-- change serialization format for the same fields.
-
-Design this foundation accordingly.
+After supervisor approval, later agents may consume but may not redefine this contract.
 
 ## 7. Architecture and Dependency Constraints
 
-- Remain compatible with Obsidian desktop and mobile runtimes.
-- Do not use Node-only APIs such as `AsyncLocalStorage`, filesystem logging, or server-side telemetry libraries.
+- Remain compatible with Obsidian desktop and mobile/iOS.
 - Do not add dependencies.
-- Preserve the existing local `DiagnosticPersistence` abstraction and bounded storage model unless a tiny backward-compatible adjustment is directly required.
-- Logging must not become a second durable synchronization-state authority.
-- Logging must not participate in planner/executor authorization decisions.
-- Logging must not throw into the synchronization path because a diagnostic record could not be persisted.
-- Preserve deterministic rendering needed for later diagnostic-bundle export.
+- Do not use Node filesystem logging, Electron-only facilities, `AsyncLocalStorage`, or external telemetry libraries.
+- Preserve the existing local `DiagnosticPersistence` abstraction unless a small backward-compatible change is required for this contract.
+- Logging cannot become a synchronization-state persistence channel.
+- Logging cannot participate in planner/executor decisions.
+- Preserve deterministic, machine-readable rendering suitable for later bundle export.
+- Avoid high-volume per-byte/per-chunk logging at the foundation layer; downstream consumers will emit bounded semantic events.
 
 ## 8. Required Implementation Work
 
-1. Inspect the existing diagnostic logger, persistence shape, sanitization tests/callers, and actual sync-run begin/end usage.
-2. Extend the diagnostic component and field contracts with the complete vocabulary required in Section 5.
-3. Implement deterministic safe path-key generation using existing portable hashing.
-4. Implement the minimal current-sync-run correlation primitive required by Section 5.4.
-5. Update sanitization/serialization/parsing only as necessary to safely support the new contract while retaining old records.
-6. Add/update focused tests proving the new contract, redaction rules, determinism, backward compatibility, retention, and run-correlation behavior.
-7. Make only directly consequential diagnostic-only typing/call-site changes.
-8. Reconcile the changed-file set and remove any accidental/generated files before evidence commit.
+1. Inspect the existing logger, persisted event shape, sanitization/parsing/rendering logic, and sync-run lifecycle usage.
+2. Extend the component and safe-field contracts with the frozen vocabulary required above.
+3. Add the deterministic path-key helper using portable existing hash support.
+4. Add the minimum current-sync-run correlation API required by Section 5.4.
+5. Preserve backward compatibility for valid prior persisted events.
+6. Add focused tests for field allowlisting, redaction, path privacy/determinism, correlation, parsing/rendering, retention, and persistence-failure non-authority.
+7. Make only directly consequential diagnostic typing/call-site changes.
+8. Reconcile the changed-file set and remove accidental/generated changes before evidence.
 
-Do not begin consumer instrumentation.
+Do not instrument downstream subsystems in this task.
 
 ## 9. Tests and Verification
 
-### 9.1 Required focused verification
+Focused tests must prove at minimum:
 
-Add or update focused automated tests that prove at minimum:
-
-- every required new safe field survives structured record/render/parse when given a valid scalar value;
-- unknown/unapproved fields are dropped;
-- sensitive assignments/tokens/authorization material remain redacted;
-- URL query material is not retained;
-- `pathKey` is deterministic and contains none of the original recognizable path text;
-- prior-format persisted events still initialize/load correctly;
+- every required new safe field can be recorded/rendered with valid scalar/bounded values;
+- unknown fields are dropped;
+- sensitive authorization/token/PKCE/password-like material is redacted;
+- raw URL query material is not retained;
+- `pathKey` is deterministic and does not contain recognizable source path fragments;
+- prior valid persisted events still load;
 - new components/events render deterministically;
-- sync-run current correlation is established and correctly cleared;
-- diagnostics outside a run do not receive a fabricated run ID;
+- current-run correlation is established and cleared correctly;
+- diagnostics outside a run do not gain a fabricated run ID;
 - retention remains bounded;
-- persistence failure behavior remains non-authoritative.
-
-### 9.2 Static/full checks
+- diagnostic persistence failure does not change synchronization semantics or throw a new authoritative result.
 
 Run:
 
 ```text
 npm run typecheck
 npm test
+npm run build
+git diff --check
 ```
 
-Run `npm run build` if the implementation changed any production TypeScript imported by the shipped bundle; this task is expected to do so, therefore build should normally run.
+For focused filters, record non-zero discovered/executed counts. If a mandatory check is unavailable in the execution environment, identify it, explain why, run valid substitutes, and do not claim it passed.
 
-For every filtered/focused test command, record the exact discovered/executed count and prove the filter was not a no-op.
-
-If a required command is unavailable because of the execution environment, record `NOT AVAILABLE IN THIS SESSION`, explain why, run every safe substitute, and do not claim the unavailable gate passed.
-
-### 9.3 Diff verification
-
-Inspect the complete diff from `LOG01_BASE_SHA` to final HEAD. Verify every changed file is authorized by Sections 4 and 6 and that no unrelated code/test/document churn is present.
+Inspect the full diff from `LOG01_BASE_SHA` to final HEAD and verify every changed file is authorized.
 
 ## 10. Evidence Requirements
 
@@ -330,76 +294,71 @@ Write exactly:
 
 `dev/evidence/_ca-output-agt-ca-p6-log01-observability-contract-foundation-01.md`
 
-The evidence record must contain:
+The evidence record must include:
 
-- agent identity and work-package ID `LOG-01`;
-- task classification;
-- exact base SHA;
-- branch name;
+- agent/work-package identity and task type;
+- temporal wave `W0`;
+- exact resolved base SHA and branch;
 - final implementation SHA;
 - final evidence SHA if different;
 - complete changed-file list;
-- concise description of frozen components, fields, path-key semantics, run-correlation API, and compatibility behavior;
-- commands executed;
+- frozen component names/field vocabulary and any helper APIs introduced;
+- path-key semantics;
+- run-correlation semantics;
+- compatibility/redaction behavior;
+- exact commands executed;
 - focused test names/counts/results;
-- `npm run typecheck`, `npm test`, and build results;
-- any unavailable verification and why;
-- confirmation that no live Drive mutation occurred;
-- confirmation that no secrets/file contents were introduced into diagnostic fixtures/evidence;
-- limitations/deviations/blockers;
+- typecheck/full test/build/diff-check results;
+- unavailable checks and limitations;
+- confirmation no live Drive mutation occurred;
+- confirmation no secrets/raw file contents were placed in diagnostics, fixtures, or evidence;
 - exact stop state.
 
-Commit implementation and evidence. Do not claim supervisory approval.
+Commit implementation and evidence. Evidence is not self-approval.
 
 ## 11. Prohibitions
 
 - No live synchronization or Google Drive mutation.
-- No B01 remediation or rerun.
-- No B02–O or Stage 3 work.
+- No B01 repair or rerun.
+- No B02–O, iPhone validation, or Stage 3.
 - No release/tag/publication.
-- No new telemetry service or network destination.
-- No new dependency/package upgrade.
-- No raw secrets, authorization headers, OAuth material, request bodies, or file contents in logging/tests/evidence.
-- No raw vault-path persistence in structured diagnostics.
-- No unrelated refactoring, renaming, formatting churn, or repository cleanup.
-- No implementation of downstream `LOG-02` through `LOG-07` behavior.
+- No external telemetry or new network destination.
+- No new package/dependency.
+- No raw secrets, authorization material, request/response bodies, or file contents in diagnostics/tests/evidence.
+- No raw vault-path retention in the new structured trace.
+- No unrelated refactoring, renaming, formatting churn, or cleanup.
+- No downstream `LOG-02` through `LOG-07` implementation.
 - No merge into `phase6-integration`.
-- No force push/rebase over the authorized base.
+- No force push or base substitution.
 
 ## 12. Hard-Stop Conditions
 
-Stop implementation and return control to the supervisor if any of the following occurs:
+Stop and return control if:
 
 - exact base cannot be established;
-- material repository drift is discovered;
-- target-system/manual/session authority conflicts materially;
-- satisfying the required contract would require changing synchronization behavior;
-- a required frozen semantic decision is missing;
-- the needed implementation requires Node-only/runtime-incompatible machinery;
-- safe logging would require persisting secrets, request bodies, or raw file content;
-- implementation requires broad edits to protected Drive/execution/state/runtime composition surfaces;
-- relevant tests reveal a pre-existing product defect outside this work package;
-- required verification cannot be performed and no valid substitute can establish the assigned acceptance contract.
+- material repository drift invalidates the prompt;
+- governing authorities materially conflict;
+- the required contract would require changing synchronization behavior;
+- a shared semantic decision remains unresolved;
+- the design would require Node-only/mobile-incompatible machinery;
+- safe observability would require persisting secrets, raw request bodies, or raw file contents;
+- implementation requires substantial edits to protected Drive/execution/state/runtime surfaces;
+- required verification cannot run and is mandatory for completion;
+- unexplained repository changes appear.
 
-On hard stop:
-
-- stop coding;
-- preserve evidence;
-- identify the exact blocker and affected files/contracts;
-- report any safe partial work;
-- do not improvise a workaround.
+Preserve evidence of any safe partial work and identify the exact blocker; do not improvise around it.
 
 ## 13. Completion and Return to Supervisor
 
-This work package is complete only when:
+Completion requires:
 
-- the complete shared structured-observability contract exists and is internally coherent;
-- all required safety/redaction/correlation behavior is tested;
-- required checks have passed or any unavailable mandatory check has caused a hard stop;
-- the actual diff is bounded to authorized surfaces;
+- the shared observability contract is implemented and focused tests pass;
+- required broader checks are complete or explicitly blocked as defined above;
+- actual changes match authorized ownership;
 - evidence is committed;
-- final SHAs are reported.
+- no known blocker remains;
+- no prohibited action occurred.
 
-Then stop.
+Report the exact branch, base SHA, implementation SHA, evidence SHA if different, changed files, verification results, and frozen contract summary. Then stop for supervisory review.
 
-Do not begin `LOG-02`, `LOG-03`, `LOG-04`, `LOG-05`, `LOG-06`, or `LOG-07`. The supervisor must review this output, freeze the exact approved SHA, and explicitly authorize the next wave.
+Do not begin `LOG-02`, `LOG-04`, `LOG-05`, integration, release, or live validation.
