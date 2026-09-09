@@ -110,9 +110,7 @@ function harness(initial: { local?: Record<string, LocalEntry>; remote?: RemoteE
     },
     async updateExisting(identity: any) {
       mutationCalls.push(`update:${String(identity.path)}`);
-      const predecessor = remoteEntries.find(entry => entry.path === identity.path && entry.remoteObjectId === identity.remoteObjectId);
       remoteEntries = [
-        ...(predecessor ? [{ ...predecessor, content: { ...(predecessor.content ?? {}), revision: String(identity.expectedRevision) } }] : []),
         { path: identity.path, entityKind: "file", remoteObjectId: identity.candidateRemoteObjectId, hash: String(hash), sizeBytes: 3, content: { hash: String(hash), sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
       ];
       return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId, predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId] } };

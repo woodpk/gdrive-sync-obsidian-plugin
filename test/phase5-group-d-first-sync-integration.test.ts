@@ -175,7 +175,7 @@ class MemorySyncBoundary {
     getStartCursor: async () => ({ ok: true as const, value: cur(`cursor:${++this.cursorCounter}`) }),
     listForReconciliation: async () => {
       this.promotePendingRemoteCandidates();
-      const entries = [...this.preservedRemotePredecessors.values(), ...this.remoteFiles.values()].map(file => ({
+      const entries = [...this.remoteFiles.values()].map(file => ({
         path: file.path,
         entityKind: "file" as const,
         remoteObjectId: file.remoteObjectId,

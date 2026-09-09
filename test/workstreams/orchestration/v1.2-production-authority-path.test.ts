@@ -102,10 +102,7 @@ function realExecutor(values: { observedRemoteId?: RemoteObjectId; onRawUpdate?:
     update: async () => { values.onRawUpdate?.(); return { ok: true, value: { remoteObjectId: expectedRemoteId, evidence: { hash, sizeBytes: 3 } } }; },
     listForReconciliation: async () => ({ ok: true, value: { entries: values.listCandidate === false
       ? [{ path: target, entityKind: "file", remoteObjectId: expectedRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:1" }, trashed: false }]
-      : [
-          { path: target, entityKind: "file", remoteObjectId: expectedRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:1" }, trashed: false },
-          { path: target, entityKind: "file", remoteObjectId: candidateRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:candidate" }, trashed: false },
-        ], completeness: { status: "complete" } } }),
+      : [{ path: target, entityKind: "file", remoteObjectId: candidateRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:candidate" }, trashed: false }], completeness: { status: "complete" } } }),
   } as unknown as GoogleDrivePort;
   return new ProductSynchronizationExecutor(local, drive, stateStore() as never, stateContext, () => ({ managedRemote, remoteEnumerationComplete: true }));
 }

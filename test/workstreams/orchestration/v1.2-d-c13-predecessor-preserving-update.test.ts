@@ -41,8 +41,11 @@ const context = { expectation: "existing-pairing", expectedVaultIdentity: vault,
 function remoteFile(remoteObjectId: RemoteObjectId, hash = priorHash, sizeBytes = 3, revision = String(expectedRevision)): RemoteEntry {
   return { path: target, entityKind: "file", remoteObjectId, content: { hash, sizeBytes, revision }, trashed: false };
 }
-function exactTopology(): RemoteEntry[] {
+function exactIntermediateTopology(): RemoteEntry[] {
   return [remoteFile(predecessor), remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")];
+}
+function convergedTopology(): RemoteEntry[] {
+  return [remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")];
 }
 function canonicalState(): TrustedSynchronizationState {
   return {
@@ -144,10 +147,11 @@ function createOperation(): ExecutablePlannedOperation {
 }
 
 type UpdateTopology = (identity: any) => RemoteEntry[];
-function fixture(topologyAfterUpdate: UpdateTopology = () => exactTopology(), initialEntries: RemoteEntry[] = [remoteFile(predecessor)]) {
+function fixture(topologyAfterUpdate: UpdateTopology = () => convergedTopology(), initialEntries: RemoteEntry[] = [remoteFile(predecessor)]) {
   let entries = [...initialEntries];
   let rawRemoteCalls = 0;
   let reliableUpdateCalls = 0;
+  let finalizeUpdateCalls = 0;
   let reserveSequence = 0;
   const canonical = new CanonicalStore();
   const local = {
@@ -192,6 +196,25 @@ function fixture(topologyAfterUpdate: UpdateTopology = () => exactTopology(), in
         },
       };
     },
+    async finalizeExistingUpdate(identity: any) {
+      finalizeUpdateCalls += 1;
+      const convergence = entries.filter(entry => entry.path === identity.path);
+      if (convergence.length !== 2
+        || !convergence.some(entry => entry.remoteObjectId === identity.remoteObjectId)
+        || !convergence.some(entry => entry.remoteObjectId === identity.candidateRemoteObjectId)) {
+        return { status: "conflict-preserved", reason: "not-exactly-resumable", preservedRemoteObjectIds: convergence.map(entry => entry.remoteObjectId) };
+      }
+      entries = convergence.filter(entry => entry.remoteObjectId === identity.candidateRemoteObjectId);
+      return {
+        status: "verified-effect",
+        applicationProof: {
+          kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId,
+          predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision,
+          intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent,
+          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
+        },
+      };
+    },
     async moveExisting() { throw new Error("move not expected"); },
     async trashExisting() { throw new Error("trash not expected"); },
   };
@@ -202,6 +225,7 @@ function fixture(topologyAfterUpdate: UpdateTopology = () => exactTopology(), in
     get entries() { return entries; },
     rawRemoteCalls: () => rawRemoteCalls,
     reliableUpdateCalls: () => reliableUpdateCalls,
+    finalizeUpdateCalls: () => finalizeUpdateCalls,
   };
 }
 
@@ -218,7 +242,7 @@ async function expectUpdateRejected(topology: UpdateTopology) {
   assert.equal(f.rawRemoteCalls(), 0);
 }
 
-test("D-C13-T1 ordinary convergence accepts exact persisted predecessor plus candidate topology", async () => {
+test("D-C13-T1 ordinary convergence requires the candidate to be the sole live path occupant", async () => {
   const f = fixture();
   const { authority, executor } = ordinaryExecutor(f);
   const result = await executor.execute(updateOperation());
@@ -228,19 +252,20 @@ test("D-C13-T1 ordinary convergence accepts exact persisted predecessor plus can
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
 });
 
-test("D-C13-T2 restart recognizes exact completed update topology without redispatch", async () => {
-  const f = fixture(() => exactTopology(), exactTopology());
+test("D-C13-T2 restart retires the exact predecessor/candidate intermediate without redispatching content", async () => {
+  const f = fixture(() => convergedTopology(), exactIntermediateTopology());
   const authority = new AuthorityStore([updateIntent("outcome-unknown")]);
-  const result = await recoverOutstandingDurableIntents(f.legacy as never, authority, f.canonical as never, context as never, managedRemote);
+  const result = await recoverOutstandingDurableIntents(f.legacy as never, authority, f.canonical as never, context as never, managedRemote, { remoteUpdateFinalizationPort: f.remoteMutation } as never);
   assert.equal(result.status, "recovered");
   assert.equal(f.reliableUpdateCalls(), 0);
+  assert.equal(f.finalizeUpdateCalls(), 1);
   assert.equal(f.rawRemoteCalls(), 0);
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed");
   assert.equal(f.canonical.value.remoteMappings.find(value => value.path === target)?.remoteObjectId, candidate);
 });
 
 test("D-C13-T3 REMOTE create retains strict exact-one same-path convergence", async () => {
-  const f = fixture(() => exactTopology(), [remoteFile(extra)]);
+  const f = fixture(() => exactIntermediateTopology(), [remoteFile(extra)]);
   const { executor } = ordinaryExecutor(f);
   const result = await executor.execute(createOperation());
   assert.equal(result.status, "blocking-failure");
@@ -252,7 +277,7 @@ test("D-C13-T4 wrong predecessor identity is rejected", async () => {
 });
 
 test("D-C13-T5 unexpected third same-path object is rejected", async () => {
-  await expectUpdateRejected(() => [...exactTopology(), remoteFile(extra)]);
+  await expectUpdateRejected(() => [...exactIntermediateTopology(), remoteFile(extra)]);
 });
 
 test("D-C13-T6 wrong candidate identity and candidate content mismatch are both rejected", async () => {

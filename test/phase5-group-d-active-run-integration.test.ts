@@ -439,7 +439,7 @@ test("G2 scenario 25 remote change during an active production run is deferred t
     listForReconciliation: async () => ({
       ok: true as const,
       value: {
-        entries: [...preservedRemotePredecessors.values(), ...remoteFiles.values()].map(file => ({
+        entries: [...remoteFiles.values()].map(file => ({
           path: file.path,
           entityKind: "file" as const,
           remoteObjectId: file.remoteObjectId,

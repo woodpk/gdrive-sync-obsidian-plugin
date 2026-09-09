@@ -16,11 +16,14 @@ import {
   type RecoverablePhysicalMutationDescriptorV1_1,
   type RemoteEntry,
   type RemoteFolderCreateRecoveryReadPort,
+  type RemoteMutationIdentity,
+  type RemoteMutationOutcome,
   type RemoteObjectId,
   type StateLoadContext,
   type SynchronizationAuthorityMetadataV1_1,
   type SynchronizationAuthorityStoreV1_1,
   type SynchronizationStateStore,
+  type SynchronizationCancellationSignal,
   type TrustedSynchronizationState,
   type VaultPath,
   type VerifiedExecutionReceipt,
@@ -30,9 +33,14 @@ import { sha256Text } from "../util/sha256";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ProductSynchronizationExecutor } from "./production-executor";
 
+export interface RemoteUpdateFinalizationPort {
+  finalizeExistingUpdate(identity: Extract<RemoteMutationIdentity, { readonly kind: "existing-file-content-update" }>, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
+}
+
 export interface DurableIntentRecoveryDependencies {
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPort;
   readonly remoteFolderCreateRecoveryReadPort?: RemoteFolderCreateRecoveryReadPort;
+  readonly remoteUpdateFinalizationPort?: RemoteUpdateFinalizationPort;
 }
 
 export type DurableIntentRecoveryResult =

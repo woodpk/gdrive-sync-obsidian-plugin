@@ -134,7 +134,6 @@ class Boundary {
       ok: true as const,
       value: {
         entries: [
-          ...this.preserved.values(),
           ...this.remoteFiles.values(),
           ...this.extras,
         ].map(entry => "text" in entry
@@ -339,7 +338,35 @@ test("C1 reviewed first-sync Keep local crosses only the unresolved-path authori
     assert.equal(committed.state.base.some(entry => String(entry.path) === "collision.bin" && entry.content?.hash === sha256Text("LOCAL")), true);
     assert.equal(committed.state.remoteMappings.some(entry => String(entry.path) === "collision.bin"), true);
   }
+  const next = await h.controller.previewManual();
+  assert.ok(next);
+  assert.equal(next.operations.find(operation => String(operation.path) === "collision.bin")?.kind, "noop");
+  assert.equal(next.operations.some(operation => operation.kind === "blocked-unsafe" && String(operation.path) === "collision.bin"), false);
   assert.equal(h.controller.currentSurface().conflicts.some(value => "conflictId" in value && value.conflictId === conflictId), false, "conflict is removed only after authoritative completion");
+});
+
+test("C1 portable app.json Keep local leaves one planner-visible candidate and a clean subsequent plan", async () => {
+  const path = "__brain_sync_portable_config__/app.json";
+  const h = await harness({ local: [[path, "LOCAL-PORTABLE"]], remote: [[path, "REMOTE-PORTABLE", "remote:portable-app-predecessor"]] });
+  const conflictId = await registerAndExecuteFirstSyncConflict(h, path);
+  const predecessor = h.boundary.remoteFiles.get(path)!;
+  const result = await h.controller.request({ kind: "resolve-conflict", conflictId, resolution: { kind: "keep-local" } });
+  assert.equal(result.status, "accepted", result.status === "rejected" ? result.reason : undefined);
+  const listing = await h.boundary.drive.listForReconciliation();
+  assert.equal(listing.value.entries.filter(entry => String(entry.path) === path).length, 1);
+  assert.equal(h.boundary.preserved.get(String(predecessor.remoteObjectId))?.text, "REMOTE-PORTABLE");
+  const committed = await h.store.load(h.context);
+  assert.equal(committed.status, "trusted");
+  if (committed.status === "trusted") {
+    const mapping = committed.state.remoteMappings.find(entry => String(entry.path) === path);
+    const base = committed.state.base.find(entry => String(entry.path) === path);
+    assert.equal(mapping?.remoteObjectId, h.boundary.remoteFiles.get(path)?.remoteObjectId);
+    assert.equal(base?.content?.hash, sha256Text("LOCAL-PORTABLE"));
+  }
+  const next = await h.controller.previewManual();
+  assert.ok(next);
+  assert.equal(next.operations.find(operation => String(operation.path) === path)?.kind, "noop");
+  assert.equal(next.operations.some(operation => operation.kind === "blocked-unsafe" && String(operation.path) === path), false);
 });
 
 test("C1 stale LOCAL evidence rejects reviewed first-sync resolution before REMOTE mutation", async () => {
