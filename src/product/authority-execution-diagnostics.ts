@@ -28,6 +28,23 @@ export type ObservableSynchronizationAuthorityStore = SynchronizationAuthoritySt
   readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => AuthorityPersistenceFailureStage | undefined;
 };
 
+function safeCorrelationId(operation: PlannedOperation, value: string): string {
+  const rawPath = String(operation.path);
+  return rawPath && value.includes(rawPath)
+    ? diagnosticPathKey(value).replace(/^path-/, "id-")
+    : value;
+}
+
+function safeCorrelationFields(operation: PlannedOperation, fields: SafeDiagnosticFields): SafeDiagnosticFields {
+  return {
+    ...fields,
+    ...(typeof fields.planId === "string" ? { planId: safeCorrelationId(operation, fields.planId) } : {}),
+    ...(typeof fields.operationId === "string" ? { operationId: safeCorrelationId(operation, fields.operationId) } : {}),
+    ...(typeof fields.intentId === "string" ? { intentId: safeCorrelationId(operation, fields.intentId) } : {}),
+    ...(typeof fields.effectId === "string" ? { effectId: safeCorrelationId(operation, fields.effectId) } : {}),
+  };
+}
+
 function failureBoundary(stage: ExecutionLifecycleStage): { readonly stage: string; readonly classification: string } | undefined {
   switch (stage) {
     case "operation-precondition-validation-failed": return { stage: "operation-precondition-validation", classification: "operation-precondition-validation-failure" };
@@ -57,8 +74,8 @@ function failedFields(failed?: readonly OperationPrecondition[]): SafeDiagnostic
 
 function operationFields(operation: PlannedOperation, operationIndex: number, planId?: string): SafeDiagnosticFields {
   return {
-    ...(planId ? { planId } : {}),
-    operationId: String(operation.operationId),
+    ...(planId ? { planId: safeCorrelationId(operation, planId) } : {}),
+    operationId: safeCorrelationId(operation, String(operation.operationId)),
     pathKey: diagnosticPathKey(String(operation.path)),
     operationIndex,
     operationKind: operation.kind,
@@ -135,10 +152,10 @@ export function authoritativeDiagnostics(
 
   const emitter: ExecutionDiagnosticEmitter = (operation, component, event, fields = {}, error) => {
     if (runId === undefined) return;
-    const completeFields: SafeDiagnosticFields = {
+    const completeFields: SafeDiagnosticFields = safeCorrelationFields(operation, {
       ...operationFields(operation, operationIndex, planId),
       ...fields,
-    };
+    });
     if (error !== undefined) logger.syncFailure(component, event, runId, error, completeFields);
     else logger.syncTrace(component, event, runId, completeFields);
   };
@@ -163,14 +180,14 @@ export function authoritativeDiagnostics(
       classification = "post-verification-authority-unavailable";
     }
 
-    const fields: SafeDiagnosticFields = {
+    const fields: SafeDiagnosticFields = safeCorrelationFields(operation, {
       ...operationFields(operation, operationIndex, planId),
       stage: failure?.stage ?? stage,
       ...failedFields(failed),
       ...(result ? { result } : {}),
       ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
       ...(classification ? { classification } : {}),
-    };
+    });
     logger.syncTrace("sync.execute", stage, runId, fields);
     if (!failure) return;
     if (error !== undefined) logger.syncFailure("sync.execute", stage, runId, error, fields);
