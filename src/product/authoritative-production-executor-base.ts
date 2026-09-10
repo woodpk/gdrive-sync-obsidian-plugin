@@ -915,7 +915,7 @@ export function createAuthoritativeProductExecutor(
         diagnostics?.(operation, "sync.effect", "restart-recovery-entry", {
           stage: "recovery",
           intentId: String(existing.intentId),
-          effectCount: existing.effects.length,
+          count: existing.effects.length,
           observationSource: "existing-intent",
           persistenceRevision: String(loaded.state.persistenceRevision),
           semanticGeneration: String(loaded.state.semanticGeneration),
@@ -946,7 +946,7 @@ export function createAuthoritativeProductExecutor(
       diagnostics?.(operation, "sync.effect", "durable-intent-prepared", {
         stage: "intent-preparation",
         intentId: String(prepared.intent.intentId),
-        effectCount: prepared.intent.effects.length,
+        count: prepared.intent.effects.length,
         semanticGeneration: String(prepared.intent.semanticAuthority.generation),
       });
       for (const value of prepared.prepared) diagnostics?.(operation, "sync.effect", "effect-prepared", effectFields(prepared.intent.intentId, value.effect, {
@@ -956,7 +956,7 @@ export function createAuthoritativeProductExecutor(
         stage: "durable-intent-persistence",
         intentId: String(prepared.intent.intentId),
         toStage: "intent-persisted",
-        effectCount: prepared.intent.effects.length,
+        count: prepared.intent.effects.length,
       });
       const persisted = await lifecycle.persistIntent(prepared.intent, prepared.prepared.flatMap(value => value.localTransaction ? [value.localTransaction] : []));
       diagnostics?.(operation, "sync.effect", persisted.status === "persisted" ? "durable-intent-persistence-complete" : "durable-intent-persistence-failed", {
