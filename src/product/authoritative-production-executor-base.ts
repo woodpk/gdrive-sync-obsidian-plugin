@@ -39,7 +39,9 @@ import {
   type VersionReference,
   type VerifiedExecutionReceipt,
 } from "../contracts";
+import type { SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { sha256Text } from "../util/sha256";
+import { executionDiagnosticEmitterFor, type ExecutionDiagnosticEmitter } from "./authority-execution-diagnostics";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ExecutorRunEvidence, ProductSynchronizationExecutor } from "./production-executor";
 import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
@@ -143,6 +145,39 @@ function resultReason(value: unknown, fallback: string): string {
   return typeof value === "object" && value !== null && "reason" in value && typeof (value as { reason?: unknown }).reason === "string"
     ? (value as { reason: string }).reason
     : fallback;
+}
+function effectFields(
+  intentId: MutationIntentId | string,
+  effect: RecoverableMutationEffectV1_1,
+  fields: SafeDiagnosticFields = {},
+): SafeDiagnosticFields {
+  return {
+    intentId: String(intentId),
+    effectId: effect.effectId,
+    classification: effect.descriptor.kind,
+    target: effect.descriptor.targetSide,
+    ...fields,
+  };
+}
+function physicalTargetStage(physical: PhysicalEffectDispatchResult): string | undefined {
+  if (physical.status === "verified-effect") return "effect-verified";
+  if (physical.status === "conflict-preserved" || physical.status === "outcome-unknown") return "outcome-unknown";
+  return undefined;
+}
+function emitPhysicalResult(
+  diagnostics: ExecutionDiagnosticEmitter | undefined,
+  operation: ExecutablePlannedOperation,
+  intentId: MutationIntentId | string,
+  effect: RecoverableMutationEffectV1_1,
+  physical: PhysicalEffectDispatchResult,
+  observationSource: string,
+): void {
+  diagnostics?.(operation, "sync.effect", "physical-result-classified", effectFields(intentId, effect, {
+    result: physical.status,
+    classification: physical.status,
+    observationSource,
+    ...(physical.status === "verified-effect" ? { verificationEvidenceRef: physical.verificationEvidenceRef } : {}),
+  }));
 }
 
 function reviewedFirstSyncResolutionCandidate(operation: ExecutablePlannedOperation): boolean {
@@ -511,10 +546,27 @@ async function recoverEffect(
   effect: RecoverableMutationEffectV1_1,
   legacy: ProductSynchronizationExecutor,
   deps: RecoverableProductionMutationDependencies,
+  diagnostics?: ExecutionDiagnosticEmitter,
 ): Promise<ExecutionResult | undefined> {
-  if (effect.stage === "state-committed") return undefined;
-  if (effect.stage === "intent-persisted") return { status: "recovery-required", reason: "restart found unattempted durable intent; retire/replan before dispatch" };
+  const intentId = intentIdFor(operation);
+  diagnostics?.(operation, "sync.effect", "restart-effect-entry", effectFields(intentId, effect, {
+    stage: "recovery",
+    fromStage: effect.stage,
+    observationSource: "restart-recovery",
+  }));
+  if (effect.stage === "state-committed") {
+    diagnostics?.(operation, "sync.effect", "restart-effect-already-committed", effectFields(intentId, effect, { fromStage: effect.stage, toStage: effect.stage, result: "already-committed" }));
+    return undefined;
+  }
+  if (effect.stage === "intent-persisted") {
+    diagnostics?.(operation, "sync.effect", "restart-effect-requires-replan", effectFields(intentId, effect, { fromStage: effect.stage, result: "recovery-required", classification: "unattempted-intent" }));
+    return { status: "recovery-required", reason: "restart found unattempted durable intent; retire/replan before dispatch" };
+  }
   if (effect.stage === "dispatch-authorized" || effect.stage === "outcome-unknown") {
+    diagnostics?.(operation, "sync.effect", "recovery-observation-start", effectFields(intentId, effect, {
+      fromStage: effect.stage,
+      observationSource: "restart-recovery",
+    }));
     let physical: PhysicalEffectDispatchResult;
     if (effect.descriptor.kind === "remote-folder-create") {
       if (!deps.remoteFolderCreateRecoveryReadPort) return { status: "recovery-required", reason: "RemoteFolderCreateRecoveryReadPort unavailable" };
@@ -543,7 +595,24 @@ async function recoverEffect(
         ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("restart-observation", effect.effectId) }
         : { status: "outcome-unknown", reason: converged.reason };
     }
+    emitPhysicalResult(diagnostics, operation, intentId, effect, physical, "restart-recovery");
+    const toStage = physicalTargetStage(physical);
+    diagnostics?.(operation, "sync.effect", "durable-effect-transition-start", effectFields(intentId, effect, {
+      fromStage: effect.stage,
+      ...(toStage ? { toStage } : {}),
+      result: physical.status,
+    }));
     const recorded = await lifecycle.recordPhysicalResult(String(operation.operationId), effect.effectId, physical);
+    diagnostics?.(operation, "sync.effect", "durable-effect-transition-complete", effectFields(intentId, effect, {
+      fromStage: effect.stage,
+      ...(toStage ? { toStage } : {}),
+      result: recorded.status,
+      commitStatus: recorded.status,
+      ...(recorded.status === "effect-verified" && "authority" in recorded ? {
+        persistenceRevision: String(recorded.authority.persistenceRevision),
+        semanticGeneration: String(recorded.authority.semanticGeneration),
+      } : {}),
+    }));
     if (recorded.status !== "effect-verified" && recorded.status !== "already-progressed") {
       return recorded.status === "conflict-preserved"
         ? { status: "blocking-failure", reason: recorded.reason }
@@ -555,7 +624,16 @@ async function recoverEffect(
   const current = loaded.state.operationIntents.find(value => value.operationId === operation.operationId)?.effects.find(value => value.effectId === effect.effectId);
   if (!current || (current.stage !== "effect-verified" && current.stage !== "state-committed")) return { status: "uncertain", reason: "recovered effect lacks durable verification" };
   if (current.stage === "state-committed") return undefined;
+  diagnostics?.(operation, "sync.effect", "convergence-verification-start", effectFields(intentId, current, {
+    fromStage: current.stage,
+    observationSource: "restart-recovery",
+  }));
   const converged = await convergenceFor(legacy, current.descriptor);
+  diagnostics?.(operation, "sync.effect", converged.ok ? "convergence-verification-complete" : "convergence-verification-failed", effectFields(intentId, current, {
+    convergenceStatus: converged.ok ? "converged" : "not-converged",
+    observationSource: "restart-recovery",
+    ...(current.verificationEvidenceRef ? { verificationEvidenceRef: current.verificationEvidenceRef } : {}),
+  }));
   if (!converged.ok) return { status: "blocking-failure", reason: converged.reason };
   if (!current.verificationEvidenceRef) return { status: "recovery-required", reason: "verified effect lacks evidence reference" };
   return undefined;
@@ -567,95 +645,155 @@ async function dispatchEffect(
   prepared: PreparedEffect,
   legacy: ProductSynchronizationExecutor,
   deps: RecoverableProductionMutationDependencies,
+  diagnostics?: ExecutionDiagnosticEmitter,
 ): Promise<ExecutionResult | undefined> {
+  const intentId = intentIdFor(operation);
+  diagnostics?.(operation, "sync.effect", "durable-effect-transition-start", effectFields(intentId, prepared.effect, {
+    fromStage: "intent-persisted",
+    toStage: "dispatch-authorized",
+  }));
   const authorized = await lifecycle.authorizePersistedEffect(String(operation.operationId), prepared.effect.effectId);
+  diagnostics?.(operation, "sync.effect", authorized.status === "dispatch-authorized" ? "durable-effect-transition-complete" : "durable-effect-transition-failed", effectFields(intentId, prepared.effect, {
+    fromStage: "intent-persisted",
+    toStage: "dispatch-authorized",
+    result: authorized.status,
+    commitStatus: authorized.status,
+    ...(authorized.status === "dispatch-authorized" ? {
+      persistenceRevision: String(authorized.authority.persistenceRevision),
+      semanticGeneration: String(authorized.authority.semanticGeneration),
+    } : {}),
+  }));
   if (authorized.status !== "dispatch-authorized") return { status: "recovery-required", reason: `dispatch authority not durably persisted (${authorized.status})` };
   const descriptor = prepared.effect.descriptor;
   let physical: PhysicalEffectDispatchResult;
 
-  if (descriptor.kind === "remote-file") {
-    if (!deps.reliableRemoteMutationPort || !prepared.content) return { status: "recovery-required", reason: "REMOTE durable descriptor lacks frozen mutation port/content" };
-    const outcome = descriptor.mutationKind === "create"
-      ? await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation as Extract<typeof descriptor.remoteMutation, { kind: "reserved-file-create" }>, prepared.content)
-      : await deps.reliableRemoteMutationPort.updateExisting(descriptor.remoteMutation as Extract<typeof descriptor.remoteMutation, { kind: "existing-file-content-update" }>, prepared.content);
-    physical = mapRemoteOutcome(outcome);
-  } else if (descriptor.kind === "remote-folder-create") {
-    if (!deps.reliableRemoteMutationPort || !deps.remoteFolderCreateRecoveryReadPort) return { status: "recovery-required", reason: "REMOTE folder frozen mutation/recovery port unavailable" };
-    const outcome = await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation);
-    if (outcome.status !== "verified-effect") {
+  try {
+    if (descriptor.kind === "remote-file") {
+      if (!deps.reliableRemoteMutationPort || !prepared.content) return { status: "recovery-required", reason: "REMOTE durable descriptor lacks frozen mutation port/content" };
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      const outcome = descriptor.mutationKind === "create"
+        ? await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation as Extract<typeof descriptor.remoteMutation, { kind: "reserved-file-create" }>, prepared.content)
+        : await deps.reliableRemoteMutationPort.updateExisting(descriptor.remoteMutation as Extract<typeof descriptor.remoteMutation, { kind: "existing-file-content-update" }>, prepared.content);
       physical = mapRemoteOutcome(outcome);
-    } else {
-      const observed = await deps.remoteFolderCreateRecoveryReadPort.observeFolderCreateRecovery(descriptor);
-      const verified = verifyRemoteFolderCreate(descriptor, observed);
-      physical = verified.status === "verified-effect"
-        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("remote-folder", verified.proof) }
-        : verified;
-    }
-  } else if (descriptor.kind === "move" && descriptor.targetSide === "remote") {
-    if (!deps.reliableRemoteMutationPort || !descriptor.remoteObjectId) return { status: "recovery-required", reason: "REMOTE move frozen port/identity unavailable" };
-    physical = mapRemoteOutcome(await deps.reliableRemoteMutationPort.moveExisting({
-      kind: "identity-preserving-move",
-      intentId: intentIdFor(operation),
-      remoteObjectId: descriptor.remoteObjectId,
-      fromPath: descriptor.fromPath,
-      toPath: descriptor.toPath,
-      identityAuthority: descriptor.identityAuthority,
-    }));
-  } else if (descriptor.kind === "trash" && descriptor.targetSide === "remote") {
-    if (!deps.reliableRemoteMutationPort || !descriptor.remoteObjectId || !descriptor.identityAuthority) return { status: "recovery-required", reason: "REMOTE trash frozen port/identity unavailable" };
-    physical = mapRemoteOutcome(await deps.reliableRemoteMutationPort.trashExisting({
-      kind: "trash",
-      intentId: intentIdFor(operation),
-      remoteObjectId: descriptor.remoteObjectId,
-      path: descriptor.path,
-      baseAuthority: descriptor.baseAuthority,
-      identityAuthority: descriptor.identityAuthority,
-    }));
-  } else if (descriptor.kind === "local-file") {
-    if (!deps.localTransactionalMutationPort || !prepared.content || !prepared.localTransaction) return { status: "recovery-required", reason: "LOCAL file frozen transaction port/intent unavailable" };
-    const staged = await deps.localTransactionalMutationPort.stageAndVerify(prepared.localTransaction, prepared.content);
-    let saved = await lifecycle.persistLocalTransaction(staged.transaction);
-    if (saved.status !== "persisted") return { status: "recovery-required", reason: "LOCAL staged progress not durable" };
-    if (staged.status !== "staged-verified") {
-      physical = { status: "outcome-unknown", reason: resultReason(staged, "LOCAL stage unresolved") };
-    } else {
-      const committed = await deps.localTransactionalMutationPort.commitVerifiedStage(staged.transaction);
-      saved = await lifecycle.persistLocalTransaction(committed.transaction);
-      if (saved.status !== "persisted") return { status: "recovery-required", reason: "LOCAL commit progress not durable" };
+    } else if (descriptor.kind === "remote-folder-create") {
+      if (!deps.reliableRemoteMutationPort || !deps.remoteFolderCreateRecoveryReadPort) return { status: "recovery-required", reason: "REMOTE folder frozen mutation/recovery port unavailable" };
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      const outcome = await deps.reliableRemoteMutationPort.createReserved(descriptor.remoteMutation);
+      if (outcome.status !== "verified-effect") {
+        physical = mapRemoteOutcome(outcome);
+      } else {
+        const observed = await deps.remoteFolderCreateRecoveryReadPort.observeFolderCreateRecovery(descriptor);
+        const verified = verifyRemoteFolderCreate(descriptor, observed);
+        physical = verified.status === "verified-effect"
+          ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("remote-folder", verified.proof) }
+          : verified;
+      }
+    } else if (descriptor.kind === "move" && descriptor.targetSide === "remote") {
+      if (!deps.reliableRemoteMutationPort || !descriptor.remoteObjectId) return { status: "recovery-required", reason: "REMOTE move frozen port/identity unavailable" };
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      physical = mapRemoteOutcome(await deps.reliableRemoteMutationPort.moveExisting({
+        kind: "identity-preserving-move",
+        intentId: intentIdFor(operation),
+        remoteObjectId: descriptor.remoteObjectId,
+        fromPath: descriptor.fromPath,
+        toPath: descriptor.toPath,
+        identityAuthority: descriptor.identityAuthority,
+      }));
+    } else if (descriptor.kind === "trash" && descriptor.targetSide === "remote") {
+      if (!deps.reliableRemoteMutationPort || !descriptor.remoteObjectId || !descriptor.identityAuthority) return { status: "recovery-required", reason: "REMOTE trash frozen port/identity unavailable" };
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      physical = mapRemoteOutcome(await deps.reliableRemoteMutationPort.trashExisting({
+        kind: "trash",
+        intentId: intentIdFor(operation),
+        remoteObjectId: descriptor.remoteObjectId,
+        path: descriptor.path,
+        baseAuthority: descriptor.baseAuthority,
+        identityAuthority: descriptor.identityAuthority,
+      }));
+    } else if (descriptor.kind === "local-file") {
+      if (!deps.localTransactionalMutationPort || !prepared.content || !prepared.localTransaction) return { status: "recovery-required", reason: "LOCAL file frozen transaction port/intent unavailable" };
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      const staged = await deps.localTransactionalMutationPort.stageAndVerify(prepared.localTransaction, prepared.content);
+      let saved = await lifecycle.persistLocalTransaction(staged.transaction);
+      if (saved.status !== "persisted") return { status: "recovery-required", reason: "LOCAL staged progress not durable" };
+      if (staged.status !== "staged-verified") {
+        physical = { status: "outcome-unknown", reason: resultReason(staged, "LOCAL stage unresolved") };
+      } else {
+        const committed = await deps.localTransactionalMutationPort.commitVerifiedStage(staged.transaction);
+        saved = await lifecycle.persistLocalTransaction(committed.transaction);
+        if (saved.status !== "persisted") return { status: "recovery-required", reason: "LOCAL commit progress not durable" };
+        const converged = await verifyLocal(legacy, descriptor);
+        physical = committed.status === "committed" && converged.ok
+          ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-file", String(committed.transaction.transactionId)) }
+          : { status: "outcome-unknown", reason: committed.status === "committed" ? (converged.ok ? "LOCAL convergence unavailable" : converged.reason) : resultReason(committed, "LOCAL transaction unresolved") };
+      }
+    } else if (descriptor.kind === "local-folder-create") {
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      await internal(legacy).local.createFolder(descriptor.targetPath);
       const converged = await verifyLocal(legacy, descriptor);
-      physical = committed.status === "committed" && converged.ok
-        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-file", String(committed.transaction.transactionId)) }
-        : { status: "outcome-unknown", reason: committed.status === "committed" ? (converged.ok ? "LOCAL convergence unavailable" : converged.reason) : resultReason(committed, "LOCAL transaction unresolved") };
+      physical = converged.ok
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-folder", String(descriptor.targetPath)) }
+        : { status: "outcome-unknown", reason: converged.reason };
+    } else if (descriptor.kind === "move" && descriptor.targetSide === "local") {
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      await internal(legacy).local.move(descriptor.fromPath, descriptor.toPath);
+      const converged = await verifyLocal(legacy, descriptor);
+      physical = converged.ok
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-move", [String(descriptor.fromPath), String(descriptor.toPath)]) }
+        : { status: "outcome-unknown", reason: converged.reason };
+    } else if (descriptor.kind === "trash" && descriptor.targetSide === "local") {
+      diagnostics?.(operation, "sync.effect", "physical-dispatch-start", effectFields(intentId, prepared.effect, { fromStage: "dispatch-authorized", observationSource: "live-dispatch" }));
+      await internal(legacy).local.trash(descriptor.path);
+      const converged = await verifyLocal(legacy, descriptor);
+      physical = converged.ok
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-trash", String(descriptor.path)) }
+        : { status: "outcome-unknown", reason: converged.reason };
+    } else {
+      return { status: "recovery-required", reason: "unsupported durable descriptor" };
     }
-  } else if (descriptor.kind === "local-folder-create") {
-    await internal(legacy).local.createFolder(descriptor.targetPath);
-    const converged = await verifyLocal(legacy, descriptor);
-    physical = converged.ok
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-folder", String(descriptor.targetPath)) }
-      : { status: "outcome-unknown", reason: converged.reason };
-  } else if (descriptor.kind === "move" && descriptor.targetSide === "local") {
-    await internal(legacy).local.move(descriptor.fromPath, descriptor.toPath);
-    const converged = await verifyLocal(legacy, descriptor);
-    physical = converged.ok
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-move", [String(descriptor.fromPath), String(descriptor.toPath)]) }
-      : { status: "outcome-unknown", reason: converged.reason };
-  } else if (descriptor.kind === "trash" && descriptor.targetSide === "local") {
-    await internal(legacy).local.trash(descriptor.path);
-    const converged = await verifyLocal(legacy, descriptor);
-    physical = converged.ok
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-trash", String(descriptor.path)) }
-      : { status: "outcome-unknown", reason: converged.reason };
-  } else {
-    return { status: "recovery-required", reason: "unsupported durable descriptor" };
+  } catch (error) {
+    diagnostics?.(operation, "sync.effect", "physical-dispatch-failed", effectFields(intentId, prepared.effect, {
+      fromStage: "dispatch-authorized",
+      classification: "dispatch-threw",
+      result: "threw",
+    }), error);
+    throw error;
   }
 
+  emitPhysicalResult(diagnostics, operation, intentId, prepared.effect, physical, "live-dispatch");
+  const toStage = physicalTargetStage(physical);
+  diagnostics?.(operation, "sync.effect", "durable-effect-transition-start", effectFields(intentId, prepared.effect, {
+    fromStage: "dispatch-authorized",
+    ...(toStage ? { toStage } : {}),
+    result: physical.status,
+  }));
   const recorded = await lifecycle.recordPhysicalResult(String(operation.operationId), prepared.effect.effectId, physical);
+  diagnostics?.(operation, "sync.effect", "durable-effect-transition-complete", effectFields(intentId, prepared.effect, {
+    fromStage: "dispatch-authorized",
+    ...(toStage ? { toStage } : {}),
+    result: recorded.status,
+    commitStatus: recorded.status,
+    ...(recorded.status === "effect-verified" && "authority" in recorded ? {
+      persistenceRevision: String(recorded.authority.persistenceRevision),
+      semanticGeneration: String(recorded.authority.semanticGeneration),
+      verificationEvidenceRef: physical.status === "verified-effect" ? physical.verificationEvidenceRef : undefined,
+    } : {}),
+  }));
   if (recorded.status !== "effect-verified") {
     return recorded.status === "conflict-preserved"
       ? { status: "blocking-failure", reason: recorded.reason }
       : { status: "uncertain", reason: resultReason(recorded, `physical effect remained ${recorded.status}`) };
   }
+  diagnostics?.(operation, "sync.effect", "convergence-verification-start", effectFields(intentId, prepared.effect, {
+    fromStage: "effect-verified",
+    observationSource: "post-dispatch",
+  }));
   const converged = await convergenceFor(legacy, descriptor);
+  diagnostics?.(operation, "sync.effect", converged.ok ? "convergence-verification-complete" : "convergence-verification-failed", effectFields(intentId, prepared.effect, {
+    convergenceStatus: converged.ok ? "converged" : "not-converged",
+    observationSource: "post-dispatch",
+    ...(physical.status === "verified-effect" ? { verificationEvidenceRef: physical.verificationEvidenceRef } : {}),
+  }));
   if (!converged.ok) return { status: "blocking-failure", reason: converged.reason };
   const current = recorded.authority.operationIntents.find(value => value.operationId === operation.operationId)?.effects.find(value => value.effectId === prepared.effect.effectId);
   if (!current?.verificationEvidenceRef) return { status: "recovery-required", reason: "durable verification evidence missing" };
@@ -671,17 +809,40 @@ export function createAuthoritativeProductExecutor(
   explicitDependencies?: RecoverableProductionMutationDependencies,
 ): AuthoritativeSynchronizationExecutor {
   const dependencies = explicitDependencies ?? internal(legacy).recoverableProductionMutationDependencies ?? {};
+  const diagnostics = executionDiagnosticEmitterFor(authorityStore);
 
   async function validateExact(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
+    diagnostics?.(operation, "sync.execute", "authority-resolution-start", { stage: "authority-resolution" });
     const [authorityLoad, identityLoad] = await Promise.all([authorityStore.loadAuthority(), identityStateStore.load(stateContext)]);
-    if (authorityLoad.status !== "trusted") return { status: "recovery-required", reason: "current authoritative synchronization metadata unavailable" };
-    if (identityLoad.status !== "trusted") return { status: "recovery-required", reason: "current trusted remote identity mappings unavailable" };
+    if (authorityLoad.status !== "trusted") {
+      diagnostics?.(operation, "sync.execute", "authority-resolution-failed", { stage: "authority-resolution", classification: "authoritative-metadata-unavailable", result: "recovery-required" });
+      return { status: "recovery-required", reason: "current authoritative synchronization metadata unavailable" };
+    }
+    if (identityLoad.status !== "trusted") {
+      diagnostics?.(operation, "sync.execute", "authority-resolution-failed", {
+        stage: "authority-resolution",
+        classification: "canonical-identity-unavailable",
+        result: "recovery-required",
+        persistenceRevision: String(authorityLoad.state.persistenceRevision),
+        semanticGeneration: String(authorityLoad.state.semanticGeneration),
+      });
+      return { status: "recovery-required", reason: "current trusted remote identity mappings unavailable" };
+    }
     const bootstrapCandidate = reviewedFirstSyncResolutionCandidate(operation);
     const bootstrapRecovery = bootstrapCandidate && reviewedFirstSyncRecoveryIntentMatches(operation, authorityLoad.state);
     const bootstrapCurrent = bootstrapRecovery || (bootstrapCandidate
       ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, legacy, managedRemote)
       : false);
-    if (bootstrapCandidate && !bootstrapCurrent) return { status: "stale", failed: operation.preconditions };
+    if (bootstrapCandidate && !bootstrapCurrent) {
+      diagnostics?.(operation, "sync.execute", "authority-resolution-failed", {
+        stage: "authority-resolution",
+        classification: "stale-authority",
+        result: "stale",
+        persistenceRevision: String(authorityLoad.state.persistenceRevision),
+        semanticGeneration: String(authorityLoad.state.semanticGeneration),
+      });
+      return { status: "stale", failed: operation.preconditions };
+    }
 
     const failed: ExecutableOperationPrecondition[] = [];
     for (const precondition of operation.preconditions) {
@@ -703,7 +864,25 @@ export function createAuthoritativeProductExecutor(
         }
       }
     }
-    if (failed.length) return { status: "stale", failed };
+    if (failed.length) {
+      diagnostics?.(operation, "sync.execute", "authority-resolution-failed", {
+        stage: "authority-resolution",
+        classification: "stale-authority",
+        result: "stale",
+        failedPreconditionCount: failed.length,
+        persistenceRevision: String(authorityLoad.state.persistenceRevision),
+        semanticGeneration: String(authorityLoad.state.semanticGeneration),
+      });
+      return { status: "stale", failed };
+    }
+    diagnostics?.(operation, "sync.execute", "authority-resolution-complete", {
+      stage: "authority-resolution",
+      classification: bootstrapRecovery ? "restart-authority" : bootstrapCurrent ? "reviewed-first-sync-authority" : "exact-authority",
+      result: "ready",
+      persistenceRevision: String(authorityLoad.state.persistenceRevision),
+      semanticGeneration: String(authorityLoad.state.semanticGeneration),
+      stateRevision: String(identityLoad.state.stateRevision),
+    });
     if (bootstrapRecovery) return { status: "valid" };
     const ordinary = await legacy.validatePreconditions(operation);
     if (ordinary.status === "valid") return { status: "valid" };
@@ -733,9 +912,17 @@ export function createAuthoritativeProductExecutor(
       if (loaded.status !== "trusted") return { status: "recovery-required", reason: loaded.reason };
       const existing = loaded.state.operationIntents.find(value => value.operationId === operation.operationId);
       if (existing) {
+        diagnostics?.(operation, "sync.effect", "restart-recovery-entry", {
+          stage: "recovery",
+          intentId: String(existing.intentId),
+          effectCount: existing.effects.length,
+          observationSource: "existing-intent",
+          persistenceRevision: String(loaded.state.persistenceRevision),
+          semanticGeneration: String(loaded.state.semanticGeneration),
+        });
         if (existing.semanticAuthority.generation !== loaded.state.semanticGeneration) return { status: "recovery-required", reason: "persisted intent belongs to stale semantic authority" };
         for (const effect of existing.effects) {
-          const result = await recoverEffect(lifecycle, operation, effect, legacy, dependencies);
+          const result = await recoverEffect(lifecycle, operation, effect, legacy, dependencies, diagnostics);
           if (result) return result;
         }
         const final = await lifecycle.loadAuthority();
@@ -744,15 +931,48 @@ export function createAuthoritativeProductExecutor(
         if (!recovered?.effects.every(value => (value.stage === "effect-verified" || value.stage === "state-committed") && Boolean(value.verificationEvidenceRef))) {
           return { status: "recovery-required", reason: "restart did not recover every required effect to durable verification" };
         }
-        return success(operation, recovered.effects);
+        const receipt = success(operation, recovered.effects);
+        if (receipt.status === "durable-verified-success") diagnostics?.(operation, "sync.execute", "physical-verification-complete", {
+          stage: "integrity-verification",
+          result: receipt.status,
+          convergenceStatus: "verified",
+          verificationEvidenceRef: receipt.receipt.verificationEvidenceRef,
+        });
+        return receipt;
       }
 
       const prepared = await prepareIntent(operation, loaded.state, legacy, dependencies, identityStateStore, stateContext, managedRemote);
       if (prepared.status === "blocked") return { status: "recovery-required", reason: prepared.reason };
+      diagnostics?.(operation, "sync.effect", "durable-intent-prepared", {
+        stage: "intent-preparation",
+        intentId: String(prepared.intent.intentId),
+        effectCount: prepared.intent.effects.length,
+        semanticGeneration: String(prepared.intent.semanticAuthority.generation),
+      });
+      for (const value of prepared.prepared) diagnostics?.(operation, "sync.effect", "effect-prepared", effectFields(prepared.intent.intentId, value.effect, {
+        toStage: "intent-persisted",
+      }));
+      diagnostics?.(operation, "sync.effect", "durable-intent-persistence-start", {
+        stage: "durable-intent-persistence",
+        intentId: String(prepared.intent.intentId),
+        toStage: "intent-persisted",
+        effectCount: prepared.intent.effects.length,
+      });
       const persisted = await lifecycle.persistIntent(prepared.intent, prepared.prepared.flatMap(value => value.localTransaction ? [value.localTransaction] : []));
+      diagnostics?.(operation, "sync.effect", persisted.status === "persisted" ? "durable-intent-persistence-complete" : "durable-intent-persistence-failed", {
+        stage: "durable-intent-persistence",
+        intentId: String(prepared.intent.intentId),
+        toStage: "intent-persisted",
+        result: persisted.status,
+        commitStatus: persisted.status,
+        ...(persisted.status === "persisted" ? {
+          persistenceRevision: String(persisted.authority.persistenceRevision),
+          semanticGeneration: String(persisted.authority.semanticGeneration),
+        } : {}),
+      });
       if (persisted.status !== "persisted") return { status: "recovery-required", reason: `physical intent not durably persisted (${persisted.status})` };
       for (const effect of prepared.prepared) {
-        const result = await dispatchEffect(lifecycle, operation, effect, legacy, dependencies);
+        const result = await dispatchEffect(lifecycle, operation, effect, legacy, dependencies, diagnostics);
         if (result) return result;
       }
       const final = await lifecycle.loadAuthority();
@@ -761,7 +981,14 @@ export function createAuthoritativeProductExecutor(
       if (!verified?.effects.every(value => value.stage === "effect-verified" && Boolean(value.verificationEvidenceRef))) {
         return { status: "recovery-required", reason: "logical operation incomplete: required effect not effect-verified" };
       }
-      return success(operation, verified.effects);
+      const receipt = success(operation, verified.effects);
+      if (receipt.status === "durable-verified-success") diagnostics?.(operation, "sync.execute", "physical-verification-complete", {
+        stage: "integrity-verification",
+        result: receipt.status,
+        convergenceStatus: "verified",
+        verificationEvidenceRef: receipt.receipt.verificationEvidenceRef,
+      });
+      return receipt;
     },
   };
 }
