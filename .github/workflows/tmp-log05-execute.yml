@@ -13,21 +13,17 @@ jobs:
   implement-verify-evidence:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout execution tooling
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: tmp-log05-execution-tooling
           path: tooling
           fetch-depth: 0
-
-      - name: Checkout exact LOG-05 branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: phase6-logging-log05-authority-state-recovery-tracing
           path: repo
           fetch-depth: 0
           token: ${{ github.token }}
-
       - name: Verify exact base and apply bounded transform
         shell: bash
         run: |
@@ -35,77 +31,42 @@ jobs:
           cd repo
           test "$(git rev-parse HEAD)" = "48d9e612b69b43be9941f97630c580c2b8aed929"
           test -z "$(git status --porcelain)"
+          python ../tooling/dev/log05/precondition-log05.py
           python ../tooling/dev/log05/apply-log05.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/product/durable-intent-recovery.ts')
+          t=p.read_text(encoding='utf-8')
+          start=t.index('async function preflightVerifiedEffects(')
+          end=t.index('export async function recoverMatchingDurableIntentToVerifiedReceipt(', start)
+          a,s,b=t[:start],t[start:end],t[end:]
+          s=s.replace('  if (loaded.status !== "trusted") { return loaded.reason; }\n  let remotePromise','  if (loaded.status !== "trusted") return loaded.reason;\n  let remotePromise',1)
+          s=s.replace('    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) { return invalid; }\n    for (const effect of intent.effects) {','    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) return invalid;\n    for (const effect of intent.effects) {',1)
+          p.write_text(a+s+b,encoding='utf-8')
+          PY
           git diff --check
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: repo/package-lock.json
-
       - name: Verify implementation
-        id: verify
         shell: bash
         working-directory: repo
         run: |
-          set +e
-          mkdir -p .log05-verification
-          status=0
-          run_check() {
-            name="$1"; shift
-            echo "===== $name =====" | tee ".log05-verification/$name.log"
-            "$@" 2>&1 | tee -a ".log05-verification/$name.log"
-            rc=${PIPESTATUS[0]}
-            if [ "$rc" -ne 0 ]; then status="$rc"; fi
-            return 0
-          }
-          run_check npm-ci npm ci
-          run_check typecheck npm run typecheck
-          run_check test-compile npx tsc -p tsconfig.test.json
-          run_check focused node --test .test-build/test/workstreams/state/state-authority-v1-1.test.js .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js
-          run_check full-tests npm test
-          run_check build npm run build
-          run_check repo-check npm run check
-          run_check diff-check git diff --check
-          if [ -f main.js ]; then
-            wc -c main.js | tee .log05-verification/main-js-size.txt
-            sha256sum main.js | tee .log05-verification/main-js-sha256.txt
-          fi
-          echo "$status" > .log05-verification/status.txt
-          exit "$status"
-
-      - name: Preserve failure diagnostics on tooling branch
-        if: failure()
-        shell: bash
-        run: |
           set -euo pipefail
-          mkdir -p tooling/dev/log05
-          {
-            echo '# LOG-05 temporary execution failure'
-            echo
-            echo '- Target base: `48d9e612b69b43be9941f97630c580c2b8aed929`'
-            echo '- Target branch: `phase6-logging-log05-authority-state-recovery-tracing`'
-            echo '- Product branch was not pushed by this failed run.'
-            echo
-            for f in repo/.log05-verification/*.log; do
-              [ -f "$f" ] || continue
-              echo "## $(basename "$f")"
-              echo '```text'
-              tail -n 120 "$f"
-              echo '```'
-            done
-          } > tooling/dev/log05/last-run.md
-          cd tooling
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add dev/log05/last-run.md
-          git commit -m 'chore: record LOG-05 execution failure' || true
-          git push origin HEAD:tmp-log05-execution-tooling
-
+          mkdir -p .log05-verification
+          npm ci 2>&1 | tee .log05-verification/npm-ci.log
+          npm run typecheck 2>&1 | tee .log05-verification/typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee .log05-verification/test-compile.log
+          node --test .test-build/test/workstreams/state/state-authority-v1-1.test.js .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js 2>&1 | tee .log05-verification/focused.log
+          npm test 2>&1 | tee .log05-verification/full-tests.log
+          npm run build 2>&1 | tee .log05-verification/build.log
+          npm run check 2>&1 | tee .log05-verification/repo-check.log
+          git diff --check 2>&1 | tee .log05-verification/diff-check.log
+          wc -c main.js | tee .log05-verification/main-js-size.txt
+          sha256sum main.js | tee .log05-verification/main-js-sha256.txt
       - name: Commit implementation and evidence
-        if: success()
         shell: bash
         working-directory: repo
         run: |
@@ -113,18 +74,19 @@ jobs:
           BASE=48d9e612b69b43be9941f97630c580c2b8aed929
           BRANCH=phase6-logging-log05-authority-state-recovery-tracing
           git checkout -- main.js 2>/dev/null || true
-          rm -rf .test-build .log05-verification/.npm 2>/dev/null || true
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src/diagnostics/authority-state-recovery-diagnostics.ts src/state/persistent-state-store.ts src/product/synchronization-adapters.ts src/product/durable-intent-recovery.ts src/product/durable-intent-recovery-base.ts test/workstreams/state/state-authority-v1-1.test.ts test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts
           git diff --cached --check
           git commit -m 'feat: add LOG-05 authority state and recovery tracing'
           IMPL=$(git rev-parse HEAD)
+          FOCUSED_TESTS=$(grep '^# tests ' .log05-verification/focused.log | tail -1 | awk '{print $3}')
+          FOCUSED_PASS=$(grep '^# pass ' .log05-verification/focused.log | tail -1 | awk '{print $3}')
+          FULL_TESTS=$(grep '^# tests ' .log05-verification/full-tests.log | tail -1 | awk '{print $3}')
+          FULL_PASS=$(grep '^# pass ' .log05-verification/full-tests.log | tail -1 | awk '{print $3}')
+          ARTIFACT_SHA=$(awk '{print $1}' .log05-verification/main-js-sha256.txt)
+          ARTIFACT_SIZE=$(awk '{print $1}' .log05-verification/main-js-size.txt)
           mkdir -p dev/evidence
-          FOCUSED=$(grep -E '^# tests |^# pass |^# fail ' .log05-verification/focused.log | tail -n 3 | tr '\n' '; ' || true)
-          FULL=$(grep -E '^# tests |^# pass |^# fail ' .log05-verification/full-tests.log | tail -n 3 | tr '\n' '; ' || true)
-          ARTIFACT_SHA=$(awk '{print $1}' .log05-verification/main-js-sha256.txt 2>/dev/null || true)
-          ARTIFACT_SIZE=$(awk '{print $1}' .log05-verification/main-js-size.txt 2>/dev/null || true)
           cat > dev/evidence/_ca-output-agt-ca-p6-log05-authority-state-recovery-tracing-01.md <<EOF
           # Phase 6 LOG-05 Authority, State, and Recovery Tracing — Agent Evidence
 
@@ -135,7 +97,7 @@ jobs:
           - Resolved common base SHA: \`$BASE\`
           - Branch: \`$BRANCH\`
           - Final implementation SHA: \`$IMPL\`
-          - Final evidence SHA: reported by the completion response because a commit cannot contain its own SHA.
+          - Final evidence SHA: reported in the completion response; a commit cannot contain its own SHA.
           - Frozen LOG-01 contract consumed unchanged: \`src/diagnostics/diagnostic-logger.ts\` from \`$BASE\`.
 
           ## Changed files
@@ -151,53 +113,42 @@ jobs:
 
           ## Instrumented boundaries
 
-          - Trusted/authority state load status, revisions/generation, and bounded backlog/intent/local-transaction counts.
+          - Trusted/authority state load status, state/persistence revisions, semantic generation, and bounded intent/local-transaction/remote-batch counts.
           - Persistence/semantic CAS start/result with distinct stale-persistence, stale-semantic-authority, and recovery-required classifications.
-          - Explicit ordered semantic-generation before/after events without changing generation logic.
-          - BASE transition and adapter convergence-generation rebase boundaries.
-          - Learned remote batch, reduction, and retirement progression using batch IDs/counts/cursor-presence only.
-          - Durable intent persistence/effect-stage/retirement state visibility.
-          - Outstanding durable recovery entry, intent/current-generation comparison, exact validation reasons, physical observation classification, physical-result persistence, receipt reconstruction, and final result.
-          - Remote-update preverification classification remains in its existing execution order.
-
-          ## Focused tests
-
-          - \`test/workstreams/state/state-authority-v1-1.test.ts\` now proves trusted load facts, persistence-only no-false-semantic-transition, true semantic before/after ordering, stale-persistence vs stale-semantic distinction, remote-batch evidence, and raw-path/payload exclusion.
-          - \`test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts\` now proves current-generation recovery selection/physical/reconstruction/final events and exact stale-generation rejection visibility without raw path logging or Drive mutation.
-          - Focused result: \`$FOCUSED\`
-          - Full-suite result: \`$FULL\`
+          - Ordered semantic-generation before/after evidence and adapter convergence-generation rebasing without changing generation logic.
+          - BASE transitions and learned remote batch/reduction/retirement progression using safe IDs/counts/cursor-presence only.
+          - Durable intent persistence, effect-stage progression, intent retirement, current-vs-intent authority generation, exact validation reasons, physical observation classification, physical-result persistence, receipt reconstruction, and final recovery result.
+          - Existing remote-update preverification remains before general verified-effect preflight and base recovery.
 
           ## Verification
 
           - \`npm ci\`: PASS
           - \`npm run typecheck\`: PASS
           - \`npx tsc -p tsconfig.test.json\`: PASS
-          - focused Node tests: PASS with non-zero tests (counts above)
-          - \`npm test\`: PASS with non-zero tests (counts above)
+          - Focused state/recovery tests: PASS, \`$FOCUSED_PASS/$FOCUSED_TESTS\`
+          - Full automated test suite: PASS, \`$FULL_PASS/$FULL_TESTS\`
           - \`npm run build\`: PASS
           - \`npm run check\`: PASS
-          - \`git diff --check\`: PASS before and after staging
-          - Built \`main.js\` SHA-256 (verification artifact only, not committed): \`$ARTIFACT_SHA\`
-          - Built \`main.js\` bytes: \`$ARTIFACT_SIZE\`
+          - \`git diff --check\`: PASS
+          - Verification build \`main.js\` bytes: \`$ARTIFACT_SIZE\`
+          - Verification build \`main.js\` SHA-256: \`$ARTIFACT_SHA\`
 
-          ## Contract preservation / limitations
+          ## Contract preservation and privacy
 
-          - No state schema, semantic projection, CAS expected value, generation/revision algorithm, change-cursor rule, intent lifecycle, physical Drive mutation, or recovery ordering was intentionally changed.
-          - Diagnostic emission is optional and fail-closed: logger/sink failure is swallowed and does not alter state/recovery results.
-          - No raw state envelope, BASE/mapping/tombstone array, learned-change payload, vault path, file content, OAuth credential, or secret is supplied to the LOG-01 logger by LOG-05 instrumentation.
-          - No shared runtime composition was changed; LOG-03 remains responsible for production wiring.
+          - State schema, semantic projection, CAS expected values, persistence/semantic increment algorithms, change-cursor advancement, intent lifecycle, and recovery ordering were not redesigned.
+          - Diagnostic emission is optional and fail-safe: diagnostic exceptions are swallowed and cannot change state/CAS/recovery outcomes.
+          - LOG-05 does not send raw state envelopes, BASE/mapping/tombstone arrays, learned-change payloads, raw vault paths, file content, OAuth credentials, or secrets to the LOG-01 logger.
+          - Focused tests verify bounded load/CAS/generation facts, no false semantic transition for persistence-only journal updates, true semantic transition ordering, stale-persistence vs stale-semantic classification, remote-batch bounded evidence, current-generation recovery, exact stale-generation rejection, receipt reconstruction visibility, no Drive mutation, and raw-path exclusion.
+          - No production runtime composition was changed; LOG-03 owns production wiring.
           - No live Drive mutation, B01 rerun/remediation, merge, release, iPhone validation, or Stage 3 work occurred.
-          - Local container network access was unavailable in the supervising ChatGPT session; all mandatory dynamic verification above was therefore executed in the repository's GitHub Actions environment using Node 22.
+          - Mandatory dynamic verification ran in GitHub Actions Node 22 because the supervising ChatGPT container had no network route to clone/install this repository locally.
 
           ## Stop state
 
-          LOG-05 implementation and evidence committed on its isolated W1 branch. Local completion is not integration or session approval. Stop for supervisory review.
+          LOG-05 implementation and evidence are committed on its isolated W1 branch. Local completion is not integration or session approval. Stop for supervisory review.
           EOF
           sed -i 's/^          //' dev/evidence/_ca-output-agt-ca-p6-log05-authority-state-recovery-tracing-01.md
           git add dev/evidence/_ca-output-agt-ca-p6-log05-authority-state-recovery-tracing-01.md
           git diff --cached --check
           git commit -m 'docs: record LOG-05 implementation evidence'
-          EVIDENCE=$(git rev-parse HEAD)
-          echo "implementation_sha=$IMPL" >> "$GITHUB_OUTPUT"
-          echo "evidence_sha=$EVIDENCE" >> "$GITHUB_OUTPUT"
           git push origin HEAD:$BRANCH
