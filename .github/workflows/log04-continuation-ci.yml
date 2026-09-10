@@ -65,6 +65,16 @@ jobs:
           path.write_text(text.replace(old, new))
           PY
           cp ../harness/.ci-harness/log04-execution-diagnostics.test.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('test/workstreams/orchestration/log04-execution-diagnostics.test.ts')
+          text = path.read_text()
+          old = '    knownDevices: [],\n  } as never;\n}\n\nasync function diagnosticHarness'
+          new = '    knownDevices: [],\n  };\n}\n\nasync function diagnosticHarness'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one canonicalState over-cast, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
