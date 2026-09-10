@@ -514,7 +514,7 @@ export class ProductControllerBase implements ProductControlPort {
     if (globalExecutionGate(planned.plan) === "globally-blocked") return "failed";
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
     const runId = diagnosticRunId ?? planned.diagnosticRunId;
-    this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
+    this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
     let begun: Awaited<ReturnType<CoreRunCoordinator["beginRun"]>>;
     try { begun = await this.runs.beginRun(); }
     catch (error) {
