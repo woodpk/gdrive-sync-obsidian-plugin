@@ -1,3 +1,5 @@
+import { sha256Text } from "../util/sha256";
+
 export const DIAGNOSTIC_LOG_LEVELS = ["off", "error", "warn", "info", "debug", "trace"] as const;
 export type DiagnosticLogLevel = typeof DIAGNOSTIC_LOG_LEVELS[number];
 export type RetainedDiagnosticLevel = Exclude<DiagnosticLogLevel, "off">;
@@ -6,10 +8,12 @@ export type DiagnosticPlatform = "desktop" | "mobile" | "unknown";
 export const DEFAULT_DIAGNOSTIC_RETENTION = 2000;
 export const MIN_DIAGNOSTIC_RETENTION = 100;
 export const MAX_DIAGNOSTIC_RETENTION = 5000;
+export const MAX_DIAGNOSTIC_OCCUPANT_IDS = 4;
 
 export type DiagnosticComponent =
   | "diagnostics"
   | "diagnostics.browser-probe"
+  | "diagnostics.bundle"
   | "oauth.settings"
   | "oauth.plugin"
   | "oauth.runtime"
@@ -20,8 +24,14 @@ export type DiagnosticComponent =
   | "sync.controller"
   | "sync.plan"
   | "sync.execute"
+  | "sync.effect"
   | "drive"
+  | "drive.http"
+  | "drive.semantic"
+  | "state.authority"
+  | "state.cas"
   | "recovery"
+  | "recovery.durable"
   | "portable-config";
 
 export type DiagnosticFieldKey =
@@ -67,6 +77,9 @@ export type DiagnosticFieldKey =
   | "operationKind"
   | "direction"
   | "preconditionCount"
+  | "failedPreconditionCount"
+  | "failedPreconditionKinds"
+  | "failedPreconditionSides"
   | "conflictCount"
   | "blockedCount"
   | "attentionCount"
@@ -85,7 +98,47 @@ export type DiagnosticFieldKey =
   | "reconstruction"
   | "cursorPresent"
   | "retentionLimit"
-  | "enabled";
+  | "enabled"
+  | "planId"
+  | "operationId"
+  | "intentId"
+  | "effectId"
+  | "requestId"
+  | "pathKey"
+  | "remoteObjectId"
+  | "candidateRemoteObjectId"
+  | "predecessorRemoteObjectId"
+  | "contentHash"
+  | "sizeBytes"
+  | "expectedRevision"
+  | "observedRevision"
+  | "endpointClass"
+  | "httpStatus"
+  | "attemptNumber"
+  | "maxAttempts"
+  | "latencyMs"
+  | "retryDelayMs"
+  | "replaySafe"
+  | "retryDecision"
+  | "driveSignal"
+  | "providerRequestId"
+  | "observationSource"
+  | "occupancyCount"
+  | "occupantRemoteObjectIds"
+  | "trashed"
+  | "candidateVerified"
+  | "predecessorVerified"
+  | "convergenceStatus"
+  | "fromStage"
+  | "toStage"
+  | "persistenceRevision"
+  | "semanticGeneration"
+  | "stateRevision"
+  | "semanticChanged"
+  | "commitStatus"
+  | "batchId"
+  | "changeCount"
+  | "verificationEvidenceRef";
 export type DiagnosticFieldValue = string | number | boolean | null;
 export type SafeDiagnosticFields = Partial<Record<DiagnosticFieldKey, DiagnosticFieldValue>>;
 
@@ -146,16 +199,27 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "transactionPrepared", "scopeExact", "deviceIdentityPresent", "vaultIdentityPresent", "remoteRootPresent",
   "storeReady", "asyncBoundary", "codePresent", "statePresent", "errorPresent", "count", "retentionLimit", "enabled",
   "runMode", "trigger", "planDisposition", "stateStatus", "localCount", "remoteCount", "snapshotCount",
-  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "conflictCount", "blockedCount", "attentionCount", "skippedCount", "safeCommittedCount", "attentionReasonCodes",
-  "destructiveCount", "uploadCount", "downloadCount", "moveCount", "trashCount", "noopCount",
-  "localCompleteness", "remoteCompleteness", "reviewed", "reconstruction", "cursorPresent",
+  "operationCount", "operationIndex", "operationKind", "direction", "preconditionCount", "failedPreconditionCount",
+  "failedPreconditionKinds", "failedPreconditionSides", "conflictCount", "blockedCount", "attentionCount",
+  "skippedCount", "safeCommittedCount", "attentionReasonCodes", "destructiveCount", "uploadCount", "downloadCount",
+  "moveCount", "trashCount", "noopCount", "localCompleteness", "remoteCompleteness", "reviewed", "reconstruction",
+  "cursorPresent",
+  "planId", "operationId", "intentId", "effectId", "requestId", "pathKey", "remoteObjectId",
+  "candidateRemoteObjectId", "predecessorRemoteObjectId", "contentHash", "sizeBytes", "expectedRevision",
+  "observedRevision", "endpointClass", "httpStatus", "attemptNumber", "maxAttempts", "latencyMs", "retryDelayMs",
+  "replaySafe", "retryDecision", "driveSignal", "providerRequestId", "observationSource", "occupancyCount",
+  "occupantRemoteObjectIds", "trashed", "candidateVerified", "predecessorVerified", "convergenceStatus", "fromStage",
+  "toStage", "persistenceRevision", "semanticGeneration", "stateRevision", "semanticChanged", "commitStatus",
+  "batchId", "changeCount", "verificationEvidenceRef",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
 const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
+const AUTHORIZATION_HEADER = /\bAuthorization\s*:\s*(?:(?:Bearer|Basic)\s+)?[^\s,;]+/gi;
 const OAUTH_QUERY_VALUE = /([?&](?:code|state|code_challenge|code_verifier|access_token|refresh_token)=)[^&#\s]+/gi;
 const BEARER_TOKEN = /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi;
 const JWT_LIKE = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const MAX_TEXT_LENGTH = 320;
+const MAX_OCCUPANT_ID_TEXT_LENGTH = 64;
 
 export function sanitizeDiagnosticText(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -163,6 +227,7 @@ export function sanitizeDiagnosticText(value: unknown): string | undefined {
     .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
     .replace(URL_WITH_QUERY, "[redacted-url]")
     .replace(OAUTH_QUERY_VALUE, "$1[redacted]")
+    .replace(AUTHORIZATION_HEADER, "Authorization: [redacted]")
     .replace(SENSITIVE_ASSIGNMENT, (_match, key: string, separator: string) => `${key}${separator}[redacted]`)
     .replace(BEARER_TOKEN, "Bearer [redacted]")
     .replace(JWT_LIKE, "[redacted-token]")
@@ -171,6 +236,35 @@ export function sanitizeDiagnosticText(value: unknown): string | undefined {
   if (!sanitized) return undefined;
   if (sanitized.length > MAX_TEXT_LENGTH) sanitized = `${sanitized.slice(0, MAX_TEXT_LENGTH - 1)}…`;
   return sanitized;
+}
+
+function normalizeDiagnosticPath(path: string): string {
+  return path
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/\/{2,}/g, "/")
+    .replace(/\/$/, "")
+    .normalize("NFC");
+}
+
+/** Returns a stable opaque key for diagnostic path correlation without retaining the raw vault path. */
+export function diagnosticPathKey(path: string): string {
+  const hash = String(sha256Text(normalizeDiagnosticPath(path))).replace(/^sha256:/, "");
+  return `path-sha256:${hash}`;
+}
+
+/**
+ * Produces a deterministic bounded scalar representation for remote occupants.
+ * Long IDs are replaced with stable hashes so the representation remains within the logger's scalar text bound.
+ */
+export function renderDiagnosticOccupantIds(ids: readonly string[]): string {
+  const normalized = Array.from(new Set(ids.map(value => sanitizeDiagnosticText(value)).filter((value): value is string => value !== undefined)))
+    .map(value => value.length <= MAX_OCCUPANT_ID_TEXT_LENGTH
+      ? value
+      : `id-sha256:${String(sha256Text(value)).replace(/^sha256:/, "")}`)
+    .sort()
+    .slice(0, MAX_DIAGNOSTIC_OCCUPANT_IDS);
+  return JSON.stringify(normalized);
 }
 
 export function normalizeDiagnosticError(error: unknown, classification = "unexpected-failure"): SafeDiagnosticFields {
@@ -261,6 +355,7 @@ export class DiagnosticLogger {
   private activeAttemptId?: number;
   private readonly attemptStarted = new Map<number, number>();
   private readonly runStarted = new Map<number, number>();
+  private readonly activeRunIds: number[] = [];
   private level: DiagnosticLogLevel;
   private retentionLimit: number;
   private consoleMirror: boolean;
@@ -316,11 +411,17 @@ export class DiagnosticLogger {
   beginSyncRun(source = "manual-sync"): number {
     const runId = this.nextRunId++;
     this.runStarted.set(runId, this.monotonicNow());
+    this.activeRunIds.push(runId);
     this.queuePersist();
     this.syncInfo("sync.controller", "synchronization-run-started", runId, { source });
     return runId;
   }
-  endSyncRun(runId: number): void { this.runStarted.delete(runId); }
+  currentSyncRunId(): number | undefined { return this.activeRunIds[this.activeRunIds.length - 1]; }
+  endSyncRun(runId: number): void {
+    this.runStarted.delete(runId);
+    const index = this.activeRunIds.lastIndexOf(runId);
+    if (index >= 0) this.activeRunIds.splice(index, 1);
+  }
 
   syncError(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("error", component, event, fields, undefined, runId); }
   syncWarn(component: DiagnosticComponent, event: string, runId: number, fields?: SafeDiagnosticFields): void { this.record("warn", component, event, fields, undefined, runId); }

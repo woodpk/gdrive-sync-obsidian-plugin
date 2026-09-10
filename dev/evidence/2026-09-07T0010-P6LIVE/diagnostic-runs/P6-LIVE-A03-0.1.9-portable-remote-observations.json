@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "taskId": "codex-desktop-p6-a03-portable-config-diagnosis-01",
+  "capturedAtUtc": "2026-09-07T22:25:14.0533103Z",
+  "operationMode": "read-only",
+  "pairedManagedRoot": {
+    "id": "1kwJe5rq6DFhcZFBa-JjC0X0AaN3gbW1B",
+    "name": "BRAIN Sync",
+    "createdTimeUtc": "2026-08-26T17:50:50.439Z",
+    "matchesInstalledPluginRemoteRootId": true
+  },
+  "portableConfigDomain": {
+    "id": "1nM0RhMPB4qMDHfvxCTVDvU9YZYReN5G2",
+    "name": "__brain_sync_portable_config__",
+    "parentId": "1kwJe5rq6DFhcZFBa-JjC0X0AaN3gbW1B",
+    "remoteDomain": "portable-config",
+    "createdTimeUtc": "2026-08-26T17:50:53.936Z",
+    "enumerationComplete": true,
+    "enumerationBasis": "Read-only direct-child listing scanned up to 1000 entries and returned exactly three current objects, all files, with no nested folders.",
+    "liveDuplicateSamePathObjects": false,
+    "trashedHistoryScope": "The connector's current-folder listing exposes current children, not deleted-history entries. Production reconciliation also queries trashed=false; duplicate assessment therefore covers the live planner-visible domain."
+  },
+  "observations": [
+    {
+      "logicalPath": "__brain_sync_portable_config__/app.json",
+      "remoteDomain": "portable-config",
+      "exists": true,
+      "remoteObjectId": "17BEbRR4zvjNN7ul3bjOfr37rTiY3gBN3",
+      "entityKind": "file",
+      "mimeType": "application/json",
+      "sizeBytes": 351,
+      "contentHash": "sha256:ce2304324355039203028525c098a12887521a851c24bbaa6aee3a14700f8891",
+      "hashMethod": "SHA-256 over a read-only raw Drive download held only in memory; content was not saved.",
+      "revisionId": "0B0aJZGoaaV1YK3ZrOEllemE0VVVOcnJGUFVHVGxJRlhaMDJnPQ",
+      "revisionCountReturned": 1,
+      "previousRevisionId": null,
+      "createdTimeUtc": "2026-08-27T03:16:22.936Z",
+      "modifiedTimeUtc": "2026-08-27T03:16:22.936Z",
+      "trashed": false,
+      "parentId": "1nM0RhMPB4qMDHfvxCTVDvU9YZYReN5G2",
+      "duplicateLiveSamePathCount": 1,
+      "predatesA03": true
+    },
+    {
+      "logicalPath": "__brain_sync_portable_config__/appearance.json",
+      "remoteDomain": "portable-config",
+      "exists": true,
+      "remoteObjectId": "1z7wDF4GGvg1WcS6Mh11ITIVBQdpSnt6q",
+      "entityKind": "file",
+      "mimeType": "application/json",
+      "sizeBytes": 54,
+      "contentHash": "sha256:1a52f8414c696c6a8d6a1985c64ca76755d4c9c12b750a4143f2d6eaf764dd4d",
+      "hashMethod": "SHA-256 over a read-only raw Drive download held only in memory; content was not saved.",
+      "revisionId": "0B0aJZGoaaV1Ya3JNdUdqS2lveDBIc2FHay9VSGxJdC9LNU9zPQ",
+      "revisionCountReturned": 1,
+      "previousRevisionId": null,
+      "createdTimeUtc": "2026-08-27T03:16:28.062Z",
+      "modifiedTimeUtc": "2026-08-27T03:16:28.062Z",
+      "trashed": false,
+      "parentId": "1nM0RhMPB4qMDHfvxCTVDvU9YZYReN5G2",
+      "duplicateLiveSamePathCount": 1,
+      "predatesA03": true
+    },
+    {
+      "logicalPath": "__brain_sync_portable_config__/core-plugins.json",
+      "remoteDomain": "portable-config",
+      "exists": true,
+      "remoteObjectId": "1LXZbo-vH99JncKPqzFQdinigKjbLQ6U-",
+      "entityKind": "file",
+      "mimeType": "application/json",
+      "sizeBytes": 696,
+      "contentHash": "sha256:763cf20a921fd9955735b278006820b90b207b2fc04d9e79ca648279c7c14276",
+      "hashMethod": "SHA-256 over a read-only raw Drive download held only in memory; content was not saved.",
+      "revisionId": "0B0aJZGoaaV1YRHV0KzhSSlRNMVlUL3dkczk3TmhNU05ZWlRJPQ",
+      "revisionCountReturned": 1,
+      "previousRevisionId": null,
+      "createdTimeUtc": "2026-08-27T03:16:33.873Z",
+      "modifiedTimeUtc": "2026-08-27T03:16:33.873Z",
+      "trashed": false,
+      "parentId": "1nM0RhMPB4qMDHfvxCTVDvU9YZYReN5G2",
+      "duplicateLiveSamePathCount": 1,
+      "predatesA03": true
+    },
+    {
+      "logicalPath": "__brain_sync_portable_config__/hotkeys.json",
+      "remoteDomain": "portable-config",
+      "exists": false,
+      "remoteObjectId": null,
+      "entityKind": "absent",
+      "mimeType": null,
+      "sizeBytes": null,
+      "contentHash": null,
+      "revisionId": null,
+      "createdTimeUtc": null,
+      "modifiedTimeUtc": null,
+      "trashed": null,
+      "parentId": "1nM0RhMPB4qMDHfvxCTVDvU9YZYReN5G2",
+      "duplicateLiveSamePathCount": 0,
+      "predatesA03": false
+    }
+  ],
+  "provenance": {
+    "exactOriginalCreatorOfRemoteAppJson": "not established",
+    "evidence": [
+      "The remote app.json was created on 2026-08-27, eleven days before the 2026-09-07 A03 run.",
+      "Durable local plugin audit history records earlier opaque-binary conflicts for this same logical app.json path on 2026-08-28 and 2026-08-29.",
+      "A pre-reset synchronization state captured before A03 contains BASE/mapping entries for the same remote appearance.json and core-plugins.json object IDs, proving prior synchronization activity in this portable domain.",
+      "These facts establish pre-existing live-test state but do not prove which specific prior action originally created remote app.json."
+    ]
+  },
+  "privacy": "No remote configuration contents, OAuth material, authorization headers, or signed download URLs were retained."
+}

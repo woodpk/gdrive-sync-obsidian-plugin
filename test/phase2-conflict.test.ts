@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type ContentHash, type VaultPath, type VersionReference } from "../src/contracts";
 import { ThreeWayConflictResolver, mergeThreeWayText } from "../src/core/conflict-resolver";
+import "./workstreams/merge/resource-safety.test";
 
 const p = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const h = (value: string) => contractId<"ContentHash">(value) as ContentHash;
 function v(path: VaultPath, revision: string): VersionReference {
-  return { path, entityKind: "file", content: { hash: h(revision), revision } };
+  return { path, entityKind: "file", content: { hash: h(revision), revision, sizeBytes: 1 } };
 }
+const mergedEvidence = { evidenceFor: async (_path: VaultPath, text: string) => ({ hash: h(`merged:${text.length}`), sizeBytes: new TextEncoder().encode(text).byteLength }) };
 
 test("three-way merge accepts independent line edits", () => {
   const result = mergeThreeWayText("a\nb\nc\n", "A\nb\nc\n", "a\nb\nC\n");
@@ -22,7 +24,7 @@ test("conflict resolver returns clean merge only with BASE LOCAL REMOTE text", a
   const path = p("10-Notes/a.md");
   const base = v(path, "base"); const local = v(path, "local"); const remote = v(path, "remote");
   const texts = new Map([["base", "a\nb\nc\n"], ["local", "A\nb\nc\n"], ["remote", "a\nb\nC\n"]]);
-  const resolver = new ThreeWayConflictResolver({ readText: async version => texts.get(version.content?.revision ?? "") });
+  const resolver = new ThreeWayConflictResolver({ readText: async version => texts.get(version.content?.revision ?? "") }, mergedEvidence);
   const result = await resolver.assess(path, base, local, remote);
   assert.equal(result.kind, "clean-merge");
   if (result.kind === "clean-merge") assert.equal(result.provenance.base.version, base);
@@ -32,7 +34,7 @@ test("true text conflict preserves complete version references", async () => {
   const path = p("10-Notes/a.md");
   const base = v(path, "base"); const local = v(path, "local"); const remote = v(path, "remote");
   const texts = new Map([["base", "x\n"], ["local", "L\n"], ["remote", "R\n"]]);
-  const resolver = new ThreeWayConflictResolver({ readText: async version => texts.get(version.content?.revision ?? "") });
+  const resolver = new ThreeWayConflictResolver({ readText: async version => texts.get(version.content?.revision ?? "") }, mergedEvidence);
   const result = await resolver.assess(path, base, local, remote);
   assert.equal(result.kind, "unresolved-text");
   if (result.kind === "unresolved-text") {
@@ -45,8 +47,8 @@ test("true text conflict preserves complete version references", async () => {
 test("opaque binary concurrency never uses timestamp winner", async () => {
   const path = p("80-Attachments/a.bin");
   const base = v(path, "base");
-  const local = { ...v(path, "local"), content: { hash: h("local"), advisoryModifiedTimeMs: 999999 } };
-  const remote = { ...v(path, "remote"), content: { hash: h("remote"), advisoryModifiedTimeMs: 1 } };
+  const local = { ...v(path, "local"), content: { hash: h("local"), advisoryModifiedTimeMs: 999999, sizeBytes: 1 } };
+  const remote = { ...v(path, "remote"), content: { hash: h("remote"), advisoryModifiedTimeMs: 1, sizeBytes: 1 } };
   const resolver = new ThreeWayConflictResolver({ readText: async () => undefined });
   const result = await resolver.assess(path, base, local, remote);
   assert.equal(result.kind, "opaque-binary");

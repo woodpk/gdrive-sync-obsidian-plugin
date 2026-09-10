@@ -13,7 +13,7 @@ import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
 import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
 
-export interface Phase5SettingsHost {
+export interface ProductSettingsHost {
   readonly app: App;
   readonly plugin: Plugin;
   settings(): BrainSyncSettings;
@@ -32,7 +32,7 @@ export interface Phase5SettingsHost {
 }
 
 export class BrainSyncSettingsTab extends PluginSettingTab {
-  constructor(private readonly host: Phase5SettingsHost) { super(host.app, host.plugin); }
+  constructor(private readonly host: ProductSettingsHost) { super(host.app, host.plugin); }
 
   display(): void {
     const settings = this.host.settings();

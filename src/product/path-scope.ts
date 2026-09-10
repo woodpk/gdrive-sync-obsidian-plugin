@@ -1,4 +1,4 @@
-import { contractId, type ConfigurationClassification, type LocalLifecycleEvent, type LocalMutationReceipt, type LocalReadResult, type LocalVaultChange, type LocalVaultListing, type LocalVaultPort, type ObservationToken, type PathValidationResult, type Unsubscribe, type VaultPath } from "../contracts";
+import { contractId, type ConfigurationClassification, type LocalEnumerationUncertainty, type LocalLifecycleEvent, type LocalMutationReceipt, type LocalReadResult, type LocalVaultChange, type LocalVaultListing, type LocalVaultPort, type ObservationToken, type PathValidationResult, type Unsubscribe, type VaultPath } from "../contracts";
 import type { LocalObservation } from "../contracts/snapshot";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import { LocalExclusionPolicy } from "../local/exclusions";
@@ -93,6 +93,11 @@ export class ScopedLocalVault implements LocalVaultPort {
     }
 
     const configFailures: string[] = [];
+    const uncertainties: LocalEnumerationUncertainty[] = ordinary.completeness.status === "complete"
+      ? [...(ordinary.uncertainties ?? [])]
+      : ordinary.uncertainties?.length
+        ? [...ordinary.uncertainties]
+        : [{ scope: "all", reason: ordinary.completeness.reason }];
     for (const logical of this.scope.portableLogicalPaths()) {
       if (collisionReason) {
         entries.push({ status: "unknown", side: "local", path: logical, reason: collisionReason });
@@ -101,12 +106,16 @@ export class ScopedLocalVault implements LocalVaultPort {
       const physical = this.scope.logicalToPhysical(logical)!;
       const observed = mapObservation(await this.inner.observe(physical), logical);
       entries.push(observed);
-      if (observed.status === "unreadable" || observed.status === "inaccessible" || observed.status === "unknown") configFailures.push(`${String(logical)}: ${observed.reason}`);
+      if (observed.status === "unreadable" || observed.status === "inaccessible" || observed.status === "unknown") {
+        const reason = `${String(logical)}: ${observed.reason}`;
+        configFailures.push(reason);
+        uncertainties.push({ scope: "path", path: logical, reason });
+      }
     }
 
-    if (!configFailures.length) return { entries, completeness: ordinary.completeness };
+    if (!configFailures.length) return { ...ordinary, entries, ...(uncertainties.length ? { uncertainties } : {}) };
     const prior = ordinary.completeness.status === "complete" ? [] : [ordinary.completeness.reason];
-    return { entries, completeness: { status: "partial", reason: [...prior, ...configFailures].join("; ") } };
+    return { entries, completeness: { status: "partial", reason: [...prior, ...configFailures].join("; ") }, uncertainties };
   }
 
   async observe(path: VaultPath): Promise<LocalObservation> {

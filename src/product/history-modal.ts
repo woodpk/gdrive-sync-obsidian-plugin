@@ -1,7 +1,7 @@
 import { App, Modal } from "obsidian";
 import type { AuditRecord, ConflictAssessment, ConflictId } from "../contracts";
 import { contractId } from "../contracts";
-import type { IntegratedProductController } from "./product-controller";
+import type { ProductController } from "./product-controller";
 import type { SyncAttentionRecord } from "./sync-attention-ledger";
 
 export class AuditHistoryModal extends Modal {
@@ -36,7 +36,7 @@ export interface AttentionModalOptions {
 }
 
 export class SyncAttentionModal extends Modal {
-  constructor(app: App, private readonly controller: IntegratedProductController, private readonly options: AttentionModalOptions = {}) { super(app); }
+  constructor(app: App, private readonly controller: ProductController, private readonly options: AttentionModalOptions = {}) { super(app); }
   onOpen(): void { void this.render(); }
 
   private async render(): Promise<void> {

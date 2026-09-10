@@ -2,10 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   contractId,
+  type BinaryContentSource,
   type ContentEvidence,
   type ManagedRemoteIdentity,
+  type PersistenceRevision,
   type PlannedOperation,
+  type ReliableRemoteMutationPort,
+  type RemoteObjectId,
+  type SemanticStateGeneration,
   type StateLoadContext,
+  type SynchronizationAuthorityMetadataV1_1,
+  type SynchronizationAuthorityStoreV1_1,
   type SynchronizationPlan,
   type VaultPath,
 } from "../src/contracts";
@@ -14,9 +21,12 @@ import { DeterministicSynchronizationPlanner } from "../src/core/planner";
 import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
 import { beginManualSyncDiagnostics, presentManualSyncPreview } from "../src/diagnostics/sync-diagnostics";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { IntegratedProductController } from "../src/product/product-controller";
+import { ProductController } from "../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
+import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState, createInitialTrustedState } from "../src/state/persistent-state-store";
+import { sha256Text } from "../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:ios-sync-diagnostics");
@@ -24,13 +34,18 @@ const device = id<"DeviceIdentity">("device:ios-sync-diagnostics");
 const filePath = id<"VaultPath">("SENTINEL_PRIVATE_NOTE_PATH.md") as VaultPath;
 const protectedFailureMessage = "SENTINEL_PRIVATE_NOTE_PATH.md SENTINEL_NOTE_BODY_FRAGMENT SENTINEL_DRIVE_OBJECT_ID access_token=SENTINEL_TOKEN https://example.invalid/private?state=SENTINEL_STATE";
 const protectedFailurePattern = /SENTINEL_PRIVATE_NOTE_PATH|SENTINEL_NOTE_BODY_FRAGMENT|SENTINEL_DRIVE_OBJECT_ID|SENTINEL_TOKEN|SENTINEL_STATE|example\.invalid/i;
-const evidence: ContentEvidence = { hash: id<"ContentHash">("sha256:fixture"), sizeBytes: 23 };
+const fileText = "SENTINEL_NOTE_BODY_FRAGMENT";
+const evidence: ContentEvidence = { hash: sha256Text(fileText), sizeBytes: new TextEncoder().encode(fileText).byteLength };
 const managed: ManagedRemoteIdentity = {
   rootId: id<"RemoteObjectId">("root:ios-sync-diagnostics"),
   vaultIdentity: vault,
   protocolVersion: id<"ProtocolVersion">("1"),
 };
 const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
+const source = (text: string): BinaryContentSource => ({
+  sizeBytes: new TextEncoder().encode(text).byteLength,
+  async *openChunks() { yield new TextEncoder().encode(text); },
+});
 
 class MemoryDiagnostics implements DiagnosticPersistence {
   state?: DiagnosticStoreState;
@@ -54,38 +69,88 @@ async function makeLogger(level: "info" | "debug" | "trace" = "trace") {
   return { diagnostics, persistence };
 }
 
+async function makeWritableAuthority(label: string) {
+  const rawStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  const initial = createInitialAuthorityState({
+    persistenceRevision: id<"StateRevision">(`persistence:${label}:0`) as unknown as PersistenceRevision,
+    semanticGeneration: id<"SemanticStateGeneration">(`semantic:${label}:0`) as SemanticStateGeneration,
+    vaultIdentity: vault,
+    deviceIdentity: device,
+  });
+  assert.equal((await rawStore.saveTrusted(initial)).status, "saved");
+  return new SynchronizationStateAuthorityAdapter(rawStore);
+}
+
+async function readSource(content: BinaryContentSource): Promise<string> {
+  const decoder = new TextDecoder();
+  let text = "";
+  for await (const chunk of content.openChunks()) text += decoder.decode(chunk, { stream: true });
+  return text + decoder.decode();
+}
+
 async function successfulManualRun() {
   const { diagnostics, persistence } = await makeLogger();
-  const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  await store.saveTrusted(createInitialTrustedState({ stateRevision: id<"StateRevision">("state:0"), vaultIdentity: vault, deviceIdentity: device }));
+  const store = await makeWritableAuthority("success");
+  const remote = new Map<string, { readonly id: RemoteObjectId; readonly content: ContentEvidence }>();
   const local = {
     enumerate: async () => ({
       entries: [{ status: "present" as const, side: "local" as const, path: filePath, entityKind: "file" as const, content: evidence, stability: "stable" as const, observationToken: id<"ObservationToken">("token:fixture") }],
       completeness: { status: "complete" as const },
     }),
+    observe: async (path: VaultPath) => path === filePath
+      ? { status: "present" as const, side: "local" as const, path, entityKind: "file" as const, content: evidence, stability: "stable" as const, observationToken: id<"ObservationToken">("token:fixture") }
+      : { status: "absent" as const, side: "local" as const, path },
+    readFile: async (path: VaultPath) => {
+      assert.equal(path, filePath);
+      return { content: source(fileText), evidence, stability: "stable" as const, observationToken: id<"ObservationToken">("token:fixture") };
+    },
+    validatePath: async (path: VaultPath) => ({ status: "compatible" as const, normalizedComparisonPath: String(path) }),
   };
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity: managed } }),
     getStartCursor: async () => ({ ok: true as const, value: id<"ChangeCursor">("cursor:next") }),
-    listForReconciliation: async () => ({ ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } }),
+    listForReconciliation: async () => ({ ok: true as const, value: { entries: [...remote.entries()].map(([raw, item]) => ({ path: id<"VaultPath">(raw) as VaultPath, entityKind: "file" as const, remoteObjectId: item.id, content: item.content, trashed: false })), completeness: { status: "complete" as const } } }),
+    observe: async (_root: RemoteObjectId, path: VaultPath) => {
+      const current = remote.get(String(path));
+      return current
+        ? { ok: true as const, value: { status: "present" as const, side: "remote" as const, path, entityKind: "file" as const, remoteObjectId: current.id, content: current.content, stability: "stable" as const } }
+        : { ok: true as const, value: { status: "absent" as const, side: "remote" as const, path } };
+    },
+    create: async () => { throw new Error("raw Drive create must not execute"); },
+  };
+  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_identity, intentId, path, intendedContent) => ({
+      ok: true as const,
+      value: { kind: "reserved-file-create" as const, intentId, reservedRemoteObjectId: id<"RemoteObjectId">("remote:ios-sync-diagnostics") as RemoteObjectId, path, intendedContent },
+    }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder create is not used by diagnostics fixture"); },
+    createReserved: async (reserved, content) => {
+      assert.equal(reserved.kind, "reserved-file-create");
+      assert.ok(content);
+      const text = await readSource(content);
+      const actual = { hash: sha256Text(text), sizeBytes: new TextEncoder().encode(text).byteLength };
+      assert.equal(actual.hash, reserved.intendedContent.hash);
+      assert.equal(actual.sizeBytes, reserved.intendedContent.sizeBytes);
+      remote.set(String(reserved.path), { id: reserved.reservedRemoteObjectId, content: actual });
+      return { status: "verified-effect" as const, applicationProof: { kind: "reserved-create" as const, remoteObjectId: reserved.reservedRemoteObjectId, path: reserved.path, verifiedContent: reserved.intendedContent } };
+    },
+    updateExisting: async () => { throw new Error("update is not used by diagnostics fixture"); },
+    moveExisting: async () => { throw new Error("move is not used by diagnostics fixture"); },
+    trashExisting: async () => { throw new Error("trash is not used by diagnostics fixture"); },
   };
   const assembler = new ProductSnapshotAssembler(local as never, drive as never, store, context, async () => managed, undefined, undefined, diagnostics);
-  const executor = {
-    validatePreconditions: async () => ({ status: "valid" as const }),
-    execute: async (operation: PlannedOperation) => ({
-      status: "durable-verified-success" as const,
-      receipt: { operationId: operation.operationId, durable: true as const, integrityVerified: true as const, evidence: operation.contentVersion?.content, verificationEvidenceRef: "fixture-verification" },
-    }),
-    failureScope: () => "global" as const,
-  };
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  const controller = new IntegratedProductController({
+  let controller!: ProductController;
+  const executor = new ProductSynchronizationExecutor(local as never, drive as never, store, context, () => controller.currentRunEvidence());
+  controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
     stateStore: store,
+    authorityStore: store,
     snapshotAssembler: assembler,
-    executor: executor as never,
+    executor,
+    reliableRemoteMutationPort,
     conflictResolver: conflicts,
     plannerForTrigger: trigger => new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger }),
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) },
@@ -124,7 +189,7 @@ async function planningOnlyController(diagnostics: DiagnosticLogger, samePlanEve
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
   let planNumber = 0;
   const assembly = { input: { snapshots: [], state: trusted }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor: {} as never,
@@ -144,22 +209,134 @@ async function planningOnlyController(diagnostics: DiagnosticLogger, samePlanEve
 
 type ExecutionFailurePoint = "precondition" | "pending" | "mutation" | "uncertain-journal" | "commit" | "returned-mutation" | "run-lease";
 
+function newlyIntroducesIntent(
+  prior: SynchronizationAuthorityMetadataV1_1,
+  candidate: SynchronizationAuthorityMetadataV1_1,
+  operationId: PlannedOperation["operationId"],
+): boolean {
+  const before = prior.operationIntents.find(intent => intent.operationId === operationId);
+  const after = candidate.operationIntents.find(intent => intent.operationId === operationId);
+  return !before && Boolean(after?.effects.length) && after!.effects.every(effect => effect.stage === "intent-persisted");
+}
+
+function newlyTransitionsOutcomeUnknown(
+  prior: SynchronizationAuthorityMetadataV1_1,
+  candidate: SynchronizationAuthorityMetadataV1_1,
+  operationId: PlannedOperation["operationId"],
+): boolean {
+  const before = prior.operationIntents.find(intent => intent.operationId === operationId);
+  const after = candidate.operationIntents.find(intent => intent.operationId === operationId);
+  if (!before || !after) return false;
+  const priorStages = new Map(before.effects.map(effect => [effect.effectId, effect.stage]));
+  return after.effects.some(effect => effect.stage === "outcome-unknown" && priorStages.has(effect.effectId) && priorStages.get(effect.effectId) !== "outcome-unknown");
+}
+
+async function failingAuthorityPersistenceExecution(failurePoint: "pending" | "uncertain-journal") {
+  const { diagnostics } = await makeLogger();
+  const store = await makeWritableAuthority(`failure:${failurePoint}`);
+  const loaded = await store.load(context);
+  assert.equal(loaded.status, "trusted");
+  const operation: PlannedOperation = {
+    operationId: id<"OperationId">(`operation:${failurePoint}:fixture`),
+    kind: "upload-create",
+    path: filePath,
+    targetSide: "remote",
+    contentVersion: { path: filePath, entityKind: "file", content: evidence, observationToken: id<"ObservationToken">("token:fixture") },
+    destructive: false,
+    preconditions: [],
+    reasons: [{ code: "fixture", summary: "fixture" }],
+  };
+  const plan: SynchronizationPlan = {
+    planId: id<"PlanId">(`plan:${failurePoint}:fixture`), trigger: "manual", operations: [operation], executionDisposition: "requires-user-approval", recoveryCheckpointRequired: false, globalExecutionGate: "none",
+  };
+  let injected = false;
+  const authorityStore: SynchronizationAuthorityStoreV1_1 = {
+    loadAuthority: () => store.loadAuthority(),
+    saveAuthority: async (candidate, expectedPersistenceRevision, expectedSemanticGeneration) => {
+      const prior = await store.loadAuthority();
+      assert.equal(prior.status, "trusted");
+      if (prior.status === "trusted" && !injected) {
+        if (failurePoint === "pending" && newlyIntroducesIntent(prior.state, candidate, operation.operationId)) {
+          injected = true;
+          throw new Error("client_secret=SENTINEL_PENDING");
+        }
+        if (failurePoint === "uncertain-journal" && newlyTransitionsOutcomeUnknown(prior.state, candidate, operation.operationId)) {
+          injected = true;
+          throw new Error("access_token=SENTINEL_UNCERTAIN");
+        }
+      }
+      return store.saveAuthority(candidate as Parameters<typeof store.saveAuthority>[0], expectedPersistenceRevision, expectedSemanticGeneration);
+    },
+    commitBaseTransition: (transition, expectedPersistenceRevision, expectedSemanticGeneration) => store.commitBaseTransition(transition, expectedPersistenceRevision, expectedSemanticGeneration),
+  };
+  const local = {
+    observe: async (path: VaultPath) => ({ status: "present" as const, side: "local" as const, path, entityKind: "file" as const, content: evidence, stability: "stable" as const, observationToken: id<"ObservationToken">("token:fixture") }),
+    readFile: async (path: VaultPath) => {
+      assert.equal(path, filePath);
+      return { content: source(fileText), evidence, stability: "stable" as const, observationToken: id<"ObservationToken">("token:fixture") };
+    },
+    validatePath: async (path: VaultPath) => ({ status: "compatible" as const, normalizedComparisonPath: String(path) }),
+  };
+  const drive = {
+    observe: async (_root: RemoteObjectId, path: VaultPath) => ({ ok: true as const, value: { status: "absent" as const, side: "remote" as const, path } }),
+    listForReconciliation: async () => ({ ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } }),
+    create: async () => { throw new Error("raw Drive create must not execute"); },
+  };
+  const reliableRemoteMutationPort: ReliableRemoteMutationPort = {
+    reserveFileCreateIdentity: async (_identity, intentId, path, intendedContent) => ({ ok: true as const, value: { kind: "reserved-file-create" as const, intentId, reservedRemoteObjectId: id<"RemoteObjectId">(`remote:${failurePoint}`) as RemoteObjectId, path, intendedContent } }),
+    reserveFolderCreateIdentity: async () => { throw new Error("folder create is not used by failure fixture"); },
+    createReserved: async () => failurePoint === "uncertain-journal"
+      ? { status: "outcome-unknown" as const, reason: "transport outcome is not authoritative" }
+      : { status: "verified-effect" as const, applicationProof: { kind: "reserved-create" as const, remoteObjectId: id<"RemoteObjectId">("remote:pending-unreachable") as RemoteObjectId, path: filePath, verifiedContent: evidence as never } },
+    updateExisting: async () => { throw new Error("update is not used by failure fixture"); },
+    moveExisting: async () => { throw new Error("move is not used by failure fixture"); },
+    trashExisting: async () => { throw new Error("trash is not used by failure fixture"); },
+  };
+  const assembly = { input: { snapshots: [], state: loaded }, managedRemote: managed, remoteEnumeration: { status: "complete" as const }, mode: "full" as const };
+  let controller!: ProductController;
+  const executor = new ProductSynchronizationExecutor(local as never, drive as never, store, context, () => controller.currentRunEvidence());
+  controller = new ProductController({
+    vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: store, authorityStore,
+    snapshotAssembler: { assembleFull: async () => assembly } as never,
+    executor,
+    reliableRemoteMutationPort,
+    conflictResolver: new ThreeWayConflictResolver({ readText: async () => undefined }),
+    plannerForTrigger: () => ({ plan: async () => plan }),
+    leasePort: { tryAcquire: async () => ({ release: async () => undefined }) },
+    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20), holderId: `failure:${failurePoint}`, diagnostics,
+  });
+  const runId = beginManualSyncDiagnostics(diagnostics, `test-${failurePoint}`)!;
+  const preview = await controller.previewManual(runId);
+  assert.ok(preview);
+  controller.recordPreviewPresented(preview.planId, runId);
+  controller.recordExecuteClick(preview.planId, runId);
+  let request: Awaited<ReturnType<ProductController["request"]>> | undefined;
+  let thrown: unknown;
+  try { request = await controller.requestPreviewAction({ kind: "execute-plan", planId: preview.planId }, runId); }
+  catch (error) { thrown = error; }
+  assert.equal(injected, true);
+  return { diagnostics, controller, runId, request, thrown };
+}
+
 async function failingExecution(failurePoint: ExecutionFailurePoint) {
+  if (failurePoint === "pending" || failurePoint === "uncertain-journal") return failingAuthorityPersistenceExecution(failurePoint);
   const { diagnostics } = await makeLogger();
   const realStore = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   await realStore.saveTrusted(createInitialTrustedState({ stateRevision: id<"StateRevision">("state:failure:0"), vaultIdentity: vault, deviceIdentity: device }));
   const loaded = await realStore.load(context);
   assert.equal(loaded.status, "trusted");
-  let loadCalls = 0;
+  let injected = false;
   const scriptedStore = {
-    load: async (loadContext: StateLoadContext) => {
-      loadCalls += 1;
-      if (failurePoint === "pending" && loadCalls === 2) throw new Error("client_secret=SENTINEL_PENDING");
-      if (failurePoint === "uncertain-journal" && loadCalls === 3) throw new Error("access_token=SENTINEL_UNCERTAIN");
-      if (failurePoint === "commit" && loadCalls === 3) throw new Error("refresh_token=SENTINEL_COMMIT");
-      return realStore.load(loadContext);
+    load: async (loadContext: StateLoadContext) => realStore.load(loadContext),
+    saveTrusted: async (...args: Parameters<PersistentSynchronizationStateStore["saveTrusted"]>) => {
+      const [candidate] = args;
+      const status = candidate.operations.at(-1)?.status;
+      if (!injected && failurePoint === "commit" && status === "completed") {
+        injected = true;
+        throw new Error("refresh_token=SENTINEL_COMMIT");
+      }
+      return realStore.saveTrusted(...args);
     },
-    saveTrusted: realStore.saveTrusted.bind(realStore),
     replaceRecoveryState: realStore.replaceRecoveryState.bind(realStore),
     createRecoveryBackup: realStore.createRecoveryBackup.bind(realStore),
   };
@@ -177,14 +354,13 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
     },
     execute: async (candidate: PlannedOperation) => {
       if (failurePoint === "mutation") throw new Error(protectedFailureMessage);
-      if (failurePoint === "uncertain-journal") return { status: "uncertain" as const, reason: "transport uncertain" };
       if (failurePoint === "returned-mutation") return { status: "blocking-failure" as const, reason: "fixed fixture failure" };
       return { status: "durable-verified-success" as const, receipt: { operationId: candidate.operationId, durable: true as const, integrityVerified: true as const, verificationEvidenceRef: "fixture" } };
     },
     failureScope: () => "global" as const,
   };
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault, deviceIdentity: device, stateContext: context, stateStore: scriptedStore as never,
     snapshotAssembler: { assembleFull: async () => assembly } as never,
     executor: executor as never,
@@ -200,7 +376,7 @@ async function failingExecution(failurePoint: ExecutionFailurePoint) {
   assert.ok(preview);
   controller.recordPreviewPresented(preview.planId, runId);
   controller.recordExecuteClick(preview.planId, runId);
-  let request: Awaited<ReturnType<IntegratedProductController["request"]>> | undefined;
+  let request: Awaited<ReturnType<ProductController["request"]>> | undefined;
   let thrown: unknown;
   try { request = await controller.requestPreviewAction({ kind: "execute-plan", planId: preview.planId }, runId); }
   catch (error) { thrown = error; }
@@ -266,14 +442,14 @@ test("sync diagnostics preserve plan/execution semantics and never export vault 
     assert.equal(loaded.state.base[0]?.content?.hash, evidence.hash);
   }
   const exported = run.diagnostics.renderText();
-  assert.doesNotMatch(exported, /SENTINEL_PRIVATE_NOTE_PATH|private note body|access_token|refresh_token|client_secret/i);
+  assert.doesNotMatch(exported, /SENTINEL_PRIVATE_NOTE_PATH|SENTINEL_NOTE_BODY_FRAGMENT|private note body|access_token|refresh_token|client_secret/i);
 });
 
 test("manual sync planning failure is terminal, correlated, and metadata-only", async () => {
   const { diagnostics } = await makeLogger();
   const store = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const conflicts = new ThreeWayConflictResolver({ readText: async () => undefined });
-  const controller = new IntegratedProductController({
+  const controller = new ProductController({
     vaultIdentity: vault,
     deviceIdentity: device,
     stateContext: context,
@@ -386,6 +562,11 @@ for (const [failurePoint, expectedStage] of [
     assert.equal(failure?.runId, run.runId);
     assert.equal(failure?.component, "sync.execute");
     assert.doesNotMatch(run.diagnostics.renderText(), /SENTINEL_PRECONDITION|SENTINEL_PENDING|SENTINEL_MUTATION|SENTINEL_UNCERTAIN|SENTINEL_COMMIT/);
+    if (failurePoint === "pending") assert.equal(failure?.fields?.classification, "pending-journal-failure");
+    if (failurePoint === "uncertain-journal") assert.equal(failure?.fields?.classification, "uncertain-state-journal-failure");
+    if (failurePoint === "pending" || failurePoint === "uncertain-journal") {
+      assert.equal(run.diagnostics.snapshot().some(event => event.level === "error" && event.fields?.stage === "content-mutation"), false);
+    }
     if (failurePoint === "mutation") {
       assert.equal(failure?.fields?.classification, "content-mutation-failure");
       assert.equal(failure?.fields?.errorName, "Error");

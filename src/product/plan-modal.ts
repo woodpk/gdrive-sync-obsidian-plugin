@@ -1,6 +1,6 @@
 import { App, Modal, Setting } from "obsidian";
 import type { CheckpointId, SynchronizationPlan } from "../contracts";
-import type { IntegratedProductController } from "./product-controller";
+import type { ProductController } from "./product-controller";
 
 export class PlanPreviewModal extends Modal {
   private executionPending = false;
@@ -8,7 +8,7 @@ export class PlanPreviewModal extends Modal {
   constructor(
     app: App,
     private readonly plan: SynchronizationPlan,
-    private readonly controller: IntegratedProductController,
+    private readonly controller: ProductController,
     private readonly diagnosticRunId?: number,
   ) { super(app); }
 
@@ -36,14 +36,22 @@ export class PlanPreviewModal extends Modal {
       .setButtonText(this.plan.recoveryCheckpointRequired ? "Approve checkpoint and execute" : "Execute")
       .setCta()
       .onClick(async () => {
+        if (this.executionPending) return;
         this.controller.recordExecuteClick(this.plan.planId, this.diagnosticRunId);
         this.executionPending = true;
-        const result = this.plan.recoveryCheckpointRequired && checkpoint
-          ? await this.controller.requestPreviewAction({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId }, this.diagnosticRunId)
-          : await this.controller.requestPreviewAction({ kind: "execute-plan", planId: this.plan.planId }, this.diagnosticRunId);
-        this.executionPending = false;
-        if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
-        else contentEl.createEl("p", { text: result.reason });
+        button.setDisabled(true);
+        try {
+          const result = this.plan.recoveryCheckpointRequired && checkpoint
+            ? await this.controller.requestPreviewAction({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId }, this.diagnosticRunId)
+            : await this.controller.requestPreviewAction({ kind: "execute-plan", planId: this.plan.planId }, this.diagnosticRunId);
+          if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
+          else contentEl.createEl("p", { text: result.reason });
+        } catch {
+          contentEl.createEl("p", { text: "Synchronization execution failed. Review the current sync status and diagnostics, then retry." });
+        } finally {
+          this.executionPending = false;
+          if (!this.executionAccepted) button.setDisabled(false);
+        }
       }));
   }
   onClose(): void {

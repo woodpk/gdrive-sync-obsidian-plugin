@@ -1,0 +1,13 @@
+﻿{"timestamp":"2026-09-09T09:27:18.6911206-04:00","action":"changed","relativePath":"test-file-01.md"}
+{"timestamp":"2026-09-09T09:27:18.8135866-04:00","action":"changed","relativePath":"test-file-01.md"}
+{"timestamp":"2026-09-09T09:33:48.9614547-04:00","action":"created","relativePath":"sync-plan-errors.csv.brain-sync-stage"}
+{"timestamp":"2026-09-09T09:33:48.9638731-04:00","action":"changed","relativePath":"sync-plan-errors.csv.brain-sync-stage"}
+{"timestamp":"2026-09-09T09:33:48.9751590-04:00","action":"renamed","relativePath":"sync-plan-errors.csv.brain-sync-backup","oldRelativePath":"sync-plan-errors.csv"}
+{"timestamp":"2026-09-09T09:33:48.9815658-04:00","action":"renamed","relativePath":"sync-plan-errors.csv","oldRelativePath":"sync-plan-errors.csv.brain-sync-stage"}
+{"timestamp":"2026-09-09T09:33:48.9850798-04:00","action":"deleted","relativePath":"sync-plan-errors.csv.brain-sync-backup"}
+{"timestamp":"2026-09-09T09:33:48.9885976-04:00","action":"changed","relativePath":".obsidian\\plugins\\brain-google-drive-sync\\data.json"}
+{"timestamp":"2026-09-09T09:33:49.0955279-04:00","action":"changed","relativePath":".obsidian\\plugins\\brain-google-drive-sync\\data.json"}
+{"timestamp":"2026-09-09T09:33:49.0978111-04:00","action":"changed","relativePath":".obsidian\\plugins\\brain-google-drive-sync\\data.json"}
+{"timestamp":"2026-09-09T09:33:49.1018641-04:00","action":"changed","relativePath":".obsidian\\plugins\\brain-google-drive-sync\\data.json"}
+{"timestamp":"2026-09-09T09:33:49.9794668-04:00","action":"changed","relativePath":".obsidian\\workspace.json"}
+{"timestamp":"2026-09-09T09:33:49.9804648-04:00","action":"changed","relativePath":".obsidian\\workspace.json"}

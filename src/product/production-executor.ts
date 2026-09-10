@@ -59,41 +59,64 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
 
   async validatePreconditions(operation: PlannedOperation): Promise<PreconditionValidationResult> {
     const failed: OperationPrecondition[] = [];
+    let evidence: ExecutorRunEvidence | undefined;
+    const evidenceForPass = () => evidence ??= this.runEvidence();
+    const localObservations = new Map<string, ReturnType<LocalVaultPort["observe"]>>();
+    const remoteObservations = new Map<string, ReturnType<GoogleDrivePort["observe"]>>();
+    let stateLoad: ReturnType<SynchronizationStateStore["load"]> | undefined;
+    const observeLocal = (path: VaultPath) => {
+      const key = String(path);
+      let observation = localObservations.get(key);
+      if (!observation) {
+        observation = this.local.observe(path);
+        localObservations.set(key, observation);
+      }
+      return observation;
+    };
+    const observeRemote = (path: VaultPath) => {
+      const key = String(path);
+      let observation = remoteObservations.get(key);
+      if (!observation) {
+        observation = this.drive.observe(evidenceForPass().managedRemote.rootId, path);
+        remoteObservations.set(key, observation);
+      }
+      return observation;
+    };
     const moveRemoteObservationPath = operation.kind === "identity-preserving-move" && operation.targetSide === "remote" && operation.fromPath ? operation.fromPath : undefined;
     for (const precondition of operation.preconditions) {
       if (precondition.kind === "base-trusted") {
-        const loaded = await this.state.load(this.stateContext);
+        const loaded = await (stateLoad ??= this.state.load(this.stateContext));
         if (loaded.status !== "trusted") return { status: "recovery-required", reason: "trusted synchronization base is unavailable" };
       } else if (precondition.kind === "remote-enumeration-complete") {
-        if (!this.runEvidence().remoteEnumerationComplete) return { status: "blocked", reason: "remote enumeration is not complete" };
+        if (!evidenceForPass().remoteEnumerationComplete) return { status: "blocked", reason: "remote enumeration is not complete" };
       } else if (precondition.kind === "identity-unambiguous") {
         continue;
       } else if (precondition.kind === "path-observation") {
         if (precondition.side === "local") {
-          const observed = await this.local.observe(precondition.path);
+          const observed = await observeLocal(precondition.path);
           if (observed.status !== precondition.expected || (precondition.observationToken && observed.status === "present" && observed.observationToken !== precondition.observationToken)) failed.push(precondition);
         } else {
-          const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, precondition.path);
+          const observed = await observeRemote(precondition.path);
           if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
           if (observed.value.status !== precondition.expected) failed.push(precondition);
         }
       } else if (precondition.kind === "content-evidence") {
         if (precondition.side === "local") {
-          const observed = await this.local.observe(precondition.path);
+          const observed = await observeLocal(precondition.path);
           if (observed.status !== "present" || !evidenceMatches(observed.content, precondition.expected)) failed.push(precondition);
         } else {
           const remotePath = moveRemoteObservationPath && precondition.path === operation.fromPath ? moveRemoteObservationPath : precondition.path;
-          const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, remotePath);
+          const observed = await observeRemote(remotePath);
           if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
           if (observed.value.status !== "present" || !evidenceMatches(observed.value.content, precondition.expected)) failed.push(precondition);
         }
       } else if (precondition.kind === "file-stable") {
-        const observed = await this.local.observe(precondition.path);
+        const observed = await observeLocal(precondition.path);
         if (observed.status !== "present" || observed.stability !== "stable") failed.push(precondition);
       } else if (precondition.kind === "remote-object") {
         const remoteObjectPath = moveRemoteObservationPath
           ?? (operation.contentVersion?.remoteObjectId === precondition.remoteObjectId ? operation.contentVersion.path : operation.path);
-        const observed = await this.drive.observe(this.runEvidence().managedRemote.rootId, remoteObjectPath);
+        const observed = await observeRemote(remoteObjectPath);
         if (!observed.ok) return this.mapDrivePreconditionFailure(observed.signal);
         if (observed.value.status !== "present" || observed.value.remoteObjectId !== precondition.remoteObjectId || (precondition.expectedRevision && observed.value.content?.revision !== precondition.expectedRevision)) failed.push(precondition);
       }
@@ -130,7 +153,7 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
   async execute(operation: PlannedOperation): Promise<ExecutionResult> {
     try {
       const boundary = await this.validatePreconditions(operation);
-      if (boundary.status === "stale") return { status: "stale-precondition", reason: "planned versions changed after pending journal; mutation refused" };
+      if (boundary.status === "stale") return { status: "stale-precondition", reason: "planned versions changed after pending journal; mutation refused", failed: boundary.failed };
       if (boundary.status === "blocked") return { status: "blocking-failure", reason: boundary.reason };
       if (boundary.status === "recovery-required") return { status: "recovery-required", reason: boundary.reason };
 
