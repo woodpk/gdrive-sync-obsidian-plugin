@@ -1,0 +1,152 @@
+name: LOG-04 Candidate-First Continuation Verification
+
+on:
+  push:
+    branches: [ci-log04-continuation-harness]
+    paths: [.github/workflows/log04-candidate-first-ci.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-candidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout CI harness
+        uses: actions/checkout@v4
+        with:
+          ref: ci-log04-continuation-harness
+          path: harness
+
+      - name: Checkout exact continuation input
+        uses: actions/checkout@v4
+        with:
+          ref: 3f582fc3bc0892edf8500f4f1803be6f3200f4b8
+          fetch-depth: 0
+          path: repo
+
+      - name: Re-establish exact continuation gate
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT=3f582fc3bc0892edf8500f4f1803be6f3200f4b8
+          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
+          test "$(git rev-parse HEAD)" = "$INPUT"
+          test "$(git merge-base "$BASE" HEAD)" = "$BASE"
+          REMOTE_HEAD=$(git ls-remote origin refs/heads/phase6-logging-log04-sync-execution-durable-effect-tracing | awk '{print $1}')
+          test "$REMOTE_HEAD" = "$INPUT"
+          ACTUAL=$(git diff --name-only "$BASE..HEAD" | sort)
+          EXPECTED=$(printf '%s\n' src/product/authoritative-production-executor-base.ts src/product/authority-execution-diagnostics.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
+          test "$ACTUAL" = "$EXPECTED"
+          git diff --quiet "$BASE..HEAD" -- src/diagnostics/diagnostic-logger.ts
+
+      - name: Reconstruct bounded continuation and commit candidate
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/product/product-controller-base.ts')
+          text = path.read_text()
+          old = 'this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
+          new = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one controller execution-start seam, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          cp ../harness/.ci-harness/log04-execution-diagnostics.test.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('test/workstreams/orchestration/log04-execution-diagnostics.test.ts')
+          text = path.read_text()
+          replacements = [
+              ('    knownDevices: [],\n  } as never;\n}\n\nasync function diagnosticHarness', '    knownDevices: [],\n  };\n}\n\nasync function diagnosticHarness'),
+              ('  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority', '  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  diagnostics.logger.syncTrace("sync.execute", "operation-precondition-validation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority'),
+              ('    "operation-entry",\n    "operation-precondition-validation-start",', '    "operation-precondition-validation-start",\n    "operation-entry",'),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one fixture target, found {text.count(old)} for {old[:40]!r}')
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
+          git commit -m "LOG-04 complete plan correlation and acceptance coverage"
+          CANDIDATE_SHA=$(git rev-parse HEAD)
+          echo "CANDIDATE_SHA=$CANDIDATE_SHA" >> "$GITHUB_ENV"
+          echo "LOG04_CANDIDATE_SHA=$CANDIDATE_SHA"
+
+      - name: Push immutable implementation candidate before verification
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:phase6-logging-log04-sync-execution-durable-effect-tracing
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          echo "Committed and pushed candidate: $CANDIDATE_SHA"
+
+      - name: Install exact locked dependencies
+        working-directory: repo
+        run: npm ci
+
+      - name: Typecheck exact candidate
+        working-directory: repo
+        run: npm run typecheck
+
+      - name: Compile test tree
+        working-directory: repo
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Focused LOG-04 tests - exact candidate
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-evidence
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js | tee .ci-evidence/log04-focused.tap
+          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
+          test "$COUNT" = "10"
+          echo "FOCUSED_COUNT=$COUNT" >> "$GITHUB_ENV"
+          echo "Focused LOG-04 test count: $COUNT"
+
+      - name: Complete npm test - exact candidate
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          npm test | tee .ci-evidence/full-tests.tap
+          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/full-tests.tap | tail -1 | awk '{print $3}')
+          test -n "$COUNT"
+          test "$COUNT" -gt 0
+          echo "FULL_COUNT=$COUNT" >> "$GITHUB_ENV"
+          echo "Full automated test count: $COUNT"
+
+      - name: Production build after green suite
+        working-directory: repo
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          npm run build
+
+      - name: Frozen-base diff check after green suite
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git diff --check "$BASE..$CANDIDATE_SHA"
+          ACTUAL=$(git diff --name-only "$BASE..$CANDIDATE_SHA" | sort)
+          EXPECTED=$(printf '%s\n' src/product/authoritative-production-executor-base.ts src/product/authority-execution-diagnostics.ts src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
+          test "$ACTUAL" = "$EXPECTED"
+          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/diagnostics/diagnostic-logger.ts
+          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/product/operation-isolation.ts
+          git diff --quiet "$BASE..$CANDIDATE_SHA" -- package.json package-lock.json
+          echo "Changed files from frozen base:"
+          git diff --name-only "$BASE..$CANDIDATE_SHA"
+          echo "DIFF_CHECK_PASS=1"
