@@ -1,0 +1,4 @@
+M	src/product/authoritative-production-executor-base.ts
+M	src/product/authority-execution-diagnostics.ts
+M	src/product/product-controller-base.ts
+A	test/workstreams/orchestration/log04-execution-diagnostics.test.ts

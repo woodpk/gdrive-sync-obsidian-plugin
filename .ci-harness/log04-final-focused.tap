@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: LOG-04 correlates execution lifecycle with safe path identity and distinguishes post-verification authority failure
+ok 1 - LOG-04 correlates execution lifecycle with safe path identity and distinguishes post-verification authority failure
+  ---
+  duration_ms: 5.793876
+  type: 'test'
+  ...
+# Subtest: LOG-04 exposes durable finalization as effect-verified to state-committed without changing store result
+ok 2 - LOG-04 exposes durable finalization as effect-verified to state-committed without changing store result
+  ---
+  duration_ms: 1.813939
+  type: 'test'
+  ...
+# Subtest: LOG-04 execution emitter keeps operation, intent, and effect correlation on exact physical-result classifications
+ok 3 - LOG-04 execution emitter keeps operation, intent, and effect correlation on exact physical-result classifications
+  ---
+  duration_ms: 1.505773
+  type: 'test'
+  ...
+# Subtest: LOG-04 real physical success is reconstructible in order through durable finalization and final success
+ok 4 - LOG-04 real physical success is reconstructible in order through durable finalization and final success
+  ---
+  duration_ms: 10.151681
+  type: 'test'
+  ...
+# Subtest: LOG-04 stale precondition has no physical-dispatch success evidence
+ok 5 - LOG-04 stale precondition has no physical-dispatch success evidence
+  ---
+  duration_ms: 1.040236
+  type: 'test'
+  ...
+# Subtest: LOG-04 outcome-unknown remains distinct from verified success and is never represented as committed
+ok 6 - LOG-04 outcome-unknown remains distinct from verified success and is never represented as committed
+  ---
+  duration_ms: 2.585037
+  type: 'test'
+  ...
+# Subtest: LOG-04 verified physical effect followed by durable finalization failure is distinct from a no-effect failure
+ok 7 - LOG-04 verified physical effect followed by durable finalization failure is distinct from a no-effect failure
+  ---
+  duration_ms: 6.476995
+  type: 'test'
+  ...
+# Subtest: LOG-04 existing-intent restart re-observes without falsely logging a new physical dispatch
+ok 8 - LOG-04 existing-intent restart re-observes without falsely logging a new physical dispatch
+  ---
+  duration_ms: 2.768769
+  type: 'test'
+  ...
+# Subtest: LOG-04 controller production execution-start supplies planId to the existing diagnostic seam
+ok 9 - LOG-04 controller production execution-start supplies planId to the existing diagnostic seam
+  ---
+  duration_ms: 5.240258
+  type: 'test'
+  ...
+# Subtest: LOG-04 cancellation, blocked, and recovery-required outcomes retain their result semantics
+ok 10 - LOG-04 cancellation, blocked, and recovery-required outcomes retain their result semantics
+  ---
+  duration_ms: 1.849671
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 123.17091
