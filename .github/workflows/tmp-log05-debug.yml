@@ -1,0 +1,45 @@
+name: Temporary LOG-05 Transform Debug
+
+on:
+  push:
+    branches: [tmp-log05-debug-tooling]
+
+permissions:
+  contents: write
+
+jobs:
+  debug-transform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-log05-debug-tooling
+          path: tooling
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-logging-log05-authority-state-recovery-tracing
+          path: repo
+          fetch-depth: 0
+      - name: Run transform and capture exact failure
+        shell: bash
+        run: |
+          set +e
+          cd repo
+          python ../tooling/dev/log05/apply-log05.py > ../tooling/dev/log05/debug-output.txt 2>&1
+          rc=$?
+          cd ../tooling
+          {
+            echo '# LOG-05 transform debug'
+            echo
+            echo "exit: $rc"
+            echo '```text'
+            cat dev/log05/debug-output.txt
+            echo '```'
+          } > dev/log05/debug-result.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add dev/log05/debug-result.md
+          git commit -m 'chore: record LOG-05 transform debug' || true
+          git push origin HEAD:tmp-log05-debug-tooling
+          exit 0
