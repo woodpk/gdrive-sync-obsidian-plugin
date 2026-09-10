@@ -42,17 +42,8 @@ jobs:
 
           diagnostics = Path('src/product/authority-execution-diagnostics.ts')
           text = diagnostics.read_text()
-
-          marker = '''type ObservableLifecycleObserver = ExecutionLifecycleObserver & {
-            readonly executionDiagnosticEmitter?: ExecutionDiagnosticEmitter;
-          };
-
-          function failureBoundary'''
-          replacement = '''type ObservableLifecycleObserver = ExecutionLifecycleObserver & {
-            readonly executionDiagnosticEmitter?: ExecutionDiagnosticEmitter;
-          };
-
-          function safeCorrelationId(operation: PlannedOperation, value: string): string {
+          marker = 'function failureBoundary('
+          helper = '''function safeCorrelationId(operation: PlannedOperation, value: string): string {
             const rawPath = String(operation.path);
             return rawPath && value.includes(rawPath)
               ? diagnosticPathKey(value).replace(/^path-/, "id-")
@@ -69,64 +60,80 @@ jobs:
             };
           }
 
-          function failureBoundary'''
+          function failureBoundary('''
           assert text.count(marker) == 1, 'diagnostic helper insertion point drifted'
-          text = text.replace(marker, replacement)
-          text = text.replace('''    ...(planId ? { planId } : {}),
-              operationId: String(operation.operationId),''', '''    ...(planId ? { planId: safeCorrelationId(operation, planId) } : {}),
-              operationId: safeCorrelationId(operation, String(operation.operationId)),''')
-          assert 'operationId: safeCorrelationId(operation, String(operation.operationId))' in text
+          text = text.replace(marker, helper, 1)
+
+          old = '''    ...(planId ? { planId } : {}),
+              operationId: String(operation.operationId),'''
+          if old not in text:
+              old = '''    ...(planId ? { planId } : {}),
+    operationId: String(operation.operationId),'''
+          new = '''    ...(planId ? { planId: safeCorrelationId(operation, planId) } : {}),
+    operationId: safeCorrelationId(operation, String(operation.operationId)),'''
+          assert text.count(old) == 1, 'operationFields correlation lines drifted'
+          text = text.replace(old, new, 1)
+
           old = '''    const completeFields: SafeDiagnosticFields = {
-                ...operationFields(operation, operationIndex, planId),
-                ...fields,
-              };'''
+              ...operationFields(operation, operationIndex, planId),
+              ...fields,
+            };'''
+          if old not in text:
+              old = '''    const completeFields: SafeDiagnosticFields = {
+      ...operationFields(operation, operationIndex, planId),
+      ...fields,
+    };'''
           new = '''    const completeFields: SafeDiagnosticFields = safeCorrelationFields(operation, {
-                ...operationFields(operation, operationIndex, planId),
-                ...fields,
-              });'''
+      ...operationFields(operation, operationIndex, planId),
+      ...fields,
+    });'''
           assert text.count(old) == 1, 'emitter field construction drifted'
-          text = text.replace(old, new)
+          text = text.replace(old, new, 1)
+
           old = '''    const fields: SafeDiagnosticFields = {
-                ...operationFields(operation, operationIndex, planId),
-                stage: failure?.stage ?? stage,
-                ...failedFields(failed),
-                ...(result ? { result } : {}),
-                ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
-                ...(classification ? { classification } : {}),
-              };'''
+              ...operationFields(operation, operationIndex, planId),
+              stage: failure?.stage ?? stage,
+              ...failedFields(failed),
+              ...(result ? { result } : {}),
+              ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
+              ...(classification ? { classification } : {}),
+            };'''
+          if old not in text:
+              old = '''    const fields: SafeDiagnosticFields = {
+      ...operationFields(operation, operationIndex, planId),
+      stage: failure?.stage ?? stage,
+      ...failedFields(failed),
+      ...(result ? { result } : {}),
+      ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
+      ...(classification ? { classification } : {}),
+    };'''
           new = '''    const fields: SafeDiagnosticFields = safeCorrelationFields(operation, {
-                ...operationFields(operation, operationIndex, planId),
-                stage: failure?.stage ?? stage,
-                ...failedFields(failed),
-                ...(result ? { result } : {}),
-                ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
-                ...(classification ? { classification } : {}),
-              });'''
+      ...operationFields(operation, operationIndex, planId),
+      stage: failure?.stage ?? stage,
+      ...failedFields(failed),
+      ...(result ? { result } : {}),
+      ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
+      ...(classification ? { classification } : {}),
+    });'''
           assert text.count(old) == 1, 'observer field construction drifted'
-          text = text.replace(old, new)
+          text = text.replace(old, new, 1)
           diagnostics.write_text(text)
 
           controller = Path('src/product/product-controller-base.ts')
           text = controller.read_text()
-          marker = '''function safeToken(value: string | undefined): string {
-            return (value ?? "na").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 32);
-          }
-          function conflictCopyBase'''
-          replacement = '''function safeToken(value: string | undefined): string {
-            return (value ?? "na").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 32);
-          }
-          function diagnosticPlanId(plan: SynchronizationPlan): string {
+          marker = 'function conflictCopyBase('
+          helper = '''function diagnosticPlanId(plan: SynchronizationPlan): string {
             const raw = String(plan.planId);
             if (!plan.operations.some(operation => raw.includes(String(operation.path)))) return raw;
             return `id-sha256:${String(sha256Text(raw)).replace(/^sha256:/, "")}`;
           }
-          function conflictCopyBase'''
+          function conflictCopyBase('''
           assert text.count(marker) == 1, 'controller helper insertion point drifted'
-          text = text.replace(marker, replacement)
+          text = text.replace(marker, helper, 1)
           old = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
           new = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: diagnosticPlanId(planned.plan), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
           assert text.count(old) == 1, 'execution-start planId seam drifted'
-          text = text.replace(old, new)
+          text = text.replace(old, new, 1)
           controller.write_text(text)
           PY
           git diff --check
@@ -202,7 +209,11 @@ jobs:
       - name: Production build after green full suite
         if: env.FULL_EXIT == '0'
         working-directory: repo
-        run: npm run build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          echo "BUILD_RESULT=PASS" >> "$GITHUB_ENV"
 
       - name: Frozen-base diff check and complete changed-file inspection
         if: env.FULL_EXIT == '0'
@@ -220,7 +231,7 @@ jobs:
           git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/diagnostics/diagnostic-logger.ts
           git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/product/operation-isolation.ts
           git diff --quiet "$BASE..$CANDIDATE_SHA" -- package.json package-lock.json
-          echo DIFF_CHECK=PASS > .ci-evidence/diff-check.status
+          echo "DIFF_CHECK_RESULT=PASS" >> "$GITHUB_ENV"
 
       - name: Persist verification summary to harness
         if: always()
@@ -248,8 +259,8 @@ jobs:
             echo "FULL_PASS=${FULL_PASS:-N/A}"
             echo "FULL_FAIL=${FULL_FAIL:-N/A}"
             echo "FULL_EXIT=${FULL_EXIT:-N/A}"
-            echo "BUILD=$([ "${FULL_EXIT:-1}" = 0 ] && echo PASS || echo NOT_RUN)"
-            echo "DIFF_CHECK=$([ -f repo/.ci-evidence/diff-check.status ] && echo PASS || echo NOT_RUN)"
+            echo "BUILD=${BUILD_RESULT:-NOT_RUN}"
+            echo "DIFF_CHECK=${DIFF_CHECK_RESULT:-NOT_RUN}"
           } > harness/.ci-harness/log04-corrected-verification.status
           cd harness
           git config user.name 'github-actions[bot]'
@@ -268,3 +279,5 @@ jobs:
           test "${FOCUSED_PASS:-0}" = "10"
           test "${FOCUSED_FAIL:-1}" = "0"
           test "${FULL_EXIT:-1}" = "0"
+          test "${BUILD_RESULT:-}" = "PASS"
+          test "${DIFF_CHECK_RESULT:-}" = "PASS"
