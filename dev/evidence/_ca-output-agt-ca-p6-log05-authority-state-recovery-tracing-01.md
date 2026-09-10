@@ -6,7 +6,7 @@
 - Wave: `W1`
 - Resolved common base SHA: `48d9e612b69b43be9941f97630c580c2b8aed929`
 - Branch: `phase6-logging-log05-authority-state-recovery-tracing`
-- Final implementation SHA: `dacfe93c9a8016fa62815d951badaed1956935d7`
+- Final implementation SHA: `53f8062968b0bf21dc876a50e64fd9634236576f`
 - Final evidence SHA: reported in the completion response; a commit cannot contain its own SHA.
 - Frozen LOG-01 contract consumed unchanged: `src/diagnostics/diagnostic-logger.ts` from `48d9e612b69b43be9941f97630c580c2b8aed929`.
 
@@ -35,8 +35,8 @@
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
 - `npx tsc -p tsconfig.test.json`: PASS
-- Focused state/recovery tests: PASS, `22/22`
-- Full automated test suite: PASS, `750/750`
+- Focused state/recovery tests: PASS, `24/24`
+- Full automated test suite: PASS, `754/754`
 - `npm run build`: PASS
 - `npm run check`: PASS
 - `git diff --check`: PASS
@@ -48,7 +48,7 @@
 - State schema, semantic projection, CAS expected values, persistence/semantic increment algorithms, change-cursor advancement, intent lifecycle, and recovery ordering were not redesigned.
 - Diagnostic emission is optional and fail-safe: diagnostic exceptions are swallowed and cannot change state/CAS/recovery outcomes.
 - LOG-05 does not send raw state envelopes, BASE/mapping/tombstone arrays, learned-change payloads, raw vault paths, file content, OAuth credentials, or secrets to the LOG-01 logger.
-- Focused tests verify bounded load/CAS/generation facts, no false semantic transition for persistence-only journal updates, true semantic transition ordering, stale-persistence vs stale-semantic classification, remote-batch bounded evidence, current-generation recovery, exact stale-generation rejection, receipt reconstruction visibility, no Drive mutation, and raw-path exclusion.
+- Focused tests verify bounded load/CAS/generation facts, no false semantic transition for persistence-only journal updates, true semantic transition ordering, stale-persistence vs stale-semantic classification, remote-batch bounded evidence, current-generation recovery, exact stale-generation rejection, receipt reconstruction success and failure visibility, one ordered trace showing remote learning advances semantic authority before stale-intent recovery evaluation, no Drive mutation, and raw-path exclusion.
 - No production runtime composition was changed; LOG-03 owns production wiring.
 - No live Drive mutation, B01 rerun/remediation, merge, release, iPhone validation, or Stage 3 work occurred.
 - Mandatory dynamic verification ran in GitHub Actions Node 22 because the supervising ChatGPT container had no network route to clone/install this repository locally.
