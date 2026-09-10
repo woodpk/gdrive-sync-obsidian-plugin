@@ -1,4 +1,4 @@
-name: LOG-04 Candidate-First Continuation Verification
+name: LOG-04 Fresh Exact-SHA Verification
 
 on:
   push:
@@ -6,94 +6,37 @@ on:
     paths: [.github/workflows/log04-candidate-first-ci.yml]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  verify-candidate:
+  verify-exact-sha:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout CI harness
+      - name: Checkout exact LOG-04 implementation SHA
         uses: actions/checkout@v4
         with:
-          ref: ci-log04-continuation-harness
-          path: harness
-
-      - name: Checkout exact continuation input
-        uses: actions/checkout@v4
-        with:
-          ref: 3f582fc3bc0892edf8500f4f1803be6f3200f4b8
+          ref: 3d81e61252f82957f8a0eaf1cd9e9f372ec49f86
           fetch-depth: 0
           path: repo
 
-      - name: Re-establish exact continuation gate
+      - name: Verify immutable input and frozen base
         working-directory: repo
         shell: bash
         run: |
           set -euo pipefail
-          INPUT=3f582fc3bc0892edf8500f4f1803be6f3200f4b8
+          SHA=3d81e61252f82957f8a0eaf1cd9e9f372ec49f86
           BASE=48d9e612b69b43be9941f97630c580c2b8aed929
-          test "$(git rev-parse HEAD)" = "$INPUT"
+          test "$(git rev-parse HEAD)" = "$SHA"
           test "$(git merge-base "$BASE" HEAD)" = "$BASE"
           REMOTE_HEAD=$(git ls-remote origin refs/heads/phase6-logging-log04-sync-execution-durable-effect-tracing | awk '{print $1}')
-          test "$REMOTE_HEAD" = "$INPUT"
-          ACTUAL=$(git diff --name-only "$BASE..HEAD" | sort)
-          EXPECTED=$(printf '%s\n' src/product/authoritative-production-executor-base.ts src/product/authority-execution-diagnostics.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
-          test "$ACTUAL" = "$EXPECTED"
-          git diff --quiet "$BASE..HEAD" -- src/diagnostics/diagnostic-logger.ts
+          test "$REMOTE_HEAD" = "$SHA"
+          echo "Verified exact implementation SHA: $SHA"
 
-      - name: Reconstruct bounded continuation and commit candidate
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/product/product-controller-base.ts')
-          text = path.read_text()
-          old = 'this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
-          new = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one controller execution-start seam, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
-          PY
-          cp ../harness/.ci-harness/log04-execution-diagnostics.test.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('test/workstreams/orchestration/log04-execution-diagnostics.test.ts')
-          text = path.read_text()
-          replacements = [
-              ('    knownDevices: [],\n  } as never;\n}\n\nasync function diagnosticHarness', '    knownDevices: [],\n  };\n}\n\nasync function diagnosticHarness'),
-              ('  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority', '  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  diagnostics.logger.syncTrace("sync.execute", "operation-precondition-validation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority'),
-              ('    "operation-entry",\n    "operation-precondition-validation-start",', '    "operation-precondition-validation-start",\n    "operation-entry",'),
-          ]
-          for old, new in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f'expected exactly one fixture target, found {text.count(old)} for {old[:40]!r}')
-              text = text.replace(old, new)
-          path.write_text(text)
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
-          git commit -m "LOG-04 complete plan correlation and acceptance coverage"
-          CANDIDATE_SHA=$(git rev-parse HEAD)
-          echo "CANDIDATE_SHA=$CANDIDATE_SHA" >> "$GITHUB_ENV"
-          echo "LOG04_CANDIDATE_SHA=$CANDIDATE_SHA"
-
-      - name: Push immutable implementation candidate before verification
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          git push origin HEAD:phase6-logging-log04-sync-execution-durable-effect-tracing
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          echo "Committed and pushed candidate: $CANDIDATE_SHA"
-
-      - name: Install exact locked dependencies
+      - name: npm ci
         working-directory: repo
         run: npm ci
 
-      - name: Typecheck exact candidate
+      - name: Typecheck
         working-directory: repo
         run: npm run typecheck
 
@@ -101,52 +44,82 @@ jobs:
         working-directory: repo
         run: npx tsc -p tsconfig.test.json
 
-      - name: Focused LOG-04 tests - exact candidate
+      - name: Focused LOG-04 suite
         working-directory: repo
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .ci-evidence
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js | tee .ci-evidence/log04-focused.tap
-          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
-          test "$COUNT" = "10"
-          echo "FOCUSED_COUNT=$COUNT" >> "$GITHUB_ENV"
-          echo "Focused LOG-04 test count: $COUNT"
+          node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js 2>&1 | tee .ci-evidence/log04-focused.tap
+          TESTS=$(grep -E '^# tests [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
+          PASS=$(grep -E '^# pass [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
+          FAIL=$(grep -E '^# fail [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
+          test "$TESTS" = "10"
+          test "$PASS" = "10"
+          test "$FAIL" = "0"
+          echo "FOCUSED_TESTS=$TESTS" >> "$GITHUB_ENV"
+          echo "FOCUSED_PASS=$PASS" >> "$GITHUB_ENV"
+          echo "FOCUSED_FAIL=$FAIL" >> "$GITHUB_ENV"
 
-      - name: Complete npm test - exact candidate
+      - name: Complete npm test with preserved stdout stderr and exit status
         working-directory: repo
         shell: bash
         run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          npm test | tee .ci-evidence/full-tests.tap
-          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/full-tests.tap | tail -1 | awk '{print $3}')
-          test -n "$COUNT"
-          test "$COUNT" -gt 0
-          echo "FULL_COUNT=$COUNT" >> "$GITHUB_ENV"
-          echo "Full automated test count: $COUNT"
+          set -uo pipefail
+          mkdir -p .ci-evidence
+          set +e
+          npm test > .ci-evidence/full-tests.log 2>&1
+          STATUS=$?
+          set -e
+          cat .ci-evidence/full-tests.log
+          TESTS=$(grep -E '^# tests [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
+          PASS=$(grep -E '^# pass [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
+          FAIL=$(grep -E '^# fail [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
+          echo "FULL_EXIT=$STATUS" >> "$GITHUB_ENV"
+          echo "FULL_TESTS=${TESTS:-N/A}" >> "$GITHUB_ENV"
+          echo "FULL_PASS=${PASS:-N/A}" >> "$GITHUB_ENV"
+          echo "FULL_FAIL=${FAIL:-N/A}" >> "$GITHUB_ENV"
+          printf '\nFULL_TEST_EXIT=%s\nFULL_TESTS=%s\nFULL_PASS=%s\nFULL_FAIL=%s\n' "$STATUS" "${TESTS:-N/A}" "${PASS:-N/A}" "${FAIL:-N/A}"
+          exit 0
 
-      - name: Production build after green suite
+      - name: Production build after green full suite
+        if: env.FULL_EXIT == '0'
         working-directory: repo
-        run: |
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          npm run build
+        run: npm run build
 
-      - name: Frozen-base diff check after green suite
+      - name: Frozen-base diff check and complete changed-file inspection
+        if: env.FULL_EXIT == '0'
         working-directory: repo
         shell: bash
         run: |
           set -euo pipefail
           BASE=48d9e612b69b43be9941f97630c580c2b8aed929
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          git diff --check "$BASE..$CANDIDATE_SHA"
-          ACTUAL=$(git diff --name-only "$BASE..$CANDIDATE_SHA" | sort)
+          SHA=3d81e61252f82957f8a0eaf1cd9e9f372ec49f86
+          git diff --check "$BASE..$SHA"
+          echo '=== FROZEN-BASE CHANGED FILE SET ==='
+          git diff --name-status "$BASE..$SHA"
+          echo '=== FROZEN-BASE DIFF ==='
+          git diff --stat "$BASE..$SHA"
+          git diff "$BASE..$SHA"
+          ACTUAL=$(git diff --name-only "$BASE..$SHA" | sort)
           EXPECTED=$(printf '%s\n' src/product/authoritative-production-executor-base.ts src/product/authority-execution-diagnostics.ts src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
           test "$ACTUAL" = "$EXPECTED"
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/diagnostics/diagnostic-logger.ts
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/product/operation-isolation.ts
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- package.json package-lock.json
-          echo "Changed files from frozen base:"
-          git diff --name-only "$BASE..$CANDIDATE_SHA"
-          echo "DIFF_CHECK_PASS=1"
+          git diff --quiet "$BASE..$SHA" -- src/diagnostics/diagnostic-logger.ts
+          git diff --quiet "$BASE..$SHA" -- src/product/operation-isolation.ts
+          git diff --quiet "$BASE..$SHA" -- package.json package-lock.json
+
+      - name: Upload preserved verification output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log04-exact-sha-verification
+          path: repo/.ci-evidence/
+          if-no-files-found: warn
+
+      - name: Enforce full-suite gate
+        if: always()
+        shell: bash
+        run: |
+          echo "Focused: ${FOCUSED_PASS:-N/A}/${FOCUSED_TESTS:-N/A}; focused fail=${FOCUSED_FAIL:-N/A}"
+          echo "Full: ${FULL_PASS:-N/A}/${FULL_TESTS:-N/A}; full fail=${FULL_FAIL:-N/A}; exit=${FULL_EXIT:-N/A}"
+          test "${FULL_EXIT:-1}" = "0"
