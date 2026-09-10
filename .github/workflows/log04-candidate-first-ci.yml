@@ -2,8 +2,10 @@ name: LOG-04 Attributed Correction Verification
 
 on:
   push:
-    branches: [ci-log04-continuation-harness]
-    paths: [.github/workflows/log04-candidate-first-ci.yml]
+    branches:
+      - ci-log04-continuation-harness
+    paths:
+      - .github/workflows/log04-candidate-first-ci.yml
 
 permissions:
   contents: write
@@ -12,272 +14,20 @@ jobs:
   correct-and-verify:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout exact rejected implementation SHA
+      - name: Checkout harness
+        uses: actions/checkout@v4
+        with:
+          ref: ci-log04-continuation-harness
+          fetch-depth: 0
+          path: harness
+
+      - name: Checkout exact LOG-04 implementation input
         uses: actions/checkout@v4
         with:
           ref: 3d81e61252f82957f8a0eaf1cd9e9f372ec49f86
           fetch-depth: 0
           path: repo
 
-      - name: Gate exact input and frozen base
-        working-directory: repo
+      - name: Correct, commit, verify, and record evidence
         shell: bash
-        run: |
-          set -euo pipefail
-          INPUT=3d81e61252f82957f8a0eaf1cd9e9f372ec49f86
-          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
-          BRANCH=phase6-logging-log04-sync-execution-durable-effect-tracing
-          test "$(git rev-parse HEAD)" = "$INPUT"
-          test "$(git merge-base "$BASE" HEAD)" = "$BASE"
-          REMOTE_HEAD=$(git ls-remote origin "refs/heads/$BRANCH" | awk '{print $1}')
-          test "$REMOTE_HEAD" = "$INPUT"
-
-      - name: Apply smallest LOG-04 privacy correction
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          diagnostics = Path('src/product/authority-execution-diagnostics.ts')
-          text = diagnostics.read_text()
-          marker = 'function failureBoundary('
-          helper = '''function safeCorrelationId(operation: PlannedOperation, value: string): string {
-            const rawPath = String(operation.path);
-            return rawPath && value.includes(rawPath)
-              ? diagnosticPathKey(value).replace(/^path-/, "id-")
-              : value;
-          }
-
-          function safeCorrelationFields(operation: PlannedOperation, fields: SafeDiagnosticFields): SafeDiagnosticFields {
-            return {
-              ...fields,
-              ...(typeof fields.planId === "string" ? { planId: safeCorrelationId(operation, fields.planId) } : {}),
-              ...(typeof fields.operationId === "string" ? { operationId: safeCorrelationId(operation, fields.operationId) } : {}),
-              ...(typeof fields.intentId === "string" ? { intentId: safeCorrelationId(operation, fields.intentId) } : {}),
-              ...(typeof fields.effectId === "string" ? { effectId: safeCorrelationId(operation, fields.effectId) } : {}),
-            };
-          }
-
-          function failureBoundary('''
-          assert text.count(marker) == 1, 'diagnostic helper insertion point drifted'
-          text = text.replace(marker, helper, 1)
-
-          old = '''    ...(planId ? { planId } : {}),
-              operationId: String(operation.operationId),'''
-          if old not in text:
-              old = '''    ...(planId ? { planId } : {}),
-    operationId: String(operation.operationId),'''
-          new = '''    ...(planId ? { planId: safeCorrelationId(operation, planId) } : {}),
-    operationId: safeCorrelationId(operation, String(operation.operationId)),'''
-          assert text.count(old) == 1, 'operationFields correlation lines drifted'
-          text = text.replace(old, new, 1)
-
-          old = '''    const completeFields: SafeDiagnosticFields = {
-              ...operationFields(operation, operationIndex, planId),
-              ...fields,
-            };'''
-          if old not in text:
-              old = '''    const completeFields: SafeDiagnosticFields = {
-      ...operationFields(operation, operationIndex, planId),
-      ...fields,
-    };'''
-          new = '''    const completeFields: SafeDiagnosticFields = safeCorrelationFields(operation, {
-      ...operationFields(operation, operationIndex, planId),
-      ...fields,
-    });'''
-          assert text.count(old) == 1, 'emitter field construction drifted'
-          text = text.replace(old, new, 1)
-
-          old = '''    const fields: SafeDiagnosticFields = {
-              ...operationFields(operation, operationIndex, planId),
-              stage: failure?.stage ?? stage,
-              ...failedFields(failed),
-              ...(result ? { result } : {}),
-              ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
-              ...(classification ? { classification } : {}),
-            };'''
-          if old not in text:
-              old = '''    const fields: SafeDiagnosticFields = {
-      ...operationFields(operation, operationIndex, planId),
-      stage: failure?.stage ?? stage,
-      ...failedFields(failed),
-      ...(result ? { result } : {}),
-      ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
-      ...(classification ? { classification } : {}),
-    };'''
-          new = '''    const fields: SafeDiagnosticFields = safeCorrelationFields(operation, {
-      ...operationFields(operation, operationIndex, planId),
-      stage: failure?.stage ?? stage,
-      ...failedFields(failed),
-      ...(result ? { result } : {}),
-      ...(stage.startsWith("state-commit") && result ? { commitStatus: result } : {}),
-      ...(classification ? { classification } : {}),
-    });'''
-          assert text.count(old) == 1, 'observer field construction drifted'
-          text = text.replace(old, new, 1)
-          diagnostics.write_text(text)
-
-          controller = Path('src/product/product-controller-base.ts')
-          text = controller.read_text()
-          marker = 'function conflictCopyBase('
-          helper = '''function diagnosticPlanId(plan: SynchronizationPlan): string {
-            const raw = String(plan.planId);
-            if (!plan.operations.some(operation => raw.includes(String(operation.path)))) return raw;
-            return `id-sha256:${String(sha256Text(raw)).replace(/^sha256:/, "")}`;
-          }
-          function conflictCopyBase('''
-          assert text.count(marker) == 1, 'controller helper insertion point drifted'
-          text = text.replace(marker, helper, 1)
-          old = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
-          new = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: diagnosticPlanId(planned.plan), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
-          assert text.count(old) == 1, 'execution-start planId seam drifted'
-          text = text.replace(old, new, 1)
-          controller.write_text(text)
-          PY
-          git diff --check
-          git diff -- src/product/authority-execution-diagnostics.ts src/product/product-controller-base.ts
-
-      - name: Commit and push corrected implementation candidate before verification
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          BRANCH=phase6-logging-log04-sync-execution-durable-effect-tracing
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/product/authority-execution-diagnostics.ts src/product/product-controller-base.ts
-          git diff --cached --quiet && { echo 'Expected correction diff is empty'; exit 1; }
-          git commit -m 'LOG-04 protect path-bearing correlation identifiers'
-          CANDIDATE_SHA=$(git rev-parse HEAD)
-          git push origin "HEAD:$BRANCH"
-          echo "CANDIDATE_SHA=$CANDIDATE_SHA" >> "$GITHUB_ENV"
-          echo "Committed and pushed candidate $CANDIDATE_SHA"
-
-      - name: npm ci
-        working-directory: repo
-        run: npm ci
-
-      - name: Typecheck
-        working-directory: repo
-        run: npm run typecheck
-
-      - name: Compile test tree
-        working-directory: repo
-        run: npx tsc -p tsconfig.test.json
-
-      - name: Focused LOG-04 suite
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .ci-evidence
-          node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js 2>&1 | tee .ci-evidence/log04-focused.tap
-          TESTS=$(grep -E '^# tests [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
-          PASS=$(grep -E '^# pass [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
-          FAIL=$(grep -E '^# fail [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
-          test "$TESTS" = "10"
-          test "$PASS" = "10"
-          test "$FAIL" = "0"
-          echo "FOCUSED_TESTS=$TESTS" >> "$GITHUB_ENV"
-          echo "FOCUSED_PASS=$PASS" >> "$GITHUB_ENV"
-          echo "FOCUSED_FAIL=$FAIL" >> "$GITHUB_ENV"
-
-      - name: Complete npm test preserving output and exit status
-        working-directory: repo
-        shell: bash
-        run: |
-          set -uo pipefail
-          mkdir -p .ci-evidence
-          set +e
-          npm test > .ci-evidence/full-tests.log 2>&1
-          STATUS=$?
-          set -e
-          cat .ci-evidence/full-tests.log
-          TESTS=$(grep -E '^# tests [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
-          PASS=$(grep -E '^# pass [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
-          FAIL=$(grep -E '^# fail [0-9]+$' .ci-evidence/full-tests.log | tail -1 | awk '{print $3}' || true)
-          echo "FULL_EXIT=$STATUS" >> "$GITHUB_ENV"
-          echo "FULL_TESTS=${TESTS:-N/A}" >> "$GITHUB_ENV"
-          echo "FULL_PASS=${PASS:-N/A}" >> "$GITHUB_ENV"
-          echo "FULL_FAIL=${FAIL:-N/A}" >> "$GITHUB_ENV"
-          printf 'IMPLEMENTATION_SHA=%s\nFULL_EXIT=%s\nFULL_TESTS=%s\nFULL_PASS=%s\nFULL_FAIL=%s\n' \
-            "$CANDIDATE_SHA" "$STATUS" "${TESTS:-N/A}" "${PASS:-N/A}" "${FAIL:-N/A}" > .ci-evidence/full-tests.status
-          exit 0
-
-      - name: Production build after green full suite
-        if: env.FULL_EXIT == '0'
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run build
-          echo "BUILD_RESULT=PASS" >> "$GITHUB_ENV"
-
-      - name: Frozen-base diff check and complete changed-file inspection
-        if: env.FULL_EXIT == '0'
-        working-directory: repo
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
-          git diff --check "$BASE..$CANDIDATE_SHA"
-          git diff --name-status "$BASE..$CANDIDATE_SHA" | tee .ci-evidence/changed-files.txt
-          git diff --stat "$BASE..$CANDIDATE_SHA" > .ci-evidence/diff-stat.txt
-          ACTUAL=$(git diff --name-only "$BASE..$CANDIDATE_SHA" | sort)
-          EXPECTED=$(printf '%s\n' src/product/authoritative-production-executor-base.ts src/product/authority-execution-diagnostics.ts src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
-          test "$ACTUAL" = "$EXPECTED"
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/diagnostics/diagnostic-logger.ts
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- src/product/operation-isolation.ts
-          git diff --quiet "$BASE..$CANDIDATE_SHA" -- package.json package-lock.json
-          echo "DIFF_CHECK_RESULT=PASS" >> "$GITHUB_ENV"
-
-      - name: Persist verification summary to harness
-        if: always()
-        uses: actions/checkout@v4
-        with:
-          ref: ci-log04-continuation-harness
-          path: harness
-
-      - name: Commit verification summary to harness
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p harness/.ci-harness
-          cp repo/.ci-evidence/full-tests.log harness/.ci-harness/log04-corrected-full-tests.log || true
-          cp repo/.ci-evidence/full-tests.status harness/.ci-harness/log04-corrected-full-tests.status || true
-          cp repo/.ci-evidence/log04-focused.tap harness/.ci-harness/log04-corrected-focused.tap || true
-          cp repo/.ci-evidence/changed-files.txt harness/.ci-harness/log04-corrected-changed-files.txt || true
-          {
-            echo "IMPLEMENTATION_SHA=${CANDIDATE_SHA:-N/A}"
-            echo "FOCUSED_TESTS=${FOCUSED_TESTS:-N/A}"
-            echo "FOCUSED_PASS=${FOCUSED_PASS:-N/A}"
-            echo "FOCUSED_FAIL=${FOCUSED_FAIL:-N/A}"
-            echo "FULL_TESTS=${FULL_TESTS:-N/A}"
-            echo "FULL_PASS=${FULL_PASS:-N/A}"
-            echo "FULL_FAIL=${FULL_FAIL:-N/A}"
-            echo "FULL_EXIT=${FULL_EXIT:-N/A}"
-            echo "BUILD=${BUILD_RESULT:-NOT_RUN}"
-            echo "DIFF_CHECK=${DIFF_CHECK_RESULT:-NOT_RUN}"
-          } > harness/.ci-harness/log04-corrected-verification.status
-          cd harness
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .ci-harness/log04-corrected-*
-          if ! git diff --cached --quiet; then
-            git commit -m 'CI: preserve corrected LOG-04 verification output'
-            git push origin HEAD:ci-log04-continuation-harness
-          fi
-
-      - name: Enforce complete verification gate
-        if: always()
-        shell: bash
-        run: |
-          test "${FOCUSED_TESTS:-0}" = "10"
-          test "${FOCUSED_PASS:-0}" = "10"
-          test "${FOCUSED_FAIL:-1}" = "0"
-          test "${FULL_EXIT:-1}" = "0"
-          test "${BUILD_RESULT:-}" = "PASS"
-          test "${DIFF_CHECK_RESULT:-}" = "PASS"
+        run: bash harness/.ci-harness/log04-correct-and-verify.sh
