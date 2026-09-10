@@ -1,0 +1,71 @@
+name: Temporary LOG-05 Verification Debug
+
+on:
+  push:
+    branches: [tmp-log05-verify-debug]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-log05-verify-debug
+          path: tooling
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-logging-log05-authority-state-recovery-tracing
+          path: repo
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: repo/package-lock.json
+      - name: Transform and capture verification
+        shell: bash
+        run: |
+          set +e
+          cd repo
+          python ../tooling/dev/log05/precondition-log05.py > ../tooling/dev/log05/verify-debug.txt 2>&1
+          echo "precondition_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          python ../tooling/dev/log05/apply-log05.py >> ../tooling/dev/log05/verify-debug.txt 2>&1
+          echo "transform_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          python - <<'PY' >> ../tooling/dev/log05/verify-debug.txt 2>&1
+          from pathlib import Path
+          p=Path('src/product/durable-intent-recovery.ts')
+          t=p.read_text(encoding='utf-8')
+          start=t.index('async function preflightVerifiedEffects(')
+          end=t.index('export async function recoverMatchingDurableIntentToVerifiedReceipt(', start)
+          a,s,b=t[:start],t[start:end],t[end:]
+          s=s.replace('  if (loaded.status !== "trusted") { return loaded.reason; }\n  let remotePromise','  if (loaded.status !== "trusted") return loaded.reason;\n  let remotePromise',1)
+          s=s.replace('    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) { return invalid; }\n    for (const effect of intent.effects) {','    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) return invalid;\n    for (const effect of intent.effects) {',1)
+          p.write_text(a+s+b,encoding='utf-8')
+          PY
+          echo "postcondition_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          npm ci >> ../tooling/dev/log05/verify-debug.txt 2>&1
+          echo "npm_ci_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          npm run typecheck >> ../tooling/dev/log05/verify-debug.txt 2>&1
+          echo "typecheck_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          npx tsc -p tsconfig.test.json >> ../tooling/dev/log05/verify-debug.txt 2>&1
+          echo "test_compile_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          if [ -d .test-build ]; then
+            node --test .test-build/test/workstreams/state/state-authority-v1-1.test.js .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js >> ../tooling/dev/log05/verify-debug.txt 2>&1
+            echo "focused_rc=$?" >> ../tooling/dev/log05/verify-debug.txt
+          fi
+          cd ../tooling
+          {
+            echo '# LOG-05 verification debug'
+            echo '```text'
+            tail -n 300 dev/log05/verify-debug.txt
+            echo '```'
+          } > dev/log05/verify-debug-result.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add dev/log05/verify-debug-result.md
+          git commit -m 'chore: record LOG-05 verification debug' || true
+          git push origin HEAD:tmp-log05-verify-debug
