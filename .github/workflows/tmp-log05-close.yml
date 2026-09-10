@@ -1,0 +1,109 @@
+name: Temporary LOG-05 Test Closure
+
+on:
+  push:
+    branches: [tmp-log05-execution-tooling]
+    paths:
+      - .github/workflows/tmp-log05-close.yml
+
+permissions:
+  contents: write
+
+jobs:
+  close-proof-obligations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout execution tooling
+        uses: actions/checkout@v4
+        with:
+          ref: tmp-log05-execution-tooling
+          path: tooling
+          fetch-depth: 0
+
+      - name: Checkout exact LOG-05 target
+        uses: actions/checkout@v4
+        with:
+          ref: phase6-logging-log05-authority-state-recovery-tracing
+          path: repo
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Exact-head gate and focused test closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repo
+          test "$(git rev-parse HEAD)" = "482dfbe5ac0c41af8360095d22e0590d70ad4064"
+          test -z "$(git status --porcelain)"
+          python ../tooling/dev/log05/close-log05-test-gaps.py
+          changed=$(git diff --name-only)
+          test "$changed" = "test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts"
+          git diff --check
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: repo/package-lock.json
+
+      - name: Verify closure
+        shell: bash
+        working-directory: repo
+        run: |
+          set -euo pipefail
+          mkdir -p .log05-closure
+          npm ci 2>&1 | tee .log05-closure/npm-ci.log
+          npm run typecheck 2>&1 | tee .log05-closure/typecheck.log
+          npx tsc -p tsconfig.test.json 2>&1 | tee .log05-closure/test-compile.log
+          node --test .test-build/test/workstreams/state/state-authority-v1-1.test.js .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js 2>&1 | tee .log05-closure/focused.log
+          npm test 2>&1 | tee .log05-closure/full-tests.log
+          npm run build 2>&1 | tee .log05-closure/build.log
+          npm run check 2>&1 | tee .log05-closure/repo-check.log
+          git diff --check 2>&1 | tee .log05-closure/diff-check.log
+          wc -c main.js | tee .log05-closure/main-js-size.txt
+          sha256sum main.js | tee .log05-closure/main-js-sha256.txt
+
+      - name: Commit test closure and refresh evidence
+        shell: bash
+        working-directory: repo
+        run: |
+          set -euo pipefail
+          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
+          BRANCH=phase6-logging-log05-authority-state-recovery-tracing
+          git checkout -- main.js 2>/dev/null || true
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts
+          git diff --cached --check
+          git commit -m 'test: complete LOG-05 recovery trace coverage'
+          FINAL_IMPL=$(git rev-parse HEAD)
+          FOCUSED_TESTS=$(grep '^# tests ' .log05-closure/focused.log | tail -1 | awk '{print $3}')
+          FOCUSED_PASS=$(grep '^# pass ' .log05-closure/focused.log | tail -1 | awk '{print $3}')
+          FULL_TESTS=$(grep '^# tests ' .log05-closure/full-tests.log | tail -1 | awk '{print $3}')
+          FULL_PASS=$(grep '^# pass ' .log05-closure/full-tests.log | tail -1 | awk '{print $3}')
+          ARTIFACT_SHA=$(awk '{print $1}' .log05-closure/main-js-sha256.txt)
+          ARTIFACT_SIZE=$(awk '{print $1}' .log05-closure/main-js-size.txt)
+          python - "$FINAL_IMPL" "$FOCUSED_PASS" "$FOCUSED_TESTS" "$FULL_PASS" "$FULL_TESTS" "$ARTIFACT_SIZE" "$ARTIFACT_SHA" <<'PY'
+          import sys
+          from pathlib import Path
+          impl, fpass, ftests, pass_all, tests_all, size, sha = sys.argv[1:]
+          p = Path('dev/evidence/_ca-output-agt-ca-p6-log05-authority-state-recovery-tracing-01.md')
+          t = p.read_text(encoding='utf-8')
+          import re
+          t = re.sub(r'- Final implementation SHA: `[^`]+`', f'- Final implementation SHA: `{impl}`', t, count=1)
+          t = re.sub(r'- Focused state/recovery tests: PASS, `[^`]+`', f'- Focused state/recovery tests: PASS, `{fpass}/{ftests}`', t, count=1)
+          t = re.sub(r'- Full automated test suite: PASS, `[^`]+`', f'- Full automated test suite: PASS, `{pass_all}/{tests_all}`', t, count=1)
+          t = re.sub(r'- Verification build `main\.js` bytes: `[^`]+`', f'- Verification build `main.js` bytes: `{size}`', t, count=1)
+          t = re.sub(r'- Verification build `main\.js` SHA-256: `[^`]+`', f'- Verification build `main.js` SHA-256: `{sha}`', t, count=1)
+          old = '- Focused tests verify bounded load/CAS/generation facts, no false semantic transition for persistence-only journal updates, true semantic transition ordering, stale-persistence vs stale-semantic classification, remote-batch bounded evidence, current-generation recovery, exact stale-generation rejection, receipt reconstruction visibility, no Drive mutation, and raw-path exclusion.'
+          new = '- Focused tests verify bounded load/CAS/generation facts, no false semantic transition for persistence-only journal updates, true semantic transition ordering, stale-persistence vs stale-semantic classification, remote-batch bounded evidence, current-generation recovery, exact stale-generation rejection, receipt reconstruction success and failure visibility, one ordered trace showing remote learning advances semantic authority before stale-intent recovery evaluation, no Drive mutation, and raw-path exclusion.'
+          if old not in t:
+              raise SystemExit('evidence focused-test sentence drifted')
+          t = t.replace(old, new, 1)
+          p.write_text(t, encoding='utf-8')
+          PY
+          git add dev/evidence/_ca-output-agt-ca-p6-log05-authority-state-recovery-tracing-01.md
+          git diff --cached --check
+          git commit -m 'docs: close LOG-05 verification evidence'
+          git push origin HEAD:$BRANCH
