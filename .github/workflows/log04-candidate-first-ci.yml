@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/log04-candidate-first-ci.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify-exact-sha:
@@ -79,8 +79,35 @@ jobs:
           echo "FULL_TESTS=${TESTS:-N/A}" >> "$GITHUB_ENV"
           echo "FULL_PASS=${PASS:-N/A}" >> "$GITHUB_ENV"
           echo "FULL_FAIL=${FAIL:-N/A}" >> "$GITHUB_ENV"
+          printf 'IMPLEMENTATION_SHA=%s\nFULL_EXIT=%s\nFULL_TESTS=%s\nFULL_PASS=%s\nFULL_FAIL=%s\n' \
+            3d81e61252f82957f8a0eaf1cd9e9f372ec49f86 "$STATUS" "${TESTS:-N/A}" "${PASS:-N/A}" "${FAIL:-N/A}" \
+            > .ci-evidence/full-tests.status
           printf '\nFULL_TEST_EXIT=%s\nFULL_TESTS=%s\nFULL_PASS=%s\nFULL_FAIL=%s\n' "$STATUS" "${TESTS:-N/A}" "${PASS:-N/A}" "${FAIL:-N/A}"
           exit 0
+
+      - name: Persist fresh full-suite output to diagnostic harness
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: ci-log04-continuation-harness
+          path: harness
+
+      - name: Commit fresh full-suite output to diagnostic harness
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p harness/.ci-harness
+          cp repo/.ci-evidence/full-tests.log harness/.ci-harness/log04-fresh-full-tests.log
+          cp repo/.ci-evidence/full-tests.status harness/.ci-harness/log04-fresh-full-tests.status
+          cd harness
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .ci-harness/log04-fresh-full-tests.log .ci-harness/log04-fresh-full-tests.status
+          if ! git diff --cached --quiet; then
+            git commit -m 'CI: preserve fresh LOG-04 full-suite output'
+            git push origin HEAD:ci-log04-continuation-harness
+          fi
 
       - name: Production build after green full suite
         if: env.FULL_EXIT == '0'
