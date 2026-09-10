@@ -129,6 +129,11 @@ function remoteExact(version: VersionReference): OperationPrecondition[] {
 function safeToken(value: string | undefined): string {
   return (value ?? "na").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 32);
 }
+function diagnosticPlanId(plan: SynchronizationPlan): string {
+  const raw = String(plan.planId);
+  if (!plan.operations.some(operation => raw.includes(String(operation.path)))) return raw;
+  return `id-sha256:${String(sha256Text(raw)).replace(/^sha256:/, "")}`;
+}
 function conflictCopyBase(path: VaultPath, provenance: ConflictProvenance): VaultPath {
   const raw = String(path);
   const slash = raw.lastIndexOf("/");
@@ -514,7 +519,7 @@ export class ProductControllerBase implements ProductControlPort {
     if (globalExecutionGate(planned.plan) === "globally-blocked") return "failed";
     if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
     const runId = diagnosticRunId ?? planned.diagnosticRunId;
-    this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
+    this.syncInfo(runId, "execution-start", { stage: "execution", planId: diagnosticPlanId(planned.plan), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
     let begun: Awaited<ReturnType<CoreRunCoordinator["beginRun"]>>;
     try { begun = await this.runs.beginRun(); }
     catch (error) {
