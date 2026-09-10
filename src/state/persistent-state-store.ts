@@ -30,6 +30,8 @@ import type {
   VaultIdentity,
   VaultPath,
 } from "../contracts";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-recovery-diagnostics";
 import {
   appendDurableRemoteChangeBatch,
   contractId,
@@ -383,9 +385,34 @@ export type AuthorityV1MigrationResult = { readonly status: "migrated"; readonly
 
 export class PersistentSynchronizationStateStore implements SynchronizationStateStore, SynchronizationAuthorityStoreV1_1<DurableSynchronizationAuthorityState> {
   private readonly semanticValidator: DurableSemanticStateValidator;
-  constructor(private readonly storage: StateByteStorage, readonly currentSchemaVersion = 1, semanticValidator: DurableSemanticStateValidator = new DurableSemanticStateValidator()) { this.semanticValidator = semanticValidator; }
+  constructor(private readonly storage: StateByteStorage, readonly currentSchemaVersion = 1, semanticValidator: DurableSemanticStateValidator = new DurableSemanticStateValidator(), protected readonly diagnostics?: DiagnosticLogger) { this.semanticValidator = semanticValidator; }
 
   async load(context: StateLoadContext): Promise<StateLoadResult> {
+    const result = await this.loadCore(context);
+    if (result.status === "trusted") {
+      const state = result.state;
+      emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "state-load-result", {
+        stateStatus: "trusted",
+        stateRevision: String(state.stateRevision),
+        ...(isDurableSynchronizationAuthorityState(state) ? {
+          persistenceRevision: String(state.persistenceRevision),
+          semanticGeneration: String(state.semanticGeneration),
+          operationCount: state.operationIntents.length,
+          localCount: state.localTransactions.length,
+          count: state.learnedRemoteBatches.length,
+          cursorPresent: state.changeCursor !== undefined,
+        } : {}),
+      });
+    } else {
+      emitStateRecoveryDiagnostic(this.diagnostics, result.status === "recovery-required" ? "warn" : "debug", "state.authority", "state-load-result", {
+        stateStatus: result.status,
+        ...(result.status === "recovery-required" ? { reason: result.reason } : {}),
+      });
+    }
+    return result;
+  }
+
+  private async loadCore(context: StateLoadContext): Promise<StateLoadResult> {
     const bytes = await this.storage.read();
     if (!bytes) return context.expectation === "new-installation" ? { status: "uninitialized" } : { status: "recovery-required", reason: "expected-state-missing" };
     const parsed = parseEnvelope(bytes);
@@ -406,6 +433,27 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async saveTrusted(state: TrustedSynchronizationState, expectedRevision?: StateRevision): Promise<StateSaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.cas", "trusted-state-save-start", {
+      stateRevision: String(state.stateRevision),
+      ...(expectedRevision ? { expectedRevision: String(expectedRevision) } : {}),
+      ...(isDurableSynchronizationAuthorityState(state) ? {
+        persistenceRevision: String(state.persistenceRevision),
+        semanticGeneration: String(state.semanticGeneration),
+        operationCount: state.operationIntents.length,
+        localCount: state.localTransactions.length,
+      } : {}),
+    });
+    const result = await this.saveTrustedCore(state, expectedRevision);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "debug" : "warn", "state.cas", "trusted-state-save-result", {
+      commitStatus: result.status,
+      ...(result.status === "saved" ? { stateRevision: String(result.stateRevision) } : {}),
+      ...(result.status === "stale-revision" && result.actualRevision ? { observedRevision: String(result.actualRevision) } : {}),
+      ...(result.status === "recovery-required" ? { reason: result.reason } : {}),
+    });
+    return result;
+  }
+
+  private async saveTrustedCore(state: TrustedSynchronizationState, expectedRevision?: StateRevision): Promise<StateSaveResult> {
     if (!validateLegacyStateShape(state) || state.schemaVersion !== this.currentSchemaVersion) return { status: "recovery-required", reason: "refusing to persist internally inconsistent trusted state" };
     if (hasAuthorityMarker(state)) {
       if (state.authoritySchemaVersion === 2 && (!isDurableSynchronizationAuthorityState(state) || this.semanticValidator.validate(state).length > 0)) return { status: "recovery-required", reason: "refusing to persist semantically inconsistent v1.1 authority state" };
@@ -430,6 +478,28 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async loadAuthority(): Promise<SynchronizationAuthorityLoadResultV1_1<DurableSynchronizationAuthorityState>> {
+    const result = await this.loadAuthorityCore();
+    if (result.status === "trusted") {
+      emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "authority-load-result", {
+        stateStatus: "trusted",
+        stateRevision: String(result.state.stateRevision),
+        persistenceRevision: String(result.state.persistenceRevision),
+        semanticGeneration: String(result.state.semanticGeneration),
+        operationCount: result.state.operationIntents.length,
+        localCount: result.state.localTransactions.length,
+        count: result.state.learnedRemoteBatches.length,
+        cursorPresent: result.state.changeCursor !== undefined,
+      });
+    } else {
+      emitStateRecoveryDiagnostic(this.diagnostics, result.status === "recovery-required" ? "warn" : "debug", "state.authority", "authority-load-result", {
+        stateStatus: result.status,
+        ...(result.status === "recovery-required" && result.issues[0] ? { reason: result.issues[0].code } : {}),
+      });
+    }
+    return result;
+  }
+
+  private async loadAuthorityCore(): Promise<SynchronizationAuthorityLoadResultV1_1<DurableSynchronizationAuthorityState>> {
     const bytes = await this.storage.read(); if (!bytes) return { status: "uninitialized" };
     const parsed = parseEnvelope(bytes);
     if (parsed.status !== "ok") return { status: "recovery-required", issues: [issue("other-semantic-inconsistency", `persisted state is ${parsed.status}`, undefined, "envelope-integrity")] };
@@ -442,6 +512,59 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async saveAuthority(state: DurableSynchronizationAuthorityState, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration?: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.cas", "authority-save-start", {
+      stateRevision: String(state.stateRevision),
+      persistenceRevision: String(state.persistenceRevision),
+      semanticGeneration: String(state.semanticGeneration),
+      expectedRevision: String(expectedPersistenceRevision),
+      ...(expectedSemanticGeneration ? { observedRevision: String(expectedSemanticGeneration) } : {}),
+      operationCount: state.operationIntents.length,
+      localCount: state.localTransactions.length,
+      count: state.learnedRemoteBatches.length,
+    });
+    const result = await this.saveAuthorityCore(state, expectedPersistenceRevision, expectedSemanticGeneration);
+    if (result.status === "saved") {
+      const semanticChanged = String(result.semanticGeneration) !== String(state.semanticGeneration);
+      emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.cas", "authority-save-result", {
+        commitStatus: "saved",
+        persistenceRevision: String(result.persistenceRevision),
+        semanticGeneration: String(result.semanticGeneration),
+        semanticChanged,
+      });
+      if (semanticChanged) {
+        emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "semantic-generation-before", {
+          persistenceRevision: String(state.persistenceRevision),
+          semanticGeneration: String(state.semanticGeneration),
+          semanticChanged: true,
+        });
+        emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "semantic-generation-after", {
+          persistenceRevision: String(result.persistenceRevision),
+          semanticGeneration: String(result.semanticGeneration),
+          semanticChanged: true,
+        });
+      }
+    } else if (result.status === "stale-persistence") {
+      emitStateRecoveryDiagnostic(this.diagnostics, "warn", "state.cas", "authority-save-stale-persistence", {
+        commitStatus: result.status,
+        expectedRevision: String(expectedPersistenceRevision),
+        ...(result.actualPersistenceRevision ? { persistenceRevision: String(result.actualPersistenceRevision) } : {}),
+      });
+    } else if (result.status === "stale-semantic-authority") {
+      emitStateRecoveryDiagnostic(this.diagnostics, "warn", "state.cas", "authority-save-stale-semantic-authority", {
+        commitStatus: result.status,
+        ...(expectedSemanticGeneration ? { semanticGeneration: String(expectedSemanticGeneration) } : {}),
+        ...(result.actualSemanticGeneration ? { observedRevision: String(result.actualSemanticGeneration) } : {}),
+      });
+    } else {
+      emitStateRecoveryDiagnostic(this.diagnostics, "warn", "state.cas", "authority-save-recovery-required", {
+        commitStatus: result.status,
+        ...(result.issues[0] ? { reason: result.issues[0].code } : {}),
+      });
+    }
+    return result;
+  }
+
+  private async saveAuthorityCore(state: DurableSynchronizationAuthorityState, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration?: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     if (!this.storage.compareAndSwap) return { status: "recovery-required", issues: [issue("other-semantic-inconsistency", "atomic compare-and-swap storage is required for authority writes", undefined, "persistence-cas")] };
     const currentBytes = await this.storage.read(); if (!currentBytes) return { status: "stale-persistence" };
     const parsed = parseEnvelope(currentBytes);
@@ -464,6 +587,21 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async commitBaseTransition(transition: AuthoritativeBaseTransition, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "base-transition-start", {
+      classification: transition.kind,
+      expectedRevision: String(expectedPersistenceRevision),
+      semanticGeneration: String(expectedSemanticGeneration),
+    });
+    const result = await this.commitBaseTransitionCore(transition, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "state.authority", "base-transition-result", {
+      classification: transition.kind,
+      result: result.status,
+      ...(result.status === "saved" ? { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration) } : {}),
+    });
+    return result;
+  }
+
+  private async commitBaseTransitionCore(transition: AuthoritativeBaseTransition, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     const loaded = await this.loadAuthority();
     if (loaded.status === "uninitialized") return { status: "stale-persistence" };
     if (loaded.status === "recovery-required") return { status: "recovery-required", issues: loaded.issues };
@@ -494,23 +632,48 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async appendLearnedRemoteBatch(batch: DurableRemoteChangeBatch, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "remote-batch-learn-start", {
+      batchId: String(batch.checkpoint.batchId),
+      changeCount: batch.changes.length,
+      cursorPresent: true,
+      expectedRevision: String(expectedPersistenceRevision),
+      semanticGeneration: String(expectedSemanticGeneration),
+    });
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
-    return this.saveAuthority({ ...loaded.state, learnedRemoteBatches: appendDurableRemoteChangeBatch(loaded.state.learnedRemoteBatches, batch), changeCursor: batch.checkpoint.terminalStartToken }, expectedPersistenceRevision, expectedSemanticGeneration);
+    const result = await this.saveAuthority({ ...loaded.state, learnedRemoteBatches: appendDurableRemoteChangeBatch(loaded.state.learnedRemoteBatches, batch), changeCursor: batch.checkpoint.terminalStartToken }, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "state.authority", "remote-batch-learn-result", {
+      batchId: String(batch.checkpoint.batchId), changeCount: batch.changes.length, cursorPresent: true, result: result.status,
+      ...(result.status === "saved" ? { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration), semanticChanged: String(result.semanticGeneration) !== String(expectedSemanticGeneration) } : {}),
+    });
+    return result;
   }
   async recordRemoteBatchReduction(batchId: RemoteIngestionBatchId, durableFactRefs: readonly string[], complete: boolean, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "remote-batch-reduction-start", { batchId: String(batchId), count: durableFactRefs.length, classification: complete ? "complete" : "partial", expectedRevision: String(expectedPersistenceRevision), semanticGeneration: String(expectedSemanticGeneration) });
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
     if (!loaded.state.learnedRemoteBatches.some(batch => batch.checkpoint.batchId === batchId)) return { status: "recovery-required", issues: [issue("ingestion-checkpoint-inconsistent", "cannot reduce a remote batch that is not durably learned", undefined, "remote-ingestion")] };
-    return this.saveAuthority({ ...loaded.state, learnedRemoteReductions: [...loaded.state.learnedRemoteReductions.filter(entry => entry.batchId !== batchId), { batchId, durableFactRefs: [...durableFactRefs], complete }] }, expectedPersistenceRevision, expectedSemanticGeneration);
+    const result = await this.saveAuthority({ ...loaded.state, learnedRemoteReductions: [...loaded.state.learnedRemoteReductions.filter(entry => entry.batchId !== batchId), { batchId, durableFactRefs: [...durableFactRefs], complete }] }, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "debug" : "warn", "state.authority", "remote-batch-reduction-result", { batchId: String(batchId), count: durableFactRefs.length, classification: complete ? "complete" : "partial", result: result.status });
+    return result;
   }
   async retireLearnedRemoteBatch(batchId: RemoteIngestionBatchId, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "remote-batch-retirement-start", { batchId: String(batchId), expectedRevision: String(expectedPersistenceRevision), semanticGeneration: String(expectedSemanticGeneration) });
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
     const batch = loaded.state.learnedRemoteBatches.find(item => item.checkpoint.batchId === batchId); if (!batch) return this.saveAuthority(loaded.state, expectedPersistenceRevision, expectedSemanticGeneration);
     const reduction = loaded.state.learnedRemoteReductions.find(item => item.batchId === batchId);
     if (!reduction?.complete || (batch.changes.length > 0 && reduction.durableFactRefs.length === 0)) return { status: "recovery-required", issues: [issue("ingestion-checkpoint-inconsistent", "remote batch cannot retire until every needed fact is durably reduced", undefined, "remote-ingestion-retirement")] };
-    return this.saveAuthority({ ...loaded.state, learnedRemoteBatches: loaded.state.learnedRemoteBatches.filter(item => item.checkpoint.batchId !== batchId), learnedRemoteReductions: loaded.state.learnedRemoteReductions.filter(item => item.batchId !== batchId) }, expectedPersistenceRevision, expectedSemanticGeneration);
+    const result = await this.saveAuthority({ ...loaded.state, learnedRemoteBatches: loaded.state.learnedRemoteBatches.filter(item => item.checkpoint.batchId !== batchId), learnedRemoteReductions: loaded.state.learnedRemoteReductions.filter(item => item.batchId !== batchId) }, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "state.authority", "remote-batch-retirement-result", { batchId: String(batchId), result: result.status, cursorPresent: loaded.state.changeCursor !== undefined });
+    return result;
   }
 
   async persistOperationIntent(intent: RecoverableOperationIntentV1_1, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "info", "recovery.durable", "operation-intent-persist-start", { operationId: String(intent.operationId), intentId: String(intent.intentId), count: intent.effects.length, semanticGeneration: String(intent.semanticAuthority.generation), expectedRevision: String(expectedPersistenceRevision) });
+    const result = await this.persistOperationIntentCore(intent, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "recovery.durable", "operation-intent-persist-result", { operationId: String(intent.operationId), intentId: String(intent.intentId), count: intent.effects.length, semanticGeneration: String(intent.semanticAuthority.generation), result: result.status, ...(result.status === "stale-semantic-authority" ? { reason: "persisted durable intent belongs to stale semantic generation" } : {}) });
+    return result;
+  }
+
+  private async persistOperationIntentCore(intent: RecoverableOperationIntentV1_1, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
     if (intent.semanticAuthority.generation !== expectedSemanticGeneration) return { status: "stale-semantic-authority", actualSemanticGeneration: loaded.state.semanticGeneration };
     if (loaded.state.operationIntents.some(existing => existing.operationId === intent.operationId)) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", "operation intent already exists", undefined, "journal-identity")] };
@@ -528,9 +691,16 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async advanceOperationEffect(operationId: RecoverableOperationIntentV1_1["operationId"], effectId: string, stage: RecoverableMutationEffectV1_1["stage"], verificationEvidenceRef: string | undefined, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    const result = await this.advanceOperationEffectCore(operationId, effectId, stage, verificationEvidenceRef, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "debug" : "warn", "recovery.durable", "operation-effect-stage-transition-result", { operationId: String(operationId), effectId, toStage: stage, semanticGeneration: String(expectedSemanticGeneration), result: result.status });
+    return result;
+  }
+
+  private async advanceOperationEffectCore(operationId: RecoverableOperationIntentV1_1["operationId"], effectId: string, stage: RecoverableMutationEffectV1_1["stage"], verificationEvidenceRef: string | undefined, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
     const intent = loaded.state.operationIntents.find(item => item.operationId === operationId); if (!intent) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", "operation effect cannot advance without durable intent", undefined, "journal-reference")] };
     const currentEffect = intent.effects.find(effect => effect.effectId === effectId); if (!currentEffect) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", "operation effect ID is not durable", undefined, "journal-reference")] };
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "recovery.durable", "operation-effect-stage-transition-start", { operationId: String(operationId), intentId: String(intent.intentId), effectId, fromStage: currentEffect.stage, toStage: stage, semanticGeneration: String(intent.semanticAuthority.generation) });
     const from = stages.indexOf(currentEffect.stage); const to = stages.indexOf(stage);
     const legalDirectVerification = currentEffect.stage === "dispatch-authorized" && stage === "effect-verified";
     const legalUnknownRecovery = currentEffect.stage === "outcome-unknown" && stage === "effect-verified";
@@ -543,6 +713,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   }
 
   async garbageCollectCompletedOperation(operationId: RecoverableOperationIntentV1_1["operationId"], expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
+    const result = await this.garbageCollectCompletedOperationCore(operationId, expectedPersistenceRevision, expectedSemanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "recovery.durable", "operation-intent-retirement-result", { operationId: String(operationId), semanticGeneration: String(expectedSemanticGeneration), result: result.status });
+    return result;
+  }
+
+  private async garbageCollectCompletedOperationCore(operationId: RecoverableOperationIntentV1_1["operationId"], expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
     const intent = loaded.state.operationIntents.find(item => item.operationId === operationId);
     if (!intent || !recoverableOperationV1_1IsComplete(intent)) return { status: "recovery-required", issues: [issue("journal-reference-incomplete", "operation journal can be collected only after every effect is state-committed", undefined, "journal-gc")] };

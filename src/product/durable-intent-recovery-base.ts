@@ -29,6 +29,8 @@ import {
   type VerifiedExecutionReceipt,
 } from "../contracts";
 import { StateCommitCoordinator } from "../core/commit-coordinator";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-recovery-diagnostics";
 import { sha256Text } from "../util/sha256";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ProductSynchronizationExecutor } from "./production-executor";
@@ -390,27 +392,34 @@ async function finalizeIntent(lifecycle: DurableEffectLifecycleCoordinator, inte
   return undefined;
 }
 
-async function recoverOne(snapshot: RecoverableOperationIntentV1_1, legacy: ProductSynchronizationExecutor, authorityStore: SynchronizationAuthorityStoreV1_1, stateStore: SynchronizationStateStore, stateContext: StateLoadContext, remote: ManagedRemoteIdentity, deps: DurableIntentRecoveryDependencies): Promise<{ status: "recovered"; changed: boolean; retired: boolean } | { status: "recovery-required"; reason: string }> {
+async function recoverOne(snapshot: RecoverableOperationIntentV1_1, legacy: ProductSynchronizationExecutor, authorityStore: SynchronizationAuthorityStoreV1_1, stateStore: SynchronizationStateStore, stateContext: StateLoadContext, remote: ManagedRemoteIdentity, deps: DurableIntentRecoveryDependencies, diagnostics?: DiagnosticLogger): Promise<{ status: "recovered"; changed: boolean; retired: boolean } | { status: "recovery-required"; reason: string }> {
   const lifecycle = new DurableEffectLifecycleCoordinator(authorityStore);
   let authority = await lifecycle.loadAuthority();
   if (authority.status !== "trusted") return authority;
   const intent = authority.state.operationIntents.find(value => value.operationId === snapshot.operationId);
   if (!intent) return { status: "recovered", changed: false, retired: false };
+  emitStateRecoveryDiagnostic(diagnostics, "info", "recovery.durable", "recovery-intent-selected", { operationId: String(intent.operationId), intentId: String(intent.intentId), count: intent.effects.length, semanticGeneration: String(intent.semanticAuthority.generation), persistenceRevision: String(authority.state.persistenceRevision) });
+  emitStateRecoveryDiagnostic(diagnostics, "debug", "recovery.durable", "recovery-authority-generation", { operationId: String(intent.operationId), semanticGeneration: String(authority.state.semanticGeneration), persistenceRevision: String(authority.state.persistenceRevision) });
   const invalid = validateIntent(intent, authority.state);
-  if (invalid) return { status: "recovery-required", reason: invalid };
+  if (invalid) { emitStateRecoveryDiagnostic(diagnostics, "warn", "recovery.durable", "recovery-intent-validation-failed", { operationId: String(intent.operationId), intentId: String(intent.intentId), semanticGeneration: String(intent.semanticAuthority.generation), reason: invalid }); return { status: "recovery-required", reason: invalid }; }
+  emitStateRecoveryDiagnostic(diagnostics, "debug", "recovery.durable", "recovery-intent-validation-succeeded", { operationId: String(intent.operationId), intentId: String(intent.intentId), semanticGeneration: String(intent.semanticAuthority.generation) });
   if (intent.effects.every(effect => effect.stage === "state-committed")) return { status: "recovered", changed: false, retired: false };
   if (intent.effects.every(effect => effect.stage === "intent-persisted")) {
     const retired = await lifecycle.retireUnattemptedIntent(String(intent.operationId));
+    emitStateRecoveryDiagnostic(diagnostics, retired.status === "persisted" ? "info" : "warn", "recovery.durable", "recovery-unattempted-intent-retirement", { operationId: String(intent.operationId), intentId: String(intent.intentId), result: retired.status });
     return retired.status === "persisted" ? { status: "recovered", changed: true, retired: true } : { status: "recovery-required", reason: `unattempted intent could not be retired (${retired.status})` };
   }
 
   for (const effect of intent.effects) {
     if (effect.stage === "state-committed" || effect.stage === "effect-verified") continue;
     if (effect.stage !== "dispatch-authorized" && effect.stage !== "outcome-unknown") return { status: "recovery-required", reason: `unsupported outstanding durable stage ${effect.stage}` };
+    emitStateRecoveryDiagnostic(diagnostics, "debug", "recovery.durable", "recovery-effect-selected", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, semanticGeneration: String(intent.semanticAuthority.generation) });
     const physical = effect.descriptor.kind === "local-file"
       ? await recoverLocalFile(lifecycle, intent, effect, authority.state, legacy, deps)
       : await observePersistedEffect(legacy, effect.descriptor, remote, deps);
+    emitStateRecoveryDiagnostic(diagnostics, physical.status === "verified-effect" ? "info" : "warn", "recovery.durable", "recovery-physical-observation", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, result: physical.status, ...(physical.status === "verified-effect" ? { verificationEvidenceRef: physical.verificationEvidenceRef } : { reason: physical.reason }) });
     const recorded = await lifecycle.recordPhysicalResult(String(intent.operationId), effect.effectId, physical);
+    emitStateRecoveryDiagnostic(diagnostics, recorded.status === "effect-verified" || recorded.status === "already-progressed" ? "info" : "warn", "recovery.durable", "recovery-physical-result-recorded", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, result: recorded.status, ...("reason" in recorded ? { reason: recorded.reason } : {}) });
     if (recorded.status !== "effect-verified" && recorded.status !== "already-progressed") {
       return { status: "recovery-required", reason: `durable effect ${effect.effectId} remains unresolved (${recorded.status}${"reason" in recorded ? `: ${recorded.reason}` : ""})` };
     }
@@ -429,7 +438,8 @@ async function recoverOne(snapshot: RecoverableOperationIntentV1_1, legacy: Prod
   const entries = await remoteEntries(legacy, remote);
   if (!entries) return { status: "recovery-required", reason: "complete REMOTE observation unavailable for durable receipt reconstruction" };
   const reconstructed = reconstructDurableRecovery(verified, canonical.state, entries);
-  if (!reconstructed) return { status: "recovery-required", reason: "persisted descriptors cannot reconstruct one verified recovery receipt" };
+  if (!reconstructed) { emitStateRecoveryDiagnostic(diagnostics, "warn", "recovery.durable", "recovery-receipt-reconstruction", { operationId: String(verified.operationId), intentId: String(verified.intentId), reconstruction: "failed", reason: "persisted descriptors cannot reconstruct one verified recovery receipt" }); return { status: "recovery-required", reason: "persisted descriptors cannot reconstruct one verified recovery receipt" }; }
+  emitStateRecoveryDiagnostic(diagnostics, "info", "recovery.durable", "recovery-receipt-reconstruction", { operationId: String(verified.operationId), intentId: String(verified.intentId), count: verified.effects.length, reconstruction: "succeeded", verificationEvidenceRef: reconstructed.receipt.verificationEvidenceRef });
 
   const priorCommit = exactCanonicalCommit(canonical.state, reconstructed.operation, reconstructed.receipt);
   if (verified.effects.some(effect => effect.stage === "state-committed") && !priorCommit) return { status: "recovery-required", reason: "state-committed durable marker lacks exact canonical commit proof" };
@@ -444,22 +454,26 @@ async function recoverOne(snapshot: RecoverableOperationIntentV1_1, legacy: Prod
   const latestIntent = latest.state.operationIntents.find(value => value.operationId === verified.operationId);
   if (!latestIntent) return { status: "recovery-required", reason: "durable intent missing before finalization" };
   const failed = await finalizeIntent(lifecycle, latestIntent);
+  emitStateRecoveryDiagnostic(diagnostics, failed ? "warn" : "info", "recovery.durable", "recovery-intent-final-result", { operationId: String(latestIntent.operationId), intentId: String(latestIntent.intentId), result: failed ? "recovery-required" : "recovered", ...(failed ? { reason: failed } : {}) });
   return failed ? { status: "recovery-required", reason: failed } : { status: "recovered", changed: true, retired: false };
 }
 
 /** Drain persisted physical work before current planning. No mutation dispatch method is called here. */
-export async function recoverOutstandingDurableIntents(legacy: ProductSynchronizationExecutor, authorityStore: SynchronizationAuthorityStoreV1_1, stateStore: SynchronizationStateStore, stateContext: StateLoadContext, remote: ManagedRemoteIdentity, deps: DurableIntentRecoveryDependencies = {}): Promise<DurableIntentRecoveryResult> {
+export async function recoverOutstandingDurableIntents(legacy: ProductSynchronizationExecutor, authorityStore: SynchronizationAuthorityStoreV1_1, stateStore: SynchronizationStateStore, stateContext: StateLoadContext, remote: ManagedRemoteIdentity, deps: DurableIntentRecoveryDependencies = {}, diagnostics?: DiagnosticLogger): Promise<DurableIntentRecoveryResult> {
   const loaded = await new DurableEffectLifecycleCoordinator(authorityStore).loadAuthority();
-  if (loaded.status !== "trusted") return loaded;
+  if (loaded.status !== "trusted") { emitStateRecoveryDiagnostic(diagnostics, "warn", "recovery.durable", "recovery-entry", { stateStatus: loaded.status, ...(loaded.status === "recovery-required" ? { reason: loaded.reason } : {}) }); return loaded; }
+  emitStateRecoveryDiagnostic(diagnostics, "info", "recovery.durable", "recovery-entry", { stateStatus: "trusted", persistenceRevision: String(loaded.state.persistenceRevision), semanticGeneration: String(loaded.state.semanticGeneration), operationCount: loaded.state.operationIntents.length, localCount: loaded.state.localTransactions.length });
   let changed = false;
   let recoveredCount = 0;
   let retiredCount = 0;
   for (const snapshot of loaded.state.operationIntents) {
-    const result = await recoverOne(snapshot, legacy, authorityStore, stateStore, stateContext, remote, deps);
+    const result = await recoverOne(snapshot, legacy, authorityStore, stateStore, stateContext, remote, deps, diagnostics);
     if (result.status !== "recovered") return result;
     changed ||= result.changed;
     if (result.retired) retiredCount += 1;
     else if (result.changed) recoveredCount += 1;
   }
-  return { status: "recovered", changed, recoveredCount, retiredCount };
+  const result = { status: "recovered" as const, changed, recoveredCount, retiredCount };
+  emitStateRecoveryDiagnostic(diagnostics, "info", "recovery.durable", "recovery-final-result", { result: result.status, operationCount: loaded.state.operationIntents.length, count: recoveredCount + retiredCount });
+  return result;
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../../src/diagnostics/diagnostic-logger";
 import {
   contractId,
   recoverableOperationV1_1IsComplete,
@@ -193,4 +194,99 @@ test("v1.1 validator rejects folder descriptor/operation intent mismatch before 
   };
   const result = await store.persistOperationIntent(bad, rev(1), gen(1));
   assert.equal(result.status, "recovery-required");
+});
+
+
+class Log05MemoryDiagnostics implements DiagnosticPersistence {
+  state?: DiagnosticStoreState;
+  async loadDiagnostics(): Promise<unknown> { return this.state; }
+  async saveDiagnostics(state: DiagnosticStoreState): Promise<void> { this.state = structuredClone(state); }
+}
+
+async function log05Logger() {
+  const persistence = new Log05MemoryDiagnostics();
+  const logger = new DiagnosticLogger({ persistence, level: "trace", retentionLimit: 500, consoleMirror: false, platform: "desktop" });
+  await logger.initialize();
+  return logger;
+}
+
+test("LOG-05 trusted authority load and CAS expose bounded revisions/generation while persistence-only journals do not report a semantic transition", async () => {
+  const logger = await log05Logger();
+  const storage = new MemoryStateByteStorage();
+  const store = new PersistentSynchronizationStateStore(storage, 1, undefined, logger);
+  const initial = createInitialAuthorityState({ persistenceRevision: rev(1), semanticGeneration: gen(1), vaultIdentity: vault, deviceIdentity: device });
+  assert.equal((await store.saveTrusted(initial)).status, "saved");
+  logger.clear();
+  const loaded = await store.loadAuthority();
+  assert.equal(loaded.status, "trusted");
+  const loadEvent = logger.snapshot().find(event => event.event === "authority-load-result");
+  assert.equal(loadEvent?.fields?.stateStatus, "trusted");
+  assert.equal(loadEvent?.fields?.persistenceRevision, String(rev(1)));
+  assert.equal(loadEvent?.fields?.semanticGeneration, String(gen(1)));
+  assert.equal(loadEvent?.fields?.operationCount, 0);
+  logger.clear();
+  const saved = await store.persistOperationIntent(localFolder(), rev(1), gen(1));
+  assert.equal(saved.status, "saved");
+  if (saved.status !== "saved") return;
+  assert.equal(saved.semanticGeneration, gen(1));
+  const result = logger.snapshot().find(event => event.event === "authority-save-result");
+  assert.equal(result?.fields?.semanticChanged, false);
+  assert.equal(logger.snapshot().some(event => event.event === "semantic-generation-after"), false);
+});
+
+test("LOG-05 distinguishes stale persistence from stale semantic authority and reports a true semantic transition as ordered before/after events", async () => {
+  const logger = await log05Logger();
+  const storage = new MemoryStateByteStorage();
+  const store = new PersistentSynchronizationStateStore(storage, 1, undefined, logger);
+  const initial = createInitialAuthorityState({ persistenceRevision: rev(1), semanticGeneration: gen(1), vaultIdentity: vault, deviceIdentity: device });
+  assert.equal((await store.saveTrusted(initial)).status, "saved");
+  const current = await trusted(store);
+  const changed = { ...current, changeCursor: id<"ChangeCursor">("cursor:sentinel") };
+  logger.clear();
+  const semantic = await store.saveAuthority(changed, current.persistenceRevision, current.semanticGeneration);
+  assert.equal(semantic.status, "saved");
+  if (semantic.status !== "saved") return;
+  const events = logger.snapshot();
+  const before = events.findIndex(event => event.event === "semantic-generation-before");
+  const after = events.findIndex(event => event.event === "semantic-generation-after");
+  assert.ok(before >= 0 && after > before);
+  assert.equal(events[before]?.fields?.semanticGeneration, String(gen(1)));
+  assert.equal(events[after]?.fields?.semanticGeneration, String(semantic.semanticGeneration));
+  logger.clear();
+  const stalePersistence = await store.saveAuthority(changed, rev(1), semantic.semanticGeneration);
+  assert.equal(stalePersistence.status, "stale-persistence");
+  assert.ok(logger.snapshot().some(event => event.event === "authority-save-stale-persistence"));
+  const latest = await trusted(store);
+  logger.clear();
+  const staleSemantic = await store.saveAuthority(latest, latest.persistenceRevision, gen(1));
+  assert.equal(staleSemantic.status, "stale-semantic-authority");
+  assert.ok(logger.snapshot().some(event => event.event === "authority-save-stale-semantic-authority"));
+});
+
+test("LOG-05 learned remote batch logging is bounded and never renders raw path/change payload/content", async () => {
+  const logger = await log05Logger();
+  const storage = new MemoryStateByteStorage();
+  const store = new PersistentSynchronizationStateStore(storage, 1, undefined, logger);
+  const initial = createInitialAuthorityState({ persistenceRevision: rev(1), semanticGeneration: gen(1), vaultIdentity: vault, deviceIdentity: device });
+  assert.equal((await store.saveTrusted(initial)).status, "saved");
+  logger.clear();
+  const rawPath = "PRIVATE/LOG05-SENTINEL-CONTENT.md";
+  const batch = {
+    checkpoint: {
+      batchId: id<"RemoteIngestionBatchId">("batch:log05"),
+      startingToken: id<"ChangeCursor">("cursor:0"),
+      terminalStartToken: id<"ChangeCursor">("cursor:1"),
+      persistenceRevision: rev(1),
+      status: "learned" as const,
+    },
+    changes: [{ kind: "removed" as const, remoteObjectId: remoteId("remote:log05"), lastKnownPath: path(rawPath) }],
+  };
+  const result = await store.appendLearnedRemoteBatch(batch, rev(1), gen(1));
+  assert.equal(result.status, "saved");
+  const event = logger.snapshot().find(value => value.event === "remote-batch-learn-result");
+  assert.equal(event?.fields?.batchId, "batch:log05");
+  assert.equal(event?.fields?.changeCount, 1);
+  assert.equal(event?.fields?.cursorPresent, true);
+  assert.equal(logger.renderText().includes(rawPath), false);
+  assert.equal(logger.renderText().includes("LOG05-SENTINEL-CONTENT"), false);
 });

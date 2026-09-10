@@ -1,4 +1,6 @@
 import type { DataAdapter } from "obsidian";
+import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-recovery-diagnostics";
 import {
   contractId,
   type AuthoritativeBaseTransition,
@@ -353,8 +355,8 @@ function rebaseCompletedIntentSemanticAuthority(
  * intent/effect checkpoints still advance the independent persistence revision.
  */
 export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizationStateStore implements SynchronizationStateStore {
-  constructor(private readonly source: PersistentSynchronizationStateStore) {
-    super(new MemoryStateByteStorage(), source.currentSchemaVersion);
+  constructor(private readonly source: PersistentSynchronizationStateStore, diagnostics?: DiagnosticLogger) {
+    super(new MemoryStateByteStorage(), source.currentSchemaVersion, undefined, diagnostics);
   }
 
   override async load(context: StateLoadContext): Promise<StateLoadResult> {
@@ -413,11 +415,18 @@ export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizat
     const targetGeneration = semanticChanged
       ? nextSemanticGeneration(loaded.state.semanticGeneration)
       : loaded.state.semanticGeneration;
+    emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "authority-adapter-save-start", {
+      persistenceRevision: String(loaded.state.persistenceRevision), semanticGeneration: String(loaded.state.semanticGeneration), expectedRevision: String(expectedPersistenceRevision), semanticChanged,
+    });
+    if (semanticChanged) emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "adapter-semantic-generation-before", { persistenceRevision: String(loaded.state.persistenceRevision), semanticGeneration: String(loaded.state.semanticGeneration), semanticChanged: true });
     const withCompletedIntents = rebaseCompletedIntentSemanticAuthority(state, targetGeneration);
     const candidate = semanticChanged
       ? rebaseConvergenceGeneration(withCompletedIntents, targetGeneration)
       : withCompletedIntents;
-    return this.source.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
+    const result = await this.source.saveAuthority(candidate, expectedPersistenceRevision, expectedSemanticGeneration);
+    if (semanticChanged && result.status === "saved") emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "adapter-semantic-generation-after", { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration), semanticChanged: true });
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "debug" : "warn", "state.authority", "authority-adapter-save-result", { result: result.status, semanticChanged, ...(result.status === "saved" ? { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration) } : {}) });
+    return result;
   }
 
   override async commitBaseTransition(
@@ -425,6 +434,7 @@ export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizat
     expectedPersistenceRevision: PersistenceRevision,
     expectedSemanticGeneration: SemanticStateGeneration,
   ): Promise<SynchronizationAuthoritySaveResult> {
+    emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "adapter-base-transition-start", { classification: transition.kind, expectedRevision: String(expectedPersistenceRevision), semanticGeneration: String(expectedSemanticGeneration) });
     const first = await this.source.commitBaseTransition(transition, expectedPersistenceRevision, expectedSemanticGeneration);
     if (first.status !== "saved") return first;
     const loaded = await this.source.loadAuthority();
@@ -433,8 +443,12 @@ export class SynchronizationStateAuthorityAdapter extends PersistentSynchronizat
       : { status: "recovery-required", issues: loaded.issues };
     const staleConvergence = loaded.state.pathConvergence.some(entry => entry.state.status === "converged" && entry.state.generation !== loaded.state.semanticGeneration);
     if (!staleConvergence) return first;
-    const candidate = rebaseConvergenceGeneration(loaded.state, nextSemanticGeneration(loaded.state.semanticGeneration));
-    return this.source.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+    const target = nextSemanticGeneration(loaded.state.semanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, "info", "state.authority", "convergence-generation-rebase-before", { persistenceRevision: String(loaded.state.persistenceRevision), semanticGeneration: String(loaded.state.semanticGeneration), semanticChanged: true });
+    const candidate = rebaseConvergenceGeneration(loaded.state, target);
+    const result = await this.source.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+    emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "state.authority", "convergence-generation-rebase-after", { result: result.status, ...(result.status === "saved" ? { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration), semanticChanged: true } : {}) });
+    return result;
   }
 
   override async createRecoveryBackup() { return this.source.createRecoveryBackup(); }
