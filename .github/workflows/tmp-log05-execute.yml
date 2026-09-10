@@ -44,6 +44,7 @@ jobs:
           s=s.replace('    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) { return invalid; }\n    for (const effect of intent.effects) {','    const invalid = validateIntent(intent, loaded.state);\n    if (invalid) return invalid;\n    for (const effect of intent.effects) {',1)
           p.write_text(a+s+b,encoding='utf-8')
           PY
+          python ../tooling/dev/log05/correct-log05-contract.py
           git diff --check
       - uses: actions/setup-node@v4
         with:
