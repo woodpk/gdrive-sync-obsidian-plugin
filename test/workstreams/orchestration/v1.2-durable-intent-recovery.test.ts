@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../../src/diagnostics/diagnostic-logger";
 import { contractId, type GoogleDrivePort, type LocalVaultPort, type PersistenceRevision, type RecoverableOperationIntentV1_1, type RemoteEntry, type RemoteObjectId, type StateRevision, type SynchronizationAuthorityMetadataV1_1, type SynchronizationAuthoritySaveResult, type SynchronizationAuthorityStoreV1_1, type TrustedSynchronizationState, type VaultPath } from "../../../src/contracts";
 import { StateCommitCoordinator } from "../../../src/core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/execution-coordinator";
@@ -125,4 +126,48 @@ test("D-C11 controller recovers outstanding durable work before a fresh planner 
   const plan = { planId: id<"PlanId">("plan:noop") as any, trigger: "manual", operations: [{ operationId: id<"OperationId">("op:fresh-noop"), kind: "noop", path: target, destructive: false, preconditions: [], reasons: [] }], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" } as any;
   const controller = new ProductController({ vaultIdentity: vault as never, deviceIdentity: device as never, stateContext: context, stateStore: canonical as never, authorityStore: authority, snapshotAssembler: assembler as never, executor: f.executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ async plan() { plannerCalls++; assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed"); assert.equal(canonical.value.base[0]?.content?.hash, h1); return plan; } }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:d-c11" });
   const preview = await controller.previewManual(); assert.ok(preview); assert.equal(preview?.planId, plan.planId); assert.equal(plannerCalls, 1); assert.equal(assemblyCalls, 2); assert.equal(f.raw(), 0);
+});
+
+
+class Log05RecoveryDiagnostics implements DiagnosticPersistence {
+  state?: DiagnosticStoreState;
+  async loadDiagnostics(): Promise<unknown> { return this.state; }
+  async saveDiagnostics(state: DiagnosticStoreState): Promise<void> { this.state = structuredClone(state); }
+}
+
+async function log05RecoveryLogger() {
+  const persistence = new Log05RecoveryDiagnostics();
+  const logger = new DiagnosticLogger({ persistence, level: "trace", retentionLimit: 500, consoleMirror: false, platform: "desktop" });
+  await logger.initialize();
+  return logger;
+}
+
+test("LOG-05 current-generation outstanding recovery exposes selection, physical observation, receipt reconstruction, and final result without changing recovery output", async () => {
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([createIntent()]);
+  const f = fixture(canonical, () => [entry()]);
+  const logger = await log05RecoveryLogger();
+  const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote, {}, logger);
+  assert.equal(result.status, "recovered");
+  assert.equal(f.raw(), 0);
+  const events = logger.snapshot();
+  assert.ok(events.some(event => event.event === "recovery-intent-selected" && event.fields?.semanticGeneration === String(gen)));
+  assert.ok(events.some(event => event.event === "recovery-physical-observation" && event.fields?.result === "verified-effect"));
+  assert.ok(events.some(event => event.event === "recovery-receipt-reconstruction" && event.fields?.reconstruction === "succeeded"));
+  assert.ok(events.some(event => event.event === "outstanding-recovery-final-result" && event.fields?.result === "recovered"));
+  assert.equal(logger.renderText().includes(String(target)), false);
+});
+
+test("LOG-05 stale-generation intent emits the exact existing mismatch and makes authority generation comparison reconstructable", async () => {
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([createIntent("dispatch-authorized", v1, reserved, staleGen)]);
+  const f = fixture(canonical, () => [entry()]);
+  const logger = await log05RecoveryLogger();
+  const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote, {}, logger);
+  assert.equal(result.status, "recovery-required");
+  if (result.status !== "recovery-required") return;
+  assert.equal(result.reason, "persisted durable intent belongs to stale semantic generation");
+  const failed = logger.snapshot().find(event => event.event === "remote-update-preverification-validation-failed" || event.event === "recovery-intent-validation-failed");
+  assert.equal(failed?.fields?.reason, "persisted durable intent belongs to stale semantic generation");
+  assert.ok(logger.snapshot().some(event => event.event === "remote-update-preverification-entry" && event.fields?.semanticGeneration === String(gen)));
 });
