@@ -69,11 +69,25 @@ jobs:
           from pathlib import Path
           path = Path('test/workstreams/orchestration/log04-execution-diagnostics.test.ts')
           text = path.read_text()
-          old = '    knownDevices: [],\n  } as never;\n}\n\nasync function diagnosticHarness'
-          new = '    knownDevices: [],\n  };\n}\n\nasync function diagnosticHarness'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one canonicalState over-cast, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
+          replacements = [
+              (
+                  '    knownDevices: [],\n  } as never;\n}\n\nasync function diagnosticHarness',
+                  '    knownDevices: [],\n  };\n}\n\nasync function diagnosticHarness',
+              ),
+              (
+                  '  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority',
+                  '  diagnostics.logger.syncTrace("sync.execute", "operation-start", runId, {\n    operationIndex: 1,\n  });\n  diagnostics.logger.syncTrace("sync.execute", "operation-precondition-validation-start", runId, {\n    operationIndex: 1,\n  });\n  const rawAuthority',
+              ),
+              (
+                  '    "operation-entry",\n    "operation-precondition-validation-start",',
+                  '    "operation-precondition-validation-start",\n    "operation-entry",',
+              ),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one disposable fixture target, found {text.count(old)} for {old[:40]!r}')
+              text = text.replace(old, new)
+          path.write_text(text)
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
