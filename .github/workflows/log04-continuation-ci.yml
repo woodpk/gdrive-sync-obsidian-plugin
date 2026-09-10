@@ -1,0 +1,224 @@
+name: LOG-04 Continuation Exact-Tree Verification
+
+on:
+  pull_request:
+    branches: [ci-log04-continuation-harness]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-close-evidence:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout CI harness
+        uses: actions/checkout@v4
+        with:
+          ref: ci-log04-continuation-harness
+          path: harness
+
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: repo
+
+      - name: Gate continuation state
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT=3f582fc3bc0892edf8500f4f1803be6f3200f4b8
+          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ -f dev/evidence/_ca-output-agt-ca-p6-log04-sync-execution-durable-effect-tracing-01.md ]; then
+            echo "ALREADY_COMPLETE=1" >> "$GITHUB_ENV"
+            echo "Evidence already present at ${HEAD_SHA}; no mutation performed."
+            exit 0
+          fi
+          test "$HEAD_SHA" = "$INPUT"
+          test "$(git merge-base "$BASE" HEAD)" = "$BASE"
+          ACTUAL=$(git diff --name-only "$BASE..HEAD" | sort)
+          EXPECTED=$(printf '%s\n' \
+            src/product/authoritative-production-executor-base.ts \
+            src/product/authority-execution-diagnostics.ts \
+            test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
+          test "$ACTUAL" = "$EXPECTED"
+          git diff --quiet "$BASE..HEAD" -- src/diagnostics/diagnostic-logger.ts
+          echo "ALREADY_COMPLETE=0" >> "$GITHUB_ENV"
+
+      - name: Apply bounded continuation edits and commit implementation
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/product/product-controller-base.ts')
+          text = path.read_text()
+          old = 'this.syncInfo(runId, "execution-start", { stage: "execution", operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
+          new = 'this.syncInfo(runId, "execution-start", { stage: "execution", planId: String(planned.plan.planId), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one controller execution-start seam, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          cp ../harness/.ci-harness/log04-execution-diagnostics.test.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/product/product-controller-base.ts test/workstreams/orchestration/log04-execution-diagnostics.test.ts
+          git commit -m "LOG-04 complete plan correlation and acceptance coverage"
+          FINAL_IMPLEMENTATION_SHA=$(git rev-parse HEAD)
+          echo "FINAL_IMPLEMENTATION_SHA=$FINAL_IMPLEMENTATION_SHA" >> "$GITHUB_ENV"
+          echo "Final implementation SHA: $FINAL_IMPLEMENTATION_SHA"
+
+      - name: Install exact locked dependencies
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        run: npm ci
+
+      - name: Typecheck
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        run: npm run typecheck
+
+      - name: Compile test tree
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Focused LOG-04 tests
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-evidence
+          set -o pipefail
+          node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js | tee .ci-evidence/log04-focused.tap
+          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/log04-focused.tap | tail -1 | awk '{print $3}')
+          test -n "$COUNT"
+          test "$COUNT" -gt 0
+          echo "FOCUSED_COUNT=$COUNT" >> "$GITHUB_ENV"
+          echo "Focused LOG-04 test count: $COUNT"
+
+      - name: Complete automated suite
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npm test | tee .ci-evidence/full-tests.tap
+          COUNT=$(grep -E '^# tests [0-9]+$' .ci-evidence/full-tests.tap | tail -1 | awk '{print $3}')
+          test -n "$COUNT"
+          test "$COUNT" -gt 0
+          echo "FULL_COUNT=$COUNT" >> "$GITHUB_ENV"
+          echo "Full automated test count: $COUNT"
+
+      - name: Production build
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        run: npm run build
+
+      - name: Frozen-base diff and boundary verification
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=48d9e612b69b43be9941f97630c580c2b8aed929
+          git diff --check "$BASE..$FINAL_IMPLEMENTATION_SHA"
+          ACTUAL=$(git diff --name-only "$BASE..$FINAL_IMPLEMENTATION_SHA" | sort)
+          EXPECTED=$(printf '%s\n' \
+            src/product/authoritative-production-executor-base.ts \
+            src/product/authority-execution-diagnostics.ts \
+            src/product/product-controller-base.ts \
+            test/workstreams/orchestration/log04-execution-diagnostics.test.ts | sort)
+          test "$ACTUAL" = "$EXPECTED"
+          git diff --quiet "$BASE..$FINAL_IMPLEMENTATION_SHA" -- src/diagnostics/diagnostic-logger.ts
+          git diff --quiet "$BASE..$FINAL_IMPLEMENTATION_SHA" -- src/product/operation-isolation.ts
+          git diff --quiet "$BASE..$FINAL_IMPLEMENTATION_SHA" -- package.json package-lock.json
+          echo "Changed files from frozen base:"
+          git diff --name-only "$BASE..$FINAL_IMPLEMENTATION_SHA"
+          echo "Diff stat from frozen base:"
+          git diff --stat "$BASE..$FINAL_IMPLEMENTATION_SHA"
+
+      - name: Create evidence commit after successful verification
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dev/evidence
+          cat > dev/evidence/_ca-output-agt-ca-p6-log04-sync-execution-durable-effect-tracing-01.md <<EOF
+          # LOG-04 Evidence — Sync Execution and Durable Effect Tracing
+
+          - Agent: \`agt-ca-p6-log04-sync-execution-durable-effect-tracing-01\`
+          - Work package: \`LOG-04\`
+          - Wave: \`W1\`
+          - Frozen base SHA: \`48d9e612b69b43be9941f97630c580c2b8aed929\`
+          - Continuation input SHA: \`3f582fc3bc0892edf8500f4f1803be6f3200f4b8\`
+          - Branch: \`phase6-logging-log04-sync-execution-durable-effect-tracing\`
+          - Final implementation SHA: \`$FINAL_IMPLEMENTATION_SHA\`
+          - Evidence commit SHA: the Git commit containing this record; reported by the agent after commit. An exact commit SHA cannot be embedded in its own tree without changing that SHA.
+
+          ## Changed files from frozen base
+
+          Implementation:
+          - \`src/product/authority-execution-diagnostics.ts\`
+          - \`src/product/authoritative-production-executor-base.ts\`
+          - \`src/product/product-controller-base.ts\`
+          - \`test/workstreams/orchestration/log04-execution-diagnostics.test.ts\`
+
+          Evidence closure adds only:
+          - \`dev/evidence/_ca-output-agt-ca-p6-log04-sync-execution-durable-effect-tracing-01.md\`
+
+          ## Continuation corrections
+
+          - Corrected the focused-test TypeScript compile defect by replacing the nonexistent lifecycle stage \`operation-precondition-validation-complete\` with the frozen existing stage \`operation-precondition-validated\`.
+          - Added the active \`planned.plan.planId\` to the existing \`execution-start\` diagnostic fields in \`ProductControllerBase\`. The existing proxied LOG-04 logger captures that plan ID and reuses it for subsequent operation/effect correlation; no new schema, contract, dependency, or composition seam was introduced.
+
+          ## Lifecycle / correlation demonstrated
+
+          Focused acceptance proves ordered reconstruction across operation entry, precondition validation, authority resolution, durable intent persistence, dispatch authorization, physical dispatch/result classification, convergence verification, physical verification, canonical state commit, durable \`effect-verified -> state-committed\` finalization, and terminal success. It also proves operation/intent/effect identity correlation under the same plan ID, stale-precondition no-dispatch behavior, distinct \`outcome-unknown\`, post-verification finalization failure, restart re-observation without false physical redispatch, unchanged cancelled/blocked/recovery-required result mapping, and raw-path/file-content exclusion.
+
+          ## Verification
+
+          - \`npm run typecheck\`: PASS
+          - Focused command: \`node --test .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js\`: PASS — exactly **$FOCUSED_COUNT tests**
+          - Full command: \`npm test\`: PASS — exactly **$FULL_COUNT tests**
+          - \`npm run build\`: PASS
+          - \`git diff --check 48d9e612b69b43be9941f97630c580c2b8aed929..$FINAL_IMPLEMENTATION_SHA\`: PASS
+          - Complete frozen-base changed-file list and diff stat inspected; only the four authorized implementation/test files above differ at the implementation SHA.
+          - Frozen \`src/diagnostics/diagnostic-logger.ts\`: unchanged.
+          - Protected \`src/product/operation-isolation.ts\`: unchanged.
+          - \`package.json\` / \`package-lock.json\`: unchanged; no dependency changes.
+
+          ## Safety / semantic preservation
+
+          - LOG-01 component/field vocabulary, sanitization, path privacy, and correlation schema remain frozen.
+          - No synchronization ordering, execution decisions, retry behavior, recovery semantics, state/CAS semantics, Google transport behavior, Drive semantic behavior, or durable-state authority semantics were changed.
+          - Diagnostics/evidence contain no raw vault paths, secrets, OAuth material, HTTP request bodies, or file contents.
+          - No live synchronization or Google Drive mutation occurred.
+          - No merge, release, B01/B02-O validation, iPhone validation, or Stage 3 work occurred.
+
+          ## Stop state
+
+          LOG-04 continuation implementation and evidence closure are complete on the named branch and are stopped for supervisory review. No supervisor approval is claimed.
+          EOF
+          git add dev/evidence/_ca-output-agt-ca-p6-log04-sync-execution-durable-effect-tracing-01.md
+          git commit -m "LOG-04 record verified continuation evidence"
+          EVIDENCE_SHA=$(git rev-parse HEAD)
+          echo "EVIDENCE_SHA=$EVIDENCE_SHA" >> "$GITHUB_ENV"
+          echo "Evidence SHA: $EVIDENCE_SHA"
+
+      - name: Push implementation and evidence commits to existing branch
+        if: env.ALREADY_COMPLETE != '1'
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:phase6-logging-log04-sync-execution-durable-effect-tracing
+          echo "Pushed final implementation $FINAL_IMPLEMENTATION_SHA and evidence $EVIDENCE_SHA"
