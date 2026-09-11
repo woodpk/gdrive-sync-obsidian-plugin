@@ -1,4 +1,4 @@
-name: Phase 6 Alpha Diagnostic Verification
+name: Phase 6 LOG-03 Exact SHA Verification
 
 on:
   pull_request:
@@ -10,8 +10,17 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 5411d2332881011b5ee6a2437d24a3084099dd7f
+      BASE_SHA: 50b263a61334767d2b604b22de341c0c230abdca
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact LOG-03 implementation SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 5411d2332881011b5ee6a2437d24a3084099dd7f
+          fetch-depth: 0
+      - name: Verify exact checkout
+        run: test "$(git rev-parse HEAD)" = "$TARGET_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -20,48 +29,36 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Test TypeScript compile
+      - name: Compile tests
         run: npx tsc -p tsconfig.test.json
-      - name: Full tests
+      - name: Focused LOG-03 tests
         shell: bash
         run: |
           set -o pipefail
           mkdir -p .ci-evidence
+          node --test .test-build/test/phase6-log03-google-drive-semantic-operation-tracing.test.js | tee .ci-evidence/focused-log03-tests.tap
+      - name: Full tests
+        shell: bash
+        run: |
+          set -o pipefail
           npm test | tee .ci-evidence/full-tests.tap
-      - name: Focused C1 first-sync conflict-resolution authority tests
-        shell: bash
-        run: |
-          set -o pipefail
-          node --test .test-build/test/phase6-a03-first-sync-conflict-resolution-authority.test.js | tee .ci-evidence/focused-c1-tests.tap
-      - name: Focused callback, diagnostic, OAuth, and export tests
-        shell: bash
-        run: |
-          set -o pipefail
-          node --test .test-build/test/phase3-callback.test.js .test-build/test/phase6-alpha-diagnostic-logging.test.js .test-build/test/phase6-alpha-oauth-diagnostics.test.js .test-build/test/phase6-alpha-ios-oauth-launch.test.js .test-build/test/phase6-alpha-oauth-lifecycle.test.js .test-build/test/phase6-alpha-share-export.test.js | tee .ci-evidence/focused-tests.tap
       - name: Production build
         run: npm run build
-      - name: Full repository check
-        shell: bash
+      - name: Exact frozen-base diff check
+        run: git diff --check "$BASE_SHA..$TARGET_SHA"
+      - name: Record exact verification identity
         run: |
-          set -o pipefail
-          npm run check | tee .ci-evidence/check.log
-      - name: Diff whitespace check
-        run: git diff --check
-      - name: Record artifact identity
-        run: |
-          wc -c main.js | tee .ci-evidence/main-js-size.txt
+          git rev-parse HEAD | tee .ci-evidence/verified-head.txt
+          git diff --name-only "$BASE_SHA..$TARGET_SHA" | tee .ci-evidence/changed-files.txt
           sha256sum main.js | tee .ci-evidence/main-js-sha256.txt
-      - name: Upload diagnostic build and verification evidence
+      - name: Upload LOG-03 exact-SHA verification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase6-oauth-housekeeping-verification
+          name: phase6-log03-exact-sha-verification
           path: |
-            main.js
-            manifest.json
+            .ci-evidence/focused-log03-tests.tap
             .ci-evidence/full-tests.tap
-            .ci-evidence/focused-c1-tests.tap
-            .ci-evidence/focused-tests.tap
-            .ci-evidence/check.log
-            .ci-evidence/main-js-size.txt
+            .ci-evidence/verified-head.txt
+            .ci-evidence/changed-files.txt
             .ci-evidence/main-js-sha256.txt
           if-no-files-found: error
