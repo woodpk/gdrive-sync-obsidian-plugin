@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { contractId, type BinaryContentSource, type ChangeCursor, type ContentHash, type MutationIntentId, type RemoteObjectId, type RemoteRevisionId, type VaultIdentity, type VaultPath } from "../src/contracts";
+import { contractId, type BinaryContentSource, type ContentHash, type MutationIntentId, type RemoteObjectId, type RemoteRevisionId, type VaultIdentity, type VaultPath } from "../src/contracts";
 import type { DriveResult, ManagedRemoteIdentity } from "../src/contracts/google-drive";
 import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
@@ -51,16 +52,15 @@ const intent = (value: string) => contractId<"MutationIntentId">(value) as Mutat
 const revision = (value: string) => contractId<"RemoteRevisionId">(value) as RemoteRevisionId;
 const contentHash = (value: string) => contractId<"ContentHash">(value) as ContentHash;
 const vault = (value: string) => contractId<"VaultIdentity">(value) as VaultIdentity;
-const changeCursor = (value: string) => contractId<"ChangeCursor">(value) as ChangeCursor;
 const norm = (url: string) => decodeURIComponent(url).replace(/\+/g, " ");
 const folderMime = "application/vnd.google-apps.folder";
 const root = () => ({ id: "root", name: "BRAIN Sync", mimeType: folderMime, trashed: false, appProperties: { brainSyncRole: "brain-sync-root", brainVaultIdentity: "vault-1", brainProtocolVersion: "1" } });
 const contentRoot = () => ({ id: "content", name: "vault", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-content" } });
 const configRoot = () => ({ id: "config", name: "__brain_sync_portable_config__", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } });
-const notesFolder = () => ({ id: "notes", name: "notes", mimeType: folderMime, parents: ["content"], trashed: false, appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const predecessorFile = (trashed = false) => ({ id: "pred", name: "target.md", mimeType: "text/plain", parents: ["notes"], trashed, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const candidateFile = () => ({ id: "cand", name: "target.md", mimeType: "text/plain", parents: ["notes"], trashed: false, size: "4", sha256Checksum: "abc", version: "candidate-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const thirdFile = () => ({ id: "third", name: "target.md", mimeType: "text/plain", parents: ["notes"], trashed: false, size: "4", sha256Checksum: "third", version: "third-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const privateFolder = () => ({ id: "private", name: "private", mimeType: folderMime, parents: ["content"], trashed: false, appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const predecessorFile = (trashed = false) => ({ id: "pred", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const candidateFile = () => ({ id: "cand", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "abc", version: "candidate-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const thirdFile = () => ({ id: "third", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "third", version: "third-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
 
 function updateIdentity(secretPath = "private/SECRET-target.md") {
   const target = path(secretPath);
@@ -78,7 +78,6 @@ function updateIdentity(secretPath = "private/SECRET-target.md") {
 }
 
 const bytes: BinaryContentSource = { sizeBytes: 4, async *openChunks() { yield new Uint8Array([1, 2, 3, 4]); } };
-
 type UpdateScenario = "success" | "candidate-missing-from-list" | "retirement-ambiguous" | "post-list-stale" | "third-occupant";
 
 async function updateFixture(scenario: UpdateScenario) {
@@ -105,14 +104,13 @@ async function updateFixture(scenario: UpdateScenario) {
       if (candidateGets === 1) return failure("not-found");
       return ok(candidateFile());
     }
-    if (url.includes("/files/notes?")) return ok(notesFolder());
+    if (url.includes("/files/private?")) return ok(privateFolder());
     if (url.includes("/files/content?")) return ok(contentRoot());
     if (url.includes("/files/config?")) return ok(configRoot());
     if (url.includes("/files/root?")) return ok(root());
     if (decoded.includes("'root' in parents") && decoded.includes("brain-sync-content")) return ok({ files: [contentRoot()] });
     if (decoded.includes("'root' in parents") && decoded.includes("name='__brain_sync_portable_config__'")) return ok({ files: [configRoot()] });
-    if (decoded.includes("'content' in parents") && decoded.includes("name='private'")) return ok({ files: [{ id: "private", name: "private", mimeType: folderMime, parents: ["content"], trashed: false }] });
-    if (url.includes("/files/private?")) return ok({ id: "private", name: "private", mimeType: folderMime, parents: ["content"], trashed: false });
+    if (decoded.includes("'content' in parents") && decoded.includes("name='private'")) return ok({ files: [privateFolder()] });
     if (decoded.includes("'private' in parents") && decoded.includes("name='SECRET-target.md'")) {
       if (!retired) {
         if (scenario === "candidate-missing-from-list") return ok({ files: [predecessorFile(false)] });
@@ -196,6 +194,40 @@ test("LOG-03 successful immutable-candidate update records causal stages while p
   ]) assert.ok(names.includes(expected), `${expected} missing`);
 });
 
+test("LOG-03 create, move, and trash emit semantic operation events without exposing raw logical names", async () => {
+  const diagnostics = await logger();
+  const backing = new MemorySecrets();
+  backing.setSecret("brain-gdrive-paired-account", "acct");
+  const secrets = new ObsidianSecretStore(backing);
+  const existing = { id: "move-id", name: "SECRET-old.md", mimeType: "text/plain", parents: ["content"], trashed: false, size: "1", version: "1", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } };
+  const handler = async (url: string, init: PortableRequestInit = {}): Promise<DriveResult<Response>> => {
+    const decoded = norm(url);
+    if (url.includes("/about?")) return ok({ user: { permissionId: "acct" } });
+    if (url.includes("/files/move-id?")) {
+      if (init.method === "PATCH") return ok({ ...existing, name: "SECRET-new.md", version: "2" });
+      return ok(existing);
+    }
+    if (url.includes("/files/content?")) return ok(contentRoot());
+    if (url.includes("/files/root?")) return ok(root());
+    if (decoded.includes("'root' in parents") && decoded.includes("brain-sync-content")) return ok({ files: [contentRoot()] });
+    if (decoded.includes("'root' in parents") && decoded.includes("name='__brain_sync_portable_config__'")) return ok({ files: [configRoot()] });
+    if (init.method === "POST" && url.includes("/drive/v3/files?")) return ok({ id: "created-folder", name: "SECRET-folder", mimeType: folderMime, parents: ["content"], trashed: false });
+    if (url.includes("/files/trash-id?") && init.method === "PATCH") return ok({ id: "trash-id", trashed: true });
+    throw new Error(`unexpected request: ${decoded} ${init.method ?? "GET"}`);
+  };
+  const adapter = new GoogleDriveAdapter(new GoogleOAuthSession({ clientId: "c", redirectUri: "https://callback.invalid" }, secrets), new StubTransport(handler), secrets, diagnostics);
+  const created = await adapter.create(id("root"), { path: path("SECRET-folder"), entityKind: "folder" });
+  const moved = await adapter.move(id("move-id"), path("SECRET-old.md"), path("SECRET-new.md"));
+  const trashed = await adapter.trash(id("trash-id"));
+  assert.equal(created.ok, true);
+  assert.equal(moved.ok, true);
+  assert.equal(trashed.ok, true);
+  const events = semanticEvents(diagnostics);
+  for (const expected of ["drive-create-started", "drive-create-result", "drive-move-started", "drive-move-result", "drive-trash-started", "drive-trash-result"]) assert.ok(events.some(event => event.event === expected), `${expected} missing`);
+  const rendered = diagnostics.renderText();
+  for (const sentinel of ["SECRET-folder", "SECRET-old.md", "SECRET-new.md"]) assert.equal(rendered.includes(sentinel), false, `${sentinel} must not enter diagnostics`);
+});
+
 test("LOG-03 reconciliation and change-page diagnostics are bounded summaries with no raw entry path, query, or cursor payload", async () => {
   const diagnostics = await logger();
   const backing = new MemorySecrets();
@@ -220,11 +252,22 @@ test("LOG-03 reconciliation and change-page diagnostics are bounded summaries wi
   assert.equal(listing.ok, true);
   if (listing.ok) { assert.equal(listing.value.completeness.status, "complete"); assert.equal(listing.value.entries.length, 1); }
   const identity = { rootId: id("root"), vaultIdentity: vault("vault-1"), protocolVersion: contractId<"ProtocolVersion">("1") } as ManagedRemoteIdentity;
-  const page = await adapter.readChangePage(identity, changeCursor("SENTINEL-request-cursor"));
+  const page = await adapter.readChangePage(identity, contractId<"ChangeCursor">("SENTINEL-request-cursor"));
   assert.equal(page.ok, true);
   const events = semanticEvents(diagnostics);
   assert.ok(events.some(event => event.event === "drive-reconciliation-enumeration-result" && event.fields?.remoteCompleteness === "complete" && event.fields?.count === 1));
   assert.ok(events.some(event => event.event === "drive-change-page-result" && event.fields?.changeCount === 0 && event.fields?.classification === "terminal"));
   const rendered = diagnostics.renderText();
   for (const sentinel of ["SENTINEL-private.md", "SENTINEL-request-cursor", "SENTINEL-next-cursor", "pageToken="]) assert.equal(rendered.includes(sentinel), false, `${sentinel} must not enter diagnostics`);
+});
+
+test("LOG-03 production composition routes the same host DiagnosticLogger through LOG-02, LOG-03, LOG-04, and LOG-05 seams", () => {
+  const driveRuntime = readFileSync("src/drive/runtime.ts", "utf8");
+  const productRuntime = readFileSync("src/product/runtime.ts", "utf8");
+  assert.match(driveRuntime, /new GoogleHttpTransport\([^;]*options\.diagnostics\)/s);
+  assert.match(driveRuntime, /new GoogleDriveAdapter\([^;]*options\.diagnostics\)/s);
+  assert.match(productRuntime, /createObsidianGoogleDriveBoundary\(\{[\s\S]*?diagnostics: this\.host\.diagnostics/);
+  assert.match(productRuntime, /new PersistentSynchronizationStateStore\([\s\S]{0,400}?this\.host\.diagnostics/);
+  assert.match(productRuntime, /new ProductSnapshotAssembler\([\s\S]{0,800}?this\.host\.diagnostics/);
+  assert.match(productRuntime, /new ProductController\(\{[\s\S]*?diagnostics: this\.host\.diagnostics/);
 });
