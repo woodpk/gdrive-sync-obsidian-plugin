@@ -146,6 +146,7 @@ export class ProductRuntime {
       },
       secretStorage: this.host.app.secretStorage,
       requestUrl,
+      diagnostics: this.host.diagnostics,
     });
     this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
     diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });
@@ -178,7 +179,12 @@ export class ProductRuntime {
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
-    const durableState = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
+    const durableState = new PersistentSynchronizationStateStore(
+      new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`),
+      1,
+      undefined,
+      this.host.diagnostics,
+    );
     this.state = new SynchronizationStateAuthorityAdapter(durableState);
     diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
