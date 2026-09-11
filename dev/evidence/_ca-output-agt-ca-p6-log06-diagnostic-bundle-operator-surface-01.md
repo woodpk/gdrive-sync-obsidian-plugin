@@ -4,7 +4,7 @@
 
 - Agent: `agt-ca-p6-log06d-evidence-closure-01`
 - Work package: `LOG-06`
-- Task: `LOG-06D Evidence Closure`
+- Task: `LOG-06D Evidence-Only Repair`
 - Task classification: `EVIDENCE CLOSURE ONLY`
 - Wave: `W3`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
@@ -12,7 +12,13 @@
 - Frozen LOG-06 base SHA: `8cb7f02930c58313c8ad6f2e25537a7d5b231a57`
 - LOG-06C verified implementation SHA: `b80eb843136a35766392910148b45520edf770c3`
 
-## Implementation Change Set
+## Implementation Preservation
+
+The approved implementation is preserved exactly at:
+
+`b80eb843136a35766392910148b45520edf770c3`
+
+This LOG-06D repair changes only this evidence file. No production source, test, configuration, or CI/workflow file is modified.
 
 Complete frozen-base-to-verified-implementation changed-file list:
 
@@ -21,8 +27,6 @@ Complete frozen-base-to-verified-implementation changed-file list:
 3. `src/main.ts`
 4. `src/product/runtime.ts`
 5. `test/phase6-log06-diagnostic-bundle-operator-surface.test.ts`
-
-No implementation or test file was changed by LOG-06D. This evidence record is the only LOG-06D file change.
 
 ## Diagnostic Bundle Contract Implemented
 
@@ -75,30 +79,27 @@ The diagnostic bundle is local troubleshooting evidence only. It is not synchron
 
 Export performs no Google Drive mutation and no synchronization content/state mutation. No external telemetry or automatic upload is introduced; the operator explicitly copies the bundle to the local clipboard.
 
-## LOG-06C Exact-SHA Verification Record
+## Established LOG-06C Verification Facts
 
-Verified implementation SHA: `b80eb843136a35766392910148b45520edf770c3`
-
-Fresh exact-SHA verification used GitHub Actions run `34603639242`, attempt `3`, on `phase6-logging-log06-diagnostic-bundle-operator-surface`; the run completed successfully against the exact verified SHA.
-
-Recorded LOG-06C results supplied for closure:
-
-- Dependency install (`npm ci`): `PASS`
+- Implementation SHA: `b80eb843136a35766392910148b45520edf770c3`
+- Frozen LOG-06 base: `8cb7f02930c58313c8ad6f2e25537a7d5b231a57`
+- Exact-SHA CI run: `34603639242 — PASS`
 - Typecheck: `PASS`
 - Test TypeScript compilation: `PASS`
 - Focused LOG-06 tests: `6/6 PASS`
-- Full tests: `777/777 PASS` (`0 FAIL`)
-- Production build: `PASS`
-- Full repository check: `PASS`
-- `git diff --check` for frozen base `8cb7f02930c58313c8ad6f2e25537a7d5b231a57` through verified implementation `b80eb843136a35766392910148b45520edf770c3`: `PASS`
+- Full tests: `777/777 PASS`
+- Build: `PASS`
+- Repository check: `PASS`
+- Frozen-base `git diff --check 8cb7f02930c58313c8ad6f2e25537a7d5b231a57..b80eb843136a35766392910148b45520edf770c3`: `PASS`
+- Live Google Drive activity: `NONE PERFORMED`
 
-LOG-06D did not rerun dependency installation, typecheck, tests, build, or the full suite; it records the supplied LOG-06C verification result only.
+These are previously established verification results for the exact verified implementation SHA. LOG-06D did not rerun typecheck, test compilation, focused/full tests, build, repository validation, or any live Drive work.
 
 ## Limitations
 
 - No live Google Drive synchronization was performed or required by LOG-06C/LOG-06D.
-- This evidence closure does not constitute supervisor approval, PR merge, LOG-06 integration, release approval, B01 validation, or LOG-07 authorization.
+- This evidence-only repair does not constitute supervisor approval, PR merge, LOG-06 integration, release approval, B01 validation, or LOG-07 authorization.
 
 ## Stop State
 
-Evidence closure only is complete. The verified implementation remains `b80eb843136a35766392910148b45520edf770c3`; this file is committed separately as the sole evidence-closure change on the LOG-06 branch. No implementation, test, CI/workflow, merge, integration, release, B01, live Drive, or LOG-07 work was performed. Supervisor review is next.
+Evidence-only repair complete. Implementation remains unchanged at `b80eb843136a35766392910148b45520edf770c3`. No production source, tests, configuration, CI/workflows, merge, integration, release, B01, live Drive, or LOG-07 work was performed. Awaiting supervisor review.
