@@ -95,7 +95,7 @@ function authority(rawPath = "Private/SENTINEL-secret-note.md") {
 function auditRecords(rawPath: string): AuditRecord[] {
   return [{
     id: "audit-1",
-    event: "operation-error",
+    event: "operation-failed",
     advisoryAtMs: 100,
     path: path(rawPath),
     operationId: contractId<"OperationId">("operation-1"),
@@ -103,7 +103,7 @@ function auditRecords(rawPath: string): AuditRecord[] {
     reasonCode: "remote-failure",
     side: "remote",
     count: 1,
-  } as AuditRecord];
+  }];
 }
 
 function attentionRecords(rawPath: string): SyncAttentionRecord[] {
@@ -229,18 +229,40 @@ test("LOG-06 bundle is deterministic for equivalent fixed-time inputs and export
 });
 
 test("LOG-06 state, audit, and attention projections are explicitly bounded with truncation evidence", async () => {
-  const base = Array.from({ length: DIAGNOSTIC_BUNDLE_STATE_LIMIT + 5 }, (_, index) => ({ path: `Folder/File-${index}.md`, entityKind: "file", localExisted: true, remoteExisted: true }));
+  const base = Array.from({ length: DIAGNOSTIC_BUNDLE_STATE_LIMIT + 5 }, (_, index) => ({
+    path: `Folder/File-${index}.md`,
+    entityKind: "file" as const,
+    localExisted: true,
+    remoteExisted: true,
+    remoteObjectId: `remote-${index}`,
+    content: { hash: `sha256:${index}`, sizeBytes: index, revision: `rev-${index}` },
+  }));
   const authorityLoad = authority();
   authorityLoad.state.base = base;
-  const audit = Array.from({ length: DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5 }, (_, index) => ({ id: `audit-${index}`, event: "operation-error", advisoryAtMs: index, path: path(`A/${index}.md`) } as AuditRecord));
-  const attention = Array.from({ length: DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5 }, (_, index) => ({
-    key: `attention-${index}`, firstSeenAtMs: index, lastSeenAtMs: index, trigger: "manual", path: path(`B/${index}.md`), category: "blocked", reasonCode: "test", humanReason: "omitted", occurrenceCount: 1, current: true,
-  } as SyncAttentionRecord));
+  const audit: AuditRecord[] = Array.from({ length: DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5 }, (_, index) => ({
+    id: `audit-${index}`,
+    event: "operation-failed",
+    advisoryAtMs: index,
+    path: path(`A/${index}.md`),
+  }));
+  const attention: SyncAttentionRecord[] = Array.from({ length: DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5 }, (_, index) => ({
+    key: `attention-${index}`,
+    firstSeenAtMs: index,
+    lastSeenAtMs: index,
+    trigger: "manual",
+    path: path(`B/${index}.md`),
+    category: "blocked-unsafe",
+    reasonCode: "test",
+    humanReason: "omitted",
+    occurrenceCount: 1,
+    current: true,
+  }));
   const { text } = await makeBundle({ authorityLoad, audit, attention });
   const bundle = JSON.parse(text);
   assert.equal(bundle.authorityState.base.totalCount, DIAGNOSTIC_BUNDLE_STATE_LIMIT + 5);
   assert.equal(bundle.authorityState.base.includedCount, DIAGNOSTIC_BUNDLE_STATE_LIMIT);
   assert.equal(bundle.authorityState.base.truncated, true);
+  assert.equal(bundle.auditHistory.totalCount, DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5);
   assert.equal(bundle.auditHistory.includedCount, DIAGNOSTIC_BUNDLE_RECORD_LIMIT);
   assert.equal(bundle.auditHistory.truncated, true);
   assert.equal(bundle.synchronizationAttention.totalCount, DIAGNOSTIC_BUNDLE_RECORD_LIMIT + 5);
