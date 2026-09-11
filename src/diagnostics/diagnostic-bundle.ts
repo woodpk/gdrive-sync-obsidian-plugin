@@ -372,9 +372,8 @@ function projectAuthority(authorityLoad: unknown): Record<string, unknown> {
     learnedRemoteReductions: bounded(reductions, DIAGNOSTIC_BUNDLE_INTENT_LIMIT),
     outstandingOperationIntents: bounded(intents, DIAGNOSTIC_BUNDLE_INTENT_LIMIT),
     localTransactions: {
-      totalCount: transactions.length,
-      stageCounts: transactionStageCounts,
       ...bounded(transactions, DIAGNOSTIC_BUNDLE_INTENT_LIMIT),
+      stageCounts: transactionStageCounts,
     },
     operationJournal: bounded(journal, DIAGNOSTIC_BUNDLE_INTENT_LIMIT),
     knownDevices: {
@@ -396,7 +395,8 @@ function projectAudit(audit: readonly AuditRecord[]): Projection<Record<string, 
     side: item.side,
     count: finiteNumber(item.count),
   })).sort((a, b) => (Number(a.advisoryAtMs ?? 0) - Number(b.advisoryAtMs ?? 0)) || String(a.id ?? "").localeCompare(String(b.id ?? "")));
-  return bounded(projected.slice(-DIAGNOSTIC_BUNDLE_RECORD_LIMIT), DIAGNOSTIC_BUNDLE_RECORD_LIMIT);
+  const recent = projected.slice(-DIAGNOSTIC_BUNDLE_RECORD_LIMIT);
+  return { totalCount: projected.length, includedCount: recent.length, truncated: projected.length > recent.length, records: recent };
 }
 
 function projectAttention(attention: readonly SyncAttentionRecord[]): Projection<Record<string, unknown>> {
