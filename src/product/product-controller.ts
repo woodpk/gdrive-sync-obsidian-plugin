@@ -82,6 +82,7 @@ function authorityLearningAssembler(
   authorityStore: SynchronizationAuthorityStoreV1_1,
   options: ProductControllerOptions,
   recoveryDependencies: DurableIntentRecoveryDependencies,
+  diagnostics?: DiagnosticLogger,
 ): ProductSnapshotAssembler {
   const structural = assembler as ProductSnapshotAssembler & {
     bindAuthorityStore?: (store: SynchronizationAuthorityStoreV1_1) => void;
@@ -112,6 +113,7 @@ function authorityLearningAssembler(
           options.stateContext,
           assembly.managedRemote,
           recoveryDependencies,
+          diagnostics,
         );
         if (recovery.status === "recovery-required") throw new SnapshotAssemblyError("recovery-required", recovery.reason);
 
@@ -129,6 +131,7 @@ function authorityLearningAssembler(
             options.stateContext,
             assembly.managedRemote,
             recoveryDependencies,
+            diagnostics,
           );
           if (residual.status === "recovery-required") throw new SnapshotAssemblyError("recovery-required", residual.reason);
           if (residual.changed) throw new SnapshotAssemblyError("recovery-required", "durable recovery did not reach a stable pre-planning authority state in one bounded refresh");
@@ -161,7 +164,7 @@ export class ProductController extends ProductControllerBase {
     (options.executor as unknown as { recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies }).recoverableProductionMutationDependencies = dependencies;
     super({
       ...options,
-      snapshotAssembler: authorityLearningAssembler(options.snapshotAssembler, authorityStore, options, recoveryDependencies),
+      snapshotAssembler: authorityLearningAssembler(options.snapshotAssembler, authorityStore, options, recoveryDependencies, diagnostics.logger),
       ...(diagnostics.logger ? { diagnostics: diagnostics.logger } : {}),
       authorityStore,
     });
