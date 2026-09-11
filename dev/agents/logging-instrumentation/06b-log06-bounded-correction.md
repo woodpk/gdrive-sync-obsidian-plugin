@@ -16,27 +16,19 @@ Task classification:
 
 Prompt maturity:
 
-`PREPLANNED / REQUIRES SUPERVISOR BINDING`
+`EXECUTION-READY`
 
-Your only job is to implement **one supervisor-identified LOG-06 defect** on the existing LOG-06 branch, add or update only the focused test needed for that defect, and stop.
+Your only job is to correct the one privacy defect identified by LOG-06A: request-body text embedded in diagnostic string fields can survive `sanitizeDiagnosticText` and therefore appear in the LOG-06 structured trace.
 
-Do **not** run the full suite, perform evidence closure, merge, or begin LOG-07.
+Do **not** run the full suite, redesign the bundle, perform evidence closure, merge, or begin LOG-07.
 
 ---
 
-## 1. Required Supervisor Bindings
+## 1. Exact Binding
 
-This prompt is not executable until the supervisor supplies all three values below:
+Continue from exactly:
 
-`LOG06B_INPUT_SHA = <exact implementation SHA to continue from>`
-
-`LOG06B_DEFECT = <one precise defect statement>`
-
-`LOG06B_CORRECTION_BOUNDARY = <smallest authorized file/symbol/test boundary>`
-
-The expected starting candidate, unless superseded by a later supervisor-approved SHA, is:
-
-`0da6562bde442c2a6dc1f7a5df39ece7806e99ba`
+`LOG06B_INPUT_SHA = 0da6562bde442c2a6dc1f7a5df39ece7806e99ba`
 
 Frozen original LOG-06 base for diff context:
 
@@ -46,36 +38,48 @@ Required branch:
 
 `phase6-logging-log06-diagnostic-bundle-operator-surface`
 
-Do not substitute a moving branch tip for the exact bound input SHA.
+Bound defect:
+
+> `src/diagnostics/diagnostic-logger.ts :: sanitizeDiagnosticText` redacts authorization headers, OAuth/query values, tokens, and URLs, but does not redact request-body/requestBody assignments. A value such as `safeMessage="requestBody=SENTINEL_BODY"` can therefore be retained in `DiagnosticLogger.snapshot()` and serialized unchanged by LOG-06 `structuredTrace`.
+
+Authorized correction boundary:
+
+- production symbol: `src/diagnostics/diagnostic-logger.ts :: sanitizeDiagnosticText`;
+- focused regression coverage only in the directly relevant LOG-06/diagnostic privacy test(s), including the existing LOG-06 privacy test that injects `requestBody=SENTINEL_BODY`;
+- minimum adjacent sanitizer context required to implement the correction safely.
+
+Do not substitute a moving branch tip for `LOG06B_INPUT_SHA`.
 
 ---
 
 ## 2. Required Work — One Defect Only
 
-1. Verify repository identity, branch, and exact `LOG06B_INPUT_SHA`.
-2. Inspect only:
-   - the exact file/symbol named in `LOG06B_CORRECTION_BOUNDARY`;
-   - the directly relevant focused LOG-06 test(s);
-   - the minimum interface context needed to make the correction safely.
-3. Implement the smallest deterministic correction that resolves `LOG06B_DEFECT`.
-4. Add or adjust only the focused test coverage necessary to prove that correction.
-5. Run only:
+1. Verify repository identity, required branch, and exact input SHA.
+2. Inspect `sanitizeDiagnosticText` and the directly relevant focused privacy test(s).
+3. Extend the existing diagnostic text sanitizer only far enough to redact request-body assignments in diagnostic strings. Cover the naming forms actually used or reasonably represented by the existing sanitizer/test conventions, including `requestBody=` and request-body equivalents if the sanitizer already supports normalized variants.
+4. Preserve the frozen diagnostic event schema, field meanings, ordering, and every synchronization/Drive/auth/state/recovery behavior.
+5. Do not modify `diagnostic-bundle.ts` unless the correction cannot be made at the identified sanitizer boundary; if that occurs, stop instead of broadening scope.
+6. Add or adjust only the focused regression necessary to prove the sentinel request-body value is absent while ordinary safe diagnostic text remains intact.
+7. Run only:
    - `npm run typecheck`;
-   - the focused LOG-06 test file(s) directly affected by the correction;
-   - `git diff --check` for the correction delta.
-6. Commit and push the corrected implementation to the existing LOG-06 branch.
-7. Return the exact new implementation SHA and stop.
+   - the directly affected focused diagnostic/LOG-06 test file(s);
+   - `git diff --check 0da6562bde442c2a6dc1f7a5df39ece7806e99ba..<NEW_IMPLEMENTATION_SHA>` after committing, or the equivalent correction-delta check before commit.
+8. Commit and push the correction to the existing LOG-06 branch.
+9. Return the exact new implementation SHA and stop.
 
-If the correction requires a second independent defect repair, stop and report that dependency. Do not absorb it into this task.
+If this requires any independent defect repair, stop and report it. Do not absorb it into this task.
 
 ---
 
 ## 3. Scope Protection
 
-Permitted changes:
+Expected production change:
 
-- only files necessary for the bound correction;
-- only focused LOG-06 tests necessary to prove it.
+- `src/diagnostics/diagnostic-logger.ts`
+
+Permitted additional change:
+
+- only the directly relevant focused test file(s) necessary to prove this redaction defect.
 
 Protected behavior:
 
@@ -84,6 +88,7 @@ Protected behavior:
 - retry/authentication behavior;
 - authority/state/CAS/recovery semantics;
 - approved LOG-01/02/03/04/05 event meanings;
+- LOG-06 bundle schema and operator feature set;
 - release/version packaging.
 
 Do not redesign the diagnostic bundle or broaden the feature set.
@@ -95,7 +100,7 @@ Do not redesign the diagnostic bundle or broaden the feature set.
 Do **not** run:
 
 - the complete `npm test` suite;
-- `npm run build` unless the bound correction specifically affects bundling/buildability and the supervisor explicitly adds that requirement;
+- `npm run build`;
 - release workflows;
 - live synchronization;
 - Drive access.
@@ -111,6 +116,7 @@ Do not:
 - restart LOG-06 from the frozen base;
 - rewrite already-correct LOG-06 work;
 - fix unbound defects;
+- alter the diagnostic schema or event semantics;
 - modify CI merely to obtain logs;
 - create the final LOG-06 evidence file;
 - merge PR #76;
@@ -129,14 +135,14 @@ Return exactly:
 `COMPLETE | BLOCKED | FAILED`
 
 ### PROVENANCE
-- Input SHA: `<LOG06B_INPUT_SHA>`
+- Input SHA: `0da6562bde442c2a6dc1f7a5df39ece7806e99ba`
 - Branch: `phase6-logging-log06-diagnostic-bundle-operator-surface`
 - New implementation SHA: `<sha or N/A>`
 
 ### CORRECTION
-- Defect: `<bound defect>`
+- Defect: `request-body assignment text could survive sanitizeDiagnosticText and enter structuredTrace`
 - Files changed: `<complete correction file list>`
-- Scope note: `<one sentence confirming only the bound defect was addressed>`
+- Scope note: `<one sentence confirming only the bound sanitizer defect was addressed>`
 
 ### VERIFICATION
 - Focused tests: `<count>/<count> PASS | FAIL | NOT RUN>`
