@@ -2,6 +2,7 @@
 
 ## 0. Session Identity
 
+- Agent-Name: `agt-ca-p6-log01-observability-contract-foundation-01`
 - Build-session ID: `P6-LOGGING-INSTRUMENTATION-01`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Integration target: `phase6-integration`

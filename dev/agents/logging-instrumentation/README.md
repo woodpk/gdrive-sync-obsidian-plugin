@@ -4,7 +4,9 @@
 
 This directory contains the complete mixed-temporal build-session package for Phase 6 logging instrumentation.
 
-Run the work packages in the order and wave structure below. Do not advance merely because one agent finishes. Every required predecessor review, exact-SHA binding, integration step, and gate must complete before the next dependent wave begins.
+Run the work packages in the order and wave structure below. Do not advance merely because one agent finishes. Every
+required predecessor review, exact-SHA binding, integration step, and gate must complete before the next dependent wave
+begins.
 
 The governing orchestration contract is:
 
@@ -14,17 +16,24 @@ Read that file before issuing any agent prompt.
 
 ## Execution Order
 
-| Wave | Mode | Prompt(s) | Execution rule |
-| :---- | :---- | :---- | :---- |
-| `W0` | Serial | `01-observability-contract-foundation.md` | Run first. Review and approve the result. Freeze the exact approved `LOG-01` SHA before continuing. |
-| `W1` | Parallel | `02-google-http-transport-tracing.md`  
-`04-sync-execution-durable-effect-tracing.md`  
-`05-authority-state-recovery-tracing.md` | Bind all three prompts to the same exact supervisor-approved `LOG-01` SHA, then run them concurrently if desired. Review each result independently. |
-| `W1 Integration Gate` | Serial supervisory integration | No separate agent prompt in this directory | Integrate only the approved `LOG-02`, `LOG-04`, and `LOG-05` outputs into the authorized integration state. Run integrated verification and freeze the exact approved integrated SHA. |
-| `W2` | Serial | `03-google-drive-semantic-operation-tracing.md` | Bind to the exact approved W1 integrated SHA. Run, review, and approve before continuing. |
-| `W3` | Serial | `06-diagnostic-bundle-operator-surface.md` | Bind to the exact supervisor-approved `LOG-03` output/integrated observability SHA. Run, review, and approve before continuing. |
-| `W4` | Serial verification | `07-end-to-end-observability-verification.md` | Bind to the exact supervisor-approved `LOG-06` SHA. Run only after the complete implementation is stable. |
-| `Final Gate` | Serial supervisory gate | No agent prompt | Reconcile `LOG-07` evidence, integrated repository state, required tests/builds, and all session prohibitions before issuing the final session verdict. |
+| Wave                             | Mode                             | Prompt(s)                                       | Execution rule                                                                                                                                                                         |
+|----------------------------------|----------------------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `W0`                             | Serial                           | `01-observability-contract-foundation.md`       | Run first. Review and approve the result. Freeze the exact approved `LOG-01` SHA before continuing.                                                                                    |
+| -------------------------------- | -------------------------------- | --------------------------------                | --------------------------------                                                                                                                                                       |
+| `W1`                             | Parallel                         | `02-google-http-transport-tracing.md`           | Bind all three prompts to the same exact supervisor-approved `LOG-01` SHA, then run them concurrently if desired. Review each result independently.                                    |
+|                                  |                                  | `04-sync-execution-durable-effect-tracing.md`   |                                                                                                                                                                                        |
+|                                  |                                  | `05-authority-state-recovery-tracing.md`        |                                                                                                                                                                                        |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `W1 Integration Gate`            | Serial supervisor integration    | No separate agent prompt in this directory      | Integrate only the approved `LOG-02`, `LOG-04`, and `LOG-05` outputs into the authorized integration state. Run integrated verification and freeze the exact approved integrated SHA.  |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `W2`                             | Serial                           | `03-google-drive-semantic-operation-tracing.md` | Bind to the exact approved W1 integrated SHA. Run, review, and approve before continuing.                                                                                              |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `W3`                             | Serial                           | `06-diagnostic-bundle-operator-surface.md`      | Bind to the exact supervisor-approved `LOG-03` output/integrated observability SHA. Run, review, and approve before continuing.                                                        |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `W4`                             | Serial verification              | `07-end-to-end-observability-verification.md`   | Bind to the exact supervisor-approved `LOG-06` SHA. Run only after the complete implementation is stable.                                                                              |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Final Gate`                     | Serial supervisory gate          | No agent prompt                                 | Reconcile `LOG-07` evidence, integrated repository state, required tests/builds, and all session prohibitions before issuing the final session verdict.                                |
+| -------------------------------- | -------------------------------- | --------------------------------                | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
 ## Dependency Graph
 
@@ -38,7 +47,8 @@ LOG-01
 
 ## Prompt Maturity and SHA Binding
 
-`LOG-01` is the foundation work package. Later prompts may exist in this directory before their exact predecessor SHAs exist, but they remain preplanned / not-yet-executable until every execution-critical deferred binding is resolved.
+`LOG-01` is the foundation work package. Later prompts may exist in this directory before their exact predecessor SHAs
+exist, but they remain preplanned / not-yet-executable until every execution-critical deferred binding is resolved.
 
 Before issuing any downstream prompt:
 
@@ -46,7 +56,8 @@ Before issuing any downstream prompt:
 2. obtain the exact supervisor-approved predecessor SHA or integrated SHA required by that prompt;
 3. bind that exact value into the prompt or otherwise supply it authoritatively as the prompt requires;
 4. verify that no other prompt assumptions have become stale;
-5. prohibit substitution of a branch tip, newer `main`, later `phase6-integration`, approximate commit, or guessed value;
+5. prohibit substitution of a branch tip, newer `main`, later `phase6-integration`, approximate commit, or guessed
+   value;
 6. only then authorize execution.
 
 ## Review and Integration Rules
@@ -56,7 +67,8 @@ Before issuing any downstream prompt:
 - Local success of any W1 agent is provisional; it is not session approval.
 - All three approved W1 outputs must be integrated and verified before `LOG-03` begins.
 - `LOG-03`, `LOG-06`, and `LOG-07` are serial successors and must not overlap their predecessor gates.
-- No agent may auto-continue into another prompt, later wave, integration, release, live validation, B01 rerun, or other Phase 6 work.
+- No agent may auto-continue into another prompt, later wave, integration, release, live validation, B01 rerun, or other
+  Phase 6 work.
 - The supervisor remains the integration and approval authority unless a later explicit task changes that ownership.
 
 ## File Order
@@ -76,6 +88,8 @@ Use the files in this directory as follows:
 
 ## Hard Ordering Rule
 
-A later wave may begin only when the complete predecessor condition defined by `00-logging-instrumentation-session-orchestration.md` has passed and the required exact execution input has been bound.
+A later wave may begin only when the complete predecessor condition defined by
+`00-logging-instrumentation-session-orchestration.md` has passed and the required exact execution input has been bound.
 
-Do not infer authorization from file numbering, agent completion, branch availability, or a passing local test suite alone.
+Do not infer authorization from file numbering, agent completion, branch availability, or a passing local test suite
+alone.

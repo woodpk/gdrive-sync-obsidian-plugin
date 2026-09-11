@@ -1,0 +1,21 @@
+# B01 Watcher Health Gate
+
+- Approved repair branch: `codex/phase6-windows-watcher-compat-repair-r2`
+- Approved repair HEAD: `4622ac5523c29fc140db962cdd47f3b910cf7648`
+- Approved watcher Git blob: `e4a8fb1ba969799c83393e9d0f805e7a269502b1`
+- Disposable watcher copy Git blob: `e4a8fb1ba969799c83393e9d0f805e7a269502b1`
+- Disposable watcher copy SHA-256: `ef1af9730db24ff5e7992fdd30005dc2ff972c4ff7f0dad4c625e0ddd8d68939`
+- Runtime: Windows PowerShell 5.1 Desktop
+- Validation root: the live BRAIN vault
+- Plugin-state monitoring: size/SHA-256 only
+- Watcher started before any fixture mutation.
+- Watcher remained alive with no console output or exception during its health check.
+- Resource telemetry advanced and reported 4 responsive Obsidian processes.
+- Resource samples captured: 140
+- Watcher stop-flag exit code: 0
+- Watcher console output/exceptions: none
+- Surviving watcher processes: 0
+- Vault filesystem events during the bounded window: 0; no filesystem log was created because no vault mutation occurred.
+- Plugin-state events during the watcher window: 0; the pre-start bookkeeping write preceded watcher startup.
+- No degraded monitoring fallback was used.
+- No fixture mutation was subsequently performed.
