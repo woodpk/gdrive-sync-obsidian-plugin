@@ -213,7 +213,7 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "batchId", "changeCount", "verificationEvidenceRef",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
-const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
+const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|request[_ -]?body|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
 const AUTHORIZATION_HEADER = /\bAuthorization\s*:\s*(?:(?:Bearer|Basic)\s+)?[^\s,;]+/gi;
 const OAUTH_QUERY_VALUE = /([?&](?:code|state|code_challenge|code_verifier|access_token|refresh_token)=)[^&#\s]+/gi;
 const BEARER_TOKEN = /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi;
