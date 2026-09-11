@@ -45,7 +45,7 @@ const ok = (body: unknown, status = 200, headers: Record<string, string> = {}) =
   ok: true,
   value: new Response(body === undefined ? undefined : JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } }),
 } as DriveResult<Response>);
-const failure = (kind: "not-found" | "transient-failure" | "conflict", detail = kind) => Promise.resolve({ ok: false, signal: { kind, detail } } as DriveResult<Response>);
+const failure = (kind: "not-found" | "transient-failure" | "conflict", detail: string = kind) => Promise.resolve({ ok: false, signal: { kind, detail } } as DriveResult<Response>);
 const id = (value: string) => contractId<"RemoteObjectId">(value) as RemoteObjectId;
 const path = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const intent = (value: string) => contractId<"MutationIntentId">(value) as MutationIntentId;
