@@ -6,7 +6,7 @@
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Work package: `LOG-06`
 - Task classification: `INTEGRATION / IMPLEMENTATION`
-- Prompt maturity: `PREPLANNED / NOT-YET-EXECUTABLE`
+- Prompt maturity: `EXECUTION-READY`
 
 Assignment:
 
@@ -14,9 +14,9 @@ Assignment:
 
 ## 1. Base / Drift Gate
 
-Deferred execution-critical binding:
+Frozen supervisor-approved integrated LOG-03 base:
 
-`LOG06_BASE_SHA = <deferred: exact supervisor-approved LOG-03 output SHA>`
+`LOG06_BASE_SHA = 8cb7f02930c58313c8ad6f2e25537a7d5b231a57`
 
 Required semantic predecessor state:
 
@@ -30,7 +30,7 @@ Required branch:
 
 `phase6-logging-log06-diagnostic-bundle-operator-surface`
 
-Binding authority: supervisor only. Execution is prohibited until the exact approved LOG-03 SHA is supplied.
+Binding authority: supervisor only. LOG-06 execution is authorized from exactly `8cb7f02930c58313c8ad6f2e25537a7d5b231a57`.
 
 Before editing:
 
@@ -40,7 +40,7 @@ Before editing:
 4. Inspect `src/main.ts`, `src/diagnostics/diagnostic-logger.ts`, `src/diagnostics/share-export.ts`, `src/product/runtime.ts`, `src/product/plugin-data.ts`, audit/attention read APIs, and focused export tests.
 5. Inspect the exact current synchronization-state/audit/attention shapes before designing their safe bundle projection.
 
-Do not substitute a later branch tip or approximate predecessor. Stop if integrated observability is incomplete or incompatible.
+Do not substitute a later branch tip or approximate predecessor. The commit that publishes this prompt binding is supervisory metadata, not the implementation base. Stop if integrated observability is incomplete or incompatible.
 
 ## 2. Governing Authority
 
