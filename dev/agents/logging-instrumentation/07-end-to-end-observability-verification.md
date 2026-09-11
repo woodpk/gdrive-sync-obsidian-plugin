@@ -6,7 +6,7 @@
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Work package: `LOG-07`
 - Task classification: `INDEPENDENT VERIFICATION`
-- Prompt maturity: `PREPLANNED / NOT-YET-EXECUTABLE`
+- Prompt maturity: `EXECUTION-READY`
 
 Assignment:
 
@@ -16,9 +16,9 @@ The verification target is observability fidelity and integration, not correctio
 
 ## 1. Base / Drift Gate
 
-Deferred execution-critical binding:
+Execution-critical binding:
 
-`LOG07_BASE_SHA = <deferred: exact supervisor-approved LOG-06 output SHA>`
+`LOG07_BASE_SHA = 503a8f4119cda047b68d7548aff08f3f94f1e616`
 
 Required semantic predecessor state:
 
@@ -30,7 +30,9 @@ Required branch:
 
 `phase6-logging-log07-end-to-end-observability-verification`
 
-Binding authority: supervisor only. Execution is prohibited until the exact approved LOG-06 SHA is supplied.
+Binding authority: supervisor only. LOG-07 execution is authorized from exactly `503a8f4119cda047b68d7548aff08f3f94f1e616`.
+
+The commit that publishes this bound prompt is supervisory metadata, not implementation provenance. Create the LOG-07 branch from exactly `LOG07_BASE_SHA`, not from the later prompt-publication commit or a moving branch tip.
 
 Before verification:
 
@@ -264,7 +266,7 @@ Evidence is not supervisory approval.
 
 Stop and report if:
 
-- deferred base is unresolved/mismatched;
+- bound base is unresolved/mismatched;
 - production state differs materially from the approved LOG-06 input;
 - a required causal fact is absent from the serialized bundle;
 - a privacy leak is observed;
