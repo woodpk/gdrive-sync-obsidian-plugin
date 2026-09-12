@@ -130,6 +130,7 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
     const method = (init?.method ?? "GET").toUpperCase();
     requests.push(`${method} ${url}`);
     const decoded = normalize(url);
+    if (url.includes("/about?")) return jsonResponse({ user: { permissionId: "permission:log07" } });
     if (url.includes("/files/generateIds?")) return jsonResponse({ ids: ["cand"] });
     if (url === "https://upload.example/session") { uploaded = true; return jsonResponse(candidate()); }
     if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) return jsonResponse({}, 200, { location: "https://upload.example/session" });
@@ -213,6 +214,10 @@ async function productionUpdateWorld() {
   };
   assert.equal((await raw.saveTrusted(initial)).status, "saved");
   const driveWorld = await updateWorld("success", diagnostics);
+  const pairing = await driveWorld.adapter.pairManagedRoot(executionRemote.rootId, executionVault);
+  assert.equal(pairing.ok, true);
+  if (!pairing.ok) throw new Error("S1 production pairing failed");
+  assert.equal(pairing.value.status, "valid");
   const local = {
     observe: async (path: VaultPath) => ({ status: "present", side: "local", path, entityKind: "file", content: intended, stability: "stable", observationToken: localToken }),
     readFile: async () => ({ content: bytes, evidence: intended }),
