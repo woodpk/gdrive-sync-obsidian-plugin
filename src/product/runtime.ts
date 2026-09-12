@@ -4,6 +4,7 @@ import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
+import { renderDiagnosticBundle, type DiagnosticBundleBuildIdentity } from "../diagnostics/diagnostic-bundle";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { instrumentAuthorizationBrowserLauncher } from "../diagnostics/oauth-diagnostics";
 import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompletion } from "../drive/auth";
@@ -330,6 +331,29 @@ export class ProductRuntime {
   async exportDiagnosticStateText(): Promise<string> {
     if (!this.state) return JSON.stringify({ status: "unavailable", reason: "synchronization state is not initialized" });
     return new TextDecoder().decode(await this.state.exportDiagnosticState());
+  }
+
+  async exportDiagnosticBundleText(identity: DiagnosticBundleBuildIdentity, generatedAt = new Date()): Promise<string> {
+    const diagnostics = this.host.diagnostics;
+    if (!diagnostics) throw new Error("diagnostic logger is unavailable");
+    const authorityLoad = this.state ? await this.state.loadAuthority() : { status: "unavailable" as const };
+    const audit = this.audit ? await this.audit.read() : await this.host.data.load();
+    const attention = this.attention ? await this.attention.all() : [];
+    return renderDiagnosticBundle({
+      identity,
+      generatedAt,
+      settings: this.host.settings(),
+      readiness: {
+        productControllerReady: Boolean(this.controller),
+        stateAuthorityReady: Boolean(this.state),
+        auditHistoryReady: true,
+        attentionLedgerReady: Boolean(this.attention),
+      },
+      authorityLoad,
+      audit,
+      attention,
+      diagnostics,
+    });
   }
 
   async readSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return this.attention?.current() ?? []; }

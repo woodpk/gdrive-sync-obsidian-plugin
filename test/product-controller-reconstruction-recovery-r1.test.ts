@@ -10,6 +10,11 @@ import {
   type StateLoadContext,
   type StateRevision,
 } from "../src/contracts";
+import {
+  DiagnosticLogger,
+  type DiagnosticPersistence,
+  type DiagnosticStoreState,
+} from "../src/diagnostics/diagnostic-logger";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
@@ -31,6 +36,12 @@ const managedRemote: ManagedRemoteIdentity = {
 };
 const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
 const lease = { tryAcquire: async () => ({ release: async () => undefined }) } as never;
+
+class MemoryDiagnostics implements DiagnosticPersistence {
+  state?: DiagnosticStoreState;
+  async loadDiagnostics(): Promise<unknown> { return this.state; }
+  async saveDiagnostics(state: DiagnosticStoreState): Promise<void> { this.state = structuredClone(state); }
+}
 
 function trackingAuthority(store: SynchronizationStateAuthorityAdapter) {
   let loads = 0;
@@ -81,6 +92,14 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
   const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
   const store = new SynchronizationStateAuthorityAdapter(raw);
   const tracked = trackingAuthority(store);
+  const diagnostics = new DiagnosticLogger({
+    persistence: new MemoryDiagnostics(),
+    level: "trace",
+    retentionLimit: 200,
+    consoleMirror: false,
+    platform: "desktop",
+  });
+  await diagnostics.initialize();
   let controller!: ProductController;
   let plannerCalls = 0;
   let assemblyCalls = 0;
@@ -129,6 +148,7 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
     holderId: "c1-r1",
     recoveryActive: () => true,
+    diagnostics,
   });
 
   assert.equal((await store.load(context)).status, "recovery-required");
@@ -164,4 +184,16 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
   if (after.status !== "trusted") throw new Error("trusted authority required after recovery");
   assert.equal(after.state.operationIntents.length, 0, "outstanding unattempted intent is recovered/retired before the later reconstruction plan");
   assert.ok(assemblyCalls >= 3, "changed durable recovery must refresh reconstruction assembly before planning");
+
+  const recoveryEvents = diagnostics.snapshot().filter(event => event.component === "recovery.durable");
+  for (const expected of [
+    "outstanding-recovery-preverification-entry",
+    "recovery-intent-selected",
+    "recovery-authority-generation",
+    "recovery-intent-validation-succeeded",
+    "recovery-unattempted-intent-retirement",
+    "outstanding-recovery-final-result",
+  ]) {
+    assert.ok(recoveryEvents.some(event => event.event === expected), `${expected} must be emitted through ProductController production recovery composition`);
+  }
 });

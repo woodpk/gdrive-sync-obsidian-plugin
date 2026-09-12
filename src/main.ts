@@ -85,6 +85,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
     this.addCommand({ id: "copy-sync-diagnostics", name: "Copy synchronization diagnostics", callback: () => void this.copyDiagnostics() });
     this.addCommand({ id: "copy-device-diagnostic-log", name: "Copy device diagnostic log", callback: () => void this.copyDiagnosticLog() });
+    this.addCommand({ id: "copy-diagnostic-bundle", name: "Copy diagnostic bundle", callback: () => void this.copyDiagnosticBundle() });
 
     try {
       await this.runtime.initialize();
@@ -298,6 +299,29 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       await globalThis.navigator.clipboard.writeText(text);
       new Notice("BRAIN synchronization diagnostic state copied. It contains metadata only, not OAuth secrets or vault content.");
     } catch (error) { this.noticeError("Diagnostics could not be copied", error); }
+  }
+  private async copyDiagnosticBundle(): Promise<void> {
+    try {
+      if (!this.runtime) throw new Error("synchronization runtime is unavailable");
+      const text = await this.runtime.exportDiagnosticBundleText({
+        pluginId: this.manifest.id,
+        pluginVersion: this.manifest.version,
+        platform: Platform.isMobileApp ? "mobile" : Platform.isDesktopApp ? "desktop" : "unknown",
+        runtime: "obsidian",
+      });
+      await copyDiagnosticLogText(text);
+      new Notice("Diagnostic bundle copied. It contains bounded sanitized metadata and structured trace evidence only.");
+    } catch (error) {
+      this.diagnostics?.failure("diagnostics.bundle", "diagnostic-bundle-copy-failed", error, {
+        operation: "copy-diagnostic-bundle",
+        stage: "clipboard-export",
+        classification: "diagnostic-bundle-export-failure",
+        retryable: true,
+        recoveryIntended: false,
+        runtimeInitialized: Boolean(this.runtime),
+      });
+      this.noticeError("Diagnostic bundle could not be copied", error);
+    }
   }
   private async copyLastOAuthDiagnostic(): Promise<void> {
     try {
