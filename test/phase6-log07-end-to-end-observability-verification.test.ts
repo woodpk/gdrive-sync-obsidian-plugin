@@ -242,7 +242,7 @@ test("LOG-07 scenario 1: one serialized bundle spans execution IDs, Drive semant
   const world = await updateWorld("success", diagnostics);
   assert.equal((await world.run()).status, "verified-effect");
   emit(diagnosticOperation(), "sync.effect", "physical-result-classified", { intentId: String(intentId), effectId, result: "verified-effect", toStage: "effect-verified" });
-  composed.logger.syncTrace("state.commit", "state-commit-complete", runId, { planId: String(planId), operationId: String(operationId), intentId: String(intentId), effectId, result: "saved" });
+  wrapped.executionLifecycleObserver?.(diagnosticOperation(), "state-commit-complete", "saved");
   emit(diagnosticOperation(), "sync.effect", "durable-finalization-complete", { intentId: String(intentId), effectId, fromStage: "effect-verified", toStage: "state-committed", result: "saved" });
   wrapped.executionLifecycleObserver?.(diagnosticOperation(), "operation-complete", "committed");
   const text = await makeBundle(diagnostics);
