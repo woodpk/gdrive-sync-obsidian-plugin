@@ -5,6 +5,7 @@ import {
   contractId,
   type BinaryContentSource,
   type MutationIntentId,
+  type ObservationToken,
   type SemanticStateGeneration,
   type StateLoadContext,
   type StateRevision,
@@ -18,7 +19,6 @@ import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
 import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
 import { GoogleHttpTransport } from "../src/drive/transport";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { authoritativeDiagnostics, executionDiagnosticEmitterFor, withExecutionLifecycleObserver } from "../src/product/authority-execution-diagnostics";
 import { DEFAULT_SETTINGS } from "../src/product/plugin-data";
 import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
@@ -36,9 +36,9 @@ const targetPath = cid<"VaultPath">(rawPath) as VaultPath;
 const generation = cid<"SemanticStateGeneration">("generation:log07:1") as SemanticStateGeneration;
 const operationId = cid<"OperationId">("op:log07:update");
 const intentId = cid<"MutationIntentId">(`intent:${String(operationId)}`) as MutationIntentId;
-const effectId = `effect:${String(operationId)}:remote-file`;
 const planId = cid<"PlanId">("plan:log07:update");
 const intended = { algorithm: "sha256" as const, hash: cid<"ContentHash">("sha256:abc"), sizeBytes: 4 };
+const predecessorEvidence = { hash: cid<"ContentHash">("sha256:old"), sizeBytes: 3, revision: "old-revision" };
 const bytes: BinaryContentSource = { sizeBytes: 4, async *openChunks() { yield new Uint8Array([1, 2, 3, 4]); } };
 const folderMime = "application/vnd.google-apps.folder";
 
@@ -107,7 +107,7 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 const errorResponse = (status: number, reason: string) => jsonResponse({ error: { errors: [{ reason }] } }, status);
 const normalize = (url: string) => decodeURIComponent(url).replace(/\+/g, " ");
 
-type UpdateScenario = "success" | "candidate-missing" | "retirement-ambiguous" | "post-list-stale" | "third-candidate";
+type UpdateScenario = "success" | "candidate-direct-only" | "retirement-ambiguous" | "post-list-stale" | "third-candidate";
 function updateIdentity() {
   return {
     kind: "existing-file-content-update",
@@ -122,7 +122,7 @@ function updateIdentity() {
   } as never;
 }
 async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLogger) {
-  let candidateGets = 0;
+  let uploaded = false;
   let retired = false;
   let patchCalls = 0;
   const requests: string[] = [];
@@ -131,7 +131,8 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
     const method = (init?.method ?? "GET").toUpperCase();
     requests.push(`${method} ${url}`);
     const decoded = normalize(url);
-    if (url === "https://upload.example/session") return jsonResponse(candidate());
+    if (url.includes("/files/generateIds?")) return jsonResponse({ ids: ["cand"] });
+    if (url === "https://upload.example/session") { uploaded = true; return jsonResponse(candidate()); }
     if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) return jsonResponse({}, 200, { location: "https://upload.example/session" });
     if (url.includes("/files/pred?")) {
       if (method === "PATCH") {
@@ -141,10 +142,7 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
       }
       return jsonResponse(predecessor(retired));
     }
-    if (url.includes("/files/cand?")) {
-      candidateGets += 1;
-      return candidateGets === 1 ? errorResponse(404, "notFound") : jsonResponse(candidate());
-    }
+    if (url.includes("/files/cand?")) return uploaded ? jsonResponse(candidate()) : errorResponse(404, "notFound");
     if (url.includes("/files/private?")) return jsonResponse(privateFolder());
     if (url.includes("/files/content?")) return jsonResponse(contentRoot());
     if (url.includes("/files/config?")) return jsonResponse(configRoot());
@@ -154,7 +152,7 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
     if (decoded.includes("'content' in parents") && decoded.includes("name='private'")) return jsonResponse({ files: [privateFolder()] });
     if (decoded.includes("'private' in parents") && decoded.includes("name='PRIVATE-target.md'")) {
       if (!retired) {
-        if (scenario === "candidate-missing") return jsonResponse({ files: [predecessor(false)] });
+        if (!uploaded || scenario === "candidate-direct-only") return jsonResponse({ files: [predecessor(false)] });
         if (scenario === "third-candidate") return jsonResponse({ files: [predecessor(false), candidate(), third()] });
         return jsonResponse({ files: [predecessor(false), candidate()] });
       }
@@ -166,11 +164,93 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
   const oauth = makeSession(backing, fetcher);
   const transport = new GoogleHttpTransport(oauth, fetcher, { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, maxConcurrency: 2 }, async () => undefined, () => 0, () => 0, diagnostics, () => requests.length);
   const adapter = new GoogleDriveAdapter(oauth, transport, new ObsidianSecretStore(backing), diagnostics);
-  return { requests, patchCalls: () => patchCalls, run: (cancellation?: { cancelled: boolean }) => adapter.updateExisting(updateIdentity(), bytes, cancellation as never) };
+  return { adapter, requests, patchCalls: () => patchCalls, run: (cancellation?: { cancelled: boolean }) => adapter.updateExisting(updateIdentity(), bytes, cancellation as never) };
 }
 
-function diagnosticOperation() {
-  return { operationId, kind: "upload-update", path: targetPath, targetSide: "remote", remoteObjectId: cid<"RemoteObjectId">("pred"), contentVersion: { path: targetPath, entityKind: "file", content: intended }, destructive: false, preconditions: [], reasons: [] } as never;
+const executionVault = cid<"VaultIdentity">("vault-log07") as VaultIdentity;
+const executionDevice = cid<"DeviceIdentity">("device:log07:execution");
+const executionContext: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: executionVault, expectedDeviceIdentity: executionDevice };
+const executionRemote: ManagedRemoteIdentity = { rootId: cid<"RemoteObjectId">("root"), vaultIdentity: executionVault, protocolVersion: cid<"ProtocolVersion">("1") };
+const localToken = cid<"ObservationToken">("obs:log07:local") as ObservationToken;
+const baseFingerprint = cid<"BaseFingerprint">("base:log07:predecessor");
+function plannedUpdateOperation() {
+  return {
+    operationId,
+    kind: "upload-update",
+    path: targetPath,
+    targetSide: "remote",
+    remoteObjectId: cid<"RemoteObjectId">("pred"),
+    contentVersion: { path: targetPath, entityKind: "file", content: intended, observationToken: localToken },
+    destructive: false,
+    preconditions: [
+      { kind: "base-trusted" },
+      { kind: "remote-enumeration-complete" },
+      { kind: "identity-unambiguous", path: targetPath },
+      { kind: "path-observation", side: "local", path: targetPath, expected: "present", observationToken: localToken },
+      { kind: "content-evidence", side: "local", path: targetPath, expected: intended },
+      { kind: "file-stable", path: targetPath },
+      { kind: "path-observation", side: "remote", path: targetPath, expected: "present" },
+      { kind: "content-evidence", side: "remote", path: targetPath, expected: predecessorEvidence },
+      { kind: "remote-object", remoteObjectId: cid<"RemoteObjectId">("pred"), expectedRevision: "old-revision" },
+    ],
+    reasons: [{ code: "local-modified", summary: "LOG-07 production remote-update verification." }],
+  } as never;
+}
+async function productionUpdateWorld() {
+  const diagnostics = await makeLogger();
+  const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage(), undefined, undefined, diagnostics);
+  const store = new SynchronizationStateAuthorityAdapter(raw, diagnostics);
+  const initial: DurableSynchronizationAuthorityState = {
+    ...createInitialAuthorityState({
+      persistenceRevision: cid<"PersistenceRevision">("persist:log07:1") as never,
+      semanticGeneration: generation,
+      vaultIdentity: executionVault,
+      deviceIdentity: executionDevice,
+    }),
+    base: [{ path: targetPath, entityKind: "file", localExisted: true, remoteExisted: true, remoteObjectId: cid<"RemoteObjectId">("pred"), content: predecessorEvidence }],
+    remoteMappings: [{ path: targetPath, remoteObjectId: cid<"RemoteObjectId">("pred"), entityKind: "file" }],
+    baseAuthority: [{ path: targetPath, fingerprint: baseFingerprint }],
+    pathConvergence: [{ path: targetPath, state: { status: "converged", generation, baseFingerprint } }],
+  };
+  assert.equal((await raw.saveTrusted(initial)).status, "saved");
+  const driveWorld = await updateWorld("success", diagnostics);
+  const local = {
+    observe: async (path: VaultPath) => ({ status: "present", side: "local", path, entityKind: "file", content: intended, stability: "stable", observationToken: localToken }),
+    readFile: async () => ({ content: bytes, evidence: intended }),
+    validatePath: async () => ({ status: "valid" }),
+  } as never;
+  let controller!: ProductController;
+  const executor = new ProductSynchronizationExecutor(local, driveWorld.adapter, store, executionContext, () => controller.currentRunEvidence());
+  const assembled = async () => ({
+    input: { snapshots: [], state: await store.load(executionContext) },
+    managedRemote: executionRemote,
+    remoteEnumeration: { status: "complete" as const },
+    localEnumeration: { status: "complete" as const },
+    mode: "full" as const,
+  });
+  controller = new ProductController({
+    vaultIdentity: executionVault,
+    deviceIdentity: executionDevice,
+    stateContext: executionContext,
+    stateStore: store,
+    authorityStore: store,
+    snapshotAssembler: { assemble: assembled, assembleFull: assembled, assembleRecovery: assembled } as never,
+    executor,
+    reliableRemoteMutationPort: driveWorld.adapter,
+    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
+    plannerForTrigger: trigger => ({ plan: async () => ({ planId, trigger, operations: [plannedUpdateOperation()], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) } as never),
+    leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
+    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
+    holderId: "log07-s1",
+    recoveryActive: () => false,
+    diagnostics,
+  });
+  const runId = diagnostics.beginSyncRun("log07-s1-production");
+  const plan = await controller.previewManual(runId);
+  assert.ok(plan);
+  const action = await controller.requestPreviewAction({ kind: "execute-plan", planId: plan!.planId }, runId);
+  assert.equal(action.status, "accepted");
+  return { diagnostics, store, driveWorld };
 }
 
 const recoveryVault = cid<"VaultIdentity">("vault:log07:recovery") as VaultIdentity;
@@ -189,15 +269,14 @@ function outstandingIntent(intentGeneration: SemanticStateGeneration) {
     effects: [{ effectId: "effect:log07:recovery", stage: "intent-persisted", descriptor: { kind: "remote-file", targetSide: "remote", mutationKind: "create", targetPath: recoveryPath, intendedContent: proof, remoteMutation: { kind: "reserved-file-create", intentId: recoveryIntentId, reservedRemoteObjectId: cid<"RemoteObjectId">("remote:log07:reserved"), path: recoveryPath, intendedContent: proof } } }],
   } as never;
 }
-async function recoveryWorld(stale: boolean) {
-  const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
-  const store = new SynchronizationStateAuthorityAdapter(raw);
+async function recoveryWorld() {
   const diagnostics = await makeLogger();
+  const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage(), undefined, undefined, diagnostics);
+  const store = new SynchronizationStateAuthorityAdapter(raw, diagnostics);
   const current = cid<"SemanticStateGeneration">("semantic:log07:current") as SemanticStateGeneration;
-  const intentGeneration = stale ? cid<"SemanticStateGeneration">("semantic:log07:stale") as SemanticStateGeneration : current;
   const trusted: DurableSynchronizationAuthorityState = {
-    ...createInitialAuthorityState({ persistenceRevision: cid<"StateRevision">("persist:log07:1") as StateRevision, semanticGeneration: current, vaultIdentity: recoveryVault, deviceIdentity: recoveryDevice }),
-    operationIntents: [outstandingIntent(intentGeneration)],
+    ...createInitialAuthorityState({ persistenceRevision: cid<"PersistenceRevision">("persist:log07:1") as never, semanticGeneration: current, vaultIdentity: recoveryVault, deviceIdentity: recoveryDevice }),
+    operationIntents: [outstandingIntent(current)],
   };
   assert.equal((await raw.saveTrusted(trusted)).status, "saved");
   let controller!: ProductController;
@@ -225,47 +304,117 @@ async function recoveryWorld(stale: boolean) {
   try { await controller.previewVerifyReconcile(); } catch (error) { thrown = error; }
   return { store, diagnostics, thrown };
 }
-
-test("LOG-07 scenario 1: one serialized bundle spans execution IDs, Drive semantics, HTTP requests, durable effect, commit, and terminal result", async () => {
+async function generationAdvanceRecoveryWorld() {
   const diagnostics = await makeLogger();
-  const composed = authoritativeDiagnostics(diagnostics);
-  assert.ok(composed.logger && composed.observer);
-  const runId = diagnostics.beginSyncRun("log07-normal");
-  composed.logger.syncInfo("sync.controller", "execution-start", runId, { planId: String(planId), operationCount: 1 });
-  composed.logger.syncTrace("sync.execute", "operation-start", runId, { planId: String(planId), operationIndex: 1 });
-  const wrapped = withExecutionLifecycleObserver({ loadAuthority: async () => ({ status: "trusted", state: { persistenceRevision: "p1", semanticGeneration: generation, operationIntents: [], learnedRemoteBatches: [], learnedRemoteReductions: [], pathConvergence: [], localTransactions: [] } }), saveAuthority: async () => ({ status: "saved", persistenceRevision: "p2", semanticGeneration: generation }), commitBaseTransition: async () => ({ status: "saved", persistenceRevision: "p2", semanticGeneration: generation }) } as never, composed.observer);
-  wrapped.executionLifecycleObserver?.(diagnosticOperation(), "operation-start");
-  const emit = executionDiagnosticEmitterFor(wrapped);
-  assert.ok(emit);
-  emit(diagnosticOperation(), "sync.effect", "durable-intent-persistence-complete", { intentId: String(intentId), effectId, toStage: "intent-persisted", result: "saved" });
-  emit(diagnosticOperation(), "sync.effect", "physical-dispatch-start", { intentId: String(intentId), effectId, fromStage: "dispatch-authorized" });
-  const world = await updateWorld("success", diagnostics);
-  assert.equal((await world.run()).status, "verified-effect");
-  emit(diagnosticOperation(), "sync.effect", "physical-result-classified", { intentId: String(intentId), effectId, result: "verified-effect", toStage: "effect-verified" });
-  wrapped.executionLifecycleObserver?.(diagnosticOperation(), "state-commit-complete", "saved");
-  emit(diagnosticOperation(), "sync.effect", "durable-finalization-complete", { intentId: String(intentId), effectId, fromStage: "effect-verified", toStage: "state-committed", result: "saved" });
-  wrapped.executionLifecycleObserver?.(diagnosticOperation(), "operation-complete", "committed");
-  const text = await makeBundle(diagnostics);
+  const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage(), undefined, undefined, diagnostics);
+  const store = new SynchronizationStateAuthorityAdapter(raw, diagnostics);
+  const before = cid<"SemanticStateGeneration">("semantic:log07:generation:1") as SemanticStateGeneration;
+  const trusted: DurableSynchronizationAuthorityState = {
+    ...createInitialAuthorityState({ persistenceRevision: cid<"PersistenceRevision">("persist:log07:generation:1") as never, semanticGeneration: before, vaultIdentity: recoveryVault, deviceIdentity: recoveryDevice }),
+    changeCursor: cid<"ChangeCursor">("cursor:log07:before"),
+    operationIntents: [outstandingIntent(before)],
+  };
+  assert.equal((await raw.saveTrusted(trusted)).status, "saved");
+  const batch = {
+    checkpoint: {
+      batchId: cid<"RemoteIngestionBatchId">("remote-batch:log07:generation"),
+      startingToken: cid<"ChangeCursor">("cursor:log07:before"),
+      terminalStartToken: cid<"ChangeCursor">("cursor:log07:after"),
+      persistenceRevision: trusted.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [{ kind: "removed" as const, remoteObjectId: cid<"RemoteObjectId">("remote:log07:changed"), lastKnownPath: cid<"VaultPath">("changed-log07.md") }],
+  };
+  let controller!: ProductController;
+  const assembly = async () => ({
+    input: { snapshots: [], state: await store.load(recoveryContext) },
+    managedRemote: recoveryRemote,
+    remoteEnumeration: { status: "complete" as const },
+    mode: "incremental" as const,
+    remoteChangeBatch: batch,
+  });
+  const local = { observe: async (path: any) => ({ status: "absent", side: "local", path }) } as never;
+  const drive = { observe: async (_root: any, path: any) => ({ ok: true, value: { status: "absent", side: "remote", path } }), listForReconciliation: async () => ({ ok: true, value: { entries: [], completeness: { status: "complete" } } }) } as never;
+  const executor = new ProductSynchronizationExecutor(local, drive, store, recoveryContext, () => controller.currentRunEvidence());
+  controller = new ProductController({
+    vaultIdentity: recoveryVault,
+    deviceIdentity: recoveryDevice,
+    stateContext: recoveryContext,
+    stateStore: store,
+    authorityStore: store,
+    snapshotAssembler: { assemble: assembly, assembleFull: assembly, assembleRecovery: assembly } as never,
+    executor,
+    conflictResolver: { assess: async () => ({ kind: "none" }) } as never,
+    plannerForTrigger: trigger => ({ plan: async () => ({ planId: cid<"PlanId">("plan:log07:generation"), trigger, operations: [], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" }) } as never),
+    leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
+    audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
+    holderId: "log07-s7",
+    recoveryActive: () => false,
+    diagnostics,
+  });
+  let thrown: unknown;
+  try { await controller.previewManual(); } catch (error) { thrown = error; }
+  return { store, diagnostics, thrown, before };
+}
+
+test("LOG07-S1 production controller/executor/Drive composition proves remote-update lifecycle end to end", async () => {
+  const world = await productionUpdateWorld();
+  const authority = await world.store.loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status !== "trusted") throw new Error("trusted authority required");
+  const text = await makeBundle(world.diagnostics, authority);
   const records = events(text);
-  for (const expected of ["durable-intent-persistence-complete", "physical-dispatch-start", "drive-update-candidate-upload-dispatch", "google-http-request-started", "drive-update-predecessor-retirement-dispatch", "physical-result-classified", "state-commit-complete", "durable-finalization-complete", "operation-complete"]) assert.ok(records.some(value => value.event === expected), `${expected} missing`);
+  for (const expected of [
+    "operation-start",
+    "durable-intent-persistence-complete",
+    "physical-dispatch-start",
+    "drive-update-candidate-upload-dispatch",
+    "drive-update-candidate-verification",
+    "drive-update-predecessor-retirement-dispatch",
+    "drive-update-convergence",
+    "physical-result-classified",
+    "state-commit-complete",
+    "durable-finalization-complete",
+    "operation-complete",
+    "sync-run-complete",
+  ]) assert.ok(records.some(value => value.event === expected), `${expected} missing`);
+  assert.ok(records.some(v => v.event === "drive-update-candidate-verification" && v.fields?.candidateVerified === true));
+  assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "verified-effect" && v.fields?.reason === "candidate-sole-live-occupant"));
+  assert.ok(records.some(v => v.event === "state-commit-complete" && v.fields?.result === "committed"));
+  assert.ok(records.some(v => v.event === "durable-finalization-complete" && v.fields?.toStage === "state-committed"));
   const index = JSON.parse(text).causalIndex.runs[0];
-  assert.ok(index.planIds.includes(String(planId)) && index.operationIds.includes(String(operationId)) && index.intentIds.includes(String(intentId)) && index.requestIds.length > 0);
+  assert.ok(index.planIds.includes(String(planId)) && index.operationIds.includes(String(operationId)) && index.intentIds.length > 0 && index.requestIds.length > 0);
+  assert.equal(authority.state.operationIntents.length, 1);
+  assert.ok(authority.state.operationIntents[0]?.effects.every(effect => effect.stage === "state-committed"));
+  assert.ok(authority.state.base.some(entry => entry.path === targetPath && entry.remoteObjectId === cid<"RemoteObjectId">("cand")));
+  assert.equal(world.driveWorld.patchCalls(), 1);
   assert.equal(text.includes(rawPath), false);
 });
 
-test("LOG-07 scenarios 2-5: exact-ID/list divergence, ambiguous retirement, delayed path visibility, and third-candidate contamination remain distinct", async () => {
-  for (const scenario of ["candidate-missing", "retirement-ambiguous", "post-list-stale", "third-candidate"] as const) {
+test("LOG07-S2 candidate direct GET can diverge from path LIST without inventing retirement", async () => {
+  const diagnostics = await makeLogger();
+  diagnostics.beginSyncRun("log07-candidate-direct-only");
+  const world = await updateWorld("candidate-direct-only", diagnostics);
+  const result = await world.run();
+  const text = await makeBundle(diagnostics);
+  const records = events(text);
+  assert.equal(result.status, "conflict-preserved");
+  assert.equal(world.patchCalls(), 0);
+  assert.ok(records.some(v => v.event === "drive-exact-id-observation-result" && v.fields?.stage === "candidate-after-upload" && v.fields?.result === "present"));
+  assert.ok(records.some(v => v.event === "drive-update-topology-observed" && v.fields?.stage === "pre-retirement" && v.fields?.occupancyCount === 1));
+  assert.ok(records.some(v => v.event === "drive-update-retirement-branch" && v.fields?.result === "retirement-not-reached" && v.fields?.reason === "candidate-not-listed-at-logical-path"));
+  assert.equal(records.some(v => v.event === "drive-update-predecessor-retirement-dispatch"), false);
+  assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "conflict-preserved"));
+});
+
+test("LOG07-S3/S4/S5 ambiguous retirement, delayed path visibility, and third-candidate contamination remain distinct", async () => {
+  for (const scenario of ["retirement-ambiguous", "post-list-stale", "third-candidate"] as const) {
     const diagnostics = await makeLogger();
     diagnostics.beginSyncRun(`log07-${scenario}`);
     const world = await updateWorld(scenario, diagnostics);
     const result = await world.run();
     const records = events(await makeBundle(diagnostics));
-    if (scenario === "candidate-missing") {
-      assert.equal(result.status, "conflict-preserved");
-      assert.equal(world.patchCalls(), 0);
-      assert.ok(records.some(v => v.event === "drive-exact-id-observation-result" && v.fields?.stage === "candidate-after-upload" && v.fields?.result === "present"));
-      assert.ok(records.some(v => v.event === "drive-update-topology-observed" && v.fields?.stage === "pre-retirement" && v.fields?.occupancyCount === 1));
-    } else if (scenario === "retirement-ambiguous") {
+    if (scenario === "retirement-ambiguous") {
       assert.equal(result.status, "verified-effect");
       assert.equal(world.patchCalls(), 1);
       assert.ok(records.some(v => v.event === "drive-update-predecessor-retirement-dispatch" && v.fields?.result === "transport-failure"));
@@ -283,8 +432,8 @@ test("LOG-07 scenarios 2-5: exact-ID/list divergence, ambiguous retirement, dela
   }
 });
 
-test("LOG-07 scenario 6: repaired production controller exports outstanding-intent recovery lifecycle", async () => {
-  const world = await recoveryWorld(false);
+test("LOG07-S6 repaired production controller exports outstanding-intent recovery lifecycle", async () => {
+  const world = await recoveryWorld();
   assert.equal(world.thrown, undefined);
   const authority = await world.store.loadAuthority();
   assert.equal(authority.status, "trusted");
@@ -294,16 +443,26 @@ test("LOG-07 scenario 6: repaired production controller exports outstanding-inte
   for (const expected of ["outstanding-recovery-preverification-entry", "recovery-intent-selected", "recovery-authority-generation", "recovery-intent-validation-succeeded", "recovery-unattempted-intent-retirement", "outstanding-recovery-final-result"]) assert.ok(records.some(v => v.event === expected), `${expected} missing`);
 });
 
-test("LOG-07 scenario 7: stale semantic generation is explicitly rejected in the exported recovery trace", async () => {
-  const world = await recoveryWorld(true);
+test("LOG07-S7 remote-change learning advances generation before durable recovery rejects the prior-generation intent", async () => {
+  const world = await generationAdvanceRecoveryWorld();
   assert.ok(world.thrown);
-  const records = events(await makeBundle(world.diagnostics, await world.store.loadAuthority()));
-  assert.ok(records.some(v => v.event === "recovery-authority-generation"));
-  assert.ok(records.some(v => v.event === "recovery-intent-validation-failed" && String(v.fields?.reason).includes("stale semantic generation")));
-  assert.ok(records.some(v => v.event === "outstanding-recovery-final-result" && v.fields?.result === "recovery-required"));
+  const authority = await world.store.loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status !== "trusted") throw new Error("trusted authority required");
+  assert.notEqual(authority.state.semanticGeneration, world.before);
+  assert.equal(authority.state.operationIntents.length, 1);
+  assert.equal(authority.state.operationIntents[0]?.semanticAuthority.generation, world.before);
+  assert.equal(authority.state.learnedRemoteBatches.length, 1);
+  const text = await makeBundle(world.diagnostics, authority);
+  const records = events(text);
+  assert.ok(records.some(v => v.event === "adapter-semantic-generation-before" && v.fields?.semanticGeneration === String(world.before)));
+  assert.ok(records.some(v => v.event === "adapter-semantic-generation-after" && v.fields?.semanticGeneration !== String(world.before)));
+  assert.ok(records.some(v => v.event === "remote-update-preverification-entry" && v.fields?.semanticGeneration === String(authority.state.semanticGeneration)));
+  assert.ok(records.some(v => v.event === "remote-update-preverification-validation-failed" && v.fields?.semanticGeneration === String(world.before) && v.fields?.reason === "persisted durable intent belongs to stale semantic generation"));
+  assert.ok(records.some(v => v.event === "outstanding-recovery-final-result" && v.fields?.result === "recovery-required" && v.fields?.reason === "persisted durable intent belongs to stale semantic generation"));
 });
 
-test("LOG-07 scenario 8: cancellation is distinct and causes no HTTP dispatch", async () => {
+test("LOG07-S8 cancellation is distinct and causes no HTTP dispatch", async () => {
   const diagnostics = await makeLogger();
   diagnostics.beginSyncRun("log07-cancel");
   const world = await updateWorld("success", diagnostics);
@@ -315,7 +474,7 @@ test("LOG-07 scenario 8: cancellation is distinct and causes no HTTP dispatch", 
   assert.equal(records.some(v => v.component === "drive.http"), false);
 });
 
-test("LOG-07 scenario 9: retry/rate-limit evidence keeps one request ID and distinct attempt decisions", async () => {
+test("LOG07-S9 retry/rate-limit evidence keeps one request ID and distinct attempt decisions", async () => {
   const diagnostics = await makeLogger();
   diagnostics.beginSyncRun("log07-retry");
   const backing = new MemorySecrets();
@@ -341,7 +500,7 @@ test("LOG-07 scenario 9: retry/rate-limit evidence keeps one request ID and dist
   assert.equal(text.includes("private-marker"), false);
 });
 
-test("LOG-07 scenario 10: diagnostic persistence failure does not change mutation outcome or request sequence", async () => {
+test("LOG07-S10 diagnostic persistence failure does not change mutation outcome or request sequence", async () => {
   const failing = await makeLogger(new ThrowingDiagnostics());
   failing.beginSyncRun("log07-persistence");
   const enabled = await updateWorld("success", failing);
@@ -356,7 +515,7 @@ test("LOG-07 scenario 10: diagnostic persistence failure does not change mutatio
   assert.ok(events(await makeBundle(failing)).some(v => v.event === "drive-update-convergence"));
 });
 
-test("LOG-07 scenario 11: adversarial private path/content/header-like values do not leak and retention remains bounded", async () => {
+test("LOG07-S11 adversarial private path/content/header-like values do not leak and retention remains bounded", async () => {
   const diagnostics = await makeLogger();
   const runId = diagnostics.beginSyncRun("log07-privacy");
   diagnostics.syncError("drive.http", "privacy-probe", runId, {
