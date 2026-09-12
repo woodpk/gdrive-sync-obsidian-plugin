@@ -8,7 +8,6 @@ import {
   type ObservationToken,
   type SemanticStateGeneration,
   type StateLoadContext,
-  type StateRevision,
   type VaultIdentity,
   type VaultPath,
 } from "../src/contracts";
@@ -352,9 +351,8 @@ async function generationAdvanceRecoveryWorld() {
     recoveryActive: () => false,
     diagnostics,
   });
-  let thrown: unknown;
-  try { await controller.previewManual(); } catch (error) { thrown = error; }
-  return { store, diagnostics, thrown, before };
+  const plan = await controller.previewManual();
+  return { store, diagnostics, plan, surface: controller.currentSurface(), before };
 }
 
 test("LOG07-S1 production controller/executor/Drive composition proves remote-update lifecycle end to end", async () => {
@@ -363,30 +361,33 @@ test("LOG07-S1 production controller/executor/Drive composition proves remote-up
   assert.equal(authority.status, "trusted");
   if (authority.status !== "trusted") throw new Error("trusted authority required");
   const text = await makeBundle(world.diagnostics, authority);
+  const parsed = JSON.parse(text);
   const records = events(text);
+  const eventNames = records.map(value => value.event).join(",");
+  assert.ok(authority.state.base.some(entry => entry.path === targetPath && entry.remoteObjectId === cid<"RemoteObjectId">("cand")), `candidate canonical commit missing; events=${eventNames}`);
+  assert.equal(authority.state.operationIntents.length, 1);
+  assert.ok(authority.state.operationIntents[0]?.effects.every(effect => effect.stage === "state-committed"));
+  assert.ok(parsed.authorityState.base.records.some((entry: any) => entry.remoteObjectId === "cand"));
+  assert.ok(parsed.authorityState.operationJournal.records.some((entry: any) => entry.operationId === String(operationId) && entry.status === "completed"));
   for (const expected of [
     "operation-start",
-    "durable-intent-persistence-complete",
-    "physical-dispatch-start",
     "drive-update-candidate-upload-dispatch",
+    "drive-update-candidate-upload-result",
     "drive-update-candidate-verification",
     "drive-update-predecessor-retirement-dispatch",
     "drive-update-convergence",
-    "physical-result-classified",
+    "physical-verification-complete",
     "state-commit-complete",
     "durable-finalization-complete",
     "operation-complete",
     "sync-run-complete",
-  ]) assert.ok(records.some(value => value.event === expected), `${expected} missing`);
+  ]) assert.ok(records.some(value => value.event === expected), `${expected} missing; events=${eventNames}`);
   assert.ok(records.some(v => v.event === "drive-update-candidate-verification" && v.fields?.candidateVerified === true));
   assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "verified-effect" && v.fields?.reason === "candidate-sole-live-occupant"));
   assert.ok(records.some(v => v.event === "state-commit-complete" && v.fields?.result === "committed"));
   assert.ok(records.some(v => v.event === "durable-finalization-complete" && v.fields?.toStage === "state-committed"));
-  const index = JSON.parse(text).causalIndex.runs[0];
+  const index = parsed.causalIndex.runs[0];
   assert.ok(index.planIds.includes(String(planId)) && index.operationIds.includes(String(operationId)) && index.intentIds.length > 0 && index.requestIds.length > 0);
-  assert.equal(authority.state.operationIntents.length, 1);
-  assert.ok(authority.state.operationIntents[0]?.effects.every(effect => effect.stage === "state-committed"));
-  assert.ok(authority.state.base.some(entry => entry.path === targetPath && entry.remoteObjectId === cid<"RemoteObjectId">("cand")));
   assert.equal(world.driveWorld.patchCalls(), 1);
   assert.equal(text.includes(rawPath), false);
 });
@@ -445,7 +446,8 @@ test("LOG07-S6 repaired production controller exports outstanding-intent recover
 
 test("LOG07-S7 remote-change learning advances generation before durable recovery rejects the prior-generation intent", async () => {
   const world = await generationAdvanceRecoveryWorld();
-  assert.ok(world.thrown);
+  assert.equal(world.plan, undefined);
+  assert.equal(world.surface.status.kind, "recovery-required");
   const authority = await world.store.loadAuthority();
   assert.equal(authority.status, "trusted");
   if (authority.status !== "trusted") throw new Error("trusted authority required");
@@ -454,7 +456,10 @@ test("LOG07-S7 remote-change learning advances generation before durable recover
   assert.equal(authority.state.operationIntents[0]?.semanticAuthority.generation, world.before);
   assert.equal(authority.state.learnedRemoteBatches.length, 1);
   const text = await makeBundle(world.diagnostics, authority);
+  const parsed = JSON.parse(text);
   const records = events(text);
+  assert.equal(parsed.authorityState.semanticGeneration, String(authority.state.semanticGeneration));
+  assert.equal(parsed.authorityState.outstandingOperationIntents.records[0]?.semanticGeneration, String(world.before));
   assert.ok(records.some(v => v.event === "adapter-semantic-generation-before" && v.fields?.semanticGeneration === String(world.before)));
   assert.ok(records.some(v => v.event === "adapter-semantic-generation-after" && v.fields?.semanticGeneration !== String(world.before)));
   assert.ok(records.some(v => v.event === "remote-update-preverification-entry" && v.fields?.semanticGeneration === String(authority.state.semanticGeneration)));
