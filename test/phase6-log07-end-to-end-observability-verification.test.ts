@@ -158,6 +158,16 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
       }
       return scenario === "post-list-stale" ? jsonResponse({ files: [predecessor(false), candidate()] }) : jsonResponse({ files: [candidate()] });
     }
+    if (decoded.includes("'content' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [privateFolder()] });
+    if (decoded.includes("'private' in parents") && !decoded.includes("name=")) {
+      const liveOccupants = retired
+        ? [candidate()]
+        : uploaded
+          ? [predecessor(false), candidate(), ...(scenario === "third-candidate" ? [third()] : [])]
+          : [predecessor(false)];
+      return jsonResponse({ files: liveOccupants });
+    }
+    if (decoded.includes("'config' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [] });
     throw new Error(`unexpected request ${method} ${decoded}`);
   };
   const backing = new MemorySecrets();
