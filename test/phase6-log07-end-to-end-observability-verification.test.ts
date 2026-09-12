@@ -168,6 +168,14 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
       return jsonResponse({ files: liveOccupants });
     }
     if (decoded.includes("'config' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [] });
+    if (decoded.includes("appProperties has { key='brainManagedRootId' and value='root' }") && decoded.includes("trashed=false")) {
+      const managedObjects = retired
+        ? [privateFolder(), candidate()]
+        : uploaded
+          ? [privateFolder(), predecessor(false), candidate(), ...(scenario === "third-candidate" ? [third()] : [])]
+          : [privateFolder(), predecessor(false)];
+      return jsonResponse({ files: managedObjects });
+    }
     throw new Error(`unexpected request ${method} ${decoded}`);
   };
   const backing = new MemorySecrets();
