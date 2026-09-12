@@ -250,9 +250,10 @@ async function productionUpdateWorld() {
     diagnostics,
   });
   const runId = diagnostics.beginSyncRun("log07-s1-production");
-  const plan = await controller.previewManual(runId);
-  assert.ok(plan);
-  const action = await controller.requestPreviewAction({ kind: "execute-plan", planId: plan!.planId }, runId);
+  await controller.previewManual(runId);
+  const preview = controller.currentSurface().planPreview;
+  assert.equal(preview?.planId, planId);
+  const action = await controller.requestPreviewAction({ kind: "execute-plan", planId }, runId);
   assert.equal(action.status, "accepted");
   return { diagnostics, store, driveWorld };
 }
