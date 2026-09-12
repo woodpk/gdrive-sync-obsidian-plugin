@@ -255,7 +255,11 @@ async function productionUpdateWorld() {
   assert.equal(preview?.planId, planId);
   const action = await controller.requestPreviewAction({ kind: "execute-plan", planId }, runId);
   assert.equal(action.status, "accepted");
-  return { diagnostics, store, driveWorld };
+  const capturedAuthority = await store.loadAuthority();
+  const capturedBundle = await makeBundle(diagnostics, capturedAuthority);
+  const capturedPatchCalls = driveWorld.patchCalls();
+  await controller.beginRuntimeDisposal();
+  return { diagnostics, store, driveWorld, capturedAuthority, capturedBundle, capturedPatchCalls };
 }
 
 const recoveryVault = cid<"VaultIdentity">("vault:log07:recovery") as VaultIdentity;
