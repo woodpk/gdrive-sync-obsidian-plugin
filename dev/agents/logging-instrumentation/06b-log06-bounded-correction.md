@@ -24,15 +24,15 @@ Do **not** run the full suite, perform evidence closure, merge, or begin LOG-07.
 
 ---
 
-## 1. Required Supervisor Bindings
+--> ## 1. Required Supervisor Bindings
 
 This prompt is not executable until the supervisor supplies all three values below:
 
-`LOG06B_INPUT_SHA = <exact implementation SHA to continue from>`
+`LOG06B_INPUT_SHA = 0da6562bde442c2a6dc1f7a5df39ece7806e99ba`
 
-`LOG06B_DEFECT = <one precise defect statement>`
+`LOG06B_DEFECT = The retained structured trace can preserve request-body text embedded in a string field such as safeMessage. sanitizeDiagnosticText redacts authorization headers, OAuth/query values, tokens, and URLs, but does not redact requestBody/request-body assignments; renderDiagnosticBundle then serializes diagnostics.snapshot() directly as structuredTrace.`
 
-`LOG06B_CORRECTION_BOUNDARY = <smallest authorized file/symbol/test boundary>`
+`LOG06B_CORRECTION_BOUNDARY = Extend src/diagnostics/diagnostic-logger.ts :: sanitizeDiagnosticText only far enough to redact request-body assignments before diagnostic events are retained/exported, and add or adjust only the directly relevant focused LOG-06 privacy test needed to prove that correction.`
 
 The expected starting candidate, unless superseded by a later supervisor-approved SHA, is:
 

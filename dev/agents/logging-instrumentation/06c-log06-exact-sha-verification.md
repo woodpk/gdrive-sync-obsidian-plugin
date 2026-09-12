@@ -28,7 +28,7 @@ Do **not** repair code, write evidence, merge, or begin LOG-07.
 
 This prompt is not executable until the supervisor supplies:
 
-`LOG06C_IMPLEMENTATION_SHA = <exact implementation SHA to verify>`
+`LOG06C_IMPLEMENTATION_SHA = b80eb843136a35766392910148b45520edf770c3`
 
 Frozen original LOG-06 base for diff verification:
 

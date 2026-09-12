@@ -18,7 +18,7 @@ The verification target is observability fidelity and integration, not correctio
 
 Deferred execution-critical binding:
 
-`LOG07_BASE_SHA = <deferred: exact supervisor-approved LOG-06 output SHA>`
+`LOG07_BASE_SHA = 503a8f4119cda047b68d7548aff08f3f94f1e616`
 
 Required semantic predecessor state:
 
