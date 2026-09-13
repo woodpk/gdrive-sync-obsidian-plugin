@@ -2159,3 +2159,13 @@ Scope remained bounded to the physical artifact filename-token repair, focused r
 No live iPhone synchronization, Google Drive mutation, device remediation, release publication, merge, Stage 3 validation, or C01 resume was performed.
 
 Residual risk: automated verification establishes the corrected path semantics and local transaction behavior but does not physically validate the iOS runtime. Status is **ready for C01 real-platform revalidation**, not physically validated or physically closed.
+
+### Evidence-stat correction and closure addendum
+
+The earlier `241 insertions(+), 1 deletion(-)` pre-evidence statistic in this C01 section is superseded. The authoritative GitHub compare from exact input SHA `a255d201549f18671113766ff14dde4caa2b8d6c` to verified implementation/test HEAD `acf8909e145be7cc3e5db63410cb2be6a355287d` is:
+
+- `src/product/synchronization-adapters.ts`: 2 additions, 1 deletion;
+- `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`: 265 additions;
+- aggregate implementation/test diff: **2 files changed, 267 insertions(+), 1 deletion(-)**.
+
+After the first evidence-only closure commit (`64328d53dbea342f74f62f8034c646253eb93b9f`), the authoritative compare from the exact input SHA contained only the three intended final paths: `dev/evidence/_ca-output.md`, `src/product/synchronization-adapters.ts`, and `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`, at **337 insertions(+), 1 deletion(-)** total. The temporary evidence-finalizer workflow was absent from that tree. This addendum corrects evidence only; it does not alter production or test behavior.
