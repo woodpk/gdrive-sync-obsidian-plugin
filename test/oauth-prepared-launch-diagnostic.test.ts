@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PreparedOAuthLaunchDiagnostic } from "../src/product/oauth-prepared-launch-diagnostic";
 
-test("prepared OAuth diagnostic captures the real URL without launching and later launches it from a fresh call", async () => {
+test("prepared OAuth diagnostic captures the real URL without launching and later launches it once from a fresh call", async () => {
   const originalOpen = globalThis.open;
   const launches: Array<{ url: string; target?: string }> = [];
   globalThis.open = ((url?: string | URL, target?: string) => {
@@ -21,6 +21,8 @@ test("prepared OAuth diagnostic captures the real URL without launching and late
 
     diagnostic.launchPrepared();
     assert.deepEqual(launches, [{ url: "https://accounts.google.com/o/oauth2/v2/auth?state=opaque", target: "_external" }]);
+    assert.equal(diagnostic.hasPreparedAuthorization(), false);
+    assert.throws(() => diagnostic.launchPrepared(), /Prepare Google authorization/);
   } finally {
     globalThis.open = originalOpen;
   }
