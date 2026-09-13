@@ -1,6 +1,7 @@
 import { App, Modal, Setting } from "obsidian";
-import type { CheckpointId, SynchronizationPlan } from "../contracts";
+import type { CheckpointId, PlannedOperation, SynchronizationPlan } from "../contracts";
 import type { ProductController } from "./product-controller";
+import { groupPlanOperations, shouldExpandSystemGroup } from "./plan-presentation";
 
 export class PlanPreviewModal extends Modal {
   private executionPending = false;
@@ -21,12 +22,12 @@ export class PlanPreviewModal extends Modal {
     for (const operation of this.plan.operations) counts.set(operation.kind, (counts.get(operation.kind) ?? 0) + 1);
     const summary = contentEl.createEl("ul");
     for (const [kind, count] of [...counts.entries()].sort()) summary.createEl("li", { text: `${kind}: ${count}` });
-    const details = contentEl.createEl("details");
-    details.createEl("summary", { text: "Affected paths and reasons" });
-    const list = details.createEl("ul");
-    for (const operation of this.plan.operations) {
-      list.createEl("li", { text: `${operation.kind} — ${String(operation.path)} — ${operation.reasons.map(reason => reason.summary).join("; ")}` });
-    }
+
+    const groups = groupPlanOperations(this.plan.operations);
+    this.renderOperationGroup(contentEl, "Vault changes", groups.vaultChanges, groups.vaultChanges.length > 0);
+    this.renderOperationGroup(contentEl, "System / portable configuration", groups.system, shouldExpandSystemGroup(groups.system));
+    this.renderOperationGroup(contentEl, "Unchanged vault paths", groups.unchangedVault, false);
+
     if (this.plan.executionDisposition === "blocked") {
       contentEl.createEl("p", { text: "This plan is blocked and cannot execute." });
       return;
@@ -54,6 +55,18 @@ export class PlanPreviewModal extends Modal {
         }
       }));
   }
+
+  private renderOperationGroup(parent: HTMLElement, title: string, operations: readonly PlannedOperation[], open: boolean): void {
+    if (!operations.length) return;
+    const details = parent.createEl("details");
+    details.open = open;
+    details.createEl("summary", { text: `${title} (${operations.length})` });
+    const list = details.createEl("ul");
+    for (const operation of operations) {
+      list.createEl("li", { text: `${operation.kind} — ${String(operation.path)} — ${operation.reasons.map(reason => reason.summary).join("; ")}` });
+    }
+  }
+
   onClose(): void {
     if (!this.executionPending && !this.executionAccepted) this.controller.recordPreviewDismissed(this.plan.planId, this.diagnosticRunId);
     this.contentEl.empty();
