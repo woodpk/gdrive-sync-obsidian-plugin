@@ -1,0 +1,101 @@
+name: Publish 0.1.17 C01 Artifact Path Repair Prerelease
+
+on:
+  push:
+    branches:
+      - release-0.1.17-publisher
+    paths:
+      - .github/workflows/publish-0.1.17-c01-artifact-path-repair-prerelease.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: aeb37485da06d0278f1f89c1a50c50a060212615
+      RELEASE_BRANCH: release-0.1.17-c01-artifact-path-repair
+      RELEASE_TAG: 0.1.17
+    steps:
+      - name: Checkout exact approved C01 repair HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Prepare versioned release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version 0.1.17 --no-git-tag-version
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+          manifest.version = '0.1.17';
+          fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
+          NODE
+          git add manifest.json package.json package-lock.json
+          git diff --cached --check
+          git commit -m "release: prepare 0.1.17"
+          echo "PREP_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Full tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Repository checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -f main.js
+          test -f manifest.json
+          node -e 'const m=require("./manifest.json"); if(m.version!=="0.1.17") process.exit(1)'
+          sha256sum main.js manifest.json | tee release-sha256.txt
+
+      - name: Push immutable release-preparation commit and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "$PREP_SHA:refs/heads/$RELEASE_BRANCH"
+          git tag "$RELEASE_TAG" "$PREP_SHA"
+          git push origin "refs/tags/$RELEASE_TAG"
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" main.js manifest.json release-sha256.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --prerelease \
+            --title "0.1.17 — Phase 6 C01 Local Transaction Artifact Path Repair" \
+            --notes "Prerelease for real-platform C01 revalidation. This repair preserves canonical sha256:<64hex> hashes while deriving physical local stage/backup artifact filenames from 24 lowercase hexadecimal characters after the sha256: prefix, eliminating the cross-platform-invalid colon from transaction artifact paths. Focused regressions cover root and nested targets, path validation, deterministic sibling mapping, operational exclusions, staging, commit, and recovery. OAuth diagnostic buttons/functions remain retained and unchanged. Source approved repair HEAD: $TARGET_SHA. Release-preparation SHA: $PREP_SHA. C01 is not physically closed by this release; iPhone revalidation remains required."
+
+      - name: Verify published prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isPrerelease,name,url,targetCommitish
