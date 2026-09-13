@@ -1,0 +1,260 @@
+name: One-shot prerelease 0.1.13 publication
+
+on:
+  push:
+    branches:
+      - release-0.1.13-exec
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_INPUT_SHA: 4352f168bd3c4f948f7110fd8713a3f71df2b901
+      RELEASE_BRANCH: phase6-real-platform-release-0.1.13
+      PREP_SHA: eced46abcafafffa658e49e69d3553fed65cdbff
+      TAG: 0.1.13
+      TITLE: 0.1.13 — Phase 6 Integrated Observability B01 Diagnostic Physical Validation Build
+      EXPECTED_MAIN_SHA256: 27e5f5a887309c2521f0a16f937076e13db90f11f0bd73bc64daf5f5f349c85c
+      EXPECTED_MAIN_SIZE: '853390'
+      EXPECTED_MANIFEST_SHA256: 6db461da1efaaa47be0a6c98a979fb9d17c948978efc0b7e78db1dcb29ee6b0c
+      EXPECTED_MANIFEST_SIZE: '276'
+      EXPECTED_FULL_TESTS: '786'
+
+    steps:
+      - name: Checkout actual release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release authority and drift gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$RELEASE_BRANCH" --tags
+          test "$(git rev-parse HEAD)" = "$PREP_SHA"
+          test "$(git rev-parse HEAD^)" = "$RELEASE_INPUT_SHA"
+          test "$(git rev-parse origin/$RELEASE_BRANCH)" = "$PREP_SHA"
+
+          test "$(node -p "require('./manifest.json').version")" = "0.1.13"
+          test "$(node -p "require('./package.json').version")" = "0.1.13"
+          test "$(node -p "require('./package-lock.json').version")" = "0.1.13"
+          test "$(node -p "require('./package-lock.json').packages[''].version")" = "0.1.13"
+          test "$(node -p "require('./manifest.json').id")" = "brain-google-drive-sync"
+          test "$(node -p "String(require('./manifest.json').isDesktopOnly)")" = "false"
+
+          git show-ref --verify --quiet refs/tags/0.1.12
+          test "$(git rev-parse '0.1.12^{commit}')" = "97b0c69672a912f2cd4da92ea890dc53b464179e"
+          gh release view 0.1.12 --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease > /tmp/preceding-release.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const r = JSON.parse(fs.readFileSync('/tmp/preceding-release.json', 'utf8'));
+          if (r.tagName !== '0.1.12' || r.isDraft !== false || r.isPrerelease !== true) {
+            throw new Error('0.1.12 release authority mismatch');
+          }
+          NODE
+
+          changed="$(git diff --name-only "$RELEASE_INPUT_SHA...$PREP_SHA")"
+          printf '%s\n' "$changed"
+          test "$changed" = $'manifest.json\npackage-lock.json\npackage.json'
+          git diff --check "$RELEASE_INPUT_SHA...$PREP_SHA"
+
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            existing="$(git rev-parse "$TAG^{commit}")"
+            test "$existing" = "$PREP_SHA"
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compile test TypeScript
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Full automated test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/full-test.log
+          tests="$(awk '/^# tests / {v=$3} END {print v}' /tmp/full-test.log)"
+          pass="$(awk '/^# pass / {v=$3} END {print v}' /tmp/full-test.log)"
+          fail="$(awk '/^# fail / {v=$3} END {print v}' /tmp/full-test.log)"
+          test "$tests" = "$EXPECTED_FULL_TESTS"
+          test "$pass" = "$EXPECTED_FULL_TESTS"
+          test "$fail" = "0"
+          if grep -q '^not ok ' /tmp/full-test.log; then exit 1; fi
+          echo "FULL_TEST_COUNT=$tests" >> "$GITHUB_ENV"
+
+      - name: Focused LOG-07 end-to-end observability verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          test -f .test-build/test/phase6-log07-end-to-end-observability-verification.test.js
+          node --test .test-build/test/phase6-log07-end-to-end-observability-verification.test.js 2>&1 | tee /tmp/log07-test.log
+          tests="$(awk '/^# tests / {v=$3} END {print v}' /tmp/log07-test.log)"
+          pass="$(awk '/^# pass / {v=$3} END {print v}' /tmp/log07-test.log)"
+          fail="$(awk '/^# fail / {v=$3} END {print v}' /tmp/log07-test.log)"
+          test "$tests" = "9"
+          test "$pass" = "9"
+          test "$fail" = "0"
+          if grep -q '^not ok ' /tmp/log07-test.log; then exit 1; fi
+
+      - name: Production build
+        run: npm run build
+
+      - name: Repository check
+        run: npm run check
+
+      - name: Diff whitespace check
+        run: git diff --check
+
+      - name: Verify frozen release artifact identity
+        id: artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s main.js
+          node -e "const m=require('./manifest.json'); if(m.version!=='0.1.13'||m.id!=='brain-google-drive-sync'||m.isDesktopOnly!==false) process.exit(1)"
+          main_sha="$(sha256sum main.js | awk '{print $1}')"
+          manifest_sha="$(sha256sum manifest.json | awk '{print $1}')"
+          main_size="$(stat -c %s main.js)"
+          manifest_size="$(stat -c %s manifest.json)"
+          test "$main_sha" = "$EXPECTED_MAIN_SHA256"
+          test "$main_size" = "$EXPECTED_MAIN_SIZE"
+          test "$manifest_sha" = "$EXPECTED_MANIFEST_SHA256"
+          test "$manifest_size" = "$EXPECTED_MANIFEST_SIZE"
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+          echo "main_size=$main_size" >> "$GITHUB_OUTPUT"
+          echo "manifest_sha=$manifest_sha" >> "$GITHUB_OUTPUT"
+          echo "manifest_size=$manifest_size" >> "$GITHUB_OUTPUT"
+
+      - name: Create or verify immutable tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin --tags
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            existing="$(git rev-parse "$TAG^{commit}")"
+            test "$existing" = "$PREP_SHA"
+          else
+            git tag "$TAG" "$PREP_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          git fetch origin --tags
+          test "$(git rev-parse "$TAG^{commit}")" = "$PREP_SHA"
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          cat > /tmp/release-notes.md <<EOF
+          Phase 6 prerelease for controlled B01 physical validation after completion of the LOG-01 through LOG-07 observability campaign.
+
+          This build contains the existing B01 remote-update predecessor-convergence repair together with the integrated local-only structured observability platform: HTTP transport tracing, semantic Google Drive tracing, synchronization execution/durable-effect tracing, state/CAS/recovery tracing, and the Copy diagnostic bundle operator surface.
+
+          This build has been packaged specifically so B01 can be reproduced with a correlated diagnostic bundle.
+
+          Verification before publication:
+          - full automated suite: ${FULL_TEST_COUNT}/${FULL_TEST_COUNT} PASS
+          - focused LOG-07 observability verification: 9/9 PASS
+          - typecheck: PASS
+          - test TypeScript compile: PASS
+          - production build: PASS
+          - repository check: PASS
+          - packaging diff limited to manifest.json, package.json, and package-lock.json
+
+          B01 has not yet been physically revalidated with this build.
+          Desktop installation and installed-build identity verification remain separate required gates.
+          EOF
+
+      - name: Publish or resume GitHub prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.id')"
+            body="$(cat /tmp/release-notes.md)"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              -f name="$TITLE" \
+              -f body="$body" \
+              -F draft=false \
+              -F prerelease=true >/dev/null
+            gh release upload "$TAG" main.js manifest.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$TAG" main.js manifest.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" \
+              --notes-file /tmp/release-notes.md \
+              --prerelease \
+              --verify-tag
+          fi
+
+      - name: Verify published prerelease and downloaded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/release-download
+          mkdir -p /tmp/release-download
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json databaseId,name,tagName,isDraft,isPrerelease,url,assets > /tmp/release.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const r = JSON.parse(fs.readFileSync('/tmp/release.json', 'utf8'));
+          if (r.tagName !== '0.1.13') throw new Error('wrong tag');
+          if (r.name !== '0.1.13 — Phase 6 Integrated Observability B01 Diagnostic Physical Validation Build') throw new Error('wrong title');
+          if (r.isDraft !== false) throw new Error('release is draft');
+          if (r.isPrerelease !== true) throw new Error('release is not prerelease');
+          const names = (r.assets || []).map(a => a.name).sort();
+          if (JSON.stringify(names) !== JSON.stringify(['main.js','manifest.json'])) {
+            throw new Error('wrong custom asset set: ' + JSON.stringify(names));
+          }
+          NODE
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/release-download --pattern main.js --pattern manifest.json
+          test "$(sha256sum /tmp/release-download/main.js | awk '{print $1}')" = "$EXPECTED_MAIN_SHA256"
+          test "$(stat -c %s /tmp/release-download/main.js)" = "$EXPECTED_MAIN_SIZE"
+          test "$(sha256sum /tmp/release-download/manifest.json | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256"
+          test "$(stat -c %s /tmp/release-download/manifest.json)" = "$EXPECTED_MANIFEST_SIZE"
+          test "$(node -p "require('/tmp/release-download/manifest.json').version")" = "0.1.13"
+          test "$(node -p "require('/tmp/release-download/manifest.json').id")" = "brain-google-drive-sync"
+          remote_tag="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha')"
+          test "$remote_tag" = "$PREP_SHA"
+
+      - name: Record publication verification artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publication-verification
+          cp /tmp/release.json publication-verification/release.json
+          cp /tmp/release-notes.md publication-verification/release-notes.md
+          cp /tmp/full-test.log publication-verification/full-test.log
+          cp /tmp/log07-test.log publication-verification/log07-test.log
+          printf '%s  main.js\n' "$EXPECTED_MAIN_SHA256" > publication-verification/main-js-sha256.txt
+          printf '%s\n' "$EXPECTED_MAIN_SIZE" > publication-verification/main-js-size.txt
+          printf '%s  manifest.json\n' "$EXPECTED_MANIFEST_SHA256" > publication-verification/manifest-sha256.txt
+          printf '%s\n' "$EXPECTED_MANIFEST_SIZE" > publication-verification/manifest-size.txt
+
+      - name: Upload publication verification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-0.1.13-publication-verification
+          path: publication-verification
+          if-no-files-found: error
