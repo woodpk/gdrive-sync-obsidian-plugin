@@ -33,6 +33,7 @@ export class PreparedOAuthLaunchDiagnostic {
     if (!url) throw new Error("Prepare Google authorization before launching it.");
     const opener = globalThis.open;
     if (typeof opener !== "function") throw new Error("The external browser launch mechanism is unavailable.");
+    this.preparedUrl = undefined;
     opener(url, "_external");
   }
 
