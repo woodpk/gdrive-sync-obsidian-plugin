@@ -1,11 +1,10 @@
 name: Phase 6 C01 Evidence Finalizer
 
 on:
-  push:
+  pull_request:
     branches:
       - phase6-c01-ios-local-transaction-artifact-path-repair
-    paths:
-      - .github/workflows/phase6-c01-evidence-finalizer.yml
+    types: [opened]
 
 permissions:
   contents: write
