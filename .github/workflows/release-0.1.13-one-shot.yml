@@ -247,6 +247,8 @@ jobs:
           cp /tmp/release-notes.md publication-verification/release-notes.md
           cp /tmp/full-test.log publication-verification/full-test.log
           cp /tmp/log07-test.log publication-verification/log07-test.log
+          cp /tmp/release-download/main.js publication-verification/published-main.js
+          cp /tmp/release-download/manifest.json publication-verification/published-manifest.json
           printf '%s  main.js\n' "$EXPECTED_MAIN_SHA256" > publication-verification/main-js-sha256.txt
           printf '%s\n' "$EXPECTED_MAIN_SIZE" > publication-verification/main-js-size.txt
           printf '%s  manifest.json\n' "$EXPECTED_MANIFEST_SHA256" > publication-verification/manifest-sha256.txt
