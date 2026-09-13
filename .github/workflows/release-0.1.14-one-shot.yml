@@ -58,13 +58,7 @@ jobs:
           else
             git switch -c "$RELEASE_BRANCH"
             npm version "$TAG" --no-git-tag-version --allow-same-version
-            node - <<'NODE'
-            const fs = require('fs');
-            const path = 'manifest.json';
-            const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
-            manifest.version = '0.1.14';
-            fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
-            NODE
+            node -e "const fs=require('fs'); const p='manifest.json'; const m=JSON.parse(fs.readFileSync(p,'utf8')); m.version='0.1.14'; fs.writeFileSync(p, JSON.stringify(m,null,2)+'\\n');"
 
             changed="$(git diff --name-only)"
             test "$changed" = $'manifest.json\npackage-lock.json\npackage.json'
@@ -202,9 +196,7 @@ jobs:
               -f body="$body" \
               -F draft=false \
               -F prerelease=true >/dev/null
-            gh release upload "$TAG" main.js manifest.json \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
+            gh release upload "$TAG" main.js manifest.json --repo "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$TAG" main.js manifest.json \
               --repo "$GITHUB_REPOSITORY" \
@@ -229,9 +221,7 @@ jobs:
           if (r.isDraft !== false) throw new Error('release is draft');
           if (r.isPrerelease !== true) throw new Error('release is not prerelease');
           const names = (r.assets || []).map(a => a.name).sort();
-          if (JSON.stringify(names) !== JSON.stringify(['main.js','manifest.json'])) {
-            throw new Error('wrong custom asset set: ' + JSON.stringify(names));
-          }
+          if (JSON.stringify(names) !== JSON.stringify(['main.js','manifest.json'])) throw new Error('wrong custom asset set: ' + JSON.stringify(names));
           NODE
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/release-download --pattern main.js --pattern manifest.json
           test "$(sha256sum /tmp/release-download/main.js | awk '{print $1}')" = "$MAIN_SHA256"
