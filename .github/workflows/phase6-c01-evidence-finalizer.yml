@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - phase6-c01-ios-local-transaction-artifact-path-repair
-    types: [opened]
+    types: [opened, reopened]
 
 permissions:
   contents: write
@@ -28,90 +28,13 @@ jobs:
           git cat-file -e e5b8f5797e97f4dd102bb19fa3374461a0ab780b^{commit}
           git cat-file -e acf8909e145be7cc3e5db63410cb2be6a355287d^{commit}
 
-      - name: Append C01 repair evidence and remove finalizer
+      - name: Record evidence and remove finalizer
         shell: bash
         run: |
           set -euo pipefail
-          cat >> dev/evidence/_ca-output.md <<'EOF'
-
----
-
-## Phase 6 C01 — iOS Local Transaction Artifact-Path Repair
-
-- Agent: `agt-ca-p6-c01-ios-local-transaction-artifact-path-repair-01`
-- Input/base SHA: `a255d201549f18671113766ff14dde4caa2b8d6c`
-- Branch: `phase6-c01-ios-local-transaction-artifact-path-repair`
-- Production implementation commit: `e5b8f5797e97f4dd102bb19fa3374461a0ab780b`
-- Verified implementation/test HEAD before evidence-only closure: `acf8909e145be7cc3e5db63410cb2be6a355287d`
-- Final branch HEAD: reported by the supervisor after this evidence-only commit; a tracked file cannot self-embed the SHA of the commit that contains that value.
-
-### Root-cause confirmation
-
-At the exact input SHA, `physicalArtifactPath(...)` built its filename token from `String(sha256Text(seed)).slice(0, 24)`. Canonical `sha256Text(...)` values are `sha256:<64 lowercase hex>`, so the physical sibling artifact name inherited the `sha256:` scheme prefix and therefore contained `:`. The repository cross-platform validator rejects `:` before local staging I/O. The inspected base matched the confirmed C01 diagnosis; no contradictory root cause was found.
-
-### Corrected artifact-path semantics
-
-`physicalArtifactPath(...)` still computes the canonical SHA-256 of the same logical seed, but now derives the physical filename token from 24 lowercase hexadecimal characters after the `sha256:` prefix. Canonical `ContentHash` values remain unchanged as `sha256:<64hex>` everywhere they serve as evidence/contract values.
-
-The resulting stage/backup artifacts remain deterministic sibling paths in the target's physical parent, remain pairwise distinct from each other and the target, remain stable across stage/commit/recovery for the same logical transaction, and retain the existing `.brain-sync-stage-*` / `.brain-sync-backup-*` operational-exclusion form.
-
-### Files changed for implementation and regression coverage
-
-- `src/product/synchronization-adapters.ts`
-- `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`
-- `dev/evidence/_ca-output.md` (this evidence-only closure)
-
-No OAuth production/UI/diagnostic source file was modified. Existing OAuth diagnostic controls and diagnostic functions therefore remain present and behaviorally untouched by this repair.
-
-### Regression coverage
-
-`test/phase6-c01-ios-local-transaction-artifact-path.test.ts` exercises the real cross-platform path validator through `ScopedLocalTransactionalMutationPort` and proves:
-
-- root-level and nested create targets reach verified staging without the generated artifact-path `:` failure;
-- stage/backup names contain 24 lowercase hexadecimal token characters and validate as cross-platform compatible;
-- stage and backup remain siblings of the physical target and all three paths are pairwise distinct;
-- repeated mapping of the same logical transaction is deterministic;
-- operational exclusions still recognize stage/backup artifacts;
-- commit reuses the exact staged physical mapping and commits intended bytes;
-- recovery reuses the exact staged physical mapping, decides from physical evidence, and does not invent success.
-
-The root/nested staging regression would fail against the exact prerelease `0.1.16` filename behavior because it uses the production validator that rejects `:`.
-
-### Verification
-
-GitHub Actions workflow `Phase 6 Alpha Diagnostic CI`, run `34785095516`, job `103798998222`, executed against verified implementation/test HEAD `acf8909e145be7cc3e5db63410cb2be6a355287d` and completed successfully.
-
-Observed results:
-
-- dependency install: PASS (`npm ci`; 409 packages; 0 vulnerabilities);
-- TypeScript typecheck: PASS;
-- test compilation: PASS;
-- complete automated suite: PASS — 442 tests, 442 passed, 0 failed, 0 skipped/cancelled/todo;
-- focused authority/OAuth diagnostic replay: PASS — 21 tests, 21 passed, 0 failed;
-- production build: PASS;
-- complete repository checks: PASS;
-- diff-whitespace check: PASS;
-- deterministic install-artifact generation / artifact identity gate: PASS.
-
-Existing local-transaction and recovery safety coverage also remained green, including validation-before-mutation, stage-before-target-displacement, verified-content commit requirements, cancellation cleanup, recovery from verified stage/backup/target physical evidence, and fail-closed handling where physical evidence is insufficient or contradictory.
-
-Pre-evidence implementation/test diff from the exact input SHA: `2 files changed, 241 insertions(+), 1 deletion(-)`.
-
-### Scope and residual validation
-
-Scope remained bounded to the physical artifact filename-token repair, focused regression coverage, and this required evidence record. No Google Drive mutation semantics, OAuth/PKCE flow, mobile authentication flow, managed-root pairing, planner behavior, durable intent/effect semantics, local recovery policy, conflict/deletion policy, diagnostic privacy rules, or release/install behavior were changed.
-
-No live iPhone synchronization, Google Drive mutation, device remediation, release publication, merge, Stage 3 validation, or C01 resume was performed.
-
-Residual risk: automated verification establishes the corrected path semantics and local transaction behavior but does not physically validate the iOS runtime. Status is **ready for C01 real-platform revalidation**, not physically validated or physically closed.
-EOF
+          printf '%s' 'Ci0tLQojIyBQaGFzZSA2IEMwMSDigJQgaU9TIExvY2FsIFRyYW5zYWN0aW9uIEFydGlmYWN0LVBhdGggUmVwYWlyCgotIEFnZW50OiBgYWd0LWNhLXA2LWMwMS1pb3MtbG9jYWwtdHJhbnNhY3Rpb24tYXJ0aWZhY3QtcGF0aC1yZXBhaXItMDFgCi0gSW5wdXQvYmFzZSBTSEE6IGBhMjU1ZDIwMTU0OWYxODY3MTExMzc2NmZmMTRkZGU0Y2FhMmI4ZDZjYAotIEJyYW5jaDogYHBoYXNlNi1jMDEtaW9zLWxvY2FsLXRyYW5zYWN0aW9uLWFydGlmYWN0LXBhdGgtcmVwYWlyYAotIFByb2R1Y3Rpb24gaW1wbGVtZW50YXRpb24gY29tbWl0OiBgZTViOGY1Nzk3ZTk3ZjRkZDEwMmJiMTlmYTMzNzQ0NjFhMGFiNzgwYmAKLSBWZXJpZmllZCBpbXBsZW1lbnRhdGlvbi90ZXN0IEhFQUQgYmVmb3JlIGV2aWRlbmNlLW9ubHkgY2xvc3VyZTogYGFjZjg5MDllMTQ1YmU3Y2MzZTVkYjYzNDEwY2IyYmU2YTM1NTI4N2RgCi0gRmluYWwgYnJhbmNoIEhFQUQ6IHJlcG9ydGVkIGJ5IHRoZSBzdXBlcnZpc29yIGFmdGVyIHRoaXMgZXZpZGVuY2Utb25seSBjb21taXQ7IGEgdHJhY2tlZCBmaWxlIGNhbm5vdCBzZWxmLWVtYmVkIHRoZSBTSEEgb2YgdGhlIGNvbW1pdCB0aGF0IGNvbnRhaW5zIHRoYXQgdmFsdWUuCgojIyMgUm9vdC1jYXVzZSBjb25maXJtYXRpb24KCkF0IHRoZSBleGFjdCBpbnB1dCBTSEEsIGBwaHlzaWNhbEFydGlmYWN0UGF0aCguLi4pYCBidWlsdCBpdHMgZmlsZW5hbWUgdG9rZW4gZnJvbSBgU3RyaW5nKHNoYTI1NlRleHQoc2VlZCkpLnNsaWNlKDAsIDI0KWAuIENhbm9uaWNhbCBgc2hhMjU2VGV4dCguLi4pYCB2YWx1ZXMgYXJlIGBzaGEyNTY6PDY0IGxvd2VyY2FzZSBoZXg+YCwgc28gdGhlIHBoeXNpY2FsIHNpYmxpbmcgYXJ0aWZhY3QgbmFtZSBpbmhlcml0ZWQgdGhlIGBzaGEyNTY6YCBzY2hlbWUgcHJlZml4IGFuZCB0aGVyZWZvcmUgY29udGFpbmVkIGA6YC4gVGhlIHJlcG9zaXRvcnkgY3Jvc3MtcGxhdGZvcm0gdmFsaWRhdG9yIHJlamVjdHMgYDpgIGJlZm9yZSBsb2NhbCBzdGFnaW5nIEkvTy4gVGhlIGluc3BlY3RlZCBiYXNlIG1hdGNoZWQgdGhlIGNvbmZpcm1lZCBDMDEgZGlhZ25vc2lzOyBubyBjb250cmFkaWN0b3J5IHJvb3QgY2F1c2Ugd2FzIGZvdW5kLgoKIyMjIENvcnJlY3RlZCBhcnRpZmFjdC1wYXRoIHNlbWFudGljcwoKYHBoeXNpY2FsQXJ0aWZhY3RQYXRoKC4uLilgIHN0aWxsIGNvbXB1dGVzIHRoZSBjYW5vbmljYWwgU0hBLTI1NiBvZiB0aGUgc2FtZSBsb2dpY2FsIHNlZWQsIGJ1dCBub3cgZGVyaXZlcyB0aGUgcGh5c2ljYWwgZmlsZW5hbWUgdG9rZW4gZnJvbSAyNCBsb3dlcmNhc2UgaGV4YWRlY2ltYWwgY2hhcmFjdGVycyBhZnRlciB0aGUgYHNoYTI1NjpgIHByZWZpeC4gQ2Fub25pY2FsIGBDb250ZW50SGFzaGAgdmFsdWVzIHJlbWFpbiB1bmNoYW5nZWQgYXMgYHNoYTI1Njo8NjRoZXg+YCBldmVyeXdoZXJlIHRoZXkgc2VydmUgYXMgZXZpZGVuY2UvY29udHJhY3QgdmFsdWVzLgoKVGhlIHJlc3VsdGluZyBzdGFnZS9iYWNrdXAgYXJ0aWZhY3RzIHJlbWFpbiBkZXRlcm1pbmlzdGljIHNpYmxpbmcgcGF0aHMgaW4gdGhlIHRhcmdldCdzIHBoeXNpY2FsIHBhcmVudCwgcmVtYWluIHBhaXJ3aXNlIGRpc3RpbmN0IGZyb20gZWFjaCBvdGhlciBhbmQgdGhlIHRhcmdldCwgcmVtYWluIHN0YWJsZSBhY3Jvc3Mgc3RhZ2UvY29tbWl0L3JlY292ZXJ5IGZvciB0aGUgc2FtZSBsb2dpY2FsIHRyYW5zYWN0aW9uLCBhbmQgcmV0YWluIHRoZSBleGlzdGluZyBgLmJyYWluLXN5bmMtc3RhZ2UtKmAgLyBgLmJyYWluLXN5bmMtYmFja3VwLSpgIG9wZXJhdGlvbmFsLWV4Y2x1c2lvbiBmb3JtLgoKIyMjIEZpbGVzIGNoYW5nZWQgZm9yIGltcGxlbWVudGF0aW9uIGFuZCByZWdyZXNzaW9uIGNvdmVyYWdlCgotIGBzcmMvcHJvZHVjdC9zeW5jaHJvbml6YXRpb24tYWRhcHRlcnMudHNgCi0gYHRlc3QvcGhhc2U2LWMwMS1pb3MtbG9jYWwtdHJhbnNhY3Rpb24tYXJ0aWZhY3QtcGF0aC50ZXN0LnRzYAotIGBkZXYvZXZpZGVuY2UvX2NhLW91dHB1dC5tZGAgKHRoaXMgZXZpZGVuY2Utb25seSBjbG9zdXJlKQoKTm8gT0F1dGggcHJvZHVjdGlvbi9VSS9kaWFnbm9zdGljIHNvdXJjZSBmaWxlIHdhcyBtb2RpZmllZC4gRXhpc3RpbmcgT0F1dGggZGlhZ25vc3RpYyBjb250cm9scyBhbmQgZGlhZ25vc3RpYyBmdW5jdGlvbnMgdGhlcmVmb3JlIHJlbWFpbiBwcmVzZW50IGFuZCBiZWhhdmlvcmFsbHkgdW50b3VjaGVkIGJ5IHRoaXMgcmVwYWlyLgoKIyMjIFJlZ3Jlc3Npb24gY292ZXJhZ2UKCmB0ZXN0L3BoYXNlNi1jMDEtaW9zLWxvY2FsLXRyYW5zYWN0aW9uLWFydGlmYWN0LXBhdGgudGVzdC50c2AgZXhlcmNpc2VzIHRoZSByZWFsIGNyb3NzLXBsYXRmb3JtIHBhdGggdmFsaWRhdG9yIHRocm91Z2ggYFNjb3BlZExvY2FsVHJhbnNhY3Rpb25hbE11dGF0aW9uUG9ydGAgYW5kIHByb3ZlczoKCi0gcm9vdC1sZXZlbCBhbmQgbmVzdGVkIGNyZWF0ZSB0YXJnZXRzIHJlYWNoIHZlcmlmaWVkIHN0YWdpbmcgd2l0aG91dCB0aGUgZ2VuZXJhdGVkIGFydGlmYWN0LXBhdGggYDpgIGZhaWx1cmU7Ci0gc3RhZ2UvYmFja3VwIG5hbWVzIGNvbnRhaW4gMjQgbG93ZXJjYXNlIGhleGFkZWNpbWFsIHRva2VuIGNoYXJhY3RlcnMgYW5kIHZhbGlkYXRlIGFzIGNyb3NzLXBsYXRmb3JtIGNvbXBhdGlibGU7Ci0gc3RhZ2UgYW5kIGJhY2t1cCByZW1haW4gc2libGluZ3Mgb2YgdGhlIHBoeXNpY2FsIHRhcmdldCBhbmQgYWxsIHRocmVlIHBhdGhzIGFyZSBwYWlyd2lzZSBkaXN0aW5jdDsKLSByZXBlYXRlZCBtYXBwaW5nIG9mIHRoZSBzYW1lIGxvZ2ljYWwgdHJhbnNhY3Rpb24gaXMgZGV0ZXJtaW5pc3RpYzsKLSBvcGVyYXRpb25hbCBleGNsdXNpb25zIHN0aWxsIHJlY29nbml6ZSBzdGFnZS9iYWNrdXAgYXJ0aWZhY3RzOwotIGNvbW1pdCByZXVzZXMgdGhlIGV4YWN0IHN0YWdlZCBwaHlzaWNhbCBtYXBwaW5nIGFuZCBjb21taXRzIGludGVuZGVkIGJ5dGVzOwotIHJlY292ZXJ5IHJldXNlcyB0aGUgZXhhY3Qgc3RhZ2VkIHBoeXNpY2FsIG1hcHBpbmcsIGRlY2lkZXMgZnJvbSBwaHlzaWNhbCBldmlkZW5jZSwgYW5kIGRvZXMgbm90IGludmVudCBzdWNjZXNzLgoKVGhlIHJvb3QvbmVzdGVkIHN0YWdpbmcgcmVncmVzc2lvbiB3b3VsZCBmYWlsIGFnYWluc3QgdGhlIGV4YWN0IHByZXJlbGVhc2UgYDAuMS4xNmAgZmlsZW5hbWUgYmVoYXZpb3IgYmVjYXVzZSBpdCB1c2VzIHRoZSBwcm9kdWN0aW9uIHZhbGlkYXRvciB0aGF0IHJlamVjdHMgYDpgLgoKIyMjIFZlcmlmaWNhdGlvbgoKR2l0SHViIEFjdGlvbnMgd29ya2Zsb3cgYFBoYXNlIDYgQWxwaGEgRGlhZ25vc3RpYyBWZXJpZmljYXRpb25gLCBydW4gYDM0Nzg1MDk1NTE2YCwgam9iIGAxMDM3OTg5OTgyMjJgLCBleGVjdXRlZCBhZ2FpbnN0IHZlcmlmaWVkIGltcGxlbWVudGF0aW9uL3Rlc3QgSEVBRCBgYWNmODkwOWUxNDViZTdjYzNlNWRiNjM0MTBjYjJiZTZhMzU1Mjg3ZGAgYW5kIGNvbXBsZXRlZCBzdWNjZXNzZnVsbHkuCgpPYnNlcnZlZCByZXN1bHRzOgoKLSBkZXBlbmRlbmN5IGluc3RhbGw6IFBBU1MgKGBucG0gY2lgOyA0MDkgcGFja2FnZXM7IDAgdnVsbmVyYWJpbGl0aWVzKTsKLSBUeXBlU2NyaXB0IHR5cGVjaGVjazogUEFTUzsKLSB0ZXN0IGNvbXBpbGF0aW9uOiBQQVNTOwotIGNvbXBsZXRlIGF1dG9tYXRlZCBzdWl0ZTogUEFTUyDigJQgNDQyIHRlc3RzLCA0NDIgcGFzc2VkLCAwIGZhaWxlZCwgMCBza2lwcGVkL2NhbmNlbGxlZC90b2RvOwotIGZvY3VzZWQgYXV0aG9yaXR5L09BdXRoIGRpYWdub3N0aWMgcmVwbGF5OiBQQVNTIOKAlCAyMSB0ZXN0cywgMjEgcGFzc2VkLCAwIGZhaWxlZDsKLSBwcm9kdWN0aW9uIGJ1aWxkOiBQQVNTOwotIGNvbXBsZXRlIHJlcG9zaXRvcnkgY2hlY2tzOiBQQVNTOwotIGRpZmYtd2hpdGVzcGFjZSBjaGVjazogUEFTUzsKLSBkZXRlcm1pbmlzdGljIGluc3RhbGwtYXJ0aWZhY3QgZ2VuZXJhdGlvbiAvIGFydGlmYWN0IGlkZW50aXR5IGdhdGU6IFBBU1MuCgpFeGlzdGluZyBsb2NhbC10cmFuc2FjdGlvbiBhbmQgcmVjb3Zlcnkgc2FmZXR5IGNvdmVyYWdlIGFsc28gcmVtYWluZWQgZ3JlZW4sIGluY2x1ZGluZyB2YWxpZGF0aW9uLWJlZm9yZS1tdXRhdGlvbiwgc3RhZ2UtYmVmb3JlLXRhcmdldC1kaXNwbGFjZW1lbnQsIHZlcmlmaWVkLWNvbnRlbnQgY29tbWl0IHJlcXVpcmVtZW50cywgY2FuY2VsbGF0aW9uIGNsZWFudXAsIHJlY292ZXJ5IGZyb20gdmVyaWZpZWQgc3RhZ2UvYmFja3VwL3RhcmdldCBwaHlzaWNhbCBldmlkZW5jZSwgYW5kIGZhaWwtY2xvc2VkIGhhbmRsaW5nIHdoZXJlIHBoeXNpY2FsIGV2aWRlbmNlIGlzIGluc3VmZmljaWVudCBvciBjb250cmFkaWN0b3J5LgoKUHJlLWV2aWRlbmNlIGltcGxlbWVudGF0aW9uL3Rlc3QgZGlmZiBmcm9tIHRoZSBleGFjdCBpbnB1dCBTSEE6IGAyIGZpbGVzIGNoYW5nZWQsIDI0MSBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pYC4KCiMjIyBTY29wZSBhbmQgcmVzaWR1YWwgdmFsaWRhdGlvbgoKU2NvcGUgcmVtYWluZWQgYm91bmRlZCB0byB0aGUgcGh5c2ljYWwgYXJ0aWZhY3QgZmlsZW5hbWUtdG9rZW4gcmVwYWlyLCBmb2N1c2VkIHJlZ3Jlc3Npb24gY292ZXJhZ2UsIGFuZCB0aGlzIHJlcXVpcmVkIGV2aWRlbmNlIHJlY29yZC4gTm8gR29vZ2xlIERyaXZlIG11dGF0aW9uIHNlbWFudGljcywgT0F1dGgvUEtDRSBmbG93LCBtb2JpbGUgYXV0aGVudGljYXRpb24gZmxvdywgbWFuYWdlZC1yb290IHBhaXJpbmcsIHBsYW5uZXIgYmVoYXZpb3IsIGR1cmFibGUgaW50ZW50L2VmZmVjdCBzZW1hbnRpY3MsIGxvY2FsIHJlY292ZXJ5IHBvbGljeSwgY29uZmxpY3QvZGVsZXRpb24gcG9saWN5LCBkaWFnbm9zdGljIHByaXZhY3kgcnVsZXMsIG9yIHJlbGVhc2UvaW5zdGFsbCBiZWhhdmlvciB3ZXJlIGNoYW5nZWQuCgpObyBsaXZlIGlQaG9uZSBzeW5jaHJvbml6YXRpb24sIEdvb2dsZSBEcml2ZSBtdXRhdGlvbiwgZGV2aWNlIHJlbWVkaWF0aW9uLCByZWxlYXNlIHB1YmxpY2F0aW9uLCBtZXJnZSwgU3RhZ2UgMyB2YWxpZGF0aW9uLCBvciBDMDEgcmVzdW1lIHdhcyBwZXJmb3JtZWQuCgpSZXNpZHVhbCByaXNrOiBhdXRvbWF0ZWQgdmVyaWZpY2F0aW9uIGVzdGFibGlzaGVzIHRoZSBjb3JyZWN0ZWQgcGF0aCBzZW1hbnRpY3MgYW5kIGxvY2FsIHRyYW5zYWN0aW9uIGJlaGF2aW9yIGJ1dCBkb2VzIG5vdCBwaHlzaWNhbGx5IHZhbGlkYXRlIHRoZSBpT1MgcnVudGltZS4gU3RhdHVzIGlzICoqcmVhZHkgZm9yIEMwMSByZWFsLXBsYXRmb3JtIHJldmFsaWRhdGlvbioqLCBub3QgcGh5c2ljYWxseSB2YWxpZGF0ZWQgb3IgcGh5c2ljYWxseSBjbG9zZWQuCg==' | base64 -d >> dev/evidence/_ca-output.md
           rm .github/workflows/phase6-c01-evidence-finalizer.yml
           git diff --check
-
-      - name: Commit bounded evidence closure
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dev/evidence/_ca-output.md .github/workflows/phase6-c01-evidence-finalizer.yml
