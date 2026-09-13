@@ -11,6 +11,7 @@ import { canShareDiagnosticLogFile } from "../diagnostics/share-export";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
+import { PreparedOAuthLaunchDiagnostic } from "./oauth-prepared-launch-diagnostic";
 import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
 
 export interface ProductSettingsHost {
@@ -32,6 +33,8 @@ export interface ProductSettingsHost {
 }
 
 export class BrainSyncSettingsTab extends PluginSettingTab {
+  private readonly preparedOAuthLaunch = new PreparedOAuthLaunchDiagnostic();
+
   constructor(private readonly host: ProductSettingsHost) { super(host.app, host.plugin); }
 
   display(): void {
@@ -82,6 +85,31 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
       .addButton(button => button.setButtonText("Authenticate").onClick(() => {
         const attemptId = this.host.authenticationButtonPressed();
         return this.host.authenticate(attemptId);
+      }));
+    new Setting(containerEl)
+      .setName("Prepare Google authorization (diagnostic)")
+      .setDesc("Diagnostic only: prepares the real OAuth/PKCE transaction but intercepts the external-browser call so nothing opens yet.")
+      .addButton(button => button.setButtonText("Prepare authorization").onClick(async () => {
+        const attemptId = this.host.authenticationButtonPressed();
+        this.preparedOAuthLaunch.clear();
+        try {
+          await this.preparedOAuthLaunch.prepare(() => this.host.authenticate(attemptId));
+          new Notice("Google authorization prepared. Tap Launch prepared authorization next.");
+        } catch (error) {
+          this.preparedOAuthLaunch.clear();
+          new Notice(`Google authorization preparation failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }));
+    new Setting(containerEl)
+      .setName("Launch prepared authorization (diagnostic)")
+      .setDesc("Diagnostic only: from this fresh button tap, immediately hands the already-prepared real Google authorization URL to Obsidian's _external browser target with no OAuth preparation in between.")
+      .addButton(button => button.setButtonText("Launch prepared authorization").onClick(() => {
+        try {
+          this.preparedOAuthLaunch.launchPrepared();
+          new Notice("Prepared Google authorization launch call returned. Confirm whether the external browser became visible.");
+        } catch (error) {
+          new Notice(`Prepared authorization could not launch: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }));
     new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Additional devices must deliberately confirm the same identity when pairing.").addText(text => text.setValue(settings.vaultIdentity).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
     new Setting(containerEl).setName("Managed remote root ID").setDesc("Stable Google Drive folder ID for explicit pairing. A folder name alone is never sufficient.").addText(text => text.setValue(settings.remoteRootId).onChange(async value => this.host.updateSettings({ remoteRootId: value.trim() })));
