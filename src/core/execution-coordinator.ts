@@ -1,5 +1,4 @@
 import type {
-  AuthorityCompletePreconditionValidationResult,
   AuthorityCompleteSuccessCommitter,
   AuthoritativeSynchronizationExecutor,
   CommitResult,
@@ -291,17 +290,9 @@ export class AuthorityCompleteExecutionCoordinator {
     if (resolved.status !== "ready") return this.complete(operation, { status: "recovery-required", reason: resolved.reason });
     const executable = resolved.operation;
 
-    this.observe(executable, "operation-precondition-validation-start");
-    let validation: AuthorityCompletePreconditionValidationResult;
-    try { validation = await this.executor.validatePreconditions(executable); }
-    catch (error) { this.observe(executable, "operation-precondition-validation-failed", "threw", error); throw error; }
-    this.observe(executable, "operation-precondition-validated", validation.status);
-    const invalid = this.mapAuthoritativeValidation(validation);
-    if (invalid) {
-      this.observe(executable, "operation-precondition-validation-failed", invalid.status, undefined, validation.status === "stale" ? validation.failed : undefined);
-      return this.complete(executable, invalid);
-    }
-
+    // The production authoritative executor owns the single full validation pass.
+    // Keeping validation there preserves the later, fail-closed mutation boundary and
+    // avoids evaluating the same LOCAL/REMOTE/BASE/identity authority twice.
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
@@ -402,13 +393,6 @@ export class AuthorityCompleteExecutionCoordinator {
 
   private observe(operation: PlannedOperation, stage: Parameters<NonNullable<ExecutionLifecycleObserver>>[1], result?: string, error?: unknown, failed?: readonly OperationPrecondition[]): void {
     try { this.observer?.(operation, stage, result, error, failed); } catch { /* diagnostics are non-authoritative */ }
-  }
-
-  private mapAuthoritativeValidation(result: AuthorityCompletePreconditionValidationResult): CoordinatedExecutionResult | undefined {
-    if (result.status === "valid") return undefined;
-    if (result.status === "stale") return { status: "stale-precondition", reason: "exact executable authority changed before mutation", failed: result.failed };
-    if (result.status === "blocked") return { status: "blocked", reason: result.reason };
-    return { status: "recovery-required", reason: result.reason };
   }
 
   private mapAuthoritativeExecution(result: Exclude<ExecutionResult, { status: "durable-verified-success" }>): CoordinatedExecutionResult {
