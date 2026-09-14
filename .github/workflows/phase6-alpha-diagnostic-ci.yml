@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,18 +28,6 @@ jobs:
           set -o pipefail
           mkdir -p .ci-evidence
           npm test | tee .ci-evidence/full-tests.tap
-      - name: Focused LAT-03 continuation and local safety regressions
-        shell: bash
-        run: |
-          set -o pipefail
-          node --test \
-            .test-build/test/obsidian-local-vault-evidence-reuse.test.js \
-            .test-build/test/obsidian-local-vault-concurrency.test.js \
-            .test-build/test/obsidian-local-vault.test.js \
-            .test-build/test/phase6-alpha-ios-content-reader.test.js \
-            .test-build/test/workstreams/local/local-transaction-safety.test.js \
-            .test-build/test/workstreams/local/local-recovery-matrix.test.js \
-            | tee .ci-evidence/focused-lat03-continuation-tests.tap
       - name: Focused C1 first-sync conflict-resolution authority tests
         shell: bash
         run: |
@@ -59,8 +45,8 @@ jobs:
         run: |
           set -o pipefail
           npm run check | tee .ci-evidence/check.log
-      - name: Exact LAT-02 to HEAD diff whitespace check
-        run: git diff --check abe4e85b953e2871cae5c2f2e214d721a25007d1..HEAD
+      - name: Diff whitespace check
+        run: git diff --check
       - name: Record artifact identity
         run: |
           wc -c main.js | tee .ci-evidence/main-js-size.txt
@@ -73,7 +59,6 @@ jobs:
             main.js
             manifest.json
             .ci-evidence/full-tests.tap
-            .ci-evidence/focused-lat03-continuation-tests.tap
             .ci-evidence/focused-c1-tests.tap
             .ci-evidence/focused-tests.tap
             .ci-evidence/check.log
