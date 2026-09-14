@@ -82,8 +82,9 @@ Existing ordered scenario identifiers such as `A03`, `B02`, `C03`, `D04`, `E07`,
 5. Existing scenario/work-package IDs retain their own internal ordering. Example: `st2a-ph6-04-lv-01-test-C03`.
 6. New sibling directories must receive the next meaningful ordinal; do not insert an unnumbered mnemonic directory.
 7. Human-readable titles remain inside Markdown documents. Directory names carry address/ordering information, not prose descriptions.
+8. The coded hierarchy is the only permitted directory hierarchy under `dev/agents/**`. Do not create or retain parallel long-form directory aliases.
 
-## 6. Canonical short hierarchy
+## 6. Canonical hierarchy
 
 ```text
 dev/agents/
@@ -108,8 +109,8 @@ dev/agents/
             └── 03-lat/
 ```
 
-## 7. Migration rule
+## 7. Naming authority
 
-The short hierarchy above is canonical for all new work and for status/build-address communication.
+The hierarchy above is authoritative for repository paths, build-address communication, new tasking, status reporting, and future supervision artifacts.
 
-The pre-existing long-form hierarchy is temporarily retained as a read-only compatibility mirror so already-issued prompts and historical references do not break during migration. Do not add new tasking to the long-form hierarchy. Remove the compatibility mirror only after stored references have been normalized to the canonical short paths.
+Long-form stage/phase directory names are obsolete and must not coexist as mirrors or aliases. Historical text inside already-completed artifacts may still mention an older path as historical provenance, but the repository object itself must live only at its canonical coded path.
