@@ -1,10 +1,12 @@
-# Phase 6 Latency Optimization — LAT-07 Post-Integration Safety and Performance Verification
+# st2a-ph6-04-lv-03-lat-07 — Post-Integration Safety and Performance Verification
+
+Build address: `st2a-ph6-04-lv-03-lat-07`
 
 ## 0. Agent Identity and Assignment
 
 You are:
 
-`agt-ca-p6-lat07-post-integration-verification-01`
+`agt-ca-st2a-ph6-04-lv-03-lat-07-post-integration-verification-01`
 
 Repository:
 
@@ -12,7 +14,7 @@ Repository:
 
 Work package:
 
-`LAT-07`
+`st2a-ph6-04-lv-03-lat-07`
 
 Task classification:
 
@@ -20,7 +22,7 @@ Task classification:
 
 Assignment:
 
-> Independently verify the integrated latency-optimization candidate in a clean environment, measure the structural performance improvements established by LAT-01, adversarially verify that safety invariants were not weakened, and make only narrowly bounded corrections if verification exposes a genuine optimization-induced defect. Produce the final optimization evidence and a real-device revalidation checklist; do not perform live Drive or device validation in this session.
+> Independently verify the integrated latency-optimization candidate in a clean environment, measure the structural performance improvements established by `st2a-ph6-04-lv-03-lat-01`, adversarially verify that safety invariants were not weakened, and make only narrowly bounded corrections if verification exposes a genuine optimization-induced defect. Produce the final optimization evidence and a real-device revalidation checklist; do not perform live Drive or device validation in this session.
 
 ---
 
@@ -30,28 +32,32 @@ Frozen common ancestor:
 
 `COMMON_BASE_SHA = 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7`
 
+Required predecessor build address:
+
+`st2a-ph6-04-lv-03-lat-06`
+
 Required predecessor branch:
 
-`phase6-latency-opt-06-integration`
+`st2a-ph6-04-lv-03-lat-06-integration`
 
 Required predecessor evidence:
 
-`dev/evidence/_ca-output-agt-p6-latency-opt-06.md`
+`dev/evidence/_ca-output-agt-st2a-ph6-04-lv-03-lat-06.md`
 
 Required branch:
 
-`phase6-latency-opt-07-verification`
+`st2a-ph6-04-lv-03-lat-07-verification`
 
 Do not ask the operator for a SHA.
 
 At execution time:
 
-1. Fetch `origin/phase6-latency-opt-06-integration`.
-2. Resolve its exact tip as `LAT06_HEAD`.
-3. Verify `COMMON_BASE_SHA` is an ancestor of `LAT06_HEAD`.
-4. Verify the LAT-06 evidence file exists at `LAT06_HEAD`.
+1. Fetch `origin/st2a-ph6-04-lv-03-lat-06-integration`.
+2. Resolve its exact tip as `INTEGRATION_HEAD`.
+3. Verify `COMMON_BASE_SHA` is an ancestor of `INTEGRATION_HEAD`.
+4. Verify the 06 evidence file exists at `INTEGRATION_HEAD`.
 5. Read that evidence and confirm integration/focused/full checks completed without a hard safety blocker.
-6. Create `phase6-latency-opt-07-verification` directly from `LAT06_HEAD`.
+6. Create `st2a-ph6-04-lv-03-lat-07-verification` directly from `INTEGRATION_HEAD`.
 
 If any gate fails, stop. Do not substitute another ref.
 
@@ -61,12 +67,12 @@ If any gate fails, stop. Do not substitute another ref.
 
 Verification must not rely on build artifacts left by predecessor sessions.
 
-From the LAT-07 branch:
+From the 07 branch:
 
 - remove generated test/build artifacts that are normally regenerated and are not source-controlled;
 - run `npm ci` from the checked-in lockfile;
 - regenerate test/build outputs through repository commands;
-- do not reuse predecessor node_modules or `.test-build` as evidence of success if the execution environment permits clean regeneration.
+- do not reuse predecessor `node_modules` or `.test-build` as evidence of success if the execution environment permits clean regeneration.
 
 Record the exact Node/npm versions available in evidence.
 
@@ -74,12 +80,24 @@ Record the exact Node/npm versions available in evidence.
 
 ## 3. Required Source Review
 
-Before running or correcting anything, inspect the integrated diff from `COMMON_BASE_SHA` to `LAT06_HEAD` and read the evidence files for LAT-01 through LAT-06.
+Before running or correcting anything, inspect the integrated diff from `COMMON_BASE_SHA` to `INTEGRATION_HEAD` and read the evidence files for `st2a-ph6-04-lv-03-lat-01` through `st2a-ph6-04-lv-03-lat-06`.
+
+The predecessor prompts 01–05 predate the repository-wide coded naming conversion, so their evidence filenames remain exactly:
+
+- `dev/evidence/_ca-output-agt-p6-latency-opt-01.md`
+- `dev/evidence/_ca-output-agt-p6-latency-opt-02.md`
+- `dev/evidence/_ca-output-agt-p6-latency-opt-03.md`
+- `dev/evidence/_ca-output-agt-p6-latency-opt-04.md`
+- `dev/evidence/_ca-output-agt-p6-latency-opt-05.md`
+
+The 06 evidence filename is canonical:
+
+- `dev/evidence/_ca-output-agt-st2a-ph6-04-lv-03-lat-06.md`
 
 Review the combined implementation around:
 
 - `src/local/obsidian-local-vault.ts`;
-- local read/stale-token paths touched by LAT-03;
+- local read/stale-token paths touched by 03;
 - `src/core/execution-coordinator.ts` and authoritative executor composition;
 - `src/product/snapshot-assembler.ts`;
 - `src/drive/google-drive-port.ts`;
@@ -121,12 +139,12 @@ Verify and record, for representative tiny-vault fixtures:
 
 1. **Local enumeration**
    - independent read-only observations overlap when at least two eligible paths exist;
-   - maximum in-flight work never exceeds the LAT-02 bound;
+   - maximum in-flight work never exceeds the 02 bound;
    - each file still receives the required stability proof;
    - deterministic results are independent of completion order.
 
 2. **Local evidence reuse**
-   - unchanged same-run/same-token read-only work performs fewer redundant full stability/observation cycles than the unoptimized pattern characterized by LAT-01;
+   - unchanged same-run/same-token read-only work performs fewer redundant full stability/observation cycles than the unoptimized pattern characterized by 01;
    - invalidation events restore conservative live checking;
    - mutation/final-verification checkpoints remain live.
 
@@ -141,7 +159,7 @@ Verify and record, for representative tiny-vault fixtures:
    - no-cursor/invalid-cursor planning remains full/fail-closed.
 
 5. **End-to-end structural budget**
-   - compare the integrated deterministic operation/request counts with the LAT-01 baseline characterization and record the reduction by category.
+   - compare the integrated deterministic operation/request counts with the 01 baseline characterization and record the reduction by category.
 
 Absolute elapsed time may be reported as informational data only. Do not fail CI because a machine was temporarily slow.
 
@@ -181,7 +199,7 @@ Record exact pass counts/output summaries available from the commands.
 
 ## 7. Bounded Correction Authority
 
-You may modify code only if this verification exposes a **clear defect introduced by LAT-01 through LAT-06** and the correction is small enough to complete and verify in this same session.
+You may modify code only if this verification exposes a **clear defect introduced by `st2a-ph6-04-lv-03-lat-01` through `st2a-ph6-04-lv-03-lat-06`** and the correction is small enough to complete and verify in this same session.
 
 Allowed examples:
 
@@ -199,7 +217,7 @@ For any correction:
 - rerun the affected focused matrix and full `npm run check`;
 - document the correction separately in evidence.
 
-Do **not** use LAT-07 to redesign architecture, weaken safety, fix unrelated legacy defects, or implement the separate mobile background/lifecycle repair. If the defect is broader than a bounded correction, stop and report it.
+Do **not** use this work package to redesign architecture, weaken safety, fix unrelated legacy defects, or implement the separate mobile background/lifecycle repair. If the defect is broader than a bounded correction, stop and report it.
 
 ---
 
@@ -228,11 +246,12 @@ Do not claim these targets are achieved until real-device testing occurs.
 
 Create:
 
-`dev/evidence/_ca-output-agt-p6-latency-opt-07.md`
+`dev/evidence/_ca-output-agt-st2a-ph6-04-lv-03-lat-07.md`
 
 Include:
 
-- resolved `LAT06_HEAD` and ancestry proof;
+- canonical build address `st2a-ph6-04-lv-03-lat-07`;
+- resolved `INTEGRATION_HEAD` and ancestry proof;
 - branch and final SHA;
 - environment versions;
 - integrated diff review summary;
@@ -241,7 +260,7 @@ Include:
 - stale-evidence/authority adversarial results;
 - full focused/test/build/check results;
 - any bounded correction with failing-before/passing-after evidence;
-- explicit statement that physical mutation concurrency, durable safety, OAuth diagnostics, and mobile lifecycle behavior were not altered by LAT-07;
+- explicit statement that physical mutation concurrency, durable safety, OAuth diagnostics, and mobile lifecycle behavior were not altered by this work package;
 - real-device revalidation checklist;
 - final disposition: `PASS`, `PASS WITH BOUNDED CORRECTION`, or `BLOCKED`.
 
@@ -263,11 +282,12 @@ A `PASS` or `PASS WITH BOUNDED CORRECTION` requires:
 
 ## 11. Stop / Final Response
 
-Stop after LAT-07 verification/evidence is committed.
+Stop after 07 verification/evidence is committed.
 
 Report succinctly:
 
-- resolved LAT-06 SHA;
+- build address `st2a-ph6-04-lv-03-lat-07`;
+- resolved 06 integration SHA;
 - branch;
 - final SHA;
 - disposition;
