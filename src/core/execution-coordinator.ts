@@ -1,4 +1,5 @@
 import type {
+  AuthorityCompletePreconditionValidationResult,
   AuthorityCompleteSuccessCommitter,
   AuthoritativeSynchronizationExecutor,
   CommitResult,
@@ -254,6 +255,10 @@ type AuthorityPersistenceFailureDiagnostics = {
   readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => "pending-journal-failed" | "uncertain-state-journal-failed" | undefined;
 };
 
+type ExecuteBoundaryValidatingExecutor = AuthoritativeSynchronizationExecutor & {
+  readonly validatesAtExecuteBoundary?: true;
+};
+
 export class AuthorityCompleteExecutionCoordinator {
   private readonly observer?: ExecutionLifecycleObserver;
 
@@ -290,9 +295,17 @@ export class AuthorityCompleteExecutionCoordinator {
     if (resolved.status !== "ready") return this.complete(operation, { status: "recovery-required", reason: resolved.reason });
     const executable = resolved.operation;
 
-    // The production authoritative executor owns the single full validation pass.
-    // Keeping validation there preserves the later, fail-closed mutation boundary and
-    // avoids evaluating the same LOCAL/REMOTE/BASE/identity authority twice.
+    const executorOwnsFinalValidation = (this.executor as ExecuteBoundaryValidatingExecutor).validatesAtExecuteBoundary === true;
+    if (!executorOwnsFinalValidation) {
+      this.observe(executable, "operation-precondition-validation-start");
+      const validation = await this.executor.validatePreconditions(executable);
+      if (validation.status !== "valid") {
+        this.observe(executable, "operation-precondition-validation-failed", validation.status, undefined, validation.status === "stale" ? validation.failed : undefined);
+        return this.complete(executable, this.mapAuthoritativeValidation(validation));
+      }
+      this.observe(executable, "operation-precondition-validated", "valid");
+    }
+
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
@@ -393,6 +406,12 @@ export class AuthorityCompleteExecutionCoordinator {
 
   private observe(operation: PlannedOperation, stage: Parameters<NonNullable<ExecutionLifecycleObserver>>[1], result?: string, error?: unknown, failed?: readonly OperationPrecondition[]): void {
     try { this.observer?.(operation, stage, result, error, failed); } catch { /* diagnostics are non-authoritative */ }
+  }
+
+  private mapAuthoritativeValidation(validation: Exclude<AuthorityCompletePreconditionValidationResult, { status: "valid" }>): CoordinatedExecutionResult {
+    if (validation.status === "stale") return { status: "stale-precondition", reason: "authoritative precondition changed", failed: validation.failed };
+    if (validation.status === "blocked") return { status: "blocked", reason: validation.reason };
+    return { status: "recovery-required", reason: validation.reason };
   }
 
   private mapAuthoritativeExecution(result: Exclude<ExecutionResult, { status: "durable-verified-success" }>): CoordinatedExecutionResult {
