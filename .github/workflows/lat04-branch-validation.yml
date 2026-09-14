@@ -1,4 +1,4 @@
-name: LAT-04 Reject Fix 02 Validation
+name: LAT-04 Reject Fix 02 Diagnostic
 
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  repair-and-verify:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,266 +24,43 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Verify repair drift gate
+      - name: Reconstruct bounded repair patch
         shell: bash
         run: |
           set -euo pipefail
           COMMON_BASE_SHA=02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
           R1_INPUT_SHA=22c7df6f1c879ff790eb546b319c5bfd232335da
-          test "$(git rev-parse HEAD^)" = "$R1_INPUT_SHA"
           test "$(git merge-base "$COMMON_BASE_SHA" "$R1_INPUT_SHA")" = "$COMMON_BASE_SHA"
-          echo "runner_head=$(git rev-parse HEAD)"
-          echo "r1_input=$R1_INPUT_SHA"
-          echo "merge_base=$(git merge-base "$COMMON_BASE_SHA" "$R1_INPUT_SHA")"
-          echo "status_before_patch:"
-          git status --short
-          printf '%s\n' \
-            '.github/workflows/lat04-branch-validation.yml' \
-            'src/core/execution-coordinator.ts' \
-            'src/product/authoritative-production-executor-base.ts' \
-            'src/product/authoritative-production-executor.ts' \
-            'src/product/operation-isolation.ts' \
-            'test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts' > /tmp/expected-r1-files.txt
-          git diff --name-only "$COMMON_BASE_SHA".."$R1_INPUT_SHA" | sort > /tmp/actual-r1-files.txt
-          sort -o /tmp/expected-r1-files.txt /tmp/expected-r1-files.txt
-          diff -u /tmp/expected-r1-files.txt /tmp/actual-r1-files.txt
-
-      - name: Apply bounded diagnostic provenance repair
-        shell: bash
-        run: |
-          set -euo pipefail
+          test "$(git merge-base "$R1_INPUT_SHA" HEAD)" = "$R1_INPUT_SHA"
+          git show 4b70e49f05679f19768152cf6cd959bf926898b2:.github/workflows/lat04-branch-validation.yml > /tmp/lat04-old-workflow.yml
           python - <<'PY'
           from pathlib import Path
-
-          def replace_once(path: str, old: str, new: str) -> None:
-              p = Path(path)
-              text = p.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected exactly one replacement target, found {count}")
-              p.write_text(text.replace(old, new, 1))
-
-          coordinator = 'src/core/execution-coordinator.ts'
-          replace_once(
-              coordinator,
-              '''type ExecuteBoundaryValidatingExecutor = AuthoritativeSynchronizationExecutor & {\n  readonly validatesAtExecuteBoundary?: true;\n};''',
-              '''type ExecuteBoundaryValidatingExecutor = AuthoritativeSynchronizationExecutor & {\n  readonly validatesAtExecuteBoundary?: true;\n  readonly consumeExecuteBoundaryValidationFailureStage?: (error: unknown) => "operation-precondition-validation-failed" | undefined;\n};''',
-          )
-          replace_once(
-              coordinator,
-              '''    const executorOwnsFinalValidation = (this.executor as ExecuteBoundaryValidatingExecutor).validatesAtExecuteBoundary === true;\n    if (!executorOwnsFinalValidation) {\n      this.observe(executable, "operation-precondition-validation-start");\n      const validation = await this.executor.validatePreconditions(executable);\n      if (validation.status !== "valid") {\n        this.observe(executable, "operation-precondition-validation-failed", validation.status, undefined, validation.status === "stale" ? validation.failed : undefined);\n        return this.complete(executable, this.mapAuthoritativeValidation(validation));\n      }\n      this.observe(executable, "operation-precondition-validated", "valid");\n    }''',
-              '''    const executorOwnsFinalValidation = (this.executor as ExecuteBoundaryValidatingExecutor).validatesAtExecuteBoundary === true;\n    if (!executorOwnsFinalValidation) {\n      this.observe(executable, "operation-precondition-validation-start");\n      let validation: AuthorityCompletePreconditionValidationResult;\n      try { validation = await this.executor.validatePreconditions(executable); }\n      catch (error) { this.observe(executable, "operation-precondition-validation-failed", "threw", error); throw error; }\n      this.observe(executable, "operation-precondition-validated", validation.status);\n      const invalid = this.mapAuthoritativeValidation(validation);\n      if (invalid) {\n        this.observe(executable, "operation-precondition-validation-failed", invalid.status, undefined, validation.status === "stale" ? validation.failed : undefined);\n        return this.complete(executable, invalid);\n      }\n    }''',
-          )
-          replace_once(
-              coordinator,
-              '''    catch (error) {\n      const diagnosticStore = this.authorityStore as SynchronizationAuthorityStoreV1_1 & AuthorityPersistenceFailureDiagnostics;\n      const stage = diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error) ?? "content-mutation-failed";\n      this.observe(executable, stage, "threw", error);\n      throw error;\n    }''',
-              '''    catch (error) {\n      const diagnosticExecutor = this.executor as ExecuteBoundaryValidatingExecutor;\n      const diagnosticStore = this.authorityStore as SynchronizationAuthorityStoreV1_1 & AuthorityPersistenceFailureDiagnostics;\n      const stage = diagnosticExecutor.consumeExecuteBoundaryValidationFailureStage?.(error)\n        ?? diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error)\n        ?? "content-mutation-failed";\n      this.observe(executable, stage, "threw", error);\n      throw error;\n    }''',
-          )
-          replace_once(
-              coordinator,
-              '''  private mapAuthoritativeValidation(validation: Exclude<AuthorityCompletePreconditionValidationResult, { status: "valid" }>): CoordinatedExecutionResult {\n    if (validation.status === "stale") return { status: "stale-precondition", reason: "authoritative precondition changed", failed: validation.failed };\n    if (validation.status === "blocked") return { status: "blocked", reason: validation.reason };\n    return { status: "recovery-required", reason: validation.reason };\n  }''',
-              '''  private mapAuthoritativeValidation(result: AuthorityCompletePreconditionValidationResult): CoordinatedExecutionResult | undefined {\n    if (result.status === "valid") return undefined;\n    if (result.status === "stale") return { status: "stale-precondition", reason: "exact executable authority changed before mutation", failed: result.failed };\n    if (result.status === "blocked") return { status: "blocked", reason: result.reason };\n    return { status: "recovery-required", reason: result.reason };\n  }''',
-          )
-
-          base = 'src/product/authoritative-production-executor-base.ts'
-          replace_once(
-              base,
-              '''  return {\n    validatePreconditions: validateExact,\n    async execute(operation) {\n      const validation = await validateExact(operation);''',
-              '''  const executeBoundaryValidationFailures = new Set<unknown>();\n\n  const executor = {\n    validatePreconditions: validateExact,\n    async execute(operation) {\n      let validation: AuthorityCompletePreconditionValidationResult;\n      try {\n        validation = await validateExact(operation);\n      } catch (error) {\n        executeBoundaryValidationFailures.add(error);\n        throw error;\n      }''',
-          )
-          replace_once(
-              base,
-              '''      return receipt;\n    },\n  };\n}''',
-              '''      return receipt;\n    },\n    consumeExecuteBoundaryValidationFailureStage(error: unknown) {\n      return executeBoundaryValidationFailures.delete(error)\n        ? "operation-precondition-validation-failed" as const\n        : undefined;\n    },\n  };\n  return executor;\n}''',
-          )
-
-          wrapper = 'src/product/authoritative-production-executor.ts'
-          replace_once(
-              wrapper,
-              '''type LegacyRecoveryReads = {\n  readonly drive: Pick<GoogleDrivePort, "listForReconciliation">;\n  readonly recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies;\n};''',
-              '''type LegacyRecoveryReads = {\n  readonly drive: Pick<GoogleDrivePort, "listForReconciliation">;\n  readonly recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies;\n};\n\ntype ExecuteBoundaryValidationDiagnostics = {\n  readonly consumeExecuteBoundaryValidationFailureStage?: (error: unknown) => "operation-precondition-validation-failed" | undefined;\n};''',
-          )
-          replace_once(
-              wrapper,
-              '''  const base = createBaseAuthoritativeProductExecutor(legacy, authorityStore, identityStateStore, stateContext, managedRemote, explicitDependencies);\n  const configured = explicitDependencies ?? (legacy as unknown as LegacyRecoveryReads).recoverableProductionMutationDependencies ?? {};''',
-              '''  const base = createBaseAuthoritativeProductExecutor(legacy, authorityStore, identityStateStore, stateContext, managedRemote, explicitDependencies) as AuthoritativeSynchronizationExecutor & ExecuteBoundaryValidationDiagnostics;\n  const configured = explicitDependencies ?? (legacy as unknown as LegacyRecoveryReads).recoverableProductionMutationDependencies ?? {};\n  const executeBoundaryValidationFailures = new Set<unknown>();''',
-          )
-          replace_once(
-              wrapper,
-              '''  async function execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {\n    const existing = await outstandingIntent(authorityStore, operation);\n    if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };\n    if (existing.status === "none" && transitivelyCarriedMove(operation)) {\n      const validation = await validateTransitivelyCarriedMove(operation);''',
-              '''  async function execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {\n    let existing: Awaited<ReturnType<typeof outstandingIntent>>;\n    try {\n      existing = await outstandingIntent(authorityStore, operation);\n    } catch (error) {\n      executeBoundaryValidationFailures.add(error);\n      throw error;\n    }\n    if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };\n    if (existing.status === "none" && transitivelyCarriedMove(operation)) {\n      let validation: AuthorityCompletePreconditionValidationResult;\n      try {\n        validation = await validateTransitivelyCarriedMove(operation);\n      } catch (error) {\n        executeBoundaryValidationFailures.add(error);\n        throw error;\n      }''',
-          )
-          replace_once(
-              wrapper,
-              '''  const executor = { validatePreconditions, execute, validatesAtExecuteBoundary: true as const };\n  return executor;''',
-              '''  const executor = {\n    validatePreconditions,\n    execute,\n    validatesAtExecuteBoundary: true as const,\n    consumeExecuteBoundaryValidationFailureStage(error: unknown) {\n      if (executeBoundaryValidationFailures.delete(error)) return "operation-precondition-validation-failed" as const;\n      return base.consumeExecuteBoundaryValidationFailureStage?.(error);\n    },\n  };\n  return executor;''',
-          )
-
-          test_path = 'test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts'
-          replace_once(
-              test_path,
-              '''function harness(onReserve?: (h: { setLocalToken(value: string): void; setRemote(remoteObjectId: RemoteObjectId, revision: string): void; authority: AuthorityStore }) => void) {''',
-              '''function harness(\n  onReserve?: (h: { setLocalToken(value: string): void; setRemote(remoteObjectId: RemoteObjectId, revision: string): void; authority: AuthorityStore }) => void,\n  throwDuringFullValidation = false,\n) {''',
-          )
-          replace_once(
-              test_path,
-              '''  legacy.validatePreconditions = async operation => {\n    ordinaryValidationCalls += 1;\n    return originalValidate(operation);\n  };''',
-              '''  legacy.validatePreconditions = async operation => {\n    ordinaryValidationCalls += 1;\n    if (throwDuringFullValidation && ordinaryValidationCalls === 1) throw new Error("LAT-04 validation provenance fixture");\n    return originalValidate(operation);\n  };''',
-          )
-          anchor = '''test("LAT-04 dispatch guard rejects LOCAL token changes after full validation and before mutation", async () => {'''
-          addition = '''test("LAT-04 execute-boundary validation throw retains exact precondition diagnostic provenance", async () => {\n  const h = harness(undefined, true);\n  await assert.rejects(() => h.coordinator.executeOperation(plannedOperation()), /LAT-04 validation provenance fixture/);\n  assert.equal(h.authority.fullValidationStarts, 1);\n  assert.equal(h.physicalMutations, 0);\n  assert.equal(h.authority.lifecycleStages.some(value => value === "operation-precondition-validation-failed:threw"), true);\n  assert.equal(h.authority.lifecycleStages.some(value => value === "content-mutation-failed:threw"), false);\n});\n\n'''
-          p = Path(test_path)
-          text = p.read_text()
-          if anchor not in text:
-              raise SystemExit(f"{test_path}: provenance test anchor missing")
-          if 'LAT-04 execute-boundary validation throw retains exact precondition diagnostic provenance' in text:
-              raise SystemExit(f"{test_path}: provenance test unexpectedly already present")
-          p.write_text(text.replace(anchor, addition + anchor, 1))
+          source = Path('/tmp/lat04-old-workflow.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(source) if line.strip() == "python - <<'PY'") + 1
+          end = next(i for i in range(start, len(source)) if source[i].strip() == 'PY')
+          body = source[start:end]
+          indent = min(len(line) - len(line.lstrip()) for line in body if line.strip())
+          Path('/tmp/lat04-repair.py').write_text('\n'.join(line[indent:] for line in body) + '\n')
           PY
+          python /tmp/lat04-repair.py
           git diff --check
-          git diff -- src/core/execution-coordinator.ts src/product/authoritative-production-executor-base.ts src/product/authoritative-production-executor.ts test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts
-
-      - name: Remove temporary validation workflow from final tree
-        run: git rm .github/workflows/lat04-branch-validation.yml
-
+          rm .github/workflows/lat04-branch-validation.yml
       - name: Install dependencies
         run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Compile tests
-        run: npx tsc -p tsconfig.test.json
-      - name: Focused LAT-04 authority destructive and diagnostic tests
+      - name: Capture typecheck diagnostic
         shell: bash
         run: |
-          set -euo pipefail
-          node --test \
-            .test-build/test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.js \
-            .test-build/test/phase2-execution.test.js \
-            .test-build/test/workstreams/orchestration/v1.2-authoritative-boundary.test.js \
-            .test-build/test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.js \
-            .test-build/test/workstreams/orchestration/v1.2-production-authority-path.test.js \
-            .test-build/test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.js \
-            .test-build/test/workstreams/local/local-transaction-safety.test.js \
-            .test-build/test/phase6-b-destructive-safety.test.js \
-            .test-build/test/phase6-alpha-ios-sync-diagnostics.test.js | tee lat04-r1-focused.tap
-
-      - name: Full repository check before implementation commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run check | tee lat04-r1-check-pre-evidence.log
-
-      - name: Validate final implementation diff and commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          COMMON_BASE_SHA=02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
-          git diff --check "$COMMON_BASE_SHA"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/core/execution-coordinator.ts \
-            src/product/authoritative-production-executor-base.ts \
-            src/product/authoritative-production-executor.ts \
-            src/product/operation-isolation.ts \
-            test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts \
-            .github/workflows/lat04-branch-validation.yml
-          git commit -m "LAT-04 restore exact validation diagnostic provenance"
-          echo "implementation_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
-      - name: Create LAT-04 evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dev/evidence
-          cat > dev/evidence/_ca-output-agt-p6-latency-opt-04.md <<EOF
-          # LAT-04 Authoritative Precondition Deduplication Evidence
-
-          - Agent: \`agt-ca-p6-lat04-authoritative-precondition-dedup-01\`
-          - Branch: \`phase6-latency-opt-04-precondition-dedup\`
-          - COMMON_BASE_SHA: \`02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7\`
-          - R1_INPUT_SHA: \`22c7df6f1c879ff790eb546b319c5bfd232335da\`
-          - FINAL_IMPLEMENTATION_SHA: \`${implementation_sha}\`
-          - Final closure head: the evidence-only closure commit containing this file is reported externally because a Git commit cannot contain its own SHA as file content.
-
-          ## Final changed-file manifest
-
-          - \`src/core/execution-coordinator.ts\`
-          - \`src/product/authoritative-production-executor-base.ts\`
-          - \`src/product/authoritative-production-executor.ts\`
-          - \`src/product/operation-isolation.ts\`
-          - \`test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts\`
-          - \`dev/evidence/_ca-output-agt-p6-latency-opt-04.md\`
-
-          The temporary \`.github/workflows/lat04-branch-validation.yml\` validation harness was removed before final validation and is absent from the final base-to-head diff.
-
-          ## Before / after authority validation
-
-          The frozen production composition previously performed two full authority-complete precondition validations for the same unchanged normal physical operation: one in \`AuthorityCompleteExecutionCoordinator.executeOperation()\` and one at the production executor's \`execute()\` boundary. LAT-04 reduces that deterministic full-validation count from **2 -> 1** for the optimized composition. The surviving full validation is the production executor's exact \`validateExact()\` path at the execute boundary.
-
-          A narrow post-authorization dispatch guard remains for volatile ordinary evidence. It rechecks LOCAL observation/token/content stability and REMOTE revision/object identity evidence immediately before physical dispatch without repeating BASE/identity/semantic authority resolution. Semantic-generation authority is also rechecked by durable dispatch authorization through the persisted intent generation/CAS boundary.
-
-          ## Reject/Fix 02 diagnostic correction
-
-          Reject/Fix 02 restored exact precondition-stage lifecycle semantics without restoring duplicate validation. Generic coordinators again catch and report throws from their own \`validatePreconditions()\` call as \`operation-precondition-validation-failed\`. Execute-boundary validating production executors now maintain a private one-shot throw-provenance handoff: only errors thrown while the executor-owned validation boundary is running are consumable as \`operation-precondition-validation-failed\`; later pending-journal, physical mutation, uncertain-journal, and commit exceptions retain their existing stages. No frozen public \`AuthoritativeSynchronizationExecutor\` contract was changed.
-
-          ## Safety verification
-
-          Focused tests prove: unchanged valid execution succeeds; full authority validation executes exactly once; LOCAL token changes prevent mutation; REMOTE revision and object-identity changes prevent mutation; semantic-generation changes fail closed before dispatch; stale destructive authority cannot cross dispatch authorization; dispatch-guard rejection is represented as verified-not-applied/non-applied as required; durable intent -> dispatch-authorized -> effect-verified -> state-committed ordering remains intact; and execute-boundary validation throws retain precondition diagnostic provenance rather than content-mutation provenance.
-
-          The directly affected Phase 6 diagnostics test also preserves the exact precondition, pending-journal, content-mutation, uncertain-state-journal, and state-commit failure stages.
-
-          ## Validation
-
-          Final-tree commands executed on Ubuntu GitHub Actions / Node 22 after removing the temporary workflow:
-
-          - \`npm ci\`: PASS
-          - \`npm run typecheck\`: PASS
-          - \`npx tsc -p tsconfig.test.json\`: PASS
-          - focused LAT-04 + authority + destructive-safety + Phase 6 diagnostic suite: PASS
-          - \`npm run check\` before implementation commit: PASS
-          - final-tree \`npm run check\` with this evidence present: PASS
-          - \`git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD\` after closure commit: PASS
-
-          No stale-authority or destructive-safety test was weakened. No retry/backoff, conflict, local-enumeration, Drive-planning, lifecycle/background, OAuth/browser diagnostic, or physical-operation parallelism behavior was changed.
-          EOF
-
-      - name: Full repository check on final tree with evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run check | tee lat04-r1-check-final-tree.log
-          git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
-
-      - name: Commit evidence and verify final SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add dev/evidence/_ca-output-agt-p6-latency-opt-04.md
-          git commit -m "LAT-04 close validation evidence"
-          FINAL_SHA=$(git rev-parse HEAD)
-          echo "final_sha=$FINAL_SHA" >> "$GITHUB_ENV"
-          git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD
-          if git diff --name-only 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD | grep -Fx '.github/workflows/lat04-branch-validation.yml'; then
-            echo 'temporary workflow remains in final diff' >&2
-            exit 1
+          set +e
+          npm run typecheck > /tmp/lat04-typecheck.txt 2>&1
+          status=$?
+          cat /tmp/lat04-typecheck.txt
+          if [ "$status" -ne 0 ]; then
+            mkdir -p dev/evidence
+            cp /tmp/lat04-typecheck.txt dev/evidence/_lat04-typecheck-debug.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add dev/evidence/_lat04-typecheck-debug.txt
+            git commit -m "[skip ci] LAT-04 capture typecheck diagnostic"
+            git push origin HEAD:phase6-latency-opt-04-precondition-dedup
+            exit "$status"
           fi
-          git status --short
-
-      - name: Push final closure
-        shell: bash
-        run: |
-          set -euo pipefail
-          git push origin HEAD:phase6-latency-opt-04-precondition-dedup
-          echo "LAT04_FINAL_SHA=${final_sha}"
-
-      - name: Upload validation logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lat04-reject-fix-02-validation-logs
-          path: |
-            lat04-r1-focused.tap
-            lat04-r1-check-pre-evidence.log
-            lat04-r1-check-final-tree.log
-          if-no-files-found: ignore
