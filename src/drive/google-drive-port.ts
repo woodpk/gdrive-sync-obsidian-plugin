@@ -61,8 +61,8 @@ function isPartialSignal(signal: DriveSignal): boolean { return signal.kind === 
 
 /**
  * LAT-05 keeps mutation semantics in the established adapter and narrows optimization to
- * the read-only full-reconciliation planning path. The override deliberately uses only
- * GET/list observations and assembly-local caches.
+ * read-only reconciliation planning plus invalid-cursor fallback. The assembly-local
+ * metadata map never survives this method call.
  */
 export class GoogleDriveAdapter extends CoreGoogleDriveAdapter {
   override async listForReconciliation(rootId: RemoteObjectId): Promise<DriveResult<RemoteListing>> {
@@ -85,104 +85,126 @@ export class GoogleDriveAdapter extends CoreGoogleDriveAdapter {
       this.listPlanningDomain(roots.value.content.id, "", { managedRootId: rootId, domain: CONTENT_DOMAIN }, internals),
       this.listPlanningDomain(roots.value.config.id, `${PORTABLE_CONFIG_NAME}/`, { managedRootId: rootId, domain: CONFIG_DOMAIN }, internals),
     ]);
-    const entries = [...ordinary.entries, ...config.entries];
 
-    const hardFailure = [ordinary.result, config.result].find((result): result is Extract<DriveResult<void>,{ok:false}> => !result.ok && !isPartialSignal(result.signal));
-    if (hardFailure) {
-      internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "failure", count: entries.length, driveSignal: hardFailure.signal.kind });
-      return hardFailure;
+    // Preserve the serial baseline's deterministic failure/partial priority while allowing both reads to overlap.
+    if (!ordinary.result.ok) {
+      this.commitPlanningPathCache(internals.pathCache, ordinary.pathCache);
+      if (isPartialSignal(ordinary.result.signal)) {
+        internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "partial", remoteCompleteness: "partial", count: ordinary.entries.length, driveSignal: ordinary.result.signal.kind });
+        return { ok:true, value:{ entries:ordinary.entries, completeness:{ status:"partial", reason:partialReason(ordinary.result.signal,"ordinary remote listing interrupted") } } };
+      }
+      internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "failure", count: ordinary.entries.length, driveSignal: ordinary.result.signal.kind });
+      return ordinary.result;
+    }
+    if (!config.result.ok) {
+      this.commitPlanningPathCache(internals.pathCache, ordinary.pathCache, config.pathCache);
+      const partialEntries = [...ordinary.entries,...config.entries];
+      if (isPartialSignal(config.result.signal)) {
+        internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "partial", remoteCompleteness: "partial", count: partialEntries.length, driveSignal: config.result.signal.kind });
+        return { ok:true, value:{ entries:partialEntries, completeness:{ status:"partial", reason:partialReason(config.result.signal,"portable configuration listing interrupted") } } };
+      }
+      internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "failure", count: partialEntries.length, driveSignal: config.result.signal.kind });
+      return config.result;
     }
 
-    this.commitPlanningPathCache(internals.pathCache, ordinary.pathCache, config.pathCache);
-    const partial = !ordinary.result.ok ? ordinary.result : !config.result.ok ? config.result : undefined;
-    if (partial && !partial.ok) {
-      const fallback = !ordinary.result.ok ? "ordinary remote listing interrupted" : "portable configuration listing interrupted";
-      internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "partial", remoteCompleteness: "partial", count: entries.length, driveSignal: partial.signal.kind });
-      return { ok: true, value: { entries, completeness: { status: "partial", reason: partialReason(partial.signal, fallback) } } };
+    const entries = [...ordinary.entries,...config.entries];
+    const ambiguity = this.validateMergedPlanningEntries(entries);
+    if (!ambiguity.ok) {
+      internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "failure", count: entries.length, driveSignal: ambiguity.signal.kind });
+      return ambiguity;
     }
-
-    const provenance = await this.validateManagedObjectProvenanceForPlanning(rootId, roots.value, internals);
+    this.commitPlanningPathCache(internals.pathCache,ordinary.pathCache,config.pathCache);
+    const provenance = await this.validateManagedObjectProvenanceForPlanning(rootId,roots.value,internals);
     if (!provenance.ok) {
       internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "failure", count: entries.length, driveSignal: provenance.signal.kind });
       return provenance;
     }
     internals.semantic("drive-reconciliation-enumeration-result", { operation: "reconciliation-enumeration", remoteObjectId: String(rootId), result: "complete", remoteCompleteness: "complete", count: entries.length });
-    return { ok: true, value: { entries, completeness: { status: "complete" } } };
+    return { ok:true, value:{ entries, completeness:{ status:"complete" } } };
+  }
+
+  override async readChangePage(...args: Parameters<CoreGoogleDriveAdapter["readChangePage"]>): ReturnType<CoreGoogleDriveAdapter["readChangePage"]> {
+    const result = await super.readChangePage(...args);
+    if (!result.ok && result.signal.kind === "recovery-required" && /cursor|token/i.test(result.signal.detail)) {
+      // ProductSnapshotAssembler already treats conflict as the conservative full-reconciliation fallback seam.
+      return { ok:false, signal:{ kind:"conflict", detail:result.signal.detail } };
+    }
+    return result;
   }
 
   private async planningDomainRoots(rootId: RemoteObjectId, internals: PlanningInternals): Promise<DriveResult<DomainRoots>> {
     const root = await internals.getFile(rootId);
     if (!root.ok) return root;
     if (root.value.trashed || root.value.appProperties?.[APP_ROLE] !== ROOT_ROLE) {
-      return { ok: false, signal: { kind: "recovery-required", detail: "managed-remote-root-missing-or-invalid" } };
+      return { ok:false, signal:{ kind:"recovery-required", detail:"managed-remote-root-missing-or-invalid" } };
     }
-    const [content, config] = await Promise.all([
-      internals.contentRoot(rootId),
-      internals.portableConfigRoot(rootId),
-    ]);
-    // Preserve the established deterministic failure priority even though the reads overlap.
+    const [content,config] = await Promise.all([internals.contentRoot(rootId),internals.portableConfigRoot(rootId)]);
     if (!content.ok) return content;
     if (!config.ok) return config;
-    return { ok: true, value: { content: content.value, config: config.value } };
+    return { ok:true, value:{ content:content.value, config:config.value } };
   }
 
   private async listPlanningDomain(rootId: string, prefix: string, provenance: DomainProvenance, internals: PlanningInternals): Promise<DomainReadResult> {
     const entries: RemoteEntry[] = [];
     const pathCache = new Map<string,VaultPath>();
-    const queue: Array<{id:string;path:string}> = [{ id: rootId, path: "" }];
+    const queue: Array<{id:string;path:string}> = [{ id:rootId, path:"" }];
     while (queue.length) {
       const current = queue.shift()!;
       let pageToken: string | undefined;
       do {
-        const params = new URLSearchParams({ q: `'${escaped(current.id)}' in parents and trashed=false`, fields: `nextPageToken,files(${FIELDS})`, spaces: "drive", pageSize: "1000" });
+        const params = new URLSearchParams({ q:`'${escaped(current.id)}' in parents and trashed=false`, fields:`nextPageToken,files(${FIELDS})`, spaces:"drive", pageSize:"1000" });
         if (pageToken) params.set("pageToken",pageToken);
         const response = await internals.transport.request(`${DRIVE_API}/files?${params}`);
-        if (!response.ok) return { result: response, entries, pathCache };
+        if (!response.ok) return { result:response, entries, pathCache };
         const page = await json<FileListResponse>(response.value);
         for (const file of page.files ?? []) {
           const validation = internals.validateFileProvenance(file,provenance,true);
-          if (!validation.ok) return { result: validation, entries, pathCache };
+          if (!validation.ok) return { result:validation, entries, pathCache };
           const relative = joinPath(current.path,file.name ?? "");
           if (provenance.domain === CONTENT_DOMAIN && current.id === rootId && file.name === PORTABLE_CONFIG_NAME) {
             const collision = vpath(PORTABLE_CONFIG_NAME);
-            entries.push(entry(collision,file));
-            pathCache.set(file.id,collision);
-            continue;
+            entries.push(entry(collision,file)); pathCache.set(file.id,collision); continue;
           }
           const logical = vpath(`${prefix}${String(relative)}`);
-          entries.push(entry(logical,file));
-          pathCache.set(file.id,logical);
+          entries.push(entry(logical,file)); pathCache.set(file.id,logical);
           if (file.mimeType === FOLDER_MIME) queue.push({ id:file.id, path:String(relative) });
         }
         pageToken = page.nextPageToken;
       } while (pageToken);
     }
-    return { result: { ok:true, value:undefined }, entries, pathCache };
+    return { result:{ ok:true, value:undefined }, entries, pathCache };
   }
 
-  private commitPlanningPathCache(target: Map<string,VaultPath>, ordinary: Map<string,VaultPath>, config: Map<string,VaultPath>): void {
+  private validateMergedPlanningEntries(entries: readonly RemoteEntry[]): DriveResult<void> {
+    const identities = new Map<string,string>();
+    const paths = new Map<string,string>();
+    for (const value of entries) {
+      const objectId = String(value.remoteObjectId), path = String(value.path);
+      if (identities.has(objectId)) return { ok:false, signal:{ kind:"recovery-required", detail:`remote-listing-duplicate-identity:${objectId}` } };
+      const prior = paths.get(path);
+      if (prior !== undefined && prior !== objectId) return { ok:false, signal:{ kind:"conflict", detail:`remote-listing-duplicate-path:${path}` } };
+      identities.set(objectId,path); paths.set(path,objectId);
+    }
+    return { ok:true, value:undefined };
+  }
+
+  private commitPlanningPathCache(target: Map<string,VaultPath>, ordinary: Map<string,VaultPath>, config?: Map<string,VaultPath>): void {
     target.clear();
     for (const [id,path] of ordinary) target.set(id,path);
-    for (const [id,path] of config) target.set(id,path);
+    if (config) for (const [id,path] of config) target.set(id,path);
   }
 
   private async validateManagedObjectProvenanceForPlanning(rootId: RemoteObjectId, roots: DomainRoots, internals: PlanningInternals): Promise<DriveResult<void>> {
     const managed = await internals.managedObjectsForRoot(rootId);
     if (!managed.ok) return managed;
-    // Per-assembly only: exact parent observations may be reused by sibling ancestry checks,
-    // but nothing survives this reconciliation call.
     const exactParentMetadata = new Map<string,DriveFile>();
     for (const file of managed.value) {
       const established = file.appProperties?.[APP_DOMAIN];
-      if (established !== CONTENT_DOMAIN && established !== CONFIG_DOMAIN) {
-        return { ok:false, signal:{ kind:"recovery-required", detail:`managed-object-domain-provenance-invalid:${file.id}` } };
-      }
+      if (established !== CONTENT_DOMAIN && established !== CONFIG_DOMAIN) return { ok:false, signal:{ kind:"recovery-required", detail:`managed-object-domain-provenance-invalid:${file.id}` } };
       const actual = await this.findDomainAncestorForPlanning(file,roots,internals,exactParentMetadata);
       if (!actual.ok) return { ok:false, signal:{ kind:"recovery-required", detail:`managed-object-left-remote-domain:${file.id}` } };
       const expectedRoot = established === CONTENT_DOMAIN ? roots.content.id : roots.config.id;
-      if (actual.value.id !== expectedRoot) {
-        return { ok:false, signal:{ kind:"recovery-required", detail:`managed-object-cross-domain-reclassification:${file.id}:${established}` } };
-      }
+      if (actual.value.id !== expectedRoot) return { ok:false, signal:{ kind:"recovery-required", detail:`managed-object-cross-domain-reclassification:${file.id}:${established}` } };
     }
     return { ok:true, value:undefined };
   }
@@ -200,8 +222,7 @@ export class GoogleDriveAdapter extends CoreGoogleDriveAdapter {
       if (!parent) {
         const observed = await internals.getFile(rid(parentId));
         if (!observed.ok) return observed;
-        parent = observed.value;
-        exactParentMetadata.set(parentId,parent);
+        parent = observed.value; exactParentMetadata.set(parentId,parent);
       }
       current = parent;
     }
