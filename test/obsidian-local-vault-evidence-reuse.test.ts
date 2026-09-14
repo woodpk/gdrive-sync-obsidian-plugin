@@ -15,6 +15,11 @@ interface Entry {
   ctime: number;
 }
 
+interface StatBarrier {
+  readonly entered: Promise<void>;
+  release(): void;
+}
+
 interface Runtime {
   readonly app: App;
   readonly entries: Map<string, Entry>;
@@ -22,6 +27,7 @@ interface Runtime {
   readonly fetchCalls: string[];
   fire(kind: "create" | "modify" | "delete", path: string): void;
   fireRename(oldPath: string, newPath: string): void;
+  blockNextStat(path: string): StatBarrier;
   setRenameObserver(observer: ((from: string, to: string) => void) | undefined): void;
 }
 
@@ -43,6 +49,7 @@ function runtime(initial: Record<string, Entry>): Runtime {
   const fetchCalls: string[] = [];
   const handlers = new Map<string, Array<(...args: any[]) => void>>();
   let renameObserver: ((from: string, to: string) => void) | undefined;
+  let nextStatBarrier: { readonly path: string; entered(): void; readonly waitForRelease: Promise<void> } | undefined;
 
   const ensureParents = (path: string): void => {
     const parts = path.split("/");
@@ -62,6 +69,12 @@ function runtime(initial: Record<string, Entry>): Runtime {
     },
     stat: async (path: string): Promise<Stat | null> => {
       adapterCalls.push(`stat:${path}`);
+      const barrier = nextStatBarrier?.path === path ? nextStatBarrier : undefined;
+      if (barrier) {
+        nextStatBarrier = undefined;
+        barrier.entered();
+        await barrier.waitForRelease;
+      }
       const entry = entries.get(path);
       if (!entry) return null;
       return {
@@ -158,6 +171,15 @@ function runtime(initial: Record<string, Entry>): Runtime {
     fetchCalls,
     fire: (kind, path) => emit(kind, { path }),
     fireRename: (oldPath, newPath) => emit("rename", { path: newPath }, oldPath),
+    blockNextStat: path => {
+      if (nextStatBarrier) throw new Error("a stat barrier is already armed");
+      let markEntered!: () => void;
+      let release!: () => void;
+      const entered = new Promise<void>(resolve => { markEntered = resolve; });
+      const waitForRelease = new Promise<void>(resolve => { release = resolve; });
+      nextStatBarrier = { path, entered: markEntered, waitForRelease };
+      return { entered, release };
+    },
     setRenameObserver: observer => { renameObserver = observer; },
   };
 }
@@ -232,6 +254,59 @@ test("same-path same-token read-only reuse replaces each repeated stability wind
   await adapter.readFile(vp("note.bin"), token);
   assert.equal(statCount(value, "note.bin"), 4,
     "two repeated expected-token reads add one live stat each; the pre-LAT-03 structure would add four stats");
+  adapter.dispose();
+});
+
+test("generation invalidation while fast-path stat is pending rejects the stale token", async () => {
+  const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+  const adapter = local(value);
+  const token = tokenFrom(await adapter.enumerate(), "note.bin");
+  const before = statCount(value, "note.bin");
+  const barrier = value.blockNextStat("note.bin");
+  const pendingRead = adapter.readFile(vp("note.bin"), token);
+  await barrier.entered;
+  value.fire("modify", "note.bin");
+  barrier.release();
+
+  await assert.rejects(pendingRead, LocalStaleObservationError);
+  assert.equal(statCount(value, "note.bin") - before, 3,
+    "invalidated pending fast-path stat must fall back to the full two-stat stale check rather than returning cached evidence");
+  adapter.dispose();
+});
+
+test("observation epoch replacement while fast-path stat is pending cannot return the prior cached proof", async () => {
+  const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+  const adapter = local(value);
+  const token = tokenFrom(await adapter.enumerate(), "note.bin");
+  const before = statCount(value, "note.bin");
+  const barrier = value.blockNextStat("note.bin");
+  const pendingRead = adapter.readFile(vp("note.bin"), token);
+  await barrier.entered;
+
+  const refreshed = await adapter.enumerate();
+  assert.equal(tokenFrom(refreshed, "note.bin"), token, "epoch refresh may preserve the opaque token when generation/stat are unchanged");
+  barrier.release();
+  const read = await pendingRead;
+
+  assert.equal(read.observationToken, token);
+  assert.equal(statCount(value, "note.bin") - before, 5,
+    "pending old proof plus epoch refresh must be followed by a fresh two-stat fallback, not acceptance of the pre-epoch cached object");
+  adapter.dispose();
+});
+
+test("mid-stat generation invalidation rejects before any resource bytes are fetched", async () => {
+  const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+  const adapter = local(value);
+  const token = tokenFrom(await adapter.enumerate(), "note.bin");
+  const read = await adapter.readFile(vp("note.bin"), token);
+  const barrier = value.blockNextStat("note.bin");
+  const pendingCollect = collect(read.content);
+  await barrier.entered;
+  value.fire("modify", "note.bin");
+  barrier.release();
+
+  await assert.rejects(pendingCollect, LocalStaleObservationError);
+  assert.equal(value.fetchCalls.length, 0, "resource fetch must not begin under evidence invalidated while the live stat was pending");
   adapter.dispose();
 });
 

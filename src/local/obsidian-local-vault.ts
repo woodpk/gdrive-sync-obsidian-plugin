@@ -802,29 +802,40 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   private async reusableReadOnlyObservation(path: VaultPath, expectedToken: ObservationToken): Promise<LocalObservation | undefined> {
-    const safe = await this.safePath(path, "observe");
-    const key = String(safe);
-    const cached = this.reusableStableObservations.get(key);
-    if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
-    const generation = this.generationFor(safe);
-    if (generation !== cached.generation) {
-      this.reusableStableObservations.delete(key);
-      return undefined;
-    }
-    let current: Stat | null;
-    try {
-      current = await this.adapter.stat(key);
-    } catch {
-      this.reusableStableObservations.delete(key);
-      return undefined;
-    }
-    if (!current || current.type !== "file" || !sameStat(current, cached.stat) || statToken(key, current, generation) !== expectedToken) {
-      this.reusableStableObservations.delete(key);
-      return undefined;
-    }
-    return cached.observation;
+  const safe = await this.safePath(path, "observe");
+  const key = String(safe);
+  const cached = this.reusableStableObservations.get(key);
+  if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
+  const generation = this.generationFor(safe);
+  if (generation !== cached.generation) {
+    this.reusableStableObservations.delete(key);
+    return undefined;
   }
-
+  const discardCachedIfSame = (): void => {
+    if (this.reusableStableObservations.get(key) === cached) this.reusableStableObservations.delete(key);
+  };
+  let current: Stat | null;
+  try {
+    current = await this.adapter.stat(key);
+  } catch {
+    discardCachedIfSame();
+    return undefined;
+  }
+  const currentGeneration = this.generationFor(safe);
+  if (
+    this.observationEpoch !== cached.epoch ||
+    currentGeneration !== cached.generation ||
+    this.reusableStableObservations.get(key) !== cached ||
+    !current ||
+    current.type !== "file" ||
+    !sameStat(current, cached.stat) ||
+    statToken(key, current, currentGeneration) !== expectedToken
+  ) {
+    discardCachedIfSame();
+    return undefined;
+  }
+  return cached.observation;
+}
   private async writeIncremental(path: VaultPath, content: BinaryContentSource): Promise<void> {
     const target = await this.safePath(path, "mutation-target");
     await this.adapter.writeBinary(String(target), new ArrayBuffer(0));
