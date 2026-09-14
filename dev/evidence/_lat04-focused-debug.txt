@@ -1,0 +1,740 @@
+TAP version 13
+# Subtest: stale precondition invalidates affected work before mutation
+ok 1 - stale precondition invalidates affected work before mutation
+  ---
+  duration_ms: 2.756135
+  type: 'test'
+  ...
+# Subtest: durable verified execution is journaled pending before authoritative success commit
+ok 2 - durable verified execution is journaled pending before authoritative success commit
+  ---
+  duration_ms: 2.477416
+  type: 'test'
+  ...
+# Subtest: uncertain mutation outcome is persisted as uncertain and never authoritative success
+ok 3 - uncertain mutation outcome is persisted as uncertain and never authoritative success
+  ---
+  duration_ms: 2.758349
+  type: 'test'
+  ...
+# Subtest: post-journal stale intent is retired only through an exact durable state transition
+ok 4 - post-journal stale intent is retired only through an exact durable state transition
+  ---
+  duration_ms: 3.431643
+  type: 'test'
+  ...
+# Subtest: failed stale-intent retirement remains globally recoverable and preserves the pending journal
+ok 5 - failed stale-intent retirement remains globally recoverable and preserves the pending journal
+  ---
+  duration_ms: 0.888124
+  type: 'test'
+  ...
+# Subtest: iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle
+ok 6 - iPhone Sync now diagnostics correlate entry, planning, preview, Execute, execution, and terminal lifecycle
+  ---
+  duration_ms: 60.674094
+  type: 'test'
+  ...
+# Subtest: sync diagnostics preserve plan/execution semantics and never export vault path or content
+ok 7 - sync diagnostics preserve plan/execution semantics and never export vault path or content
+  ---
+  duration_ms: 37.109548
+  type: 'test'
+  ...
+# Subtest: manual sync planning failure is terminal, correlated, and metadata-only
+ok 8 - manual sync planning failure is terminal, correlated, and metadata-only
+  ---
+  duration_ms: 1.472994
+  type: 'test'
+  ...
+# Subtest: preview-presentation exception is sanitized at the preview stage and closes the same run
+ok 9 - preview-presentation exception is sanitized at the preview stage and closes the same run
+  ---
+  duration_ms: 4.068028
+  type: 'test'
+  ...
+# Subtest: stale Execute rejection is Error-level under the original run and later dismissal cancels it
+ok 10 - stale Execute rejection is Error-level under the original run and later dismissal cancels it
+  ---
+  duration_ms: 12.410852
+  type: 'test'
+  ...
+# Subtest: identical semantic plans retain independent explicit diagnostic run ownership
+ok 11 - identical semantic plans retain independent explicit diagnostic run ownership
+  ---
+  duration_ms: 9.073945
+  type: 'test'
+  ...
+# Subtest: precondition throw is Error-level at its exact execution substage and closes the run
+ok 12 - precondition throw is Error-level at its exact execution substage and closes the run
+  ---
+  duration_ms: 13.217865
+  type: 'test'
+  ...
+# Subtest: pending throw is Error-level at its exact execution substage and closes the run
+ok 13 - pending throw is Error-level at its exact execution substage and closes the run
+  ---
+  duration_ms: 27.908774
+  type: 'test'
+  ...
+# Subtest: mutation throw is Error-level at its exact execution substage and closes the run
+ok 14 - mutation throw is Error-level at its exact execution substage and closes the run
+  ---
+  duration_ms: 10.278129
+  type: 'test'
+  ...
+# Subtest: uncertain-journal throw is Error-level at its exact execution substage and closes the run
+ok 15 - uncertain-journal throw is Error-level at its exact execution substage and closes the run
+  ---
+  duration_ms: 24.192822
+  type: 'test'
+  ...
+# Subtest: commit throw is Error-level at its exact execution substage and closes the run
+ok 16 - commit throw is Error-level at its exact execution substage and closes the run
+  ---
+  duration_ms: 10.721411
+  type: 'test'
+  ...
+# Subtest: returned content-mutation failure emits Error evidence rather than Trace-only evidence
+ok 17 - returned content-mutation failure emits Error evidence rather than Trace-only evidence
+  ---
+  duration_ms: 8.18565
+  type: 'test'
+  ...
+# Subtest: run-lease acquisition throw emits a stage-specific terminal Error and closes the run
+ok 18 - run-lease acquisition throw emits a stage-specific terminal Error and closes the run
+  ---
+  duration_ms: 4.033294
+  type: 'test'
+  ...
+# Subtest: D v1.2 authority boundary replaces nominal BASE and identity markers with exact frozen authority
+ok 19 - D v1.2 authority boundary replaces nominal BASE and identity markers with exact frozen authority
+  ---
+  duration_ms: 3.364128
+  type: 'test'
+  ...
+# Subtest: D v1.2 restart from dispatch-authorized observes physical reality before retry eligibility
+ok 20 - D v1.2 restart from dispatch-authorized observes physical reality before retry eligibility
+  ---
+  duration_ms: 0.909374
+  type: 'test'
+  ...
+# Subtest: D v1.2 restart from outcome-unknown also observes physical reality before retry eligibility
+ok 21 - D v1.2 restart from outcome-unknown also observes physical reality before retry eligibility
+  ---
+  duration_ms: 0.269302
+  type: 'test'
+  ...
+# Subtest: D v1.2 correctly observed reserved folder is physical proof but not commit authority without convergence
+ok 22 - D v1.2 correctly observed reserved folder is physical proof but not commit authority without convergence
+  ---
+  duration_ms: 0.24639
+  type: 'test'
+  ...
+# Subtest: D v1.2 correctly observed reserved folder becomes commit-eligible only with converged path authority
+ok 23 - D v1.2 correctly observed reserved folder becomes commit-eligible only with converged path authority
+  ---
+  duration_ms: 0.414242
+  type: 'test'
+  ...
+# Subtest: D v1.2 wrong actual parent remains conflict-preserved
+ok 24 - D v1.2 wrong actual parent remains conflict-preserved
+  ---
+  duration_ms: 0.294498
+  type: 'test'
+  ...
+# Subtest: D v1.2 wrong actual structural path remains conflict-preserved
+ok 25 - D v1.2 wrong actual structural path remains conflict-preserved
+  ---
+  duration_ms: 0.437385
+  type: 'test'
+  ...
+# Subtest: D v1.2 occupied logical target cannot become verified-not-applied retry authority
+ok 26 - D v1.2 occupied logical target cannot become verified-not-applied retry authority
+  ---
+  duration_ms: 0.246449
+  type: 'test'
+  ...
+# Subtest: D v1.2 authoritative reserved-ID absence and clear target can become safe retry eligibility
+ok 27 - D v1.2 authoritative reserved-ID absence and clear target can become safe retry eligibility
+  ---
+  duration_ms: 0.397791
+  type: 'test'
+  ...
+# Subtest: D v1.2 incomplete recovery observation remains recovery-pending
+ok 28 - D v1.2 incomplete recovery observation remains recovery-pending
+  ---
+  duration_ms: 0.545807
+  type: 'test'
+  ...
+# Subtest: D v1.2 unrelated sibling effects are independently classified while one recovery is conflicted
+ok 29 - D v1.2 unrelated sibling effects are independently classified while one recovery is conflicted
+  ---
+  duration_ms: 0.573549
+  type: 'test'
+  ...
+# Subtest: D v1.2 restart never re-observes or duplicates a state-committed folder create
+ok 30 - D v1.2 restart never re-observes or duplicates a state-committed folder create
+  ---
+  duration_ms: 0.160209
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator replaces nominal BASE authority and restores exact canonical state CAS
+ok 31 - D authoritative coordinator replaces nominal BASE authority and restores exact canonical state CAS
+  ---
+  duration_ms: 1.236473
+  type: 'test'
+  ...
+# Subtest: D exact canonical CAS stale result is surfaced rather than silently committing
+ok 32 - D exact canonical CAS stale result is surfaced rather than silently committing
+  ---
+  duration_ms: 0.218547
+  type: 'test'
+  ...
+# Subtest: D operation self-assertion cannot manufacture identity authority without a durable mapping
+ok 33 - D operation self-assertion cannot manufacture identity authority without a durable mapping
+  ---
+  duration_ms: 0.19835
+  type: 'test'
+  ...
+# Subtest: D contradictory durable identity mapping rejects operation path or remote ID assertion
+ok 34 - D contradictory durable identity mapping rejects operation path or remote ID assertion
+  ---
+  duration_ms: 0.213398
+  type: 'test'
+  ...
+# Subtest: D duplicate durable mapping is non-unique and blocks identity authority
+ok 35 - D duplicate durable mapping is non-unique and blocks identity authority
+  ---
+  duration_ms: 0.213558
+  type: 'test'
+  ...
+# Subtest: D matching current-generation durable mapping resolves exact identity authority
+ok 36 - D matching current-generation durable mapping resolves exact identity authority
+  ---
+  duration_ms: 0.237202
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator isolates stale exact precondition before physical execution
+ok 37 - D authoritative coordinator isolates stale exact precondition before physical execution
+  ---
+  duration_ms: 0.269211
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator refuses mutation when exact BASE convergence authority is unavailable
+ok 38 - D authoritative coordinator refuses mutation when exact BASE convergence authority is unavailable
+  ---
+  duration_ms: 0.179635
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator refuses operation when trusted mapping disagrees with operation
+ok 39 - D authoritative coordinator refuses operation when trusted mapping disagrees with operation
+  ---
+  duration_ms: 0.179254
+  type: 'test'
+  ...
+# Subtest: D remote-feed learning progresses independently while an unrelated path remains conflicted
+ok 40 - D remote-feed learning progresses independently while an unrelated path remains conflicted
+  ---
+  duration_ms: 0.214079
+  type: 'test'
+  ...
+# Subtest: D exact common-state proof produces BASE healing transition without a content rewrite operation
+ok 41 - D exact common-state proof produces BASE healing transition without a content rewrite operation
+  ---
+  duration_ms: 0.22012
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before local-file physical mutation
+ok 42 - D durable mutation lifecycle persists intent and dispatch authority before local-file physical mutation
+  ---
+  duration_ms: 1.558733
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before remote-file physical mutation
+ok 43 - D durable mutation lifecycle persists intent and dispatch authority before remote-file physical mutation
+  ---
+  duration_ms: 0.353438
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before local-move physical mutation
+ok 44 - D durable mutation lifecycle persists intent and dispatch authority before local-move physical mutation
+  ---
+  duration_ms: 0.3114
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before remote-move physical mutation
+ok 45 - D durable mutation lifecycle persists intent and dispatch authority before remote-move physical mutation
+  ---
+  duration_ms: 0.286704
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before local-trash physical mutation
+ok 46 - D durable mutation lifecycle persists intent and dispatch authority before local-trash physical mutation
+  ---
+  duration_ms: 0.394605
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before remote-trash physical mutation
+ok 47 - D durable mutation lifecycle persists intent and dispatch authority before remote-trash physical mutation
+  ---
+  duration_ms: 0.251398
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before local-folder physical mutation
+ok 48 - D durable mutation lifecycle persists intent and dispatch authority before local-folder physical mutation
+  ---
+  duration_ms: 0.307403
+  type: 'test'
+  ...
+# Subtest: D durable mutation lifecycle persists intent and dispatch authority before remote-folder physical mutation
+ok 49 - D durable mutation lifecycle persists intent and dispatch authority before remote-folder physical mutation
+  ---
+  duration_ms: 1.187893
+  type: 'test'
+  ...
+# Subtest: D post-dispatch uncertainty is durable and restart never blindly redispatches
+ok 50 - D post-dispatch uncertainty is durable and restart never blindly redispatches
+  ---
+  duration_ms: 0.76191
+  type: 'test'
+  ...
+# Subtest: D conflict-preserved dispatch reaches bounded quiescence rather than immediate retry
+ok 51 - D conflict-preserved dispatch reaches bounded quiescence rather than immediate retry
+  ---
+  duration_ms: 0.368577
+  type: 'test'
+  ...
+# Subtest: D authoritative state commit requires exact durable physical verification reference
+ok 52 - D authoritative state commit requires exact durable physical verification reference
+  ---
+  duration_ms: 0.456361
+  type: 'test'
+  ...
+# Subtest: D clean merge tracks each physical effect independently across crash/restart
+ok 53 - D clean merge tracks each physical effect independently across crash/restart
+  ---
+  duration_ms: 0.40801
+  type: 'test'
+  ...
+# Subtest: C2 verified non-application retires a no-effect durable intent and permits renewed planning authority
+ok 54 - C2 verified non-application retires a no-effect durable intent and permits renewed planning authority
+  ---
+  duration_ms: 0.344152
+  type: 'test'
+  ...
+# Subtest: C2 verified non-application cannot retire a partially progressed multi-effect operation
+ok 55 - C2 verified non-application cannot retire a partially progressed multi-effect operation
+  ---
+  duration_ms: 0.26831
+  type: 'test'
+  ...
+# Subtest: D reliable Changes traversal retains prior-page removals and exposes only terminal newStartPageToken
+ok 56 - D reliable Changes traversal retains prior-page removals and exposes only terminal newStartPageToken
+  ---
+  duration_ms: 2.317747
+  type: 'test'
+  ...
+# Subtest: D failure before terminal Changes page cannot advance durable cursor authority
+ok 57 - D failure before terminal Changes page cannot advance durable cursor authority
+  ---
+  duration_ms: 0.684154
+  type: 'test'
+  ...
+# Subtest: D absence of ReliableRemoteChangePort falls back to full reconciliation instead of legacy readChanges
+ok 58 - D absence of ReliableRemoteChangePort falls back to full reconciliation instead of legacy readChanges
+  ---
+  duration_ms: 0.481387
+  type: 'test'
+  ...
+# Subtest: D actual controller plus product executor has no nominal-only ordinary mutation fallback
+ok 59 - D actual controller plus product executor has no nominal-only ordinary mutation fallback
+  ---
+  duration_ms: 7.984926
+  type: 'test'
+  ...
+# Subtest: D production update stops at effect-verified until authoritative canonical commit occurs
+ok 60 - D production update stops at effect-verified until authoritative canonical commit occurs
+  ---
+  duration_ms: 6.057565
+  type: 'test'
+  ...
+# Subtest: D authoritative production adapter vetoes mutation when independent remote observation disagrees
+ok 61 - D authoritative production adapter vetoes mutation when independent remote observation disagrees
+  ---
+  duration_ms: 0.338841
+  type: 'test'
+  ...
+# Subtest: D default trusted-state authority bridge cannot falsely acknowledge a durable authority mutation
+ok 62 - D default trusted-state authority bridge cannot falsely acknowledge a durable authority mutation
+  ---
+  duration_ms: 1.774866
+  type: 'test'
+  ...
+# Subtest: D missing writable/frozen production mutation dependencies fail closed before physical dispatch
+ok 63 - D missing writable/frozen production mutation dependencies fail closed before physical dispatch
+  ---
+  duration_ms: 0.497697
+  type: 'test'
+  ...
+# Subtest: default breaker permits a small ordinary trusted deletion below every threshold
+ok 64 - default breaker permits a small ordinary trusted deletion below every threshold
+  ---
+  duration_ms: 0.478812
+  type: 'test'
+  ...
+# Subtest: default absolute-count boundary blocks exactly at the configured threshold
+ok 65 - default absolute-count boundary blocks exactly at the configured threshold
+  ---
+  duration_ms: 0.334072
+  type: 'test'
+  ...
+# Subtest: default affected-percentage boundary blocks at the configured fraction even below absolute count
+ok 66 - default affected-percentage boundary blocks at the configured fraction even below absolute count
+  ---
+  duration_ms: 0.244986
+  type: 'test'
+  ...
+# Subtest: reconstructed or untrusted state makes even one destructive operation review-only
+ok 67 - reconstructed or untrusted state makes even one destructive operation review-only
+  ---
+  duration_ms: 0.195364
+  type: 'test'
+  ...
+# Subtest: approval remains scoped to the exact reviewed plan and a concrete recovery checkpoint
+ok 68 - approval remains scoped to the exact reviewed plan and a concrete recovery checkpoint
+  ---
+  duration_ms: 0.45619
+  type: 'test'
+  ...
+# Subtest: production planner prevents a stale current device from authorizing any destructive plan
+ok 69 - production planner prevents a stale current device from authorizing any destructive plan
+  ---
+  duration_ms: 1.907724
+  type: 'test'
+  ...
+# Subtest: tombstones expire at the configured bound only when every known device is current
+ok 70 - tombstones expire at the configured bound only when every known device is current
+  ---
+  duration_ms: 0.267439
+  type: 'test'
+  ...
+# Subtest: LOG07-S1 production controller/executor/Drive composition proves remote-update lifecycle end to end
+ok 71 - LOG07-S1 production controller/executor/Drive composition proves remote-update lifecycle end to end
+  ---
+  duration_ms: 826.307481
+  type: 'test'
+  ...
+# Subtest: LOG07-S2 candidate direct GET can diverge from path LIST without inventing retirement
+ok 72 - LOG07-S2 candidate direct GET can diverge from path LIST without inventing retirement
+  ---
+  duration_ms: 55.628807
+  type: 'test'
+  ...
+# Subtest: LOG07-S3/S4/S5 ambiguous retirement, delayed path visibility, and third-candidate contamination remain distinct
+ok 73 - LOG07-S3/S4/S5 ambiguous retirement, delayed path visibility, and third-candidate contamination remain distinct
+  ---
+  duration_ms: 208.03946
+  type: 'test'
+  ...
+# Subtest: LOG07-S6 repaired production controller exports outstanding-intent recovery lifecycle
+ok 74 - LOG07-S6 repaired production controller exports outstanding-intent recovery lifecycle
+  ---
+  duration_ms: 5.757527
+  type: 'test'
+  ...
+# Subtest: LOG07-S7 remote-change learning advances generation before durable recovery rejects the prior-generation intent
+ok 75 - LOG07-S7 remote-change learning advances generation before durable recovery rejects the prior-generation intent
+  ---
+  duration_ms: 6.008995
+  type: 'test'
+  ...
+# Subtest: LOG07-S8 cancellation is distinct and causes no HTTP dispatch
+ok 76 - LOG07-S8 cancellation is distinct and causes no HTTP dispatch
+  ---
+  duration_ms: 0.658657
+  type: 'test'
+  ...
+# Subtest: LOG07-S9 retry/rate-limit evidence keeps one request ID and distinct attempt decisions
+ok 77 - LOG07-S9 retry/rate-limit evidence keeps one request ID and distinct attempt decisions
+  ---
+  duration_ms: 2.476193
+  type: 'test'
+  ...
+# Subtest: LOG07-S10 diagnostic persistence failure does not change mutation outcome or request sequence
+ok 78 - LOG07-S10 diagnostic persistence failure does not change mutation outcome or request sequence
+  ---
+  duration_ms: 24.672976
+  type: 'test'
+  ...
+# Subtest: LOG07-S11 adversarial private path/content/header-like values do not leak and retention remains bounded
+not ok 79 - LOG07-S11 adversarial private path/content/header-like values do not leak and retention remains bounded
+  ---
+  duration_ms: 523.345467
+  type: 'test'
+  location: '/home/runner/work/gdrive-sync-obsidian-plugin/gdrive-sync-obsidian-plugin/.test-build/test/phase6-log07-end-to-end-observability-verification.test.js:557:25'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      ok(JSON.parse(text).structuredTrace.length <= 500)
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/gdrive-sync-obsidian-plugin/gdrive-sync-obsidian-plugin/.test-build/test/phase6-log07-end-to-end-observability-verification.test.js:595:22)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: authoritative cache-bypass discovers same-size same-mtime H0->H1 after missed watcher event
+ok 80 - authoritative cache-bypass discovers same-size same-mtime H0->H1 after missed watcher event
+  ---
+  duration_ms: 3.156661
+  type: 'test'
+  ...
+# Subtest: corrupt staged bytes are rejected before target displacement
+ok 81 - corrupt staged bytes are rejected before target displacement
+  ---
+  duration_ms: 1.837674
+  type: 'test'
+  ...
+# Subtest: create requires authoritative absence and commits verified bytes
+ok 82 - create requires authoritative absence and commits verified bytes
+  ---
+  duration_ms: 2.835503
+  type: 'test'
+  ...
+# Subtest: replace rechecks canonical old bytes even when observation token is unchanged
+ok 83 - replace rechecks canonical old bytes even when observation token is unchanged
+  ---
+  duration_ms: 3.677451
+  type: 'test'
+  ...
+# Subtest: replace recovery treats absent target plus absent required backup as contradiction
+ok 84 - replace recovery treats absent target plus absent required backup as contradiction
+  ---
+  duration_ms: 1.451785
+  type: 'test'
+  ...
+# Subtest: replace recovery completes verified stage when old target survives in backup
+ok 85 - replace recovery completes verified stage when old target survives in backup
+  ---
+  duration_ms: 1.106541
+  type: 'test'
+  ...
+# Subtest: exact plugin structural hints coalesce while overlapping user edit remains observable
+ok 86 - exact plugin structural hints coalesce while overlapping user edit remains observable
+  ---
+  duration_ms: 3.835285
+  type: 'test'
+  ...
+# Subtest: LAT-04 normal physical operation uses one full authority validation and preserves lifecycle ordering
+ok 87 - LAT-04 normal physical operation uses one full authority validation and preserves lifecycle ordering
+  ---
+  duration_ms: 12.330091
+  type: 'test'
+  ...
+# Subtest: LAT-04 execute-boundary validation throw retains exact precondition diagnostic provenance
+ok 88 - LAT-04 execute-boundary validation throw retains exact precondition diagnostic provenance
+  ---
+  duration_ms: 1.259938
+  type: 'test'
+  ...
+# Subtest: LAT-04 dispatch guard rejects LOCAL token changes after full validation and before mutation
+ok 89 - LAT-04 dispatch guard rejects LOCAL token changes after full validation and before mutation
+  ---
+  duration_ms: 1.537244
+  type: 'test'
+  ...
+# Subtest: LAT-04 dispatch guard rejects REMOTE revision/object identity changes after full validation
+ok 90 - LAT-04 dispatch guard rejects REMOTE revision/object identity changes after full validation
+  ---
+  duration_ms: 2.929268
+  type: 'test'
+  ...
+# Subtest: LAT-04 semantic generation race after full validation fails closed before dispatch
+ok 91 - LAT-04 semantic generation race after full validation fails closed before dispatch
+  ---
+  duration_ms: 1.147137
+  type: 'test'
+  ...
+# Subtest: LAT-04 destructive stale semantic authority cannot cross dispatch authorization
+ok 92 - LAT-04 destructive stale semantic authority cannot cross dispatch authorization
+  ---
+  duration_ms: 0.516032
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator replaces nominal BASE authority and restores exact canonical state CAS
+ok 93 - D authoritative coordinator replaces nominal BASE authority and restores exact canonical state CAS
+  ---
+  duration_ms: 3.400104
+  type: 'test'
+  ...
+# Subtest: D exact canonical CAS stale result is surfaced rather than silently committing
+ok 94 - D exact canonical CAS stale result is surfaced rather than silently committing
+  ---
+  duration_ms: 0.389787
+  type: 'test'
+  ...
+# Subtest: D operation self-assertion cannot manufacture identity authority without a durable mapping
+ok 95 - D operation self-assertion cannot manufacture identity authority without a durable mapping
+  ---
+  duration_ms: 0.360302
+  type: 'test'
+  ...
+# Subtest: D contradictory durable identity mapping rejects operation path or remote ID assertion
+ok 96 - D contradictory durable identity mapping rejects operation path or remote ID assertion
+  ---
+  duration_ms: 0.363888
+  type: 'test'
+  ...
+# Subtest: D duplicate durable mapping is non-unique and blocks identity authority
+ok 97 - D duplicate durable mapping is non-unique and blocks identity authority
+  ---
+  duration_ms: 0.3486
+  type: 'test'
+  ...
+# Subtest: D matching current-generation durable mapping resolves exact identity authority
+ok 98 - D matching current-generation durable mapping resolves exact identity authority
+  ---
+  duration_ms: 0.296993
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator isolates stale exact precondition before physical execution
+ok 99 - D authoritative coordinator isolates stale exact precondition before physical execution
+  ---
+  duration_ms: 0.416516
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator refuses mutation when exact BASE convergence authority is unavailable
+ok 100 - D authoritative coordinator refuses mutation when exact BASE convergence authority is unavailable
+  ---
+  duration_ms: 0.333602
+  type: 'test'
+  ...
+# Subtest: D authoritative coordinator refuses operation when trusted mapping disagrees with operation
+ok 101 - D authoritative coordinator refuses operation when trusted mapping disagrees with operation
+  ---
+  duration_ms: 0.684305
+  type: 'test'
+  ...
+# Subtest: D remote-feed learning progresses independently while an unrelated path remains conflicted
+ok 102 - D remote-feed learning progresses independently while an unrelated path remains conflicted
+  ---
+  duration_ms: 2.098038
+  type: 'test'
+  ...
+# Subtest: D exact common-state proof produces BASE healing transition without a content rewrite operation
+ok 103 - D exact common-state proof produces BASE healing transition without a content rewrite operation
+  ---
+  duration_ms: 0.362616
+  type: 'test'
+  ...
+# Subtest: D-C6 canonical BASE/state commit occurs while durable effect remains effect-verified, then state-committed finalizes
+ok 104 - D-C6 canonical BASE/state commit occurs while durable effect remains effect-verified, then state-committed finalizes
+  ---
+  duration_ms: 4.549004
+  type: 'test'
+  ...
+# Subtest: D-C7 stale canonical CAS leaves durable effect at effect-verified
+ok 105 - D-C7 stale canonical CAS leaves durable effect at effect-verified
+  ---
+  duration_ms: 0.402911
+  type: 'test'
+  ...
+# Subtest: D-C8 reserved REMOTE folder identity propagates receipt to BASE and remoteMappings
+ok 106 - D-C8 reserved REMOTE folder identity propagates receipt to BASE and remoteMappings
+  ---
+  duration_ms: 0.779262
+  type: 'test'
+  ...
+# Subtest: D-C6 restart after canonical commit but before durable finalization does not repeat semantic commit
+ok 107 - D-C6 restart after canonical commit but before durable finalization does not repeat semantic commit
+  ---
+  duration_ms: 0.826389
+  type: 'test'
+  ...
+# Subtest: D actual controller plus product executor has no nominal-only ordinary mutation fallback
+ok 108 - D actual controller plus product executor has no nominal-only ordinary mutation fallback
+  ---
+  duration_ms: 14.994545
+  type: 'test'
+  ...
+# Subtest: D production update stops at effect-verified until authoritative canonical commit occurs
+ok 109 - D production update stops at effect-verified until authoritative canonical commit occurs
+  ---
+  duration_ms: 7.706567
+  type: 'test'
+  ...
+# Subtest: D authoritative production adapter vetoes mutation when independent remote observation disagrees
+ok 110 - D authoritative production adapter vetoes mutation when independent remote observation disagrees
+  ---
+  duration_ms: 0.486046
+  type: 'test'
+  ...
+# Subtest: D default trusted-state authority bridge cannot falsely acknowledge a durable authority mutation
+ok 111 - D default trusted-state authority bridge cannot falsely acknowledge a durable authority mutation
+  ---
+  duration_ms: 1.378377
+  type: 'test'
+  ...
+# Subtest: D missing writable/frozen production mutation dependencies fail closed before physical dispatch
+ok 112 - D missing writable/frozen production mutation dependencies fail closed before physical dispatch
+  ---
+  duration_ms: 0.609145
+  type: 'test'
+  ...
+# Subtest: D production REMOTE file create uses reserved ReliableRemoteMutationPort and stops at effect-verified
+ok 113 - D production REMOTE file create uses reserved ReliableRemoteMutationPort and stops at effect-verified
+  ---
+  duration_ms: 6.992637
+  type: 'test'
+  ...
+# Subtest: D production REMOTE move and trash use frozen mutation methods, never raw Drive methods
+ok 114 - D production REMOTE move and trash use frozen mutation methods, never raw Drive methods
+  ---
+  duration_ms: 1.657397
+  type: 'test'
+  ...
+# Subtest: D production LOCAL file create and replace use LocalTransactionalMutationPort
+ok 115 - D production LOCAL file create and replace use LocalTransactionalMutationPort
+  ---
+  duration_ms: 3.62853
+  type: 'test'
+  ...
+# Subtest: D production LOCAL folder create, move, and trash persist descriptors before physical mutation
+ok 116 - D production LOCAL folder create, move, and trash persist descriptors before physical mutation
+  ---
+  duration_ms: 2.277713
+  type: 'test'
+  ...
+# Subtest: D production clean merge persists and verifies independent LOCAL and REMOTE effects
+ok 117 - D production clean merge persists and verifies independent LOCAL and REMOTE effects
+  ---
+  duration_ms: 2.172888
+  type: 'test'
+  ...
+# Subtest: D production restart from intent-persisted never dispatches; dispatch-authorized and outcome-unknown reconcile without blind redispatch
+ok 118 - D production restart from intent-persisted never dispatches; dispatch-authorized and outcome-unknown reconcile without blind redispatch
+  ---
+  duration_ms: 3.819315
+  type: 'test'
+  ...
+# Subtest: D physical verification without unique logical-path convergence remains blocked and cannot become state-committed
+ok 119 - D physical verification without unique logical-path convergence remains blocked and cannot become state-committed
+  ---
+  duration_ms: 1.093477
+  type: 'test'
+  ...
+1..119
+# tests 119
+# suites 0
+# pass 118
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1882.620403
