@@ -7,6 +7,7 @@ import {
   type BinaryContentSource,
   type PlannedOperation,
   type SynchronizationAuthorityMetadataV1_1,
+  type TrustedSynchronizationState,
   type VaultPath,
 } from "../src/contracts";
 import { StateCommitCoordinator } from "../src/core/commit-coordinator";
@@ -158,7 +159,7 @@ const stateContext = {
   expectedDeviceIdentity: deviceIdentity,
 };
 
-function emptyTrustedState(changeCursor?: string) {
+function emptyTrustedState(changeCursor?: string): TrustedSynchronizationState {
   return {
     schemaVersion: 1,
     stateRevision: id<"StateRevision">("state:lat01"),
@@ -170,7 +171,7 @@ function emptyTrustedState(changeCursor?: string) {
     operations: [],
     knownDevices: [],
     ...(changeCursor ? { changeCursor: id<"ChangeCursor">(changeCursor) } : {}),
-  } as never;
+  };
 }
 
 test("LAT-01 full planning measures managed-root, BASE, cursor, reconciliation calls and LOCAL/REMOTE overlap", async () => {
@@ -366,13 +367,13 @@ class CountingAuthorityStore {
 
   constructor() {
     this.value = {
-      persistenceRevision: id<"PersistenceRevision">("persist:lat01:1"),
+      persistenceRevision: id<"StateRevision">("persist:lat01:1"),
       semanticGeneration: id<"SemanticStateGeneration">("generation:lat01"),
       learnedRemoteBatches: [],
       pathConvergence: [],
       operationIntents: [],
       localTransactions: [],
-    } as SynchronizationAuthorityMetadataV1_1;
+    };
   }
 
   async loadAuthority() {
@@ -383,7 +384,7 @@ class CountingAuthorityStore {
   async saveAuthority(candidate: SynchronizationAuthorityMetadataV1_1) {
     this.saves += 1;
     this.revision += 1;
-    const persistenceRevision = id<"PersistenceRevision">(`persist:lat01:${this.revision}`);
+    const persistenceRevision = id<"StateRevision">(`persist:lat01:${this.revision}`);
     this.value = { ...candidate, persistenceRevision };
     return { status: "saved" as const, persistenceRevision, semanticGeneration: this.value.semanticGeneration };
   }
@@ -416,7 +417,7 @@ test("LAT-01 production authoritative path measures repeated validation/load pas
       counts.identityLoads += 1;
       return { status: "trusted" as const, state: canonical };
     },
-    saveTrusted: async (candidate: typeof canonical, expected?: string) => {
+    saveTrusted: async (candidate: TrustedSynchronizationState, expected?: string) => {
       if (expected !== undefined && expected !== String(canonical.stateRevision)) {
         return { status: "stale-revision" as const, actualRevision: canonical.stateRevision };
       }
