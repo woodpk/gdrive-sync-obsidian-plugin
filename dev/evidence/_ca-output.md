@@ -2089,3 +2089,83 @@ Verification: typecheck PASS; focused affected production/Drive/recovery regress
 No Drive object was mutated. The installed `0.1.11` plugin was not patched/reinstalled, B01 was not rerun, and B02–O/iPhone/Stage 3 were not started. Live remediation remains behind supervisor review plus separately authorized prerelease/install. Detailed evidence: `dev/evidence/2026-09-07T0010-P6LIVE/B01-duplicate-remote-identity-root-cause-repair-20260909-142237/`.
 
 **PHASE 6 B01 DUPLICATE REMOTE IDENTITY ROOT CAUSE PROVEN — REPAIR CANDIDATE READY FOR SUPERVISOR REVIEW — B01 NOT RERUN**
+
+---
+## Phase 6 C01 — iOS Local Transaction Artifact-Path Repair
+
+- Agent: `agt-ca-p6-c01-ios-local-transaction-artifact-path-repair-01`
+- Input/base SHA: `a255d201549f18671113766ff14dde4caa2b8d6c`
+- Branch: `phase6-c01-ios-local-transaction-artifact-path-repair`
+- Production implementation commit: `e5b8f5797e97f4dd102bb19fa3374461a0ab780b`
+- Verified implementation/test HEAD before evidence-only closure: `acf8909e145be7cc3e5db63410cb2be6a355287d`
+- Final branch HEAD: reported by the supervisor after this evidence-only commit; a tracked file cannot self-embed the SHA of the commit that contains that value.
+
+### Root-cause confirmation
+
+At the exact input SHA, `physicalArtifactPath(...)` built its filename token from `String(sha256Text(seed)).slice(0, 24)`. Canonical `sha256Text(...)` values are `sha256:<64 lowercase hex>`, so the physical sibling artifact name inherited the `sha256:` scheme prefix and therefore contained `:`. The repository cross-platform validator rejects `:` before local staging I/O. The inspected base matched the confirmed C01 diagnosis; no contradictory root cause was found.
+
+### Corrected artifact-path semantics
+
+`physicalArtifactPath(...)` still computes the canonical SHA-256 of the same logical seed, but now derives the physical filename token from 24 lowercase hexadecimal characters after the `sha256:` prefix. Canonical `ContentHash` values remain unchanged as `sha256:<64hex>` everywhere they serve as evidence/contract values.
+
+The resulting stage/backup artifacts remain deterministic sibling paths in the target's physical parent, remain pairwise distinct from each other and the target, remain stable across stage/commit/recovery for the same logical transaction, and retain the existing `.brain-sync-stage-*` / `.brain-sync-backup-*` operational-exclusion form.
+
+### Files changed for implementation and regression coverage
+
+- `src/product/synchronization-adapters.ts`
+- `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`
+- `dev/evidence/_ca-output.md` (this evidence-only closure)
+
+No OAuth production/UI/diagnostic source file was modified. Existing OAuth diagnostic controls and diagnostic functions therefore remain present and behaviorally untouched by this repair.
+
+### Regression coverage
+
+`test/phase6-c01-ios-local-transaction-artifact-path.test.ts` exercises the real cross-platform path validator through `ScopedLocalTransactionalMutationPort` and proves:
+
+- root-level and nested create targets reach verified staging without the generated artifact-path `:` failure;
+- stage/backup names contain 24 lowercase hexadecimal token characters and validate as cross-platform compatible;
+- stage and backup remain siblings of the physical target and all three paths are pairwise distinct;
+- repeated mapping of the same logical transaction is deterministic;
+- operational exclusions still recognize stage/backup artifacts;
+- commit reuses the exact staged physical mapping and commits intended bytes;
+- recovery reuses the exact staged physical mapping, decides from physical evidence, and does not invent success.
+
+The root/nested staging regression would fail against the exact prerelease `0.1.16` filename behavior because it uses the production validator that rejects `:`.
+
+### Verification
+
+GitHub Actions workflow `Phase 6 Alpha Diagnostic Verification`, run `34785095516`, job `103798998222`, executed against verified implementation/test HEAD `acf8909e145be7cc3e5db63410cb2be6a355287d` and completed successfully.
+
+Observed results:
+
+- dependency install: PASS (`npm ci`; 409 packages; 0 vulnerabilities);
+- TypeScript typecheck: PASS;
+- test compilation: PASS;
+- complete automated suite: PASS — 442 tests, 442 passed, 0 failed, 0 skipped/cancelled/todo;
+- focused authority/OAuth diagnostic replay: PASS — 21 tests, 21 passed, 0 failed;
+- production build: PASS;
+- complete repository checks: PASS;
+- diff-whitespace check: PASS;
+- deterministic install-artifact generation / artifact identity gate: PASS.
+
+Existing local-transaction and recovery safety coverage also remained green, including validation-before-mutation, stage-before-target-displacement, verified-content commit requirements, cancellation cleanup, recovery from verified stage/backup/target physical evidence, and fail-closed handling where physical evidence is insufficient or contradictory.
+
+Pre-evidence implementation/test diff from the exact input SHA: `2 files changed, 241 insertions(+), 1 deletion(-)`.
+
+### Scope and residual validation
+
+Scope remained bounded to the physical artifact filename-token repair, focused regression coverage, and this required evidence record. No Google Drive mutation semantics, OAuth/PKCE flow, mobile authentication flow, managed-root pairing, planner behavior, durable intent/effect semantics, local recovery policy, conflict/deletion policy, diagnostic privacy rules, or release/install behavior were changed.
+
+No live iPhone synchronization, Google Drive mutation, device remediation, release publication, merge, Stage 3 validation, or C01 resume was performed.
+
+Residual risk: automated verification establishes the corrected path semantics and local transaction behavior but does not physically validate the iOS runtime. Status is **ready for C01 real-platform revalidation**, not physically validated or physically closed.
+
+### Evidence-stat correction and closure addendum
+
+The earlier `241 insertions(+), 1 deletion(-)` pre-evidence statistic in this C01 section is superseded. The authoritative GitHub compare from exact input SHA `a255d201549f18671113766ff14dde4caa2b8d6c` to verified implementation/test HEAD `acf8909e145be7cc3e5db63410cb2be6a355287d` is:
+
+- `src/product/synchronization-adapters.ts`: 2 additions, 1 deletion;
+- `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`: 265 additions;
+- aggregate implementation/test diff: **2 files changed, 267 insertions(+), 1 deletion(-)**.
+
+After the first evidence-only closure commit (`64328d53dbea342f74f62f8034c646253eb93b9f`), the authoritative compare from the exact input SHA contained only the three intended final paths: `dev/evidence/_ca-output.md`, `src/product/synchronization-adapters.ts`, and `test/phase6-c01-ios-local-transaction-artifact-path.test.ts`, at **337 insertions(+), 1 deletion(-)** total. The temporary evidence-finalizer workflow was absent from that tree. This addendum corrects evidence only; it does not alter production or test behavior.
