@@ -36,7 +36,7 @@ actual:   { exists: 2, stat: 4, list: 1, stabilityWindows: 0 }
 expected: { exists: 2, stat: 4, list: 1, stabilityWindows: 2 }
 ```
 
-The compiled stack location was `.test-build/test/phase6-latency-measurement-foundation.test.js:119:12`.
+The compiled test location was `.test-build/test/phase6-latency-measurement-foundation.test.js:79:25`; the assertion stack location was `.test-build/test/phase6-latency-measurement-foundation.test.js:83:22`.
 
 The next LAT-01 test exposed the same fixture defect for an unchanged read boundary: the observed `exists`, `stat`, and `list` counts matched, while `stabilityWindows` was `0` rather than `2`.
 
