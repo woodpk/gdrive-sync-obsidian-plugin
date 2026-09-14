@@ -1,0 +1,87 @@
+name: LAT07 Verification
+
+on:
+  push:
+    branches:
+      - st2a-ph6-04-lv-03-lat-07-verification
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Gate and environment
+        run: |
+          set -euxo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          echo "MERGE_BASE=$(git merge-base 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7 HEAD)"
+          test "$(git merge-base 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7 HEAD)" = "02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7"
+          node --version
+          npm --version
+      - name: Clean generated artifacts
+        run: |
+          rm -rf node_modules .test-build dist
+      - name: Clean install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Compile tests
+        run: npx tsc -p tsconfig.test.json
+      - name: LAT07 focused structural and safety matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tests=(
+            .test-build/test/phase6-latency-*.test.js
+            .test-build/test/obsidian-local-vault-concurrency.test.js
+            .test-build/test/obsidian-local-vault-evidence-reuse.test.js
+            .test-build/test/obsidian-local-vault.test.js
+            .test-build/test/phase6-alpha-ios-adapter-boundary.test.js
+            .test-build/test/phase6-alpha-ios-content-reader.test.js
+            .test-build/test/mobile-safety.test.js
+            .test-build/test/local-failure-semantics.test.js
+            .test-build/test/workstreams/local/local-transaction-safety.test.js
+            .test-build/test/workstreams/local/local-recovery-matrix.test.js
+            .test-build/test/workstreams/orchestration/v1.2-authoritative-boundary.test.js
+            .test-build/test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.js
+            .test-build/test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.js
+            .test-build/test/workstreams/orchestration/v1.2-production-authority-path.test.js
+            .test-build/test/workstreams/orchestration/v1.2-mutation-lifecycle.test.js
+            .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js
+            .test-build/test/workstreams/orchestration/v1.2-effect-verified-convergence.test.js
+            .test-build/test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.js
+            .test-build/test/phase3-drive.test.js
+            .test-build/test/phase3-changes.test.js
+            .test-build/test/phase5-group-b-drive-domain.test.js
+            .test-build/test/phase5-group-b-scope-transfer.test.js
+            .test-build/test/workstreams/orchestration/v1.2-reliable-changes.test.js
+            .test-build/test/workstreams/orchestration/v1.2-remote-feed-authority.test.js
+            .test-build/test/phase6-b-destructive-safety.test.js
+            .test-build/test/phase6-log02-google-http-transport-tracing.test.js
+            .test-build/test/phase6-log03-google-drive-semantic-operation-tracing.test.js
+            .test-build/test/workstreams/orchestration/log04-execution-diagnostics.test.js
+            .test-build/test/phase6-log07-end-to-end-observability-verification.test.js
+            .test-build/test/phase6-lat05-remote-planning-fast-path.test.js
+          )
+          printf 'Focused files (%s):\n' "${#tests[@]}"
+          printf '  %s\n' "${tests[@]}"
+          test "${#tests[@]}" -gt 0
+          node --test "${tests[@]}"
+      - name: Full npm test
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Canonical aggregate gate
+        run: npm run check
+      - name: Diff whitespace gate
+        run: git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD
