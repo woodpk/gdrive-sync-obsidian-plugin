@@ -5,7 +5,15 @@ import type {
   VaultPath
 } from "./common";
 import type { EnumerationCompleteness, LocalObservation } from "./snapshot";
-export interface LocalVaultListing { readonly entries: readonly LocalObservation[]; readonly completeness: EnumerationCompleteness; }
+export type LocalEnumerationUncertainty =
+  | { readonly scope: "all"; readonly reason: string }
+  | { readonly scope: "path" | "subtree"; readonly path: VaultPath; readonly reason: string };
+export interface LocalVaultListing {
+  readonly entries: readonly LocalObservation[];
+  readonly completeness: EnumerationCompleteness;
+  /** Optional scope evidence. Omission on an incomplete legacy listing remains conservatively global. */
+  readonly uncertainties?: readonly LocalEnumerationUncertainty[];
+}
 export interface LocalReadResult {
   readonly content: BinaryContentSource;
   readonly evidence: ContentEvidence;
@@ -43,4 +51,14 @@ export interface LocalVaultPort {
   classifyConfiguration(path: VaultPath): Promise<ConfigurationClassification>;
   onChange(listener: (change: LocalVaultChange) => void): Unsubscribe;
   onLifecycle(listener: (event: LocalLifecycleEvent) => void): Unsubscribe;
+}
+
+/**
+ * Workstream B integrity seam. This read MUST bypass metadata/observation-token
+ * hash caches and derive evidence from the current bytes. Verify/Reconcile and
+ * policy-selected integrity sweeps use this seam so a missed watcher event plus
+ * unchanged size/mtime cannot make stale cached content permanent authority.
+ */
+export interface LocalIntegrityReconciliationPort {
+  readFileBypassingEvidenceCache(path: VaultPath): Promise<LocalReadResult>;
 }

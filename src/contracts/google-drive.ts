@@ -39,7 +39,13 @@ export interface RemoteUpdateRequest {
   readonly expectedRemoteRevision?: string;
   readonly expectedEvidence?: ContentEvidence;
 }
-/** Authentication/session state and remote identity validation are deliberately separate. */
+/**
+ * Legacy/raw Drive transport surface retained for compatibility with existing code.
+ * The Stage 2A synchronization execution path MUST NOT treat create/update/move/trash
+ * results from this interface as authoritative mutation outcomes. Workstream A owns
+ * the adapter from these transport primitives into ReliableRemoteMutationPort, and
+ * Workstream D consumes only the reliable frozen synchronization seams.
+ */
 export interface GoogleDrivePort {
   authenticationState(): Promise<DriveAuthenticationState>;
   createManagedRoot(vaultIdentity: VaultIdentity, protocolVersion: ProtocolVersion): Promise<DriveResult<ManagedRemoteIdentity>>;
@@ -51,8 +57,38 @@ export interface GoogleDrivePort {
   readChanges(rootId: RemoteObjectId, cursor: ChangeCursor): Promise<DriveResult<RemoteChangePage>>;
   observe(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<RemoteObservation>>;
   download(remoteObjectId: RemoteObjectId): Promise<DriveResult<RemoteDownload>>;
+  /** @deprecated Raw transport primitive; not synchronization authority. */
   create(rootId: RemoteObjectId, request: RemoteCreateRequest): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw in-place transport primitive; forbidden for preservation-safe synchronization content update. */
   update(request: RemoteUpdateRequest): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw transport primitive; synchronization must use ReliableRemoteMutationPort.moveExisting. */
   move(remoteObjectId: RemoteObjectId, fromPath: VaultPath, toPath: VaultPath): Promise<DriveResult<RemoteMutationReceipt>>;
+  /** @deprecated Raw transport primitive; synchronization must use ReliableRemoteMutationPort.trashExisting. */
   trash(remoteObjectId: RemoteObjectId): Promise<DriveResult<void>>;
+}
+
+/**
+ * V1.3 maps only context-free operational Drive failures. Observation/semantic
+ * results such as not-found and conflict remain owned by their calling context.
+ */
+export function operationalFailureFromDriveSignalV1_3(
+  signal: DriveSignal,
+): import("./common").OperationalFailureProvenanceV1_3 | undefined {
+  switch (signal.kind) {
+    case "authentication-required":
+      return { kind: "authentication-required", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "transient-failure":
+      return { kind: "transient-failure", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "rate-limited":
+      return { kind: "rate-limited", source: "google-drive", ...(signal.retryAfterMs === undefined ? {} : { retryAfterMs: signal.retryAfterMs }) };
+    case "permission-denied":
+      return { kind: "permission-denied", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "quota-exhausted":
+      return { kind: "quota-exhausted", source: "google-drive", ...(signal.detail === undefined ? {} : { detail: signal.detail }) };
+    case "recovery-required":
+      return { kind: "recovery-required", source: "google-drive", detail: signal.detail };
+    case "not-found":
+    case "conflict":
+      return undefined;
+  }
 }

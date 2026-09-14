@@ -3,7 +3,7 @@ import test from "node:test";
 import { contractId, type BaseEntry, type ContentHash, type DeviceIdentity, type PathSnapshot, type RemoteObjectId, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
 import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
 import { DestructiveSafetyPolicy } from "../src/core/destructive-safety";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../src/core/planner";
 
 const path = (s: string) => contractId<"VaultPath">(s) as VaultPath;
 const hash = (s: string) => contractId<"ContentHash">(s) as ContentHash;
@@ -16,6 +16,9 @@ const planner = new DeterministicSynchronizationPlanner(resolver);
 
 function base(p: VaultPath, h: string, id?: RemoteObjectId): BaseEntry {
   return { path: p, entityKind: "file", localExisted: true, remoteExisted: true, content: { hash: hash(h), revision: h }, remoteObjectId: id };
+}
+function folderBase(p: VaultPath, id: RemoteObjectId): BaseEntry {
+  return { path: p, entityKind: "folder", localExisted: true, remoteExisted: true, remoteObjectId: id };
 }
 function trusted(entries: readonly BaseEntry[] = [], stale = false): { status: "trusted"; state: TrustedSynchronizationState } {
   return { status: "trusted", state: { schemaVersion: 1, stateRevision: revision, vaultIdentity: vaultId, deviceIdentity: deviceId, base: entries, remoteMappings: [], tombstones: [], operations: [], knownDevices: [{ deviceId, stale }] } };
@@ -37,6 +40,20 @@ function snap(p: VaultPath, local: "absent" | string, remote: "absent" | string,
     remoteEnumeration: options.complete === false ? { status: "partial", reason: "partial" } : { status: "complete" },
     identity: options.identity ? { status: options.identity, reason: "ambiguous" } : { status: "unambiguous" },
   };
+}
+function folderSnap(p: VaultPath, local: "absent" | "present", remote: "absent" | "present", b: BaseEntry | undefined, id: RemoteObjectId): PathSnapshot {
+  return {
+    path: p,
+    local: local === "present"
+      ? { status: "present", side: "local", path: p, entityKind: "folder", stability: "stable", remoteObjectId: id }
+      : { status: "absent", side: "local", path: p },
+    remote: remote === "present"
+      ? { status: "present", side: "remote", path: p, entityKind: "folder", stability: "stable", remoteObjectId: id }
+      : { status: "absent", side: "remote", path: p },
+    base: b ? { status: "trusted", entry: b } : { status: "uninitialized" },
+    remoteEnumeration: { status: "complete" },
+    identity: { status: "unambiguous" },
+  } as PathSnapshot;
 }
 
 const matrix: Array<[string, PathSnapshot, ReturnType<typeof trusted> | { status: "uninitialized" }, string]> = [
@@ -166,4 +183,70 @@ test("ordinary deletion stays auto-eligible while suspicious deletion requires c
   const large = await conservative.plan({ snapshots: bases.map(b => snap(b.path, "absent", "B", b)), state: trusted(bases) });
   assert.equal(large.executionDisposition, "requires-user-approval");
   assert.equal(large.recoveryCheckpointRequired, true);
+});
+
+test("C3 file-to-folder and folder-to-file transitions relative to BASE are never classified as unchanged or overwrite/delete updates", async () => {
+  const filePath = path("structural-file-to-folder");
+  const fileBase = base(filePath, "B", remoteId("structural-file"));
+  const fileToFolder = {
+    path: filePath,
+    local: { status: "present", side: "local", path: filePath, entityKind: "folder", stability: "stable" },
+    remote: { status: "present", side: "remote", path: filePath, entityKind: "file", content: fileBase.content, stability: "stable", remoteObjectId: fileBase.remoteObjectId },
+    base: { status: "trusted", entry: fileBase },
+    remoteEnumeration: { status: "complete" },
+    identity: { status: "unambiguous" },
+  } as PathSnapshot;
+  const first = await planner.plan({ snapshots: [fileToFolder], state: trusted([fileBase]) });
+  assert.equal(first.operations[0].kind, "blocked-unsafe");
+  assert.equal(first.operations[0].reasons[0].code, "entity-kind-transition");
+
+  const folderPath = path("structural-folder-to-file");
+  const folderId = remoteId("structural-folder");
+  const priorFolder = folderBase(folderPath, folderId);
+  const folderToFile = {
+    path: folderPath,
+    local: { status: "present", side: "local", path: folderPath, entityKind: "file", content: { hash: hash("replacement"), revision: "replacement" }, stability: "stable" },
+    remote: { status: "present", side: "remote", path: folderPath, entityKind: "folder", stability: "stable", remoteObjectId: folderId },
+    base: { status: "trusted", entry: priorFolder },
+    remoteEnumeration: { status: "complete" },
+    identity: { status: "unambiguous" },
+  } as PathSnapshot;
+  const second = await planner.plan({ snapshots: [folderToFile], state: trusted([priorFolder]) });
+  assert.equal(second.operations[0].kind, "blocked-unsafe");
+  assert.equal(second.operations[0].reasons[0].code, "entity-kind-transition");
+});
+
+test("C3 non-empty local folder rename physically moves only the ancestor and records descendant convergence", async () => {
+  const oldFolder = path("old-folder");
+  const newFolder = path("new-folder");
+  const oldChild = path("old-folder/child.md");
+  const newChild = path("new-folder/child.md");
+  const folderRid = remoteId("folder-move-parent");
+  const childRid = remoteId("folder-move-child");
+  const parentBase = folderBase(oldFolder, folderRid);
+  const childBase = base(oldChild, "B", childRid);
+
+  const plan = await planner.plan({
+    snapshots: [
+      snap(oldChild, "absent", "B", childBase, { remoteRemoteId: childRid }),
+      snap(newChild, "B", "absent", undefined, { localRemoteId: childRid }),
+      folderSnap(oldFolder, "absent", "present", parentBase, folderRid),
+      folderSnap(newFolder, "present", "absent", undefined, folderRid),
+    ],
+    state: trusted([childBase, parentBase]),
+  });
+
+  const moves = plan.operations.filter(operation => operation.kind === "identity-preserving-move" && operation.targetSide === "remote");
+  assert.equal(moves.length, 1);
+  assert.equal(moves[0].fromPath, oldFolder);
+  assert.equal(moves[0].toPath, newFolder);
+
+  const descendant = plan.operations.find(operation => operation.path === newChild);
+  assert.ok(descendant);
+  assert.equal(descendant.kind, "noop");
+  assert.equal(descendant.fromPath, oldChild);
+  assert.equal(descendant.toPath, newChild);
+  assert.equal(descendant.reasons[0]?.code, TRANSITIVELY_CARRIED_MOVE_REASON);
+  assert.ok(plan.operations.indexOf(moves[0]) < plan.operations.indexOf(descendant));
+  assert.equal(plan.operations.some(operation => operation.kind === "identity-preserving-move" && operation.fromPath === oldChild && operation.toPath === newChild), false);
 });

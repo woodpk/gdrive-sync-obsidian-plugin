@@ -10,6 +10,12 @@ class MemorySecrets {
   deleteSecret(id:string){ this.values.delete(id); }
 }
 
+function expiredSession(fetcher: typeof fetch) {
+  const backing = new MemorySecrets();
+  backing.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({ accessToken:"expired", refreshToken:"refresh-authority", expiresAtMs:0, tokenType:"Bearer", scope:REQUIRED_DRIVE_SCOPE }));
+  return { backing, oauth: new GoogleOAuthSession({ clientId:"c", redirectUri:"https://cb" }, new ObsidianSecretStore(backing), fetcher, () => 10_000) };
+}
+
 test("OAuth request uses exact drive.file scope, high-entropy state, and PKCE S256", async () => {
   const secrets = new MemorySecrets();
   const oauth = new GoogleOAuthSession({ clientId:"user-client", redirectUri:"https://example.azurestaticapps.net/oauth/callback" }, new ObsidianSecretStore(secrets));
@@ -48,4 +54,44 @@ test("expired transaction is rejected without exchanging a code", async () => {
   const request=await oauth.beginAuthorization(10); now=1011;
   const result=await oauth.completeAuthorization({code:"code",state:request.state});
   assert.deepEqual(result,{ok:false,reason:"expired-transaction"}); assert.equal(calls,0);
+});
+
+test("transient refresh transport failure preserves refresh authority and is classified deferred", async () => {
+  const { backing, oauth } = expiredSession(async () => { throw new TypeError("network unavailable"); });
+  assert.equal(await oauth.accessToken(), undefined);
+  assert.equal(oauth.accessTokenFailure(), "transient");
+  const persisted = JSON.parse(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID)!) as { refreshToken?: string; accessToken?: string };
+  assert.equal(persisted.refreshToken, "refresh-authority");
+  assert.equal(persisted.accessToken, "expired");
+});
+
+test("malformed, 429, and 5xx refresh responses preserve refresh authority", async () => {
+  for (const response of [
+    new Response("not-json", { status: 200 }),
+    new Response(JSON.stringify({ error:"temporarily_unavailable" }), { status: 429, headers:{"content-type":"application/json"} }),
+    new Response(JSON.stringify({ error:"server_error" }), { status: 503, headers:{"content-type":"application/json"} }),
+  ]) {
+    const { backing, oauth } = expiredSession(async () => response.clone());
+    assert.equal(await oauth.accessToken(), undefined);
+    assert.equal(oauth.accessTokenFailure(), "transient");
+    const persisted = JSON.parse(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID)!) as { refreshToken?: string };
+    assert.equal(persisted.refreshToken, "refresh-authority");
+  }
+});
+
+test("invalid_grant definitively clears refresh authority", async () => {
+  const { backing, oauth } = expiredSession(async () => new Response(JSON.stringify({ error:"invalid_grant" }), { status:400, headers:{"content-type":"application/json"} }));
+  assert.equal(await oauth.accessToken(), undefined);
+  assert.equal(oauth.accessTokenFailure(), "authentication-required");
+  assert.equal(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID), null);
+});
+
+test("known rejected access token is invalidated without erasing a valid refresh token", () => {
+  const { backing, oauth } = expiredSession(async () => new Response());
+  backing.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({ accessToken:"rejected", refreshToken:"refresh-authority", expiresAtMs:99_999, tokenType:"Bearer", scope:REQUIRED_DRIVE_SCOPE }));
+  oauth.invalidateAccessToken();
+  const persisted = JSON.parse(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID)!) as { refreshToken?: string; accessToken?: string; expiresAtMs?: number };
+  assert.equal(persisted.refreshToken, "refresh-authority");
+  assert.equal(persisted.accessToken, "");
+  assert.equal(persisted.expiresAtMs, 0);
 });

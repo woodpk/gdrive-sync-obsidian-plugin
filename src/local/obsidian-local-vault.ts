@@ -3,6 +3,7 @@ import { contractId, type BinaryContentSource, type ObservationToken, type Vault
 import type {
   ConfigurationClassification,
   LocalLifecycleEvent,
+  LocalEnumerationUncertainty,
   LocalMutationReceipt,
   LocalReadResult,
   LocalVaultChange,
@@ -364,11 +365,17 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     const configDir = await this.activeConfigurationDirectory();
     const visited = new Set<string>();
     const failures: string[] = [];
+    const uncertainties: LocalEnumerationUncertainty[] = [];
+    const recordFailure = (reason: string, scope: "all" | "path" | "subtree", affectedPath?: VaultPath): void => {
+      failures.push(reason);
+      uncertainties.push(scope === "all" ? { scope, reason } : { scope, path: affectedPath!, reason });
+    };
 
     const visit = async (folder: string): Promise<void> => {
       const normalizedFolder = normalizeVaultPath(folder);
       if (visited.has(normalizedFolder)) {
-        failures.push(`Repeated directory encountered while enumerating: ${normalizedFolder || "/"}`);
+        const reason = `Repeated directory encountered while enumerating: ${normalizedFolder || "/"}`;
+        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
       visited.add(normalizedFolder);
@@ -376,7 +383,8 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         try {
           await this.accessBoundary.assertSafe(normalizedFolder as VaultPath, "enumerate");
         } catch (error) {
-          failures.push(`${normalizedFolder}: directory access boundary rejected enumeration (${error instanceof Error ? error.message : String(error)})`);
+          const reason = `${normalizedFolder}: directory access boundary rejected enumeration (${error instanceof Error ? error.message : String(error)})`;
+          recordFailure(reason, "subtree", asPath(normalizedFolder));
           return;
         }
       }
@@ -384,11 +392,13 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       try {
         listing = await this.adapter.list(normalizedFolder);
       } catch (error) {
-        failures.push(`${normalizedFolder || "/"}: ${error instanceof Error ? error.message : String(error)}`);
+        const reason = `${normalizedFolder || "/"}: ${error instanceof Error ? error.message : String(error)}`;
+        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
       if (!Array.isArray(listing?.folders) || !Array.isArray(listing?.files)) {
-        failures.push(`${normalizedFolder || "/"}: adapter returned a malformed directory listing`);
+        const reason = `${normalizedFolder || "/"}: adapter returned a malformed directory listing`;
+        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
 
@@ -396,12 +406,14 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       const inspectChild = async (rawChild: unknown, expectedKind: "folder" | "file"): Promise<void> => {
         const validated = validateEnumeratedChild(normalizedFolder, rawChild);
         if (!validated.path) {
-          failures.push(`${normalizedFolder || "/"}: enumeration child rejected (${validated.reason ?? "invalid child"})`);
+          const reason = `${normalizedFolder || "/"}: enumeration child rejected (${validated.reason ?? "invalid child"})`;
+          recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
           return;
         }
         const comparison = normalizedComparisonPath(String(validated.path));
         if (seenChildren.has(comparison)) {
-          failures.push(`${normalizedFolder || "/"}: duplicate or colliding enumeration child rejected`);
+          const reason = `${normalizedFolder || "/"}: duplicate or colliding enumeration child rejected`;
+          recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
           return;
         }
         seenChildren.add(comparison);
@@ -412,15 +424,17 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         } catch (error) {
           const failure = classifyFailure(path, error);
           entries.push(failure);
-          failures.push(expectedKind === "folder"
+          const reason = expectedKind === "folder"
             ? `${String(path)}: subtree not safely enumerable (${failure.status})`
-            : `${String(path)}: listed file was rejected by the access boundary (${failure.status})`);
+            : `${String(path)}: listed file was rejected by the access boundary (${failure.status})`;
+          recordFailure(reason, expectedKind === "folder" ? "subtree" : "path", path);
           return;
         }
         const observation = await this.observe(path);
         entries.push(observation);
         if (observation.status !== "present" || observation.entityKind !== expectedKind) {
-          failures.push(`${String(path)}: listed ${expectedKind} was not truthfully observed as ${expectedKind} (${observation.status})`);
+          const reason = `${String(path)}: listed ${expectedKind} was not truthfully observed as ${expectedKind} (${observation.status})`;
+          recordFailure(reason, expectedKind === "folder" ? "subtree" : "path", path);
           return;
         }
         if (expectedKind === "folder") await visit(String(path));
@@ -433,7 +447,8 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     await visit("");
     return {
       entries,
-      completeness: failures.length === 0 ? { status: "complete" } : { status: "partial", reason: failures.join("; ") }
+      completeness: failures.length === 0 ? { status: "complete" } : { status: "partial", reason: failures.join("; ") },
+      ...(uncertainties.length ? { uncertainties } : {}),
     };
   }
 
