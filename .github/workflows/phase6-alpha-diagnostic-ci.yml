@@ -28,6 +28,18 @@ jobs:
           set -o pipefail
           mkdir -p .ci-evidence
           npm test | tee .ci-evidence/full-tests.tap
+      - name: Focused LAT-03 local evidence, mobile reader, transaction safety, recovery, and LAT-02 concurrency tests
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            .test-build/test/obsidian-local-vault-evidence-reuse.test.js \
+            .test-build/test/obsidian-local-vault.test.js \
+            .test-build/test/phase6-alpha-ios-content-reader.test.js \
+            .test-build/test/obsidian-local-vault-concurrency.test.js \
+            .test-build/test/workstreams/local/local-transaction-safety.test.js \
+            .test-build/test/workstreams/local/local-recovery-matrix.test.js \
+            | tee .ci-evidence/focused-lat03-tests.tap
       - name: Focused C1 first-sync conflict-resolution authority tests
         shell: bash
         run: |
@@ -54,11 +66,12 @@ jobs:
       - name: Upload diagnostic build and verification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase6-oauth-housekeeping-verification
+          name: phase6-lat03-validation
           path: |
             main.js
             manifest.json
             .ci-evidence/full-tests.tap
+            .ci-evidence/focused-lat03-tests.tap
             .ci-evidence/focused-c1-tests.tap
             .ci-evidence/focused-tests.tap
             .ci-evidence/check.log
