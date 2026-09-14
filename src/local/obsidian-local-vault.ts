@@ -160,16 +160,112 @@ function parseContentRange(value: string | null): ParsedContentRange | undefined
   return { start, end, total };
 }
 
+const LOCAL_OBSERVATION_CONCURRENCY = 4;
+
+type TraversalOrder = readonly number[];
+
+interface OrderedObservation {
+  readonly order: TraversalOrder;
+  readonly observation: LocalObservation;
+}
+
+interface OrderedFailure {
+  readonly order: TraversalOrder;
+  readonly reason: string;
+  readonly uncertainty: LocalEnumerationUncertainty;
+}
+
+interface ReusableStableObservation {
+  readonly epoch: number;
+  readonly generation: number;
+  readonly token: ObservationToken;
+  readonly stat: Stat;
+  readonly observation: LocalObservation;
+}
+
+function compareTraversalOrder(left: TraversalOrder, right: TraversalOrder): number {
+  const shared = Math.min(left.length, right.length);
+  for (let index = 0; index < shared; index += 1) {
+    const difference = left[index] - right[index];
+    if (difference !== 0) return difference;
+  }
+  return left.length - right.length;
+}
+
+class BoundedAsyncWorkQueue {
+  private readonly pending: Array<() => Promise<void>> = [];
+  private readonly idleWaiters: Array<{ resolve(): void; reject(reason?: unknown): void }> = [];
+  private active = 0;
+  private hasError = false;
+  private firstError: unknown;
+
+  constructor(private readonly limit: number) {
+    if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("BoundedAsyncWorkQueue limit must be a positive safe integer");
+  }
+
+  enqueue(work: () => Promise<void>): void {
+    this.pending.push(work);
+    this.drain();
+  }
+
+  async onIdle(): Promise<void> {
+    if (this.active === 0 && this.pending.length === 0) {
+      if (this.hasError) {
+        const error = this.firstError;
+        this.hasError = false;
+        this.firstError = undefined;
+        throw error;
+      }
+      return;
+    }
+    await new Promise<void>((resolve, reject) => this.idleWaiters.push({ resolve, reject }));
+  }
+
+  private drain(): void {
+    while (this.active < this.limit && this.pending.length > 0) {
+      const work = this.pending.shift()!;
+      this.active += 1;
+      void Promise.resolve()
+        .then(work)
+        .catch(error => {
+          if (!this.hasError) {
+            this.hasError = true;
+            this.firstError = error;
+          }
+        })
+        .finally(() => {
+          this.active -= 1;
+          this.drain();
+          this.settleIfIdle();
+        });
+    }
+    this.settleIfIdle();
+  }
+
+  private settleIfIdle(): void {
+    if (this.active !== 0 || this.pending.length !== 0 || this.idleWaiters.length === 0) return;
+    const waiters = this.idleWaiters.splice(0);
+    if (this.hasError) {
+      const error = this.firstError;
+      this.hasError = false;
+      this.firstError = undefined;
+      for (const waiter of waiters) waiter.reject(error);
+      return;
+    }
+    for (const waiter of waiters) waiter.resolve();
+  }
+}
+
 class ResourceFetchContentSource implements BinaryContentSource {
   readonly sizeBytes?: number;
 
   constructor(
     private readonly owner: ObsidianLocalVaultAdapter,
     private readonly path: VaultPath,
-    private readonly expectedToken: ObservationToken,
     sizeBytes: number | undefined,
     private readonly fetchImpl: typeof fetch,
-    private readonly maxChunkBytes: number
+    private readonly maxChunkBytes: number,
+    private readonly assertUnchanged: () => Promise<void>
   ) {
     this.sizeBytes = sizeBytes;
   }
@@ -182,13 +278,13 @@ class ResourceFetchContentSource implements BinaryContentSource {
       );
     }
     if (this.sizeBytes === 0) {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       return;
     }
 
     const resourceUrl = this.owner.adapter.getResourcePath(String(this.path));
     for (let start = 0; start < this.sizeBytes; start += this.maxChunkBytes) {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       const requestedEnd = Math.min(start + this.maxChunkBytes - 1, this.sizeBytes - 1);
       const expectedLength = requestedEnd - start + 1;
       const response = await this.fetchImpl(resourceUrl, {
@@ -221,7 +317,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
       await this.assertContentLength(response, expectedLength, true);
       yield* this.readResponseBody(response, expectedLength);
     }
-    await this.owner.assertToken(this.path, this.expectedToken);
+    await this.assertUnchanged();
   }
 
   private async assertContentLength(response: Response, expectedLength: number, boundedRange: boolean): Promise<void> {
@@ -254,10 +350,10 @@ class ResourceFetchContentSource implements BinaryContentSource {
     let bytesSinceStaleCheck = 0;
     let completed = false;
     try {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       while (true) {
         if (bytesSinceStaleCheck === this.maxChunkBytes) {
-          await this.owner.assertToken(this.path, this.expectedToken);
+          await this.assertUnchanged();
           bytesSinceStaleCheck = 0;
         }
         const result = await reader.read();
@@ -265,7 +361,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
         let offset = 0;
         while (offset < result.value.byteLength) {
           if (bytesSinceStaleCheck === this.maxChunkBytes) {
-            await this.owner.assertToken(this.path, this.expectedToken);
+            await this.assertUnchanged();
             bytesSinceStaleCheck = 0;
           }
           const remainingExpected = expectedLength - received;
@@ -299,7 +395,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
         `Local resource returned ${received} bytes for an observed ${expectedLength}-byte file at ${String(this.path)}.`
       );
     }
-    await this.owner.assertToken(this.path, this.expectedToken);
+    await this.assertUnchanged();
   }
 
   private async cancelResponse(response: Response): Promise<void> {
@@ -328,6 +424,8 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
   private readonly generations = new Map<string, number>();
+  private readonly reusableStableObservations = new Map<string, ReusableStableObservation>();
+  private observationEpoch = 0;
   private vaultReady = false;
   private disposed = false;
 
@@ -361,21 +459,87 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async enumerate(): Promise<LocalVaultListing> {
-    const entries: LocalObservation[] = [];
+    this.beginObservationEpoch();
+    const orderedEntries: OrderedObservation[] = [];
+    const orderedFailures: OrderedFailure[] = [];
     const configDir = await this.activeConfigurationDirectory();
     const visited = new Set<string>();
-    const failures: string[] = [];
-    const uncertainties: LocalEnumerationUncertainty[] = [];
-    const recordFailure = (reason: string, scope: "all" | "path" | "subtree", affectedPath?: VaultPath): void => {
-      failures.push(reason);
-      uncertainties.push(scope === "all" ? { scope, reason } : { scope, path: affectedPath!, reason });
+    const queue = new BoundedAsyncWorkQueue(LOCAL_OBSERVATION_CONCURRENCY);
+
+    const recordFailure = (
+      order: TraversalOrder,
+      reason: string,
+      scope: "all" | "path" | "subtree",
+      affectedPath?: VaultPath
+    ): void => {
+      orderedFailures.push({
+        order,
+        reason,
+        uncertainty: scope === "all" ? { scope, reason } : { scope, path: affectedPath!, reason }
+      });
     };
 
-    const visit = async (folder: string): Promise<void> => {
+    const inspectChild = async (path: VaultPath, expectedKind: "folder" | "file", order: TraversalOrder): Promise<void> => {
+      try {
+        await this.accessBoundary.assertSafe(path, "enumerate");
+      } catch (error) {
+        const failure = classifyFailure(path, error);
+        orderedEntries.push({ order, observation: failure });
+        const reason = expectedKind === "folder"
+          ? `${String(path)}: subtree not safely enumerable (${failure.status})`
+          : `${String(path)}: listed file was rejected by the access boundary (${failure.status})`;
+        recordFailure(order, reason, expectedKind === "folder" ? "subtree" : "path", path);
+        return;
+      }
+
+      const observation = await this.observe(path);
+      orderedEntries.push({ order, observation });
+      if (observation.status !== "present" || observation.entityKind !== expectedKind) {
+        const reason = `${String(path)}: listed ${expectedKind} was not truthfully observed as ${expectedKind} (${observation.status})`;
+        recordFailure(order, reason, expectedKind === "folder" ? "subtree" : "path", path);
+        return;
+      }
+      if (expectedKind === "folder") await visit(String(path), order);
+    };
+
+    const queueChildren = (
+      normalizedFolder: string,
+      order: TraversalOrder,
+      listing: Awaited<ReturnType<DataAdapter["list"]>>
+    ): void => {
+      const seenChildren = new Set<string>();
+      const children: Array<{ rawChild: unknown; expectedKind: "folder" | "file" }> = [
+        ...listing.folders.map(rawChild => ({ rawChild, expectedKind: "folder" as const })),
+        ...listing.files.map(rawChild => ({ rawChild, expectedKind: "file" as const }))
+      ];
+
+      for (let index = 0; index < children.length; index += 1) {
+        const child = children[index];
+        const childOrder = [...order, index];
+        const validated = validateEnumeratedChild(normalizedFolder, child.rawChild);
+        if (!validated.path) {
+          const reason = `${normalizedFolder || "/"}: enumeration child rejected (${validated.reason ?? "invalid child"})`;
+          recordFailure(childOrder, reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
+          continue;
+        }
+        const comparison = normalizedComparisonPath(String(validated.path));
+        if (seenChildren.has(comparison)) {
+          const reason = `${normalizedFolder || "/"}: duplicate or colliding enumeration child rejected`;
+          recordFailure(childOrder, reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
+          continue;
+        }
+        seenChildren.add(comparison);
+        const path = validated.path;
+        if (this.exclusionPolicy.evaluate(path, configDir).excluded) continue;
+        queue.enqueue(() => inspectChild(path, child.expectedKind, childOrder));
+      }
+    };
+
+    const visit = async (folder: string, order: TraversalOrder): Promise<void> => {
       const normalizedFolder = normalizeVaultPath(folder);
       if (visited.has(normalizedFolder)) {
         const reason = `Repeated directory encountered while enumerating: ${normalizedFolder || "/"}`;
-        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
+        recordFailure(order, reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
       visited.add(normalizedFolder);
@@ -384,7 +548,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
           await this.accessBoundary.assertSafe(normalizedFolder as VaultPath, "enumerate");
         } catch (error) {
           const reason = `${normalizedFolder}: directory access boundary rejected enumeration (${error instanceof Error ? error.message : String(error)})`;
-          recordFailure(reason, "subtree", asPath(normalizedFolder));
+          recordFailure(order, reason, "subtree", asPath(normalizedFolder));
           return;
         }
       }
@@ -393,58 +557,29 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         listing = await this.adapter.list(normalizedFolder);
       } catch (error) {
         const reason = `${normalizedFolder || "/"}: ${error instanceof Error ? error.message : String(error)}`;
-        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
+        recordFailure(order, reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
       if (!Array.isArray(listing?.folders) || !Array.isArray(listing?.files)) {
         const reason = `${normalizedFolder || "/"}: adapter returned a malformed directory listing`;
-        recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
+        recordFailure(order, reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
         return;
       }
-
-      const seenChildren = new Set<string>();
-      const inspectChild = async (rawChild: unknown, expectedKind: "folder" | "file"): Promise<void> => {
-        const validated = validateEnumeratedChild(normalizedFolder, rawChild);
-        if (!validated.path) {
-          const reason = `${normalizedFolder || "/"}: enumeration child rejected (${validated.reason ?? "invalid child"})`;
-          recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
-          return;
-        }
-        const comparison = normalizedComparisonPath(String(validated.path));
-        if (seenChildren.has(comparison)) {
-          const reason = `${normalizedFolder || "/"}: duplicate or colliding enumeration child rejected`;
-          recordFailure(reason, normalizedFolder ? "subtree" : "all", normalizedFolder ? asPath(normalizedFolder) : undefined);
-          return;
-        }
-        seenChildren.add(comparison);
-        const path = validated.path;
-        if (this.exclusionPolicy.evaluate(path, configDir).excluded) return;
-        try {
-          await this.accessBoundary.assertSafe(path, "enumerate");
-        } catch (error) {
-          const failure = classifyFailure(path, error);
-          entries.push(failure);
-          const reason = expectedKind === "folder"
-            ? `${String(path)}: subtree not safely enumerable (${failure.status})`
-            : `${String(path)}: listed file was rejected by the access boundary (${failure.status})`;
-          recordFailure(reason, expectedKind === "folder" ? "subtree" : "path", path);
-          return;
-        }
-        const observation = await this.observe(path);
-        entries.push(observation);
-        if (observation.status !== "present" || observation.entityKind !== expectedKind) {
-          const reason = `${String(path)}: listed ${expectedKind} was not truthfully observed as ${expectedKind} (${observation.status})`;
-          recordFailure(reason, expectedKind === "folder" ? "subtree" : "path", path);
-          return;
-        }
-        if (expectedKind === "folder") await visit(String(path));
-      };
-
-      for (const folderPath of listing.folders) await inspectChild(folderPath, "folder");
-      for (const filePath of listing.files) await inspectChild(filePath, "file");
+      queueChildren(normalizedFolder, order, listing);
     };
 
-    await visit("");
+    await visit("", []);
+    await queue.onIdle();
+
+    orderedEntries.sort((left, right) => compareTraversalOrder(left.order, right.order));
+    orderedFailures.sort((left, right) => {
+      const order = compareTraversalOrder(left.order, right.order);
+      return order !== 0 ? order : left.reason.localeCompare(right.reason, "en-US");
+    });
+    const entries = orderedEntries.map(item => item.observation);
+    const failures = orderedFailures.map(item => item.reason);
+    const uncertainties = orderedFailures.map(item => item.uncertainty);
+
     return {
       entries,
       completeness: failures.length === 0 ? { status: "complete" } : { status: "partial", reason: failures.join("; ") },
@@ -454,14 +589,22 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
 
   async observe(path: VaultPath): Promise<LocalObservation> {
     const normalized = asPath(String(path));
+    const epoch = this.observationEpoch;
     try {
       const safe = await this.safePath(path, "observe");
       const safeRaw = String(safe);
       const exists = await this.adapter.exists(safeRaw, true);
-      if (!exists) return { status: "absent", side: "local", path: safe };
+      if (!exists) {
+        this.reusableStableObservations.delete(safeRaw);
+        return { status: "absent", side: "local", path: safe };
+      }
       const first = await this.adapter.stat(safeRaw);
-      if (!first) return { status: "unknown", side: "local", path: safe, reason: "Path exists but adapter.stat returned no metadata" };
+      if (!first) {
+        this.reusableStableObservations.delete(safeRaw);
+        return { status: "unknown", side: "local", path: safe, reason: "Path exists but adapter.stat returned no metadata" };
+      }
       if (first.type === "folder") {
+        this.reusableStableObservations.delete(safeRaw);
         return {
           status: "present",
           side: "local",
@@ -472,6 +615,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         };
       }
       if (first.type !== "file") {
+        this.reusableStableObservations.delete(safeRaw);
         return { status: "unknown", side: "local", path: safe, reason: "Adapter exposed an unsupported local filesystem object" };
       }
       await sleep(this.stabilityDelayMs);
@@ -479,24 +623,36 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       const stable = sameStat(first, second);
       const finalStat = second ?? first;
       if (finalStat.type !== "file") {
+        this.reusableStableObservations.delete(safeRaw);
         return { status: "unknown", side: "local", path: safe, reason: "Local object kind changed during observation" };
       }
-      return {
+      const generation = this.generationFor(safe);
+      const token = statToken(safeRaw, finalStat, generation);
+      const observation: LocalObservation = {
         status: "present",
         side: "local",
         path: safe,
         entityKind: "file",
         content: { sizeBytes: finalStat.size, advisoryModifiedTimeMs: finalStat.mtime },
         stability: stable ? "stable" : "unstable",
-        observationToken: statToken(safeRaw, finalStat, this.generationFor(safe))
+        observationToken: token
       };
+      if (stable && epoch === this.observationEpoch) {
+        this.reusableStableObservations.set(safeRaw, { epoch, generation, token, stat: finalStat, observation });
+      } else {
+        this.reusableStableObservations.delete(safeRaw);
+      }
+      return observation;
     } catch (error) {
+      this.reusableStableObservations.delete(String(normalized));
       return classifyFailure(normalized, error);
     }
   }
 
   async readFile(path: VaultPath, expectedToken?: ObservationToken): Promise<LocalReadResult> {
-    const observation = await this.observe(path);
+    const observation = expectedToken
+      ? await this.reusableReadOnlyObservation(path, expectedToken) ?? await this.observe(path)
+      : await this.observe(path);
     if (observation.status !== "present" || observation.entityKind !== "file") {
       throw new Error(`Local file is not readable/present: ${String(path)} (${observation.status})`);
     }
@@ -507,12 +663,13 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     const observedPath = observation.path;
     const token = observation.observationToken;
     const sizeBytes = observation.content?.sizeBytes;
+    const assertUnchanged = () => this.assertReadOnlyTokenCurrent(observedPath, token);
     const content = this.contentSourceFactory?.create({
       path: observedPath,
       sizeBytes,
       maxChunkBytes: this.readChunkSizeBytes,
-      assertUnchanged: () => this.assertToken(observedPath, token)
-    }) ?? new ResourceFetchContentSource(this, observedPath, token, sizeBytes, this.fetchImpl, this.readChunkSizeBytes);
+      assertUnchanged
+    }) ?? new ResourceFetchContentSource(this, observedPath, sizeBytes, this.fetchImpl, this.readChunkSizeBytes, assertUnchanged);
     return {
       content,
       evidence: observation.content ?? {},
@@ -623,6 +780,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.invalidateAllReusableEvidence();
     this.emitLifecycle({ kind: "unload" });
     for (const unsubscribe of this.eventUnsubscribers.splice(0)) unsubscribe();
     this.changeListeners.clear();
@@ -636,6 +794,48 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     }
   }
 
+  private async assertReadOnlyTokenCurrent(path: VaultPath, expectedToken: ObservationToken): Promise<void> {
+    if (await this.reusableReadOnlyObservation(path, expectedToken)) return;
+    // A missing/invalid reusable proof falls back to the existing conservative
+    // two-observation stability check. Physical mutation paths never call this.
+    await this.assertToken(path, expectedToken);
+  }
+
+  private async reusableReadOnlyObservation(path: VaultPath, expectedToken: ObservationToken): Promise<LocalObservation | undefined> {
+  const safe = await this.safePath(path, "observe");
+  const key = String(safe);
+  const cached = this.reusableStableObservations.get(key);
+  if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
+  const generation = this.generationFor(safe);
+  if (generation !== cached.generation) {
+    this.reusableStableObservations.delete(key);
+    return undefined;
+  }
+  const discardCachedIfSame = (): void => {
+    if (this.reusableStableObservations.get(key) === cached) this.reusableStableObservations.delete(key);
+  };
+  let current: Stat | null;
+  try {
+    current = await this.adapter.stat(key);
+  } catch {
+    discardCachedIfSame();
+    return undefined;
+  }
+  const currentGeneration = this.generationFor(safe);
+  if (
+    this.observationEpoch !== cached.epoch ||
+    currentGeneration !== cached.generation ||
+    this.reusableStableObservations.get(key) !== cached ||
+    !current ||
+    current.type !== "file" ||
+    !sameStat(current, cached.stat) ||
+    statToken(key, current, currentGeneration) !== expectedToken
+  ) {
+    discardCachedIfSame();
+    return undefined;
+  }
+  return cached.observation;
+}
   private async writeIncremental(path: VaultPath, content: BinaryContentSource): Promise<void> {
     const target = await this.safePath(path, "mutation-target");
     await this.adapter.writeBinary(String(target), new ArrayBuffer(0));
@@ -696,8 +896,27 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     return this.generations.get(String(path)) ?? 0;
   }
 
+  private beginObservationEpoch(): void {
+    this.observationEpoch += 1;
+    this.reusableStableObservations.clear();
+  }
+
+  private invalidateAllReusableEvidence(): void {
+    this.observationEpoch += 1;
+    this.reusableStableObservations.clear();
+  }
+
+  private invalidateReusableEvidence(path: string): void {
+    const normalized = normalizeVaultPath(path);
+    const prefix = `${normalized}/`;
+    for (const key of this.reusableStableObservations.keys()) {
+      if (key === normalized || key.startsWith(prefix)) this.reusableStableObservations.delete(key);
+    }
+  }
+
   private bump(path: string): void {
     const normalized = normalizeVaultPath(path);
+    this.invalidateReusableEvidence(normalized);
     this.generations.set(normalized, (this.generations.get(normalized) ?? 0) + 1);
   }
 
@@ -750,6 +969,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   private emitLifecycle(event: LocalLifecycleEvent): void {
+    this.invalidateAllReusableEvidence();
     if (this.disposed && event.kind !== "unload") return;
     for (const listener of this.lifecycleListeners) listener(event);
   }
