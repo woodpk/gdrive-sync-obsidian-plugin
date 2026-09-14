@@ -1,0 +1,77 @@
+name: LAT-04 Branch Validation
+
+on:
+  push:
+    branches:
+      - phase6-latency-opt-04-precondition-dedup
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-latency-opt-04-precondition-dedup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Restore incidental transaction-id brand spelling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/product/authoritative-production-executor-base.ts')
+          text = path.read_text()
+          old = 'cid<"LocalTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as unknown as LocalMutationTransactionId'
+          new = 'cid<"LocalMutationTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as LocalMutationTransactionId'
+          if old in text:
+              path.write_text(text.replace(old, new))
+          PY
+          if ! git diff --quiet -- src/product/authoritative-production-executor-base.ts; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/product/authoritative-production-executor-base.ts
+            git commit -m "LAT-04 restore existing transaction-id brand"
+            git push origin HEAD:phase6-latency-opt-04-precondition-dedup
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Compile tests
+        run: npx tsc -p tsconfig.test.json
+      - name: Focused LAT-04 and authority safety tests
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            .test-build/test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.js \
+            .test-build/test/phase2-execution.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-authoritative-boundary.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-authoritative-commit-lifecycle.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-production-authority-path.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-production-lifecycle-composition.test.js \
+            .test-build/test/workstreams/local/local-transaction-safety.test.js \
+            .test-build/test/phase6-b-destructive-safety.test.js | tee lat04-focused.tap
+      - name: Full repository check
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check | tee lat04-check.log
+      - name: Diff whitespace check
+        run: git diff --check
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lat04-validation-logs
+          path: |
+            lat04-focused.tap
+            lat04-check.log
+          if-no-files-found: ignore
