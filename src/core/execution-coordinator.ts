@@ -255,6 +255,11 @@ type AuthorityPersistenceFailureDiagnostics = {
   readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => "pending-journal-failed" | "uncertain-state-journal-failed" | undefined;
 };
 
+type ExecuteBoundaryValidatingExecutor = AuthoritativeSynchronizationExecutor & {
+  readonly validatesAtExecuteBoundary?: true;
+  readonly consumeExecuteBoundaryValidationFailureStage?: (error: unknown) => "operation-precondition-validation-failed" | undefined;
+};
+
 export class AuthorityCompleteExecutionCoordinator {
   private readonly observer?: ExecutionLifecycleObserver;
 
@@ -291,23 +296,29 @@ export class AuthorityCompleteExecutionCoordinator {
     if (resolved.status !== "ready") return this.complete(operation, { status: "recovery-required", reason: resolved.reason });
     const executable = resolved.operation;
 
-    this.observe(executable, "operation-precondition-validation-start");
-    let validation: AuthorityCompletePreconditionValidationResult;
-    try { validation = await this.executor.validatePreconditions(executable); }
-    catch (error) { this.observe(executable, "operation-precondition-validation-failed", "threw", error); throw error; }
-    this.observe(executable, "operation-precondition-validated", validation.status);
-    const invalid = this.mapAuthoritativeValidation(validation);
-    if (invalid) {
-      this.observe(executable, "operation-precondition-validation-failed", invalid.status, undefined, validation.status === "stale" ? validation.failed : undefined);
-      return this.complete(executable, invalid);
+    const executorOwnsFinalValidation = (this.executor as ExecuteBoundaryValidatingExecutor).validatesAtExecuteBoundary === true;
+    if (!executorOwnsFinalValidation) {
+      this.observe(executable, "operation-precondition-validation-start");
+      let validation: AuthorityCompletePreconditionValidationResult;
+      try { validation = await this.executor.validatePreconditions(executable); }
+      catch (error) { this.observe(executable, "operation-precondition-validation-failed", "threw", error); throw error; }
+      this.observe(executable, "operation-precondition-validated", validation.status);
+      const invalid = this.mapAuthoritativeValidation(validation);
+      if (invalid) {
+        this.observe(executable, "operation-precondition-validation-failed", invalid.status, undefined, validation.status === "stale" ? validation.failed : undefined);
+        return this.complete(executable, invalid);
+      }
     }
 
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
     catch (error) {
+      const diagnosticExecutor = this.executor as ExecuteBoundaryValidatingExecutor;
       const diagnosticStore = this.authorityStore as SynchronizationAuthorityStoreV1_1 & AuthorityPersistenceFailureDiagnostics;
-      const stage = diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error) ?? "content-mutation-failed";
+      const stage = diagnosticExecutor.consumeExecuteBoundaryValidationFailureStage?.(error)
+        ?? diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error)
+        ?? "content-mutation-failed";
       this.observe(executable, stage, "threw", error);
       throw error;
     }
