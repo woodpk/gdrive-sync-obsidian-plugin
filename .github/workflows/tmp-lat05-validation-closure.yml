@@ -1,0 +1,67 @@
+name: Temporary LAT-05 validation closure
+
+on:
+  push:
+    branches:
+      - phase6-latency-opt-05-remote-planning-fast-path
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify continuation ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7)" = "02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7"
+      - name: Clean dependency installation
+        run: npm ci
+      - name: Production typecheck
+        run: npm run typecheck
+      - name: Compile test tree
+        run: npx tsc -p tsconfig.test.json
+      - name: Verify required compiled regression files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            .test-build/test/phase3-drive.test.js
+            .test-build/test/phase3-changes.test.js
+            .test-build/test/phase5-group-b-drive-domain.test.js
+            .test-build/test/phase5-group-b-scope-transfer.test.js
+            .test-build/test/workstreams/orchestration/v1.2-reliable-changes.test.js
+            .test-build/test/workstreams/orchestration/v1.2-remote-feed-authority.test.js
+            .test-build/test/phase6-log02-google-http-transport-tracing.test.js
+            .test-build/test/phase6-log03-google-drive-semantic-operation-tracing.test.js
+            .test-build/test/phase6-lat05-remote-planning-fast-path.test.js
+          )
+          for file in "${files[@]}"; do
+            test -f "$file" || { echo "Missing compiled regression: $file" >&2; exit 1; }
+          done
+      - name: Explicit LAT-05 focused and predecessor regression set
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            .test-build/test/phase3-drive.test.js \
+            .test-build/test/phase3-changes.test.js \
+            .test-build/test/phase5-group-b-drive-domain.test.js \
+            .test-build/test/phase5-group-b-scope-transfer.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-reliable-changes.test.js \
+            .test-build/test/workstreams/orchestration/v1.2-remote-feed-authority.test.js \
+            .test-build/test/phase6-log02-google-http-transport-tracing.test.js \
+            .test-build/test/phase6-log03-google-drive-semantic-operation-tracing.test.js \
+            .test-build/test/phase6-lat05-remote-planning-fast-path.test.js
+      - name: Literal repository check wrapper
+        run: npm run check
+      - name: Literal common-base diff check
+        run: git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD
