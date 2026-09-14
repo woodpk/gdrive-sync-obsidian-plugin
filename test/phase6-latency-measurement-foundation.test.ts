@@ -36,11 +36,7 @@ interface LocalMeasurementHarness {
   };
 }
 
-function localMeasurementHarness(options: {
-  readonly blockSecondStatFor?: string;
-  readonly secondStatEntered?: { resolve(): void };
-  readonly releaseSecondStat?: Promise<void>;
-} = {}): LocalMeasurementHarness {
+function localMeasurementHarness(): LocalMeasurementHarness {
   const events: string[] = [];
   const counts = { exists: 0, stat: 0, list: 0, stabilityWindows: 0 };
   const statCalls = new Map<string, number>();
@@ -66,10 +62,6 @@ function localMeasurementHarness(options: {
       if (call % 2 === 2) {
         counts.stabilityWindows += 1;
         events.push(`stability-window-complete:${raw}:${call / 2}`);
-        if (raw === options.blockSecondStatFor && call === 2) {
-          options.secondStatEntered?.resolve();
-          await options.releaseSecondStat;
-        }
       }
       return { type: "file" as const, ctime: 1, mtime: file.mtime, size: file.size };
     },
@@ -106,28 +98,20 @@ function localMeasurementHarness(options: {
 }
 
 test("LAT-01 local enumeration measures exact observation work and proves independent file observations are serial", async () => {
-  const secondStatEntered = deferred();
-  const releaseSecondStat = deferred();
-  const h = localMeasurementHarness({
-    blockSecondStatFor: "a.md",
-    secondStatEntered,
-    releaseSecondStat: releaseSecondStat.promise,
-  });
+  const h = localMeasurementHarness();
+  const listing = await h.local.enumerate();
 
-  const enumeration = h.local.enumerate();
-  await secondStatEntered.promise;
-
-  assert.equal(h.events.some(value => value.includes("b.md")), false, "b.md must not begin observation while a.md is still inside its stability check");
-  assert.deepEqual(h.counts, { exists: 1, stat: 2, list: 1, stabilityWindows: 1 });
-
-  releaseSecondStat.resolve();
-  const listing = await enumeration;
   assert.equal(listing.completeness.status, "complete");
   assert.deepEqual(h.counts, { exists: 2, stat: 4, list: 1, stabilityWindows: 2 });
   assert.deepEqual(
     h.events.filter(value => value.startsWith("stability-window-complete:")),
     ["stability-window-complete:a.md:1", "stability-window-complete:b.md:1"],
   );
+  const aComplete = h.events.indexOf("stability-window-complete:a.md:1");
+  const bStarted = h.events.indexOf("exists:b.md");
+  assert.notEqual(aComplete, -1);
+  assert.notEqual(bStarted, -1);
+  assert.ok(aComplete < bStarted, "b.md must not begin observation until a.md has completed its stability check");
 });
 
 test("LAT-01 local read boundary exposes repeated observation of one unchanged file", async () => {
@@ -208,7 +192,7 @@ test("LAT-01 full planning measures managed-root, BASE, cursor, reconciliation c
       calls.listForReconciliation += 1;
       remoteStarted.resolve();
       await releaseListings.promise;
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
     },
   } as never;
   const state = {
@@ -274,7 +258,7 @@ test("LAT-01 incremental planning measures one terminal Changes traversal withou
     },
     listForReconciliation: async () => {
       calls.listForReconciliation += 1;
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
     },
   } as never;
   const state = {
