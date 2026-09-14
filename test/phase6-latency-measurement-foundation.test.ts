@@ -5,17 +5,13 @@ import type { App, DataAdapter } from "obsidian";
 import {
   contractId,
   type BinaryContentSource,
-  type ManagedRemoteIdentity,
   type PlannedOperation,
   type SynchronizationAuthorityMetadataV1_1,
   type VaultPath,
 } from "../src/contracts";
 import { StateCommitCoordinator } from "../src/core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator } from "../src/core/execution-coordinator";
-import {
-  ObsidianLocalVaultAdapter,
-  type ExternalReferenceGuard,
-} from "../src/local/obsidian-local-vault";
+import { ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
 import { createAuthoritativeProductExecutor } from "../src/product/authoritative-production-executor";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 
@@ -27,12 +23,6 @@ function deferred(): { readonly promise: Promise<void>; resolve(): void } {
   const promise = new Promise<void>(done => { resolve = done; });
   return { promise, resolve };
 }
-
-const safeBoundary: ExternalReferenceGuard = {
-  async assertSafe(): Promise<void> {
-    // The focused fake contains no external references.
-  },
-};
 
 interface LocalMeasurementHarness {
   readonly local: ObsidianLocalVaultAdapter;
@@ -106,7 +96,7 @@ function localMeasurementHarness(options: {
 
   return {
     local: new ObsidianLocalVaultAdapter(app, {
-      externalReferenceGuard: safeBoundary,
+      externalReferenceGuard: { assertSafe: async () => undefined },
       stabilityDelayMs: 0,
     }),
     events,
@@ -157,11 +147,11 @@ test("LAT-01 local read boundary exposes repeated observation of one unchanged f
 const vaultIdentity = id<"VaultIdentity">("vault:lat01");
 const deviceIdentity = id<"DeviceIdentity">("device:lat01");
 const remoteRoot = id<"RemoteObjectId">("remote:lat01-root");
-const managedRemote: ManagedRemoteIdentity = {
+const managedRemote = {
   rootId: remoteRoot,
   vaultIdentity,
   protocolVersion: id<"ProtocolVersion">("1"),
-};
+} as never;
 const stateContext = {
   expectation: "existing-pairing" as const,
   expectedVaultIdentity: vaultIdentity,
@@ -180,7 +170,7 @@ function emptyTrustedState(changeCursor?: string) {
     operations: [],
     knownDevices: [],
     ...(changeCursor ? { changeCursor: id<"ChangeCursor">(changeCursor) } : {}),
-  };
+  } as never;
 }
 
 test("LAT-01 full planning measures managed-root, BASE, cursor, reconciliation calls and LOCAL/REMOTE overlap", async () => {
@@ -293,7 +283,7 @@ test("LAT-01 incremental planning measures one terminal Changes traversal withou
     },
   } as never;
   const reliableChanges = {
-    readChangePage: async (_remote: ManagedRemoteIdentity, requestedToken: unknown) => {
+    readChangePage: async (_remote: unknown, requestedToken: unknown) => {
       calls.changePages += 1;
       assert.equal(requestedToken, startingCursor);
       return {
@@ -382,7 +372,7 @@ class CountingAuthorityStore {
       pathConvergence: [],
       operationIntents: [],
       localTransactions: [],
-    };
+    } as SynchronizationAuthorityMetadataV1_1;
   }
 
   async loadAuthority() {
@@ -535,18 +525,23 @@ test("LAT-01 production authoritative path measures repeated validation/load pas
     {
       authorityLoadsAtDispatch: 8,
       authoritySavesAtDispatch: 2,
-      identityLoadsAtDispatch: 2,
+      identityLoadsAtDispatch: 3,
       legacyValidationPassesAtDispatch: 2,
     },
   );
-  assert.equal(authority.loads, 10);
-  assert.equal(counts.identityLoads, 2);
+  assert.equal(authority.loads, 13);
+  assert.equal(authority.saves, 4);
+  assert.equal(counts.identityLoads, 5);
   assert.equal(counts.legacyValidationPasses, 2);
 });
 
 test("LAT-01 stale final authorization prevents physical mutation", async () => {
   let mutationCalls = 0;
   const authority = new CountingAuthorityStore();
+  const canonical = emptyTrustedState();
+  const identityStateStore = {
+    load: async () => ({ status: "trusted" as const, state: canonical }),
+  } as never;
   const coordinator = new AuthorityCompleteExecutionCoordinator(
     authority as never,
     {
@@ -557,6 +552,8 @@ test("LAT-01 stale final authorization prevents physical mutation", async () => 
       },
     },
     { commitVerifiedSuccess: async () => { throw new Error("commit must remain unreachable"); } } as never,
+    identityStateStore,
+    stateContext,
   );
 
   const result = await coordinator.executeOperation(physicalOperation());
