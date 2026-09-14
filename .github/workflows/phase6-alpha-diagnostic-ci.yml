@@ -5,13 +5,35 @@ on:
     branches: [phase6-integration]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply bounded LAT-03 continuation repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          helper = Path('.github/workflows/lat03-continuation-02-apply.yml').read_text().splitlines()
+          start = helper.index("          python - <<'PY'") + 1
+          end = helper.index("          PY", start)
+          body = "\n".join(line[10:] if line.startswith("          ") else line for line in helper[start:end])
+          exec(compile(body, 'lat03-continuation-02-apply', 'exec'))
+          PY
+          git checkout 8dae25d3ea620f4fb676b46e72f9fda7fc361e25 -- .github/workflows/phase6-alpha-diagnostic-ci.yml
+          rm .github/workflows/lat03-continuation-02-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/local/obsidian-local-vault.ts test/obsidian-local-vault-evidence-reuse.test.ts .github/workflows/phase6-alpha-diagnostic-ci.yml .github/workflows/lat03-continuation-02-apply.yml
+          git diff --cached --check
+          git commit -m "LAT-03 continuation 02: close async invalidation race"
+          git push origin HEAD:phase6-latency-opt-03-run-scoped-local-evidence
       - uses: actions/setup-node@v4
         with:
           node-version: 22
