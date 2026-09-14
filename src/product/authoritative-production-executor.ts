@@ -40,6 +40,10 @@ type LegacyRecoveryReads = {
   readonly recoverableProductionMutationDependencies?: RecoverableProductionMutationDependencies;
 };
 
+type ExecuteBoundaryValidationDiagnostics = {
+  readonly consumeExecuteBoundaryValidationFailureStage?: (error: unknown) => "operation-precondition-validation-failed" | undefined;
+};
+
 const TRANSITIVELY_CARRIED_MOVE_REASON = "ancestor-folder-move-carried-descendant";
 
 function transitivelyCarriedMove(operation: ExecutablePlannedOperation): boolean {
@@ -121,8 +125,9 @@ export function createAuthoritativeProductExecutor(
   managedRemote: ManagedRemoteIdentity,
   explicitDependencies?: RecoverableProductionMutationDependencies,
 ): AuthoritativeSynchronizationExecutor {
-  const base = createBaseAuthoritativeProductExecutor(legacy, authorityStore, identityStateStore, stateContext, managedRemote, explicitDependencies);
+  const base = createBaseAuthoritativeProductExecutor(legacy, authorityStore, identityStateStore, stateContext, managedRemote, explicitDependencies) as AuthoritativeSynchronizationExecutor & ExecuteBoundaryValidationDiagnostics;
   const configured = explicitDependencies ?? (legacy as unknown as LegacyRecoveryReads).recoverableProductionMutationDependencies ?? {};
+  const executeBoundaryValidationFailures = new Set<unknown>();
 
   async function validateTransitivelyCarriedMove(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
     const version = operation.contentVersion;
@@ -163,10 +168,22 @@ export function createAuthoritativeProductExecutor(
   }
 
   async function execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {
-    const existing = await outstandingIntent(authorityStore, operation);
+    let existing: Awaited<ReturnType<typeof outstandingIntent>>;
+    try {
+      existing = await outstandingIntent(authorityStore, operation);
+    } catch (error) {
+      executeBoundaryValidationFailures.add(error);
+      throw error;
+    }
     if (existing.status === "recovery-required") return { status: "recovery-required", reason: existing.reason };
     if (existing.status === "none" && transitivelyCarriedMove(operation)) {
-      const validation = await validateTransitivelyCarriedMove(operation);
+      let validation: AuthorityCompletePreconditionValidationResult;
+      try {
+        validation = await validateTransitivelyCarriedMove(operation);
+      } catch (error) {
+        executeBoundaryValidationFailures.add(error);
+        throw error;
+      }
       if (validation.status === "stale") return { status: "stale-precondition", reason: "transitively carried descendant is not exactly converged at the post-ancestor destination", failed: validation.failed };
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
@@ -201,7 +218,15 @@ export function createAuthoritativeProductExecutor(
     return { status: "durable-verified-success", receipt: recovery.receipt };
   }
 
-  const executor = { validatePreconditions, execute, validatesAtExecuteBoundary: true as const };
+  const executor = {
+    validatePreconditions,
+    execute,
+    validatesAtExecuteBoundary: true as const,
+    consumeExecuteBoundaryValidationFailureStage(error: unknown) {
+      if (executeBoundaryValidationFailures.delete(error)) return "operation-precondition-validation-failed" as const;
+      return base.consumeExecuteBoundaryValidationFailureStage?.(error);
+    },
+  };
   return executor;
 }
 

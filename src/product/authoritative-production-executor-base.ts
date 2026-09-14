@@ -946,10 +946,18 @@ export function createAuthoritativeProductExecutor(
     return ordinary;
   }
 
-  return {
+  const executeBoundaryValidationFailures = new Set<unknown>();
+
+  const executor = {
     validatePreconditions: validateExact,
-    async execute(operation) {
-      const validation = await validateExact(operation);
+    async execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {
+      let validation: AuthorityCompletePreconditionValidationResult;
+      try {
+        validation = await validateExact(operation);
+      } catch (error) {
+        executeBoundaryValidationFailures.add(error);
+        throw error;
+      }
       if (validation.status === "stale") return { status: "stale-precondition", reason: "exact authority changed at production mutation boundary", failed: validation.failed };
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
@@ -1044,5 +1052,11 @@ export function createAuthoritativeProductExecutor(
       });
       return receipt;
     },
+    consumeExecuteBoundaryValidationFailureStage(error: unknown) {
+      return executeBoundaryValidationFailures.delete(error)
+        ? "operation-precondition-validation-failed" as const
+        : undefined;
+    },
   };
+  return executor;
 }

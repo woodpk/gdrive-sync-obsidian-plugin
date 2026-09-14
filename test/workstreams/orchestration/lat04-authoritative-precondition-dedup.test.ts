@@ -153,7 +153,10 @@ function plannedOperation(): PlannedOperation {
 }
 
 type Harness = ReturnType<typeof harness>;
-function harness(onReserve?: (h: { setLocalToken(value: string): void; setRemote(remoteObjectId: RemoteObjectId, revision: string): void; authority: AuthorityStore }) => void) {
+function harness(
+  onReserve?: (h: { setLocalToken(value: string): void; setRemote(remoteObjectId: RemoteObjectId, revision: string): void; authority: AuthorityStore }) => void,
+  throwDuringFullValidation = false,
+) {
   const authority = new AuthorityStore();
   const canonical = canonicalState();
   let localToken = "local:lat04:1";
@@ -204,6 +207,7 @@ function harness(onReserve?: (h: { setLocalToken(value: string): void; setRemote
   const originalValidate = legacy.validatePreconditions.bind(legacy);
   legacy.validatePreconditions = async operation => {
     ordinaryValidationCalls += 1;
+    if (throwDuringFullValidation && ordinaryValidationCalls === 1) throw new Error("LAT-04 validation provenance fixture");
     return originalValidate(operation);
   };
 
@@ -280,6 +284,15 @@ test("LAT-04 normal physical operation uses one full authority validation and pr
   assert.equal(h.physicalMutations, 1);
   assertOrderedStages(firstEffectStages(h.authority), ["intent-persisted", "dispatch-authorized", "effect-verified", "state-committed"]);
   assert.equal(h.authority.lifecycleStages.some(value => value.startsWith("operation-precondition-validated")), false, "coordinator must not emit a duplicate successful validation lifecycle");
+});
+
+test("LAT-04 execute-boundary validation throw retains exact precondition diagnostic provenance", async () => {
+  const h = harness(undefined, true);
+  await assert.rejects(() => h.coordinator.executeOperation(plannedOperation()), /LAT-04 validation provenance fixture/);
+  assert.equal(h.authority.fullValidationStarts, 1);
+  assert.equal(h.physicalMutations, 0);
+  assert.equal(h.authority.lifecycleStages.some(value => value === "operation-precondition-validation-failed:threw"), true);
+  assert.equal(h.authority.lifecycleStages.some(value => value === "content-mutation-failed:threw"), false);
 });
 
 test("LAT-04 dispatch guard rejects LOCAL token changes after full validation and before mutation", async () => {

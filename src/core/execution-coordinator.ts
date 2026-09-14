@@ -257,6 +257,7 @@ type AuthorityPersistenceFailureDiagnostics = {
 
 type ExecuteBoundaryValidatingExecutor = AuthoritativeSynchronizationExecutor & {
   readonly validatesAtExecuteBoundary?: true;
+  readonly consumeExecuteBoundaryValidationFailureStage?: (error: unknown) => "operation-precondition-validation-failed" | undefined;
 };
 
 export class AuthorityCompleteExecutionCoordinator {
@@ -298,20 +299,26 @@ export class AuthorityCompleteExecutionCoordinator {
     const executorOwnsFinalValidation = (this.executor as ExecuteBoundaryValidatingExecutor).validatesAtExecuteBoundary === true;
     if (!executorOwnsFinalValidation) {
       this.observe(executable, "operation-precondition-validation-start");
-      const validation = await this.executor.validatePreconditions(executable);
-      if (validation.status !== "valid") {
-        this.observe(executable, "operation-precondition-validation-failed", validation.status, undefined, validation.status === "stale" ? validation.failed : undefined);
-        return this.complete(executable, this.mapAuthoritativeValidation(validation));
+      let validation: AuthorityCompletePreconditionValidationResult;
+      try { validation = await this.executor.validatePreconditions(executable); }
+      catch (error) { this.observe(executable, "operation-precondition-validation-failed", "threw", error); throw error; }
+      this.observe(executable, "operation-precondition-validated", validation.status);
+      const invalid = this.mapAuthoritativeValidation(validation);
+      if (invalid) {
+        this.observe(executable, "operation-precondition-validation-failed", invalid.status, undefined, validation.status === "stale" ? validation.failed : undefined);
+        return this.complete(executable, invalid);
       }
-      this.observe(executable, "operation-precondition-validated", "valid");
     }
 
     this.observe(executable, "content-mutation-start");
     let execution: ExecutionResult;
     try { execution = await this.executor.execute(executable); }
     catch (error) {
+      const diagnosticExecutor = this.executor as ExecuteBoundaryValidatingExecutor;
       const diagnosticStore = this.authorityStore as SynchronizationAuthorityStoreV1_1 & AuthorityPersistenceFailureDiagnostics;
-      const stage = diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error) ?? "content-mutation-failed";
+      const stage = diagnosticExecutor.consumeExecuteBoundaryValidationFailureStage?.(error)
+        ?? diagnosticStore.consumeAuthorityPersistenceFailureStage?.(error)
+        ?? "content-mutation-failed";
       this.observe(executable, stage, "threw", error);
       throw error;
     }
@@ -408,10 +415,11 @@ export class AuthorityCompleteExecutionCoordinator {
     try { this.observer?.(operation, stage, result, error, failed); } catch { /* diagnostics are non-authoritative */ }
   }
 
-  private mapAuthoritativeValidation(validation: Exclude<AuthorityCompletePreconditionValidationResult, { status: "valid" }>): CoordinatedExecutionResult {
-    if (validation.status === "stale") return { status: "stale-precondition", reason: "authoritative precondition changed", failed: validation.failed };
-    if (validation.status === "blocked") return { status: "blocked", reason: validation.reason };
-    return { status: "recovery-required", reason: validation.reason };
+  private mapAuthoritativeValidation(result: AuthorityCompletePreconditionValidationResult): CoordinatedExecutionResult | undefined {
+    if (result.status === "valid") return undefined;
+    if (result.status === "stale") return { status: "stale-precondition", reason: "exact executable authority changed before mutation", failed: result.failed };
+    if (result.status === "blocked") return { status: "blocked", reason: result.reason };
+    return { status: "recovery-required", reason: result.reason };
   }
 
   private mapAuthoritativeExecution(result: Exclude<ExecutionResult, { status: "durable-verified-success" }>): CoordinatedExecutionResult {
