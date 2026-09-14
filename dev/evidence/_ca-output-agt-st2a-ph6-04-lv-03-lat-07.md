@@ -16,7 +16,7 @@
 - Required predecessor evidence `dev/evidence/_ca-output-agt-st2a-ph6-04-lv-03-lat-06.md` exists at `INTEGRATION_HEAD` and reports completed integration, focused, full-test, build, and aggregate verification without a hard safety blocker.
 - This 07 branch was created directly from `INTEGRATION_HEAD`; no substitute ref was used.
 
-The 06 evidence distinguishes the integrated implementation candidate from its evidence-only descendant: the integrated candidate verified by 06 was `13d8fb09b0e306fd13416760668d93eaace16f9c`, while `7ae0786ae253e41df4e0446246df4c3edd24e9d4` is the required evidence-bearing 06 branch tip consumed here.
+The 06 evidence distinguishes the integrated implementation candidate from its evidence-only descendant: the integrated candidate verified by 06 was `13d8fb0cac7b5f95dd278b46e55a63969f2688b4`, while `7ae0786ae253e41df4e0446246df4c3edd24e9d4` is the required evidence-bearing 06 branch tip consumed here.
 
 ## 2. Clean Environment and Reproducibility
 
