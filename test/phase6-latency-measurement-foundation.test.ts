@@ -59,7 +59,7 @@ function localMeasurementHarness(): LocalMeasurementHarness {
       events.push(`stat:${raw}:${call}`);
       const file = files.get(raw);
       if (!file) return null;
-      if (call % 2 === 2) {
+      if (call % 2 === 0) {
         counts.stabilityWindows += 1;
         events.push(`stability-window-complete:${raw}:${call / 2}`);
       }
