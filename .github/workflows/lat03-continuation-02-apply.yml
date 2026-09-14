@@ -1,0 +1,258 @@
+name: LAT-03 Continuation 02 Apply
+
+on:
+  push:
+    branches: [phase6-latency-opt-03-run-scoped-local-evidence]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-latency-opt-03-run-scoped-local-evidence
+          fetch-depth: 0
+      - name: Apply bounded LAT-03 race repair and deterministic tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('src/local/obsidian-local-vault.ts')
+          source = source_path.read_text()
+          old = '''  private async reusableReadOnlyObservation(path: VaultPath, expectedToken: ObservationToken): Promise<LocalObservation | undefined> {
+            const safe = await this.safePath(path, "observe");
+            const key = String(safe);
+            const cached = this.reusableStableObservations.get(key);
+            if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
+            const generation = this.generationFor(safe);
+            if (generation !== cached.generation) {
+              this.reusableStableObservations.delete(key);
+              return undefined;
+            }
+            let current: Stat | null;
+            try {
+              current = await this.adapter.stat(key);
+            } catch {
+              this.reusableStableObservations.delete(key);
+              return undefined;
+            }
+            if (!current || current.type !== "file" || !sameStat(current, cached.stat) || statToken(key, current, generation) !== expectedToken) {
+              this.reusableStableObservations.delete(key);
+              return undefined;
+            }
+            return cached.observation;
+          }
+          '''
+          new = '''  private async reusableReadOnlyObservation(path: VaultPath, expectedToken: ObservationToken): Promise<LocalObservation | undefined> {
+            const safe = await this.safePath(path, "observe");
+            const key = String(safe);
+            const cached = this.reusableStableObservations.get(key);
+            if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
+            const generation = this.generationFor(safe);
+            if (generation !== cached.generation) {
+              this.reusableStableObservations.delete(key);
+              return undefined;
+            }
+            const discardCachedIfSame = (): void => {
+              if (this.reusableStableObservations.get(key) === cached) this.reusableStableObservations.delete(key);
+            };
+            let current: Stat | null;
+            try {
+              current = await this.adapter.stat(key);
+            } catch {
+              discardCachedIfSame();
+              return undefined;
+            }
+            const currentGeneration = this.generationFor(safe);
+            if (
+              this.observationEpoch !== cached.epoch ||
+              currentGeneration !== cached.generation ||
+              this.reusableStableObservations.get(key) !== cached ||
+              !current ||
+              current.type !== "file" ||
+              !sameStat(current, cached.stat) ||
+              statToken(key, current, currentGeneration) !== expectedToken
+            ) {
+              discardCachedIfSame();
+              return undefined;
+            }
+            return cached.observation;
+          }
+          '''
+          if old not in source:
+              raise SystemExit('source repair target not found exactly')
+          source_path.write_text(source.replace(old, new, 1))
+
+          test_path = Path('test/obsidian-local-vault-evidence-reuse.test.ts')
+          test = test_path.read_text()
+          old_interface = '''interface Runtime {
+            readonly app: App;
+            readonly entries: Map<string, Entry>;
+            readonly adapterCalls: string[];
+            readonly fetchCalls: string[];
+            fire(kind: "create" | "modify" | "delete", path: string): void;
+            fireRename(oldPath: string, newPath: string): void;
+            setRenameObserver(observer: ((from: string, to: string) => void) | undefined): void;
+          }
+          '''
+          new_interface = '''interface StatBarrier {
+            readonly entered: Promise<void>;
+            release(): void;
+          }
+
+          interface Runtime {
+            readonly app: App;
+            readonly entries: Map<string, Entry>;
+            readonly adapterCalls: string[];
+            readonly fetchCalls: string[];
+            fire(kind: "create" | "modify" | "delete", path: string): void;
+            fireRename(oldPath: string, newPath: string): void;
+            blockNextStat(path: string): StatBarrier;
+            setRenameObserver(observer: ((from: string, to: string) => void) | undefined): void;
+          }
+          '''
+          if old_interface not in test:
+              raise SystemExit('test interface target not found')
+          test = test.replace(old_interface, new_interface, 1)
+
+          old_state = '''  const handlers = new Map<string, Array<(...args: any[]) => void>>();
+            let renameObserver: ((from: string, to: string) => void) | undefined;
+          '''
+          new_state = '''  const handlers = new Map<string, Array<(...args: any[]) => void>>();
+            let renameObserver: ((from: string, to: string) => void) | undefined;
+            let nextStatBarrier: { readonly path: string; entered(): void; readonly waitForRelease: Promise<void> } | undefined;
+          '''
+          if old_state not in test:
+              raise SystemExit('test barrier state target not found')
+          test = test.replace(old_state, new_state, 1)
+
+          old_stat = '''    stat: async (path: string): Promise<Stat | null> => {
+                adapterCalls.push(`stat:${path}`);
+                const entry = entries.get(path);
+                if (!entry) return null;
+                return {
+                  type: entry.type,
+                  ctime: entry.ctime,
+                  mtime: entry.mtime,
+                  size: entry.type === "file" ? (entry.bytes?.byteLength ?? 0) : 0,
+                };
+              },
+          '''
+          new_stat = '''    stat: async (path: string): Promise<Stat | null> => {
+                adapterCalls.push(`stat:${path}`);
+                const barrier = nextStatBarrier?.path === path ? nextStatBarrier : undefined;
+                if (barrier) {
+                  nextStatBarrier = undefined;
+                  barrier.entered();
+                  await barrier.waitForRelease;
+                }
+                const entry = entries.get(path);
+                if (!entry) return null;
+                return {
+                  type: entry.type,
+                  ctime: entry.ctime,
+                  mtime: entry.mtime,
+                  size: entry.type === "file" ? (entry.bytes?.byteLength ?? 0) : 0,
+                };
+              },
+          '''
+          if old_stat not in test:
+              raise SystemExit('test stat target not found')
+          test = test.replace(old_stat, new_stat, 1)
+
+          old_return = '''    fire: (kind, path) => emit(kind, { path }),
+                fireRename: (oldPath, newPath) => emit("rename", { path: newPath }, oldPath),
+                setRenameObserver: observer => { renameObserver = observer; },
+              };
+          '''
+          new_return = '''    fire: (kind, path) => emit(kind, { path }),
+                fireRename: (oldPath, newPath) => emit("rename", { path: newPath }, oldPath),
+                blockNextStat: path => {
+                  if (nextStatBarrier) throw new Error("a stat barrier is already armed");
+                  let markEntered!: () => void;
+                  let release!: () => void;
+                  const entered = new Promise<void>(resolve => { markEntered = resolve; });
+                  const waitForRelease = new Promise<void>(resolve => { release = resolve; });
+                  nextStatBarrier = { path, entered: markEntered, waitForRelease };
+                  return { entered, release };
+                },
+                setRenameObserver: observer => { renameObserver = observer; },
+              };
+          '''
+          if old_return not in test:
+              raise SystemExit('test runtime return target not found')
+          test = test.replace(old_return, new_return, 1)
+
+          marker = '''test("create modify and delete events invalidate same-path reusable evidence by generation", async () => {
+          '''
+          inserted = '''test("generation invalidation while fast-path stat is pending rejects the stale token", async () => {
+            const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+            const adapter = local(value);
+            const token = tokenFrom(await adapter.enumerate(), "note.bin");
+            const before = statCount(value, "note.bin");
+            const barrier = value.blockNextStat("note.bin");
+            const pendingRead = adapter.readFile(vp("note.bin"), token);
+            await barrier.entered;
+            value.fire("modify", "note.bin");
+            barrier.release();
+
+            await assert.rejects(pendingRead, LocalStaleObservationError);
+            assert.equal(statCount(value, "note.bin") - before, 3,
+              "invalidated pending fast-path stat must fall back to the full two-stat stale check rather than returning cached evidence");
+            adapter.dispose();
+          });
+
+          test("observation epoch replacement while fast-path stat is pending cannot return the prior cached proof", async () => {
+            const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+            const adapter = local(value);
+            const token = tokenFrom(await adapter.enumerate(), "note.bin");
+            const before = statCount(value, "note.bin");
+            const barrier = value.blockNextStat("note.bin");
+            const pendingRead = adapter.readFile(vp("note.bin"), token);
+            await barrier.entered;
+
+            const refreshed = await adapter.enumerate();
+            assert.equal(tokenFrom(refreshed, "note.bin"), token, "epoch refresh may preserve the opaque token when generation/stat are unchanged");
+            barrier.release();
+            const read = await pendingRead;
+
+            assert.equal(read.observationToken, token);
+            assert.equal(statCount(value, "note.bin") - before, 5,
+              "pending old proof plus epoch refresh must be followed by a fresh two-stat fallback, not acceptance of the pre-epoch cached object");
+            adapter.dispose();
+          });
+
+          test("mid-stat generation invalidation rejects before any resource bytes are fetched", async () => {
+            const value = runtime({ "note.bin": { type: "file", bytes: bytes(1, 2, 3, 4), mtime: 7, ctime: 1 } });
+            const adapter = local(value);
+            const token = tokenFrom(await adapter.enumerate(), "note.bin");
+            const read = await adapter.readFile(vp("note.bin"), token);
+            const barrier = value.blockNextStat("note.bin");
+            const pendingCollect = collect(read.content);
+            await barrier.entered;
+            value.fire("modify", "note.bin");
+            barrier.release();
+
+            await assert.rejects(pendingCollect, LocalStaleObservationError);
+            assert.equal(value.fetchCalls.length, 0, "resource fetch must not begin under evidence invalidated while the live stat was pending");
+            adapter.dispose();
+          });
+
+          ''' + marker
+          if marker not in test:
+              raise SystemExit('test insertion marker not found')
+          test_path.write_text(test.replace(marker, inserted, 1))
+          PY
+
+          rm .github/workflows/lat03-continuation-02-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/local/obsidian-local-vault.ts test/obsidian-local-vault-evidence-reuse.test.ts .github/workflows/lat03-continuation-02-apply.yml
+          git diff --cached --check
+          git commit -m "LAT-03 continuation 02: close async invalidation race"
+          git push origin HEAD:phase6-latency-opt-03-run-scoped-local-evidence
