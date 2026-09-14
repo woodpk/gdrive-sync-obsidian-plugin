@@ -201,7 +201,8 @@ export function createAuthoritativeProductExecutor(
     return { status: "durable-verified-success", receipt: recovery.receipt };
   }
 
-  return { validatePreconditions, execute };
+  const executor = { validatePreconditions, execute, validatesAtExecuteBoundary: true as const };
+  return executor;
 }
 
 function retrySafeVerifiedNotApplied(): RetrySafePhysicalAuthorityV1_3 {
