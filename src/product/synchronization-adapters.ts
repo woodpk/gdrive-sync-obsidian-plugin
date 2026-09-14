@@ -66,7 +66,8 @@ function physicalArtifactPath(target: VaultPath, role: "stage" | "backup", seed:
   const slash = raw.lastIndexOf("/");
   const parent = slash >= 0 ? raw.slice(0, slash) : "";
   const name = slash >= 0 ? raw.slice(slash + 1) : raw;
-  const token = String(sha256Text(String(seed))).slice(0, 24);
+  const canonicalHash = String(sha256Text(String(seed)));
+  const token = canonicalHash.slice("sha256:".length, "sha256:".length + 24);
   return vp(`${parent ? `${parent}/` : ""}.${name}.brain-sync-${role}-${token}`);
 }
 
