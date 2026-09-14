@@ -639,6 +639,56 @@ async function recoverEffect(
   return undefined;
 }
 
+function dispatchGuardOperation(operation: ExecutablePlannedOperation, descriptor: RecoverablePhysicalMutationDescriptorV1_1): ExecutablePlannedOperation {
+  const ordinary = operation.preconditions.filter(precondition => precondition.kind !== "base-authority" && precondition.kind !== "identity-authority");
+  if (operation.kind !== "clean-text-merge" || descriptor.targetSide === "local") {
+    return { ...operation, preconditions: ordinary } as ExecutablePlannedOperation;
+  }
+  const remoteOnly = ordinary.filter(precondition => {
+    if (precondition.kind === "path-observation" || precondition.kind === "content-evidence") return precondition.side === "remote";
+    return precondition.kind === "remote-object" || precondition.kind === "remote-enumeration-complete";
+  });
+  return { ...operation, preconditions: remoteOnly } as ExecutablePlannedOperation;
+}
+
+async function guardPhysicalDispatch(
+  lifecycle: DurableEffectLifecycleCoordinator,
+  operation: ExecutablePlannedOperation,
+  prepared: PreparedEffect,
+  legacy: ProductSynchronizationExecutor,
+  diagnostics?: ExecutionDiagnosticEmitter,
+): Promise<ExecutionResult | undefined> {
+  const guardOperation = dispatchGuardOperation(operation, prepared.effect.descriptor);
+  const validation = await legacy.validatePreconditions(guardOperation);
+  if (validation.status === "valid") return undefined;
+
+  const reason = validation.status === "stale"
+    ? "volatile operation evidence changed after full authoritative validation and before physical dispatch"
+    : validation.reason;
+  const physical: PhysicalEffectDispatchResult = { status: "verified-not-applied", reason };
+  const intentId = intentIdFor(operation);
+  emitPhysicalResult(diagnostics, operation, intentId, prepared.effect, physical, "dispatch-guard");
+  diagnostics?.(operation, "sync.effect", "durable-effect-transition-start", effectFields(intentId, prepared.effect, {
+    fromStage: "dispatch-authorized",
+    result: physical.status,
+    observationSource: "dispatch-guard",
+  }));
+  const recorded = await lifecycle.recordPhysicalResult(String(operation.operationId), prepared.effect.effectId, physical);
+  diagnostics?.(operation, "sync.effect", "durable-effect-transition-complete", effectFields(intentId, prepared.effect, {
+    fromStage: "dispatch-authorized",
+    result: recorded.status,
+    commitStatus: recorded.status,
+    observationSource: "dispatch-guard",
+  }));
+
+  if (recorded.status !== "verified-not-applied") {
+    return { status: "recovery-required", reason: `dispatch guard blocked mutation but durable no-effect retirement remained ${recorded.status}` };
+  }
+  if (validation.status === "stale") return { status: "stale-precondition", reason, failed: validation.failed };
+  if (validation.status === "blocked") return { status: "blocking-failure", reason };
+  return { status: "recovery-required", reason };
+}
+
 async function dispatchEffect(
   lifecycle: DurableEffectLifecycleCoordinator,
   operation: ExecutablePlannedOperation,
@@ -664,6 +714,10 @@ async function dispatchEffect(
     } : {}),
   }));
   if (authorized.status !== "dispatch-authorized") return { status: "recovery-required", reason: `dispatch authority not durably persisted (${authorized.status})` };
+
+  const guarded = await guardPhysicalDispatch(lifecycle, operation, prepared, legacy, diagnostics);
+  if (guarded) return guarded;
+
   const descriptor = prepared.effect.descriptor;
   let physical: PhysicalEffectDispatchResult;
 
@@ -892,10 +946,18 @@ export function createAuthoritativeProductExecutor(
     return ordinary;
   }
 
-  return {
+  const executeBoundaryValidationFailures = new Set<unknown>();
+
+  const executor = {
     validatePreconditions: validateExact,
-    async execute(operation) {
-      const validation = await validateExact(operation);
+    async execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {
+      let validation: AuthorityCompletePreconditionValidationResult;
+      try {
+        validation = await validateExact(operation);
+      } catch (error) {
+        executeBoundaryValidationFailures.add(error);
+        throw error;
+      }
       if (validation.status === "stale") return { status: "stale-precondition", reason: "exact authority changed at production mutation boundary", failed: validation.failed };
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
@@ -990,5 +1052,11 @@ export function createAuthoritativeProductExecutor(
       });
       return receipt;
     },
+    consumeExecuteBoundaryValidationFailureStage(error: unknown) {
+      return executeBoundaryValidationFailures.delete(error)
+        ? "operation-precondition-validation-failed" as const
+        : undefined;
+    },
   };
+  return executor;
 }

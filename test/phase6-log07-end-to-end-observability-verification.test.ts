@@ -216,6 +216,7 @@ function plannedUpdateOperation() {
 }
 async function productionUpdateWorld() {
   const diagnostics = await makeLogger();
+  diagnostics.configure({ level: "trace", retentionLimit: 1000, consoleMirror: false });
   const raw = new PersistentSynchronizationStateStore(new MemoryStateByteStorage(), undefined, undefined, diagnostics);
   const store = new SynchronizationStateAuthorityAdapter(raw, diagnostics);
   const initial: DurableSynchronizationAuthorityState = {
