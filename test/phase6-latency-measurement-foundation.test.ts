@@ -192,7 +192,7 @@ test("LAT-01 full planning measures managed-root, BASE, cursor, reconciliation c
       calls.listForReconciliation += 1;
       remoteStarted.resolve();
       await releaseListings.promise;
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
     },
   } as never;
   const state = {
@@ -258,7 +258,7 @@ test("LAT-01 incremental planning measures one terminal Changes traversal withou
     },
     listForReconciliation: async () => {
       calls.listForReconciliation += 1;
-      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } };
+      return { ok: true as const, value: { entries: [], completeness: { status: "complete" as const } } };
     },
   } as never;
   const state = {
