@@ -97,7 +97,7 @@ function localMeasurementHarness(): LocalMeasurementHarness {
   };
 }
 
-test("LAT-01 local enumeration measures exact observation work and proves independent file observations are serial", async () => {
+test("LAT-01 measurement foundation captures bounded overlap of independent local observations", async () => {
   const h = localMeasurementHarness();
   const listing = await h.local.enumerate();
 
@@ -111,10 +111,10 @@ test("LAT-01 local enumeration measures exact observation work and proves indepe
   const bStarted = h.events.indexOf("exists:b.md");
   assert.notEqual(aComplete, -1);
   assert.notEqual(bStarted, -1);
-  assert.ok(aComplete < bStarted, "b.md must not begin observation until a.md has completed its stability check");
+  assert.ok(bStarted < aComplete, "b.md should begin before a.md completes its stability check under bounded overlap");
 });
 
-test("LAT-01 local read boundary exposes repeated observation of one unchanged file", async () => {
+test("LAT-01 measurement foundation captures run-scoped read-only local evidence reuse", async () => {
   const h = localMeasurementHarness();
   const first = await h.local.observe(path("a.md"));
   assert.equal(first.status, "present");
@@ -122,10 +122,10 @@ test("LAT-01 local read boundary exposes repeated observation of one unchanged f
 
   await h.local.readFile(path("a.md"), first.observationToken);
 
-  assert.deepEqual(h.counts, { exists: 2, stat: 4, list: 0, stabilityWindows: 2 });
+  assert.deepEqual(h.counts, { exists: 1, stat: 3, list: 0, stabilityWindows: 1 });
   assert.deepEqual(
     h.events.filter(value => value.startsWith("stability-window-complete:a.md")),
-    ["stability-window-complete:a.md:1", "stability-window-complete:a.md:2"],
+    ["stability-window-complete:a.md:1"],
   );
 });
 
@@ -382,7 +382,7 @@ class CountingAuthorityStore {
   }
 }
 
-test("LAT-01 production authoritative path measures repeated validation/load passes before the first physical mutation", async () => {
+test("LAT-01 measurement foundation records integrated authority-load deduplication before physical mutation", async () => {
   const authority = new CountingAuthorityStore();
   const counts = {
     identityLoads: 0,
@@ -508,15 +508,15 @@ test("LAT-01 production authoritative path measures repeated validation/load pas
       legacyValidationPassesAtDispatch: counts.legacyValidationPassesAtDispatch,
     },
     {
-      authorityLoadsAtDispatch: 8,
+      authorityLoadsAtDispatch: 6,
       authoritySavesAtDispatch: 2,
-      identityLoadsAtDispatch: 3,
+      identityLoadsAtDispatch: 2,
       legacyValidationPassesAtDispatch: 2,
     },
   );
-  assert.equal(authority.loads, 13);
+  assert.equal(authority.loads, 11);
   assert.equal(authority.saves, 4);
-  assert.equal(counts.identityLoads, 5);
+  assert.equal(counts.identityLoads, 4);
   assert.equal(counts.legacyValidationPasses, 2);
 });
 
