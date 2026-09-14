@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type ChangeCursor, type DeviceIdentity, type RemoteObjectId, type StateRevision, type VaultIdentity, type VaultPath } from "../src/contracts/common";
+import { contractId, type ChangeCursor, type DeviceIdentity, type RemoteObjectId, type StateRevision, type VaultIdentity } from "../src/contracts/common";
 import type { DriveResult, ManagedRemoteIdentity } from "../src/contracts/google-drive";
 import type { ReliableRemoteChangePort, StateLoadContext, TrustedSynchronizationState } from "../src/contracts";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
@@ -25,7 +25,6 @@ function deferred<T=void>() { let resolve!:(value:T|PromiseLike<T>)=>void; const
 const ok=(body:unknown,status=200)=>Promise.resolve({ok:true,value:new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json"}})} as DriveResult<Response>);
 const id=(value:string)=>contractId<"RemoteObjectId">(value) as RemoteObjectId;
 const cursor=(value:string)=>contractId<"ChangeCursor">(value) as ChangeCursor;
-const path=(value:string)=>contractId<"VaultPath">(value) as VaultPath;
 const vault=(value:string)=>contractId<"VaultIdentity">(value) as VaultIdentity;
 const root=()=>({id:"root",name:"BRAIN Sync",mimeType:"application/vnd.google-apps.folder",trashed:false,appProperties:{brainSyncRole:"brain-sync-root",brainVaultIdentity:"vault-1",brainProtocolVersion:"1"}});
 const content=()=>({id:"content",name:"vault",mimeType:"application/vnd.google-apps.folder",parents:["root"],trashed:false,appProperties:{brainSyncRole:"brain-sync-content"}});
@@ -41,15 +40,17 @@ function adapter(handler:(url:string,init?:PortableRequestInit)=>Promise<DriveRe
   return new GoogleDriveAdapter(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},store),new StubTransport(handler),store);
 }
 
-test("LAT-05 overlaps independent root discovery and domain listings while preserving deterministic merge/pagination and read-only I/O",async()=>{
+test("LAT-05 validates managed root before overlapping independent root discovery and domain listings",async()=>{
+  const rootReadStarted=deferred(),rootReadRelease=deferred();
   const contentDiscoveryStarted=deferred(),contentDiscoveryRelease=deferred(),contentListStarted=deferred(),contentListRelease=deferred();
-  let configDiscoveryStarted=false,configListStarted=false; const configDiscoveryRelease=deferred(),configListRelease=deferred();
+  let contentDiscoveryInFlight=false,configDiscoveryStarted=false,configListStarted=false;
+  const configDiscoveryRelease=deferred(),configListRelease=deferred();
   const methods:string[]=[]; let contentPage=0;
   const a=adapter(async(url,init)=>{
     methods.push((init?.method??"GET").toUpperCase());
     if(url.includes("/about")) return ok({user:{permissionId:"acct"}});
-    if(url.includes("/files/root?")) return ok(root());
-    if(isContentRootQuery(url)){contentDiscoveryStarted.resolve();await contentDiscoveryRelease.promise;return ok({files:[content()]});}
+    if(url.includes("/files/root?")){rootReadStarted.resolve();await rootReadRelease.promise;return ok(root());}
+    if(isContentRootQuery(url)){contentDiscoveryInFlight=true;contentDiscoveryStarted.resolve();await contentDiscoveryRelease.promise;return ok({files:[content()]});}
     if(isConfigRootQuery(url)){configDiscoveryStarted=true;await configDiscoveryRelease.promise;return ok({files:[config()]});}
     if(isChildrenOf(url,"content")){
       contentPage++;
@@ -61,6 +62,10 @@ test("LAT-05 overlaps independent root discovery and domain listings while prese
     throw new Error(url);
   });
   const pending=a.listForReconciliation(id("root"));
+  await rootReadStarted.promise; await Promise.resolve();
+  assert.equal(contentDiscoveryInFlight,false,"content discovery must wait for managed-root authority");
+  assert.equal(configDiscoveryStarted,false,"config discovery must wait for managed-root authority");
+  rootReadRelease.resolve();
   await contentDiscoveryStarted.promise; await Promise.resolve(); const discoveryOverlapped=configDiscoveryStarted;
   contentDiscoveryRelease.resolve(); configDiscoveryRelease.resolve();
   await contentListStarted.promise; await Promise.resolve(); const listingOverlapped=configListStarted;
@@ -95,15 +100,24 @@ test("LAT-05 domain-root validation remains fail-closed for missing, duplicate, 
   }
 });
 
-test("LAT-05 partial domain interruption stays partial and merged duplicate identity/path stays fail-closed",async()=>{
-  const partial=adapter(async url=>{
+test("LAT-05 interruption in either domain stays partial and merged duplicate identity/path stays fail-closed",async()=>{
+  const ordinaryPartial=adapter(async url=>{
     if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root());
     if(isContentRootQuery(url)) return ok({files:[content()]}); if(isConfigRootQuery(url)) return ok({files:[config()]});
-    if(isChildrenOf(url,"content")) return {ok:false,signal:{kind:"transient-failure",detail:"interrupted"}};
+    if(isChildrenOf(url,"content")) return {ok:false,signal:{kind:"transient-failure",detail:"ordinary-interrupted"}};
     if(isChildrenOf(url,"config")) return ok({files:[{id:"cfg",name:"app.json",mimeType:"application/json",parents:["config"],trashed:false,appProperties:provenance("portable-config")}]});
     throw new Error(url);
   });
-  const partialResult=await partial.listForReconciliation(id("root")); assert.equal(partialResult.ok,true); if(partialResult.ok){assert.equal(partialResult.value.completeness.status,"partial");assert.equal(partialResult.value.entries.length,0);}
+  const ordinaryResult=await ordinaryPartial.listForReconciliation(id("root")); assert.equal(ordinaryResult.ok,true); if(ordinaryResult.ok){assert.equal(ordinaryResult.value.completeness.status,"partial");assert.equal(ordinaryResult.value.entries.length,0);}
+
+  const configPartial=adapter(async url=>{
+    if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root());
+    if(isContentRootQuery(url)) return ok({files:[content()]}); if(isConfigRootQuery(url)) return ok({files:[config()]});
+    if(isChildrenOf(url,"content")) return ok({files:[{id:"c1",name:"note.md",mimeType:"text/plain",parents:["content"],trashed:false,appProperties:provenance("content")}]});
+    if(isChildrenOf(url,"config")) return {ok:false,signal:{kind:"rate-limited",detail:"config-interrupted"}};
+    throw new Error(url);
+  });
+  const configResult=await configPartial.listForReconciliation(id("root")); assert.equal(configResult.ok,true); if(configResult.ok){assert.equal(configResult.value.completeness.status,"partial");assert.deepEqual(configResult.value.entries.map(e=>String(e.path)),["note.md"]);}
 
   for(const kind of ["identity","path"] as const){
     const sameId=kind==="identity"?"dup":"cfg";
@@ -156,12 +170,12 @@ test("LAT-05 trusted cursor stays incremental; conflicting or missing cursor sta
   const missing=await assemblerFor(trusted(),reliable,missingCounters).assemble(true); assert.equal(missing.mode,"full"); assert.deepEqual(missingCounters,{list:1,start:1});
 });
 
-test("LAT-05 invalid Drive cursor is mapped onto the existing conservative full-reconciliation fallback seam",async()=>{
+test("LAT-05 leaves native reliable Changes cursor failure classification unchanged",async()=>{
   const a=adapter(async url=>{
     if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); if(url.includes("/files/root?")) return ok(root());
     if(isContentRootQuery(url)) return ok({files:[content()]}); if(isConfigRootQuery(url)) return ok({files:[config()]});
     if(url.includes("/changes?")) return {ok:false,signal:{kind:"recovery-required",detail:"drive-change-cursor-invalid"}};
     throw new Error(url);
   });
-  const result=await a.readChangePage(managed,cursor("cursor:invalid")); assert.equal(result.ok,false); if(!result.ok){assert.equal(result.signal.kind,"conflict");assert.match("detail" in result.signal?result.signal.detail:"",/cursor-invalid/);}
+  const result=await a.readChangePage(managed,cursor("cursor:invalid")); assert.equal(result.ok,false); if(!result.ok){assert.equal(result.signal.kind,"recovery-required");assert.match("detail" in result.signal?result.signal.detail:"",/cursor-invalid/);}
 });
