@@ -6,170 +6,143 @@
 - Work package: `LAT-03`
 - Branch: `phase6-latency-opt-03-run-scoped-local-evidence`
 - Frozen common ancestor: `02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7`
-- Resolved predecessor branch: `phase6-latency-opt-02-local-observation-concurrency`
-- Resolved `LAT02_HEAD`: `abe4e85b953e2871cae5c2f2e214d721a25007d1`
-- Predecessor ancestry proof: GitHub compare reported merge base `02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7` for the frozen common base versus `LAT02_HEAD`.
-- Required predecessor evidence was read at `LAT02_HEAD`: `dev/evidence/_ca-output-agt-p6-latency-opt-02.md`. It reported required LAT-02 focused/full validation as PASS and no blocker.
-- Final implementation/test SHA before evidence-only closure: `a3d55db1c0840aef27802e5b54387db6590e0f5e`.
+- Approved predecessor: `LAT02_HEAD = abe4e85b953e2871cae5c2f2e214d721a25007d1`
+- Continuation input: `CONTINUATION_SHA = 8dae25d3ea620f4fb676b46e72f9fda7fc361e25`
+- Continuation preserved the accepted LAT-03 optimization and repaired only the confirmed asynchronous invalidation defect.
 
-## Changed files
+## Final changed-file manifest
 
-Implementation delta from exact `LAT02_HEAD` before evidence-only closure contained exactly:
+The exact LAT-02-to-final-work delta contains only:
 
 - `src/local/obsidian-local-vault.ts`
 - `test/obsidian-local-vault-evidence-reuse.test.ts`
-
-This evidence file is the only additional closure artifact:
-
 - `dev/evidence/_ca-output-agt-p6-latency-opt-03.md`
 
-A temporary validation-only edit to `.github/workflows/phase6-alpha-diagnostic-ci.yml` was used to execute the exact focused LAT-03 set and was then restored byte-for-byte to predecessor blob `8fe7a10cc82cbaafb2f07d1f6d20dc85e87da52b`. It is not part of the LAT-03 implementation delta.
+Temporary GitHub Actions validation/helper files were removed or restored byte-for-byte and are absent from the final LAT-02-to-HEAD diff.
 
-## Implemented optimization and validity boundary
+## LAT-03 optimization and validity boundary
 
-The adapter now retains a private in-memory stable-observation record only for read-only reuse. Reuse requires all of the following to match at the moment of use:
+The adapter retains a private in-memory stable-observation record only for read-only reuse. Reuse requires the same adapter instance, exact normalized path, exact expected observation token, exact observation epoch, exact local generation, exact cached proof identity, and a fresh live `adapter.stat()` whose file kind/size/mtime still match the cached stable observation. The exact token is recomputed from the current stat and current generation.
 
-- the same adapter instance;
-- the current observation epoch;
-- the exact normalized vault path;
-- the exact expected observation token;
-- the exact current local generation for that path;
-- a fresh live `adapter.stat()` whose file kind, size, and advisory mtime still match the stable observation;
-- recomputation of the exact observation token from that current stat and generation.
+The reusable evidence is private runtime memory only. It is never serialized, persisted, promoted into synchronization authority, shared across runtime restart, or used as physical-mutation authority. No TTL or elapsed-time assumption participates in correctness.
 
-When those conditions hold, an expected-token read-only operation replaces another complete two-stat stability window with one current-stat comparison. If reusable proof is absent, mismatched, changed, inaccessible, or otherwise uncertain, execution falls back to the prior conservative full observation/token check.
+## Continuation 02 confirmed defect
 
-The reusable evidence is private runtime memory only. It is not serialized, persisted, added to synchronization state, or shared across adapter/plugin/runtime restart.
+At `CONTINUATION_SHA`, `reusableReadOnlyObservation()` checked the cached epoch/token and generation before awaiting `adapter.stat(key)`, then accepted the returned metadata using the generation captured before that await.
 
-## Invalidation
+That left an asynchronous invalidation window: a `modify`, `create`, `delete`, `rename`, lifecycle/epoch transition, or a new observation epoch could clear/replace the cache and/or advance generation/epoch while the stat promise was pending. If the returned filesystem metadata still matched the old stat, the pre-await cached observation could be returned even though its proof had been invalidated during the live check.
 
-Reusable evidence is invalidated conservatively by:
+## Continuation 02 repair
 
-- the start of a new local enumeration/observation epoch;
-- Obsidian `create`, `modify`, and `delete` events affecting the path;
-- Obsidian `rename` events for both old and new paths;
+The repair keeps the existing single-stat read-only fast path but re-establishes proof validity after the asynchronous stat completes and before cached evidence can be returned.
+
+Reusable evidence is now revalidated on **both sides of the asynchronous `adapter.stat()` boundary**.
+
+After `await adapter.stat(key)`, reuse requires all of the following to remain true:
+
+- `this.observationEpoch === cached.epoch`;
+- `this.generationFor(path) === cached.generation`;
+- `this.reusableStableObservations.get(key) === cached`, proving the exact cached proof object is still the current entry rather than one cleared/replaced during the await;
+- the live stat is still a file and matches the cached stat;
+- recomputing `statToken(key, currentStat, currentGeneration)` equals the expected token.
+
+If any post-await condition fails, the old proof is not reused and execution falls back to the existing conservative full observation/token path. Cache cleanup is conditional on the entry still being the same captured proof, so an asynchronously installed newer valid entry is not accidentally deleted.
+
+No lock, TTL, persisted cache, public contract, mutation-authority change, or LAT-02 concurrency change was introduced.
+
+## Invalidation preserved
+
+Reusable evidence continues to be invalidated by:
+
+- a new observation epoch;
+- local `create`, `modify`, and `delete` events;
+- `rename` for both old and new paths;
 - descendant invalidation when an affected path is an ancestor of cached paths;
-- any local generation mismatch;
-- any failed/missing/changed live stat comparison;
-- adapter lifecycle transitions (`vault-ready`, `suspend`, `resume`, `unload`);
+- generation mismatch;
+- changed/missing/failed live stat proof;
+- lifecycle transitions including `vault-ready`, `suspend`, `resume`, and `unload`;
 - explicit adapter disposal;
-- adapter/plugin/runtime reinitialization, which creates a new empty evidence map.
+- adapter/plugin/runtime reinitialization.
 
-No TTL or elapsed-time assumption participates in correctness.
+## Deterministic race coverage
 
-## Deterministic structural observation reduction
+`test/obsidian-local-vault-evidence-reuse.test.ts` now contains a one-shot promise/barrier around the next path `stat()` call. The tests do not rely on sleeps or timing thresholds.
 
-`test/obsidian-local-vault-evidence-reuse.test.ts` measures adapter stat calls rather than elapsed time.
+Continuation 02 adds deterministic proof for:
 
-For one unchanged file followed by two repeated same-path/same-token read-only admissions:
+1. **Generation invalidation during pending stat** — establish stable reusable evidence, block the fast-path stat, fire same-path `modify` without changing returned metadata, release the stat, and prove the old proof is rejected. The operation falls back to the full two-stat path and rejects the stale token.
+2. **Epoch/cache replacement during pending stat** — block the old fast-path stat, begin a new enumeration epoch that can preserve the opaque token while replacing the cache proof, release the old stat, and prove the pre-epoch cached object is not returned. A fresh conservative observation is required.
+3. **No resource fetch before stale rejection** — block the read/content stale-check stat, invalidate generation while pending, release it, and prove stale rejection occurs before any resource fetch begins.
+4. **Unchanged fast path remains optimized** — the existing structural test still proves unchanged same-token reads use one live stat rather than another two-stat stability window.
+5. **Mutation boundary remains live** — the existing mutation test still proves cached read-only evidence cannot authorize the physical replacement and that full mutation-boundary observation checks execute before displacement.
 
-- pre-LAT-03 structure: initial stable enumeration = 2 stats; two expected-token reads = 4 more; total = **6 stat calls**;
-- LAT-03 structure: initial stable enumeration = 2 stats; two expected-token reads = 2 more; total = **4 stat calls**.
+Existing tests continue to cover create/modify/delete/rename invalidation, changed-stat fallback, changes before byte consumption, changes during streaming, disposal/reinitialization, and bounded LAT-02 concurrency.
 
-Each repeated unchanged read-only proof therefore changes from **2 stats + one stability window** to **1 live stat + no repeated stability window**, a 50% reduction in stat calls for that proof while retaining a live current-state comparison.
+## Structural observation reduction retained
 
-The same single-stat read-only proof is used for bounded content-stream stale checks while exact token/generation/stat identity remains current; uncertainty immediately falls back to the conservative path.
+For one stable enumeration followed by two unchanged same-token read-only admissions:
 
-## Mutation-boundary and final-verification checks explicitly preserved
+- pre-LAT-03: 2 enumeration stats + 4 repeated proof stats = **6 stats**;
+- LAT-03: 2 enumeration stats + one live stat per repeated proof = **4 stats**.
 
-LAT-03 does not use reusable evidence as mutation authority.
+Continuation 02 does not change that optimized unchanged path. It only closes the invalidation race around the asynchronous live stat.
 
-The following remain live/unoptimized:
+## Mutation and final-verification safety preserved
 
-- `ObsidianLocalVaultAdapter.assertToken()` still performs a fresh full `observe()` rather than the read-only reuse helper.
-- `replaceFile()` still invokes that live `assertToken()` before staging and again immediately before target displacement.
-- The LAT-03 test captures target stat count at first physical displacement and proves path-validation observation plus both mutation `assertToken()` checks retain complete two-stat proofs: 6 target stats before rename.
-- Local transactional `verifyExpectedTarget` remains unchanged and establishes authoritative current target state at commit time.
-- SHA-256 verification of staged content remains unchanged.
-- Exact expected-target canonical content verification before commit remains unchanged.
-- Final target reread/hash verification after rename/swap remains unchanged.
-- Durable local-transaction persistence/checkpoint ordering remains unchanged.
-- Recovery reconstruction and contradiction checks remain unchanged.
-- Canonical evidence cache-bypass behavior remains unchanged.
-- Final convergence verification remains unchanged.
+The following remain unchanged and live:
 
-## Focused deterministic coverage
+- `ObsidianLocalVaultAdapter.assertToken()` performs a full fresh observation and is not routed through reusable read-only evidence;
+- mutation precondition checks before staging/commit;
+- the immediate pre-displacement token check;
+- staged SHA-256 verification;
+- exact expected-target verification;
+- final committed-content reread/hash verification;
+- durable local-transaction persistence/checkpoint ordering;
+- stale-observation rejection;
+- recovery reconstruction and contradiction checks;
+- final convergence verification;
+- LAT-02 bounded local observation concurrency;
+- Drive/remote behavior and authoritative execution layering.
 
-New LAT-03 tests prove:
+The diagnostic authorization/browser surfaces and prepared-launch behavior remain untouched, including Prepare Google authorization (diagnostic), Launch prepared authorization (diagnostic), Test external browser, and Test delayed external browser.
 
-- unchanged same-token evidence reduces repeated read-only observation work structurally;
-- create/modify/delete generation events invalidate same-path evidence;
-- rename invalidates both source and destination evidence;
-- changed stat evidence is not reused and falls back to stale rejection;
-- a change after read admission but before byte consumption is rejected before resource fetch;
-- a change during byte streaming remains stale-detected;
-- cached read-only evidence cannot authorize a write and full mutation-boundary checks remain live;
-- disposed/reinitialized adapters cannot inherit reusable evidence.
+## Continuation 02 validation
 
-The exact focused cloud command also directly executed:
-
-- `test/obsidian-local-vault-evidence-reuse.test.ts`
-- `test/obsidian-local-vault.test.ts`
-- `test/phase6-alpha-ios-content-reader.test.ts`
-- `test/obsidian-local-vault-concurrency.test.ts`
-- `test/workstreams/local/local-transaction-safety.test.ts`
-- `test/workstreams/local/local-recovery-matrix.test.ts`
-
-This retains LAT-02 bounded-concurrency regression coverage plus existing transaction/final-verification/recovery safety coverage.
-
-## Validation results
-
-### Exact focused/full Phase 6 validation
-
-Validation-only GitHub Actions run: `34888947084`
-Job: `104126478392`
+Validation-only GitHub Actions run: `34897529360`
+Job: `104155257419`
+Validation head: `b248ed9fea6c62a2855816d6403d219fe799e905`
+Clean repaired implementation/test commit: `2dfee1ca1622f10fae18b5cd44e0468835874944`
+Post-validation workflow-restored pre-evidence head: `00f2c77f28df94622298b45a09dab19cf807e981`
 
 Results:
 
-- `npm ci` — PASS
-- `npm run typecheck` — PASS
-- `npx tsc -p tsconfig.test.json` — PASS
-- `npm test` — PASS
-- focused LAT-03 + local/mobile transaction/recovery + LAT-02 concurrency `node --test` command — PASS
-- retained Phase 6 focused suites — PASS
-- `npm run build` — PASS
-- `npm run check` — PASS
-- `git diff --check` — PASS
-- artifact identity and upload — PASS
+- `npm ci` — **PASS**
+- `npm run typecheck` — **PASS**
+- `npx tsc -p tsconfig.test.json` — **PASS**
+- complete `npm test` — **PASS**
+- focused LAT-03 reusable-evidence tests — **PASS**
+- LAT-02 bounded-concurrency tests — **PASS**
+- existing local-vault stale-token tests — **PASS**
+- iOS content-reader tests — **PASS**
+- local transaction safety tests — **PASS**
+- local recovery matrix — **PASS**
+- retained C1 and diagnostic/OAuth/browser/export focused regressions — **PASS**
+- production build — **PASS**
+- `npm run check` — **PASS**
+- `git diff --check abe4e85b953e2871cae5c2f2e214d721a25007d1..HEAD` — **PASS**
+- artifact identity and CI evidence upload — **PASS**
 
-The temporary CI-only focused-test step used by this run was subsequently removed without changing implementation or tests.
+The temporary exact-validation workflow was restored to predecessor blob `8fe7a10cc82cbaafb2f07d1f6d20dc85e87da52b` after the successful run and is not in the final diff.
 
-### Final implementation-tree full gate after workflow restoration
+## Validation-infrastructure note
 
-GitHub Actions run: `34889108428`
-Job: `104127013541`
-Head: `a3d55db1c0840aef27802e5b54387db6590e0f5e`
+An initial temporary patch-helper attempt failed before changing product source because its exact multiline source matcher did not find the target. The failure was confined to validation/patch infrastructure and was corrected by a bounded method-level matcher. The successful repair commit is `2dfee1ca1622f10fae18b5cd44e0468835874944`.
 
-Results:
+A later formatting-only helper also failed before changing product source and was removed. It did not alter the validated implementation, tests, or final permanent diff.
 
-- `npm ci` — PASS
-- `npm run typecheck` — PASS
-- `npx tsc -p tsconfig.test.json` — PASS
-- `npm test` — PASS
-- retained Phase 6 focused suites — PASS
-- `npm run build` — PASS
-- `npm run check` — PASS
-- `git diff --check` — PASS
-- artifact identity and upload — PASS
+## Final safety assessment
 
-### Independent exact-tree CI confirmation
+No unresolved LAT-03 safety concern remains from Continuation 02. The asynchronous invalidation race is closed: reusable evidence must remain the same exact epoch/generation/cache proof before and after the awaited live stat, or the fast path fails conservative.
 
-Phase 1 CI run: `34888763674`
-Job: `104125884041`
-Head: `a34fe59985d46f9926abdb9250683ae580c208ca`
-
-That head has the same implementation/test tree restored at `a3d55db1c0840aef27802e5b54387db6590e0f5e`. Dependency install, typecheck, configured test command, and production build all passed.
-
-### Local execution environment limitation
-
-A direct local-shell clone attempt failed before repository checkout with:
-
-`Could not resolve host: github.com`
-
-This was classified as environment-specific network/DNS unavailability, not a branch or product failure. Repository-accessible GitHub Actions performed the required executable validation instead. The failure was not hidden or counted as a product pass/fail result.
-
-## Safety assessment
-
-No unresolved LAT-03 safety concern was found.
-
-Reusable evidence remains read-only, exact-token/generation/stat scoped, event/lifecycle invalidated, non-persistent, and fail-conservative. Physical mutation authorization and final committed-result verification continue to use live authoritative checks.
+Final validated implementation/test SHA: `2dfee1ca1622f10fae18b5cd44e0468835874944`.
+The branch-head commit containing this evidence record is the LAT-03 Continuation 02 closure SHA reported by the agent in its final response.
