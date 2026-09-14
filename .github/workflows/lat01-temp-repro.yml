@@ -1,0 +1,56 @@
+name: LAT-01 Temporary Frozen-SHA Reproduction
+
+on:
+  push:
+    branches:
+      - phase6-latency-opt-01-measurement-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout frozen failing SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 177b4d29f60c1ddae1749b65720b944332c1b9b0
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Compile test TypeScript
+        run: npx tsc -p tsconfig.test.json
+      - name: Reproduce focused LAT-01 failure
+        id: focused
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p .ci-evidence
+          node --test .test-build/test/phase6-latency-measurement-foundation.test.js 2>&1 | tee .ci-evidence/lat01-frozen-177b4d29.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > .ci-evidence/lat01-exit-code.txt
+          exit "$status"
+      - name: Upload frozen-SHA reproduction log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lat01-frozen-177b4d29-reproduction
+          path: |
+            .ci-evidence/lat01-frozen-177b4d29.log
+            .ci-evidence/lat01-exit-code.txt
+          if-no-files-found: error
+      - name: Preserve focused result
+        if: always()
+        shell: bash
+        run: |
+          status=$(cat .ci-evidence/lat01-exit-code.txt)
+          echo "Focused LAT-01 exit code: $status"
+          exit "$status"
