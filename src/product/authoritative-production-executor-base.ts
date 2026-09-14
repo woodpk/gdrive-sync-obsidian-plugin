@@ -277,7 +277,7 @@ async function folderParentId(operation: ExecutablePlannedOperation, stateStore:
   return matches.length === 1 ? matches[0]?.remoteObjectId : undefined;
 }
 function localTransaction(operation: ExecutablePlannedOperation, intended: CanonicalFileContentProof, suffix: string, mutationKind: "create" | "replace"): LocalMutationTransaction | undefined {
-  const transactionId = cid<"LocalTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as unknown as LocalMutationTransactionId;
+  const transactionId = cid<"LocalMutationTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as LocalMutationTransactionId;
   const common = {
     transactionId,
     operationId: operation.operationId,
