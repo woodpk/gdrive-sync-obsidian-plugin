@@ -175,6 +175,14 @@ interface OrderedFailure {
   readonly uncertainty: LocalEnumerationUncertainty;
 }
 
+interface ReusableStableObservation {
+  readonly epoch: number;
+  readonly generation: number;
+  readonly token: ObservationToken;
+  readonly stat: Stat;
+  readonly observation: LocalObservation;
+}
+
 function compareTraversalOrder(left: TraversalOrder, right: TraversalOrder): number {
   const shared = Math.min(left.length, right.length);
   for (let index = 0; index < shared; index += 1) {
@@ -254,10 +262,10 @@ class ResourceFetchContentSource implements BinaryContentSource {
   constructor(
     private readonly owner: ObsidianLocalVaultAdapter,
     private readonly path: VaultPath,
-    private readonly expectedToken: ObservationToken,
     sizeBytes: number | undefined,
     private readonly fetchImpl: typeof fetch,
-    private readonly maxChunkBytes: number
+    private readonly maxChunkBytes: number,
+    private readonly assertUnchanged: () => Promise<void>
   ) {
     this.sizeBytes = sizeBytes;
   }
@@ -270,13 +278,13 @@ class ResourceFetchContentSource implements BinaryContentSource {
       );
     }
     if (this.sizeBytes === 0) {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       return;
     }
 
     const resourceUrl = this.owner.adapter.getResourcePath(String(this.path));
     for (let start = 0; start < this.sizeBytes; start += this.maxChunkBytes) {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       const requestedEnd = Math.min(start + this.maxChunkBytes - 1, this.sizeBytes - 1);
       const expectedLength = requestedEnd - start + 1;
       const response = await this.fetchImpl(resourceUrl, {
@@ -309,7 +317,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
       await this.assertContentLength(response, expectedLength, true);
       yield* this.readResponseBody(response, expectedLength);
     }
-    await this.owner.assertToken(this.path, this.expectedToken);
+    await this.assertUnchanged();
   }
 
   private async assertContentLength(response: Response, expectedLength: number, boundedRange: boolean): Promise<void> {
@@ -342,10 +350,10 @@ class ResourceFetchContentSource implements BinaryContentSource {
     let bytesSinceStaleCheck = 0;
     let completed = false;
     try {
-      await this.owner.assertToken(this.path, this.expectedToken);
+      await this.assertUnchanged();
       while (true) {
         if (bytesSinceStaleCheck === this.maxChunkBytes) {
-          await this.owner.assertToken(this.path, this.expectedToken);
+          await this.assertUnchanged();
           bytesSinceStaleCheck = 0;
         }
         const result = await reader.read();
@@ -353,7 +361,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
         let offset = 0;
         while (offset < result.value.byteLength) {
           if (bytesSinceStaleCheck === this.maxChunkBytes) {
-            await this.owner.assertToken(this.path, this.expectedToken);
+            await this.assertUnchanged();
             bytesSinceStaleCheck = 0;
           }
           const remainingExpected = expectedLength - received;
@@ -387,7 +395,7 @@ class ResourceFetchContentSource implements BinaryContentSource {
         `Local resource returned ${received} bytes for an observed ${expectedLength}-byte file at ${String(this.path)}.`
       );
     }
-    await this.owner.assertToken(this.path, this.expectedToken);
+    await this.assertUnchanged();
   }
 
   private async cancelResponse(response: Response): Promise<void> {
@@ -416,6 +424,8 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   private readonly lifecycleListeners = new Set<(event: LocalLifecycleEvent) => void>();
   private readonly eventUnsubscribers: Array<() => void> = [];
   private readonly generations = new Map<string, number>();
+  private readonly reusableStableObservations = new Map<string, ReusableStableObservation>();
+  private observationEpoch = 0;
   private vaultReady = false;
   private disposed = false;
 
@@ -449,6 +459,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   async enumerate(): Promise<LocalVaultListing> {
+    this.beginObservationEpoch();
     const orderedEntries: OrderedObservation[] = [];
     const orderedFailures: OrderedFailure[] = [];
     const configDir = await this.activeConfigurationDirectory();
@@ -578,14 +589,22 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
 
   async observe(path: VaultPath): Promise<LocalObservation> {
     const normalized = asPath(String(path));
+    const epoch = this.observationEpoch;
     try {
       const safe = await this.safePath(path, "observe");
       const safeRaw = String(safe);
       const exists = await this.adapter.exists(safeRaw, true);
-      if (!exists) return { status: "absent", side: "local", path: safe };
+      if (!exists) {
+        this.reusableStableObservations.delete(safeRaw);
+        return { status: "absent", side: "local", path: safe };
+      }
       const first = await this.adapter.stat(safeRaw);
-      if (!first) return { status: "unknown", side: "local", path: safe, reason: "Path exists but adapter.stat returned no metadata" };
+      if (!first) {
+        this.reusableStableObservations.delete(safeRaw);
+        return { status: "unknown", side: "local", path: safe, reason: "Path exists but adapter.stat returned no metadata" };
+      }
       if (first.type === "folder") {
+        this.reusableStableObservations.delete(safeRaw);
         return {
           status: "present",
           side: "local",
@@ -596,6 +615,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
         };
       }
       if (first.type !== "file") {
+        this.reusableStableObservations.delete(safeRaw);
         return { status: "unknown", side: "local", path: safe, reason: "Adapter exposed an unsupported local filesystem object" };
       }
       await sleep(this.stabilityDelayMs);
@@ -603,24 +623,36 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
       const stable = sameStat(first, second);
       const finalStat = second ?? first;
       if (finalStat.type !== "file") {
+        this.reusableStableObservations.delete(safeRaw);
         return { status: "unknown", side: "local", path: safe, reason: "Local object kind changed during observation" };
       }
-      return {
+      const generation = this.generationFor(safe);
+      const token = statToken(safeRaw, finalStat, generation);
+      const observation: LocalObservation = {
         status: "present",
         side: "local",
         path: safe,
         entityKind: "file",
         content: { sizeBytes: finalStat.size, advisoryModifiedTimeMs: finalStat.mtime },
         stability: stable ? "stable" : "unstable",
-        observationToken: statToken(safeRaw, finalStat, this.generationFor(safe))
+        observationToken: token
       };
+      if (stable && epoch === this.observationEpoch) {
+        this.reusableStableObservations.set(safeRaw, { epoch, generation, token, stat: finalStat, observation });
+      } else {
+        this.reusableStableObservations.delete(safeRaw);
+      }
+      return observation;
     } catch (error) {
+      this.reusableStableObservations.delete(String(normalized));
       return classifyFailure(normalized, error);
     }
   }
 
   async readFile(path: VaultPath, expectedToken?: ObservationToken): Promise<LocalReadResult> {
-    const observation = await this.observe(path);
+    const observation = expectedToken
+      ? await this.reusableReadOnlyObservation(path, expectedToken) ?? await this.observe(path)
+      : await this.observe(path);
     if (observation.status !== "present" || observation.entityKind !== "file") {
       throw new Error(`Local file is not readable/present: ${String(path)} (${observation.status})`);
     }
@@ -631,12 +663,13 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     const observedPath = observation.path;
     const token = observation.observationToken;
     const sizeBytes = observation.content?.sizeBytes;
+    const assertUnchanged = () => this.assertReadOnlyTokenCurrent(observedPath, token);
     const content = this.contentSourceFactory?.create({
       path: observedPath,
       sizeBytes,
       maxChunkBytes: this.readChunkSizeBytes,
-      assertUnchanged: () => this.assertToken(observedPath, token)
-    }) ?? new ResourceFetchContentSource(this, observedPath, token, sizeBytes, this.fetchImpl, this.readChunkSizeBytes);
+      assertUnchanged
+    }) ?? new ResourceFetchContentSource(this, observedPath, sizeBytes, this.fetchImpl, this.readChunkSizeBytes, assertUnchanged);
     return {
       content,
       evidence: observation.content ?? {},
@@ -747,6 +780,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.invalidateAllReusableEvidence();
     this.emitLifecycle({ kind: "unload" });
     for (const unsubscribe of this.eventUnsubscribers.splice(0)) unsubscribe();
     this.changeListeners.clear();
@@ -758,6 +792,37 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     if (observation.status !== "present" || observation.stability !== "stable" || observation.observationToken !== expectedToken) {
       throw new LocalStaleObservationError(path);
     }
+  }
+
+  private async assertReadOnlyTokenCurrent(path: VaultPath, expectedToken: ObservationToken): Promise<void> {
+    if (await this.reusableReadOnlyObservation(path, expectedToken)) return;
+    // A missing/invalid reusable proof falls back to the existing conservative
+    // two-observation stability check. Physical mutation paths never call this.
+    await this.assertToken(path, expectedToken);
+  }
+
+  private async reusableReadOnlyObservation(path: VaultPath, expectedToken: ObservationToken): Promise<LocalObservation | undefined> {
+    const safe = await this.safePath(path, "observe");
+    const key = String(safe);
+    const cached = this.reusableStableObservations.get(key);
+    if (!cached || cached.epoch !== this.observationEpoch || cached.token !== expectedToken) return undefined;
+    const generation = this.generationFor(safe);
+    if (generation !== cached.generation) {
+      this.reusableStableObservations.delete(key);
+      return undefined;
+    }
+    let current: Stat | null;
+    try {
+      current = await this.adapter.stat(key);
+    } catch {
+      this.reusableStableObservations.delete(key);
+      return undefined;
+    }
+    if (!current || current.type !== "file" || !sameStat(current, cached.stat) || statToken(key, current, generation) !== expectedToken) {
+      this.reusableStableObservations.delete(key);
+      return undefined;
+    }
+    return cached.observation;
   }
 
   private async writeIncremental(path: VaultPath, content: BinaryContentSource): Promise<void> {
@@ -820,8 +885,27 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
     return this.generations.get(String(path)) ?? 0;
   }
 
+  private beginObservationEpoch(): void {
+    this.observationEpoch += 1;
+    this.reusableStableObservations.clear();
+  }
+
+  private invalidateAllReusableEvidence(): void {
+    this.observationEpoch += 1;
+    this.reusableStableObservations.clear();
+  }
+
+  private invalidateReusableEvidence(path: string): void {
+    const normalized = normalizeVaultPath(path);
+    const prefix = `${normalized}/`;
+    for (const key of this.reusableStableObservations.keys()) {
+      if (key === normalized || key.startsWith(prefix)) this.reusableStableObservations.delete(key);
+    }
+  }
+
   private bump(path: string): void {
     const normalized = normalizeVaultPath(path);
+    this.invalidateReusableEvidence(normalized);
     this.generations.set(normalized, (this.generations.get(normalized) ?? 0) + 1);
   }
 
@@ -874,6 +958,7 @@ export class ObsidianLocalVaultAdapter implements LocalVaultPort {
   }
 
   private emitLifecycle(event: LocalLifecycleEvent): void {
+    this.invalidateAllReusableEvidence();
     if (this.disposed && event.kind !== "unload") return;
     for (const listener of this.lifecycleListeners) listener(event);
   }
