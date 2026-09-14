@@ -1,4 +1,4 @@
-name: LAT-04 Reject Fix 02 Full Check Diagnostic
+name: LAT-04 Common Base LOG07 Diagnostic
 
 on:
   push:
@@ -6,69 +6,25 @@ on:
       - phase6-latency-opt-04-precondition-dedup
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: lat04-reject-fix-02
   cancel-in-progress: false
 
 jobs:
-  diagnose-full-check:
+  common-base-log07:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phase6-latency-opt-04-precondition-dedup
-          fetch-depth: 0
+          ref: 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
+          fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Reconstruct validated repair tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git merge-base 22c7df6f1c879ff790eb546b319c5bfd232335da HEAD)" = "22c7df6f1c879ff790eb546b319c5bfd232335da"
-          git show 4b70e49f05679f19768152cf6cd959bf926898b2:.github/workflows/lat04-branch-validation.yml > /tmp/lat04-old-workflow.yml
-          python - <<'PY'
-          from pathlib import Path
-          source = Path('/tmp/lat04-old-workflow.yml').read_text().splitlines()
-          start = next(i for i, line in enumerate(source) if line.strip() == "python - <<'PY'") + 1
-          end = next(i for i in range(start, len(source)) if source[i].strip() == 'PY')
-          body = source[start:end]
-          indent = min(len(line) - len(line.lstrip()) for line in body if line.strip())
-          Path('/tmp/lat04-repair.py').write_text('\n'.join(line[indent:] for line in body) + '\n')
-          PY
-          python /tmp/lat04-repair.py
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/product/authoritative-production-executor-base.ts')
-          text = path.read_text()
-          old = '''    async execute(operation) {\n      let validation: AuthorityCompletePreconditionValidationResult;'''
-          new = '''    async execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {\n      let validation: AuthorityCompletePreconditionValidationResult;'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one execute typing target, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
-          PY
-          rm .github/workflows/lat04-branch-validation.yml
-          rm -f dev/evidence/_lat04-typecheck-debug.txt dev/evidence/_lat04-fullcheck-debug.txt
-          git diff --check
-      - name: Install dependencies
-        run: npm ci
-      - name: Capture full repository check diagnostic
-        shell: bash
-        run: |
-          set +e
-          npm run check > /tmp/lat04-fullcheck.txt 2>&1
-          status=$?
-          cat /tmp/lat04-fullcheck.txt
-          if [ "$status" -ne 0 ]; then
-            mkdir -p dev/evidence
-            cp /tmp/lat04-fullcheck.txt dev/evidence/_lat04-fullcheck-debug.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add dev/evidence/_lat04-fullcheck-debug.txt
-            git commit -m "[skip ci] LAT-04 capture full-check diagnostic"
-            git push origin HEAD:phase6-latency-opt-04-precondition-dedup
-            exit "$status"
-          fi
+      - run: npm ci
+      - run: npx tsc -p tsconfig.test.json
+      - name: Run common-base LOG07 verification
+        run: node --test .test-build/test/phase6-log07-end-to-end-observability-verification.test.js
