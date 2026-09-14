@@ -1,4 +1,4 @@
-name: LAT-04 Reject Fix 02 Final Closure
+name: LAT-04 Focused Failure Capture
 
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  final-closure:
+  capture:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,24 +24,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Verify lineage and reconstruct bounded repair
+      - name: Reconstruct current bounded repair candidate
         shell: bash
         run: |
           set -euo pipefail
-          COMMON_BASE_SHA=02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
-          R1_INPUT_SHA=22c7df6f1c879ff790eb546b319c5bfd232335da
-          test "$(git merge-base "$COMMON_BASE_SHA" "$R1_INPUT_SHA")" = "$COMMON_BASE_SHA"
-          test "$(git merge-base "$R1_INPUT_SHA" HEAD)" = "$R1_INPUT_SHA"
-          echo "workflow_input_sha=$(git rev-parse HEAD)"
-          echo "r1_input=$R1_INPUT_SHA"
-          echo "common_merge_base=$(git merge-base "$COMMON_BASE_SHA" "$R1_INPUT_SHA")"
-          echo "status_before_repair:"
-          git status --short
-
-          # Reuse the already-reviewed bounded source transformation from the first
-          # Reject/Fix harness, then apply the compiler-only annotation discovered
-          # by the first validation attempt.
+          test "$(git merge-base 22c7df6f1c879ff790eb546b319c5bfd232335da HEAD)" = "22c7df6f1c879ff790eb546b319c5bfd232335da"
           git show 4b70e49f05679f19768152cf6cd959bf926898b2:.github/workflows/lat04-branch-validation.yml > /tmp/lat04-old-workflow.yml
           python - <<'PY'
           from pathlib import Path
@@ -53,55 +40,26 @@ jobs:
           Path('/tmp/lat04-repair.py').write_text('\n'.join(line[indent:] for line in body) + '\n')
           PY
           python /tmp/lat04-repair.py
-
           python - <<'PY'
           from pathlib import Path
-
-          # Contextual typing was lost when the private provenance consumer was
-          # added to the base executor object. Restore the explicit frozen method
-          # type without changing runtime behavior.
-          path = Path('src/product/authoritative-production-executor-base.ts')
-          text = path.read_text()
+          p = Path('src/product/authoritative-production-executor-base.ts')
+          t = p.read_text()
           old = '''    async execute(operation) {\n      let validation: AuthorityCompletePreconditionValidationResult;'''
           new = '''    async execute(operation: ExecutablePlannedOperation): Promise<ExecutionResult> {\n      let validation: AuthorityCompletePreconditionValidationResult;'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one execute typing target, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
-
-          # LAT-04's required post-authorization volatile-evidence guard adds a
-          # real second observation at the dispatch edge. LOG07's 500-record test
-          # fixture was proven adequate at COMMON_BASE_SHA but now evicts the true
-          # operation-start anchor. Increase fixture capacity only; assertions and
-          # production retention behavior remain unchanged.
-          path = Path('test/phase6-log07-end-to-end-observability-verification.test.ts')
-          text = path.read_text()
-          old = '    retentionLimit: 500,'
-          new = '    retentionLimit: 1000,'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one LOG07 retention fixture target, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          if t.count(old) != 1: raise SystemExit('typing target mismatch')
+          p.write_text(t.replace(old, new, 1))
+          p = Path('test/phase6-log07-end-to-end-observability-verification.test.ts')
+          t = p.read_text()
+          if t.count('    retentionLimit: 500,') != 1: raise SystemExit('retention target mismatch')
+          p.write_text(t.replace('    retentionLimit: 500,', '    retentionLimit: 1000,', 1))
           PY
-
-          # Closure artifacts from the temporary validation path must not survive
-          # in the final base-to-head tree.
-          rm -f .github/workflows/lat04-branch-validation.yml
-          rm -f dev/evidence/_lat04-typecheck-debug.txt
-          rm -f dev/evidence/_lat04-fullcheck-debug.txt
-          git diff --check
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Production typecheck
-        run: npm run typecheck
-
-      - name: Test compile
-        run: npx tsc -p tsconfig.test.json
-
-      - name: Focused authority destructive and diagnostic verification
+          rm -f dev/evidence/_lat04-typecheck-debug.txt dev/evidence/_lat04-fullcheck-debug.txt dev/evidence/_lat04-focused-debug.txt
+      - run: npm ci
+      - run: npx tsc -p tsconfig.test.json
+      - name: Capture focused result
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           node --test \
             .test-build/test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.js \
             .test-build/test/phase2-execution.test.js \
@@ -112,124 +70,16 @@ jobs:
             .test-build/test/workstreams/local/local-transaction-safety.test.js \
             .test-build/test/phase6-b-destructive-safety.test.js \
             .test-build/test/phase6-alpha-ios-sync-diagnostics.test.js \
-            .test-build/test/phase6-log07-end-to-end-observability-verification.test.js | tee /tmp/lat04-focused-final.tap
-
-      - name: Full repository gate on final implementation tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run check | tee /tmp/lat04-full-final.log
-          git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
-
-      - name: Commit repaired implementation and cleanup
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "LAT-04 restore validation provenance and close gates"
-          IMPLEMENTATION_SHA=$(git rev-parse HEAD)
-          echo "implementation_sha=$IMPLEMENTATION_SHA" >> "$GITHUB_ENV"
-          echo "LAT04_IMPLEMENTATION_SHA=$IMPLEMENTATION_SHA"
-
-      - name: Create final LAT-04 evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dev/evidence
-          cat > dev/evidence/_ca-output-agt-p6-latency-opt-04.md <<EOF
-          # LAT-04 Authoritative Precondition Deduplication — Final Evidence
-
-          - Agent: \`agt-ca-p6-lat04-authoritative-precondition-dedup-01\`
-          - Branch: \`phase6-latency-opt-04-precondition-dedup\`
-          - COMMON_BASE_SHA: \`02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7\`
-          - R1_INPUT_SHA: \`22c7df6f1c879ff790eb546b319c5bfd232335da\`
-          - Validated implementation SHA: \`${implementation_sha}\`
-          - Final evidence-closure SHA: reported by the final workflow and completion response; a Git commit cannot contain its own hash without changing that hash.
-
-          ## Final base-to-head changed-file manifest
-
-          - \`src/core/execution-coordinator.ts\`
-          - \`src/product/authoritative-production-executor-base.ts\`
-          - \`src/product/authoritative-production-executor.ts\`
-          - \`src/product/operation-isolation.ts\`
-          - \`test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts\`
-          - \`test/phase6-log07-end-to-end-observability-verification.test.ts\`
-          - \`dev/evidence/_ca-output-agt-p6-latency-opt-04.md\`
-
-          Temporary \`.github/workflows/lat04-branch-validation.yml\`, \`dev/evidence/_lat04-typecheck-debug.txt\`, and \`dev/evidence/_lat04-fullcheck-debug.txt\` were removed before final validation and are absent from the final base-to-head diff.
-
-          ## Before / after authority validation
-
-          Before LAT-04, the normal production composition performed two full authority-complete precondition validations for one unchanged physical operation: coordinator validation followed by production-executor validation. LAT-04 reduces the deterministic count from **2 -> 1**. The single surviving full pass is the production executor's \`validateExact()\` path at its \`execute()\` boundary.
-
-          After durable effect authorization, LAT-04 retains a narrower dispatch guard over volatile ordinary evidence (LOCAL observation/token/content stability and applicable REMOTE revision/object/path evidence). The guard does not rerun BASE/identity/semantic authority resolution. Persisted semantic generation is separately checked by the durable dispatch-authorization CAS boundary. Guard rejection is persisted/classified as verified-not-applied/non-applied where required, never as successful mutation.
-
-          ## Reject/Fix 02 diagnostic correction
-
-          The rejected LAT-04 tree skipped coordinator-owned full validation for the optimized production executor, as intended, but a throw from the surviving executor-owned validation fell into the generic execute catch and was misclassified as later content mutation. The correction restores the generic coordinator validation try/catch for non-marker executors and adds a private one-shot execute-boundary throw-provenance handoff for optimized production executors. Only the exact exception thrown during executor-owned precondition validation is consumable as \`operation-precondition-validation-failed\`; pending-journal, content-mutation, uncertain-state-journal, and commit exceptions retain their prior exact stages. The frozen public \`AuthoritativeSynchronizationExecutor\` contract is unchanged.
-
-          A dedicated LAT-04 regression proves the execute-boundary validation throw produces \`operation-precondition-validation-failed:threw\`, does not produce \`content-mutation-failed:threw\`, performs one full validation pass, and causes zero physical mutation.
-
-          ## LOG07 retained-trace fixture correction
-
-          Exact common-base verification showed LOG07-S1 passes unchanged at \`COMMON_BASE_SHA\`. On LAT-04, the required dispatch-edge volatile-evidence observation adds legitimate Drive trace records and pushed LOG07's test-only 500-record retention fixture past its capacity, evicting the genuine early \`operation-start\` event even though the event was still emitted at the correct time. The test fixture retention was raised to 1000. No LOG07 event/stage assertion was removed, renamed, relaxed, or otherwise weakened; product diagnostic retention behavior is unchanged.
-
-          ## Safety verification
-
-          Focused verification confirms: unchanged valid execution succeeds; one full validation pass; LOCAL token drift prevents mutation; REMOTE revision drift prevents mutation; REMOTE object-identity drift prevents mutation; semantic-generation drift fails closed; the closest validation-to-dispatch race cannot mutate under stale authority; stale/recovery cases do not persist a new physical effect as success; destructive gates remain intact; clean-merge guard handling remains intact; durable intent -> dispatch authorization -> physical classification/verification -> canonical commit/finalization ordering remains intact; and diagnostics do not falsely report successful validation after guard failure.
-
-          ## Final validation
-
-          Executed after temporary workflow/debug-file removal on the exact implementation tree:
-
-          - \`npm ci\`: PASS
-          - \`npm run typecheck\`: PASS
-          - \`npx tsc -p tsconfig.test.json\`: PASS
-          - focused LAT-04 + authority + destructive-safety + Phase 6 exact-stage diagnostic + LOG07 suite: PASS
-          - \`npm run check\`: PASS
-          - \`git diff --check 02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7..HEAD\`: PASS on final closure SHA
-
-          No public execution contract, stale-authority assertion, destructive-safety assertion, retry/backoff semantics, conflict semantics, local enumeration/concurrency, Drive planning, lifecycle/background behavior, OAuth/PKCE behavior, prepared-authorization helper, or browser diagnostic control was weakened or redesigned.
-          EOF
-
-      - name: Commit evidence closure
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add dev/evidence/_ca-output-agt-p6-latency-opt-04.md
-          git commit -m "LAT-04 record final Reject Fix 02 evidence"
-          FINAL_SHA=$(git rev-parse HEAD)
-          echo "final_sha=$FINAL_SHA" >> "$GITHUB_ENV"
-          echo "LAT04_FINAL_SHA=$FINAL_SHA"
-
-      - name: Verify exact final SHA tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          COMMON_BASE_SHA=02bc3ba9ded805374303f3b18b0bfc6c7d3ca7c7
-          npm run check
-          git diff --check "$COMMON_BASE_SHA"..HEAD
-          test -z "$(git status --short)"
-          ! git diff --name-only "$COMMON_BASE_SHA"..HEAD | grep -Fx '.github/workflows/lat04-branch-validation.yml'
-          ! git diff --name-only "$COMMON_BASE_SHA"..HEAD | grep -Fx 'dev/evidence/_lat04-typecheck-debug.txt'
-          ! git diff --name-only "$COMMON_BASE_SHA"..HEAD | grep -Fx 'dev/evidence/_lat04-fullcheck-debug.txt'
-          printf '%s\n' \
-            'dev/evidence/_ca-output-agt-p6-latency-opt-04.md' \
-            'src/core/execution-coordinator.ts' \
-            'src/product/authoritative-production-executor-base.ts' \
-            'src/product/authoritative-production-executor.ts' \
-            'src/product/operation-isolation.ts' \
-            'test/phase6-log07-end-to-end-observability-verification.test.ts' \
-            'test/workstreams/orchestration/lat04-authoritative-precondition-dedup.test.ts' | sort > /tmp/expected-final-files.txt
-          git diff --name-only "$COMMON_BASE_SHA"..HEAD | sort > /tmp/actual-final-files.txt
-          diff -u /tmp/expected-final-files.txt /tmp/actual-final-files.txt
-          echo "FINAL_SHA_VERIFIED=$(git rev-parse HEAD)"
-
-      - name: Push final closure
-        shell: bash
-        run: |
-          set -euo pipefail
-          git push origin HEAD:phase6-latency-opt-04-precondition-dedup
-          echo "LAT04_FINAL_SHA=${final_sha}"
+            .test-build/test/phase6-log07-end-to-end-observability-verification.test.js > /tmp/focused.txt 2>&1
+          status=$?
+          cat /tmp/focused.txt
+          if [ "$status" -ne 0 ]; then
+            mkdir -p dev/evidence
+            cp /tmp/focused.txt dev/evidence/_lat04-focused-debug.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add dev/evidence/_lat04-focused-debug.txt
+            git commit -m "[skip ci] LAT-04 capture focused failure"
+            git push origin HEAD:phase6-latency-opt-04-precondition-dedup
+          fi
+          exit "$status"
