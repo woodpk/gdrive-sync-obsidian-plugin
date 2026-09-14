@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - phase6-prerelease-0.1.18
+    paths:
+      - .github/workflows/tmp-release-0.1.18.yml
 
 permissions:
   contents: write
 
 jobs:
   publish:
-    if: github.event.head_commit.message == 'release: add temporary 0.1.18 publisher'
     runs-on: ubuntu-latest
     env:
       RELEASE_VERSION: 0.1.18
