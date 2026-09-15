@@ -33,7 +33,7 @@ import {
 const id = <T extends string>(value: string) => contractId<T>(value);
 const step = validationStepId("step:vh06");
 
-function plan(trigger: SynchronizationPlan["trigger"], suffix = trigger): SynchronizationPlan {
+function plan(trigger: SynchronizationPlan["trigger"], suffix: string = trigger): SynchronizationPlan {
   return {
     planId: id<"PlanId">(`plan:vh06:${suffix}`),
     trigger,
