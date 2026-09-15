@@ -1,126 +1,170 @@
 STATUS: COMPLETE
 
-# VH03 — H0C Coordination, Evidence, and Harness Contract Freeze
+# VH03 — H0C Coordination / Evidence Contract Correction Evidence
 
 - Agent: `agt-ca-p6-vh03-coordination-evidence-freeze-01`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Branch: `phase6-vh03-coordination-evidence-freeze`
-- Resolved VH02 base SHA: `147402acf471f6371ef1090c569ae7cecc3b7879`
-- Initial implementation SHA: `8fbb9fe2002e446c40bdb82650cec42dba078324`
-- Corrected implementation SHA: `498350657cf2b28f2550639f68cd1e61ba406729`
-- Corrected implementation tree: `8b02afa6585129e837120d5d78978dea973a6b13`
-- Final branch/evidence HEAD: the Git commit containing this evidence file; the containing commit SHA is reported in the final task result because a commit cannot self-embed its own SHA.
+- Original VH03 predecessor/base SHA: `147402acf471f6371ef1090c569ae7cecc3b7879`
+- Rejected implementation SHA: `498350657cf2b28f2550639f68cd1e61ba406729`
+- Correction input HEAD: `b5d3bb69da73b9fad5af2211d02b5331647a2503`
+- C1/C2/C3 source correction commit: `17f00b6aa4b5e1f5627058ed2de5783f04bbcc16`
+- Corrected implementation SHA: `81ea2478ded8f8787612e1a5a790dd2dcec5c691`
+- Corrected implementation tree: `d56f6c458df191b60f4e5d1aeafa7f0234a3e3f6`
+- Final evidence/branch HEAD: the Git commit containing this evidence file; its exact SHA is commit metadata and is reported in the final task result because a commit cannot self-embed its own SHA.
 
-## Base / predecessor gate
+## Correction start gate
 
-The required predecessor was resolved as the exact head of `origin/phase6-vh02-driver-plan-fault-verifier-contracts`: `147402acf471f6371ef1090c569ae7cecc3b7879`.
+This correction continued from exactly `b5d3bb69da73b9fad5af2211d02b5331647a2503` on `phase6-vh03-coordination-evidence-freeze` and did not restart VH03 from VH02.
 
-The predecessor evidence file `dev/evidence/_ca-output-agt-ca-p6-vh02-driver-plan-fault-verifier-contracts-01.md` begins exactly `STATUS: COMPLETE`, so the executable base gate passed before VH03 work.
+The rejected public-contract implementation remained `498350657cf2b28f2550639f68cd1e61ba406729`. The prior verification success was retained only as historical evidence; this correction independently re-ran the required gates after changing the public H0C contracts.
 
-The required VH03 branch was created from that exact predecessor SHA. No `src/contracts/**` file was modified.
+## Authorized correction scope
 
-## Authority / scope
-
-VH03 remained contract-foundation work only. The implementation adds the remaining H0C cross-device coordination and evidence/verdict contracts, exports the complete validation contract surface, and freezes the harness version marker for downstream H1–H5 work.
-
-No production synchronization behavior, harness runner, coordinator transport, evidence recorder implementation, verifier implementation, fault adapter, release behavior, or live-validation execution was added.
-
-## Implementation
-
-Corrected implementation files only:
+Correction implementation changed exactly:
 
 - `src/validation/coordination-evidence-contracts.ts`
-- `src/validation/index.ts`
 - `test/validation-coordination-evidence-contracts.test.ts`
 
-The frozen H0C surface establishes:
+Evidence closure additionally changes:
 
-- harness version `phase6-live-validation-harness-v1`;
-- explicit H0 freeze marker;
-- versioned coordination and evidence schemas;
-- run/scenario/device/step-bound coordination messages and state;
-- controller/mobile-participant roles and bounded coordination event vocabulary;
-- stale/mismatched run, scenario, participant, recipient, sequence, step, event, and terminal-state rejection semantics;
-- canonical evidence IDs/records with run, scenario, device, step, evidence-kind, digest/reference, and privacy structure;
-- privacy structure restricted to metadata/digests with credentials/private payloads excluded;
-- distinct PASS / FAIL / BLOCKED / PAUSED scenario-evidence verdict semantics;
-- conversion of terminal evidence verdicts to the VH01 lifecycle verdict vocabulary;
-- one validation barrel exporting H0A, H0B, and H0C contracts.
+- `dev/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md`
 
-### Correction during verification
+A direct comparison from correction input HEAD `b5d3bb69da73b9fad5af2211d02b5331647a2503` to corrected implementation SHA `81ea2478ded8f8787612e1a5a790dd2dcec5c691` reports exactly the two implementation/test files above.
 
-The first implementation exposed `scenarioEvidenceVerdict(...)` as returning the whole verdict union. That erased discriminant narrowing at call sites and caused TypeScript compilation failure when a returned terminal verdict was supplied to `toScenarioLifecycleVerdict(...)`.
+No `src/contracts/**`, VH01/VH02 contract, production runtime, `src/validation/index.ts`, H1–H5 implementation, release surface, or live-validation behavior was modified.
 
-The correction changed the constructor to preserve its exact input subtype generically:
+## Confirmed blocker corrections
 
-`scenarioEvidenceVerdict<T extends ValidationScenarioEvidenceVerdict>(input: T): T`
+### C1 — coordination device/role and step-owner binding
 
-and retained the runtime FAIL/BLOCKED validation. This was committed separately as `498350657cf2b28f2550639f68cd1e61ba406729` before final verification.
+`evaluateValidationCoordinationMessage(...)` now fail-closes unless all accepted-message authority relationships hold:
+
+- sender device is one of the registered run participants;
+- controller device may claim only `controller`;
+- mobile participant device may claim only `mobile-participant`;
+- recipient device is itself one of the two registered participants;
+- recipient equals the evaluating local device;
+- current-step sender role equals `ValidationCoordinationState.owningRole`;
+- existing run/scenario/sequence/step/event/terminal checks continue to apply.
+
+New explicit rejection reasons are:
+
+- `sender-role-mismatch`
+- `recipient-not-participant`
+- `step-owner-mismatch`
+
+Focused runtime coverage rejects controller-as-mobile, mobile-as-controller, an unrelated recipient, and a valid participant message emitted by the wrong current-step owner.
+
+### C2 — structurally discriminated terminal coordination
+
+`ValidationCoordinationMessage` is now a discriminated union:
+
+- `kind: "terminal"` requires `terminalClassification`;
+- non-terminal kinds cannot carry a terminal classification.
+
+`ValidationCoordinationState` is now a discriminated union:
+
+- `status: "terminal"` requires `terminalClassification`;
+- active/paused state cannot carry a terminal classification.
+
+Focused compile-time `@ts-expect-error` assertions prove rejection of all four contradictory constructions required by the correction contract, while positive terminal message/state constructions compile and run.
+
+### C3 — impossible FAIL/BLOCKED verdict states removed from the public DTO
+
+`ValidationScenarioEvidenceVerdict` now encodes the invariant directly:
+
+- PASS: `failedAssertionIds` and `blockerReasons` are exactly empty;
+- FAIL: `failedAssertionIds` is a readonly non-empty tuple and `blockerReasons` is exactly empty;
+- BLOCKED: `failedAssertionIds` is exactly empty and `blockerReasons` is a readonly non-empty tuple;
+- PAUSED: both arrays are exactly empty and `resumeStepId` is required.
+
+The defensive runtime validation in `scenarioEvidenceVerdict(...)` remains for untyped/runtime boundaries.
+
+Focused compile-time negative assertions reject:
+
+- FAIL with empty failed assertions;
+- BLOCKED with empty blocker reasons;
+- PASS carrying a failed assertion;
+- PASS carrying a blocker reason;
+- PAUSED carrying a failed assertion;
+- PAUSED carrying a blocker reason.
+
+Positive PASS/FAIL/BLOCKED/PAUSED construction and terminal lifecycle conversion coverage remains green.
+
+## Frozen boundaries preserved
+
+The correction preserves:
+
+- `phase6-live-validation-harness-v1`;
+- H0 freeze marker;
+- coordination/evidence schema versioning;
+- run/scenario/device/step binding;
+- stale sequence rejection;
+- stale/mismatched run/scenario rejection;
+- evidence privacy literals;
+- validation barrel export;
+- mobile-safe/no Node-or-Electron H0C source boundary;
+- no production synchronization authority;
+- no production runtime wiring.
 
 ## Verification
 
-### Authenticated repository verification
+### Authenticated GitHub verification against corrected implementation
 
-Temporary draft PR #101 was used only to invoke the repository's existing `Phase 6 Alpha Diagnostic Verification` workflow against corrected implementation SHA `498350657cf2b28f2550639f68cd1e61ba406729`. It was not merged or promoted.
+Temporary draft PR #101 was reopened solely to invoke the repository's existing `Phase 6 Alpha Diagnostic Verification` workflow for corrected implementation SHA `81ea2478ded8f8787612e1a5a790dd2dcec5c691`, then closed again without merge or promotion.
 
-- Workflow run: `34989014260`
-- Job: `104448475014`
-- Corrected head SHA: `498350657cf2b28f2550639f68cd1e61ba406729`
-- Synthetic PR merge commit: `34a4db92ab2f9e9f1d9341dfeaeaf1c9abb022b2`
-- Synthetic PR merge tree: `8b02afa6585129e837120d5d78978dea973a6b13`
-- Corrected implementation tree: `8b02afa6585129e837120d5d78978dea973a6b13`
+- Workflow run: `34994904150`
+- Job: `104468582059`
+- Corrected implementation/head SHA: `81ea2478ded8f8787612e1a5a790dd2dcec5c691`
+- Corrected implementation tree: `d56f6c458df191b60f4e5d1aeafa7f0234a3e3f6`
+- Synthetic PR merge commit: `4f7874a84d26eb38c895cf7f073542b8b340f43c`
+- Synthetic PR merge tree: `d56f6c458df191b60f4e5d1aeafa7f0234a3e3f6`
 - Tree identity: **EXACT MATCH**
 - Overall Phase 6 verification result: **SUCCESS**
 
-The synthetic PR merge commit has parents `a7620ecf698ceed827304d345f59f4cdee190482` and corrected implementation SHA `498350657cf2b28f2550639f68cd1e61ba406729`; its tree is byte-for-byte identical to the corrected implementation tree.
+The synthetic PR merge commit has parents `a7620ecf698ceed827304d345f59f4cdee190482` and corrected implementation SHA `81ea2478ded8f8787612e1a5a790dd2dcec5c691`. Its tree is byte-for-byte identical to the corrected implementation tree, so CI verified the exact corrected repository content.
 
-Recorded successful repository gates:
+Recorded gates:
 
 - `npm ci`: **PASS**
 - `npm run typecheck`: **PASS**
-- `npx tsc -p tsconfig.test.json`: **PASS**
-- `npm test`: **PASS**
+- test TypeScript compilation (`npx tsc -p tsconfig.test.json`): **PASS**
+- `npm test`: **PASS — 846 tests, 846 passed, 0 failed**
+- focused compiled VH03 contract module: **PASS — 8/8 VH03 cases**
 - existing focused C1 regression set: **PASS**
 - existing focused callback/diagnostic/OAuth/export set: **PASS**
 - `npm run build`: **PASS**
-- `npm run check`: **PASS**
+- `npm run check`: **PASS — 846 tests passed; build verification passed**
 - `git diff --check`: **PASS**
 
-Because `npm test` compiles the test project and executes `.test-build/test/*.test.js`, the exact repository VH03 test module `test/validation-coordination-evidence-contracts.test.ts` was compiled and executed in the successful full-suite run.
+The exact compiled VH03 test cases observed in the authoritative full-test TAP were:
 
-VH03 focused cases covered by that module are:
+1. `VH03 freezes the complete H0 harness version through the validation barrel`
+2. `coordination accepts only a current run/scenario/device/role/step-owner/event message`
+3. `coordination rejects stale and mismatched run/scenario/device messages fail closed`
+4. `coordination enforces device-role, participant-recipient, and step-owner authority`
+5. `coordination rejects stale step, unexpected event, and terminal-state traffic`
+6. `terminal coordination message and state semantics are structurally discriminated`
+7. `canonical evidence is run/scenario/device bound and structurally privacy-safe`
+8. `PASS FAIL BLOCKED and PAUSED verdicts carry statically non-confusable semantics`
 
-1. complete H0 harness version/freeze exported through the validation barrel;
-2. acceptance only for the current run/scenario/device/step/event message;
-3. fail-closed rejection of stale/mismatched run, scenario, recipient, and sequence traffic;
-4. fail-closed rejection of stale step, unexpected event, and terminal-state traffic;
-5. run/scenario/device-bound evidence with metadata/digest-only privacy structure;
-6. non-confusable PASS / FAIL / BLOCKED / PAUSED verdict behavior, including required failure/blocker reasons.
-
-### Supplemental focused VH03 runtime execution
-
-The local execution environment has Node/npm/TypeScript but no repository checkout, and direct `git ls-remote`/clone access to `github.com` fails because the host cannot be resolved. A supplemental focused runtime mirror of the exact VH03 runtime semantics/test cases was therefore executed locally after the authoritative repository CI passed.
-
-Command:
-
-`node --test /tmp/vh03-focused.test.js`
-
-Result: **PASS — 6 tests, 6 passed, 0 failed**.
-
-This supplemental focused run is not used as a substitute for repository compilation/typechecking. The authoritative GitHub Actions run above compiled and executed the exact corrected repository tree.
+All eight passed. Test TypeScript compilation also passed with the new `@ts-expect-error` impossible-state assertions, proving those prohibited constructions are rejected by the public type surface rather than only by helper runtime checks.
 
 ### Verification artifact
 
-- GitHub Actions artifact ID: `10404457648`
+- Artifact ID: `10407695212`
 - Artifact name: `phase6-oauth-housekeeping-verification`
-- Artifact digest: `sha256:302ea116e61f7ee59e53b179a70c3e037d8e89163c95aa418995d0ffcd9f1218`
+- Artifact digest: `sha256:9b963609d8367231239264668be63166cc6d886c5d2115d0d4edc36b6a2f7c04`
+- `main.js` size: `872862` bytes
+- `main.js` SHA-256: `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`
 
-## Deviations / environment notes
+## Environment deviations
 
-- The local shell cannot resolve `github.com`, so a literal local `git fetch origin --prune` and local repository-wide npm execution were unavailable. The exact predecessor branch head/base was resolved through the authenticated GitHub repository connection, and repository-level verification ran in GitHub Actions against a tree exactly matching the corrected implementation SHA.
-- Temporary draft PR #101 existed solely to invoke the repository's existing pull-request verification. It was not merged or promoted and is closed at task completion.
-- The repository's unrelated pre-existing `Azure Static Web Apps CI/CD` workflow auto-triggered for the corrected PR head as run `34989014243` and failed in its `Build And Deploy` step. That deployment workflow is outside VH03 acceptance. No release, successful staging deployment, remediation, or live validation was performed.
-- The initial TypeScript verdict-discrimination defect was corrected before final verification; no known VH03-scope defect remains.
+- The local execution container cannot resolve `github.com`, so a literal local repository checkout/fetch and standalone local repository command sequence were unavailable. Authenticated GitHub Actions therefore supplied the authoritative exact-tree execution for typecheck, test compilation, full/focused VH03 test cases, build, repository check, and whitespace check.
+- The focused VH03 result above is taken from the exact compiled VH03 test module executed by `npm test` in the authoritative CI run; its eight individual PASS records are retained in the uploaded full-test TAP artifact.
+- Reopening draft PR #101 also auto-triggered the repository's unrelated pre-existing `Azure Static Web Apps CI/CD` workflow as run `34994904134`; its `Build And Deploy` job failed. That deployment workflow is outside VH03 acceptance. No release, deployment remediation, promotion, or live validation was performed.
+- PR #101 was closed after successful verification and remains unmerged.
 
 ## Blockers
 
@@ -128,4 +172,4 @@ None.
 
 ## Final stop
 
-VH03 implementation, correction, verification, and evidence closure are complete. Stop here without merge, promotion, release, live validation, or VH04.
+Corrected VH03 implementation and evidence closure are complete. Stop without merge, promotion, release, live Drive/mobile validation, or VH04. Return for independent supervisor review.
