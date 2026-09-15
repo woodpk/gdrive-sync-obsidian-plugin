@@ -122,8 +122,12 @@ export class DurableEffectLifecycleCoordinator {
   async authorizePersistedEffect(operationId: string, effectId: string): Promise<DurableEffectLifecycleResult> {
     const loaded = await this.authorityStore.loadAuthority();
     if (loaded.status !== "trusted") return { status: "recovery-required", reason: `authoritative metadata ${loaded.status}` };
-    const effect = findEffect(loaded.state, operationId, effectId);
-    if (!effect) return { status: "recovery-required", reason: "persisted physical effect not found" };
+    const intent = loaded.state.operationIntents.find(candidate => String(candidate.operationId) === operationId);
+    const effect = intent?.effects.find(candidate => candidate.effectId === effectId);
+    if (!intent || !effect) return { status: "recovery-required", reason: "persisted physical effect not found" };
+    if (intent.semanticAuthority.generation !== loaded.state.semanticGeneration) {
+      return { status: "stale-authority", reason: "persisted physical effect belongs to stale semantic authority" };
+    }
     if (effect.stage !== "intent-persisted") {
       return { status: "already-progressed", stage: effect.stage, recoveryAction: restartRecoveryDirective(effect).action };
     }
