@@ -32,7 +32,7 @@ async function loadRuntimeClass() {
     "utf8",
   );
   const module = await import("../src/product/runtime");
-  return module.Phase5ProductRuntime;
+  return module.ProductRuntime;
 }
 
 function runtimeHost(settings: BrainSyncSettings, registrationCounter?: { value: number }) {
@@ -54,7 +54,7 @@ function runtimeHost(settings: BrainSyncSettings, registrationCounter?: { value:
 }
 
 test("T1 repeated runtime initialization never registers the plugin-global OAuth protocol action", async () => {
-  const Phase5ProductRuntime = await loadRuntimeClass();
+  const ProductRuntime = await loadRuntimeClass();
   const registrationCounter = { value: 0 };
   const settings: BrainSyncSettings = {
     ...DEFAULT_SETTINGS,
@@ -62,7 +62,7 @@ test("T1 repeated runtime initialization never registers the plugin-global OAuth
     oauthClientId: "client",
     oauthRedirectUri: "https://example.test/oauth/callback",
   };
-  const runtime = new Phase5ProductRuntime(runtimeHost(settings, registrationCounter));
+  const runtime = new ProductRuntime(runtimeHost(settings, registrationCounter));
 
   await runtime.initialize();
   await runtime.initialize();
@@ -99,9 +99,9 @@ test("T2/T4/T5 one stable registration delegates a callback only to the current 
 });
 
 test("T4/T5 runtime completion seam dereferences the current OAuth session at callback execution time", async () => {
-  const Phase5ProductRuntime = await loadRuntimeClass();
+  const ProductRuntime = await loadRuntimeClass();
   const settings: BrainSyncSettings = { ...DEFAULT_SETTINGS, deviceIdentity: "device:current-session" };
-  const runtime = new Phase5ProductRuntime(runtimeHost(settings));
+  const runtime = new ProductRuntime(runtimeHost(settings));
   let sessionACalls = 0;
   let sessionBCalls = 0;
   const sessionA = {

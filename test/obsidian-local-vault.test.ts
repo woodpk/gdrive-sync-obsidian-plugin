@@ -411,9 +411,37 @@ test("blocked folder subtree makes enumeration partial rather than falsely compl
   assert.equal(linked?.status, "inaccessible");
   assert.equal(listing.completeness.status, "partial");
   if (listing.completeness.status === "partial") assert.match(listing.completeness.reason, /linked: subtree not safely enumerable \(inaccessible\)/);
+  assert.deepEqual(listing.uncertainties, [{ scope: "subtree", path: "linked", reason: "linked: subtree not safely enumerable (inaccessible)" }]);
   assert.ok(checked.includes("linked"));
   assert.equal(runtime.adapterCalls.includes("list:linked"), false);
   assert.equal(runtime.adapterCalls.some(call => call === "exists:linked" || call === "stat:linked"), false);
+  local.dispose();
+});
+
+test("a listed file that disappears before observation creates exact-path uncertainty only", async () => {
+  const runtime = fakeRuntime({
+    "vanished.md": { type: "file", bytes: bytes(7), mtime: 2, ctime: 1 },
+    "safe.md": { type: "file", bytes: bytes(1), mtime: 2, ctime: 1 },
+  });
+  const adapter = runtime.app.vault.adapter as unknown as { exists(path: string, sensitive?: boolean): Promise<boolean> };
+  const originalExists = adapter.exists.bind(adapter);
+  let removed = false;
+  adapter.exists = async (path: string, sensitive?: boolean) => {
+    if (path === "vanished.md" && !removed) {
+      removed = true;
+      runtime.entries.delete(path);
+    }
+    return originalExists(path, sensitive);
+  };
+  const local = safeLocal(runtime, { stabilityDelayMs: 0, fetchImpl: rangedFetch(runtime) });
+  const listing = await local.enumerate();
+  assert.equal(listing.completeness.status, "partial");
+  assert.equal(listing.entries.find(entry => String(entry.path) === "vanished.md")?.status, "absent");
+  assert.equal(listing.entries.find(entry => String(entry.path) === "safe.md")?.status, "present");
+  assert.deepEqual(listing.uncertainties, [{
+    scope: "path", path: "vanished.md",
+    reason: "vanished.md: listed file was not truthfully observed as file (absent)",
+  }]);
   local.dispose();
 });
 

@@ -8,7 +8,7 @@ import { beginManualSyncDiagnostics, presentManualSyncPreview } from "./diagnost
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
-import { Phase5ProductRuntime } from "./product/runtime";
+import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
 
@@ -16,7 +16,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
   private dataRepository?: PluginDataRepository;
   private diagnostics?: DiagnosticLogger;
-  private runtime?: Phase5ProductRuntime;
+  private runtime?: ProductRuntime;
   private statusEl?: HTMLElement;
   private unsubscribeStatus?: () => void;
   private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
@@ -35,7 +35,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("BRAIN sync: setup required");
 
-    this.runtime = new Phase5ProductRuntime({
+    this.runtime = new ProductRuntime({
       app: this.app,
       plugin: this,
       diagnostics: this.diagnostics,
@@ -85,6 +85,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.addCommand({ id: "open-sync-history", name: "Open synchronization history", callback: () => this.openHistory() });
     this.addCommand({ id: "copy-sync-diagnostics", name: "Copy synchronization diagnostics", callback: () => void this.copyDiagnostics() });
     this.addCommand({ id: "copy-device-diagnostic-log", name: "Copy device diagnostic log", callback: () => void this.copyDiagnosticLog() });
+    this.addCommand({ id: "copy-diagnostic-bundle", name: "Copy diagnostic bundle", callback: () => void this.copyDiagnosticBundle() });
 
     try {
       await this.runtime.initialize();
@@ -299,6 +300,29 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       new Notice("BRAIN synchronization diagnostic state copied. It contains metadata only, not OAuth secrets or vault content.");
     } catch (error) { this.noticeError("Diagnostics could not be copied", error); }
   }
+  private async copyDiagnosticBundle(): Promise<void> {
+    try {
+      if (!this.runtime) throw new Error("synchronization runtime is unavailable");
+      const text = await this.runtime.exportDiagnosticBundleText({
+        pluginId: this.manifest.id,
+        pluginVersion: this.manifest.version,
+        platform: Platform.isMobileApp ? "mobile" : Platform.isDesktopApp ? "desktop" : "unknown",
+        runtime: "obsidian",
+      });
+      await copyDiagnosticLogText(text);
+      new Notice("Diagnostic bundle copied. It contains bounded sanitized metadata and structured trace evidence only.");
+    } catch (error) {
+      this.diagnostics?.failure("diagnostics.bundle", "diagnostic-bundle-copy-failed", error, {
+        operation: "copy-diagnostic-bundle",
+        stage: "clipboard-export",
+        classification: "diagnostic-bundle-export-failure",
+        retryable: true,
+        recoveryIntended: false,
+        runtimeInitialized: Boolean(this.runtime),
+      });
+      this.noticeError("Diagnostic bundle could not be copied", error);
+    }
+  }
   private async copyLastOAuthDiagnostic(): Promise<void> {
     try {
       if (!globalThis.navigator?.clipboard?.writeText) throw new Error("clipboard API is unavailable on this device");
@@ -373,7 +397,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
   private refreshStatus(): void {
     const status = this.runtime?.productController()?.currentSurface().status.kind;
-    this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "integration blocked" : "setup required")}`);
+    this.statusEl?.setText(`BRAIN sync: ${status ?? (this.currentSettings.remoteRootId ? "synchronization blocked" : "setup required")}`);
   }
   private noticeError(prefix: string, error: unknown): void {
     const safe = normalizeDiagnosticError(error).safeMessage ?? "An error occurred.";

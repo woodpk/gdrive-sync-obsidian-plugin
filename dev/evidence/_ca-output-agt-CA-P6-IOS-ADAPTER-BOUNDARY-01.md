@@ -120,7 +120,7 @@ Modified:
 
 - `dev/evidence/_ca-output.md`
 - `dev/planning-and-building/decision-register.yaml`
-- `dev/planning-and-building/phase-6-supervisor-handoff.md`
+- `../agents/phase-6-supervisor-handoff.md`
 - `dev/planning-and-building/project-state.yaml`
 - `manifest.json`
 - `package.json`

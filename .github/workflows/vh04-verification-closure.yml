@@ -1,0 +1,45 @@
+name: VH04 Verification Closure
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-vh04:
+    if: github.head_ref == 'phase6-vh04-safety-sandbox-ci-verification'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact VH04 implementation
+        uses: actions/checkout@v4
+        with:
+          ref: 992577dfdda73152942f84d69488ab57d34ab74d
+          fetch-depth: 0
+      - name: Prove exact implementation commit and tree
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "992577dfdda73152942f84d69488ab57d34ab74d"
+          test "$(git rev-parse 'HEAD^{tree}')" = "26df112651ad4ad712caa00ca0d168a2019fa3b4"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Canonical typecheck
+        run: npm run typecheck
+      - name: Full automated test suite
+        run: npm test
+      - name: Focused VH04 Safety Sandbox tests
+        run: node --test .test-build/test/validation-safety-sandbox.test.js
+      - name: Canonical production build
+        run: npm run build
+      - name: Canonical repository/package check
+        run: npm run check
+      - name: Diff hygiene
+        shell: bash
+        run: |
+          git diff --check
+          git diff --check 74c6af589b2e0054f389ae6878339d1272edc47c..HEAD

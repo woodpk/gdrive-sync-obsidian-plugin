@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Platform, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { GOOGLE_OAUTH_CLIENT_SECRET_ID } from "../drive/auth";
 import {
   DIAGNOSTIC_LOG_LEVELS,
@@ -11,9 +11,10 @@ import { canShareDiagnosticLogFile } from "../diagnostics/share-export";
 import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
+import { PreparedOAuthLaunchDiagnostic } from "./oauth-prepared-launch-diagnostic";
 import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
 
-export interface Phase5SettingsHost {
+export interface ProductSettingsHost {
   readonly app: App;
   readonly plugin: Plugin;
   settings(): BrainSyncSettings;
@@ -32,7 +33,10 @@ export interface Phase5SettingsHost {
 }
 
 export class BrainSyncSettingsTab extends PluginSettingTab {
-  constructor(private readonly host: Phase5SettingsHost) { super(host.app, host.plugin); }
+  private readonly mobileAuthenticationLaunch = new PreparedOAuthLaunchDiagnostic();
+  private readonly diagnosticPreparedOAuthLaunch = new PreparedOAuthLaunchDiagnostic();
+
+  constructor(private readonly host: ProductSettingsHost) { super(host.app, host.plugin); }
 
   display(): void {
     const settings = this.host.settings();
@@ -64,6 +68,8 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
         this.host.app.secretStorage.setSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID, secret);
         pendingClientSecret = "";
         new Notice("Google OAuth client secret saved in this device's Obsidian SecretStorage.");
+        this.mobileAuthenticationLaunch.clear();
+        this.diagnosticPreparedOAuthLaunch.clear();
         this.display();
       }))
       .addExtraButton(button => button
@@ -72,16 +78,79 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
         .onClick(() => {
           this.host.app.secretStorage.setSecret(GOOGLE_OAUTH_CLIENT_SECRET_ID, "");
           pendingClientSecret = "";
+          this.mobileAuthenticationLaunch.clear();
+          this.diagnosticPreparedOAuthLaunch.clear();
           new Notice("Saved Google OAuth client secret cleared from this device.");
           this.display();
         }));
-    new Setting(containerEl).setName("OAuth redirect URI").setDesc("HTTPS callback URL or supported return URI configured in the same Google OAuth client.").addText(text => text.setValue(settings.oauthRedirectUri).onChange(async value => this.host.updateSettings({ oauthRedirectUri: value.trim() })));
+    new Setting(containerEl).setName("OAuth redirect URI").setDesc("HTTPS callback URL or supported return URI configured in the same Google OAuth client.").addText(text => text.setValue(settings.oauthRedirectUri).onChange(async value => {
+      this.mobileAuthenticationLaunch.clear();
+      this.diagnosticPreparedOAuthLaunch.clear();
+      await this.host.updateSettings({ oauthRedirectUri: value.trim() });
+    }));
     new Setting(containerEl)
       .setName("Authenticate / reauthenticate")
-      .setDesc("Authorization opens outside the plugin and returns to this device.")
-      .addButton(button => button.setButtonText("Authenticate").onClick(() => {
+      .setDesc(Platform.isMobileApp
+        ? "On mobile, the first tap securely prepares Google authorization; the second fresh tap opens the external browser."
+        : "Authorization opens outside the plugin and returns to this device.")
+      .addButton(button => button
+        .setButtonText(Platform.isMobileApp && this.mobileAuthenticationLaunch.hasPreparedAuthorization() ? "Open Google authorization" : "Authenticate")
+        .onClick(async () => {
+          if (!Platform.isMobileApp) {
+            const attemptId = this.host.authenticationButtonPressed();
+            await this.host.authenticate(attemptId);
+            return;
+          }
+
+          if (this.mobileAuthenticationLaunch.hasPreparedAuthorization()) {
+            try {
+              this.mobileAuthenticationLaunch.launchPrepared();
+              button.setButtonText("Authenticate");
+              new Notice("Google authorization launch requested. Complete authorization in the external browser.");
+            } catch (error) {
+              this.mobileAuthenticationLaunch.clear();
+              button.setButtonText("Authenticate");
+              new Notice(`Google authorization could not launch: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            return;
+          }
+
+          const attemptId = this.host.authenticationButtonPressed();
+          this.mobileAuthenticationLaunch.clear();
+          try {
+            await this.mobileAuthenticationLaunch.prepare(() => this.host.authenticate(attemptId));
+            button.setButtonText("Open Google authorization");
+            new Notice("Google authorization is prepared. Tap Open Google authorization to continue.");
+          } catch (error) {
+            this.mobileAuthenticationLaunch.clear();
+            button.setButtonText("Authenticate");
+            new Notice(`Google authorization preparation failed: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }));
+    new Setting(containerEl)
+      .setName("Prepare Google authorization (diagnostic)")
+      .setDesc("Diagnostic only: prepares the real OAuth/PKCE transaction but intercepts the external-browser call so nothing opens yet.")
+      .addButton(button => button.setButtonText("Prepare authorization").onClick(async () => {
         const attemptId = this.host.authenticationButtonPressed();
-        return this.host.authenticate(attemptId);
+        this.diagnosticPreparedOAuthLaunch.clear();
+        try {
+          await this.diagnosticPreparedOAuthLaunch.prepare(() => this.host.authenticate(attemptId));
+          new Notice("Google authorization prepared. Tap Launch prepared authorization next.");
+        } catch (error) {
+          this.diagnosticPreparedOAuthLaunch.clear();
+          new Notice(`Google authorization preparation failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }));
+    new Setting(containerEl)
+      .setName("Launch prepared authorization (diagnostic)")
+      .setDesc("Diagnostic only: from this fresh button tap, immediately hands the already-prepared real Google authorization URL to Obsidian's _external browser target with no OAuth preparation in between.")
+      .addButton(button => button.setButtonText("Launch prepared authorization").onClick(() => {
+        try {
+          this.diagnosticPreparedOAuthLaunch.launchPrepared();
+          new Notice("Prepared Google authorization launch call returned. Confirm whether the external browser became visible.");
+        } catch (error) {
+          new Notice(`Prepared authorization could not launch: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }));
     new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Additional devices must deliberately confirm the same identity when pairing.").addText(text => text.setValue(settings.vaultIdentity).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
     new Setting(containerEl).setName("Managed remote root ID").setDesc("Stable Google Drive folder ID for explicit pairing. A folder name alone is never sufficient.").addText(text => text.setValue(settings.remoteRootId).onChange(async value => this.host.updateSettings({ remoteRootId: value.trim() })));
