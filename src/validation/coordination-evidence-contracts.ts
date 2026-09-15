@@ -200,11 +200,11 @@ export type ValidationScenarioEvidenceVerdict =
       readonly summary: string;
     };
 
-export function scenarioEvidenceVerdict(input: ValidationScenarioEvidenceVerdict): ValidationScenarioEvidenceVerdict {
+export function scenarioEvidenceVerdict<T extends ValidationScenarioEvidenceVerdict>(input: T): T {
   if (input.summary.trim().length === 0) throw new Error("Validation verdict summary must not be blank.");
   if (input.status === "FAIL" && input.failedAssertionIds.length === 0) throw new Error("FAIL requires at least one failed assertion ID.");
   if (input.status === "BLOCKED" && input.blockerReasons.length === 0) throw new Error("BLOCKED requires at least one blocker reason.");
-  return Object.freeze(input);
+  return Object.freeze(input) as T;
 }
 
 export function toScenarioLifecycleVerdict(
