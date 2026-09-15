@@ -184,27 +184,36 @@ export const VALIDATION_FAULT_BOUNDARIES = [
 ] as const;
 export type ValidationFaultBoundary = (typeof VALIDATION_FAULT_BOUNDARIES)[number];
 
-const FAULT_BOUNDARY_BY_KIND: Readonly<Record<ValidationFaultKind, ValidationFaultBoundary>> = {
-  "post-dispatch-response-loss": "remote-mutation-result",
-  "partial-remote-enumeration": "remote-enumeration",
-  "transport-offline": "transport-request",
-  "authentication-required": "authentication-response",
-  "rate-limited": "rate-limit-response",
-  "quota-exhausted": "quota-response",
-  "cancellation-timing": "execution-cancellation",
-  "validation-state-corruption": "validation-state-store",
-  "validation-cursor-loss": "validation-cursor-store",
-};
-
-export interface ValidationFaultSpecification {
+interface ValidationFaultSpecificationBase {
   readonly run: ValidationRunIdentity;
   readonly stepId: ValidationStepId;
-  readonly kind: ValidationFaultKind;
-  readonly boundary: ValidationFaultBoundary;
   /** One-based occurrence at the named boundary. */
   readonly occurrence: number;
 }
 
+export type ValidationFaultSpecification =
+  | (ValidationFaultSpecificationBase & { readonly kind: "post-dispatch-response-loss"; readonly boundary: "remote-mutation-result" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "partial-remote-enumeration"; readonly boundary: "remote-enumeration" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "transport-offline"; readonly boundary: "transport-request" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "authentication-required"; readonly boundary: "authentication-response" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "rate-limited"; readonly boundary: "rate-limit-response" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "quota-exhausted"; readonly boundary: "quota-response" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "cancellation-timing"; readonly boundary: "execution-cancellation" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "validation-state-corruption"; readonly boundary: "validation-state-store" })
+  | (ValidationFaultSpecificationBase & { readonly kind: "validation-cursor-loss"; readonly boundary: "validation-cursor-store" });
+
+export function validationFaultSpecification<K extends ValidationFaultKind>(input: {
+  readonly run: ValidationRunIdentity;
+  readonly stepId: ValidationStepId;
+  readonly kind: K;
+  readonly occurrence?: number;
+}): Extract<ValidationFaultSpecification, { readonly kind: K }>;
+export function validationFaultSpecification(input: {
+  readonly run: ValidationRunIdentity;
+  readonly stepId: ValidationStepId;
+  readonly kind: string;
+  readonly occurrence?: number;
+}): ValidationFaultSpecification;
 export function validationFaultSpecification(input: {
   readonly run: ValidationRunIdentity;
   readonly stepId: ValidationStepId;
@@ -214,24 +223,38 @@ export function validationFaultSpecification(input: {
   if (!isValidationFaultKind(input.kind)) throw new Error(`Unsupported validation fault kind: ${input.kind}`);
   const occurrence = input.occurrence ?? 1;
   if (!Number.isSafeInteger(occurrence) || occurrence < 1) throw new Error("Validation fault occurrence must be a positive safe integer.");
-  return Object.freeze({ run: input.run, stepId: input.stepId, kind: input.kind, boundary: FAULT_BOUNDARY_BY_KIND[input.kind], occurrence });
+  const base = { run: input.run, stepId: input.stepId, occurrence };
+  switch (input.kind) {
+    case "post-dispatch-response-loss": return Object.freeze({ ...base, kind: input.kind, boundary: "remote-mutation-result" });
+    case "partial-remote-enumeration": return Object.freeze({ ...base, kind: input.kind, boundary: "remote-enumeration" });
+    case "transport-offline": return Object.freeze({ ...base, kind: input.kind, boundary: "transport-request" });
+    case "authentication-required": return Object.freeze({ ...base, kind: input.kind, boundary: "authentication-response" });
+    case "rate-limited": return Object.freeze({ ...base, kind: input.kind, boundary: "rate-limit-response" });
+    case "quota-exhausted": return Object.freeze({ ...base, kind: input.kind, boundary: "quota-response" });
+    case "cancellation-timing": return Object.freeze({ ...base, kind: input.kind, boundary: "execution-cancellation" });
+    case "validation-state-corruption": return Object.freeze({ ...base, kind: input.kind, boundary: "validation-state-store" });
+    case "validation-cursor-loss": return Object.freeze({ ...base, kind: input.kind, boundary: "validation-cursor-store" });
+  }
 }
+
+type PostDispatchResponseLossFaultSpecification = Extract<ValidationFaultSpecification, { readonly kind: "post-dispatch-response-loss" }>;
+type NonPostDispatchResponseLossFaultSpecification = Exclude<ValidationFaultSpecification, PostDispatchResponseLossFaultSpecification>;
 
 export type ValidationFaultResult =
   | { readonly status: "not-triggered"; readonly specification: ValidationFaultSpecification }
   | {
       readonly status: "triggered-non-mutation";
-      readonly specification: ValidationFaultSpecification;
+      readonly specification: NonPostDispatchResponseLossFaultSpecification;
       readonly physicalEffect: { readonly status: "not-applicable" };
     }
   | {
       readonly status: "triggered-pre-dispatch";
-      readonly specification: ValidationFaultSpecification;
+      readonly specification: NonPostDispatchResponseLossFaultSpecification;
       readonly physicalEffect: { readonly status: "verified-not-applied"; readonly basis: "fault-before-dispatch" };
     }
   | {
       readonly status: "triggered-post-dispatch";
-      readonly specification: ValidationFaultSpecification;
+      readonly specification: PostDispatchResponseLossFaultSpecification;
       readonly physicalEffect: { readonly status: "outcome-unknown"; readonly reason: string };
     };
 
@@ -293,17 +316,25 @@ export function validationAssertionGroupResult(observations: NonEmptyReadonlyArr
 }
 
 type PassedAssertionGroup = Extract<ValidationAssertionGroupResult, { readonly verdict: "pass" }>;
+type FailedAssertionGroup = Extract<ValidationAssertionGroupResult, { readonly verdict: "fail" }>;
+type BlockedAssertionGroup = Extract<ValidationAssertionGroupResult, { readonly verdict: "blocked" }>;
+type NonFailedAssertionGroup = PassedAssertionGroup | BlockedAssertionGroup;
+
 export type ValidationVerificationResult =
   | { readonly verdict: "pass"; readonly run: ValidationRunIdentity; readonly state: PassedAssertionGroup; readonly convergence: PassedAssertionGroup }
-  | { readonly verdict: "fail"; readonly run: ValidationRunIdentity; readonly state: ValidationAssertionGroupResult; readonly convergence: ValidationAssertionGroupResult }
-  | { readonly verdict: "blocked"; readonly run: ValidationRunIdentity; readonly state: Exclude<ValidationAssertionGroupResult, { readonly verdict: "fail" }>; readonly convergence: Exclude<ValidationAssertionGroupResult, { readonly verdict: "fail" }> };
+  | { readonly verdict: "fail"; readonly run: ValidationRunIdentity; readonly state: FailedAssertionGroup; readonly convergence: ValidationAssertionGroupResult }
+  | { readonly verdict: "fail"; readonly run: ValidationRunIdentity; readonly state: NonFailedAssertionGroup; readonly convergence: FailedAssertionGroup }
+  | { readonly verdict: "blocked"; readonly run: ValidationRunIdentity; readonly state: BlockedAssertionGroup; readonly convergence: NonFailedAssertionGroup }
+  | { readonly verdict: "blocked"; readonly run: ValidationRunIdentity; readonly state: PassedAssertionGroup; readonly convergence: BlockedAssertionGroup };
 
 export function validationVerificationResult(
   run: ValidationRunIdentity,
   state: ValidationAssertionGroupResult,
   convergence: ValidationAssertionGroupResult,
 ): ValidationVerificationResult {
-  if (state.verdict === "fail" || convergence.verdict === "fail") return { verdict: "fail", run, state, convergence };
-  if (state.verdict === "blocked" || convergence.verdict === "blocked") return { verdict: "blocked", run, state, convergence };
+  if (state.verdict === "fail") return { verdict: "fail", run, state, convergence };
+  if (convergence.verdict === "fail") return { verdict: "fail", run, state, convergence };
+  if (state.verdict === "blocked") return { verdict: "blocked", run, state, convergence };
+  if (convergence.verdict === "blocked") return { verdict: "blocked", run, state, convergence };
   return { verdict: "pass", run, state, convergence };
 }

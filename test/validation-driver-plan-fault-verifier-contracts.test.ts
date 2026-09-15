@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SynchronizationPlan } from "../src/contracts";
+import { contractId, type SynchronizationPlan } from "../src/contracts";
 import {
   VALIDATION_CONVERGENCE_ASSERTION_KINDS,
   VALIDATION_FAULT_KINDS,
@@ -18,6 +18,7 @@ import {
   validationVerificationResult,
   type ValidationAssertionObservation,
   type ValidationFaultResult,
+  type ValidationFaultSpecification,
   type ValidationPlanAssertionResult,
   type ValidationProductionDriverRequest,
   type ValidationVerificationResult,
@@ -26,14 +27,14 @@ import { validationRunIdentity, validationStepId } from "../src/validation/run-s
 
 const run = validationRunIdentity("run-vh02-e02", "E02");
 const stepId = validationStepId("drive-production-path");
-const plan = {
-  planId: "plan-vh02-e02",
+const plan: SynchronizationPlan = {
+  planId: contractId<"PlanId">("plan-vh02-e02"),
   trigger: "manual",
   operations: [],
   executionDisposition: "safe-auto-eligible",
   recoveryCheckpointRequired: false,
   globalExecutionGate: "none",
-} as SynchronizationPlan;
+};
 
 test("VH02 driver requests are bounded to production-path orchestration actions", () => {
   assert.deepEqual(VALIDATION_PRODUCTION_DRIVER_REQUEST_KINDS, [
@@ -177,6 +178,61 @@ test("missing required proof becomes BLOCKED and cannot silently produce PASS", 
   assert.equal(result.verdict, "blocked");
 });
 
+test("verification result preserves FAIL > BLOCKED > PASS across valid group combinations", () => {
+  const satisfiedState: ValidationAssertionObservation = {
+    status: "satisfied",
+    assertion: {
+      assertionId: validationAssertionId("state-pass"),
+      kind: "local-content",
+      subject: "local fixture",
+      expectation: "Expected bytes are present.",
+    },
+    evidenceRefs: [validationEvidenceRef("evidence:state-pass")],
+  };
+  const satisfiedConvergence: ValidationAssertionObservation = {
+    status: "satisfied",
+    assertion: {
+      assertionId: validationAssertionId("convergence-pass"),
+      kind: "cross-device-content",
+      subject: "Windows and mobile bytes",
+      expectation: "All participants have the expected bytes.",
+    },
+    evidenceRefs: [validationEvidenceRef("evidence:convergence-pass")],
+  };
+  const failedState: ValidationAssertionObservation = {
+    status: "failed",
+    assertion: {
+      assertionId: validationAssertionId("state-fail"),
+      kind: "unrelated-mutation-absence",
+      subject: "validation sandbox",
+      expectation: "No unrelated mutation occurs.",
+    },
+    reason: "An unrelated path changed.",
+    evidenceRefs: [validationEvidenceRef("evidence:state-fail")],
+  };
+  const blockedConvergence: ValidationAssertionObservation = {
+    status: "not-observable",
+    assertion: {
+      assertionId: validationAssertionId("convergence-blocked"),
+      kind: "final-reconciliation-stable",
+      subject: "final reconciliation",
+      expectation: "Stable convergence is independently observable.",
+    },
+    reason: "Mobile participant is unavailable.",
+    evidenceRefs: [],
+  };
+  const passState = validationAssertionGroupResult([satisfiedState]);
+  const passConvergence = validationAssertionGroupResult([satisfiedConvergence]);
+  const failState = validationAssertionGroupResult([failedState]);
+  const blockedConvergenceGroup = validationAssertionGroupResult([blockedConvergence]);
+
+  assert.equal(validationVerificationResult(run, passState, passConvergence).verdict, "pass");
+  assert.equal(validationVerificationResult(run, failState, passConvergence).verdict, "fail");
+  assert.equal(validationVerificationResult(run, passState, blockedConvergenceGroup).verdict, "blocked");
+  assert.equal(validationVerificationResult(run, blockedConvergenceGroup, blockedConvergenceGroup).verdict, "blocked");
+  assert.equal(validationVerificationResult(run, failState, blockedConvergenceGroup).verdict, "fail");
+});
+
 test("any failed state or convergence assertion dominates BLOCKED and yields FAIL", () => {
   const failedState: ValidationAssertionObservation = {
     status: "failed",
@@ -227,7 +283,14 @@ void mismatchTypeCheck;
 const invalidMismatchTypeCheck: Extract<ValidationPlanAssertionResult, { readonly status: "mismatch" }> = { ...mismatchTypeCheck, executionAuthorized: true };
 void invalidMismatchTypeCheck;
 
+// @ts-expect-error post-dispatch-response-loss has exactly one valid boundary.
+const invalidPostDispatchBoundaryTypeCheck: ValidationFaultSpecification = { run, stepId, kind: "post-dispatch-response-loss", boundary: "transport-request", occurrence: 1 };
+void invalidPostDispatchBoundaryTypeCheck;
+
 const postDispatchSpecification = validationFaultSpecification({ run, stepId, kind: "post-dispatch-response-loss" });
+// @ts-expect-error post-dispatch-response-loss cannot be recategorized as pre-dispatch verified-not-applied.
+const invalidPostDispatchPreDispatchTypeCheck: ValidationFaultResult = { status: "triggered-pre-dispatch", specification: postDispatchSpecification, physicalEffect: { status: "verified-not-applied", basis: "fault-before-dispatch" } };
+void invalidPostDispatchPreDispatchTypeCheck;
 // @ts-expect-error post-dispatch fault results must remain outcome-unknown and cannot claim verified-not-applied.
 const invalidPostDispatchCertaintyTypeCheck: Extract<ValidationFaultResult, { readonly status: "triggered-post-dispatch" }> = { status: "triggered-post-dispatch", specification: postDispatchSpecification, physicalEffect: { status: "verified-not-applied", basis: "fault-before-dispatch" } };
 void invalidPostDispatchCertaintyTypeCheck;
@@ -241,6 +304,12 @@ const passGroupForTypes = validationAssertionGroupResult([satisfiedForTypes]);
 if (passGroupForTypes.verdict === "pass") {
   const passVerificationTypeCheck: ValidationVerificationResult = { verdict: "pass", run, state: passGroupForTypes, convergence: passGroupForTypes };
   void passVerificationTypeCheck;
+  // @ts-expect-error FAIL requires at least one failed assertion group.
+  const invalidFailPassPassTypeCheck: ValidationVerificationResult = { verdict: "fail", run, state: passGroupForTypes, convergence: passGroupForTypes };
+  void invalidFailPassPassTypeCheck;
+  // @ts-expect-error BLOCKED requires at least one blocked assertion group.
+  const invalidBlockedPassPassTypeCheck: ValidationVerificationResult = { verdict: "blocked", run, state: passGroupForTypes, convergence: passGroupForTypes };
+  void invalidBlockedPassPassTypeCheck;
 }
 // @ts-expect-error satisfied observations require at least one evidence reference.
 const invalidSatisfiedObservationTypeCheck: ValidationAssertionObservation = { status: "satisfied", assertion: satisfiedForTypes.assertion, evidenceRefs: [] };
