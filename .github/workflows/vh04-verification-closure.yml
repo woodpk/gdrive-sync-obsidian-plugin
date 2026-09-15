@@ -39,4 +39,7 @@ jobs:
       - name: Canonical repository/package check
         run: npm run check
       - name: Diff hygiene
-        run: git diff --check 74c6af589b2e0054f389ae6878339d1272edc47c..HEAD
+        shell: bash
+        run: |
+          git diff --check
+          git diff --check 74c6af589b2e0054f389ae6878339d1272edc47c..HEAD
