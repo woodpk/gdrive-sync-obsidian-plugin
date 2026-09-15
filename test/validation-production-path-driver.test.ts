@@ -247,6 +247,5 @@ test("VH06 delegates a reviewed manual plan through the real ProductController a
   const execution = await driver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorization });
   assert.deepEqual(execution, { status: "request-accepted", run, requestKind: "execute-asserted-plan", productionOutcomeEstablished: false });
   assert.equal(driver.currentSurface().status.kind, "idle-ready");
-  assert.equal(driver.currentRunEvidence().managedRemote.rootId, remote.rootId);
-  assert.equal(driver.currentRunEvidence().remoteEnumerationComplete, true);
+  assert.throws(() => driver.currentRunEvidence(), /no active synchronization run evidence/);
 });
