@@ -8,6 +8,7 @@ import {
   type PlannedOperation,
   type PreconditionValidationResult,
   type StateRevision,
+  type SynchronizationStateStore,
   type SynchronizationExecutor,
   type VaultIdentity,
   type VaultPath,
@@ -92,5 +93,47 @@ test("uncertain mutation outcome is persisted as uncertain and never authoritati
   if (loaded.status === "trusted") {
     assert.equal(loaded.state.operations[0].status, "uncertain");
     assert.equal(loaded.state.base.length, 0);
+  }
+});
+
+test("post-journal stale intent is retired only through an exact durable state transition", async () => {
+  const executor = new ScriptedExecutor({ status: "valid" }, { status: "stale-precondition", reason: "source changed after pending journal", failed: [{ kind: "file-stable", path }] });
+  const { store, coordinator } = await setup(executor);
+  const result = await coordinator.executeOperation(operation, revision);
+  assert.equal(result.status, "stale-precondition");
+  const loaded = await store.load({ expectation: "existing-pairing" });
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status === "trusted") {
+    assert.equal(loaded.state.base.length, 0);
+    assert.equal(loaded.state.operations.length, 0);
+    assert.notEqual(loaded.state.stateRevision, revision);
+  }
+});
+
+test("failed stale-intent retirement remains globally recoverable and preserves the pending journal", async () => {
+  const underlying = new PersistentSynchronizationStateStore(new MemoryStateByteStorage());
+  await underlying.saveTrusted(createInitialTrustedState({ stateRevision: revision, vaultIdentity: vault, deviceIdentity: device }));
+  let saveCalls = 0;
+  const store: SynchronizationStateStore = {
+    load: context => underlying.load(context),
+    saveTrusted: async (state, expected) => {
+      saveCalls += 1;
+      if (saveCalls === 2) return { status: "recovery-required", reason: "simulated retirement persistence failure" };
+      return underlying.saveTrusted(state, expected);
+    },
+    createRecoveryBackup: () => underlying.createRecoveryBackup(),
+    assessMigration: version => underlying.assessMigration(version),
+    exportDiagnosticState: () => underlying.exportDiagnosticState(),
+  };
+  const executor = new ScriptedExecutor({ status: "valid" }, { status: "stale-precondition", reason: "source changed after pending journal" });
+  const journal = new StateCommitCoordinator(store, { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device });
+  const result = await new CrashSafeExecutionCoordinator(executor, journal).executeOperation(operation, revision);
+  assert.equal(result.status, "recovery-required");
+  const loaded = await underlying.load({ expectation: "existing-pairing" });
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status === "trusted") {
+    assert.equal(loaded.state.base.length, 0);
+    assert.equal(loaded.state.operations.length, 1);
+    assert.equal(loaded.state.operations[0]?.status, "pending");
   }
 });

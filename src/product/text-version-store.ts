@@ -3,10 +3,17 @@ import type {
   ContentEvidence,
   GoogleDrivePort,
   LocalVaultPort,
+  SynchronizationCancellationSignal,
   VaultPath,
   VersionReference,
 } from "../contracts";
-import { isSafelyRecognizedTextPath, type MergeOutputEvidenceProvider, type TextVersionProvider } from "../core/conflict-resolver";
+import {
+  DEFAULT_TEXT_MERGE_RESOURCE_POLICY,
+  isSafelyRecognizedTextPath,
+  type MergeOutputEvidenceProvider,
+  type TextReadOptions,
+  type TextVersionProvider,
+} from "../core/conflict-resolver";
 import { isCanonicalSha256, sha256Text } from "../util/sha256";
 
 export interface TextVersionPersistence {
@@ -81,12 +88,26 @@ function retainedMatches(version: VersionReference, text: string): boolean {
   return isCanonicalSha256(expected) && sha256Text(text) === expected;
 }
 
-async function decodeUtf8(source: BinaryContentSource): Promise<string> {
-  const decoder = new TextDecoder();
-  let text = "";
-  for await (const chunk of source.openChunks()) text += decoder.decode(chunk, { stream: true });
-  text += decoder.decode();
-  return text;
+function cancelled(signal?: SynchronizationCancellationSignal): boolean { return signal?.cancelled === true; }
+
+async function decodeBoundedUtf8(source: BinaryContentSource, maximumBytes: number, expectedBytes: number, cancellation?: SynchronizationCancellationSignal): Promise<string | undefined> {
+  if (expectedBytes > maximumBytes || (source.sizeBytes !== undefined && source.sizeBytes !== expectedBytes) || cancelled(cancellation)) return undefined;
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const parts: string[] = [];
+  let bytesRead = 0;
+  try {
+    for await (const chunk of source.openChunks()) {
+      if (cancelled(cancellation)) return undefined;
+      bytesRead += chunk.byteLength;
+      if (bytesRead > maximumBytes || bytesRead > expectedBytes) return undefined;
+      parts.push(decoder.decode(chunk, { stream: true }));
+    }
+    if (bytesRead !== expectedBytes || cancelled(cancellation)) return undefined;
+    parts.push(decoder.decode());
+    return parts.join("");
+  } catch {
+    return undefined;
+  }
 }
 
 function textSource(text: string): BinaryContentSource {
@@ -107,19 +128,27 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
     private readonly persistence: TextVersionPersistence,
     private readonly local: LocalVaultPort,
     private readonly drive: GoogleDrivePort,
+    private readonly maximumRetainedTextBytes = DEFAULT_TEXT_MERGE_RESOURCE_POLICY.maximumInputBytesPerVersion,
   ) {}
 
-  async readText(version: VersionReference): Promise<string | undefined> {
+  async readText(version: VersionReference, options: TextReadOptions = {}): Promise<string | undefined> {
     const key = versionKey(version);
-    if (!key) return undefined;
+    const declaredSize = version.content?.sizeBytes;
+    const maximumBytes = Math.min(options.maximumBytes ?? this.maximumRetainedTextBytes, this.maximumRetainedTextBytes);
+    if (!key || declaredSize === undefined || declaredSize > maximumBytes || cancelled(options.cancellation)) return undefined;
+
     const retained = await this.persistence.get(key);
-    if (retained !== undefined) return retainedMatches(version, retained) ? retained : undefined;
+    if (retained !== undefined) {
+      if (cancelled(options.cancellation)) return undefined;
+      const retainedSize = new TextEncoder().encode(retained).byteLength;
+      return retainedSize === declaredSize && retainedSize <= maximumBytes && retainedMatches(version, retained) ? retained : undefined;
+    }
 
     if (version.observationToken) {
       const read = await this.local.readFile(version.path, version.observationToken);
       if (!evidenceMatches(read.evidence, version.content)) return undefined;
-      const text = await decodeUtf8(read.content);
-      if (!retainedMatches(version, text)) return undefined;
+      const text = await decodeBoundedUtf8(read.content, maximumBytes, declaredSize, options.cancellation);
+      if (text === undefined || !retainedMatches(version, text)) return undefined;
       await this.persistence.put(key, text);
       return text;
     }
@@ -127,8 +156,8 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
     if (version.remoteObjectId) {
       const downloaded = await this.drive.download(version.remoteObjectId);
       if (!downloaded.ok || !evidenceMatches(downloaded.value.evidence, version.content)) return undefined;
-      const text = await decodeUtf8(downloaded.value.content);
-      if (!retainedMatches(version, text)) return undefined;
+      const text = await decodeBoundedUtf8(downloaded.value.content, maximumBytes, declaredSize, options.cancellation);
+      if (text === undefined || !retainedMatches(version, text)) return undefined;
       await this.persistence.put(key, text);
       return text;
     }
@@ -136,20 +165,21 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
     return undefined;
   }
 
-  async evidenceFor(path: VaultPath, mergedText: string): Promise<ContentEvidence> {
-    const evidence: ContentEvidence = {
-      hash: sha256Text(mergedText),
-      sizeBytes: new TextEncoder().encode(mergedText).byteLength,
-    };
-    await this.persistText({ path, entityKind: "file", content: evidence }, mergedText);
-    return evidence;
+  async evidenceFor(path: VaultPath, mergedText: string): Promise<ContentEvidence | undefined> {
+    const sizeBytes = new TextEncoder().encode(mergedText).byteLength;
+    if (sizeBytes > this.maximumRetainedTextBytes) return undefined;
+    const evidence: ContentEvidence = { hash: sha256Text(mergedText), sizeBytes };
+    return await this.persistText({ path, entityKind: "file", content: evidence }, mergedText) ? evidence : undefined;
   }
 
   async retainedText(version: VersionReference): Promise<string | undefined> {
     const key = versionKey(version);
-    if (!key) return undefined;
+    const declaredSize = version.content?.sizeBytes;
+    if (!key || declaredSize === undefined || declaredSize > this.maximumRetainedTextBytes) return undefined;
     const text = await this.persistence.get(key);
-    return text !== undefined && retainedMatches(version, text) ? text : undefined;
+    if (text === undefined) return undefined;
+    const actualSize = new TextEncoder().encode(text).byteLength;
+    return actualSize === declaredSize && actualSize <= this.maximumRetainedTextBytes && retainedMatches(version, text) ? text : undefined;
   }
 
   async retainVersion(version: VersionReference): Promise<boolean> {
@@ -159,7 +189,9 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
 
   async persistText(version: VersionReference, text: string): Promise<boolean> {
     const key = versionKey(version);
-    if (!key || !retainedMatches(version, text)) return false;
+    const declaredSize = version.content?.sizeBytes;
+    const actualSize = new TextEncoder().encode(text).byteLength;
+    if (!key || declaredSize === undefined || actualSize !== declaredSize || actualSize > this.maximumRetainedTextBytes || !retainedMatches(version, text)) return false;
     await this.persistence.put(key, text);
     return true;
   }
@@ -172,18 +204,25 @@ export class ProductTextVersionStore implements TextVersionProvider, MergeOutput
 
   capture(version: VersionReference, source: BinaryContentSource): BinaryContentSource {
     const key = versionKey(version);
-    if (!key) return source;
+    const declaredSize = version.content?.sizeBytes;
+    if (!key || declaredSize === undefined || source.sizeBytes === undefined || declaredSize !== source.sizeBytes || source.sizeBytes > this.maximumRetainedTextBytes) return source;
     const persistence = this.persistence;
+    const maximumBytes = this.maximumRetainedTextBytes;
     return {
       sizeBytes: source.sizeBytes,
       async *openChunks(): AsyncIterable<Uint8Array> {
-        const decoder = new TextDecoder();
-        let text = "";
+        const decoder = new TextDecoder("utf-8", { fatal: true });
+        const parts: string[] = [];
+        let bytesRead = 0;
         for await (const chunk of source.openChunks()) {
-          text += decoder.decode(chunk, { stream: true });
+          bytesRead += chunk.byteLength;
+          if (bytesRead > maximumBytes || bytesRead > declaredSize) throw new Error("captured recognized text exceeded admitted byte size");
+          parts.push(decoder.decode(chunk, { stream: true }));
           yield chunk;
         }
-        text += decoder.decode();
+        if (bytesRead !== declaredSize) throw new Error("captured recognized text byte size did not match canonical evidence");
+        parts.push(decoder.decode());
+        const text = parts.join("");
         if (!retainedMatches(version, text)) throw new Error("captured recognized text does not match its canonical evidence");
         await persistence.put(key, text);
       },

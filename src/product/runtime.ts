@@ -4,6 +4,7 @@ import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
+import { renderDiagnosticBundle, type DiagnosticBundleBuildIdentity } from "../diagnostics/diagnostic-bundle";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { instrumentAuthorizationBrowserLauncher } from "../diagnostics/oauth-diagnostics";
 import { GOOGLE_OAUTH_CLIENT_SECRET_ID, type OAuthCallbackInput, type OAuthCompletion } from "../drive/auth";
@@ -18,7 +19,8 @@ import { BoundedAuditHistory } from "./audit-history";
 import { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
 import { MeaningfulNotificationFilter } from "./notification-policy";
 import { ProductPathScope, ScopedLocalVault } from "./path-scope";
-import { IntegratedProductController } from "./product-controller";
+import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
+import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
@@ -53,11 +55,11 @@ export interface ProductRuntimeHost {
   notify(message: string): void;
 }
 
-export class Phase5ProductRuntime {
+export class ProductRuntime {
   private local?: LocalVaultPort;
   private boundary?: ReturnType<typeof createObsidianGoogleDriveBoundary>;
   private state?: PersistentSynchronizationStateStore;
-  private controller?: IntegratedProductController;
+  private controller?: ProductController;
   private scheduler?: ProductSyncScheduler;
   private audit?: BoundedAuditHistory;
   private attention?: SyncAttentionLedger;
@@ -67,7 +69,7 @@ export class Phase5ProductRuntime {
   private readonly notifications = new MeaningfulNotificationFilter();
 
   constructor(private readonly host: ProductRuntimeHost) {}
-  productController(): IntegratedProductController | undefined { return this.controller; }
+  productController(): ProductController | undefined { return this.controller; }
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
   async initialize(): Promise<void> {
@@ -145,6 +147,7 @@ export class Phase5ProductRuntime {
       },
       secretStorage: this.host.app.secretStorage,
       requestUrl,
+      diagnostics: this.host.diagnostics,
     });
     this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
     diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });
@@ -165,7 +168,9 @@ export class Phase5ProductRuntime {
       () => this.operationalExclusions,
     );
     const scopedLocal = new ScopedLocalVault(rawLocal, scope);
-    this.local = new CanonicalEvidenceLocalVault(scopedLocal);
+    const localTransactions = new ScopedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
+    const canonicalLocal = new CanonicalEvidenceLocalVault(scopedLocal, {}, localTransactions);
+    this.local = canonicalLocal;
 
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
@@ -175,7 +180,13 @@ export class Phase5ProductRuntime {
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
-    this.state = new PersistentSynchronizationStateStore(new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`));
+    const durableState = new PersistentSynchronizationStateStore(
+      new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`),
+      1,
+      undefined,
+      this.host.diagnostics,
+    );
+    this.state = new SynchronizationStateAuthorityAdapter(durableState);
     diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
     const snapshots = new ProductSnapshotAssembler(
@@ -187,6 +198,8 @@ export class Phase5ProductRuntime {
       path => scope.isManagedLogical(path),
       () => this.host.settings().scopeReconcileRequired,
       this.host.diagnostics,
+      this.boundary.drive,
+      this.state,
     );
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
@@ -197,24 +210,32 @@ export class Phase5ProductRuntime {
     this.audit = new BoundedAuditHistory(this.host.data, current.auditRetention);
     diagnostics.trace("runtime", "audit-store-ready", { stage: "audit-store", storeReady: true });
 
-    let controller: IntegratedProductController;
+    let controller: ProductController;
     const executor = new ProductSynchronizationExecutor(this.local, this.boundary.drive, this.state, stateContext, () => controller.currentRunEvidence(), textVersions);
-    controller = new IntegratedProductController({
+    controller = new ProductController({
       vaultIdentity,
       deviceIdentity,
       stateContext,
       stateStore: this.state,
+      authorityStore: this.state,
       snapshotAssembler: snapshots,
       executor,
       conflictResolver: conflicts,
+      reliableRemoteMutationPort: this.boundary.drive,
+      localTransactionalMutationPort: canonicalLocal,
+      remoteFolderCreateRecoveryReadPort: this.boundary.drive,
       plannerForTrigger: trigger => new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts, undefined, { trigger })),
       leasePort: new WebLocksRunLeasePort(),
       audit: this.audit,
-      holderId: `phase5:${String(deviceIdentity)}:${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+      holderId: `brain-sync:${String(deviceIdentity)}:${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
       automaticExecutionAllowed: plan => {
         const live = this.host.settings();
         if (!live.firstSyncCompleted || live.recoveryInProgress) return { allowed: false, reason: "Automatic synchronization remains disabled until trustworthy synchronization state is established." };
         return automaticNetworkDecision(plan, live, Platform.isMobile);
+      },
+      firstSyncActive: () => {
+        const live = this.host.settings();
+        return !live.firstSyncCompleted && !live.recoveryInProgress;
       },
       recoveryActive: () => this.host.settings().recoveryInProgress,
       onRecoveryGateChanged: async (active, backupId) => {
@@ -310,6 +331,29 @@ export class Phase5ProductRuntime {
   async exportDiagnosticStateText(): Promise<string> {
     if (!this.state) return JSON.stringify({ status: "unavailable", reason: "synchronization state is not initialized" });
     return new TextDecoder().decode(await this.state.exportDiagnosticState());
+  }
+
+  async exportDiagnosticBundleText(identity: DiagnosticBundleBuildIdentity, generatedAt = new Date()): Promise<string> {
+    const diagnostics = this.host.diagnostics;
+    if (!diagnostics) throw new Error("diagnostic logger is unavailable");
+    const authorityLoad = this.state ? await this.state.loadAuthority() : { status: "unavailable" as const };
+    const audit = this.audit ? await this.audit.read() : await this.host.data.load();
+    const attention = this.attention ? await this.attention.all() : [];
+    return renderDiagnosticBundle({
+      identity,
+      generatedAt,
+      settings: this.host.settings(),
+      readiness: {
+        productControllerReady: Boolean(this.controller),
+        stateAuthorityReady: Boolean(this.state),
+        auditHistoryReady: true,
+        attentionLedgerReady: Boolean(this.attention),
+      },
+      authorityLoad,
+      audit,
+      attention,
+      diagnostics,
+    });
   }
 
   async readSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return this.attention?.current() ?? []; }
@@ -469,8 +513,10 @@ export class Phase5ProductRuntime {
 
   async disposeProduct(): Promise<void> {
     this.scheduler?.stop(); this.scheduler = undefined;
+    const controller = this.controller;
+    if (controller) await controller.beginRuntimeDisposal();
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
-    await this.controller?.request({ kind: "cancel-active-sync" }); this.controller = undefined;
+    this.controller = undefined;
     this.attentionPersistence?.dispose(); this.attentionPersistence = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
     disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;

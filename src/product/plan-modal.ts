@@ -1,6 +1,7 @@
 import { App, Modal, Setting } from "obsidian";
-import type { CheckpointId, SynchronizationPlan } from "../contracts";
-import type { IntegratedProductController } from "./product-controller";
+import type { CheckpointId, PlannedOperation, SynchronizationPlan } from "../contracts";
+import type { ProductController } from "./product-controller";
+import { groupPlanOperations, shouldExpandSystemGroup } from "./plan-presentation";
 
 export class PlanPreviewModal extends Modal {
   private executionPending = false;
@@ -8,7 +9,7 @@ export class PlanPreviewModal extends Modal {
   constructor(
     app: App,
     private readonly plan: SynchronizationPlan,
-    private readonly controller: IntegratedProductController,
+    private readonly controller: ProductController,
     private readonly diagnosticRunId?: number,
   ) { super(app); }
 
@@ -21,12 +22,12 @@ export class PlanPreviewModal extends Modal {
     for (const operation of this.plan.operations) counts.set(operation.kind, (counts.get(operation.kind) ?? 0) + 1);
     const summary = contentEl.createEl("ul");
     for (const [kind, count] of [...counts.entries()].sort()) summary.createEl("li", { text: `${kind}: ${count}` });
-    const details = contentEl.createEl("details");
-    details.createEl("summary", { text: "Affected paths and reasons" });
-    const list = details.createEl("ul");
-    for (const operation of this.plan.operations) {
-      list.createEl("li", { text: `${operation.kind} — ${String(operation.path)} — ${operation.reasons.map(reason => reason.summary).join("; ")}` });
-    }
+
+    const groups = groupPlanOperations(this.plan.operations);
+    this.renderOperationGroup(contentEl, "Vault changes", groups.vaultChanges, groups.vaultChanges.length > 0);
+    this.renderOperationGroup(contentEl, "System / portable configuration", groups.system, shouldExpandSystemGroup(groups.system));
+    this.renderOperationGroup(contentEl, "Unchanged vault paths", groups.unchangedVault, false);
+
     if (this.plan.executionDisposition === "blocked") {
       contentEl.createEl("p", { text: "This plan is blocked and cannot execute." });
       return;
@@ -36,16 +37,36 @@ export class PlanPreviewModal extends Modal {
       .setButtonText(this.plan.recoveryCheckpointRequired ? "Approve checkpoint and execute" : "Execute")
       .setCta()
       .onClick(async () => {
+        if (this.executionPending) return;
         this.controller.recordExecuteClick(this.plan.planId, this.diagnosticRunId);
         this.executionPending = true;
-        const result = this.plan.recoveryCheckpointRequired && checkpoint
-          ? await this.controller.requestPreviewAction({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId }, this.diagnosticRunId)
-          : await this.controller.requestPreviewAction({ kind: "execute-plan", planId: this.plan.planId }, this.diagnosticRunId);
-        this.executionPending = false;
-        if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
-        else contentEl.createEl("p", { text: result.reason });
+        button.setDisabled(true);
+        try {
+          const result = this.plan.recoveryCheckpointRequired && checkpoint
+            ? await this.controller.requestPreviewAction({ kind: "approve-destructive-plan", planId: this.plan.planId, recoveryCheckpointId: checkpoint as CheckpointId }, this.diagnosticRunId)
+            : await this.controller.requestPreviewAction({ kind: "execute-plan", planId: this.plan.planId }, this.diagnosticRunId);
+          if (result.status === "accepted") { this.executionAccepted = true; this.close(); }
+          else contentEl.createEl("p", { text: result.reason });
+        } catch {
+          contentEl.createEl("p", { text: "Synchronization execution failed. Review the current sync status and diagnostics, then retry." });
+        } finally {
+          this.executionPending = false;
+          if (!this.executionAccepted) button.setDisabled(false);
+        }
       }));
   }
+
+  private renderOperationGroup(parent: HTMLElement, title: string, operations: readonly PlannedOperation[], open: boolean): void {
+    if (!operations.length) return;
+    const details = parent.createEl("details");
+    details.open = open;
+    details.createEl("summary", { text: `${title} (${operations.length})` });
+    const list = details.createEl("ul");
+    for (const operation of operations) {
+      list.createEl("li", { text: `${operation.kind} — ${String(operation.path)} — ${operation.reasons.map(reason => reason.summary).join("; ")}` });
+    }
+  }
+
   onClose(): void {
     if (!this.executionPending && !this.executionAccepted) this.controller.recordPreviewDismissed(this.plan.planId, this.diagnosticRunId);
     this.contentEl.empty();
