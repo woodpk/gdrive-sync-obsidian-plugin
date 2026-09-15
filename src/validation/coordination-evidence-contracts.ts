@@ -45,11 +45,12 @@ export const VALIDATION_COORDINATION_MESSAGE_KINDS = [
   "terminal",
 ] as const;
 export type ValidationCoordinationMessageKind = (typeof VALIDATION_COORDINATION_MESSAGE_KINDS)[number];
+type ValidationNonTerminalCoordinationMessageKind = Exclude<ValidationCoordinationMessageKind, "terminal">;
 
 export const VALIDATION_COORDINATION_TERMINAL_CLASSIFICATIONS = ["pass", "fail", "blocked"] as const;
 export type ValidationCoordinationTerminalClassification = (typeof VALIDATION_COORDINATION_TERMINAL_CLASSIFICATIONS)[number];
 
-export type ValidationCoordinationMessage = {
+type ValidationCoordinationMessageBase = {
   readonly schemaVersion: typeof VALIDATION_COORDINATION_SCHEMA_VERSION;
   readonly harnessVersion: Phase6LiveValidationHarnessVersion;
   readonly messageId: ValidationCoordinationMessageId;
@@ -59,14 +60,26 @@ export type ValidationCoordinationMessage = {
   readonly senderRole: ValidationCoordinationRole;
   readonly recipientDeviceId: ValidationDeviceId;
   readonly stepId: ValidationStepId;
-  readonly kind: ValidationCoordinationMessageKind;
   readonly createdAt: string;
-  readonly terminalClassification?: ValidationCoordinationTerminalClassification;
   /** Safe metadata/evidence references only; never private content or secrets. */
   readonly evidenceRefs: readonly ValidationEvidenceRef[];
 };
 
-export type ValidationCoordinationState = {
+type ValidationNonTerminalCoordinationMessage = {
+  readonly [K in ValidationNonTerminalCoordinationMessageKind]: ValidationCoordinationMessageBase & {
+    readonly kind: K;
+    readonly terminalClassification?: never;
+  };
+}[ValidationNonTerminalCoordinationMessageKind];
+
+export type ValidationCoordinationMessage =
+  | ValidationNonTerminalCoordinationMessage
+  | (ValidationCoordinationMessageBase & {
+      readonly kind: "terminal";
+      readonly terminalClassification: ValidationCoordinationTerminalClassification;
+    });
+
+type ValidationCoordinationStateBase = {
   readonly schemaVersion: typeof VALIDATION_COORDINATION_SCHEMA_VERSION;
   readonly harnessVersion: Phase6LiveValidationHarnessVersion;
   readonly run: ValidationRunIdentity;
@@ -77,9 +90,17 @@ export type ValidationCoordinationState = {
   readonly expectedNextEvent: ValidationCoordinationMessageKind;
   readonly lastAcceptedSequenceByDevice: Readonly<Record<string, number>>;
   readonly evidenceRefs: readonly ValidationEvidenceRef[];
-  readonly status: "active" | "paused" | "terminal";
-  readonly terminalClassification?: ValidationCoordinationTerminalClassification;
 };
+
+export type ValidationCoordinationState =
+  | (ValidationCoordinationStateBase & {
+      readonly status: "active" | "paused";
+      readonly terminalClassification?: never;
+    })
+  | (ValidationCoordinationStateBase & {
+      readonly status: "terminal";
+      readonly terminalClassification: ValidationCoordinationTerminalClassification;
+    });
 
 export const VALIDATION_COORDINATION_REJECTION_REASONS = [
   "schema-version-mismatch",
@@ -87,9 +108,12 @@ export const VALIDATION_COORDINATION_REJECTION_REASONS = [
   "run-mismatch",
   "scenario-mismatch",
   "sender-not-participant",
+  "sender-role-mismatch",
+  "recipient-not-participant",
   "recipient-mismatch",
   "stale-sequence",
   "step-mismatch",
+  "step-owner-mismatch",
   "unexpected-event",
   "terminal-state",
 ] as const;
@@ -112,13 +136,25 @@ export function evaluateValidationCoordinationMessage(
   if (message.harnessVersion !== PHASE6_LIVE_VALIDATION_HARNESS_VERSION) return { status: "rejected", message, reason: "harness-version-mismatch" };
   if (!sameRun(state.run, message.run)) return { status: "rejected", message, reason: "run-mismatch" };
   if (state.run.scenarioId !== message.run.scenarioId) return { status: "rejected", message, reason: "scenario-mismatch" };
-  const senderIsParticipant = message.senderDeviceId === state.controllerDeviceId || message.senderDeviceId === state.mobileParticipantDeviceId;
-  if (!senderIsParticipant) return { status: "rejected", message, reason: "sender-not-participant" };
+
+  const senderIsController = message.senderDeviceId === state.controllerDeviceId;
+  const senderIsMobileParticipant = message.senderDeviceId === state.mobileParticipantDeviceId;
+  if (!senderIsController && !senderIsMobileParticipant) return { status: "rejected", message, reason: "sender-not-participant" };
+
+  const expectedSenderRole: ValidationCoordinationRole = senderIsController ? "controller" : "mobile-participant";
+  if (message.senderRole !== expectedSenderRole) return { status: "rejected", message, reason: "sender-role-mismatch" };
+
+  const recipientIsParticipant =
+    message.recipientDeviceId === state.controllerDeviceId ||
+    message.recipientDeviceId === state.mobileParticipantDeviceId;
+  if (!recipientIsParticipant) return { status: "rejected", message, reason: "recipient-not-participant" };
   if (message.recipientDeviceId !== localDeviceId) return { status: "rejected", message, reason: "recipient-mismatch" };
+
   const lastAcceptedSequence = state.lastAcceptedSequenceByDevice[message.senderDeviceId] ?? 0;
   if (!Number.isSafeInteger(message.sequence) || message.sequence <= lastAcceptedSequence) return { status: "rejected", message, reason: "stale-sequence" };
   if (message.stepId !== state.currentStepId) return { status: "rejected", message, reason: "step-mismatch" };
   if (state.status === "terminal") return { status: "rejected", message, reason: "terminal-state" };
+  if (message.senderRole !== state.owningRole) return { status: "rejected", message, reason: "step-owner-mismatch" };
   if (message.kind !== state.expectedNextEvent) return { status: "rejected", message, reason: "unexpected-event" };
   return { status: "accepted", message };
 }
@@ -165,6 +201,8 @@ export const VALIDATION_EVIDENCE_PRIVACY: ValidationEvidencePrivacy = Object.fre
   privateContentIncluded: false,
 });
 
+type NonEmptyReadonlyStringArray = readonly [string, ...string[]];
+
 export type ValidationScenarioEvidenceVerdict =
   | {
       readonly status: "PASS";
@@ -178,7 +216,7 @@ export type ValidationScenarioEvidenceVerdict =
       readonly status: "FAIL";
       readonly run: ValidationRunIdentity;
       readonly evidenceIds: readonly ValidationEvidenceId[];
-      readonly failedAssertionIds: readonly string[];
+      readonly failedAssertionIds: NonEmptyReadonlyStringArray;
       readonly blockerReasons: readonly [];
       readonly summary: string;
     }
@@ -187,7 +225,7 @@ export type ValidationScenarioEvidenceVerdict =
       readonly run: ValidationRunIdentity;
       readonly evidenceIds: readonly ValidationEvidenceId[];
       readonly failedAssertionIds: readonly [];
-      readonly blockerReasons: readonly string[];
+      readonly blockerReasons: NonEmptyReadonlyStringArray;
       readonly summary: string;
     }
   | {
