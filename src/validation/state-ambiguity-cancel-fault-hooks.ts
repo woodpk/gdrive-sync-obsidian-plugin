@@ -54,7 +54,10 @@ export type ValidationPostDispatchResponseLossResult =
 /**
  * Validation-only ordering guard for response loss after a remote mutation may
  * have been dispatched. It cannot arm the ambiguity hook until durable-intent
- * persistence is evidenced before dispatch.
+ * persistence is evidenced before dispatch. A triggered result remains
+ * physically uncertain; VH11 intentionally exposes no resolution path. Later
+ * independent state/convergence verification owns establishment of physical
+ * reality.
  */
 export class ValidationRemoteMutationAmbiguityHook {
   private durableIntentEvidenceRef?: ValidationEvidenceRef;
@@ -100,26 +103,6 @@ export class ValidationRemoteMutationAmbiguityHook {
       requiresObservation: true,
     });
   }
-}
-
-export interface ValidationRemoteMutationObservation {
-  readonly status: "verified-applied" | "verified-not-applied";
-  readonly evidenceRef: ValidationEvidenceRef;
-}
-
-export interface ValidationObservedRemoteMutationResolution {
-  readonly status: "observed-resolution";
-  readonly physicalEffect: ValidationRemoteMutationObservation;
-  readonly priorOutcome: ValidationAmbiguousRemoteMutation;
-}
-
-/** Ambiguous post-dispatch outcomes can become definite only from observation evidence. */
-export function resolveValidationAmbiguousRemoteMutation(
-  priorOutcome: ValidationAmbiguousRemoteMutation,
-  observation: ValidationRemoteMutationObservation | undefined,
-): ValidationObservedRemoteMutationResolution {
-  if (!observation) throw new Error("Ambiguous remote mutation outcome requires independent observation evidence.");
-  return Object.freeze({ status: "observed-resolution", physicalEffect: observation, priorOutcome });
 }
 
 export const VALIDATION_STATE_FAULT_ACTIONS = ["corrupt-state", "remove-state", "remove-cursor"] as const;
