@@ -1,0 +1,82 @@
+name: VH08 Exact Tree Verification
+
+on:
+  push:
+    branches:
+      - vh08-exact-tree-verify-a0159b08
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact corrected VH08 implementation
+        uses: actions/checkout@v4
+        with:
+          ref: a0159b082fcd9d620ba74f1987eb139aa907fc97
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Record exact identity and runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "TREE=$(git rev-parse 'HEAD^{tree}')"
+            echo "NODE=$(node --version)"
+            echo "NPM=$(npm --version)"
+            echo "OS=$(uname -a)"
+          } | tee identity.txt
+
+      - name: Clean dependency installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci 2>&1 | tee vh08-npm-ci.log
+
+      - name: Compile test tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx tsc -p tsconfig.test.json 2>&1 | tee vh08-tsc.log
+
+      - name: Run focused VH08 tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test .test-build/test/validation-state-convergence-verifier.test.js 2>&1 | tee vh08-focused.tap
+
+      - name: Run canonical repository check
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run check 2>&1 | tee vh08-check.log
+
+      - name: Run diff check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check 2>&1 | tee vh08-diff-check.log
+
+      - name: Upload VH08 verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vh08-exact-tree-verification
+          if-no-files-found: warn
+          path: |
+            identity.txt
+            vh08-npm-ci.log
+            vh08-tsc.log
+            vh08-focused.tap
+            vh08-check.log
+            vh08-diff-check.log
