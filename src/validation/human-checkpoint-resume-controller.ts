@@ -39,6 +39,18 @@ export interface HumanCheckpointStateStore {
   compareAndSet(expectedRevision: number | null, next: HumanCheckpointDurableState | null): Promise<boolean>;
 }
 
+export interface HumanCheckpointResumeCommitPort {
+  /**
+   * Durably adopt the resume step before VH13 removes the checkpoint.
+   * Implementations must be idempotent for an identical run/checkpoint/resume-step tuple.
+   */
+  commitResume(input: {
+    readonly run: ValidationRunIdentity;
+    readonly checkpointId: HumanCheckpointId;
+    readonly resumeStepId: ValidationStepId;
+  }): Promise<void>;
+}
+
 export type HumanCheckpointPostconditionObservation =
   | { readonly status: "verified" }
   | { readonly status: "pending" }
@@ -59,6 +71,7 @@ export type HumanCheckpointControllerPauseReason =
   | "postcondition-ambiguous"
   | "postcondition-probe-failed"
   | "verification-timeout"
+  | "resume-adoption-failed"
   | "persisted-state-invalid"
   | "state-changed";
 
@@ -357,6 +370,7 @@ export class HumanCheckpointResumeController {
     run: ValidationRunIdentity,
     checkpointId: string,
     currentDevice: ValidationDeviceIdentity,
+    resumeCommit: HumanCheckpointResumeCommitPort,
   ): Promise<HumanCheckpointControllerResult> {
     const loaded = hydrate(await this.store.load());
     const checked = this.requireMatching(loaded, run, checkpointId);
@@ -366,7 +380,20 @@ export class HumanCheckpointResumeController {
     if (state.checkpoint.deviceId !== currentDevice.deviceId || state.devicePlatform !== currentDevice.platform) {
       return { status: "rejected", reason: "device-mismatch", state };
     }
-    if (!await this.store.compareAndSet(state.revision, null)) return { status: "paused", reason: "state-changed", state };
+
+    try {
+      await resumeCommit.commitResume({
+        run: state.checkpoint.run,
+        checkpointId: state.checkpoint.checkpointId,
+        resumeStepId: state.resumeStepId,
+      });
+    } catch {
+      return { status: "paused", reason: "resume-adoption-failed", state };
+    }
+
+    if (!await this.store.compareAndSet(state.revision, null)) {
+      return { status: "paused", reason: "state-changed", state };
+    }
     return {
       status: "resumed",
       checkpointId: state.checkpoint.checkpointId,
