@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type DeviceIdentity, type VaultIdentity } from "../src/contracts";
 import { CoreRunCoordinator, InMemoryRunLeasePort, enterSynchronizationLifecycle } from "../src/core/run-coordinator";
+import * as validationSurface from "../src/validation";
+import * as vh11FaultHooks from "../src/validation/state-ambiguity-cancel-fault-hooks";
 import {
   ValidationFaultOccurrenceCounter,
   ValidationRemoteMutationAmbiguityHook,
   applyDeterministicCancellationFault,
   applyValidationStateFault,
-  resolveValidationAmbiguousRemoteMutation,
   type ValidationDisposableStateMutationPort,
   type ValidationStateSafetyEvidence,
 } from "../src/validation/state-ambiguity-cancel-fault-hooks";
@@ -79,7 +80,7 @@ test("post-dispatch response loss cannot precede durable intent persistence and 
   assert.equal(String(result.durableDispatch.remoteDispatchEvidenceRef), "evidence:remote-dispatched");
 });
 
-test("response-loss occurrence is deterministic and possibly dispatched effects remain uncertain until observed", () => {
+test("response-loss occurrence is deterministic and VH11 cannot manufacture physical certainty", () => {
   const hook = new ValidationRemoteMutationAmbiguityHook();
   hook.recordDurableIntentPersisted("evidence:intent");
   hook.recordRemoteMutationDispatched("evidence:dispatch");
@@ -91,14 +92,16 @@ test("response-loss occurrence is deterministic and possibly dispatched effects 
   assert.equal(ambiguous.status, "triggered-post-dispatch");
   if (ambiguous.status !== "triggered-post-dispatch") return;
   assert.equal(ambiguous.physicalEffect.status, "outcome-unknown");
-  assert.throws(() => resolveValidationAmbiguousRemoteMutation(ambiguous, undefined), /requires independent observation evidence/);
+  assert.equal(ambiguous.requiresObservation, true);
+  assert.match(ambiguous.physicalEffect.reason, /unknown until independently observed/);
+  assert.equal(String(ambiguous.durableDispatch.durableIntentEvidenceRef), "evidence:intent");
+  assert.equal(String(ambiguous.durableDispatch.remoteDispatchEvidenceRef), "evidence:dispatch");
+  assert.equal(hook.injectResponseLoss(specification, occurrences).status, "not-triggered");
 
-  const resolved = resolveValidationAmbiguousRemoteMutation(ambiguous, {
-    status: "verified-applied",
-    evidenceRef: validationEvidenceRef("evidence:independent-remote-observation"),
-  });
-  assert.equal(resolved.status, "observed-resolution");
-  assert.equal(resolved.physicalEffect.status, "verified-applied");
+  assert.equal("resolveValidationAmbiguousRemoteMutation" in vh11FaultHooks, false);
+  assert.equal("resolveValidationAmbiguousRemoteMutation" in validationSurface, false);
+  assert.equal("ValidationRemoteMutationObservation" in vh11FaultHooks, false);
+  assert.equal("ValidationObservedRemoteMutationResolution" in vh11FaultHooks, false);
 });
 
 test("direct state manipulation refuses non-disposable/primary state authority before touching the port", async () => {
