@@ -1,4 +1,4 @@
-STATUS: BLOCKED
+STATUS: COMPLETE
 
 # VH13 — H5B Human Checkpoint and Resume Controller Evidence
 
@@ -6,76 +6,127 @@ STATUS: BLOCKED
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Branch: `phase6-vh13-human-checkpoint-resume`
 - BASE_SHA: `74c6af589b2e0054f389ae6878339d1272edc47c`
-- IMPLEMENTATION_SHA: `55c41655eb12cece1fd41e4c15ddfb1532273b6e`
-- Base gate: PASS — `origin/phase6-vh03-coordination-evidence-freeze` resolved to BASE_SHA and `dev/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md` began exactly `STATUS: COMPLETE`.
+- Prior blocked evidence HEAD: `acbd522ed4d3de886d66b82d3b2ea42c013066a6`
+- Rejected implementation SHA: `55c41655eb12cece1fd41e4c15ddfb1532273b6e` — not used for completion
+- CORRECTED_IMPLEMENTATION_SHA: `3d7bf307abd2c767ad79d8df3a20579e7ae9de6c`
+- CORRECTED_IMPLEMENTATION_TREE: `0e827bdbe46e00eb06482cdb0a70fd14cdcf72be`
+- Base gate: PASS — the frozen VH03/H0 base remains `74c6af589b2e0054f389ae6878339d1272edc47c`, whose VH03 evidence begins exactly `STATUS: COMPLETE`.
 
-## Implementation
+## Correction
 
-Implemented a validation-only human checkpoint/resume controller over the frozen H0 checkpoint vocabulary.
+The blocked `consumeResume()` sequence was repaired so VH13 no longer destroys the durable resumable checkpoint before the future scenario runner can durably adopt its already-persisted `resumeStepId`.
 
-The controller:
+VH13 now exposes a bounded `HumanCheckpointResumeCommitPort` persistence seam. Its behavioral ordering is:
 
-- permits exactly one active named external-action checkpoint at a time;
-- persists only run/scenario/checkpoint/device/action/resume-step/timestamp/revision metadata plus fixed action instructions;
-- uses compare-and-set revision semantics so stale concurrent transitions fail closed;
-- separates operator acknowledgement from technical postcondition verification;
-- rejects duplicate acknowledgements;
-- remains paused on pending, ambiguous, failed, or timed-out postcondition verification instead of guessing completion;
-- reconstructs checkpoint state after controller/runtime recreation;
-- permits iPhone/iPad switching only while the checkpoint is still an unacknowledged safe boundary and never aliases device identities;
-- requires an `external-coordination` persistence owner for `uninstall-plugin` and `reinstall-plugin` checkpoints so those lifecycle actions cannot rely on ordinary device-local plugin persistence;
-- rejects malformed persisted state rather than treating it as empty or resumable.
+1. load and validate the persisted checkpoint, run/checkpoint identity, exact device identity, and `status === "resumable"`;
+2. obtain the already-durable `resumeStepId` from the checkpoint state;
+3. invoke `commitResume({ run, checkpointId, resumeStepId })` on the supplied persistence seam;
+4. require that adoption call to complete successfully before attempting checkpoint cleanup;
+5. only then CAS-clear the checkpoint;
+6. if adoption throws/fails, return a safe `resume-adoption-failed` pause and leave the durable resumable checkpoint unchanged;
+7. if adoption succeeds but checkpoint-cleanup CAS fails or execution terminates before cleanup, the resumable checkpoint remains durable and controller reconstruction deterministically retries the same handoff;
+8. the persistence seam contract explicitly requires idempotence for the same run/checkpoint/resume-step tuple; VH13 accepts no caller-supplied completion boolean or token in place of the persistence operation.
 
-No production synchronization policy, planner, executor, runtime, scheduler, plugin settings, or `src/contracts/**` file was modified.
+The correction preserves the existing VH13 requirements: technical postcondition verification precedes resumability; one active action checkpoint; duplicate-acknowledgement resistance; safe device-switch boundaries; timeout/ambiguity/probe-failure fail-closed pause; external persistence for uninstall/reinstall; non-secret metadata only; malformed-state rejection; and revision-CAS stale-write resistance.
 
-## Changed files
+VH13 does not implement VH14 scenario-runner orchestration.
 
-Implementation commit changed exactly:
+## Corrected implementation changed-file manifest
 
-- `src/validation/human-checkpoint-resume-controller.ts` — added
-- `test/validation-human-checkpoint-resume.test.ts` — added
+The correction commit from prior blocked evidence HEAD `acbd522ed4d3de886d66b82d3b2ea42c013066a6` to corrected implementation SHA `3d7bf307abd2c767ad79d8df3a20579e7ae9de6c` changed exactly:
 
-## Verification
+- `src/validation/human-checkpoint-resume-controller.ts` — 24 additions, 5 deletions
+- `test/validation-human-checkpoint-resume.test.ts` — 189 additions, 29 deletions
 
-### Focused VH13 behavior
+No `src/contracts/**`, frozen H0 checkpoint/coordination contract, production planner/executor/runtime/scheduler, or other production synchronization file changed in the correction commit.
 
-Supporting isolated verification was run against the exact committed VH13 source/test contents using TypeScript 5.8.3 with a local contract-compatible H0 stub and project-equivalent strict compiler settings (`ES2022`, `ESNext`/Bundler semantics checked separately, strict mode, isolated modules).
+## Focused VH13 regression verification
 
-Result:
+Supplemental exact-source focused verification executed the corrected VH13 test file and passed:
 
-- TypeScript check: PASS
-- `node --test` focused VH13 suite: PASS — 9 tests, 9 passed, 0 failed
+- focused VH13 tests: **13 passed, 0 failed**
 
-Covered behavior:
+The focused cases prove:
 
-1. restart-safe checkpoint reconstruction and resume only after verified postcondition;
-2. exact one-active-action checkpoint state;
-3. duplicate acknowledgement rejection;
-4. safe mobile device-switch boundary;
-5. pending/ambiguous/probe-failure/timeout indefinite safe pause;
-6. external persistence requirement for uninstall/reinstall;
-7. persisted-state privacy shape;
-8. malformed durable-state fail-closed behavior;
-9. stale concurrent CAS write resistance.
+1. verified checkpoint remains durable until resume adoption succeeds;
+2. adoption failure leaves the checkpoint resumable;
+3. checkpoint cleanup cannot occur before adoption completes;
+4. adoption success followed by cleanup CAS interruption leaves enough durable state for controller recreation and deterministic retry;
+5. repeated adoption for the same run/checkpoint/resume-step identity is handled through an idempotent commit port;
+6. successful adoption plus checkpoint cleanup leaves `current()` empty;
+7. wrong run/checkpoint/device cannot consume the resume or invoke adoption;
+8. restart reconstruction remains safe;
+9. exactly one active action checkpoint remains enforced;
+10. duplicate acknowledgement remains rejected;
+11. mobile device switching remains restricted to the safe unacknowledged checkpoint boundary;
+12. timeout, ambiguity, and postcondition-probe failure remain safely paused;
+13. uninstall/reinstall external persistence, metadata privacy, malformed-state fail-closed handling, and stale-CAS resistance remain covered and passing.
 
-This isolated run is supporting evidence only; it is not represented as the repository's authoritative focused-test command.
+The repository's existing CI workflow does not contain a dedicated standalone VH13-focused command. Therefore the 13/13 focused result above is supplemental focused evidence; authoritative repository-native integration of the corrected VH13 files is established by the complete automated suite on the exact corrected tree below.
 
-### `git diff --check`
+## Repository-native verification
 
-PASS on the exact two implementation/test file contents in a local synthetic Git delta. No whitespace errors were reported.
+A temporary draft PR was opened solely to invoke the repository's existing verification workflow and was closed unmerged after evidence capture:
 
-### `npm run check`
+- Temporary PR: `#119` — `VH13 temporary verification — restart-safe resume handoff`
+- PR base: `phase6-integration`
+- PR head SHA: `3d7bf307abd2c767ad79d8df3a20579e7ae9de6c`
+- PR final state: **closed, unmerged**
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Workflow run: `35130649814`
+- Job: `104910527680` (`verify`)
+- Workflow/job conclusion: **SUCCESS**
 
-NOT AVAILABLE IN THIS SESSION — BLOCKING REQUIRED REPOSITORY VERIFICATION.
+Required repository-native results on the corrected implementation tree:
 
-The connected GitHub repository can be read and written through the GitHub connector, but this execution shell cannot resolve `github.com` to clone/materialize the repository. The branch push also produced no GitHub Actions workflow run to consume as equivalent repository-level verification. Consequently the required repository-wide `npm run check` (typecheck + complete tests + build) could not be executed against the actual repository checkout and dependencies.
+- `npm run typecheck`: **PASS**
+- test TypeScript compilation (`npx tsc -p tsconfig.test.json`): **PASS**
+- complete automated test suite: **PASS**
+- `Focused C1 first-sync conflict-resolution authority tests`: **PASS**
+- `Focused callback, diagnostic, OAuth, and export tests`: **PASS**
+- `npm run build`: **PASS**
+- `npm run check`: **PASS**
+- `git diff --check`: **PASS**
+- workflow artifact upload: **PASS**
 
-## Deviations
+No required repository-native verification command failed.
 
-No intentional implementation-scope deviation. The only deviation from the requested execution contract is the unavailable repository-level dynamic verification described above; it is not being represented as PASS.
+## Exact implementation-tree identity
 
-## Blocker
+GitHub created synthetic PR merge commit:
 
-Required repository-level `npm run check` remains unexecuted against the actual branch checkout. Until that command (and, preferably, the repository-native focused VH13 test invocation) passes on `55c41655eb12cece1fd41e4c15ddfb1532273b6e`, VH13 cannot truthfully be recorded `STATUS: COMPLETE`.
+`0d09ff5c6aa0c734c45c29e72c69397404b18d2e`
 
-Stop here. No merge, promotion, release, or live validation was performed.
+Its tree SHA is:
+
+`0e827bdbe46e00eb06482cdb0a70fd14cdcf72be`
+
+The corrected implementation commit `3d7bf307abd2c767ad79d8df3a20579e7ae9de6c` has tree SHA:
+
+`0e827bdbe46e00eb06482cdb0a70fd14cdcf72be`
+
+Therefore the repository-native PR workflow executed against a synthetic merge commit whose complete tree was **exactly identical** to the corrected implementation tree. Exact-tree identity: **PASS**.
+
+## Frozen-boundary confirmation
+
+- `src/contracts/**`: unchanged by the correction.
+- Frozen H0 checkpoint/coordination contracts: unchanged by the correction.
+- Production synchronization semantics and production runtime surfaces: unchanged by the correction.
+- VH14 scenario runner: not implemented or started.
+- Persisted VH13 data remains non-secret validation metadata only.
+- Genuine external actions remain human checkpoints; no external action is simulated as completed.
+- No merge, promotion, release, or live validation was performed.
+
+## Verification deviations
+
+The execution shell still did not provide a native private-repository checkout suitable for direct `npm run check`. Per the correction order, repository-native verification therefore used the already accepted temporary-draft-PR pattern and the repository's existing `Phase 6 Alpha Diagnostic Verification` GitHub Actions workflow.
+
+The existing workflow has no dedicated standalone VH13-focused step. This is recorded rather than represented otherwise. Focused VH13 behavior was verified separately at 13/13 PASS, and the complete repository-native test suite containing the corrected VH13 test file passed on the exact corrected implementation tree.
+
+No implementation-scope deviation was taken.
+
+## Blockers
+
+None remaining for VH13 correction and verification.
+
+Stop for supervisor re-review. Do not merge/promote/release/live-validate and do not begin VH14.
