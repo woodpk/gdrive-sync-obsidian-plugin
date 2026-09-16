@@ -1,99 +1,130 @@
-STATUS: BLOCKED
+STATUS: COMPLETE
 
-# VH04 — H1A Validation Safety Sandbox Evidence
+# VH04 Safety Sandbox Verification / Evidence Closure
 
-Agent: `agt-ca-p6-vh04-safety-sandbox-01`
-Branch: `phase6-vh04-safety-sandbox`
+## Identity and lineage
 
-## Executable base gate
+- Agent ID: `agt-ca-p6-vh04-safety-sandbox-01`
+- Package: `VH04`
+- Branch: `phase6-vh04-safety-sandbox`
+- Approved VH03 semantic base SHA: `74c6af589b2e0054f389ae6878339d1272edc47c`
+- Original VH04 implementation SHA: `992577dfdda73152942f84d69488ab57d34ab74d`
+- Final verified implementation SHA: `992577dfdda73152942f84d69488ab57d34ab74d`
+- Verified implementation tree SHA: `26df112651ad4ad712caa00ca0d168a2019fa3b4`
+- Branch HEAD before verification closure: `13ad7fc0cc74aecbc988edca99a0bf19d8ce28ad`
+- Final branch HEAD: the evidence-only closure commit containing this record; its authoritative SHA is the resulting repository branch tip and is reported in the completion response. A Git commit cannot contain its own SHA without changing that SHA.
 
-- Resolved predecessor branch: `origin/phase6-vh03-coordination-evidence-freeze`
-- Resolved `BASE_SHA`: `74c6af589b2e0054f389ae6878339d1272edc47c`
-- Predecessor evidence: `dev/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md`
-- Predecessor evidence first line observed: `STATUS: COMPLETE`
-- VH04 branch was created from exactly `BASE_SHA`.
+No implementation defect was exposed. The verified implementation remained unchanged from `992577dfdda73152942f84d69488ab57d34ab74d`.
 
-## Implementation
+## Exact changed files
 
-Implementation SHA: `992577dfdda73152942f84d69488ab57d34ab74d`
+Implementation commit `992577dfdda73152942f84d69488ab57d34ab74d` created/modified exactly:
 
-Implemented a validation-only H1A safety sandbox that:
+- `src/validation/safety-sandbox.ts`
+- `src/validation/index.ts`
+- `test/validation-safety-sandbox.test.ts`
 
-- issues ownership bound to one validation run/scenario and one frozen H0 sandbox surface;
-- requires configured, non-overlapping disposable roots and strict descendant locators;
-- retains allocation/creation/removal provenance across snapshots;
-- requires exact issued provenance before setup/mutation/cleanup authorization;
-- rejects run/scenario mismatch, unproven ownership, ambiguous restored ownership, out-of-scope surfaces, root ownership, and traversal;
-- prevents removed provenance from silently regaining cleanup authority;
-- performs no filesystem, Google Drive, production-state, planner, executor, or synchronization mutation itself;
-- remains under `src/validation/**` and is not wired into the production runtime.
+Evidence-only closure changes exactly:
 
-## Changed files
+- `dev/evidence/_ca-output-agt-ca-p6-vh04-safety-sandbox-01.md`
 
-Implementation commit created/modified exactly:
+No production or test code was changed during verification closure.
 
-- `src/validation/safety-sandbox.ts` — created
-- `src/validation/index.ts` — modified to export the H1A sandbox
-- `test/validation-safety-sandbox.test.ts` — created
+## Verification environment
 
-No `src/contracts/**` file or production policy/runtime file was modified.
+Direct repository execution in the available local runtime was not usable because the runtime could not legitimately clone/reach the repository over its network/DNS path. Authoritative executable verification therefore used authenticated GitHub Actions pinned to the exact accepted implementation commit and tree.
 
-## Verification
+- Workflow: `VH04 Verification Closure`
+- Run ID: `35037963177`
+- Job: `verify-vh04`
+- Job ID: `104611219394`
+- CI execution vehicle branch: `phase6-vh04-safety-sandbox-ci-verification`
+- Tested commit SHA: `992577dfdda73152942f84d69488ab57d34ab74d`
+- Tested tree SHA: `26df112651ad4ad712caa00ca0d168a2019fa3b4`
 
-### Repository change-set verification
+Before any verification command, CI explicitly asserted:
 
-- GitHub base/head comparison: PASS.
-  - Base: `74c6af589b2e0054f389ae6878339d1272edc47c`
-  - Head: `992577dfdda73152942f84d69488ab57d34ab74d`
-  - Ahead by exactly one implementation commit.
-  - Diff contains exactly the three files listed above.
+- `git rev-parse HEAD == 992577dfdda73152942f84d69488ab57d34ab74d`
+- `git rev-parse 'HEAD^{tree}' == 26df112651ad4ad712caa00ca0d168a2019fa3b4`
 
-### Static TypeScript verification of the new sandbox surface
+The verifier checked out the implementation commit directly. It did not test a PR merge result or substitute another branch tree.
 
-- Command: `tsc -p tsconfig.json` in an isolated local harness containing the exact new `safety-sandbox.ts` plus contract-faithful stubs for its frozen H0/path-policy dependencies.
-- Result: PASS (exit 0).
-- Limitation: this is supplementary static verification only; it is not a substitute for repository `npm run check`.
+## Verification results
 
-### `git diff --check`
+### A. VH04-focused Safety Sandbox tests
 
-- Command: `git diff --check` against a locally reconstructed exact three-file VH04 patch (base barrel plus the exact committed VH04 file contents, with new files added intent-to-add).
-- Result: PASS (exit 0).
-- Diff stat observed: 3 files changed, 459 insertions.
+Command:
 
-### Focused VH04 tests
+`node --test .test-build/test/validation-safety-sandbox.test.js`
 
-- Required repository command: focused execution of `test/validation-safety-sandbox.test.ts` through the repository test toolchain.
-- Result: NOT AVAILABLE IN THIS SESSION.
-- Reason: this environment has no repository checkout and direct clone failed with `Could not resolve host: github.com`; the GitHub connector exposes repository reads/writes but not arbitrary repository command execution. A direct `node --test` attempt on the isolated TypeScript file was not a valid substitute because the repository uses `tsx` for TypeScript tests and the isolated environment does not have that runner installed.
+Result: **PASS — 7 passed, 0 failed**.
 
-### `npm run check`
+The focused suite verifies the VH04 safety surface, including run-scoped disposable-fixture issuance and rejection/protection behavior for unsafe or out-of-scope resources, path traversal/overlap, provenance-sensitive cleanup, run/scenario mismatches, ambiguous ownership, and removed-resource provenance. Sandbox membership does not create production synchronization authority.
 
-- Required command: `npm run check`.
-- Result: NOT AVAILABLE IN THIS SESSION.
-- Reason: no full repository checkout/dependency installation is available in the execution container, and network cloning is unavailable as described above.
+### B. TypeScript/typecheck gate
 
-## Required negative-test coverage added
+Command:
 
-`test/validation-safety-sandbox.test.ts` adds explicit cases for:
+`npm run typecheck`
 
-- unrelated ordinary vault content;
-- canonical external BRAIN asset paths;
-- credential paths and unsupported credential surface;
-- primary/non-disposable synchronization state;
-- whole-root authority and traversal attempts;
-- cleanup before a resource is proven created;
-- forged but structurally valid H0 ownership with no provenance;
-- run mismatch;
-- scenario mismatch;
-- ambiguous restored provenance;
-- retained removed-resource provenance with no renewed cleanup authority;
-- positive authorization for properly owned disposable surfaces.
+Result: **PASS**.
 
-## Deviations
+### C. Full automated test suite
 
-- No implementation-scope deviation identified.
-- Verification deviation: mandatory repository-level focused tests and `npm run check` could not be executed in this session because the available execution environment cannot obtain/run the full repository toolchain.
+Command:
 
-## Blockers
+`npm test`
 
-VH04 cannot be reported `STATUS: COMPLETE` until the exact implementation SHA `992577dfdda73152942f84d69488ab57d34ab74d` receives the required repository-level focused test execution and `npm run check` with passing results. No merge, promotion, release, or live validation was performed.
+Result: **PASS — 853 passed, 0 failed, 0 skipped, 0 cancelled, 0 todo**.
+
+### D. Build
+
+Command:
+
+`npm run build`
+
+Result: **PASS**.
+
+### E. Repository/package verification
+
+Command:
+
+`npm run check`
+
+Result: **PASS**.
+
+### F. Diff hygiene
+
+Commands:
+
+- `git diff --check`
+- `git diff --check 74c6af589b2e0054f389ae6878339d1272edc47c..HEAD`
+
+Result: **PASS** for both the literal no-argument working-tree check and the committed VH03-to-VH04 implementation delta.
+
+## Defect handling
+
+No genuine VH04-owned defect was exposed by executable verification. No implementation correction was made.
+
+## Boundary and safety confirmations
+
+- No live Google Drive synchronization, mutation, remediation, or validation was performed.
+- No sandbox action was treated as production synchronization authority.
+- No other VH package was begun.
+- No VH05 fixture-manager behavior was implemented.
+- No VH06 production-path driving was implemented.
+- No VH07 plan assertions were implemented.
+- No VH08 convergence verification was implemented.
+- No other VH branch was merged into this branch.
+- The branch was not merged or promoted into `phase6-integration`.
+- No release was published.
+- The temporary CI execution vehicle was used only to run the pinned exact implementation tree and was not substituted for the VH04 branch.
+
+## Environment-specific deviations
+
+- Local direct execution was unavailable because the local runtime could not resolve/reach GitHub for a legitimate repository checkout.
+- Authenticated GitHub Actions was therefore used, with exact commit/tree proof before executing the required gates.
+
+## Remaining blockers
+
+None.
