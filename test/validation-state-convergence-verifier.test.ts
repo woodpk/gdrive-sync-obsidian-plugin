@@ -281,7 +281,7 @@ test("concrete byte mismatch is FAIL and dominates an unrelated BLOCKED converge
   const request: ValidationStateConvergenceRequest = {
     run,
     state: [{ kind: "local-content", assertion: stateAssertion("fail-bytes", "local-content"), deviceId: desktopId, path: notePath, content: { hash: noteHash, sizeBytes: noteBytes.byteLength } }],
-    convergence: [{ kind: "cross-device-content", assertion: convergenceAssertion("blocked-mobile", "cross-device-content"), deviceIds: [desktopId, mobileId], path: notePath, content: { hash: noteHash, sizeBytes: noteBytes.byteLength } }],
+    convergence: [{ kind: "cross-device-path", assertion: convergenceAssertion("blocked-mobile", "cross-device-path"), deviceIds: [desktopId, mobileId], path: notePath, expected: "file" }],
   };
   const report = await verifier.verify(request);
   assert.equal(report.result.verdict, "fail");
