@@ -6,6 +6,7 @@ import {
   type ValidationCoordinationAcceptance,
   type ValidationCoordinationMessage,
   type ValidationCoordinationMessageKind,
+  type ValidationCoordinationRejectionReason,
   type ValidationCoordinationRole,
   type ValidationCoordinationState,
   type ValidationCoordinationTerminalClassification,
@@ -39,7 +40,15 @@ type ValidationTerminalTransition = {
 };
 export type ValidationCoordinationTransition = ValidationNonTerminalTransition | ValidationTerminalTransition;
 
-/** Immutable cross-device handoff. The precondition binding is checked before `next` may advance local state. */
+/** Local scenario authority. Remote records can propose successors but cannot authorize them. */
+export interface ValidationCoordinationTransitionAuthority {
+  authorizeSuccessor(
+    state: ValidationCoordinationState,
+    message: ValidationCoordinationMessage,
+  ): ValidationCoordinationTransition;
+}
+
+/** Immutable cross-device handoff. Both current-state and successor-state authority are checked before advancement. */
 export interface ValidationCrossDeviceCoordinationRecord {
   readonly schemaVersion: typeof VALIDATION_COORDINATION_SCHEMA_VERSION;
   readonly harnessVersion: typeof PHASE6_LIVE_VALIDATION_HARNESS_VERSION;
@@ -52,17 +61,58 @@ export interface ValidationCoordinationTransport {
   publish(record: ValidationCrossDeviceCoordinationRecord): Promise<void>;
   read(run: ValidationRunIdentity): Promise<readonly ValidationCrossDeviceCoordinationRecord[]>;
 }
+export type ValidationCrossDeviceRejectionReason = ValidationCoordinationRejectionReason | "transition-mismatch";
 export type ValidationCrossDeviceAcceptance =
   | { readonly status: "accepted"; readonly record: ValidationCrossDeviceCoordinationRecord; readonly state: ValidationCoordinationState }
-  | { readonly status: "rejected"; readonly record: ValidationCrossDeviceCoordinationRecord; readonly acceptance: Extract<ValidationCoordinationAcceptance, { readonly status: "rejected" }> };
+  | {
+      readonly status: "rejected";
+      readonly record: ValidationCrossDeviceCoordinationRecord;
+      readonly reason: ValidationCrossDeviceRejectionReason;
+      readonly acceptance: ValidationCoordinationAcceptance;
+    };
+
+function transitionMatches(left: ValidationCoordinationTransition, right: ValidationCoordinationTransition): boolean {
+  if (left.status !== right.status) return false;
+  if (left.currentStepId !== right.currentStepId) return false;
+  if (left.owningRole !== right.owningRole) return false;
+  if (left.expectedNextEvent !== right.expectedNextEvent) return false;
+  if (left.status === "terminal" && right.status === "terminal") {
+    return left.terminalClassification === right.terminalClassification;
+  }
+  return left.status !== "terminal" && right.status !== "terminal";
+}
+
+function satisfiesTerminalTransitionInvariant(
+  message: ValidationCoordinationMessage,
+  transition: ValidationCoordinationTransition,
+): boolean {
+  if (message.kind !== "terminal") return transition.status !== "terminal";
+  return transition.status === "terminal" && transition.terminalClassification === message.terminalClassification;
+}
+
+function isAuthorizedSuccessor(
+  state: ValidationCoordinationState,
+  message: ValidationCoordinationMessage,
+  proposed: ValidationCoordinationTransition,
+  authority: ValidationCoordinationTransitionAuthority,
+): boolean {
+  if (!satisfiesTerminalTransitionInvariant(message, proposed)) return false;
+  const authorized = authority.authorizeSuccessor(state, message);
+  if (!satisfiesTerminalTransitionInvariant(message, authorized)) return false;
+  return transitionMatches(proposed, authorized);
+}
 
 export function coordinationRecord(
   state: ValidationCoordinationState,
   message: ValidationCoordinationMessage,
   next: ValidationCoordinationTransition,
+  transitionAuthority: ValidationCoordinationTransitionAuthority,
 ): ValidationCrossDeviceCoordinationRecord {
   const acceptance = evaluateValidationCoordinationMessage(state, message.recipientDeviceId, message);
   if (acceptance.status !== "accepted") throw new Error(`Coordination record precondition rejected: ${acceptance.reason}`);
+  if (!isAuthorizedSuccessor(state, message, next, transitionAuthority)) {
+    throw new Error("Coordination successor transition rejected: transition-mismatch");
+  }
   return Object.freeze({
     schemaVersion: VALIDATION_COORDINATION_SCHEMA_VERSION,
     harnessVersion: PHASE6_LIVE_VALIDATION_HARNESS_VERSION,
@@ -91,18 +141,26 @@ function transitionedState(state: ValidationCoordinationState, record: Validatio
     : Object.freeze({ ...common, status: record.next.status });
 }
 
+function rejected(
+  record: ValidationCrossDeviceCoordinationRecord,
+  acceptance: ValidationCoordinationAcceptance,
+  reason: ValidationCrossDeviceRejectionReason,
+): ValidationCrossDeviceAcceptance {
+  return { status: "rejected", record, reason, acceptance };
+}
+
 export function acceptValidationCoordinationRecord(
   state: ValidationCoordinationState,
   localDeviceId: ValidationDeviceId,
   record: ValidationCrossDeviceCoordinationRecord,
+  transitionAuthority: ValidationCoordinationTransitionAuthority,
 ): ValidationCrossDeviceAcceptance {
   const acceptance = evaluateValidationCoordinationMessage(state, localDeviceId, record.message);
-  if (acceptance.status === "rejected") return { status: "rejected", record, acceptance };
-  if (record.stepOwner !== state.owningRole) {
-    return { status: "rejected", record, acceptance: { status: "rejected", message: record.message, reason: "step-owner-mismatch" } };
-  }
-  if (record.expectedNextEvent !== state.expectedNextEvent) {
-    return { status: "rejected", record, acceptance: { status: "rejected", message: record.message, reason: "unexpected-event" } };
+  if (acceptance.status === "rejected") return rejected(record, acceptance, acceptance.reason);
+  if (record.stepOwner !== state.owningRole) return rejected(record, acceptance, "step-owner-mismatch");
+  if (record.expectedNextEvent !== state.expectedNextEvent) return rejected(record, acceptance, "unexpected-event");
+  if (!isAuthorizedSuccessor(state, record.message, record.next, transitionAuthority)) {
+    return rejected(record, acceptance, "transition-mismatch");
   }
   return { status: "accepted", record, state: transitionedState(state, record) };
 }
@@ -112,6 +170,7 @@ export interface ValidationCrossDeviceCoordinatorOptions {
   readonly localDeviceId: ValidationDeviceId;
   readonly localRole: ValidationCoordinationRole;
   readonly transport: ValidationCoordinationTransport;
+  readonly transitionAuthority: ValidationCoordinationTransitionAuthority;
   readonly now?: () => string;
   readonly messageId?: () => string;
 }
@@ -167,14 +226,14 @@ export class ValidationCrossDeviceCoordinator {
     const message: ValidationCoordinationMessage = kind === "terminal"
       ? { ...base, kind, terminalClassification: terminalClassification ?? "blocked" }
       : { ...base, kind } as ValidationCoordinationMessage;
-    const record = coordinationRecord(this.stateValue, message, next);
+    const record = coordinationRecord(this.stateValue, message, next, this.options.transitionAuthority);
     await this.options.transport.publish(record);
     this.stateValue = transitionedState(this.stateValue, record);
     return record;
   }
 
   accept(record: ValidationCrossDeviceCoordinationRecord): ValidationCrossDeviceAcceptance {
-    const result = acceptValidationCoordinationRecord(this.stateValue, this.options.localDeviceId, record);
+    const result = acceptValidationCoordinationRecord(this.stateValue, this.options.localDeviceId, record, this.options.transitionAuthority);
     if (result.status === "accepted") this.stateValue = result.state;
     return result;
   }
