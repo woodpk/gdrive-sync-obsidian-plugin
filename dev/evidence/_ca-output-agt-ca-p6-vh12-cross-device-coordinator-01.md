@@ -1,136 +1,148 @@
 STATUS: COMPLETE
 
-# VH12 — H5A Cross-Device Coordinator Evidence
+# VH12 — H5A Cross-Device Coordinator Transition-Authority Repair Evidence
 
 - Agent: `agt-ca-p6-vh12-cross-device-coordinator-01`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Branch: `phase6-vh12-cross-device-coordinator`
-- Resolved base SHA: `74c6af589b2e0054f389ae6878339d1272edc47c`
-- Implementation SHA: `5ca31798363cbc8c8c9bb3ce2f76e74c8652df10`
-- Implementation tree: `c7db00e708a8b3a93887c6aadbd33ad914624900`
+- Repair ID: `VH12-TRANSITION-AUTHORITY-01`
+- Frozen VH03 base: `74c6af589b2e0054f389ae6878339d1272edc47c`
+- Rejected implementation SHA: `5ca31798363cbc8c8c9bb3ce2f76e74c8652df10`
+- Repair input / prior evidence HEAD: `add47c5eff828fd4b1b15bbceb96e0fd627201b2`
+- Corrected implementation SHA: `63fdc19ff9ba5eefb21ade671e12ce4b9843f2e1`
+- Corrected implementation tree: `d75813bb4b269f9d419ae701bc5b7741e0be0bb0`
 - Final evidence/branch HEAD: the commit containing this file; its exact SHA is reported in the final task result because a commit cannot self-embed its own SHA.
 
-## Executable base gate
+## Rejection addressed
 
-The exact head of `origin/phase6-vh03-coordination-evidence-freeze` was resolved as `74c6af589b2e0054f389ae6878339d1272edc47c` through the authenticated repository connection. Its required evidence file begins exactly `STATUS: COMPLETE`, so the VH12 gate passed.
+The rejected VH12 implementation validated the incoming message through the frozen H0 evaluator but then treated durable `record.next` as sufficient successor authority. A valid current message could therefore carry an unauthorized successor step, owner, expected event, status, or terminal classification.
 
-The required branch `phase6-vh12-cross-device-coordinator` was created from exactly that SHA. No branch-tip substitution occurred.
+The repair preserves frozen H0 message validation and adds an independent VH12-local successor-transition authority. Remote durable state may propose a successor; it cannot authorize that successor.
 
-## Authority and repository grounding
+## Corrected authority model
 
-Implementation was grounded against the approved Phase 6 live-validation harness plan, DEC-301 through DEC-310, the Phase 6 decomposition/tasking, shared live-validation protocol, frozen H0 coordination contracts, current plugin-data persistence, Google Drive adapter/transport seams, and relevant validation tests.
+`ValidationCoordinationTransitionAuthority` is now a required local coordinator dependency. Its `authorizeSuccessor(state, message)` method derives the locally authorized successor from the receiver's current `ValidationCoordinationState` and the already H0-accepted `ValidationCoordinationMessage`.
 
-The frozen H0 evaluator remains authoritative for run/scenario/device/role/recipient/sequence/step/owner/event/terminal validation. VH12 consumes that contract; it does not modify `src/contracts/**` or redefine H0 semantics.
+For receive-side acceptance:
 
-## Implementation
+1. `evaluateValidationCoordinationMessage(...)` remains the frozen H0 gate for run, scenario, participant/device identity, role, sequence, current step, current owner, expected event, and terminal-state preconditions.
+2. Existing durable current-state bindings (`stepOwner`, `expectedNextEvent`) remain checked.
+3. The receiving participant's local transition authority derives the authorized successor.
+4. The complete durable `record.next` must exactly match that authorized successor across:
+   - `status`;
+   - `currentStepId`;
+   - `owningRole`;
+   - `expectedNextEvent`;
+   - terminal versus nonterminal disposition;
+   - `terminalClassification` when terminal.
+5. Any mismatch returns VH12-local rejection reason `transition-mismatch` and leaves local state unchanged.
+6. State advances only after both H0 and successor-transition gates pass.
 
-Base-to-implementation comparison reports exactly three changed files:
+The send path uses the same local transition authority before publication, so a local sender cannot publish a successor rejected by its own policy.
 
-- `src/validation/cross-device-coordinator.ts` — added
-- `src/validation/index.ts` — added the VH12 barrel export
-- `test/validation-cross-device-coordinator.test.ts` — added focused VH12 coverage
+## Generic terminal invariant
 
-No `src/contracts/**` file changed.
+The coordinator independently enforces terminal semantics even if a scenario-local transition policy is defective:
 
-### Coordinator semantics
+- a non-`terminal` message cannot transition to terminal state;
+- a `terminal` message must transition to terminal state;
+- a terminal successor classification must exactly equal the terminal message classification.
 
-`ValidationCrossDeviceCoordinator` and its immutable coordination records bind every handoff to:
+These rules are checked independently of scenario-policy equality, so a policy cannot authorize an otherwise structurally invalid terminal transition.
 
-- frozen harness/schema version;
-- run ID and scenario ID through the H0 message;
-- sender and recipient installation/device identities;
-- sender role;
-- current step ID;
-- current step owner;
-- expected next event;
-- monotonic per-sender sequence;
-- explicit next coordination state.
+## Frozen boundaries preserved
 
-Incoming records are evaluated through `evaluateValidationCoordinationMessage(...)` before state advancement. Duplicate/replayed sequence numbers, stale/mismatched run or scenario identity, wrong participant/device role, wrong recipient, wrong step, wrong owner, unexpected event, and terminal-state traffic fail closed.
+The repair does not modify frozen VH03/H0 contracts or `src/contracts/**`.
 
-Controller and mobile participant identities must be distinct. The local installation must be one of the registered participants and its claimed role must match its registered identity.
+Preserved without redesign:
 
-Durable records permit a suspended/delayed participant to resume and consume the pending handoff later. Re-reading an already accepted record is rejected as stale rather than replayed.
+- frozen H0 run/scenario/device/role/sequence/current-step/current-owner/expected-event/terminal validation;
+- dedicated top-level Drive validation-control namespace;
+- existing `drive.file` authority only;
+- coordination records as validation metadata, never fixture synchronization evidence or synchronization authority;
+- Drive record serialization shape and replay model;
+- no scenario-package implementation;
+- no VH13 harness-core orchestration.
 
-### Repository-grounded transport
+## Exact repair changed files
 
-The selected transport is a Drive-backed validation-control namespace accessed through the existing Google HTTP/OAuth seam and existing `drive.file` authority. It requires no new OAuth scope and no developer-hosted backend.
+Direct comparison from repair input `add47c5eff828fd4b1b15bbceb96e0fd627201b2` to corrected implementation SHA `63fdc19ff9ba5eefb21ade671e12ce4b9843f2e1` reports exactly two changed files:
 
-The transport creates/finds a dedicated top-level app-created Drive folder named `BRAIN Validation Control` with validation-only app-property classification. It is deliberately not parented beneath the managed `BRAIN Sync` root and does not use the ordinary `brainSyncRole` namespace. Coordination records live under this validation-control root and are tagged by run ID, scenario ID, and message ID.
+- `src/validation/cross-device-coordinator.ts`
+- `test/validation-cross-device-coordinator.test.ts`
 
-This keeps coordination metadata logically outside the managed content/config domains that ordinary vault planning enumerates. It therefore cannot collide with ordinary vault paths and is not synchronization evidence or synchronization authority for the fixture under test.
+No other implementation or contract file changed in the repair.
 
-Drive message publication is idempotent only for an exact pre-existing message ID/payload match. Ambiguous duplicate identities or same-ID/different-payload records fail closed. Reads query the exact run/scenario namespace and revalidate the stored payload's run/scenario identity.
+This evidence closure additionally updates only:
 
-## Required focused coverage
+- `dev/evidence/_ca-output-agt-ca-p6-vh12-cross-device-coordinator-01.md`
 
-`test/validation-cross-device-coordinator.test.ts` contains six focused cases:
+## Focused VH12 regression results
 
-1. deterministic Windows -> mobile -> Windows handoff;
-2. duplicate/stale-message rejection after acceptance;
-3. delayed/suspended participant tolerance through durable replay;
-4. distinct device identity and role binding;
-5. fail-closed mismatched run and scenario identity;
-6. Drive validation-control isolation from the managed vault namespace and absence of `appDataFolder`/new-scope assumptions.
+The corrected exact-tree full-test TAP contains all 12 VH12 tests and records all 12 as PASS:
 
-A supplemental isolated focused execution of the exact VH12 coordinator/test files, with minimal H0/runtime stubs preserving the frozen evaluator semantics, completed:
+1. deterministic Windows -> mobile -> Windows handoff under explicit local transition authority;
+2. unauthorized next-step rejection with unchanged local state;
+3. unauthorized ownership-transfer rejection;
+4. unauthorized expected-next-event rejection;
+5. nonterminal message cannot manufacture terminal outcome even when local policy is wrong;
+6. terminal disposition/classification must agree independently of scenario policy;
+7. send path refuses a successor rejected by local transition authority;
+8. duplicate/stale-message rejection;
+9. delayed/suspended participant replay tolerance;
+10. distinct installation identity and role binding;
+11. run/scenario mismatch fail-closed behavior;
+12. Drive validation-control isolation from the managed vault namespace.
 
-`node --test dist/test/validation-cross-device-coordinator.test.js`
+Focused VH12 module result as recorded in the exact-tree TAP: **12/12 PASS**.
 
-Result: **PASS — 6 tests, 6 passed, 0 failed**.
+## Full verification
 
-This supplemental run is not used as a substitute for repository compilation or the full repository suite. The authoritative repository workflow below compiled and executed the exact implementation tree, including the committed VH12 test module.
+Temporary draft PR #118 was opened solely to invoke the repository's existing `Phase 6 Alpha Diagnostic Verification` workflow and was closed unmerged after verification.
 
-## Repository verification
+Authoritative exact-tree workflow:
 
-A temporary draft PR #116 was opened only to invoke the repository's existing `Phase 6 Alpha Diagnostic Verification` workflow against exact implementation head `5ca31798363cbc8c8c9bb3ce2f76e74c8652df10`. It was closed after verification and was not merged or promoted.
+- Workflow run: `35106274729`
+- Job: `104828189173`
+- Head SHA: `63fdc19ff9ba5eefb21ade671e12ce4b9843f2e1`
+- Head tree: `d75813bb4b269f9d419ae701bc5b7741e0be0bb0`
+- Synthetic PR merge commit: `d946db7a8e413f2dbab766d70b41d3f729ab00f3`
+- Synthetic PR merge tree: `d75813bb4b269f9d419ae701bc5b7741e0be0bb0`
+- Tree identity: **EXACT MATCH**
+- Overall Phase 6 verification result: **SUCCESS**
 
-Authoritative workflow:
-
-- Run: `35053450417`
-- Job: `104658560275`
-- Head SHA: `5ca31798363cbc8c8c9bb3ce2f76e74c8652df10`
-- Head tree: `c7db00e708a8b3a93887c6aadbd33ad914624900`
-- Overall result: **SUCCESS**
-
-Recorded command gates:
+Recorded gates:
 
 - `npm ci`: **PASS**
 - `npm run typecheck`: **PASS**
-- `npx tsc -p tsconfig.test.json`: **PASS**
-- `npm test`: **PASS**
-- existing focused regression steps: **PASS**
+- test TypeScript compile (`npx tsc -p tsconfig.test.json`): **PASS**
+- complete automated suite (`npm test`): **PASS — 858 tests, 858 passed, 0 failed**
+- existing focused repository regression steps: **PASS**
 - `npm run build`: **PASS**
-- `npm run check`: **PASS**
+- `npm run check`: **PASS — 858 tests passed; build verification passed**
 - `git diff --check`: **PASS**
-- artifact identity/upload step: **PASS**
+- build/package verification: **PASS**
+
+Build artifact identity recorded by CI:
+
+- `main.js` size: `872862` bytes
+- `main.js` SHA-256: `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`
 
 Verification artifact:
 
-- Artifact ID: `10429128771`
+- Artifact ID: `10450312936`
 - Artifact name: `phase6-oauth-housekeeping-verification`
-- Artifact digest: `sha256:988e74ec4099885a529df6fe67bafe13973255d80417149b8d0a12a2bac30606`
-
-## Scope verification
-
-Direct comparison from base SHA `74c6af589b2e0054f389ae6878339d1272edc47c` to implementation SHA `5ca31798363cbc8c8c9bb3ce2f76e74c8652df10` reports:
-
-- status: ahead;
-- ahead by: 3 commits;
-- behind by: 0;
-- changed files: exactly the three VH12 files listed above.
-
-No merge, promotion, release, deployment remediation, or live validation was performed.
+- Artifact digest: `sha256:6b7fc08a646e0d983f00c4f4d51484b91172d063e533156bedb4f110b9e0683e`
 
 ## Deviations / environment notes
 
-- The local execution container could not resolve `github.com`, so a literal local `git fetch origin --prune`/checkout was unavailable. The exact predecessor head and evidence gate were resolved through the authenticated GitHub repository connection, and authoritative repository commands ran in GitHub Actions against the exact implementation SHA/tree.
-- The supplemental focused run used the exact VH12 source/test files with minimal local stubs for the frozen H0/runtime imports because a full local repository checkout was unavailable. Exact repository typecheck/test/build authority is the successful GitHub Actions run above.
-- Opening draft PR #116 also auto-triggered the repository's unrelated pre-existing `Azure Static Web Apps CI/CD` workflow as run `35053450383`; that deployment workflow failed. It is outside VH12 acceptance and no deployment remediation was attempted. The required Phase 6 verification workflow succeeded.
-- Drive transport behavior was not exercised against live Google Drive because the task explicitly stops before live validation. The transport boundary and isolation rules are covered by focused tests and full repository verification.
+- The local execution container still cannot resolve `github.com`, so literal local clone/fetch was unavailable. Repository authority and exact-tree execution were supplied through the authenticated GitHub connection and GitHub Actions.
+- The exact VH12 focused results above are extracted from the authoritative full-test TAP produced from the corrected exact tree; the repository workflow does not contain a separate VH12-only command step.
+- Opening PR #118 also triggered the unrelated pre-existing `Azure Static Web Apps CI/CD` workflow (`35106274821`), which failed. That deployment workflow is outside VH12 acceptance; no deployment remediation was attempted.
+- No live Google Drive validation was performed because this repair stops before live validation and preserves the existing Drive transport boundary.
 
 ## Blockers
 
 None.
 
-VH12 is complete and stopped without merge, promotion, release, or live validation.
+VH12 transition-authority repair is complete. Stop for supervisor re-review; do not begin VH13.
