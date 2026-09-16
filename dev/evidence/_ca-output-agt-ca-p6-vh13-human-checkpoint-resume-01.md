@@ -35,8 +35,8 @@ VH13 does not implement VH14 scenario-runner orchestration.
 
 The correction commit from prior blocked evidence HEAD `acbd522ed4d3de886d66b82d3b2ea42c013066a6` to corrected implementation SHA `3d7bf307abd2c767ad79d8df3a20579e7ae9de6c` changed exactly:
 
-- `src/validation/human-checkpoint-resume-controller.ts` — 24 additions, 5 deletions
-- `test/validation-human-checkpoint-resume.test.ts` — 189 additions, 29 deletions
+- `src/validation/human-checkpoint-resume-controller.ts` — 28 additions, 1 deletion
+- `test/validation-human-checkpoint-resume.test.ts` — 191 additions, 27 deletions
 
 No `src/contracts/**`, frozen H0 checkpoint/coordination contract, production planner/executor/runtime/scheduler, or other production synchronization file changed in the correction commit.
 
