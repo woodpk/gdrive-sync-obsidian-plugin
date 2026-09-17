@@ -37,7 +37,7 @@
     }
   },
   "cloudSupervisorReconciliation": {
-    "status": "VERIFIED_I_INTEGRATED_PENDING_FINAL_CLOSURE",
+    "status": "VERIFIED_FINAL_ACCEPTANCE",
     "recoveryBranch": "phase6-vh14-supervisor-recovery",
     "recoveryStartSha": "81da7966016cea3f7e46960af1416fc9f3c45ced",
     "packageABase": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
@@ -50,7 +50,13 @@
       "I": "82d3b2cad003498b152daead276d73976034bd73"
     },
     "packageISupervisorIntegrationSha": "947dd327b53d1ce94f375272311d2c8885e1a270",
-    "result": "Package I independently reviewed, approved, and merged into the supervisor-recovery line; final VH14 supervisor acceptance closure onto the required control branch remains pending."
+    "controlBranch": "phase6-vh14-module-integration-runner",
+    "controlIntegrationSha": "9b36bf5ce14b40cb8a2b64e05e10aff8204d90ad",
+    "controlIntegrationTree": "268e7f4e00066cc9035f874064cccfed701a9bae",
+    "finalImplementationSha": "cfcb95496f49f7a837650a397454b9adc126ecd3",
+    "finalImplementationTree": "85a971c27568d82f5b0ffef3fff27e3efaf5d14d",
+    "canonicalEvidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md",
+    "result": "All supervisory technical acceptance gates passed and the recovery line is integrated on the required control branch; the canonical evidence-only closure commit is authorized as the sole remaining VH14 action."
   },
   "packages": {
     "A": {
@@ -113,7 +119,7 @@
       "acceptedTree": "8b45e01e404ebdb63f3327bae9c5a3121da2d60e",
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md",
       "latestCheckpointSha": "f4db2d7e1c9ff1e668338054ce36de245997372b",
-      "reconciliation": "Evidence COMPLETE; A is exact ancestor; delta limited to E-owned canary/support/evidence; final real-runner 11-case canary remains explicitly reserved for I."
+      "reconciliation": "Evidence COMPLETE; A is exact ancestor; delta limited to E-owned canary/support/evidence; final real-runner 11-case canary remained reserved for I and subsequently passed there."
     },
     "I": {
       "status": "COMPLETE",
@@ -145,7 +151,8 @@
         "exactTreeMatch": true
       },
       "supervisorIntegrationSha": "947dd327b53d1ce94f375272311d2c8885e1a270",
-      "reconciliation": "Evidence COMPLETE; independent supervisor review APPROVED; B/C/D/E integrated in required order without conflicts; E canary 11/11 passed against the real integrated runner; full test/typecheck/test-compile/build/check/diff/frozen-surface/hygiene gates passed; exact implementation tree matched the cited CI synthetic merge tree; accepted final head merged into supervisor recovery."
+      "controlIntegrationSha": "9b36bf5ce14b40cb8a2b64e05e10aff8204d90ad",
+      "reconciliation": "Evidence COMPLETE; independent supervisor review APPROVED; B/C/D/E integrated in required order without conflicts; E canary 11/11 passed against the real integrated runner; full test/typecheck/test-compile/build/check/diff/frozen-surface/hygiene gates passed; exact implementation tree matched the cited CI synthetic merge tree; accepted final head was integrated through supervisor recovery and then merged onto the required control branch."
     }
   }
 }
