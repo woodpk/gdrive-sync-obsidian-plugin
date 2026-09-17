@@ -8,3 +8,4 @@ export * from "./state-convergence-verifier";
 export * from "./scenario-evidence-recorder";
 export * from "./transport-coverage-faults";
 export * from "./state-ambiguity-cancel-fault-hooks";
+export * from "./cross-device-coordinator";
