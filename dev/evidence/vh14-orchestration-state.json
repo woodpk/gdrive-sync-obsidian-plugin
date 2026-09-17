@@ -38,14 +38,14 @@
   },
   "packages": {
     "A": {
-      "status": "RUNNING",
+      "status": "COMPLETE",
       "branch": "phase6-vh14-a-integration-substrate",
       "recoveryBranch": "phase6-vh14-a-integration-substrate-r1",
       "baseSha": "d50e7ad5ed77d2f8f45534528cc8d7630465f6af",
-      "acceptedHeadSha": null,
+      "acceptedHeadSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md",
-      "latestCheckpointSha": "36cc7e4e80852602928b6146fcb33031306be39a",
-      "latestCheckpointTree": "713c5bdc2916b245a7fa1260f74a4632d8d50233",
+      "latestCheckpointSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
+      "latestCheckpointTree": "e3115dbf13f57f0f3117ace23a233cc765ff7f8e",
       "resolvedBlockers": [
         "Accepted src/validation/index.ts omits approved VH05 fixture-manager and VH13 human-checkpoint-resume-controller exports.",
         "Tasking-listed VH04 merge 7ae491c5083e463633c6ba5adb81db9024530a1a is not resolvable; accepted first-parent history contains d64139984629bc2a5889f83fc1e0311ec2567733."
@@ -53,30 +53,30 @@
       "supervisorRepairSha": "d50e7ad5ed77d2f8f45534528cc8d7630465f6af"
     },
     "B": {
-      "status": "BLOCKED_ON_A",
+      "status": "RUNNING",
       "branch": "phase6-vh14-b-runner-core",
-      "baseSha": null,
+      "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md"
     },
     "C": {
-      "status": "BLOCKED_ON_A",
+      "status": "RUNNING",
       "branch": "phase6-vh14-c-durable-resume",
-      "baseSha": null,
+      "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md"
     },
     "D": {
-      "status": "BLOCKED_ON_A",
+      "status": "RUNNING",
       "branch": "phase6-vh14-d-module-orchestration",
-      "baseSha": null,
+      "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md"
     },
     "E": {
-      "status": "BLOCKED_ON_A",
+      "status": "READY_QUEUED",
       "branch": "phase6-vh14-e-canary-regressions",
-      "baseSha": null,
+      "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md"
     },
