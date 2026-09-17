@@ -38,17 +38,21 @@ Frozen VH03 / H0 base:
 
 `74c6af589b2e0054f389ae6878339d1272edc47c`
 
-### 2.2 Last accepted VH14 implementation checkpoint before this orchestration refactor
+### 2.2 Last accepted VH14 integration checkpoint before this orchestration refactor
 
-`LAST_ACCEPTED_INTEGRATION_SHA = 58f0c851c7fecb0214280ff98dd967324053c224`
+`LAST_ACCEPTED_INTEGRATION_SHA = 692517b6aedd676a9903eae6fe970d861ff0dad9`
 
-That checkpoint already contains:
+That checkpoint already contains the approved VH04–VH13 module integrations. Preserve it intact.
+
+Known earlier VH14 merge checkpoints include:
 
 - VH04 integration merge: `7ae491c5083e463633c6ba5adb81db9024530a1a`
 - VH05 integration merge: `2e55c57352d9043b46669ad0d7897df1596152af`
 - VH06 integration merge: `58f0c851c7fecb0214280ff98dd967324053c224`
 
-The VH06 integration resolved only the central `src/validation/index.ts` conflict and preserved the required VH04 and VH06 exports. Retain that work. Do not restart VH14 from VH03 and do not redo VH04–VH06.
+VH07–VH13 were subsequently integrated, culminating in `692517b6aedd676a9903eae6fe970d861ff0dad9`, whose commit integrates the approved VH13 human-checkpoint/resume controller. The supervisor must reconstruct and record the existing VH07–VH13 integration merge commits from Git history, but MUST NOT redo those integrations.
+
+Do not restart VH14 from VH03, do not replay VH04–VH13, and do not discard the accepted integrated substrate.
 
 ### 2.3 Approved remaining source heads
 
@@ -79,11 +83,11 @@ At supervisor start:
 
 1. `git fetch origin --prune`;
 2. resolve `origin/phase6-vh14-module-integration-runner`;
-3. verify `58f0c851c7fecb0214280ff98dd967324053c224` is an ancestor;
-4. compare `58f0c851c7fecb0214280ff98dd967324053c224..origin/phase6-vh14-module-integration-runner`;
+3. verify `692517b6aedd676a9903eae6fe970d861ff0dad9` is an ancestor;
+4. compare `692517b6aedd676a9903eae6fe970d861ff0dad9..origin/phase6-vh14-module-integration-runner`;
 5. before orchestration bootstrap, permit only this tasking file to differ from the last accepted integration checkpoint.
 
-If any product source, test, contract, evidence, or other repository file changed above `58f0c851...` before the supervisor bootstrap described below, hard-stop and report drift.
+If any product source, test, contract, evidence, or other repository file changed above `692517b6...` before the supervisor bootstrap described below, hard-stop and report drift.
 
 Record the verified branch head as:
 
@@ -232,7 +236,7 @@ Minimum structure:
 {
   "schema": "vh14-codex-orchestration-v1",
   "orchestrationRootSha": "<sha>",
-  "lastAcceptedIntegrationSha": "58f0c851c7fecb0214280ff98dd967324053c224",
+  "lastAcceptedIntegrationSha": "692517b6aedd676a9903eae6fe970d861ff0dad9",
   "supervisorBootstrapSha": "<sha>",
   "packages": {
     "A": {
@@ -371,7 +375,7 @@ I may not begin until B, C, D, and E each have a pushed final work-package head 
 
 | Package | Agent | Branch | Primary ownership |
 |---|---|---|---|
-| A | `agt-ca-p6-vh14a-integration-substrate-01` | `phase6-vh14-a-integration-substrate` | remaining VH07–VH13 merges, integration conflicts, internal H6A runner contracts |
+| A | `agt-ca-p6-vh14a-integration-substrate-01` | `phase6-vh14-a-integration-substrate` | integrated-substrate provenance verification, internal H6A runner contracts |
 | B | `agt-ca-p6-vh14b-runner-core-01` | `phase6-vh14-b-runner-core` | pure runner state machine/lifecycle |
 | C | `agt-ca-p6-vh14c-durable-resume-01` | `phase6-vh14-c-durable-resume` | durable runner state, restart reconstruction, VH13 adoption integration |
 | D | `agt-ca-p6-vh14d-module-orchestration-01` | `phase6-vh14-d-module-orchestration` | adapter/delegation to VH04–VH13 modules |
@@ -382,7 +386,7 @@ Parallel agents MUST NOT edit files owned by another package.
 
 ---
 
-## 9. Package A — Remaining Integration + Frozen H6A Internal Contracts
+## 9. Package A — Integrated-Substrate Verification + Frozen H6A Internal Contracts
 
 ### 9.1 Exact base
 
@@ -390,35 +394,21 @@ Branch/worktree from exactly:
 
 `SUPERVISOR_BOOTSTRAP_SHA`
 
-### 9.2 Integrate approved remaining heads
+### 9.2 Verify the accepted VH04–VH13 integrated substrate
 
-Merge in this exact order:
+Package A does NOT re-merge VH04–VH13.
 
-1. VH07 `bd73a0ce713d0993cf60b6fe6c5457f3dd5e9be8`
-2. VH08 `a119a741db2eb5f1c0f613490a94f6fb39f21e77`
-3. VH09 `733ed17eb3307bfdfd65a2c9032aff1c18f48b74`
-4. VH10 `f2e8be3228e84b89da0f18a448b0a1d73b810a2e`
-5. VH11 `130fefa991e330fdaa9a3838f473183f6256d8ba`
-6. VH12 `8f6754239f41055d1862274490e2cc3812dba775`
-7. VH13 `a27a3e94436f239cd1a84a30dfe316114678d7db`
+Before adding H6A contracts, verify that `LAST_ACCEPTED_INTEGRATION_SHA` is preserved in the Package A ancestry and that each approved VH07–VH13 source commit listed in §2.3 is already an ancestor of the accepted integrated substrate.
 
-Preserve histories; do not squash approved input work.
+Also verify that the integrated `src/validation/index.ts` exposes the approved VH04–VH13 validation modules without changing frozen H0 semantics.
 
-After EACH merge:
+If any approved source head is absent from the accepted integration history, or if the integrated substrate contains a substantive unresolved conflict, stop `STATUS: BLOCKED`. Do not repair by replaying all predecessor work.
 
-- resolve only actual integration conflicts;
-- preserve all required validation barrel exports;
-- confirm no unmerged paths;
-- `git diff --check`;
-- commit the merge;
-- push Package A branch;
-- record the merge checkpoint in Package A evidence.
-
-This per-merge checkpointing is mandatory for interruption safety.
+Record the existing integration merge SHAs for VH04–VH13 from Git history in Package A evidence.
 
 ### 9.3 Frozen internal runner contract seam
 
-After all remaining modules are integrated, add:
+Add:
 
 `src/validation/scenario-runner-contracts.ts`
 
@@ -444,17 +434,27 @@ Do not implement runner behavior in this contract file.
 
 ### 9.4 Package A owned files
 
-A may change:
+A may change only:
 
-- files produced by the exact approved VH07–VH13 merges;
-- `src/validation/index.ts` only for merge-conflict/export preservation;
 - `src/validation/scenario-runner-contracts.ts`;
 - `test/validation-scenario-runner-contracts.test.ts`;
 - its own evidence file.
 
-Do not edit implementation files belonging to approved VH04–VH13 modules except where a true merge conflict requires an integration-only resolution. If substantive semantic incompatibility appears, stop `STATUS: BLOCKED`.
+A MUST NOT edit already-integrated VH04–VH13 implementation/test/evidence files or `src/validation/index.ts`.
 
-### 9.5 Package A acceptance
+If the accepted integrated substrate itself requires semantic repair, stop `STATUS: BLOCKED` and route the defect to supervisor review rather than folding an unreviewed predecessor repair into A.
+
+### 9.5 Required A checkpoints
+
+At minimum:
+
+1. substrate/provenance verification receipt;
+2. compile-clean H6A internal contract seam;
+3. focused contract tests + final evidence.
+
+Push after each checkpoint commit.
+
+### 9.6 Package A acceptance
 
 Run at minimum:
 
@@ -471,7 +471,7 @@ beginning exactly:
 
 `STATUS: COMPLETE`
 
-Record all seven source heads, all merge SHAs, conflicts, contract files, commands/results, final A head/tree, and blockers.
+Record the accepted integrated substrate SHA, proof that all approved VH04–VH13 inputs are already integrated, reconstructed predecessor merge SHAs, contract files, commands/results, final A head/tree, and blockers.
 
 ---
 
@@ -892,8 +892,7 @@ Record at minimum:
 - `ORCHESTRATION_ROOT_SHA`;
 - `SUPERVISOR_BOOTSTRAP_SHA`;
 - approved VH04–VH13 source heads;
-- all preexisting VH04–VH06 VH14 merge commits;
-- all Package A VH07–VH13 merge commits;
+- all preexisting VH04–VH13 VH14 integration merge commits reconstructed from Git history;
 - A/B/C/D/E/I final branch heads and trees;
 - all Package I integration commits;
 - all conflicts/resolutions;
@@ -921,7 +920,7 @@ When Codex Desktop resumes after credit exhaustion, app termination, or supervis
 1. read this complete tasking file;
 2. fetch/prune origin;
 3. locate the required control branch;
-4. verify `LAST_ACCEPTED_INTEGRATION_SHA` ancestry;
+4. verify `LAST_ACCEPTED_INTEGRATION_SHA` ancestry and preserve the already-integrated VH04–VH13 substrate;
 5. inspect/reconcile `vh14-orchestration-state.json`;
 6. enumerate all A/B/C/D/E/I remote branches;
 7. read all existing package evidence files;
@@ -966,7 +965,7 @@ When canonical VH14 evidence is complete, return to the human supervisor with on
 - final implementation tree;
 - canonical evidence/final branch HEAD;
 - A/B/C/D/E/I final heads;
-- VH07–VH13 Package A merge SHAs;
+- reconstructed pre-refactor VH04–VH13 integration merge SHAs;
 - B–E Package I integration SHAs;
 - merge/conflict summary;
 - exact final changed-file list;
