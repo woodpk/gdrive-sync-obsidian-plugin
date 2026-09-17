@@ -1,22 +1,49 @@
 import {
   VALIDATION_RUNNER_STATE_SCHEMA_VERSION,
+  type ValidationRunnerDurableStatePort,
   type ValidationRunnerExecutionIdentity,
   type ValidationRunnerPersistentState,
+  type ValidationRunnerResumeAdoptionInput,
   type ValidationRunnerStateStore,
 } from "./scenario-runner-contracts";
 import {
   humanCheckpoint,
+  humanCheckpointId,
   isHumanCheckpointAction,
   isValidationScenarioId,
   validationRunIdentity,
   validationScenarioId,
   validationStepId,
   type HumanCheckpoint,
+  type HumanCheckpointId,
   type HumanCheckpointResume,
   type ValidationRunIdentity,
   type ValidationScenarioLifecycle,
   type ValidationStepId,
 } from "./run-sandbox-checkpoint-contracts";
+
+export const VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION = 1 as const;
+
+export interface ValidationRunnerResumeAdoptionRecord {
+  readonly run: ValidationRunIdentity;
+  readonly checkpointId: HumanCheckpointId;
+  readonly resumeStepId: ValidationStepId;
+}
+
+export interface ValidationRunnerResumeAdoptionJournal {
+  readonly schemaVersion: typeof VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION;
+  readonly revision: number;
+  readonly entries: readonly ValidationRunnerResumeAdoptionRecord[];
+}
+
+/** Physical durability for the append-only, exact VH13 adoption identities. */
+export interface ValidationRunnerResumeAdoptionStore {
+  load(): Promise<unknown>;
+  compareAndSet(
+    expectedRevision: number | null,
+    next: ValidationRunnerResumeAdoptionJournal,
+  ): Promise<boolean>;
+}
 
 export type ValidationRunnerPersistedStateFailure =
   | "persisted-state-invalid"
@@ -63,6 +90,15 @@ function nonBlankString(value: unknown, label: string): string {
 
 function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
   return left.runId === right.runId && left.scenarioId === right.scenarioId;
+}
+
+function sameAdoption(
+  left: ValidationRunnerResumeAdoptionRecord,
+  right: ValidationRunnerResumeAdoptionInput,
+): boolean {
+  return sameRun(left.run, right.run)
+    && left.checkpointId === right.checkpointId
+    && left.resumeStepId === right.resumeStepId;
 }
 
 function hydrateRun(value: unknown): ValidationRunIdentity {
@@ -142,7 +178,9 @@ function hydrateLifecycle(value: unknown): ValidationScenarioLifecycle {
 function hydrateExecution(value: unknown, run: ValidationRunIdentity): ValidationRunnerExecutionIdentity {
   if (!isRecord(value)) invalid("Persisted runner execution identity is missing.");
   if (value.kind === "single") {
-    const scenarioId = validationScenarioId(nonBlankString(value.scenarioId, "Single scenario ID"));
+    const rawScenarioId = nonBlankString(value.scenarioId, "Single scenario ID");
+    if (!isValidationScenarioId(rawScenarioId)) invalid("Single execution scenario is unsupported.");
+    const scenarioId = rawScenarioId;
     if (scenarioId !== run.scenarioId) mismatch("Single execution scenario does not match the run scenario.");
     return Object.freeze({ kind: "single", scenarioId });
   }
@@ -224,7 +262,9 @@ export function reconstructValidationRunnerState(
   let currentStep: ValidationRunnerPersistentState["currentStep"] = null;
   if (raw.currentStep !== null) {
     if (!isRecord(raw.currentStep)) invalid("Persisted current-step identity is invalid.");
-    const scenarioId = validationScenarioId(nonBlankString(raw.currentStep.scenarioId, "Current-step scenario ID"));
+    const rawScenarioId = nonBlankString(raw.currentStep.scenarioId, "Current-step scenario ID");
+    if (!isValidationScenarioId(rawScenarioId)) invalid("Current-step scenario is unsupported.");
+    const scenarioId = rawScenarioId;
     const stepId = hydrateStepId(raw.currentStep.stepId, "Current step ID");
     if (!Number.isSafeInteger(raw.currentStep.stepIndex) || (raw.currentStep.stepIndex as number) < 0) {
       invalid("Persisted current-step index is invalid.");
@@ -234,6 +274,9 @@ export function reconstructValidationRunnerState(
   }
   if ((lifecycle.kind === "running" || lifecycle.kind === "paused-human-action" || lifecycle.kind === "resumable") && currentStep === null) {
     mismatch(`Lifecycle ${lifecycle.kind} requires a current step.`);
+  }
+  if (lifecycle.kind === "pending" && currentStep !== null) {
+    mismatch("Pending lifecycle cannot claim a current step.");
   }
   if (lifecycle.kind === "running" && currentStep?.stepId !== lifecycle.stepId) {
     mismatch("Running lifecycle step does not match the current step.");
@@ -250,6 +293,13 @@ export function reconstructValidationRunnerState(
     invalid("Persisted runner proof state is invalid.");
   }
 
+  const completedScenarioIds = hydrateScenarioList(raw.completedScenarioIds);
+  const permittedScenarioIds = execution.kind === "single"
+    ? new Set([execution.scenarioId])
+    : new Set(execution.scenarioIds);
+  if (completedScenarioIds.some(scenarioId => !permittedScenarioIds.has(scenarioId))) {
+    mismatch("Completed scenario identity is outside the durable execution.");
+  }
   const state: ValidationRunnerPersistentState = Object.freeze({
     schemaVersion: VALIDATION_RUNNER_STATE_SCHEMA_VERSION,
     revision: raw.revision,
@@ -258,7 +308,7 @@ export function reconstructValidationRunnerState(
     lifecycle,
     currentStep,
     completedStepIds: hydrateStepList(raw.completedStepIds, "Completed step IDs"),
-    completedScenarioIds: hydrateScenarioList(raw.completedScenarioIds),
+    completedScenarioIds,
     proofs: Object.freeze({
       verificationPassed: raw.proofs.verificationPassed,
       evidenceRecorded: raw.proofs.evidenceRecorded,
@@ -272,12 +322,60 @@ export function reconstructValidationRunnerState(
   return state;
 }
 
+function hydrateAdoption(value: unknown): ValidationRunnerResumeAdoptionRecord {
+  if (!isRecord(value)) invalid("Persisted resume adoption must be an object.");
+  try {
+    return Object.freeze({
+      run: hydrateRun(value.run),
+      checkpointId: humanCheckpointId(nonBlankString(value.checkpointId, "Adoption checkpoint ID")),
+      resumeStepId: hydrateStepId(value.resumeStepId, "Adoption resume step ID"),
+    });
+  } catch (error) {
+    if (error instanceof ValidationRunnerPersistedStateError) throw error;
+    invalid(error instanceof Error ? error.message : "Persisted resume adoption is invalid.");
+  }
+}
+
+function adoptionKey(value: ValidationRunnerResumeAdoptionRecord): string {
+  return JSON.stringify([
+    value.run.runId,
+    value.run.scenarioId,
+    value.checkpointId,
+    value.resumeStepId,
+  ]);
+}
+
+/** Reconstruct and validate the append-only exact-tuple adoption journal. */
+export function reconstructValidationRunnerResumeAdoptions(
+  raw: unknown,
+): ValidationRunnerResumeAdoptionJournal | null {
+  if (raw === null || raw === undefined) return null;
+  if (!isRecord(raw)) invalid("Persisted resume-adoption journal must be an object.");
+  if (raw.schemaVersion !== VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION) {
+    invalid("Persisted resume-adoption journal schema version is unsupported.");
+  }
+  if (!isSafeRevision(raw.revision)) invalid("Persisted resume-adoption journal revision is invalid.");
+  if (!Array.isArray(raw.entries)) invalid("Persisted resume-adoption entries must be an array.");
+  const entries = raw.entries.map(hydrateAdoption);
+  if (new Set(entries.map(adoptionKey)).size !== entries.length) {
+    invalid("Persisted resume-adoption journal contains duplicate exact tuples.");
+  }
+  return Object.freeze({
+    schemaVersion: VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION,
+    revision: raw.revision,
+    entries: Object.freeze(entries),
+  });
+}
+
 /**
  * Validating revision-CAS adapter. The backing store owns physical durability;
  * this class prevents malformed or identity-changing records reaching it.
  */
-export class ValidationRunnerDurableStateController implements ValidationRunnerStateStore {
-  constructor(private readonly store: ValidationRunnerStateStore) {}
+export class ValidationRunnerDurableStateController implements ValidationRunnerDurableStatePort {
+  constructor(
+    private readonly store: ValidationRunnerStateStore,
+    private readonly adoptionStore: ValidationRunnerResumeAdoptionStore,
+  ) {}
 
   async load(): Promise<ValidationRunnerPersistentState | null> {
     return reconstructValidationRunnerState(await this.store.load());
@@ -287,6 +385,10 @@ export class ValidationRunnerDurableStateController implements ValidationRunnerS
     expected: ValidationRunnerReconstructionExpectation = {},
   ): Promise<ValidationRunnerPersistentState | null> {
     return reconstructValidationRunnerState(await this.store.load(), expected);
+  }
+
+  async reconstructResumeAdoptions(): Promise<ValidationRunnerResumeAdoptionJournal | null> {
+    return reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
   }
 
   async compareAndSet(
@@ -325,5 +427,51 @@ export class ValidationRunnerDurableStateController implements ValidationRunnerS
       }
     }
     return this.store.compareAndSet(expectedRevision, validatedNext);
+  }
+
+  /**
+   * Adopt exactly the verified VH13 tuple before VH13 attempts checkpoint
+   * cleanup. The append-only journal makes an identical retry a durable no-op.
+   */
+  async commitResume(input: ValidationRunnerResumeAdoptionInput): Promise<void> {
+    const requested = hydrateAdoption(input);
+    const journal = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
+    const state = reconstructValidationRunnerState(await this.store.load());
+    if (state === null) mismatch("Resume adoption requires an active durable runner state.");
+    if (!sameRun(state.run, requested.run)) mismatch("Resume adoption run does not match the durable runner run.");
+    const alreadyAdopted = journal?.entries.some(entry => sameAdoption(entry, requested)) ?? false;
+    if (alreadyAdopted) {
+      if (state.lifecycle.kind === "resumable") {
+        if (state.lifecycle.resume.checkpoint.checkpointId !== requested.checkpointId
+          || state.lifecycle.resume.resumeStepId !== requested.resumeStepId) {
+          mismatch("Previously adopted tuple does not match the durable resumable state.");
+        }
+        return;
+      }
+      if (state.lifecycle.kind === "running" && state.currentStep?.stepId === requested.resumeStepId) return;
+      mismatch("Previously adopted tuple does not match the reconstructed runner position.");
+    }
+    if (state.lifecycle.kind !== "resumable") {
+      mismatch("Resume adoption requires a durably resumable runner lifecycle.");
+    }
+    if (state.lifecycle.resume.checkpoint.checkpointId !== requested.checkpointId) {
+      mismatch("Resume adoption checkpoint does not match the durable runner checkpoint.");
+    }
+    if (state.lifecycle.resume.resumeStepId !== requested.resumeStepId) {
+      mismatch("Resume adoption step does not match the durable runner resume step.");
+    }
+
+    const expectedRevision = journal?.revision ?? null;
+    const next: ValidationRunnerResumeAdoptionJournal = Object.freeze({
+      schemaVersion: VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION,
+      revision: expectedRevision === null ? 1 : expectedRevision + 1,
+      entries: Object.freeze([...(journal?.entries ?? []), requested]),
+    });
+    if (await this.adoptionStore.compareAndSet(expectedRevision, next)) return;
+
+    // A racing identical adopter is success; every other race fails closed.
+    const afterRace = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
+    if (afterRace?.entries.some(existing => sameAdoption(existing, requested))) return;
+    mismatch("Resume-adoption journal changed before the exact tuple was durably committed.");
   }
 }
