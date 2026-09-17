@@ -63,12 +63,14 @@
       "recoveryReason": "Agent credit interruption after clean pushed implementation/test checkpoint; evidence closure not yet created."
     },
     "C": {
-      "status": "COMPLETE",
+      "status": "RUNNING",
       "branch": "phase6-vh14-c-durable-resume",
       "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
-      "acceptedHeadSha": "a28e6ae0a6fb922ddd40aaa0fff355cc6e70137d",
+      "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md",
-      "acceptedTree": "ebaac87e1db038fc3fd91ec491f7a0c5344a9390"
+      "latestCheckpointSha": "a28e6ae0a6fb922ddd40aaa0fff355cc6e70137d",
+      "latestCheckpointTree": "ebaac87e1db038fc3fd91ec491f7a0c5344a9390",
+      "recoveryReason": "Supervisor integration audit reopened C: pending cursor overvalidation and non-atomic durable resume-step adoption before VH13 cleanup."
     },
     "D": {
       "status": "COMPLETE",
