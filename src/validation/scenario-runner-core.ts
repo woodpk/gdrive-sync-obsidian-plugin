@@ -319,6 +319,9 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       this.dependencies.state,
     );
     if (consumed.status === "resumed") {
+      if (consumed.checkpointId !== request.checkpointId) {
+        return this.blocked(state, "resume-rejected", "VH13 resumed a different checkpoint.");
+      }
       const stepIndex = definition?.steps.findIndex(step => step.stepId === consumed.resumeStepId) ?? -1;
       const step = definition?.steps[stepIndex];
       if (!definition || !step || stepIndex < 0) {
@@ -347,6 +350,12 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       return { status: "RUNNING", state: adopted };
     }
     if (consumed.status === "resumable") {
+      if (
+        consumed.state.checkpoint.checkpointId !== request.checkpointId ||
+        !sameRun(consumed.state.checkpoint.run, state.run)
+      ) {
+        return this.blocked(state, "resume-rejected", "VH13 returned a different resumable checkpoint or run.");
+      }
       if (!consumed.state.acknowledgedAt || !consumed.state.verifiedAt) {
         return await this.stop(state, "BLOCKED", reason(
           "resume-rejected",
@@ -392,6 +401,16 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
         durable.currentStep !== null &&
         durable.revision > state.revision
       ) {
+        const durableStep = definition.steps[durable.currentStep.stepIndex];
+        if (
+          !sameRun(durable.run, state.run) ||
+          durable.currentStep.scenarioId !== definition.scenarioId ||
+          durableStep?.stepId !== durable.currentStep.stepId ||
+          durable.lifecycle.stepId !== durable.currentStep.stepId
+        ) {
+          return this.blocked(durable, "invalid-definition",
+            "Durable adoption advanced to a cursor outside the immutable definition.");
+        }
         try {
           await this.dependencies.state.commitResume({
             run: durable.run,

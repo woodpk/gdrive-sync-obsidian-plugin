@@ -581,6 +581,27 @@ test("VH14-B represents RESUMABLE and rejects stale transitions without module w
   assert.equal(resumable.state.lifecycle.kind, "resumable");
 });
 
+test("VH14-B rejects RUNNING cleanup retry without exact durable C adoption proof", async () => {
+  const state = new MemoryState();
+  const run = validationRunIdentity("unproven-cleanup-retry", "C03");
+  const definition = scenario();
+  let humanCalls = 0;
+  const runner = runnerWith(state, completingModules(), async () => {
+    humanCalls += 1;
+    return { status: "empty" };
+  });
+  const started = await runner.startScenario({ run, definition });
+  const result = await runner.resume({
+    run,
+    checkpointId: humanCheckpointId("missing-adoption"),
+    currentDevice: validationDeviceIdentity("iphone-a", "iphone"),
+    expectedRevision: started.state.revision,
+  });
+  assert.equal(result.status, "BLOCKED");
+  if (result.status === "BLOCKED") assert.equal(result.reason.kind, "resume-rejected");
+  assert.equal(humanCalls, 0, "checkpoint cleanup must not run before C proves the exact adoption tuple");
+});
+
 test("VH14-B fails closed when lifecycle persistence loses its CAS race", async () => {
   const state = new MemoryState();
   const runner = runnerWith(state, completingModules());
