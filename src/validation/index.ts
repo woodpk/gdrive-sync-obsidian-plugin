@@ -6,3 +6,4 @@ export * from "./production-path-driver";
 export * from "./plan-assertion-engine";
 export * from "./state-convergence-verifier";
 export * from "./scenario-evidence-recorder";
+export * from "./transport-coverage-faults";
