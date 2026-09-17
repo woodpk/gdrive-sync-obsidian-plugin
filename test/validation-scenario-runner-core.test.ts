@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createValidationScenarioRunnerCore,
+  type ValidationScenarioRunnerCoreOptions,
 } from "../src/validation/scenario-runner-core";
 import {
   VALIDATION_RUNNER_SCENARIO_IDS,
@@ -47,6 +48,25 @@ class MemoryState implements ValidationRunnerDurableStatePort {
 
   async commitResume(input: ValidationRunnerResumeAdoptionInput): Promise<void> {
     this.adoptions.push(structuredClone(input));
+    const current = this.value;
+    if (
+      current === null ||
+      current.lifecycle.kind !== "resumable" ||
+      current.run.runId !== input.run.runId ||
+      current.run.scenarioId !== input.run.scenarioId ||
+      current.lifecycle.resume.checkpoint.checkpointId !== input.checkpointId ||
+      current.lifecycle.resume.resumeStepId !== input.resumeStepId
+    ) throw new Error("Resume adoption tuple mismatch.");
+    this.value = structuredClone({
+      ...current,
+      revision: current.revision + 1,
+      lifecycle: { kind: "running", stepId: input.resumeStepId },
+      currentStep: {
+        scenarioId: current.run.scenarioId,
+        stepId: input.resumeStepId,
+        stepIndex: (current.currentStep?.stepIndex ?? -1) + 1,
+      },
+    });
   }
 }
 
@@ -103,6 +123,7 @@ function runnerWith(
   state: MemoryState,
   modules: ValidationRunnerModuleFacade,
   consumeResume?: ValidationRunnerHumanCheckpointResumePort["consumeResume"],
+  options?: ValidationScenarioRunnerCoreOptions,
 ) {
   return createValidationScenarioRunnerCore({
     state,
@@ -112,7 +133,7 @@ function runnerWith(
         ? consumeResume
         : async () => ({ status: "empty" }),
     },
-  });
+  }, options);
 }
 
 test("VH14-B enumerates the exact frozen C03-F03 tuple", () => {
@@ -165,6 +186,27 @@ test("VH14-B deterministically advances one scenario and preserves identity unti
   assert.deepEqual(passed.state.completedScenarioIds, ["C03"]);
   assert.deepEqual(passed.state.proofs, { verificationPassed: true, evidenceRecorded: true });
   assert.deepEqual(executed, ["C03-operate", "C03-verify", "C03-record"]);
+});
+
+test("VH14-B reconstructs deterministic advancement from durable state plus an immutable definition catalog", async () => {
+  const state = new MemoryState();
+  const definition = scenario();
+  const modules = completingModules();
+  const run = validationRunIdentity("restart-run", "C03");
+  const beforeRestart = runnerWith(state, modules);
+  const started = await beforeRestart.startScenario({ run, definition });
+  const operated = await beforeRestart.advance({ run, expectedRevision: started.state.revision });
+  assert.equal(operated.state.currentStep?.stepId, validationStepId("C03-verify"));
+
+  const afterRestart = runnerWith(state, modules, undefined, { definitions: [definition] });
+  const verified = await afterRestart.advance({ run, expectedRevision: operated.state.revision });
+  assert.equal(verified.status, "RUNNING");
+  assert.equal(verified.state.currentStep?.stepId, validationStepId("C03-record"));
+
+  const afterSecondRestart = runnerWith(state, modules, undefined, { definitions: [definition] });
+  const passed = await afterSecondRestart.advance({ run, expectedRevision: verified.state.revision });
+  assert.equal(passed.status, "PASS");
+  assert.deepEqual(passed.state.completedScenarioIds, ["C03"]);
 });
 
 test("VH14-B fails closed on incomplete prerequisites without invoking a step", async () => {
@@ -238,10 +280,12 @@ test("VH14-B never manufactures verifier or evidence success", async () => {
 
 test("VH14-B advances ordered suites only after PASS and keeps per-scenario proof state", async () => {
   const state = new MemoryState();
-  const runner = runnerWith(state, completingModules());
+  const modules = completingModules();
+  const definitions = [scenario("C03"), scenario("C04")] as const;
+  let runner = runnerWith(state, modules);
   let result = await runner.startSuite({
     runId: validationRunId("ordered-suite"),
-    suite: { suiteId: "C03-C04", scenarios: [scenario("C03"), scenario("C04")] },
+    suite: { suiteId: "C03-C04", scenarios: definitions },
   });
   assert.equal(result.status, "RUNNING");
   assert.equal(result.state.run.scenarioId, "C03");
@@ -254,6 +298,7 @@ test("VH14-B advances ordered suites only after PASS and keeps per-scenario proo
   if (result.state.execution.kind === "suite") assert.equal(result.state.execution.currentScenarioIndex, 1);
   assert.deepEqual(result.state.completedScenarioIds, ["C03"]);
   assert.deepEqual(result.state.proofs, { verificationPassed: false, evidenceRecorded: false });
+  runner = runnerWith(state, modules, undefined, { definitions });
   for (let index = 0; index < 3; index += 1) {
     result = await runner.advance({ run: result.state.run, expectedRevision: result.state.revision });
   }
@@ -299,34 +344,57 @@ test("VH14-B represents PAUSED-HUMAN-ACTION and resumes only through the VH13 po
   });
   let execution = 0;
   let consumeCalls = 0;
-  const runner = runnerWith(state, completingModules({
-    execute: async input => {
+  const resumable = {
+    state: "resumable" as const,
+    checkpoint,
+    acknowledgement: "acknowledged",
+    verification: "verified",
+    resumeStepId: validationStepId("C03-verify"),
+  };
+  const modules = completingModules({
+    execute: async () => {
       execution += 1;
       if (execution === 1) return { status: "paused-human-action", checkpoint, evidenceRefs: [] };
-      return { status: "completed", proof: input.step.requiredCompletionProof, evidenceRefs: [] };
+      return { status: "resumable", resume: resumable, evidenceRefs: [] };
     },
-  }), async (consumeRun, checkpointId, _device, resumeCommit) => {
+  });
+  const consumeResume: ValidationRunnerHumanCheckpointResumePort["consumeResume"] = async (
+    consumeRun,
+    checkpointId,
+    _device,
+    resumeCommit,
+  ) => {
     consumeCalls += 1;
     const resumeStepId = validationStepId("C03-verify");
     const adoptedCheckpointId = humanCheckpointId(checkpointId);
     await resumeCommit.commitResume({ run: consumeRun, checkpointId: adoptedCheckpointId, resumeStepId });
     return { status: "resumed", checkpointId: adoptedCheckpointId, resumeStepId };
-  });
+  };
+  const runner = runnerWith(state, modules, consumeResume);
 
   const started = await runner.startScenario({ run, definition });
   const paused = await runner.advance({ run, expectedRevision: started.state.revision });
   assert.equal(paused.status, "PAUSED-HUMAN-ACTION");
   assert.deepEqual(paused.state.currentStep, started.state.currentStep);
-  const resumed = await runner.resume({
+  const ready = await runner.advance({ run, expectedRevision: paused.state.revision });
+  assert.equal(ready.status, "RESUMABLE");
+  const restarted = runnerWith(state, modules, consumeResume, { definitions: [definition] });
+  const resumed = await restarted.resume({
     run,
     checkpointId: checkpoint.checkpointId,
     currentDevice: validationDeviceIdentity("iphone-a", "iphone"),
-    expectedRevision: paused.state.revision,
+    expectedRevision: ready.state.revision,
   });
   assert.equal(resumed.status, "RUNNING");
   assert.equal(resumed.state.currentStep?.stepId, validationStepId("C03-verify"));
   assert.equal(consumeCalls, 1);
-  assert.deepEqual(state.adoptions, [{ run, checkpointId: checkpoint.checkpointId, resumeStepId: validationStepId("C03-verify") }]);
+  assert.equal(state.adoptions.length, 1);
+  assert.ok(state.adoptions.every(adoption => (
+    adoption.run.runId === run.runId &&
+    adoption.run.scenarioId === run.scenarioId &&
+    adoption.checkpointId === checkpoint.checkpointId &&
+    adoption.resumeStepId === validationStepId("C03-verify")
+  )));
 });
 
 test("VH14-B represents RESUMABLE and rejects stale transitions without module work", async () => {

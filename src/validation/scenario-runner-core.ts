@@ -60,9 +60,14 @@ function definitionProblem(definition: ValidationRunnerScenarioDefinition): stri
  * only; approved modules and durable storage remain injected authorities.
  */
 export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
-  private readonly definitionsByRun = new Map<string, readonly ValidationRunnerScenarioDefinition[]>();
+  private readonly definitions = new Map<string, ValidationRunnerScenarioDefinition>();
 
-  constructor(private readonly dependencies: ValidationScenarioRunnerDependencies) {}
+  constructor(
+    private readonly dependencies: ValidationScenarioRunnerDependencies,
+    options: ValidationScenarioRunnerCoreOptions = {},
+  ) {
+    for (const definition of options.definitions ?? []) this.registerDefinition(definition);
+  }
 
   enumerateScenarioIds(): typeof VALIDATION_RUNNER_SCENARIO_IDS {
     return VALIDATION_RUNNER_SCENARIO_IDS;
@@ -89,7 +94,7 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       return await this.persistInvalidStart(request.run, execution, request.definition, problem);
     }
 
-    this.definitionsByRun.set(String(request.run.runId), [request.definition]);
+    this.registerDefinition(request.definition);
     return await this.beginScenario(request.run, request.definition, execution);
   }
 
@@ -114,7 +119,7 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     const run = validationRunIdentity(String(request.runId), first.scenarioId);
     if (problem !== null) return await this.persistInvalidStart(run, execution, first, problem);
 
-    this.definitionsByRun.set(String(request.runId), request.suite.scenarios);
+    for (const definition of request.suite.scenarios) this.registerDefinition(definition);
     return await this.beginScenario(run, first, execution);
   }
 
@@ -125,7 +130,10 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     if (state.lifecycle.kind === "terminal") {
       return this.blocked(state, "terminal-state", "A terminal validation run cannot advance.");
     }
-    if (state.lifecycle.kind !== "running" || state.currentStep === null) {
+    if (
+      (state.lifecycle.kind !== "running" && state.lifecycle.kind !== "paused-human-action") ||
+      state.currentStep === null
+    ) {
       return this.blocked(state, "invalid-transition", `Cannot advance lifecycle ${state.lifecycle.kind}.`);
     }
 
@@ -136,7 +144,7 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       step === undefined ||
       definition.scenarioId !== state.run.scenarioId ||
       step.stepId !== state.currentStep.stepId ||
-      state.lifecycle.stepId !== state.currentStep.stepId
+      (state.lifecycle.kind === "running" && state.lifecycle.stepId !== state.currentStep.stepId)
     ) {
       return await this.stop(state, "BLOCKED", reason(
         "invalid-definition",
@@ -185,6 +193,11 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
         lifecycle: { kind: "resumable", resume: delegated.resume } as const,
       };
       return await this.persist(state, next, { status: "RESUMABLE", state: next, resume: delegated.resume });
+    }
+
+    if (state.lifecycle.kind === "paused-human-action" && delegated.status === "completed") {
+      return this.blocked(state, "invalid-transition",
+        "A paused human checkpoint must become RESUMABLE and be durably adopted before step completion.");
     }
 
     if (delegated.proof !== step.requiredCompletionProof) {
@@ -258,13 +271,21 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
           `VH13 adopted unknown resume step ${consumed.resumeStepId}.`,
         ));
       }
-      const next: ValidationRunnerPersistentState = {
-        ...state,
-        revision: state.revision + 1,
-        lifecycle: { kind: "running", stepId: step.stepId },
-        currentStep: { scenarioId: definition.scenarioId, stepId: step.stepId, stepIndex },
-      };
-      return await this.persist(state, next, { status: "RUNNING", state: next });
+      const adopted = await this.current();
+      if (
+        adopted === null ||
+        adopted.revision <= state.revision ||
+        !sameRun(adopted.run, state.run) ||
+        adopted.lifecycle.kind !== "running" ||
+        adopted.lifecycle.stepId !== step.stepId ||
+        adopted.currentStep?.scenarioId !== definition.scenarioId ||
+        adopted.currentStep.stepId !== step.stepId ||
+        adopted.currentStep.stepIndex !== stepIndex
+      ) {
+        return this.blocked(state, "resume-adoption-failed",
+          "VH13 reported resumed without the exact durable runner-step adoption.");
+      }
+      return { status: "RUNNING", state: adopted };
     }
     if (consumed.status === "resumable") {
       if (!consumed.state.acknowledgedAt || !consumed.state.verifiedAt) {
@@ -374,6 +395,7 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       ...state,
       revision: state.revision + 1,
       lifecycle: { kind: "running", stepId: step.stepId },
+      currentStep: { scenarioId: definition.scenarioId, stepId: step.stepId, stepIndex: 0 },
     };
     return await this.persist(state, next, { status: "RUNNING", state: next });
   }
@@ -395,8 +417,8 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     }
 
     const nextIndex = completedState.execution.currentScenarioIndex + 1;
-    const definitions = this.definitionsByRun.get(String(completedState.run.runId));
-    const nextDefinition = definitions?.[nextIndex];
+    const nextScenarioId = completedState.execution.scenarioIds[nextIndex];
+    const nextDefinition = nextScenarioId === undefined ? undefined : this.definitions.get(nextScenarioId);
     if (!nextDefinition) {
       if (nextIndex !== completedState.execution.scenarioIds.length) {
         return await this.stop(completedState, "BLOCKED", reason(
@@ -432,8 +454,24 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
   }
 
   private currentDefinition(state: ValidationRunnerPersistentState): ValidationRunnerScenarioDefinition | undefined {
-    return this.definitionsByRun.get(String(state.run.runId))
-      ?.find(definition => definition.scenarioId === state.run.scenarioId);
+    if (
+      state.execution.kind === "single" &&
+      state.execution.scenarioId !== state.run.scenarioId
+    ) return undefined;
+    if (
+      state.execution.kind === "suite" &&
+      state.execution.scenarioIds[state.execution.currentScenarioIndex] !== state.run.scenarioId
+    ) return undefined;
+    return this.definitions.get(state.run.scenarioId);
+  }
+
+  private registerDefinition(definition: ValidationRunnerScenarioDefinition): void {
+    const immutable = Object.freeze({
+      ...definition,
+      prerequisiteIds: Object.freeze([...definition.prerequisiteIds]),
+      steps: Object.freeze(definition.steps.map(step => Object.freeze({ ...step }))),
+    });
+    this.definitions.set(definition.scenarioId, immutable);
   }
 
   private requestProblem(
@@ -528,14 +566,21 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     result: ValidationRunnerResult,
   ): Promise<ValidationRunnerResult> {
     if (!await this.dependencies.state.compareAndSet(previous.revision, next)) {
-      return this.blocked(previous, "state-changed", "Runner state changed during the lifecycle transition.");
+      const durable = await this.current();
+      return this.blocked(durable ?? previous, "state-changed", "Runner state changed during the lifecycle transition.");
     }
     return result;
   }
 }
 
+export interface ValidationScenarioRunnerCoreOptions {
+  /** Immutable scenario catalog used to reconstruct a fresh core after restart. */
+  readonly definitions?: readonly ValidationRunnerScenarioDefinition[];
+}
+
 export function createValidationScenarioRunnerCore(
   dependencies: ValidationScenarioRunnerDependencies,
+  options?: ValidationScenarioRunnerCoreOptions,
 ): ValidationScenarioRunner {
-  return new ValidationScenarioRunnerCore(dependencies);
+  return new ValidationScenarioRunnerCore(dependencies, options);
 }
