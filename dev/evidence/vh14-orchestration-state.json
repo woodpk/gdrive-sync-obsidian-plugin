@@ -2,7 +2,7 @@
   "schema": "vh14-codex-orchestration-v1",
   "orchestrationRootSha": "1955bdb2e8a2e32a35646ea62ab84c1797d4e8ca",
   "lastAcceptedIntegrationSha": "692517b6aedd676a9903eae6fe970d861ff0dad9",
-  "supervisorBootstrapSha": "SELF: resolve to the commit containing this initial manifest",
+  "supervisorBootstrapSha": "a4e898a02022279e0bbabd012e1c245c6984636d",
   "startupRecovery": {
     "status": "VERIFIED",
     "controlBranch": "phase6-vh14-module-integration-runner",
@@ -37,9 +37,9 @@
   },
   "packages": {
     "A": {
-      "status": "NOT_STARTED",
+      "status": "RUNNING",
       "branch": "phase6-vh14-a-integration-substrate",
-      "baseSha": "SELF: supervisor bootstrap commit containing this initial manifest",
+      "baseSha": "a4e898a02022279e0bbabd012e1c245c6984636d",
       "acceptedHeadSha": null,
       "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md"
     },
