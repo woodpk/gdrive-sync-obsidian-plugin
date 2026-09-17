@@ -4,14 +4,28 @@ STATUS: COMPLETE
 
 ## Identity and accepted base
 
-- Package branch: `phase6-vh14-a-integration-substrate-r1`
+- Final required package branch: `phase6-vh14-a-integration-substrate`
+- Recovery implementation branch: `phase6-vh14-a-integration-substrate-r1`
 - Exact authorized recovery base: `d50e7ad5ed77d2f8f45534528cc8d7630465f6af`
 - Recovery-base tree: `470f96b93b15f61e5c6303c72760ad15a4852c0f`
 - Last accepted VH04–VH13 integration: `692517b6aedd676a9903eae6fe970d861ff0dad9`
 - Supervisor-authorized integration-only repair: `d50e7ad5ed77d2f8f45534528cc8d7630465f6af`
 - Final implementation/test checkpoint: `7b5e0a9389ab93147dac8ed924eade83640ead14`
 - Final implementation/test tree: `4fa9296a93b2485639513a216b9e5acf04d06915`
+- Recovery evidence head: `a1ddc7e994bab3d5547c8fe78a0a6399b538cb36`
+- Recovery evidence tree: `3858e1f1bb49f1b1768711c6a22b9a984a13bd3f`
+- Required-branch acceptance merge: `99f4fd0676663060d80863a7b1e851fdb3b575f2`
+- Required-branch acceptance tree: `3858e1f1bb49f1b1768711c6a22b9a984a13bd3f`
 - Final Package A evidence/branch head: the commit containing this evidence-only closure; its exact SHA/tree is returned to the supervisor because a Git commit cannot embed its own identity.
+
+The supervisor append-only reconciled the completed recovery branch through merge
+`99f4fd0676663060d80863a7b1e851fdb3b575f2`. Its tree exactly equals recovery
+head `a1ddc7e994bab3d5547c8fe78a0a6399b538cb36`:
+
+`3858e1f1bb49f1b1768711c6a22b9a984a13bd3f == 3858e1f1bb49f1b1768711c6a22b9a984a13bd3f`
+
+Therefore the required branch accepted the exact already-verified Package A
+content without rewriting the recovery history or changing implementation bytes.
 
 ## Repaired-substrate gate
 
@@ -107,6 +121,8 @@ Relative to exact authorized recovery base `d50e7ad5ed77d2f8f45534528cc8d7630465
 
 No other file is Package A-owned or changed by this package.
 
+Required-branch closure rechecked `d50e7ad5ed77d2f8f45534528cc8d7630465f6af..99f4fd0676663060d80863a7b1e851fdb3b575f2` and found exactly the same three A-owned files. The same comparison restricted to `src/contracts/**`, the three frozen H0 contract files, `src/validation/index.ts`, and `dev/evidence/vh14-orchestration-state.json` is empty.
+
 ## Verification
 
 Dependency restoration:
@@ -138,3 +154,12 @@ The complete repository suite/build are Package I final gates and were not requi
 - Historical tasking/repository VH04 merge-SHA discrepancy is recorded above and was explicitly accepted by the supervisor as historical; repository history was not rewritten.
 - The fresh worktree initially lacked npm dependencies. Locked dependencies were restored with `npm ci` before verification.
 - Remaining Package A blockers: none.
+
+## Required-branch evidence-only closure
+
+- Required branch before closure: `99f4fd0676663060d80863a7b1e851fdb3b575f2`.
+- Exact-tree equality to recovery evidence head: PASS.
+- Three-file Package A ownership delta from recovery base: PASS.
+- Frozen H0, `src/contracts/**`, barrel, and supervisor-manifest delta from recovery base: empty / PASS.
+- `git diff --check d50e7ad5ed77d2f8f45534528cc8d7630465f6af..99f4fd0676663060d80863a7b1e851fdb3b575f2`: PASS.
+- Closure changes only this Package A evidence file; no source, test, frozen contract, barrel, or manifest file was modified.
