@@ -29,9 +29,12 @@ import {
 class MemoryRunnerStore implements ValidationRunnerStateStore {
   value: unknown = null;
   writes = 0;
+  failNextWrite = false;
+  readonly events: string[];
 
-  constructor(initial: unknown = null) {
+  constructor(initial: unknown = null, events: string[] = []) {
     this.value = structuredClone(initial);
+    this.events = events;
   }
 
   async load(): Promise<unknown> {
@@ -45,6 +48,14 @@ class MemoryRunnerStore implements ValidationRunnerStateStore {
     const current = this.value as { readonly revision?: unknown } | null;
     const actualRevision = current?.revision ?? null;
     if (actualRevision !== expectedRevision) return false;
+    if (this.failNextWrite) {
+      this.failNextWrite = false;
+      return false;
+    }
+    const previousLifecycle = (this.value as { readonly lifecycle?: { readonly kind?: unknown } } | null)?.lifecycle;
+    if (previousLifecycle?.kind === "resumable" && next?.lifecycle.kind === "running") {
+      this.events.push("runner-state-adopted");
+    }
     this.value = structuredClone(next);
     this.writes += 1;
     return true;
@@ -147,6 +158,20 @@ function resumableState(revision = 3): ValidationRunnerPersistentState {
   };
 }
 
+function pendingState(): ValidationRunnerPersistentState {
+  return {
+    schemaVersion: VALIDATION_RUNNER_STATE_SCHEMA_VERSION,
+    revision: 1,
+    run,
+    execution: { kind: "single", scenarioId: "D05" },
+    lifecycle: { kind: "pending" },
+    currentStep: { scenarioId: "D05", stepId: validationStepId("d05-first-step"), stepIndex: 0 },
+    completedStepIds: [],
+    completedScenarioIds: [],
+    proofs: { verificationPassed: false, evidenceRecorded: false },
+  };
+}
+
 function durable(
   runnerStore = new MemoryRunnerStore(resumableState()),
   adoptionStore = new MemoryAdoptionStore(),
@@ -210,6 +235,22 @@ test("VH14-C validates monotonic revisions and preserves CAS stale-write protect
   );
 });
 
+test("VH14-C accepts Package B's pending cursor and exact pending-to-running start writes", async () => {
+  const runnerStore = new MemoryRunnerStore();
+  const controller = durable(runnerStore);
+  const pending = pendingState();
+  assert.equal(await controller.compareAndSet(null, pending), true);
+  assert.deepEqual(await controller.load(), pending);
+
+  const running: ValidationRunnerPersistentState = {
+    ...pending,
+    revision: 2,
+    lifecycle: { kind: "running", stepId: pending.currentStep!.stepId },
+  };
+  assert.equal(await controller.compareAndSet(1, running), true);
+  assert.deepEqual(await controller.load(), running);
+});
+
 test("VH14-C durably adopts the exact VH13 tuple once and reconstructs the adoption journal", async () => {
   const adoptionStore = new MemoryAdoptionStore();
   const controller = durable(new MemoryRunnerStore(resumableState()), adoptionStore);
@@ -218,15 +259,20 @@ test("VH14-C durably adopts the exact VH13 tuple once and reconstructs the adopt
   await controller.commitResume(input);
   await controller.commitResume(input);
   assert.equal(adoptionStore.writes, 1, "identical retry must be a durable no-op");
+  const adopted = await controller.load();
+  assert.equal(adopted?.revision, 4);
+  assert.deepEqual(adopted?.lifecycle, { kind: "running", stepId: resumeStepId });
   assert.deepEqual(await controller.reconstructResumeAdoptions(), {
     schemaVersion: VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION,
     revision: 1,
     entries: [input],
   });
 
-  const restarted = durable(new MemoryRunnerStore(resumableState()), adoptionStore);
+  const recoveredRunnerStore = new MemoryRunnerStore(resumableState());
+  const restarted = durable(recoveredRunnerStore, adoptionStore);
   await restarted.commitResume(input);
   assert.equal(adoptionStore.writes, 1, "restart must retain idempotent adoption authority");
+  assert.equal((await restarted.load())?.lifecycle.kind, "running");
 });
 
 test("VH14-C invokes durable adoption before VH13 cleanup and safely retries interrupted cleanup", async () => {
@@ -248,20 +294,68 @@ test("VH14-C invokes durable adoption before VH13 cleanup and safely retries int
   assert.equal(verified.status, "resumable");
 
   const adoptionStore = new MemoryAdoptionStore(events);
-  const controller = durable(new MemoryRunnerStore(resumableState()), adoptionStore);
+  const runnerStore = new MemoryRunnerStore(resumableState(), events);
+  const controller = durable(runnerStore, adoptionStore);
   checkpointStore.failNextCleanup = true;
   const interrupted = await vh13.consumeResume(run, String(checkpoint.checkpointId), device, controller);
   assert.equal(interrupted.status, "paused");
   if (interrupted.status !== "paused") throw new Error("expected interrupted cleanup pause");
   assert.equal(interrupted.reason, "state-changed");
-  assert.deepEqual(events, ["runner-adoption", "checkpoint-cleanup-interrupted"]);
+  assert.deepEqual(events, ["runner-adoption", "runner-state-adopted", "checkpoint-cleanup-interrupted"]);
+  assert.deepEqual((await controller.load())?.lifecycle, { kind: "running", stepId: resumeStepId });
 
-  const restarted = durable(new MemoryRunnerStore(resumableState()), adoptionStore);
+  const restarted = durable(runnerStore, adoptionStore);
   const retried = await vh13.consumeResume(run, String(checkpoint.checkpointId), device, restarted);
   assert.equal(retried.status, "resumed");
-  assert.deepEqual(events, ["runner-adoption", "checkpoint-cleanup-interrupted", "checkpoint-cleanup"]);
+  assert.deepEqual(events, [
+    "runner-adoption",
+    "runner-state-adopted",
+    "checkpoint-cleanup-interrupted",
+    "checkpoint-cleanup",
+  ]);
   assert.equal(adoptionStore.writes, 1);
   assert.equal(await checkpointStore.load(), null);
+});
+
+test("VH14-C cleanup success followed by process loss reconstructs the already-running resume step", async () => {
+  const checkpointStore = new MemoryCheckpointStore();
+  const vh13 = new HumanCheckpointResumeController(checkpointStore, () => new Date("2026-09-17T12:00:00.000Z"));
+  const device = validationDeviceIdentity("iphone-c", "iphone");
+  await vh13.begin({
+    run,
+    checkpointId: String(checkpoint.checkpointId),
+    device,
+    action: checkpoint.requestedAction,
+    resumeStepId: String(resumeStepId),
+  });
+  await vh13.acknowledge(run, String(checkpoint.checkpointId));
+  await vh13.verify(run, String(checkpoint.checkpointId), device, {
+    observe: async () => ({ status: "verified" }),
+  });
+
+  const runnerStore = new MemoryRunnerStore(resumableState());
+  const adoptionStore = new MemoryAdoptionStore();
+  const beforeCrash = durable(runnerStore, adoptionStore);
+  const consumed = await vh13.consumeResume(run, String(checkpoint.checkpointId), device, beforeCrash);
+  assert.equal(consumed.status, "resumed");
+  assert.equal(await checkpointStore.load(), null, "VH13 cleanup completed");
+
+  // A new controller has no process memory from consumeResume. Git/runtime
+  // orchestration can recover solely from the two durable stores.
+  const afterCrash = durable(runnerStore, adoptionStore);
+  const reconstructed = await afterCrash.reconstruct({ run });
+  assert.equal(reconstructed?.revision, 4);
+  assert.deepEqual(reconstructed?.currentStep, {
+    scenarioId: "D05",
+    stepId: resumeStepId,
+    stepIndex: 4,
+  });
+  assert.deepEqual(reconstructed?.lifecycle, { kind: "running", stepId: resumeStepId });
+  assert.deepEqual((await afterCrash.reconstructResumeAdoptions())?.entries, [{
+    run,
+    checkpointId: checkpoint.checkpointId,
+    resumeStepId,
+  }]);
 });
 
 test("VH14-C adoption failure or tuple mismatch leaves the VH13 checkpoint intact", async () => {
@@ -299,6 +393,42 @@ test("VH14-C adoption failure or tuple mismatch leaves the VH13 checkpoint intac
       && error.reason === "persisted-state-mismatch",
   );
   assert.equal(adoptionStore.writes, 0);
+});
+
+test("VH14-C runner-CAS interruption after tuple journaling retains checkpoint and is retryable", async () => {
+  const checkpointStore = new MemoryCheckpointStore();
+  const vh13 = new HumanCheckpointResumeController(checkpointStore, () => new Date("2026-09-17T12:00:00.000Z"));
+  const device = validationDeviceIdentity("iphone-c", "iphone");
+  await vh13.begin({
+    run,
+    checkpointId: String(checkpoint.checkpointId),
+    device,
+    action: checkpoint.requestedAction,
+    resumeStepId: String(resumeStepId),
+  });
+  await vh13.acknowledge(run, String(checkpoint.checkpointId));
+  await vh13.verify(run, String(checkpoint.checkpointId), device, {
+    observe: async () => ({ status: "verified" }),
+  });
+
+  const runnerStore = new MemoryRunnerStore(resumableState());
+  runnerStore.failNextWrite = true;
+  const adoptionStore = new MemoryAdoptionStore();
+  const controller = durable(runnerStore, adoptionStore);
+  const interrupted = await vh13.consumeResume(run, String(checkpoint.checkpointId), device, controller);
+  assert.equal(interrupted.status, "paused");
+  if (interrupted.status !== "paused") throw new Error("expected adoption interruption pause");
+  assert.equal(interrupted.reason, "resume-adoption-failed");
+  assert.equal((await controller.load())?.lifecycle.kind, "resumable");
+  assert.equal((await controller.reconstructResumeAdoptions())?.entries.length, 1);
+  assert.notEqual(await checkpointStore.load(), null);
+
+  const restarted = durable(runnerStore, adoptionStore);
+  const retried = await vh13.consumeResume(run, String(checkpoint.checkpointId), device, restarted);
+  assert.equal(retried.status, "resumed");
+  assert.equal((await restarted.load())?.lifecycle.kind, "running");
+  assert.equal(adoptionStore.writes, 1);
+  assert.equal(await checkpointStore.load(), null);
 });
 
 test("VH14-C fails closed on a malformed adoption journal", async () => {

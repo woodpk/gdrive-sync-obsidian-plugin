@@ -275,9 +275,6 @@ export function reconstructValidationRunnerState(
   if ((lifecycle.kind === "running" || lifecycle.kind === "paused-human-action" || lifecycle.kind === "resumable") && currentStep === null) {
     mismatch(`Lifecycle ${lifecycle.kind} requires a current step.`);
   }
-  if (lifecycle.kind === "pending" && currentStep !== null) {
-    mismatch("Pending lifecycle cannot claim a current step.");
-  }
   if (lifecycle.kind === "running" && currentStep?.stepId !== lifecycle.stepId) {
     mismatch("Running lifecycle step does not match the current step.");
   }
@@ -435,21 +432,20 @@ export class ValidationRunnerDurableStateController implements ValidationRunnerD
    */
   async commitResume(input: ValidationRunnerResumeAdoptionInput): Promise<void> {
     const requested = hydrateAdoption(input);
-    const journal = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
     const state = reconstructValidationRunnerState(await this.store.load());
     if (state === null) mismatch("Resume adoption requires an active durable runner state.");
     if (!sameRun(state.run, requested.run)) mismatch("Resume adoption run does not match the durable runner run.");
-    const alreadyAdopted = journal?.entries.some(entry => sameAdoption(entry, requested)) ?? false;
-    if (alreadyAdopted) {
-      if (state.lifecycle.kind === "resumable") {
-        if (state.lifecycle.resume.checkpoint.checkpointId !== requested.checkpointId
-          || state.lifecycle.resume.resumeStepId !== requested.resumeStepId) {
-          mismatch("Previously adopted tuple does not match the durable resumable state.");
-        }
-        return;
+    if (state.currentStep?.stepId !== requested.resumeStepId) {
+      mismatch("Resume adoption step does not match the durable current-step cursor.");
+    }
+    const journal = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
+    const alreadyJournaled = journal?.entries.some(entry => sameAdoption(entry, requested)) ?? false;
+
+    if (state.lifecycle.kind === "running") {
+      if (!alreadyJournaled) {
+        mismatch("A running adopted resume step is missing its exact durable tuple.");
       }
-      if (state.lifecycle.kind === "running" && state.currentStep?.stepId === requested.resumeStepId) return;
-      mismatch("Previously adopted tuple does not match the reconstructed runner position.");
+      return;
     }
     if (state.lifecycle.kind !== "resumable") {
       mismatch("Resume adoption requires a durably resumable runner lifecycle.");
@@ -461,17 +457,40 @@ export class ValidationRunnerDurableStateController implements ValidationRunnerD
       mismatch("Resume adoption step does not match the durable runner resume step.");
     }
 
-    const expectedRevision = journal?.revision ?? null;
-    const next: ValidationRunnerResumeAdoptionJournal = Object.freeze({
-      schemaVersion: VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION,
-      revision: expectedRevision === null ? 1 : expectedRevision + 1,
-      entries: Object.freeze([...(journal?.entries ?? []), requested]),
-    });
-    if (await this.adoptionStore.compareAndSet(expectedRevision, next)) return;
+    if (!alreadyJournaled) {
+      const expectedRevision = journal?.revision ?? null;
+      const nextJournal: ValidationRunnerResumeAdoptionJournal = Object.freeze({
+        schemaVersion: VALIDATION_RUNNER_RESUME_ADOPTION_SCHEMA_VERSION,
+        revision: expectedRevision === null ? 1 : expectedRevision + 1,
+        entries: Object.freeze([...(journal?.entries ?? []), requested]),
+      });
+      if (!await this.adoptionStore.compareAndSet(expectedRevision, nextJournal)) {
+        // A racing identical adopter is success; every other race fails closed.
+        const afterRace = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
+        if (!afterRace?.entries.some(existing => sameAdoption(existing, requested))) {
+          mismatch("Resume-adoption journal changed before the exact tuple was durably committed.");
+        }
+      }
+    }
 
-    // A racing identical adopter is success; every other race fails closed.
-    const afterRace = reconstructValidationRunnerResumeAdoptions(await this.adoptionStore.load());
-    if (afterRace?.entries.some(existing => sameAdoption(existing, requested))) return;
-    mismatch("Resume-adoption journal changed before the exact tuple was durably committed.");
+    // The exact tuple is durable. Move runner authority to the exact resume
+    // cursor before returning control to VH13 for checkpoint cleanup.
+    const adoptedState: ValidationRunnerPersistentState = Object.freeze({
+      ...state,
+      revision: state.revision + 1,
+      lifecycle: Object.freeze({ kind: "running", stepId: requested.resumeStepId }),
+    });
+    if (await this.compareAndSet(state.revision, adoptedState)) return;
+
+    // A racing identical adopter is success; all other state changes fail closed.
+    const afterRace = reconstructValidationRunnerState(await this.store.load());
+    if (
+      afterRace !== null
+      && sameRun(afterRace.run, requested.run)
+      && afterRace.lifecycle.kind === "running"
+      && afterRace.lifecycle.stepId === requested.resumeStepId
+      && afterRace.currentStep?.stepId === requested.resumeStepId
+    ) return;
+    mismatch("Runner state changed before the exact resume step was durably adopted.");
   }
 }
