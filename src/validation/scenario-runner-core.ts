@@ -127,6 +127,23 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     const state = await this.requireState();
     const identityProblem = this.requestProblem(state, request.run, request.expectedRevision);
     if (identityProblem !== null) return this.blocked(state, identityProblem.kind, identityProblem.summary);
+    if (state.lifecycle.kind === "pending") {
+      const definition = this.currentDefinition(state);
+      const firstStep = definition?.steps[0];
+      if (
+        definition === undefined ||
+        firstStep === undefined ||
+        state.currentStep?.scenarioId !== definition.scenarioId ||
+        state.currentStep.stepId !== firstStep.stepId ||
+        state.currentStep.stepIndex !== 0
+      ) {
+        return await this.stop(state, "BLOCKED", reason(
+          "invalid-definition",
+          "The durable pending cursor does not match the immutable scenario definition.",
+        ));
+      }
+      return await this.enterRunningAfterPrerequisites(state, definition);
+    }
     if (state.lifecycle.kind === "terminal") {
       return this.blocked(state, "terminal-state", "A terminal validation run cannot advance.");
     }
@@ -260,14 +277,39 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
     const state = await this.requireState();
     const identityProblem = this.requestProblem(state, request.run, request.expectedRevision);
     if (identityProblem !== null) return this.blocked(state, identityProblem.kind, identityProblem.summary);
-    if (state.lifecycle.kind !== "paused-human-action" && state.lifecycle.kind !== "resumable") {
-      return this.blocked(state, "invalid-transition", `Cannot resume lifecycle ${state.lifecycle.kind}.`);
+    const definition = this.currentDefinition(state);
+    if (!definition) {
+      return this.blocked(state, "invalid-definition", "The immutable scenario definition is unavailable.");
     }
-    const activeCheckpoint = state.lifecycle.kind === "paused-human-action"
-      ? state.lifecycle.checkpoint
-      : state.lifecycle.resume.checkpoint;
-    if (activeCheckpoint.checkpointId !== request.checkpointId) {
-      return this.blocked(state, "resume-rejected", "Resume checkpoint does not match the active checkpoint.");
+
+    let cleanupRetryProven = false;
+    if (state.lifecycle.kind === "paused-human-action" || state.lifecycle.kind === "resumable") {
+      const activeCheckpoint = state.lifecycle.kind === "paused-human-action"
+        ? state.lifecycle.checkpoint
+        : state.lifecycle.resume.checkpoint;
+      if (activeCheckpoint.checkpointId !== request.checkpointId) {
+        return this.blocked(state, "resume-rejected", "Resume checkpoint does not match the active checkpoint.");
+      }
+    } else if (state.lifecycle.kind === "running" && state.currentStep !== null) {
+      const currentStep = definition.steps[state.currentStep.stepIndex];
+      if (currentStep?.stepId !== state.currentStep.stepId || state.lifecycle.stepId !== currentStep.stepId) {
+        return this.blocked(state, "invalid-definition", "The running cleanup-retry cursor is inconsistent.");
+      }
+      try {
+        // C accepts this on RUNNING only when the exact tuple is already in its
+        // durable adoption journal. It is therefore proof, not a new adoption.
+        await this.dependencies.state.commitResume({
+          run: state.run,
+          checkpointId: request.checkpointId,
+          resumeStepId: currentStep.stepId,
+        });
+        cleanupRetryProven = true;
+      } catch {
+        return this.blocked(state, "resume-rejected",
+          "A running resume cleanup retry lacks the exact durable adoption tuple.");
+      }
+    } else {
+      return this.blocked(state, "invalid-transition", `Cannot resume lifecycle ${state.lifecycle.kind}.`);
     }
 
     const consumed = await this.dependencies.humanCheckpoints.consumeResume(
@@ -277,7 +319,6 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
       this.dependencies.state,
     );
     if (consumed.status === "resumed") {
-      const definition = this.currentDefinition(state);
       const stepIndex = definition?.steps.findIndex(step => step.stepId === consumed.resumeStepId) ?? -1;
       const step = definition?.steps[stepIndex];
       if (!definition || !step || stepIndex < 0) {
@@ -287,9 +328,12 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
         ));
       }
       const adopted = await this.current();
+      const revisionAccepted = cleanupRetryProven
+        ? adopted !== null && adopted.revision >= state.revision
+        : adopted !== null && adopted.revision > state.revision;
       if (
         adopted === null ||
-        adopted.revision <= state.revision ||
+        !revisionAccepted ||
         !sameRun(adopted.run, state.run) ||
         adopted.lifecycle.kind !== "running" ||
         adopted.lifecycle.stepId !== step.stepId ||
@@ -316,24 +360,66 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
         verification: consumed.state.verifiedAt,
         resumeStepId: consumed.state.resumeStepId,
       };
+      const resumeStepIndex = definition.steps.findIndex(step => step.stepId === resume.resumeStepId);
+      if (resumeStepIndex < 0) {
+        return await this.stop(state, "BLOCKED", reason(
+          "invalid-definition",
+          `VH13 returned unknown resume step ${resume.resumeStepId}.`,
+        ));
+      }
       const next = {
         ...state,
         revision: state.revision + 1,
         lifecycle: { kind: "resumable", resume } as const,
+        currentStep: {
+          scenarioId: definition.scenarioId,
+          stepId: resume.resumeStepId,
+          stepIndex: resumeStepIndex,
+        },
       };
       return await this.persist(state, next, { status: "RESUMABLE", state: next, resume });
     }
     if (consumed.status === "paused" && consumed.state) {
-      const next = {
-        ...state,
-        revision: state.revision + 1,
-        lifecycle: { kind: "paused-human-action", checkpoint: consumed.state.checkpoint } as const,
-      };
-      return await this.persist(state, next, {
+      if (
+        consumed.state.checkpoint.checkpointId !== request.checkpointId ||
+        !sameRun(consumed.state.checkpoint.run, state.run)
+      ) {
+        return this.blocked(state, "resume-rejected", "VH13 paused a different checkpoint or run.");
+      }
+      const durable = await this.current() ?? state;
+      if (
+        durable.lifecycle.kind === "running" &&
+        durable.currentStep !== null &&
+        durable.revision > state.revision
+      ) {
+        try {
+          await this.dependencies.state.commitResume({
+            run: durable.run,
+            checkpointId: request.checkpointId,
+            resumeStepId: durable.currentStep.stepId,
+          });
+        } catch {
+          return this.blocked(durable, "resume-adoption-failed",
+            "Runner advanced before cleanup without a provable exact adoption tuple.");
+        }
+      }
+      return {
         status: "PAUSED-HUMAN-ACTION",
-        state: next,
+        state: durable,
         checkpoint: consumed.state.checkpoint,
-      });
+      };
+    }
+    if (consumed.status === "empty" && cleanupRetryProven) {
+      const adopted = await this.current();
+      if (
+        adopted !== null &&
+        adopted.revision === state.revision &&
+        sameRun(adopted.run, state.run) &&
+        adopted.lifecycle.kind === "running" &&
+        adopted.currentStep?.stepId === state.currentStep?.stepId
+      ) return { status: "RUNNING", state: adopted };
+      return this.blocked(state, "resume-adoption-failed",
+        "The proven cleanup retry no longer matches durable runner state.");
     }
     const summary = consumed.status === "rejected"
       ? `VH13 rejected resume: ${consumed.reason}.`

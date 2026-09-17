@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
+import {
+  HumanCheckpointResumeController,
+  type HumanCheckpointDurableState,
+  type HumanCheckpointStateStore,
+} from "../src/validation/human-checkpoint-resume-controller";
 import {
   createValidationScenarioRunnerCore,
   type ValidationScenarioRunnerCoreOptions,
@@ -13,6 +20,7 @@ import {
   type ValidationRunnerPersistentState,
   type ValidationRunnerResumeAdoptionInput,
   type ValidationRunnerScenarioDefinition,
+  type ValidationRunnerStateStore,
 } from "../src/validation/scenario-runner-contracts";
 import {
   VALIDATION_SCENARIO_IDS,
@@ -66,6 +74,66 @@ class MemoryState implements ValidationRunnerDurableStatePort {
   }
 }
 
+class RawRunnerStore implements ValidationRunnerStateStore {
+  value: ValidationRunnerPersistentState | null = null;
+
+  async load(): Promise<unknown> {
+    return this.value === null ? null : structuredClone(this.value);
+  }
+
+  async compareAndSet(
+    expectedRevision: number | null,
+    next: ValidationRunnerPersistentState | null,
+  ): Promise<boolean> {
+    if ((this.value?.revision ?? null) !== expectedRevision) return false;
+    this.value = next === null ? null : structuredClone(next);
+    return true;
+  }
+}
+
+class RawAdoptionStore {
+  value: unknown = null;
+
+  async load(): Promise<unknown> {
+    return structuredClone(this.value);
+  }
+
+  async compareAndSet(expectedRevision: number | null, next: unknown): Promise<boolean> {
+    const current = this.value as { readonly revision?: unknown } | null;
+    if ((current?.revision ?? null) !== expectedRevision) return false;
+    this.value = structuredClone(next);
+    return true;
+  }
+}
+
+class InterruptibleCheckpointStore implements HumanCheckpointStateStore {
+  readonly durability = "external-coordination" as const;
+  value: HumanCheckpointDurableState | null = null;
+  failNextCleanup = false;
+
+  async load(): Promise<unknown> {
+    return this.value === null ? null : structuredClone(this.value);
+  }
+
+  async compareAndSet(
+    expectedRevision: number | null,
+    next: HumanCheckpointDurableState | null,
+  ): Promise<boolean> {
+    if ((this.value?.revision ?? null) !== expectedRevision) return false;
+    if (next === null && this.failNextCleanup) {
+      this.failNextCleanup = false;
+      return false;
+    }
+    this.value = next === null ? null : structuredClone(next);
+    return true;
+  }
+}
+
+const INTEGRATED_C_MODULE = resolve(
+  __dirname,
+  "../src/validation/scenario-runner-durable-state.js",
+);
+
 function scenario(
   scenarioId: "C03" | "C04" | "D01" = "C03",
   prerequisiteIds: readonly string[] = ["sandbox-ready"],
@@ -116,7 +184,7 @@ function completingModules(overrides: {
 }
 
 function runnerWith(
-  state: MemoryState,
+  state: ValidationRunnerDurableStatePort,
   modules: ValidationRunnerModuleFacade,
   consumeResume?: ValidationRunnerHumanCheckpointResumePort["consumeResume"],
   options?: ValidationScenarioRunnerCoreOptions,
@@ -203,6 +271,47 @@ test("VH14-B reconstructs deterministic advancement from durable state plus an i
   const passed = await afterSecondRestart.advance({ run, expectedRevision: verified.state.revision });
   assert.equal(passed.status, "PASS");
   assert.deepEqual(passed.state.completedScenarioIds, ["C03"]);
+});
+
+test("VH14-B recovers exact single and suite pending cursors after rev1 interruption", async () => {
+  for (const kind of ["single", "suite"] as const) {
+    const state = new MemoryState();
+    const definitions = kind === "single"
+      ? [scenario("C03")] as const
+      : [scenario("C03"), scenario("C04")] as const;
+    const interruptedModules = completingModules({
+      prerequisites: async () => await new Promise<never>(() => {}),
+    });
+    const interrupted = runnerWith(state, interruptedModules);
+    if (kind === "single") {
+      void interrupted.startScenario({
+        run: validationRunIdentity("pending-single", "C03"),
+        definition: definitions[0],
+      });
+    } else {
+      void interrupted.startSuite({
+        runId: validationRunId("pending-suite"),
+        suite: { suiteId: "pending-suite", scenarios: definitions },
+      });
+    }
+    await new Promise<void>(resolvePending => setImmediate(resolvePending));
+    assert.equal(state.value?.revision, 1);
+    assert.equal(state.value?.lifecycle.kind, "pending");
+    assert.equal(state.value?.currentStep?.stepId, validationStepId("C03-operate"));
+
+    const recovered = runnerWith(state, completingModules(), undefined, { definitions });
+    const result = await recovered.advance({
+      run: state.value!.run,
+      expectedRevision: state.value!.revision,
+    });
+    assert.equal(result.status, "RUNNING");
+    assert.equal(result.state.revision, 2);
+    assert.deepEqual(result.state.currentStep, {
+      scenarioId: "C03",
+      stepId: validationStepId("C03-operate"),
+      stepIndex: 0,
+    });
+  }
 });
 
 test("VH14-B fails closed on incomplete prerequisites without invoking a step", async () => {
@@ -395,6 +504,49 @@ test("VH14-B represents PAUSED-HUMAN-ACTION and resumes only through the VH13 po
   )));
 });
 
+test("VH14-B resolves a VH13-returned RESUMABLE cursor through the immutable definition", async () => {
+  const state = new MemoryState();
+  const run = validationRunIdentity("vh13-resumable-run", "C03");
+  const definition = scenario();
+  const checkpoint = humanCheckpoint({
+    checkpointId: "vh13-resumable-checkpoint",
+    run,
+    deviceId: "iphone-a",
+    requestedAction: "restart-obsidian",
+    instruction: "Restart Obsidian.",
+  });
+  const runner = runnerWith(state, completingModules({
+    execute: async () => ({ status: "paused-human-action", checkpoint, evidenceRefs: [] }),
+  }), async () => ({
+    status: "resumable",
+    state: {
+      schemaVersion: 1,
+      revision: 3,
+      status: "resumable",
+      checkpoint,
+      devicePlatform: "iphone",
+      resumeStepId: validationStepId("C03-verify"),
+      createdAt: "2026-09-17T12:00:00.000Z",
+      acknowledgedAt: "2026-09-17T12:01:00.000Z",
+      verifiedAt: "2026-09-17T12:02:00.000Z",
+    },
+  }));
+  const started = await runner.startScenario({ run, definition });
+  const paused = await runner.advance({ run, expectedRevision: started.state.revision });
+  const resumable = await runner.resume({
+    run,
+    checkpointId: checkpoint.checkpointId,
+    currentDevice: validationDeviceIdentity("iphone-a", "iphone"),
+    expectedRevision: paused.state.revision,
+  });
+  assert.equal(resumable.status, "RESUMABLE");
+  assert.deepEqual(resumable.state.currentStep, {
+    scenarioId: "C03",
+    stepId: validationStepId("C03-verify"),
+    stepIndex: 1,
+  });
+});
+
 test("VH14-B represents RESUMABLE and rejects stale transitions without module work", async () => {
   const state = new MemoryState();
   const run = validationRunIdentity("resumable-run", "C03");
@@ -441,4 +593,106 @@ test("VH14-B fails closed when lifecycle persistence loses its CAS race", async 
   assert.equal(result.status, "BLOCKED");
   if (result.status === "BLOCKED") assert.equal(result.reason.kind, "state-changed");
   assert.equal(state.value?.revision, started.state.revision);
+});
+
+test("VH14-B + real C + real VH13 retries cleanup after durable adoption and process restart", {
+  skip: !existsSync(INTEGRATED_C_MODULE) && "Package C is not present on the isolated B branch.",
+}, async () => {
+  // Package C is intentionally absent from B's exact A base. This import is
+  // exercised in the temporary B+C verification tree and Package I tree.
+  // @ts-ignore -- resolved only after the separately owned C head is integrated.
+  const cModule = await import("../src/validation/scenario-runner-durable-state");
+  const DurableController = cModule.ValidationRunnerDurableStateController;
+  const runnerStore = new RawRunnerStore();
+  const adoptionStore = new RawAdoptionStore();
+  const checkpointStore = new InterruptibleCheckpointStore();
+  const clock = () => new Date("2026-09-17T12:00:00.000Z");
+  const device = validationDeviceIdentity("iphone-integration", "iphone");
+  const run = validationRunIdentity("b-c-vh13-retry", "C03");
+  const definition = scenario();
+  const resumeStepId = validationStepId("C03-verify");
+
+  const vh13 = new HumanCheckpointResumeController(checkpointStore, clock);
+  const began = await vh13.begin({
+    run,
+    checkpointId: "b-c-vh13-checkpoint",
+    device,
+    action: "restart-obsidian",
+    resumeStepId: String(resumeStepId),
+  });
+  assert.equal(began.status, "paused");
+  if (began.status !== "paused" || !began.state) throw new Error("Expected a durable VH13 checkpoint.");
+  const checkpoint = began.state.checkpoint;
+  await vh13.acknowledge(run, String(checkpoint.checkpointId));
+  const verified = await vh13.verify(run, String(checkpoint.checkpointId), device, {
+    observe: async () => ({ status: "verified" }),
+  });
+  assert.equal(verified.status, "resumable");
+
+  let moduleCall = 0;
+  const modules = completingModules({
+    execute: async () => {
+      moduleCall += 1;
+      if (moduleCall === 1) return { status: "paused-human-action", checkpoint, evidenceRefs: [] };
+      return {
+        status: "resumable",
+        resume: {
+          state: "resumable",
+          checkpoint,
+          acknowledgement: "acknowledged",
+          verification: "verified",
+          resumeStepId,
+        },
+        evidenceRefs: [],
+      };
+    },
+  });
+  const initialDurable = new DurableController(runnerStore, adoptionStore);
+  const initial = runnerWith(initialDurable, modules, vh13.consumeResume.bind(vh13));
+  const started = await initial.startScenario({ run, definition });
+  const paused = await initial.advance({ run, expectedRevision: started.state.revision });
+  const ready = await initial.advance({ run, expectedRevision: paused.state.revision });
+  assert.equal(ready.status, "RESUMABLE");
+  assert.deepEqual(ready.state.currentStep, { scenarioId: "C03", stepId: resumeStepId, stepIndex: 1 });
+
+  checkpointStore.failNextCleanup = true;
+  const afterProcessRestartDurable = new DurableController(runnerStore, adoptionStore);
+  const afterProcessRestartVh13 = new HumanCheckpointResumeController(checkpointStore, clock);
+  const afterProcessRestart = runnerWith(
+    afterProcessRestartDurable,
+    modules,
+    afterProcessRestartVh13.consumeResume.bind(afterProcessRestartVh13),
+    { definitions: [definition] },
+  );
+  const cleanupInterrupted = await afterProcessRestart.resume({
+    run,
+    checkpointId: checkpoint.checkpointId,
+    currentDevice: device,
+    expectedRevision: ready.state.revision,
+  });
+  assert.equal(cleanupInterrupted.status, "PAUSED-HUMAN-ACTION");
+  assert.equal(cleanupInterrupted.state.lifecycle.kind, "running");
+  assert.equal(cleanupInterrupted.state.currentStep?.stepId, resumeStepId);
+  assert.ok(cleanupInterrupted.state.revision > ready.state.revision);
+
+  const cleanupRetryDurable = new DurableController(runnerStore, adoptionStore);
+  const cleanupRetryVh13 = new HumanCheckpointResumeController(checkpointStore, clock);
+  const cleanupRetry = runnerWith(
+    cleanupRetryDurable,
+    modules,
+    cleanupRetryVh13.consumeResume.bind(cleanupRetryVh13),
+    { definitions: [definition] },
+  );
+  const resumed = await cleanupRetry.resume({
+    run,
+    checkpointId: checkpoint.checkpointId,
+    currentDevice: device,
+    expectedRevision: cleanupInterrupted.state.revision,
+  });
+  assert.equal(resumed.status, "RUNNING");
+  assert.equal(resumed.state.revision, cleanupInterrupted.state.revision,
+    "cleanup retry accepts equal revision only after exact C adoption proof");
+  assert.equal(checkpointStore.value, null);
+  const journal = adoptionStore.value as { readonly entries?: readonly unknown[] };
+  assert.equal(journal.entries?.length, 1);
 });
