@@ -7,8 +7,8 @@ STATUS: COMPLETE
 - Agent: `agt-ca-p6-vh14b-runner-core-01`
 - Branch: `phase6-vh14-b-runner-core`
 - Exact authorized Package A base: `e52b653a49490ebd1d7a8c456dad896de44dc4a7`
-- Implementation/test checkpoint: `0cb33c7dfb4c96e95a76b35717cafc9db2079f25`
-- Implementation/test tree: `b55ce27f25c1761839c5debfc7ae79499b929919`
+- Final reviewed implementation/test checkpoint: `a73c0856fff43c0b5ace1217a6ed26fd9b7fe714`
+- Final reviewed implementation/test tree: `c5c5f16b302c8a3375e6b48434da8ad02f7ac0e1`
 - Final evidence/branch head: the evidence-only commit containing this file; its exact SHA/tree is returned to the supervisor because a commit cannot embed its own identity.
 
 The branch was verified clean and equal to its pushed remote before evidence closure. Package A is an exact ancestor, and the B delta is limited to the two implementation/test files plus this evidence file.
@@ -29,6 +29,7 @@ The core:
 - never derives verification/evidence success from operation completion;
 - prevents a paused human-action step from completing directly: it must first become `RESUMABLE` and then use VH13 durable adoption;
 - after VH13 `consumeResume` reports `resumed`, reloads durable runner state and accepts only an exact, revision-advanced `running` adoption of the requested resume step;
+- moves the durable `RESUMABLE` cursor to the exact declared resume step before invoking VH13, allowing the durable adoption port to validate the full run/checkpoint/step tuple;
 - supports deterministic fresh-process continuation through a caller-supplied immutable scenario-definition catalog, with suite order remaining durable authority;
 - delegates every prerequisite, step, and human-resume operation through Package A interfaces and imports no VH04–VH13 concrete implementation;
 - contains no filesystem, Drive, production-sync, physical-observation, evidence-recorder, fault-injection, or synchronization-engine semantics.
@@ -56,6 +57,8 @@ The core:
 | Lifecycle and ordered-suite behavior | `9bd59464bde21783305fbae49ebdf0f78fd6a4b8` | `6af9f82d8c7e0314055cfa410a48f7ba2bd29bc6` | pushed |
 | Focused state-machine tests | `80095ac6daf10b01300b30a78163df2ef97b3e92` | `e5869eb8d7f3fe2d077df98dd6a4d35c1e7be717` | pushed |
 | Deterministic restart/resume correction | `0cb33c7dfb4c96e95a76b35717cafc9db2079f25` | `b55ce27f25c1761839c5debfc7ae79499b929919` | pushed |
+| Initial evidence closure | `ad9af7e26ff5cc558a519245a9bd434f1f15380e` | `a6d310304e767071e3f8778dddb917199c348084` | pushed |
+| Exact resumable-cursor alignment with C | `a73c0856fff43c0b5ace1217a6ed26fd9b7fe714` | `c5c5f16b302c8a3375e6b48434da8ad02f7ac0e1` | pushed |
 
 ## Exact changed-file manifest
 
@@ -69,7 +72,7 @@ Package B did not edit Package A contracts, C/D/E/I-owned files, the validation 
 
 ## Verification
 
-Required gates run at exact implementation checkpoint `0cb33c7dfb4c96e95a76b35717cafc9db2079f25`:
+Required gates run against the exact tracked content committed at final reviewed checkpoint `a73c0856fff43c0b5ace1217a6ed26fd9b7fe714`:
 
 - `npm run typecheck` — PASS.
 - `node_modules/.bin/tsc.cmd -p tsconfig.test.json` — PASS (complete test TypeScript compilation).
@@ -91,4 +94,5 @@ The complete repository suite/build/check and executable integrated canary remai
 
 - The isolated worktree reused the repository's existing locked `node_modules` through a local ignored junction solely to execute verification; no dependency or tracked-file change resulted.
 - A post-checkpoint recovery audit found the process-local definition catalog and stale post-adoption CAS risks. Both were corrected in pushed checkpoint `0cb33c7...` and are covered by fresh-core regression tests.
+- Final B/C seam reconciliation required `RESUMABLE.currentStep` to identify the exact resume step before C's durable adoption. Pushed checkpoint `a73c085...` implements and tests that invariant.
 - Remaining Package B blockers: none.
