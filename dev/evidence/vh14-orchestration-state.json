@@ -1,0 +1,82 @@
+{
+  "schema": "vh14-codex-orchestration-v1",
+  "orchestrationRootSha": "1955bdb2e8a2e32a35646ea62ab84c1797d4e8ca",
+  "lastAcceptedIntegrationSha": "692517b6aedd676a9903eae6fe970d861ff0dad9",
+  "supervisorBootstrapSha": "SELF: resolve to the commit containing this initial manifest",
+  "startupRecovery": {
+    "status": "VERIFIED",
+    "controlBranch": "phase6-vh14-module-integration-runner",
+    "controlHeadAtAudit": "1955bdb2e8a2e32a35646ea62ab84c1797d4e8ca",
+    "trackedDriftAboveAcceptedIntegration": [
+      "dev/agents/st2a/ph6/04-lv/01-test/00-vh14-h6a-module-integration-runner.md"
+    ],
+    "preexistingPackageBranches": [],
+    "preexistingPackageEvidence": [],
+    "preexistingInterruptedGitOperations": [],
+    "approvedSourceHeads": {
+      "VH07": "bd73a0ce713d0993cf60b6fe6c5457f3dd5e9be8",
+      "VH08": "a119a741db2eb5f1c0f613490a94f6fb39f21e77",
+      "VH09": "733ed17eb3307bfdfd65a2c9032aff1c18f48b74",
+      "VH10": "f2e8be3228e84b89da0f18a448b0a1d73b810a2e",
+      "VH11": "130fefa991e330fdaa9a3838f473183f6256d8ba",
+      "VH12": "8f6754239f41055d1862274490e2cc3812dba775",
+      "VH13": "a27a3e94436f239cd1a84a30dfe316114678d7db"
+    },
+    "reconstructedIntegrationMerges": {
+      "VH04": "d64139984629bc2a5889f83fc1e0311ec2567733",
+      "VH05": "2e55c57352d9043b46669ad0d7897df1596152af",
+      "VH06": "58f0c851c7fecb0214280ff98dd967324053c224",
+      "VH07": "f0e166977fd6d7e16ca0c588e95357ca46f1fea5",
+      "VH08": "943355f294130a50c9f0bfa51aa29ce0f462d57d",
+      "VH09": "582beada55b681ad088f3ec9cceb4f8169614aa4",
+      "VH10": "703663cd60f12a2630a62ce73d201d6dac51f52f",
+      "VH11": "c312a9e3652a348df1e82cf68c89836830cdfc5a",
+      "VH12": "32493b3179099f4477ce019e2513feb304152556",
+      "VH13": "692517b6aedd676a9903eae6fe970d861ff0dad9"
+    }
+  },
+  "packages": {
+    "A": {
+      "status": "NOT_STARTED",
+      "branch": "phase6-vh14-a-integration-substrate",
+      "baseSha": "SELF: supervisor bootstrap commit containing this initial manifest",
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md"
+    },
+    "B": {
+      "status": "BLOCKED_ON_A",
+      "branch": "phase6-vh14-b-runner-core",
+      "baseSha": null,
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md"
+    },
+    "C": {
+      "status": "BLOCKED_ON_A",
+      "branch": "phase6-vh14-c-durable-resume",
+      "baseSha": null,
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md"
+    },
+    "D": {
+      "status": "BLOCKED_ON_A",
+      "branch": "phase6-vh14-d-module-orchestration",
+      "baseSha": null,
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md"
+    },
+    "E": {
+      "status": "BLOCKED_ON_A",
+      "branch": "phase6-vh14-e-canary-regressions",
+      "baseSha": null,
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md"
+    },
+    "I": {
+      "status": "BLOCKED_ON_BCDE",
+      "branch": "phase6-vh14-i-integration-verify",
+      "baseSha": null,
+      "acceptedHeadSha": null,
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14i-integration-verify-01.md"
+    }
+  }
+}
