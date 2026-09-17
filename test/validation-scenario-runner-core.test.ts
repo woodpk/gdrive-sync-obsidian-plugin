@@ -55,17 +55,13 @@ class MemoryState implements ValidationRunnerDurableStatePort {
       current.run.runId !== input.run.runId ||
       current.run.scenarioId !== input.run.scenarioId ||
       current.lifecycle.resume.checkpoint.checkpointId !== input.checkpointId ||
-      current.lifecycle.resume.resumeStepId !== input.resumeStepId
+      current.lifecycle.resume.resumeStepId !== input.resumeStepId ||
+      current.currentStep?.stepId !== input.resumeStepId
     ) throw new Error("Resume adoption tuple mismatch.");
     this.value = structuredClone({
       ...current,
       revision: current.revision + 1,
       lifecycle: { kind: "running", stepId: input.resumeStepId },
-      currentStep: {
-        scenarioId: current.run.scenarioId,
-        stepId: input.resumeStepId,
-        stepIndex: (current.currentStep?.stepIndex ?? -1) + 1,
-      },
     });
   }
 }
@@ -378,6 +374,8 @@ test("VH14-B represents PAUSED-HUMAN-ACTION and resumes only through the VH13 po
   assert.deepEqual(paused.state.currentStep, started.state.currentStep);
   const ready = await runner.advance({ run, expectedRevision: paused.state.revision });
   assert.equal(ready.status, "RESUMABLE");
+  assert.equal(ready.state.currentStep?.stepId, validationStepId("C03-verify"));
+  assert.equal(ready.state.currentStep?.stepIndex, 1);
   const restarted = runnerWith(state, modules, consumeResume, { definitions: [definition] });
   const resumed = await restarted.resume({
     run,

@@ -187,10 +187,25 @@ export class ValidationScenarioRunnerCore implements ValidationScenarioRunner {
           delegated.evidenceRefs,
         ));
       }
+      const resumeStepIndex = definition.steps.findIndex(
+        candidate => candidate.stepId === delegated.resume.resumeStepId,
+      );
+      if (resumeStepIndex < 0) {
+        return await this.stop(state, "BLOCKED", reason(
+          "invalid-definition",
+          `Delegated resume step ${delegated.resume.resumeStepId} is not in scenario ${definition.scenarioId}.`,
+          delegated.evidenceRefs,
+        ));
+      }
       const next = {
         ...state,
         revision: state.revision + 1,
         lifecycle: { kind: "resumable", resume: delegated.resume } as const,
+        currentStep: {
+          scenarioId: definition.scenarioId,
+          stepId: delegated.resume.resumeStepId,
+          stepIndex: resumeStepIndex,
+        },
       };
       return await this.persist(state, next, { status: "RESUMABLE", state: next, resume: delegated.resume });
     }
