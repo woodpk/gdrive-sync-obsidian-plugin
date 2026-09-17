@@ -57,24 +57,29 @@
       "branch": "phase6-vh14-b-runner-core",
       "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
-      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md"
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md",
+      "latestCheckpointSha": "80095ac6daf10b01300b30a78163df2ef97b3e92",
+      "latestCheckpointTree": "e5869eb8d7f3fe2d077df98dd6a4d35c1e7be717",
+      "recoveryReason": "Agent credit interruption after clean pushed implementation/test checkpoint; evidence closure not yet created."
     },
     "C": {
-      "status": "RUNNING",
+      "status": "COMPLETE",
       "branch": "phase6-vh14-c-durable-resume",
       "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
-      "acceptedHeadSha": null,
-      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md"
+      "acceptedHeadSha": "a28e6ae0a6fb922ddd40aaa0fff355cc6e70137d",
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md",
+      "acceptedTree": "ebaac87e1db038fc3fd91ec491f7a0c5344a9390"
     },
     "D": {
-      "status": "RUNNING",
+      "status": "COMPLETE",
       "branch": "phase6-vh14-d-module-orchestration",
       "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
-      "acceptedHeadSha": null,
-      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md"
+      "acceptedHeadSha": "ba9d68cd5ca43bce8faf2162e1e390171d7fd837",
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md",
+      "acceptedTree": "55aace4effd280cbf905a0895f62740deda0f34e"
     },
     "E": {
-      "status": "READY_QUEUED",
+      "status": "RUNNING",
       "branch": "phase6-vh14-e-canary-regressions",
       "baseSha": "e52b653a49490ebd1d7a8c456dad896de44dc4a7",
       "acceptedHeadSha": null,
