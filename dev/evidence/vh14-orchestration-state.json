@@ -2,7 +2,7 @@
   "schema": "vh14-codex-orchestration-v1",
   "orchestrationRootSha": "1955bdb2e8a2e32a35646ea62ab84c1797d4e8ca",
   "lastAcceptedIntegrationSha": "692517b6aedd676a9903eae6fe970d861ff0dad9",
-  "supervisorBootstrapSha": "SELF: resolve to the commit containing this initial manifest",
+  "supervisorBootstrapSha": "a4e898a02022279e0bbabd012e1c245c6984636d",
   "startupRecovery": {
     "status": "VERIFIED",
     "controlBranch": "phase6-vh14-module-integration-runner",
@@ -37,11 +37,17 @@
   },
   "packages": {
     "A": {
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "branch": "phase6-vh14-a-integration-substrate",
-      "baseSha": "SELF: supervisor bootstrap commit containing this initial manifest",
+      "baseSha": "a4e898a02022279e0bbabd012e1c245c6984636d",
       "acceptedHeadSha": null,
-      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md"
+      "evidencePath": "dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md",
+      "latestCheckpointSha": "36cc7e4e80852602928b6146fcb33031306be39a",
+      "latestCheckpointTree": "713c5bdc2916b245a7fa1260f74a4632d8d50233",
+      "blockers": [
+        "Accepted src/validation/index.ts omits approved VH05 fixture-manager and VH13 human-checkpoint-resume-controller exports.",
+        "Tasking-listed VH04 merge 7ae491c5083e463633c6ba5adb81db9024530a1a is not resolvable; accepted first-parent history contains d64139984629bc2a5889f83fc1e0311ec2567733."
+      ]
     },
     "B": {
       "status": "BLOCKED_ON_A",
