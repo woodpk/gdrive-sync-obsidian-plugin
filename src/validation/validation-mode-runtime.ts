@@ -11,6 +11,7 @@ import {
   VALIDATION_RUNNER_MODULE_IDS,
   VALIDATION_RUNNER_SCENARIO_IDS,
   type ValidationRunnerHumanCheckpointResumePort,
+  type ValidationRunnerModuleId,
   type ValidationRunnerPersistentState,
   type ValidationRunnerResult,
   type ValidationRunnerScenarioDefinition,
@@ -19,7 +20,6 @@ import {
 import {
   type ValidationRunnerApprovedModuleDelegate,
   type ValidationRunnerApprovedModuleDelegates,
-  type ValidationRunnerModuleId,
   type ValidationRunnerPrerequisiteDelegate,
 } from "./scenario-runner-module-adapter";
 import {
