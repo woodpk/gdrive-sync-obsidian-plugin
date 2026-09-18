@@ -420,9 +420,33 @@ test("VH15-R2 T8 composition recreation drops handoff authority and resumed exec
       };
     },
   };
+  let resumeCalls = 0;
   const humanCheckpoints: ValidationRunnerHumanCheckpointResumePort = {
     async consumeResume(run, checkpointId, _device, resumeCommit) {
+      resumeCalls += 1;
       const adoptedCheckpointId = humanCheckpointId(checkpointId);
+      if (resumeCalls === 1) {
+        return {
+          status: "resumable",
+          state: {
+            schemaVersion: 1,
+            revision: 3,
+            status: "resumable",
+            checkpoint: humanCheckpoint({
+              checkpointId: String(adoptedCheckpointId),
+              run,
+              deviceId: "device:vh15-r2",
+              requestedAction: "restart-obsidian",
+              instruction: "Recreate the H6B composition before assertion.",
+            }),
+            devicePlatform: "windows-desktop",
+            resumeStepId: assertionStepId,
+            createdAt: "2026-09-18T19:00:00.000Z",
+            acknowledgedAt: "2026-09-18T19:01:00.000Z",
+            verifiedAt: "2026-09-18T19:02:00.000Z",
+          },
+        };
+      }
       await resumeCommit.commitResume({
         run,
         checkpointId: adoptedCheckpointId,
@@ -467,11 +491,17 @@ test("VH15-R2 T8 composition recreation drops handoff authority and resumed exec
   runtime.setEnabled(false);
   runtime.setEnabled(true);
 
+  const resumable = await runtime.resumeCurrent();
+  assert.equal(resumable.status, "runner");
+  if (resumable.status !== "runner") throw new Error("Expected runner result after restart.");
+  assert.equal(resumable.result.status, "RESUMABLE");
+
   const resumed = await runtime.resumeCurrent();
   assert.equal(resumed.status, "runner");
-  if (resumed.status !== "runner") throw new Error("Expected runner result after restart.");
+  if (resumed.status !== "runner") throw new Error("Expected runner result after durable resume adoption.");
   assert.equal(resumed.result.status, "BLOCKED");
   if (resumed.result.status === "BLOCKED") assert.match(resumed.result.reason.summary, /No observed production plan exists/);
+  assert.equal(resumeCalls, 2);
   assert.deepEqual(production.executedPlanIds, []);
 });
 
