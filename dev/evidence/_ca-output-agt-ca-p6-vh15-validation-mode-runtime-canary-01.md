@@ -2,8 +2,8 @@ STATUS: COMPLETE
 
 # VH15 — H6B Validation-Mode Runtime Wiring and Isolation Canary
 
-Agent: `agt-ca-p6-vh15-validation-mode-runtime-canary-01`  
-Repository: `woodpk/gdrive-sync-obsidian-plugin`  
+Agent: `agt-ca-p6-vh15-validation-mode-runtime-canary-01`
+Repository: `woodpk/gdrive-sync-obsidian-plugin`
 Branch: `phase6-vh15-validation-mode-runtime-canary`
 
 ## Base gate
@@ -67,11 +67,11 @@ The canary definition exists only in the test and is not installed into the buil
 
 Verification was executed by the repository's existing GitHub Actions Phase 6 verification workflow because this ChatGPT execution environment does not provide a network-clonable local repository shell.
 
-Temporary verification PR: #127  
-PR state after verification: CLOSED / NOT MERGED  
-Required verification workflow: `Phase 6 Alpha Diagnostic Verification`  
-Workflow run: `35349575822`  
-Job: `105614208088`  
+Temporary verification PR: #127
+PR state after verification: CLOSED / NOT MERGED
+Required verification workflow: `Phase 6 Alpha Diagnostic Verification`
+Workflow run: `35349575822`
+Job: `105614208088`
 Result: PASS
 
 The temporary PR merge commit was `c6ad39166e7d95fae937f90b85890d75ca84ad11`. Its tree was exactly `7ef76abc1039791537965a33115d5b182d3c5689`, identical to the implementation SHA tree, because `phase6-integration` was an ancestor of the VH15 branch. The CI therefore exercised the exact implementation tree.
