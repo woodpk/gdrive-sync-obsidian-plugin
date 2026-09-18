@@ -128,3 +128,133 @@ function convergenceAssertion(
   id: string,
   kind: ValidationConvergenceAssertion["kind"],
   expectation: string,
+): ValidationConvergenceAssertion {
+  return { assertionId: validationAssertionId(id), kind, subject: C04_SCENARIO_ID, expectation };
+}
+
+function expectedOperation(input: {
+  readonly kind: PlanOperationKind;
+  readonly path: VaultPath;
+  readonly targetSide: "local" | "remote";
+  readonly remoteObjectId?: RemoteObjectId;
+  readonly fromPath?: VaultPath;
+  readonly toPath?: VaultPath;
+}): ValidationExpectedPlanOperation {
+  return {
+    kind: input.kind,
+    path: input.path,
+    targetSide: input.targetSide,
+    destructive: false,
+    ...(input.remoteObjectId === undefined ? {} : { remoteObjectId: input.remoteObjectId }),
+    ...(input.fromPath === undefined ? {} : { fromPath: input.fromPath }),
+    ...(input.toPath === undefined ? {} : { toPath: input.toPath }),
+  };
+}
+
+function planExpectation(input: {
+  readonly run: ValidationRunIdentity;
+  readonly expected: ValidationExpectedPlanOperation;
+  readonly moveOnly?: boolean;
+}) {
+  return validationPlanExpectation({
+    run: input.run,
+    expectedTrigger: "manual",
+    expectedOperations: [input.expected],
+    allowedBackgroundKinds: ["noop"],
+    forbiddenKinds: input.moveOnly
+      ? C04_FORBIDDEN_NON_MOVE_KINDS
+      : ["unresolved-conflict", "trash-local", "trash-remote", "blocked-unsafe", "recovery-required"],
+    conflictExpectation: "forbidden",
+    destructiveExpectation: "forbidden",
+    expectedExecutionDisposition: "safe-auto-eligible",
+    expectedGlobalExecutionGate: "none",
+  });
+}
+
+function stableRemoteIdFromLineagePlan(plan: SynchronizationPlan, oldPath: VaultPath): RemoteObjectId | undefined {
+  const candidates = plan.operations.filter(operation =>
+    operation.kind === "download-create"
+    && operation.path === oldPath
+    && operation.targetSide === "local"
+    && operation.destructive === false,
+  );
+  if (candidates.length !== 1) return undefined;
+  return candidates[0]?.remoteObjectId;
+}
+
+function driverStop(phase: string, result: ValidationProductionDriverResult): C04ScenarioExecutionResult | undefined {
+  if (result.status === "plan-observed" || result.status === "request-accepted") return undefined;
+  return {
+    status: "blocked",
+    phase,
+    reason: result.status === "no-plan-observed" ? result.reason : result.reason,
+  };
+}
+
+function planStop(phase: string, assertion: ValidationPlanAssertionResult): C04ScenarioExecutionResult | undefined {
+  if (assertion.status === "matched") return undefined;
+  return {
+    status: "failed",
+    phase,
+    reason: assertion.failures.map(failure => failure.summary).join(" | "),
+    planAssertion: assertion,
+  };
+}
+
+function verifierStop(phase: string, report: ValidationStateConvergenceReport): C04ScenarioExecutionResult | undefined {
+  if (report.result.verdict === "pass") return undefined;
+  return {
+    status: report.result.verdict === "fail" ? "failed" : "blocked",
+    phase,
+    reason: report.result.verdict === "fail"
+      ? "C04 objective state/convergence verification failed."
+      : "C04 required objective state/convergence proof was not observable.",
+  };
+}
+
+function lineageVerificationRequest(input: {
+  readonly run: ValidationRunIdentity;
+  readonly mobileDeviceId: ValidationDeviceId;
+  readonly windowsDeviceId: ValidationDeviceId;
+  readonly oldPath: VaultPath;
+  readonly remoteObjectId: RemoteObjectId;
+  readonly contentHash: ContentHash;
+  readonly sizeBytes: number;
+}): ValidationStateConvergenceRequest {
+  const content = { hash: input.contentHash, sizeBytes: input.sizeBytes };
+  return {
+    run: input.run,
+    state: [
+      { kind: "local-content", assertion: stateAssertion("c04-lineage-mobile-content", "local-content", "Mobile seed bytes match the deterministic fixture."), deviceId: input.mobileDeviceId, path: input.oldPath, content },
+      { kind: "local-content", assertion: stateAssertion("c04-lineage-windows-content", "local-content", "Windows seed bytes match the deterministic fixture."), deviceId: input.windowsDeviceId, path: input.oldPath, content },
+      { kind: "remote-content", assertion: stateAssertion("c04-lineage-remote-content", "remote-content", "Remote seed bytes and stable identity match the trusted fixture."), path: input.oldPath, remoteObjectId: input.remoteObjectId, content },
+      { kind: "base-authority", assertion: stateAssertion("c04-lineage-mobile-base", "base-authority", "Mobile BASE binds the seed path to the stable Drive object."), deviceId: input.mobileDeviceId, path: input.oldPath, expectedRemoteObjectId: input.remoteObjectId, expectedContent: content },
+      { kind: "base-authority", assertion: stateAssertion("c04-lineage-windows-base", "base-authority", "Windows BASE binds the seed path to the stable Drive object."), deviceId: input.windowsDeviceId, path: input.oldPath, expectedRemoteObjectId: input.remoteObjectId, expectedContent: content },
+      { kind: "mapping-or-tombstone", assertion: stateAssertion("c04-lineage-mobile-mapping", "mapping-or-tombstone", "Mobile trusted state contains the live stable mapping and no tombstone."), deviceId: input.mobileDeviceId, path: input.oldPath, expected: "mapping", remoteObjectId: input.remoteObjectId, entityKind: "file" },
+      { kind: "mapping-or-tombstone", assertion: stateAssertion("c04-lineage-windows-mapping", "mapping-or-tombstone", "Windows trusted state contains the live stable mapping and no tombstone."), deviceId: input.windowsDeviceId, path: input.oldPath, expected: "mapping", remoteObjectId: input.remoteObjectId, entityKind: "file" },
+      { kind: "durable-intent-or-effect", assertion: stateAssertion("c04-lineage-mobile-intents", "durable-intent-or-effect", "Mobile has no outstanding durable mutation effect."), deviceId: input.mobileDeviceId, expected: "none-outstanding" },
+      { kind: "durable-intent-or-effect", assertion: stateAssertion("c04-lineage-windows-intents", "durable-intent-or-effect", "Windows has no outstanding durable mutation effect."), deviceId: input.windowsDeviceId, expected: "none-outstanding" },
+    ],
+    convergence: [
+      { kind: "cross-device-content", assertion: convergenceAssertion("c04-lineage-content-converged", "cross-device-content", "Both participants hold the same seed bytes."), deviceIds: [input.mobileDeviceId, input.windowsDeviceId], path: input.oldPath, content },
+      { kind: "cross-device-authority", assertion: convergenceAssertion("c04-lineage-authority-converged", "cross-device-authority", "Both participants bind the seed path to the same Drive identity."), deviceIds: [input.mobileDeviceId, input.windowsDeviceId], path: input.oldPath, expectedRemoteObjectId: input.remoteObjectId, expectedTombstone: false },
+    ],
+  };
+}
+
+function remoteMoveVerificationRequest(input: {
+  readonly run: ValidationRunIdentity;
+  readonly mobileDeviceId: ValidationDeviceId;
+  readonly oldPath: VaultPath;
+  readonly newPath: VaultPath;
+  readonly remoteObjectId: RemoteObjectId;
+  readonly contentHash: ContentHash;
+  readonly sizeBytes: number;
+}): ValidationStateConvergenceRequest {
+  const content = { hash: input.contentHash, sizeBytes: input.sizeBytes };
+  return {
+    run: input.run,
+    state: [
+      { kind: "local-content", assertion: stateAssertion("c04-mobile-new-content", "local-content", "Mobile moved file retains the original bytes."), deviceId: input.mobileDeviceId, path: input.newPath, content },
+      { kind: "live-trash-absence-state", assertion: stateAssertion("c04-remote-old-absent", "live-trash-absence-state", "The old remote path is absent after an identity-preserving move."), path: input.oldPath, expectedState: "absent" },
+      { kind: "remote-content", assertion: stateAssertion("c04-remote-new-content", "remote-content", "The same Drive object is live at the new path with unchanged bytes."), path: input.newPath, remoteObjectId: input.remoteObjectId, content },
