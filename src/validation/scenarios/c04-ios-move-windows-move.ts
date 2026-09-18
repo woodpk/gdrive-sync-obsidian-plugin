@@ -388,3 +388,136 @@ export class C04ScenarioExecutor {
         }),
         plan: windowsSeedPlan,
       });
+      const windowsSeedStop = planStop("lineage-windows-plan", windowsSeedAssertion);
+      if (windowsSeedStop) return windowsSeedStop;
+      const windowsSeedExecuteStop = await executeMatched(
+        "lineage-windows",
+        this.options.windowsProduction,
+        this.options.run,
+        windowsSeedAssertion as Extract<ValidationPlanAssertionResult, { readonly status: "matched" }>,
+      );
+      if (windowsSeedExecuteStop) return windowsSeedExecuteStop;
+
+      const lineage = await this.options.verifier.verify(lineageVerificationRequest({
+        run: this.options.run,
+        mobileDeviceId: this.options.mobileDeviceId,
+        windowsDeviceId: this.options.windowsDeviceId,
+        oldPath,
+        remoteObjectId,
+        contentHash,
+        sizeBytes,
+      }));
+      const lineageStop = verifierStop("lineage-verify", lineage);
+      if (lineageStop) return lineageStop;
+
+      const moved = await this.options.mobileFixtures.move(C04_FIXTURE_ID, C04_NEW_RELATIVE_PATH);
+      const movedHash = await this.options.mobileFixtures.hash(C04_FIXTURE_ID);
+      if (moved.hash !== contentHash || movedHash !== contentHash || moved.sizeBytes !== sizeBytes) {
+        return { status: "failed", phase: "mobile-local-move", reason: "C04 local move changed deterministic fixture content." };
+      }
+      const newPath = moved.path;
+
+      const mobileMovePlan = await previewManual("mobile-move", this.options.mobileProduction, this.options.run);
+      if ("status" in mobileMovePlan) return mobileMovePlan;
+      const mobileMoveAssertion = assertValidationPlan({
+        assertionId: "c04-mobile-identity-preserving-move",
+        expectation: planExpectation({
+          run: this.options.run,
+          moveOnly: true,
+          expected: expectedOperation({
+            kind: "identity-preserving-move",
+            path: newPath,
+            targetSide: "remote",
+            fromPath: oldPath,
+            toPath: newPath,
+            remoteObjectId,
+          }),
+        }),
+        plan: mobileMovePlan,
+      });
+      const mobileMoveStop = planStop("mobile-move-plan", mobileMoveAssertion);
+      if (mobileMoveStop) return mobileMoveStop;
+      const mobileMoveExecuteStop = await executeMatched(
+        "mobile-move",
+        this.options.mobileProduction,
+        this.options.run,
+        mobileMoveAssertion as Extract<ValidationPlanAssertionResult, { readonly status: "matched" }>,
+      );
+      if (mobileMoveExecuteStop) return mobileMoveExecuteStop;
+
+      const remoteMoved = await this.options.verifier.verify(remoteMoveVerificationRequest({
+        run: this.options.run,
+        mobileDeviceId: this.options.mobileDeviceId,
+        oldPath,
+        newPath,
+        remoteObjectId,
+        contentHash,
+        sizeBytes,
+      }));
+      const remoteMoveStop = verifierStop("remote-move-verify", remoteMoved);
+      if (remoteMoveStop) return remoteMoveStop;
+
+      const windowsMovePlan = await previewManual("windows-move", this.options.windowsProduction, this.options.run);
+      if ("status" in windowsMovePlan) return windowsMovePlan;
+      const windowsMoveAssertion = assertValidationPlan({
+        assertionId: "c04-windows-identity-preserving-move",
+        expectation: planExpectation({
+          run: this.options.run,
+          moveOnly: true,
+          expected: expectedOperation({
+            kind: "identity-preserving-move",
+            path: newPath,
+            targetSide: "local",
+            fromPath: oldPath,
+            toPath: newPath,
+            remoteObjectId,
+          }),
+        }),
+        plan: windowsMovePlan,
+      });
+      const windowsMoveStop = planStop("windows-move-plan", windowsMoveAssertion);
+      if (windowsMoveStop) return windowsMoveStop;
+      const windowsMoveExecuteStop = await executeMatched(
+        "windows-move",
+        this.options.windowsProduction,
+        this.options.run,
+        windowsMoveAssertion as Extract<ValidationPlanAssertionResult, { readonly status: "matched" }>,
+      );
+      if (windowsMoveExecuteStop) return windowsMoveExecuteStop;
+
+      const finalVerification = await this.options.verifier.verify(c04FinalVerificationRequest({
+        run: this.options.run,
+        mobileDeviceId: this.options.mobileDeviceId,
+        windowsDeviceId: this.options.windowsDeviceId,
+        oldPath,
+        newPath,
+        remoteObjectId,
+        contentHash,
+        sizeBytes,
+      }));
+      const finalStop = verifierStop("final-verify", finalVerification);
+      if (finalStop) return finalStop;
+
+      return {
+        status: "completed",
+        remoteObjectId,
+        contentHash,
+        sizeBytes,
+        oldPath,
+        newPath,
+        verification: finalVerification,
+      };
+    } catch (error) {
+      return {
+        status: "failed",
+        phase: "scenario-execution",
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
+
+/** Utility for focused tests/integration binders that need a branded fixture path. */
+export function c04FixturePath(root: string, relativePath: typeof C04_OLD_RELATIVE_PATH | typeof C04_NEW_RELATIVE_PATH): VaultPath {
+  return contractId<"VaultPath">(root + "/" + relativePath);
+}
