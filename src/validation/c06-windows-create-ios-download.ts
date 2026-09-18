@@ -15,7 +15,7 @@ import {
   validationTextFixture,
 } from "./fixture-manager";
 import { assertValidationPlan } from "./plan-assertion-engine";
-import { ValidationProductionPathDriver } from "./production-path-driver";
+import type { ValidationProductionPathDriver } from "./production-path-driver";
 import {
   StateConvergenceVerifier,
   type ValidationStateConvergenceReport,
