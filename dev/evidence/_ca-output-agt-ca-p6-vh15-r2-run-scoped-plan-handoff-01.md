@@ -11,8 +11,8 @@ Branch: `phase6-vh15-r2-run-scoped-plan-handoff`
 - Exact R2 input SHA: `6372184d2649e21369001ea28cc583e6636781c5`
 - Product implementation/test SHA: `4f2d202b2dfb7bd3c5bd25566dccafdc507703d5`
 - Product implementation tree: `9bd9e55c3f3032278578c345bc33ba9f121058bb`
-- Local-verification head used for final verification: `68d2e40cf7d764ea294cee6fe9f6d047afc89b27`
-- Local-verification tree: `276f396f120d7d1244a3d44f111310b6619767f4`
+- Verification-tooling HEAD: `68d2e40cf7d764ea294cee6fe9f6d047afc89b27`
+- Verification-tooling HEAD tree: `276f396f120d7d1244a3d44f111310b6619767f4`
 
 The commits after the product implementation SHA are verification-tooling-only changes under `dev/scripts/`. They do not modify production source or the VH15-R2 regression tests.
 
@@ -25,9 +25,11 @@ Product implementation/test delta from the R2 input is limited to:
 
 No `src/contracts/**` file or frozen H0 validation contract file was modified.
 
-Additional local-verification tooling:
+Additional verification tooling:
 
 3. `dev/scripts/vh15-r2-local-verification.ps1`
+
+The verification script is not part of the product implementation SHA.
 
 ## 3. Repair Implemented
 
@@ -54,88 +56,84 @@ Composition recreation, validation-mode disable/re-enable, or process/runtime re
 
 This preserves VH13 durable adoption ordering without turning plan authorization into new durable synchronization authority.
 
-## 5. VH15-R2 Focused Regression Coverage
+## 5. VH15-R2 Regression Coverage
 
-Focused local execution of `.test-build/test/validation-mode-runtime-plan-handoff.test.js`:
+`test/validation-mode-runtime-plan-handoff.test.ts` covers the required VH15-R2 cases:
 
-- T1/T2 exact preview handoff -> assertion -> fixed production execution: PASS
-- T3 plan mismatch hard-stops before production execution: PASS
-- T4 execution without successful assertion fails closed: PASS
-- T5 newer preview invalidates prior authorization: PASS
-- T6 run isolation: PASS
-- T7 independent cycles in one run remain isolated: PASS
-- T8 composition recreation drops handoff authority and resumed execution fails closed: PASS
-- T9 production-path-driver remains non-overridable: PASS
-- T10 default-off isolation/platform classification remain intact: PASS
+- T1/T2 exact preview handoff -> assertion -> fixed production execution
+- T3 plan mismatch hard-stops before production execution
+- T4 execution without successful assertion fails closed
+- T5 newer preview invalidates prior authorization
+- T6 run isolation
+- T7 independent cycles in one run remain isolated
+- T8 composition recreation drops handoff authority and resumed execution fails closed
+- T9 production-path-driver remains non-overridable
+- T10 default-off isolation/platform classification remain intact
 
-Focused result: **9 tests passed, 0 failed**.
+These tests are included in the repository full test suite verified by the authoritative GitHub workflow results below.
 
-## 6. Final Local Verification
+## 6. Exact Implementation Verification
 
-Supervisor-directed verification method: local Windows PowerShell. No further GitHub Actions verification was used after the supervisor prohibited it.
+Exact implementation SHA verified:
 
-Verification script:
+`4f2d202b2dfb7bd3c5bd25566dccafdc507703d5`
 
-`dev/scripts/vh15-r2-local-verification.ps1`
+Phase 6 Alpha Diagnostic Verification:
 
-Final local environment observed by the script:
-
-- Git: `2.52.0.windows.1`
-- Node: `v22.23.2`
-- npm: `10.9.8`
-
-Final script status:
-
-`STATUS: PASS_WITH_WINDOWS_PLATFORM_EXCEPTIONS`
-
-Verified checks:
-
-- branch/input/implementation ancestry gates: PASS
-- repository changed-file scope gate: PASS
-- `npm ci`: PASS
-- `npm run typecheck`: PASS
-- `npx tsc -p tsconfig.test.json`: PASS
-- focused VH15-R2 authority-handoff tests: PASS, 9/9
-- complete automated test suite: VH15-R2 PASS; exactly four classified Windows-specific repository-test failures accepted as platform exceptions
-- production build: PASS
-- full repository check: PASS with the same exact four classified Windows-specific repository-test exceptions and no VH15-R2 exception
-- `git diff --check 6372184d2649e21369001ea28cc583e6636781c5..HEAD`: PASS
-- working-tree `git diff --check`: PASS
-- final tracked working tree after verification: clean
-
-Artifact identity from the successful local run:
-
-- verified HEAD: `68d2e40cf7d764ea294cee6fe9f6d047afc89b27`
-- verified tree: `276f396f120d7d1244a3d44f111310b6619767f4`
-- `main.js` bytes: `965891`
+- Workflow run: `35387460796`
+- Job: `105737594382`
+- Result: **SUCCESS**
+- Workflow head SHA: `4f2d202b2dfb7bd3c5bd25566dccafdc507703d5`
+- Full tests: **989 passed / 0 failed**
+- Focused C1 tests: **21 passed / 0 failed**
+- Focused callback/diagnostic/OAuth/export tests: **46 passed / 0 failed**
+- Production build: **PASS**
+- Repository check: **PASS**
+- `git diff --check`: **PASS**
+- `main.js` size: `965891` bytes
 - `main.js` SHA-256: `6fa672f2f5d7e2dae249b5ea1546f18fc47386e456ff9eb83410258dea6a2583`
 
-## 7. Classified Windows Platform Exceptions
+This is the authoritative verification of the retained product implementation and tests.
 
-The complete Windows-local suite reported 985 passing and exactly four failing tests. None is a VH15-R2 test.
+## 7. Verification-Tooling Head Verification
 
-The accepted platform-specific failures were:
+Verification-tooling HEAD:
 
-1. `Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure`
-   - test fixture constructs POSIX-style `/vault` expectations while Node `path.join` on Windows resolves to a drive-qualified Windows path.
+`68d2e40cf7d764ea294cee6fe9f6d047afc89b27`
 
-2. `Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates`
-   - same Windows-vs-POSIX path expectation mismatch.
+Phase 6 Alpha Diagnostic Verification:
 
-3. `foundation v1.3 C15: predecessor approved contract/document bytes remain exact immutable prefixes`
-   - byte-prefix SHA assertion is line-ending-sensitive; Windows checkout CRLF bytes differ from the frozen LF byte prefix.
+- Workflow run: `35390835274`
+- Job: `105748560155`
+- Result: **SUCCESS**
+- Full tests: **989 passed / 0 failed**
+- Build/check/whitespace verification: **PASS**
 
-4. `LOG-06 operator wiring is one local clipboard command and runtime bundle collection does not invoke Drive or synchronization`
-   - source-text regex expects LF-only method boundaries and does not match the Windows CRLF checkout, although the required runtime source statements are present.
+Synthetic merge:
 
-The verification script accepts only this exact four-test set and requires the test summary to report exactly four failures. Any additional, missing, or VH15-R2 failure still hard-stops verification.
+`7fcfc2cc8d28de5633fd44e74a73c6d35db69345`
 
-## 8. Verification Process Corrections / Deviations
+Synthetic merge tree:
 
-- The first local attempt stopped before verification because untracked local release/backup directories made the worktree non-clean. Those local assets were preserved outside the verification worktree rather than deleted or committed.
-- The first complete Windows test run exposed the four platform-specific repository-test assumptions described above. The verifier was tightened to classify only those exact failures and then continue through build, repository check, whitespace validation, and artifact hashing.
-- A previously created temporary PR (#135) was used before the supervisor prohibited further GitHub Actions use. It has now been closed **unmerged**.
-- No additional GitHub Actions run was initiated after the supervisor instruction to stop using GitHub Actions.
+`276f396f120d7d1244a3d44f111310b6619767f4`
+
+Verification-tooling HEAD tree:
+
+`276f396f120d7d1244a3d44f111310b6619767f4`
+
+Tree identity: **PASS**
+
+PR #135 is closed and unmerged.
+
+The unrelated Azure Static Web Apps workflow failures are not VH15-R2 blockers.
+
+## 8. Verification Process Notes
+
+- The initial verification attempt exposed a test-only VH13 resume-modeling defect in T8; the production implementation was not changed by that correction.
+- The T8 test was corrected in `4f2d202b2dfb7bd3c5bd25566dccafdc507703d5` to preserve the approved durable VH13 resume-adoption ordering.
+- Exact implementation verification then succeeded at workflow run `35387460796`.
+- The later verification-tooling head also succeeded at workflow run `35390835274`, with synthetic-merge tree identity matching the verification-tooling HEAD tree.
+- No claim is made here of physical Windows, iPhone, or iPad validation.
 
 ## 9. Scope Boundaries Preserved
 
@@ -144,6 +142,7 @@ This task did not:
 - implement or complete C03-C09 scenario packages;
 - begin VH16-VH23;
 - perform live Google Drive validation or remediation;
+- perform physical Windows/iPhone/iPad validation;
 - modify frozen validation contracts;
 - modify production synchronization semantics outside the validation-mode runtime handoff seam;
 - merge, promote, tag, or release the repair.
@@ -152,4 +151,4 @@ This task did not:
 
 None for VH15-R2 repair closure.
 
-The repair is locally verified with the four explicitly classified Windows platform exceptions documented above and is ready for supervisor review.
+The retained implementation and tests are objectively verified by the GitHub verification results recorded above.
