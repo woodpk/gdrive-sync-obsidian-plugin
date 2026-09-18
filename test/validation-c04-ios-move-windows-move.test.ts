@@ -319,8 +319,8 @@ test("VH17 C04 fails closed before remote mutation when mobile rename is represe
 
   const result = await subject.executor.execute();
 
+  if (result.status === "completed") assert.fail("delete/create substitution must fail closed before execution");
   assert.equal(result.status, "failed");
-  if (result.status === "completed") return;
   assert.equal(result.phase, "mobile-move-plan");
   assert.ok(result.planAssertion?.status === "mismatch");
   if (result.planAssertion?.status === "mismatch") {
