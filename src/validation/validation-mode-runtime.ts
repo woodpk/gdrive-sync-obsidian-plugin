@@ -1,8 +1,11 @@
+import type { SynchronizationPlan } from "../contracts";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import type {
   ValidationPlanExecutionAuthorization,
+  ValidationPlanExpectation,
   ValidationProductionDriverResult,
 } from "./driver-plan-fault-verifier-contracts";
+import { assertValidationPlan } from "./plan-assertion-engine";
 import {
   ValidationProductionPathDriver,
   type ValidationProductionRuntimePort,
@@ -32,7 +35,9 @@ import {
   validationRunIdentity,
   type ValidationDeviceIdentity,
   type ValidationDevicePlatform,
+  type ValidationRunIdentity,
   type ValidationScenarioId,
+  type ValidationStepId,
 } from "./run-sandbox-checkpoint-contracts";
 
 
@@ -58,6 +63,15 @@ export type ValidationModeModuleOverrides = Partial<
   Record<ValidationRunnerModuleId, ValidationRunnerApprovedModuleDelegate>
 >;
 
+export interface ValidationPlanAuthorityCycleInput {
+  readonly authorityCycleId: string;
+}
+
+export interface ValidationPlanAssertionStepInput extends ValidationPlanAuthorityCycleInput {
+  readonly assertionId: string;
+  readonly expectation: Omit<ValidationPlanExpectation, "run">;
+}
+
 export interface ValidationModeRuntimeOptions {
   readonly productionRuntime: ValidationProductionRuntimePort;
   readonly definitions?: readonly ValidationRunnerScenarioDefinition[];
@@ -72,6 +86,151 @@ export interface ValidationModeRuntimeOptions {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function validText(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.trim() === value;
+}
+
+function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
+  return left.runId === right.runId && left.scenarioId === right.scenarioId;
+}
+
+type ValidationAuthorityCycleParse =
+  | { readonly status: "absent" }
+  | { readonly status: "invalid" }
+  | { readonly status: "valid"; readonly cycleId: string };
+
+function parseAuthorityCycle(input: unknown): ValidationAuthorityCycleParse {
+  if (!isRecord(input) || !Object.prototype.hasOwnProperty.call(input, "authorityCycleId")) {
+    return { status: "absent" };
+  }
+  return validText(input.authorityCycleId)
+    ? { status: "valid", cycleId: input.authorityCycleId }
+    : { status: "invalid" };
+}
+
+interface RetainedValidationPlanAuthority {
+  readonly run: ValidationRunIdentity;
+  readonly cycleId: string;
+  readonly previewStepId: ValidationStepId;
+  readonly plan: SynchronizationPlan;
+  readonly assertionStepId?: ValidationStepId;
+  readonly authorization?: ValidationPlanExecutionAuthorization;
+}
+
+/**
+ * Validation-only, composition-scoped handoff authority.
+ *
+ * This state is intentionally not durable. Recreating the H6B composition
+ * drops every retained plan/authorization so a resumed durable runner fails
+ * closed and must restart from a safe production preview/assertion sequence.
+ */
+class ValidationRunScopedPlanAuthority {
+  private readonly entries = new Map<string, RetainedValidationPlanAuthority>();
+
+  beginPreview(run: ValidationRunIdentity, cycleId: string): void {
+    this.entries.delete(this.key(run, cycleId));
+  }
+
+  retainObservedPlan(input: {
+    readonly run: ValidationRunIdentity;
+    readonly cycleId: string;
+    readonly previewStepId: ValidationStepId;
+    readonly plan: SynchronizationPlan;
+  }): boolean {
+    const key = this.key(input.run, input.cycleId);
+    if (this.entries.has(key)) return false;
+    this.entries.set(key, Object.freeze({
+      run: input.run,
+      cycleId: input.cycleId,
+      previewStepId: input.previewStepId,
+      plan: input.plan,
+    }));
+    return true;
+  }
+
+  observedPlan(run: ValidationRunIdentity, cycleId: string): SynchronizationPlan | undefined {
+    const entry = this.entries.get(this.key(run, cycleId));
+    return entry && sameRun(entry.run, run) && entry.cycleId === cycleId ? entry.plan : undefined;
+  }
+
+  retainAuthorization(input: {
+    readonly run: ValidationRunIdentity;
+    readonly cycleId: string;
+    readonly assertionStepId: ValidationStepId;
+    readonly authorization: ValidationPlanExecutionAuthorization;
+  }): boolean {
+    const key = this.key(input.run, input.cycleId);
+    const entry = this.entries.get(key);
+    if (
+      !entry
+      || !sameRun(entry.run, input.run)
+      || entry.cycleId !== input.cycleId
+      || !sameRun(input.authorization.run, input.run)
+      || input.authorization.executionAuthorized !== true
+      || input.authorization.planId !== entry.plan.planId
+    ) {
+      return false;
+    }
+    this.entries.set(key, Object.freeze({
+      ...entry,
+      assertionStepId: input.assertionStepId,
+      authorization: input.authorization,
+    }));
+    return true;
+  }
+
+  consumeAuthorization(
+    run: ValidationRunIdentity,
+    cycleId: string,
+  ): ValidationPlanExecutionAuthorization | undefined {
+    const key = this.key(run, cycleId);
+    const entry = this.entries.get(key);
+    if (!entry || !entry.authorization) return undefined;
+    this.entries.delete(key);
+    if (
+      !sameRun(entry.run, run)
+      || entry.cycleId !== cycleId
+      || !sameRun(entry.authorization.run, run)
+      || entry.authorization.executionAuthorized !== true
+      || entry.authorization.planId !== entry.plan.planId
+    ) {
+      return undefined;
+    }
+    return entry.authorization;
+  }
+
+  clearRun(run: ValidationRunIdentity): void {
+    for (const [key, entry] of this.entries) {
+      if (sameRun(entry.run, run)) this.entries.delete(key);
+    }
+  }
+
+  clearAll(): void {
+    this.entries.clear();
+  }
+
+  private key(run: ValidationRunIdentity, cycleId: string): string {
+    return `${String(run.scenarioId)}\u0000${String(run.runId)}\u0000${cycleId}`;
+  }
+}
+
+function parseAssertionStepInput(input: unknown): {
+  readonly cycleId: string;
+  readonly assertionId: string;
+  readonly expectation: Record<string, unknown>;
+} | undefined {
+  if (!isRecord(input)) return undefined;
+  const cycle = parseAuthorityCycle(input);
+  if (cycle.status !== "valid" || !validText(input.assertionId) || !isRecord(input.expectation)) {
+    return undefined;
+  }
+  return {
+    cycleId: cycle.cycleId,
+    assertionId: input.assertionId,
+    expectation: input.expectation,
+  };
 }
 
 function revisionOf(value: unknown): number | null {
@@ -154,17 +313,37 @@ function productionFailure(
   });
 }
 
-function productionDelegate(driver: ValidationProductionPathDriver): ValidationRunnerApprovedModuleDelegate {
+function productionDelegate(
+  driver: ValidationProductionPathDriver,
+  authority: ValidationRunScopedPlanAuthority,
+): ValidationRunnerApprovedModuleDelegate {
   return {
     async execute(request) {
       let result: ValidationProductionDriverResult;
       switch (request.operation) {
         case "preview-manual":
-          result = await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId });
+        case "preview-verify-reconcile": {
+          const cycle = parseAuthorityCycle(request.input);
+          if (cycle.status === "invalid") {
+            return { status: "blocked", summary: "Production preview authorityCycleId is malformed.", evidenceRefs: [] };
+          }
+          if (cycle.status === "valid") authority.beginPreview(request.run, cycle.cycleId);
+          result = request.operation === "preview-manual"
+            ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId })
+            : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId });
+          if (result.status === "plan-observed" && cycle.status === "valid") {
+            const retained = authority.retainObservedPlan({
+              run: request.run,
+              cycleId: cycle.cycleId,
+              previewStepId: request.stepId,
+              plan: result.plan,
+            });
+            if (!retained) {
+              return { status: "blocked", summary: "Production preview produced ambiguous duplicated run-scoped plan authority.", evidenceRefs: [] };
+            }
+          }
           break;
-        case "preview-verify-reconcile":
-          result = await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId });
-          break;
+        }
         case "run-automatic": {
           const trigger = isRecord(request.input) ? request.input.trigger : undefined;
           if (trigger !== "startup-resume" && trigger !== "local-change" && trigger !== "periodic") {
@@ -174,15 +353,22 @@ function productionDelegate(driver: ValidationProductionPathDriver): ValidationR
           break;
         }
         case "execute-asserted-plan": {
-          const authorization = isRecord(request.input) ? request.input.authorization : undefined;
-          if (!isRecord(authorization) || authorization.executionAuthorized !== true) {
-            return { status: "blocked", summary: "execute-asserted-plan requires an asserted plan authorization.", evidenceRefs: [] };
+          const cycle = parseAuthorityCycle(request.input);
+          if (cycle.status !== "valid") {
+            return { status: "blocked", summary: "execute-asserted-plan requires a valid run-scoped authorityCycleId.", evidenceRefs: [] };
+          }
+          if (isRecord(request.input) && Object.prototype.hasOwnProperty.call(request.input, "authorization")) {
+            return { status: "blocked", summary: "Caller-supplied execution authorization is prohibited; authorization must come from the shared assertion handoff.", evidenceRefs: [] };
+          }
+          const authorization = authority.consumeAuthorization(request.run, cycle.cycleId);
+          if (!authorization) {
+            return { status: "blocked", summary: "No asserted execution authorization exists for this validation run and authority cycle.", evidenceRefs: [] };
           }
           result = await driver.dispatch({
             kind: "execute-asserted-plan",
             run: request.run,
             stepId: request.stepId,
-            authorization: authorization as unknown as ValidationPlanExecutionAuthorization,
+            authorization,
           });
           break;
         }
@@ -205,17 +391,92 @@ function productionDelegate(driver: ValidationProductionPathDriver): ValidationR
   };
 }
 
+function planAssertionDelegate(
+  authority: ValidationRunScopedPlanAuthority,
+): ValidationRunnerApprovedModuleDelegate {
+  return {
+    async execute(request) {
+      if (request.operation !== "assert-observed-plan") {
+        return {
+          status: "blocked",
+          summary: `Unsupported plan-assertion validation operation: ${request.operation}`,
+          evidenceRefs: [],
+        };
+      }
+      const input = parseAssertionStepInput(request.input);
+      if (!input) {
+        return {
+          status: "blocked",
+          summary: "assert-observed-plan requires authorityCycleId, assertionId, and a plan expectation.",
+          evidenceRefs: [],
+        };
+      }
+      const plan = authority.observedPlan(request.run, input.cycleId);
+      if (!plan) {
+        return {
+          status: "blocked",
+          summary: "No observed production plan exists for this validation run and authority cycle.",
+          evidenceRefs: [],
+        };
+      }
+
+      let assertion;
+      try {
+        assertion = assertValidationPlan({
+          assertionId: input.assertionId,
+          expectation: { ...input.expectation, run: request.run } as unknown as ValidationPlanExpectation,
+          plan,
+        });
+      } catch (error) {
+        return {
+          status: "blocked",
+          summary: error instanceof Error ? error.message : "Plan assertion input is malformed.",
+          evidenceRefs: [],
+        };
+      }
+
+      if (assertion.status === "mismatch") {
+        return {
+          status: "failed",
+          summary: assertion.failures.map(failure => failure.summary).join(" | "),
+          evidenceRefs: [],
+        };
+      }
+
+      if (!authority.retainAuthorization({
+        run: request.run,
+        cycleId: input.cycleId,
+        assertionStepId: request.stepId,
+        authorization: assertion.authorization,
+      })) {
+        return {
+          status: "blocked",
+          summary: "Plan assertion authorization no longer matches the retained run-scoped production plan.",
+          evidenceRefs: [],
+        };
+      }
+
+      return { status: "completed", evidenceRefs: [] };
+    },
+  };
+}
+
 function buildModules(
   driver: ValidationProductionPathDriver,
+  authority: ValidationRunScopedPlanAuthority,
   overrides: ValidationModeModuleOverrides | undefined,
 ): ValidationRunnerApprovedModuleDelegates {
   if (overrides?.["production-path-driver"]) {
     throw new Error("The production-path-driver runtime binding is fixed and cannot be overridden.");
   }
+  if (overrides?.["plan-assertion-engine"]) {
+    throw new Error("The plan-assertion-engine runtime binding is fixed and cannot be overridden.");
+  }
   const modules = Object.fromEntries(
     VALIDATION_RUNNER_MODULE_IDS.map(moduleId => [moduleId, blockedModule(moduleId)]),
   ) as unknown as Record<ValidationRunnerModuleId, ValidationRunnerApprovedModuleDelegate>;
-  modules["production-path-driver"] = productionDelegate(driver);
+  modules["production-path-driver"] = productionDelegate(driver, authority);
+  modules["plan-assertion-engine"] = planAssertionDelegate(authority);
   for (const [moduleId, delegate] of Object.entries(overrides ?? {})) {
     if (!delegate) continue;
     modules[moduleId as ValidationRunnerModuleId] = delegate;
@@ -239,6 +500,7 @@ function defaultRunId(): string {
 export class ValidationModeRuntime {
   private active = false;
   private composition?: IntegratedValidationScenarioRunner;
+  private authority?: ValidationRunScopedPlanAuthority;
   private readonly definitions = new Map<ValidationScenarioId, ValidationRunnerScenarioDefinition>();
 
   constructor(private readonly options: ValidationModeRuntimeOptions) {
@@ -256,7 +518,11 @@ export class ValidationModeRuntime {
 
   setEnabled(enabled: boolean): void {
     this.active = enabled;
-    if (!enabled) this.composition = undefined;
+    if (!enabled) {
+      this.authority?.clearAll();
+      this.authority = undefined;
+      this.composition = undefined;
+    }
   }
 
   scenarioIds(): readonly ValidationScenarioId[] {
@@ -280,7 +546,9 @@ export class ValidationModeRuntime {
       };
     }
     const run = validationRunIdentity((this.options.createRunId ?? defaultRunId)(), scenarioId);
-    const result = await this.harness().runner.startScenario({ run, definition });
+    const harness = this.harness();
+    this.authority?.clearRun(run);
+    const result = await harness.runner.startScenario({ run, definition });
     return await this.drive(result);
   }
 
@@ -330,12 +598,14 @@ export class ValidationModeRuntime {
         "brain-google-drive-sync-validation-resume-adoptions-v1",
       );
     const driver = new ValidationProductionPathDriver(this.options.productionRuntime);
+    const authority = new ValidationRunScopedPlanAuthority();
+    this.authority = authority;
 
     this.composition = composeValidationScenarioRunner({
       stateStore,
       resumeAdoptionStore,
       prerequisites: this.options.prerequisites ?? defaultPrerequisites(),
-      modules: buildModules(driver, this.options.moduleOverrides),
+      modules: buildModules(driver, authority, this.options.moduleOverrides),
       humanCheckpoints: this.options.humanCheckpoints ?? defaultHumanCheckpoints(),
       definitions: [...this.definitions.values()],
     });
@@ -355,6 +625,9 @@ export class ValidationModeRuntime {
         status: "unavailable",
         reason: "Validation scenario exceeded the bounded H6B orchestration transition limit.",
       };
+    }
+    if (result.status === "PASS" || result.status === "FAIL" || result.status === "BLOCKED") {
+      this.authority?.clearRun(result.state.run);
     }
     return { status: "runner", result };
   }
