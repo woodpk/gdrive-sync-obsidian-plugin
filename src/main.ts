@@ -11,7 +11,11 @@ import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "
 import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
-import { ValidationModeRuntime, type ValidationModeActionResult } from "./validation/validation-mode-runtime";
+import {
+  classifyValidationDevicePlatform,
+  ValidationModeRuntime,
+  type ValidationModeActionResult,
+} from "./validation/validation-mode-runtime";
 import { validationDeviceIdentity } from "./validation/run-sandbox-checkpoint-contracts";
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
@@ -129,12 +133,13 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private validationDevicePlatform(): "windows-desktop" | "iphone" | "ipad" {
-    if (Platform.isDesktopApp) return "windows-desktop";
     const navigator = globalThis.navigator;
-    const userAgent = navigator?.userAgent ?? "";
-    const iPadLike = /\\biPad\\b/i.test(userAgent)
-      || (/\\bMacintosh\\b/i.test(userAgent) && Number(navigator?.maxTouchPoints ?? 0) > 1);
-    return iPadLike ? "ipad" : "iphone";
+
+    return classifyValidationDevicePlatform({
+      isDesktopApp: Platform.isDesktopApp,
+      userAgent: navigator?.userAgent ?? "",
+      maxTouchPoints: Number(navigator?.maxTouchPoints ?? 0),
+    });
   }
 
   private async setValidationModeEnabled(enabled: boolean): Promise<void> {

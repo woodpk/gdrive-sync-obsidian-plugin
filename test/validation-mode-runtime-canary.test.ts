@@ -17,7 +17,10 @@ import type {
   ValidationRunnerResumeAdoptionJournal,
   ValidationRunnerResumeAdoptionStore,
 } from "../src/validation/scenario-runner-durable-state";
-import { ValidationModeRuntime } from "../src/validation/validation-mode-runtime";
+import {
+  classifyValidationDevicePlatform,
+  ValidationModeRuntime,
+} from "../src/validation/validation-mode-runtime";
 
 function revisionOf(value: unknown): number | null {
   if (value === null || value === undefined || typeof value !== "object") return null;
@@ -131,6 +134,39 @@ function runtimeOptions(fixture: ReturnType<typeof productionFixture>, state = n
     createRunId: () => "run:vh15:canary",
   };
 }
+
+
+test("VH15 classifies validation device platforms deterministically", () => {
+  assert.equal(classifyValidationDevicePlatform({
+    isDesktopApp: true,
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    maxTouchPoints: 0,
+  }), "windows-desktop");
+
+  assert.equal(classifyValidationDevicePlatform({
+    isDesktopApp: false,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+    maxTouchPoints: 5,
+  }), "iphone");
+
+  assert.equal(classifyValidationDevicePlatform({
+    isDesktopApp: false,
+    userAgent: "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+    maxTouchPoints: 5,
+  }), "ipad");
+
+  assert.equal(classifyValidationDevicePlatform({
+    isDesktopApp: false,
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    maxTouchPoints: 5,
+  }), "ipad");
+
+  assert.equal(classifyValidationDevicePlatform({
+    isDesktopApp: false,
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+    maxTouchPoints: 0,
+  }), "iphone");
+});
 
 test("VH15 validation mode is disabled by default and cannot touch production or durable harness state", async () => {
   const fixture = productionFixture();

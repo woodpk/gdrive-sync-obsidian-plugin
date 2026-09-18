@@ -31,8 +31,23 @@ import {
   isValidationScenarioId,
   validationRunIdentity,
   type ValidationDeviceIdentity,
+  type ValidationDevicePlatform,
   type ValidationScenarioId,
 } from "./run-sandbox-checkpoint-contracts";
+
+
+export function classifyValidationDevicePlatform(input: {
+  readonly isDesktopApp: boolean;
+  readonly userAgent: string;
+  readonly maxTouchPoints: number;
+}): ValidationDevicePlatform {
+  if (input.isDesktopApp) return "windows-desktop";
+
+  const iPadLike = /\biPad\b/i.test(input.userAgent)
+    || (/\bMacintosh\b/i.test(input.userAgent) && input.maxTouchPoints > 1);
+
+  return iPadLike ? "ipad" : "iphone";
+}
 
 export type ValidationModeActionResult =
   | { readonly status: "disabled"; readonly reason: string }
