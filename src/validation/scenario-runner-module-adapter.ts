@@ -16,6 +16,7 @@ import type {
 
 export interface ValidationRunnerModuleOperationRequest {
   readonly run: ValidationRunIdentity;
+  readonly stepId: ValidationRunnerStepDefinition["stepId"];
   readonly operation: string;
   readonly input?: unknown;
 }
@@ -239,6 +240,7 @@ export class ValidationRunnerModuleAdapter implements ValidationRunnerModuleFaca
     try {
       result = await delegate.execute({
         run: input.run,
+        stepId: input.step.stepId,
         operation: input.step.operation,
         ...(input.step.input === undefined ? {} : { input: input.step.input }),
       });

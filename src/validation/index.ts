@@ -16,3 +16,5 @@ export * from "./scenario-runner-core";
 export * from "./scenario-runner-durable-state";
 export * from "./scenario-runner-module-adapter";
 export * from "./scenario-runner";
+
+export * from "./validation-mode-runtime";
