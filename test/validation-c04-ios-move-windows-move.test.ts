@@ -238,3 +238,103 @@ function executorFixture(plans = successPlans()) {
   const vault = new MemoryLocalVault();
   const mobile = scriptedDriver(plans.mobile);
   const windows = scriptedDriver(plans.windows);
+  const verifier = new PassingVerifier();
+  const executor = new C04ScenarioExecutor({
+    run,
+    mobileDeviceId,
+    windowsDeviceId,
+    mobileFixtures: fixtureManager(run, vault),
+    mobileProduction: mobile.driver,
+    windowsProduction: windows.driver,
+    verifier,
+  });
+  return { executor, vault, mobile, windows, verifier, mobileDeviceId, windowsDeviceId };
+}
+
+test("VH17 C04 is registered exactly as C04 and self-establishes trusted lineage instead of requiring live C03", () => {
+  assert.equal(C04_SCENARIO_REGISTRATION.scenarioId, "C04");
+  assert.strictEqual(C04_SCENARIO_REGISTRATION.definition, C04_SCENARIO_DEFINITION);
+  assert.equal(C04_SCENARIO_DEFINITION.scenarioId, "C04");
+  assert.deepEqual(C04_SCENARIO_DEFINITION.prerequisiteIds, []);
+  assert.equal(new Set(C04_SCENARIO_DEFINITION.steps.map(step => String(step.stepId))).size, C04_SCENARIO_DEFINITION.steps.length);
+  assert.equal(C04_SCENARIO_DEFINITION.steps.at(-1)?.module, "scenario-evidence-recorder");
+});
+
+test("VH17 C04 establishes trusted lineage, preserves the Drive ID, and requires identity-preserving move plans on mobile and Windows", async () => {
+  const subject = executorFixture();
+  const result = await subject.executor.execute();
+
+  assert.equal(result.status, "completed");
+  if (result.status !== "completed") return;
+  assert.equal(result.remoteObjectId, STABLE_REMOTE_ID);
+  assert.equal(result.oldPath, OLD_PATH);
+  assert.equal(result.newPath, NEW_PATH);
+  assert.match(String(result.contentHash), /^sha256:[0-9a-f]{64}$/);
+  assert.equal(subject.vault.entries.has(String(OLD_PATH)), false);
+  assert.equal(subject.vault.entries.has(String(NEW_PATH)), true);
+
+  assert.deepEqual(subject.mobile.previewed, ["plan:c04:mobile-seed", "plan:c04:mobile-move"]);
+  assert.deepEqual(subject.windows.previewed, ["plan:c04:windows-seed", "plan:c04:windows-move"]);
+  assert.deepEqual(subject.mobile.actions, [
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:mobile-seed") },
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:mobile-move") },
+  ]);
+  assert.deepEqual(subject.windows.actions, [
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:windows-seed") },
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:windows-move") },
+  ]);
+
+  assert.equal(subject.verifier.requests.length, 3);
+  const lineage = subject.verifier.requests[0]!;
+  assert.ok(lineage.state.some(item => item.kind === "base-authority" && item.path === OLD_PATH && item.expectedRemoteObjectId === STABLE_REMOTE_ID));
+  assert.ok(lineage.convergence.some(item => item.kind === "cross-device-authority" && item.path === OLD_PATH && item.expectedRemoteObjectId === STABLE_REMOTE_ID));
+
+  const remoteMove = subject.verifier.requests[1]!;
+  assert.ok(remoteMove.state.some(item => item.kind === "live-trash-absence-state" && item.path === OLD_PATH && item.expectedState === "absent"));
+  assert.ok(remoteMove.state.some(item => item.kind === "remote-content" && item.path === NEW_PATH && item.remoteObjectId === STABLE_REMOTE_ID));
+
+  const final = subject.verifier.requests[2]!;
+  assert.ok(final.state.some(item => item.kind === "remote-content" && item.path === NEW_PATH && item.remoteObjectId === STABLE_REMOTE_ID));
+  assert.equal(final.state.filter(item => item.kind === "base-authority" && item.path === NEW_PATH && item.expectedRemoteObjectId === STABLE_REMOTE_ID).length, 2);
+  assert.equal(final.state.filter(item => item.kind === "mapping-or-tombstone" && item.path === OLD_PATH && item.expected === "neither").length, 2);
+  assert.ok(final.convergence.some(item => item.kind === "cross-device-path" && item.path === OLD_PATH && item.expected === "absent"));
+  assert.ok(final.convergence.some(item => item.kind === "cross-device-content" && item.path === NEW_PATH));
+  assert.ok(final.convergence.some(item => item.kind === "cross-device-authority" && item.path === NEW_PATH && item.expectedRemoteObjectId === STABLE_REMOTE_ID));
+});
+
+test("VH17 C04 fails closed before remote mutation when mobile rename is represented as delete/create substitution", async () => {
+  const plans = successPlans();
+  plans.mobile[1] = plan("plan:c04:mobile-substitution", [
+    operation({
+      id: "op:c04:trash-old",
+      kind: "trash-remote",
+      path: OLD_PATH,
+      targetSide: "remote",
+      remoteObjectId: STABLE_REMOTE_ID,
+      destructive: true,
+    }),
+    operation({ id: "op:c04:create-new", kind: "upload-create", path: NEW_PATH, targetSide: "remote" }),
+  ]);
+  const subject = executorFixture(plans);
+
+  const result = await subject.executor.execute();
+
+  assert.equal(result.status, "failed");
+  if (result.status === "completed") return;
+  assert.equal(result.phase, "mobile-move-plan");
+  assert.ok(result.planAssertion?.status === "mismatch");
+  if (result.planAssertion?.status === "mismatch") {
+    assert.ok(result.planAssertion.failures.some(failure => failure.kind === "forbidden-operation-kind"));
+    assert.ok(result.planAssertion.failures.some(failure => failure.kind === "destructive-expectation-mismatch"));
+  }
+  assert.deepEqual(subject.mobile.actions, [
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:mobile-seed") },
+  ]);
+  assert.deepEqual(subject.windows.actions, [
+    { kind: "execute-plan", planId: id<"PlanId">("plan:c04:windows-seed") },
+  ]);
+  assert.deepEqual(subject.windows.previewed, ["plan:c04:windows-seed"]);
+  assert.equal(subject.verifier.requests.length, 1);
+  assert.equal(subject.vault.entries.has(String(OLD_PATH)), false);
+  assert.equal(subject.vault.entries.has(String(NEW_PATH)), true);
+});
