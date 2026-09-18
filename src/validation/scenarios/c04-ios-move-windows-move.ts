@@ -26,7 +26,7 @@ import {
   type ValidationDeviceId,
   type ValidationRunIdentity,
 } from "../run-sandbox-checkpoint-contracts";
-import type { ValidationRunnerScenarioDefinition } from "../scenario-runner-contracts";
+import type { ValidationRunnerScenarioDefinition, ValidationRunnerStepDefinition } from "../scenario-runner-contracts";
 import type {
   StateConvergenceVerifier,
   ValidationStateConvergenceReport,
@@ -56,10 +56,7 @@ const C04_FORBIDDEN_NON_MOVE_KINDS: readonly PlanOperationKind[] = Object.freeze
  * trustworthy two-device BASE before performing the authoritative move. It
  * therefore does not depend on a live C03 result during harness execution.
  */
-export const C04_SCENARIO_DEFINITION: ValidationRunnerScenarioDefinition = Object.freeze({
-  scenarioId: C04_SCENARIO_ID,
-  prerequisiteIds: Object.freeze([]),
-  steps: Object.freeze([
+const C04_SCENARIO_STEPS: readonly ValidationRunnerStepDefinition[] = Object.freeze([
     { stepId: validationStepId("c04-lineage-create"), module: "fixture-manager", operation: "c04-lineage-create", requiredCompletionProof: "operation-complete" },
     { stepId: validationStepId("c04-lineage-mobile-preview"), module: "production-path-driver", operation: "preview-manual", requiredCompletionProof: "operation-complete" },
     { stepId: validationStepId("c04-lineage-mobile-assert"), module: "plan-assertion-engine", operation: "c04-lineage-mobile-assert", requiredCompletionProof: "operation-complete" },
@@ -80,7 +77,12 @@ export const C04_SCENARIO_DEFINITION: ValidationRunnerScenarioDefinition = Objec
     { stepId: validationStepId("c04-windows-execute"), module: "production-path-driver", operation: "execute-asserted-plan", requiredCompletionProof: "operation-complete" },
     { stepId: validationStepId("c04-final-verify"), module: "state-convergence-verifier", operation: "c04-final-verify", requiredCompletionProof: "verification-passed" },
     { stepId: validationStepId("c04-evidence"), module: "scenario-evidence-recorder", operation: "c04-evidence", requiredCompletionProof: "evidence-recorded" },
-  ]),
+]);
+
+export const C04_SCENARIO_DEFINITION: ValidationRunnerScenarioDefinition = Object.freeze({
+  scenarioId: C04_SCENARIO_ID,
+  prerequisiteIds: Object.freeze([]),
+  steps: C04_SCENARIO_STEPS,
 });
 
 /** Scenario-local registration. H7 integration owns insertion into the shared registry. */
