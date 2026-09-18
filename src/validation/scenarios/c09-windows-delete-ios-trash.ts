@@ -169,8 +169,8 @@ function requiredRemoteObjectId(
 }
 
 function requiredHash(descriptor: ValidationFixtureDescriptor, label: string): ContentHash {
-  if (!descriptor.contentHash) throw new Error(label + " fixture does not carry content hash evidence.");
-  return descriptor.contentHash;
+  if (!descriptor.hash) throw new Error(label + " fixture does not carry content hash evidence.");
+  return descriptor.hash;
 }
 
 function expectedOperation(input: {
@@ -613,7 +613,7 @@ export function createC09WindowsDeleteIosTrashScenario(
     C09_SENTINEL_FIXTURE_ID,
     C09_SENTINEL_RELATIVE_PATH,
     1,
-    "c09-unrelated-sentinel",
+    "base",
     "ordinary",
   );
 
@@ -711,11 +711,6 @@ export function createC09WindowsDeleteIosTrashScenario(
             return driverFailure(result.status, "reason" in result ? result.reason : undefined);
           }
           context[planSlot] = plan;
-
-          if (planSlot === "windowsEstablishPlan") {
-            const ids = await resolveTrustedRemoteObjectIdsAfterExecutionPlaceholder();
-            void ids;
-          }
           return completed();
         }
 
@@ -747,10 +742,6 @@ export function createC09WindowsDeleteIosTrashScenario(
       }
     },
   };
-
-  async function resolveTrustedRemoteObjectIdsAfterExecutionPlaceholder(): Promise<void> {
-    return;
-  }
 
   const planDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
