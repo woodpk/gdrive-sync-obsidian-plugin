@@ -6,26 +6,65 @@ Agent: `agt-ca-p6-vh15-validation-mode-runtime-canary-01`
 Repository: `woodpk/gdrive-sync-obsidian-plugin`
 Branch: `phase6-vh15-validation-mode-runtime-canary`
 
-## Base gate
+## Base and correction provenance
 
-- Required predecessor branch: `origin/phase6-vh14-module-integration-runner`
-- Resolved exact predecessor HEAD / `BASE_SHA`: `8c3d6e79db0d7dcf882d0a66a9bbd8b39bc3a30b`
-- Predecessor evidence: `dev/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md`
-- Gate result: PASS — predecessor evidence begins exactly `STATUS: COMPLETE`.
-- Required VH15 branch was created from exactly `BASE_SHA`.
+- Original VH15 predecessor HEAD / `BASE_SHA`: `8c3d6e79db0d7dcf882d0a66a9bbd8b39bc3a30b`
+- Original predecessor evidence gate: PASS — `dev/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md` began exactly `STATUS: COMPLETE`.
+- VH15-R1 exact continuation input: `R1_INPUT_SHA = 254aee562456046a4d0742ddcbf819569f2bfd3f`
+- R1 drift gate: PASS — `phase6-vh15-validation-mode-runtime-canary` resolved exactly to `R1_INPUT_SHA` before correction.
+- R1 did not restart from the original VH15 base and did not redo accepted unaffected VH15 work.
 
-## Implementation identity
+## Corrected implementation identity
 
-- Implementation SHA: `3a7d319106078ddfd0ecda4cb3cbc763146e9078`
-- Implementation tree: `7ef76abc1039791537965a33115d5b182d3c5689`
-- Implementation commits:
+- Corrected implementation SHA: `4659be2ba38759ce5ef66c90901a55207b2d5a64`
+- Corrected implementation tree: `54b0992fedd0558d5aaa3e0b3239a14cb1e72a28`
+- R1 implementation/test commit:
+  - `4659be2ba38759ce5ef66c90901a55207b2d5a64` — `fix: classify validation iPad runtime correctly`
+- Original accepted VH15 implementation checkpoints remain in ancestry:
   - `efbd49bf52dd4e2522f832849ab1606038cc0033` — `feat: wire validation mode runtime canary`
   - `3a7d319106078ddfd0ecda4cb3cbc763146e9078` — `fix: import validation module id from frozen runner contracts`
 
-## Changed files
+## VH15-R1 C1 correction
 
-Implementation/test changes relative to `BASE_SHA`:
+Confirmed defect:
 
+- `BrainGoogleDriveSyncPlugin.validationDevicePlatform()` used regex literals containing escaped backslashes, so normal `iPad` and iPadOS desktop-style `Macintosh` user agents did not match the intended word-boundary expressions.
+- On iPad, the validation checkpoint/resume `ValidationDeviceIdentity.platform` could therefore be recorded incorrectly as `iphone`.
+
+Repair:
+
+- Added exported pure `classifyValidationDevicePlatform(...): ValidationDevicePlatform` to `src/validation/validation-mode-runtime.ts`.
+- The classifier imports `ValidationDevicePlatform` from the frozen `run-sandbox-checkpoint-contracts` vocabulary.
+- Classification is deterministic:
+  - `isDesktopApp === true` → `windows-desktop`;
+  - mobile user agent containing the word `iPad` → `ipad`;
+  - mobile desktop-style `Macintosh` user agent with `maxTouchPoints > 1` → `ipad`;
+  - otherwise mobile → `iphone`.
+- The production classifier uses real regex word-boundary tokens:
+  - `/\biPad\b/i`
+  - `/\bMacintosh\b/i`
+- `src/main.ts` now delegates device classification to this pure classifier using `Platform.isDesktopApp`, `navigator.userAgent`, and `navigator.maxTouchPoints`.
+- This keeps validation checkpoint/resume device identity aligned with the frozen platform vocabulary and actual participating installation/device class.
+
+## R1 changed-file manifest
+
+Exact R1 implementation/test delta from `R1_INPUT_SHA` to corrected implementation SHA:
+
+- `src/main.ts`
+- `src/validation/validation-mode-runtime.ts`
+- `test/validation-mode-runtime-canary.test.ts`
+
+Final R1 evidence closure additionally changes only:
+
+- `dev/evidence/_ca-output-agt-ca-p6-vh15-validation-mode-runtime-canary-01.md`
+
+No unrelated R1 source or test file changed.
+
+## Cumulative VH15 changed-file manifest
+
+Relative to original VH15 `BASE_SHA`, the corrected VH15 branch changes only:
+
+- `dev/evidence/_ca-output-agt-ca-p6-vh15-validation-mode-runtime-canary-01.md`
 - `src/main.ts`
 - `src/product/settings-tab.ts`
 - `src/validation/index.ts`
@@ -33,89 +72,122 @@ Implementation/test changes relative to `BASE_SHA`:
 - `src/validation/validation-mode-runtime.ts`
 - `test/validation-mode-runtime-canary.test.ts`
 
-No file under `src/contracts/**` changed.
+Frozen boundaries remain intact:
 
-## Implemented end state
+- `src/validation/run-sandbox-checkpoint-contracts.ts`: unchanged.
+- `src/contracts/**`: unchanged.
+- No frozen H0 contract was modified by R1.
 
-- Added a validation-only runtime gate that is disabled by default on every plugin load.
-- Harness composition is lazy: runner state stores, module delegates, and the production-path driver are not constructed until explicit validation-mode activation and an operation requiring the harness.
-- Added a session-local Settings operator surface:
-  - explicit validation-mode enable/disable toggle;
-  - scenario selector/start control visible only while validation mode is enabled;
-  - durable-current-scenario resume control visible only while validation mode is enabled.
-- Validation-mode disablement drops the live harness composition without deleting its device-local durable runner checkpoint.
-- Ordinary product runtime and ordinary Sync now / Verify-Reconcile / automatic sync / recovery / authentication command paths were not replaced, wrapped, or redirected.
-- The runtime production-path delegate uses `ValidationProductionPathDriver`, which in turn delegates to the actual production controller seam.
-- The H6A module-operation request now carries its exact scenario step ID so the runtime production-path delegate preserves run + step provenance.
-- Sandbox, fixture, fault, coordination, verifier, evidence, and human-checkpoint runtime authorities fail closed unless explicitly supplied by their owning scenario/runtime packages. In particular, ordinary runtime receives no sandbox/fault authority and validation-off execution cannot reach any harness module delegate.
-- C03–F03 identifiers remain the frozen scenario vocabulary. Executable scenario definitions remain owned by H7–H10; VH15 does not invent substitute live definitions. Attempting to start a scenario whose definition is not installed returns an explicit unavailable result rather than fabricating execution.
-- Device-local runner and resume-adoption persistence uses isolated IndexedDB CAS stores only when harness composition is activated.
-- No external service, Appium dependency, OAuth scope change, background-execution assumption, release behavior, or live Drive/mobile execution was added.
+## Preserved accepted VH15 behavior
 
-## Focused local/fake canary and isolation coverage
+R1 preserves the accepted VH15 architecture and boundaries:
 
-`test/validation-mode-runtime-canary.test.ts` adds four focused cases:
+- validation mode remains disabled by default on every plugin load;
+- harness composition remains lazy and validation-only;
+- ordinary Sync now, Verify/Reconcile, automatic sync, recovery, authentication, planning, and execution paths remain unchanged;
+- ordinary runtime receives no sandbox/fault authority;
+- validation-off execution cannot reach harness module delegates;
+- the runtime production-path delegate continues to use `ValidationProductionPathDriver`;
+- the production-path driver binding remains non-overridable;
+- C03–F03 identifiers remain frozen while executable scenario definitions remain owned by H7–H10;
+- device-local validation runner/resume state remains isolated from production synchronization state;
+- no external service, Appium dependency, OAuth-scope change, background-execution assumption, release behavior, or live Drive/mobile execution was added.
 
-1. validation mode is disabled by default and cannot touch production or durable harness state;
-2. after explicit activation, a local/fake C03 canary reaches the real `ValidationProductionPathDriver` and completes without executing a production mutation;
-3. unbound sandbox/fault authority fails closed and disabling validation mode hides/drops harness controls;
-4. the validation wrapper does not replace or intercept the ordinary production controller.
+## Focused R1 regression coverage
 
-The canary definition exists only in the test and is not installed into the built plugin as a substitute for H7–H10 scenario definitions.
+`test/validation-mode-runtime-canary.test.ts` now directly exercises the exported production classifier.
+
+The platform-classification regression proves all required cases:
+
+1. desktop runtime → `windows-desktop`;
+2. ordinary iPhone user agent → `iphone`;
+3. explicit `iPad` user agent → `ipad`;
+4. iPadOS desktop-style `Macintosh` user agent with `maxTouchPoints > 1` → `ipad`;
+5. `Macintosh` without the touch condition does not falsely classify as `ipad` and resolves to `iphone`.
+
+The same focused VH15 file continues to prove:
+
+- validation mode is disabled by default and cannot touch production or durable harness state;
+- after explicit activation, the local/fake canary reaches the real production-path driver;
+- unbound sandbox/fault authority fails closed and disabling validation drops harness controls;
+- the validation wrapper does not replace or intercept the ordinary production controller.
+
+The tests call `classifyValidationDevicePlatform` directly and do not duplicate the classifier regex.
 
 ## Verification
 
-Verification was executed by the repository's existing GitHub Actions Phase 6 verification workflow because this ChatGPT execution environment does not provide a network-clonable local repository shell.
+Because this execution environment does not provide a network-clonable local repository shell, verification again used the repository's existing GitHub Actions Phase 6 verification workflow against an exact-tree-equivalent temporary PR merge commit.
 
 Temporary verification PR: #127
-PR state after verification: CLOSED / NOT MERGED
-Required verification workflow: `Phase 6 Alpha Diagnostic Verification`
-Workflow run: `35349575822`
-Job: `105614208088`
-Result: PASS
+PR final state: CLOSED / NOT MERGED
+Corrected PR head: `4659be2ba38759ce5ef66c90901a55207b2d5a64`
 
-The temporary PR merge commit was `c6ad39166e7d95fae937f90b85890d75ca84ad11`. Its tree was exactly `7ef76abc1039791537965a33115d5b182d3c5689`, identical to the implementation SHA tree, because `phase6-integration` was an ancestor of the VH15 branch. The CI therefore exercised the exact implementation tree.
+Required verification workflow:
 
-Observed command/results:
+- Workflow: `Phase 6 Alpha Diagnostic Verification`
+- Run: `35353696625`
+- Job: `105627725039`
+- Result: PASS
+
+Exact-tree proof:
+
+- Corrected implementation SHA: `4659be2ba38759ce5ef66c90901a55207b2d5a64`
+- Corrected implementation tree: `54b0992fedd0558d5aaa3e0b3239a14cb1e72a28`
+- Temporary PR merge commit: `a78d126fc9f416aa8802e11fdd707671f0ebfb76`
+- Temporary PR merge tree: `54b0992fedd0558d5aaa3e0b3239a14cb1e72a28`
+- Tree equality: PASS.
+
+The successful CI therefore exercised the exact corrected implementation tree.
+
+Observed verification results:
 
 - dependency install: PASS
 - `npm run typecheck`: PASS
 - `npx tsc -p tsconfig.test.json`: PASS
-- `npm test`: PASS — 979 tests, 979 passed, 0 failed
-  - VH15 focused test 865: PASS
-  - VH15 focused test 866: PASS
-  - VH15 focused test 867: PASS
-  - VH15 focused test 868: PASS
-- focused pre-existing Phase 6 regression groups in the workflow: PASS
+- complete `npm test`: PASS — 980 tests, 980 passed, 0 failed
+- focused VH15 tests in the complete run:
+  - test 865 — `VH15 classifies validation device platforms deterministically`: PASS
+  - test 866 — validation mode disabled-by-default/isolation: PASS
+  - test 867 — production-path-driver local canary after activation: PASS
+  - test 868 — sandbox/fault fail-closed isolation and disablement: PASS
+  - test 869 — ordinary production-controller non-interception: PASS
+- pre-existing focused C1 first-sync regression group: PASS — 21 tests, 21 passed, 0 failed
+- pre-existing focused callback/diagnostic/OAuth/export group: PASS — 46 tests, 46 passed, 0 failed
 - `npm run build`: PASS
   - `BUILD_VERIFY_ENTRYPOINT=PASS`
   - `BUILD_VERIFY_SYNTAX=PASS`
   - `BUILD_VERIFY_LOCAL_RUNTIME_DEPENDENCIES=PASS`
   - `BUILD_VERIFY_MOBILE_EVALUATION=PASS`
   - `BUILD_VERIFY_PACKAGE_SHAPE=PASS`
-- `npm run check`: PASS
+- `npm run check`: PASS — included a second complete 980/980 test pass and production build verification
 - `git diff --check`: PASS
-- built `main.js`: 946419 bytes
-- built `main.js` SHA-256: `982a45040453ccb43b4b325b0481845aa3677b3688a81f57668dc8953de6e311`
+- built `main.js`: 946606 bytes
+- built `main.js` SHA-256: `be1662b17434539255331cd05a5cf9d73386ccec67d58dcfc01ec4e16892b639`
 
 ## Environment-specific auxiliary workflow result
 
-The unrelated `Azure Static Web Apps CI/CD` workflow also triggered from the temporary PR and failed in deployment because the Azure Static Web App had already reached its maximum number of staging environments:
+The unrelated `Azure Static Web Apps CI/CD` workflow also triggered from the temporary PR:
+
+- Run: `35353696628`
+- Build/deploy job: `105627724195`
+- Result: failure during Azure staging deployment.
+
+The reported Azure condition was unchanged from the prior VH15 verification:
 
 `This Static Web App already has the maximum number of staging environments ... Please remove one and try again.`
 
-This was an external deployment-capacity condition, not a VH15 TypeScript/build/test failure. VH15 did not modify the OAuth callback application, Azure workflow, or deployment configuration. The required Phase 6 verification workflow passed completely.
+This R1 correction changed neither the OAuth callback application nor the Azure workflow/deployment configuration. The Azure staging-capacity condition is therefore not a VH15-R1 blocker.
 
 ## Deviations
 
-- No local shell execution was available in this session. Required build/test/check/whitespace verification was therefore performed in GitHub Actions against an exact-tree-equivalent PR merge commit.
-- No live Google Drive, Windows Obsidian, iPhone/iPad, release, promotion, or physical validation was performed, as required.
-- Executable C03–F03 production scenario definitions are intentionally not introduced by VH15; H7–H10 remain their owners.
+- No local shell execution was available in this session; required verification was performed by GitHub Actions against an exact-tree-equivalent PR merge commit.
+- The focused VH15 platform/isolation regressions were executed as named tests within the complete repository test command and again through `npm run check`; no temporary test-only workflow or repository file was introduced.
+- No live Google Drive, Windows Obsidian, iPhone/iPad, release, promotion, or physical validation was performed.
 
 ## Blockers
 
-None within VH15 scope.
+None within VH15-R1 scope.
 
 ## Stop
 
-Stopped after implementation, local/fake canary and isolation verification, required repository verification, separate evidence recording, and closure of the temporary unmerged verification PR. No merge, promotion, release, or live physical validation was performed.
+Stopped after C1 correction, implementation/test commit, successful exact-tree verification, closure of the temporary unmerged PR, and final evidence update. No merge, promotion, release, live Drive/mobile validation, VH16/C03 execution, or later harness work was performed.
