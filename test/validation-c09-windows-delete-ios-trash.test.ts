@@ -12,7 +12,6 @@ import {
 } from "../src/contracts";
 import {
   validationEvidenceRef,
-  type ValidationEvidenceRef,
 } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type {
   ValidationFixtureDescriptor,
@@ -45,6 +44,8 @@ import {
   C09_GUARD_FIXTURE_ID,
   C09_GUARD_PATH,
   C09_GUARD_RELATIVE_PATH,
+  C09_SOURCE_PATH,
+  C09_SOURCE_RELATIVE_PATH,
   C09_TARGET_FIXTURE_ID,
   C09_TARGET_PATH,
   C09_TARGET_RELATIVE_PATH,
@@ -104,16 +105,24 @@ const wrongRemoteObjectId = contractId<"RemoteObjectId">("remote:c09:wrong-targe
 const targetHash = contractId<"ContentHash">("sha256:" + "a".repeat(64)) as ContentHash;
 const guardHash = contractId<"ContentHash">("sha256:" + "b".repeat(64)) as ContentHash;
 
-function targetDescriptor(): ValidationFixtureDescriptor {
+function sourceDescriptor(): ValidationFixtureDescriptor {
   return {
     identity: validationFixtureIdentity(run, C09_TARGET_FIXTURE_ID),
-    relativePath: C09_TARGET_RELATIVE_PATH,
-    path: C09_TARGET_PATH,
+    relativePath: C09_SOURCE_RELATIVE_PATH,
+    path: C09_SOURCE_PATH,
     kind: "text",
     purpose: "ordinary",
     version: 1,
     sizeBytes: 311,
     hash: targetHash,
+  };
+}
+
+function targetDescriptor(): ValidationFixtureDescriptor {
+  return {
+    ...sourceDescriptor(),
+    relativePath: C09_TARGET_RELATIVE_PATH,
+    path: C09_TARGET_PATH,
   };
 }
 
@@ -136,6 +145,8 @@ function operation(input: {
   readonly path: PlannedOperation["path"];
   readonly targetSide?: "local" | "remote";
   readonly destructive?: boolean;
+  readonly fromPath?: PlannedOperation["fromPath"];
+  readonly toPath?: PlannedOperation["toPath"];
   readonly remoteObjectId?: RemoteObjectId;
 }): PlannedOperation {
   return {
@@ -143,6 +154,8 @@ function operation(input: {
     kind: input.kind,
     path: input.path,
     ...(input.targetSide === undefined ? {} : { targetSide: input.targetSide }),
+    ...(input.fromPath === undefined ? {} : { fromPath: input.fromPath }),
+    ...(input.toPath === undefined ? {} : { toPath: input.toPath }),
     ...(input.remoteObjectId === undefined ? {} : { remoteObjectId: input.remoteObjectId }),
     destructive: input.destructive ?? false,
     preconditions: [],
@@ -167,16 +180,16 @@ function plan(
   };
 }
 
-function lineageWindowsPlan(): SynchronizationPlan {
-  return plan("plan:c09:lineage-windows", [
+function seedWindowsPlan(): SynchronizationPlan {
+  return plan("plan:c09:seed-windows", [
     operation({
-      id: "op:c09:lineage-upload-target",
+      id: "op:c09:seed-upload-target",
       kind: "upload-create",
-      path: C09_TARGET_PATH,
+      path: C09_SOURCE_PATH,
       targetSide: "remote",
     }),
     operation({
-      id: "op:c09:lineage-upload-guard",
+      id: "op:c09:seed-upload-guard",
       kind: "upload-create",
       path: C09_GUARD_PATH,
       targetSide: "remote",
@@ -184,21 +197,59 @@ function lineageWindowsPlan(): SynchronizationPlan {
   ]);
 }
 
-function lineageMobilePlan(): SynchronizationPlan {
-  return plan("plan:c09:lineage-mobile", [
+function seedMobilePlan(): SynchronizationPlan {
+  return plan("plan:c09:seed-mobile", [
     operation({
-      id: "op:c09:lineage-download-target",
+      id: "op:c09:seed-download-target",
       kind: "download-create",
-      path: C09_TARGET_PATH,
+      path: C09_SOURCE_PATH,
       targetSide: "local",
       remoteObjectId: targetRemoteObjectId,
     }),
     operation({
-      id: "op:c09:lineage-download-guard",
+      id: "op:c09:seed-download-guard",
       kind: "download-create",
       path: C09_GUARD_PATH,
       targetSide: "local",
       remoteObjectId: guardRemoteObjectId,
+    }),
+  ]);
+}
+
+function moveWindowsPlan(): SynchronizationPlan {
+  return plan("plan:c09:move-windows", [
+    operation({
+      id: "op:c09:move-windows-target",
+      kind: "identity-preserving-move",
+      path: C09_TARGET_PATH,
+      targetSide: "remote",
+      fromPath: C09_SOURCE_PATH,
+      toPath: C09_TARGET_PATH,
+      remoteObjectId: targetRemoteObjectId,
+    }),
+    operation({
+      id: "op:c09:move-windows-guard-noop",
+      kind: "noop",
+      path: C09_GUARD_PATH,
+    }),
+  ]);
+}
+
+function moveMobilePlan(): SynchronizationPlan {
+  return plan("plan:c09:move-mobile", [
+    operation({
+      id: "op:c09:move-mobile-target",
+      kind: "identity-preserving-move",
+      path: C09_TARGET_PATH,
+      targetSide: "local",
+      fromPath: C09_SOURCE_PATH,
+      toPath: C09_TARGET_PATH,
+      remoteObjectId: targetRemoteObjectId,
+    }),
+    operation({
+      id: "op:c09:move-mobile-guard-noop",
+      kind: "noop",
+      path: C09_GUARD_PATH,
     }),
   ]);
 }
@@ -244,8 +295,10 @@ function mobileDeletePlan(): SynchronizationPlan {
 
 function defaultPlans(): readonly SynchronizationPlan[] {
   return [
-    lineageWindowsPlan(),
-    lineageMobilePlan(),
+    seedWindowsPlan(),
+    seedMobilePlan(),
+    moveWindowsPlan(),
+    moveMobilePlan(),
     windowsDeletePlan(),
     mobileDeletePlan(),
   ];
@@ -304,7 +357,6 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     calls,
     previewedPlanIds,
     executedPlanIds,
-    executionCount: () => executedPlanIds.length,
   };
 }
 
@@ -339,6 +391,7 @@ function createHarness(input?: {
 }) {
   const production = productionFixture(input?.plans ?? defaultPlans());
   const createdFixtureIds: string[] = [];
+  const movedFixturePaths: string[] = [];
   const deletedFixtureIds: string[] = [];
   const handoffs: string[] = [];
   const evidenceCalls: Array<{
@@ -351,8 +404,8 @@ function createHarness(input?: {
 
   const fixtureForSpec = (spec: ValidationFixtureSpec): ValidationFixtureDescriptor => {
     if (spec.fixtureId === C09_TARGET_FIXTURE_ID) {
-      assert.equal(spec.relativePath, C09_TARGET_RELATIVE_PATH);
-      return targetDescriptor();
+      assert.equal(spec.relativePath, C09_SOURCE_RELATIVE_PATH);
+      return sourceDescriptor();
     }
     if (spec.fixtureId === C09_GUARD_FIXTURE_ID) {
       assert.equal(spec.relativePath, C09_GUARD_RELATIVE_PATH);
@@ -370,6 +423,13 @@ function createHarness(input?: {
         createdFixtureIds.push(spec.fixtureId);
         return fixtureForSpec(spec);
       },
+      async move(fixtureId, relativePath) {
+        assert.equal(role, "windows");
+        assert.equal(fixtureId, C09_TARGET_FIXTURE_ID);
+        assert.equal(relativePath, C09_TARGET_RELATIVE_PATH);
+        movedFixturePaths.push(relativePath);
+        return targetDescriptor();
+      },
       async delete(fixtureId) {
         assert.equal(role, "windows");
         assert.equal(fixtureId, C09_TARGET_FIXTURE_ID);
@@ -384,7 +444,13 @@ function createHarness(input?: {
     },
     mappingReader: {
       async remoteObjectId(_deviceId, pathValue) {
-        if (pathValue === C09_TARGET_PATH) return targetRemoteObjectId;
+        const moveCompleted = production.executedPlanIds.includes("plan:c09:move-mobile");
+        if (pathValue === C09_SOURCE_PATH) {
+          return moveCompleted ? undefined : targetRemoteObjectId;
+        }
+        if (pathValue === C09_TARGET_PATH) {
+          return moveCompleted ? targetRemoteObjectId : undefined;
+        }
         if (pathValue === C09_GUARD_PATH) return guardRemoteObjectId;
         return undefined;
       },
@@ -425,6 +491,7 @@ function createHarness(input?: {
     production,
     verifier,
     createdFixtureIds,
+    movedFixturePaths,
     deletedFixtureIds,
     handoffs,
     evidenceCalls,
@@ -439,7 +506,7 @@ function runnerResult(
   return result.result;
 }
 
-test("VH22 C09 correction 02 constructs and objectively verifies the C08-equivalent lineage before exact-object Windows and mobile deletion", async () => {
+test("VH22 C09 correction 02 reconstructs full C08 lineage before exact-object Windows and mobile deletion", async () => {
   let harnessRef: ReturnType<typeof createHarness> | undefined;
   const harness = createHarness({
     verifierVerdict(request, index) {
@@ -450,32 +517,60 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
           C09_GUARD_FIXTURE_ID,
         ]);
         assert.deepEqual(harnessRef.production.executedPlanIds, [
-          "plan:c09:lineage-windows",
-          "plan:c09:lineage-mobile",
+          "plan:c09:seed-windows",
+          "plan:c09:seed-mobile",
         ]);
-        assert.equal(harnessRef.deletedFixtureIds.length, 0);
+        assert.deepEqual(harnessRef.movedFixturePaths, []);
+        assert.deepEqual(harnessRef.deletedFixtureIds, []);
 
-        const targetBase = request.state.filter(item =>
+        const seedTargetBase = request.state.filter(item =>
+          item.kind === "base-authority"
+          && item.path === C09_SOURCE_PATH
+          && item.expectedRemoteObjectId === targetRemoteObjectId
+        );
+        assert.equal(seedTargetBase.length, 2);
+      }
+
+      if (index === 2) {
+        assert.ok(harnessRef);
+        assert.deepEqual(harnessRef.movedFixturePaths, [C09_TARGET_RELATIVE_PATH]);
+        assert.deepEqual(harnessRef.production.executedPlanIds, [
+          "plan:c09:seed-windows",
+          "plan:c09:seed-mobile",
+          "plan:c09:move-windows",
+          "plan:c09:move-mobile",
+        ]);
+        assert.deepEqual(harnessRef.deletedFixtureIds, []);
+
+        const renamedBase = request.state.filter(item =>
           item.kind === "base-authority"
           && item.path === C09_TARGET_PATH
           && item.expectedRemoteObjectId === targetRemoteObjectId
         );
-        const targetMappings = request.state.filter(item =>
+        const renamedMappings = request.state.filter(item =>
           item.kind === "mapping-or-tombstone"
           && item.path === C09_TARGET_PATH
           && item.expected === "mapping"
           && item.remoteObjectId === targetRemoteObjectId
         );
-        assert.equal(targetBase.length, 2);
-        assert.equal(targetMappings.length, 2);
+        assert.equal(renamedBase.length, 2);
+        assert.equal(renamedMappings.length, 2);
+        assert.ok(request.convergence.some(item =>
+          item.kind === "cross-device-path"
+          && item.path === C09_SOURCE_PATH
+          && item.expected === "absent"
+        ));
       }
+
       return "pass";
     },
   });
   harnessRef = harness;
 
   assert.equal(C09_FIXTURE_ROOT, "__brain_validation__/c08");
+  assert.equal(C09_SOURCE_RELATIVE_PATH, "test-win-c06.md");
   assert.equal(C09_TARGET_RELATIVE_PATH, "test-win-c08-renamed.md");
+  assert.equal(String(C09_SOURCE_PATH), "__brain_validation__/c08/test-win-c06.md");
   assert.equal(String(C09_TARGET_PATH), "__brain_validation__/c08/test-win-c08-renamed.md");
   assert.equal("production-path-driver" in harness.scenario.moduleOverrides, false);
   assert.equal("plan-assertion-engine" in harness.scenario.moduleOverrides, false);
@@ -498,6 +593,12 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
       ["production-path-driver", "preview-manual"],
       ["plan-assertion-engine", "assert-observed-plan"],
       ["production-path-driver", "execute-asserted-plan"],
+      ["production-path-driver", "preview-manual"],
+      ["plan-assertion-engine", "assert-observed-plan"],
+      ["production-path-driver", "execute-asserted-plan"],
+      ["production-path-driver", "preview-manual"],
+      ["plan-assertion-engine", "assert-observed-plan"],
+      ["production-path-driver", "execute-asserted-plan"],
     ],
   );
 
@@ -506,12 +607,18 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
     return stepInput?.authorityCycleId;
   });
   assert.deepEqual(cycleIds, [
-    C09_AUTHORITY_CYCLES.lineageWindows,
-    C09_AUTHORITY_CYCLES.lineageWindows,
-    C09_AUTHORITY_CYCLES.lineageWindows,
-    C09_AUTHORITY_CYCLES.lineageMobile,
-    C09_AUTHORITY_CYCLES.lineageMobile,
-    C09_AUTHORITY_CYCLES.lineageMobile,
+    C09_AUTHORITY_CYCLES.seedWindows,
+    C09_AUTHORITY_CYCLES.seedWindows,
+    C09_AUTHORITY_CYCLES.seedWindows,
+    C09_AUTHORITY_CYCLES.seedMobile,
+    C09_AUTHORITY_CYCLES.seedMobile,
+    C09_AUTHORITY_CYCLES.seedMobile,
+    C09_AUTHORITY_CYCLES.moveWindows,
+    C09_AUTHORITY_CYCLES.moveWindows,
+    C09_AUTHORITY_CYCLES.moveWindows,
+    C09_AUTHORITY_CYCLES.moveMobile,
+    C09_AUTHORITY_CYCLES.moveMobile,
+    C09_AUTHORITY_CYCLES.moveMobile,
     C09_AUTHORITY_CYCLES.deleteWindows,
     C09_AUTHORITY_CYCLES.deleteWindows,
     C09_AUTHORITY_CYCLES.deleteWindows,
@@ -532,18 +639,33 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
     C09_TARGET_FIXTURE_ID,
     C09_GUARD_FIXTURE_ID,
   ]);
+  assert.deepEqual(harness.movedFixturePaths, [C09_TARGET_RELATIVE_PATH]);
   assert.deepEqual(harness.deletedFixtureIds, [C09_TARGET_FIXTURE_ID]);
-  assert.deepEqual(harness.handoffs, ["mobile", "windows", "mobile"]);
+  assert.deepEqual(harness.handoffs, ["mobile", "windows", "mobile", "windows", "mobile"]);
   assert.deepEqual(harness.production.previewedPlanIds, [
-    "plan:c09:lineage-windows",
-    "plan:c09:lineage-mobile",
+    "plan:c09:seed-windows",
+    "plan:c09:seed-mobile",
+    "plan:c09:move-windows",
+    "plan:c09:move-mobile",
     "plan:c09:delete-windows",
     "plan:c09:delete-mobile",
   ]);
   assert.deepEqual(harness.production.executedPlanIds, harness.production.previewedPlanIds);
-  assert.equal(harness.verifier.requests.length, 4);
+  assert.equal(harness.verifier.requests.length, 6);
 
-  const remoteTrash = harness.verifier.requests[1]!;
+  const remoteMove = harness.verifier.requests[1]!;
+  assert.ok(remoteMove.state.some(item =>
+    item.kind === "remote-content"
+    && item.path === C09_TARGET_PATH
+    && item.remoteObjectId === targetRemoteObjectId
+  ));
+  assert.ok(remoteMove.state.some(item =>
+    item.kind === "live-trash-absence-state"
+    && item.path === C09_SOURCE_PATH
+    && item.expectedState === "absent"
+  ));
+
+  const remoteTrash = harness.verifier.requests[3]!;
   assert.ok(remoteTrash.state.some(item =>
     item.kind === "live-trash-absence-state"
     && item.path === C09_TARGET_PATH
@@ -559,7 +681,7 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
     && item.deletedOn === "both"
   ));
 
-  const mobilePreDelete = harness.verifier.requests[2]!;
+  const mobilePreDelete = harness.verifier.requests[4]!;
   assert.ok(mobilePreDelete.state.some(item =>
     item.kind === "base-authority"
     && item.deviceId === mobileDeviceId
@@ -567,7 +689,7 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
     && item.expectedRemoteObjectId === targetRemoteObjectId
   ));
 
-  const final = harness.verifier.requests[3]!;
+  const final = harness.verifier.requests[5]!;
   const tombstones = final.state.filter(item =>
     item.kind === "mapping-or-tombstone"
     && item.path === C09_TARGET_PATH
@@ -590,10 +712,10 @@ test("VH22 C09 correction 02 constructs and objectively verifies the C08-equival
   }]);
 });
 
-test("VH22 C09 correction 02 cannot fake trusted lineage: mapping IDs alone do not permit deletion when objective lineage verification blocks", async () => {
+test("VH22 C09 correction 02 cannot fake starting lineage: completed setup plans and mapping IDs still cannot unlock delete when objective C08-equivalent verification blocks", async () => {
   const harness = createHarness({
     verifierVerdict(_request, index) {
-      return index === 0 ? "blocked" : "pass";
+      return index === 2 ? "blocked" : "pass";
     },
   });
 
@@ -601,28 +723,33 @@ test("VH22 C09 correction 02 cannot fake trusted lineage: mapping IDs alone do n
   const result = runnerResult(await harness.runtime.startScenario("C09"));
   assert.equal(result.status, "BLOCKED");
   if (result.status === "BLOCKED") {
-    assert.match(result.reason.summary, /trusted lineage|required objective proof/i);
+    assert.match(result.reason.summary, /C08-equivalent trusted lineage|required objective proof/i);
   }
 
   assert.deepEqual(harness.createdFixtureIds, [
     C09_TARGET_FIXTURE_ID,
     C09_GUARD_FIXTURE_ID,
   ]);
+  assert.deepEqual(harness.movedFixturePaths, [C09_TARGET_RELATIVE_PATH]);
   assert.deepEqual(harness.production.executedPlanIds, [
-    "plan:c09:lineage-windows",
-    "plan:c09:lineage-mobile",
+    "plan:c09:seed-windows",
+    "plan:c09:seed-mobile",
+    "plan:c09:move-windows",
+    "plan:c09:move-mobile",
   ]);
   assert.deepEqual(harness.deletedFixtureIds, []);
-  assert.equal(harness.production.previewedPlanIds.length, 2);
-  assert.equal(harness.verifier.requests.length, 1);
+  assert.equal(harness.production.previewedPlanIds.length, 4);
+  assert.equal(harness.verifier.requests.length, 3);
   assert.equal(harness.evidenceCalls.length, 0);
 });
 
 test("VH22 C09 correction 02 fixed assertion rejects wrong exact Drive object before Windows production trash execution", async () => {
   const harness = createHarness({
     plans: [
-      lineageWindowsPlan(),
-      lineageMobilePlan(),
+      seedWindowsPlan(),
+      seedMobilePlan(),
+      moveWindowsPlan(),
+      moveMobilePlan(),
       windowsDeletePlan(wrongRemoteObjectId),
       mobileDeletePlan(),
     ],
@@ -637,11 +764,13 @@ test("VH22 C09 correction 02 fixed assertion rejects wrong exact Drive object be
 
   assert.deepEqual(harness.deletedFixtureIds, [C09_TARGET_FIXTURE_ID]);
   assert.deepEqual(harness.production.executedPlanIds, [
-    "plan:c09:lineage-windows",
-    "plan:c09:lineage-mobile",
+    "plan:c09:seed-windows",
+    "plan:c09:seed-mobile",
+    "plan:c09:move-windows",
+    "plan:c09:move-mobile",
   ]);
-  assert.equal(harness.production.previewedPlanIds.length, 3);
-  assert.equal(harness.verifier.requests.length, 1);
+  assert.equal(harness.production.previewedPlanIds.length, 5);
+  assert.equal(harness.verifier.requests.length, 3);
   assert.equal(harness.evidenceCalls.length, 0);
 });
 
@@ -656,8 +785,10 @@ test("VH22 C09 correction 02 fixed assertion hard-stops unexpected destructive m
   });
   const harness = createHarness({
     plans: [
-      lineageWindowsPlan(),
-      lineageMobilePlan(),
+      seedWindowsPlan(),
+      seedMobilePlan(),
+      moveWindowsPlan(),
+      moveMobilePlan(),
       windowsDeletePlan(targetRemoteObjectId, [unexpectedGuardTrash]),
       mobileDeletePlan(),
     ],
@@ -671,10 +802,12 @@ test("VH22 C09 correction 02 fixed assertion hard-stops unexpected destructive m
   }
 
   assert.deepEqual(harness.production.executedPlanIds, [
-    "plan:c09:lineage-windows",
-    "plan:c09:lineage-mobile",
+    "plan:c09:seed-windows",
+    "plan:c09:seed-mobile",
+    "plan:c09:move-windows",
+    "plan:c09:move-mobile",
   ]);
-  assert.equal(harness.production.previewedPlanIds.length, 3);
-  assert.equal(harness.verifier.requests.length, 1);
+  assert.equal(harness.production.previewedPlanIds.length, 5);
+  assert.equal(harness.verifier.requests.length, 3);
   assert.equal(harness.evidenceCalls.length, 0);
 });
