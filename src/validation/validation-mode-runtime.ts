@@ -1,4 +1,4 @@
-import type { SynchronizationPlan } from "../contracts";
+import type { RemoteObjectId, SynchronizationPlan } from "../contracts";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import type {
   ValidationPlanExecutionAuthorization,
@@ -23,6 +23,8 @@ import {
 import {
   type ValidationRunnerApprovedModuleDelegate,
   type ValidationRunnerApprovedModuleDelegates,
+  type ValidationRunnerApprovedModuleResult,
+  type ValidationRunnerModuleOperationRequest,
   type ValidationRunnerPrerequisiteDelegate,
 } from "./scenario-runner-module-adapter";
 import {
@@ -70,6 +72,39 @@ export interface ValidationPlanAuthorityCycleInput {
 export interface ValidationPlanAssertionStepInput extends ValidationPlanAuthorityCycleInput {
   readonly assertionId: string;
   readonly expectation: Omit<ValidationPlanExpectation, "run">;
+}
+
+/**
+ * Runtime-only verifier publication fact. This is deliberately not part of the
+ * frozen H0 module-result contracts or production persistence.
+ */
+export interface ValidationRuntimeRemoteIdentityBindingFact {
+  readonly bindingName: string;
+  readonly remoteObjectId: RemoteObjectId;
+}
+
+/**
+ * Trusted state-convergence-verifier delegates may return this structural
+ * extension. The H6B runtime publishes it only after successful verification
+ * with objective evidence.
+ */
+export type ValidationRemoteIdentityPublishingVerifierResult =
+  ValidationRunnerApprovedModuleResult & {
+    readonly remoteIdentityBindings?: readonly ValidationRuntimeRemoteIdentityBindingFact[];
+  };
+
+export interface ValidationRemoteIdentityPublishingVerifierDelegate {
+  execute(
+    request: ValidationRunnerModuleOperationRequest,
+  ): Promise<ValidationRemoteIdentityPublishingVerifierResult | null | undefined>;
+}
+
+/**
+ * Static assertion-side extension consumed and removed by H6B before the
+ * frozen assertion engine is called.
+ */
+export interface ValidationRuntimeRemoteIdentityExpectationReference {
+  readonly remoteObjectIdBinding?: string;
 }
 
 export interface ValidationModeRuntimeOptions {
@@ -216,6 +251,89 @@ class ValidationRunScopedPlanAuthority {
   }
 }
 
+interface RetainedValidationRemoteIdentityBinding {
+  readonly run: ValidationRunIdentity;
+  readonly bindingName: string;
+  readonly remoteObjectId: RemoteObjectId;
+  readonly verifierStepId: ValidationStepId;
+  readonly evidenceRefs: readonly string[];
+}
+
+type ValidationRemoteIdentityRetainResult =
+  | { readonly status: "retained" }
+  | { readonly status: "rejected"; readonly summary: string };
+
+/**
+ * Composition-scoped, validation-only authority for exact remote identities
+ * learned by the trusted convergence verifier. Facts are intentionally
+ * ephemeral and cannot survive runtime/composition reconstruction.
+ */
+class ValidationRunScopedRemoteIdentityAuthority {
+  private readonly entries = new Map<string, RetainedValidationRemoteIdentityBinding>();
+
+  retainVerified(input: {
+    readonly run: ValidationRunIdentity;
+    readonly verifierStepId: ValidationStepId;
+    readonly evidenceRefs: readonly string[];
+    readonly bindings: readonly ValidationRuntimeRemoteIdentityBindingFact[];
+  }): ValidationRemoteIdentityRetainResult {
+    const staged = new Map<string, ValidationRuntimeRemoteIdentityBindingFact>();
+    for (const binding of input.bindings) {
+      const duplicate = staged.get(binding.bindingName);
+      if (duplicate) {
+        return {
+          status: "rejected",
+          summary: `Verifier publication contains duplicate remote-identity binding name ${binding.bindingName}.`,
+        };
+      }
+      staged.set(binding.bindingName, binding);
+    }
+
+    for (const binding of input.bindings) {
+      const existing = this.entries.get(this.key(input.run, binding.bindingName));
+      if (existing && existing.remoteObjectId !== binding.remoteObjectId) {
+        return {
+          status: "rejected",
+          summary: `Remote-identity binding ${binding.bindingName} conflicts with previously verified authority for this run.`,
+        };
+      }
+    }
+
+    for (const binding of input.bindings) {
+      const key = this.key(input.run, binding.bindingName);
+      if (this.entries.has(key)) continue;
+      this.entries.set(key, Object.freeze({
+        run: input.run,
+        bindingName: binding.bindingName,
+        remoteObjectId: binding.remoteObjectId,
+        verifierStepId: input.verifierStepId,
+        evidenceRefs: Object.freeze([...input.evidenceRefs]),
+      }));
+    }
+    return { status: "retained" };
+  }
+
+  resolve(run: ValidationRunIdentity, bindingName: string): RemoteObjectId | undefined {
+    const entry = this.entries.get(this.key(run, bindingName));
+    if (!entry || !sameRun(entry.run, run) || entry.bindingName !== bindingName) return undefined;
+    return entry.remoteObjectId;
+  }
+
+  clearRun(run: ValidationRunIdentity): void {
+    for (const [key, entry] of this.entries) {
+      if (sameRun(entry.run, run)) this.entries.delete(key);
+    }
+  }
+
+  clearAll(): void {
+    this.entries.clear();
+  }
+
+  private key(run: ValidationRunIdentity, bindingName: string): string {
+    return `${String(run.scenarioId)}\u0000${String(run.runId)}\u0000${bindingName}`;
+  }
+}
+
 function parseAssertionStepInput(input: unknown): {
   readonly cycleId: string;
   readonly assertionId: string;
@@ -230,6 +348,174 @@ function parseAssertionStepInput(input: unknown): {
     cycleId: cycle.cycleId,
     assertionId: input.assertionId,
     expectation: input.expectation,
+  };
+}
+
+type ValidationRemoteIdentityPublicationParse =
+  | { readonly status: "absent" }
+  | { readonly status: "invalid"; readonly summary: string }
+  | { readonly status: "valid"; readonly bindings: readonly ValidationRuntimeRemoteIdentityBindingFact[] };
+
+function parseRemoteIdentityPublications(
+  result: ValidationRunnerApprovedModuleResult,
+): ValidationRemoteIdentityPublicationParse {
+  const rawResult = result as unknown as Record<string, unknown>;
+  if (!Object.prototype.hasOwnProperty.call(rawResult, "remoteIdentityBindings")) {
+    return { status: "absent" };
+  }
+  const rawBindings = rawResult.remoteIdentityBindings;
+  if (!Array.isArray(rawBindings) || rawBindings.length === 0) {
+    return {
+      status: "invalid",
+      summary: "Verifier remoteIdentityBindings must be a non-empty array when present.",
+    };
+  }
+
+  const bindings: ValidationRuntimeRemoteIdentityBindingFact[] = [];
+  const names = new Set<string>();
+  for (const rawBinding of rawBindings) {
+    if (
+      !isRecord(rawBinding)
+      || !validText(rawBinding.bindingName)
+      || !validText(rawBinding.remoteObjectId)
+    ) {
+      return {
+        status: "invalid",
+        summary: "Verifier remote-identity publication requires non-empty bindingName and remoteObjectId values.",
+      };
+    }
+    if (names.has(rawBinding.bindingName)) {
+      return {
+        status: "invalid",
+        summary: `Verifier remote-identity publication duplicates binding name ${rawBinding.bindingName}.`,
+      };
+    }
+    names.add(rawBinding.bindingName);
+    bindings.push(Object.freeze({
+      bindingName: rawBinding.bindingName,
+      remoteObjectId: rawBinding.remoteObjectId as RemoteObjectId,
+    }));
+  }
+  return { status: "valid", bindings: Object.freeze(bindings) };
+}
+
+function trustedVerifierDelegate(
+  delegate: ValidationRunnerApprovedModuleDelegate,
+  identityAuthority: ValidationRunScopedRemoteIdentityAuthority,
+): ValidationRunnerApprovedModuleDelegate {
+  return {
+    async execute(request) {
+      const result = await delegate.execute(request);
+      if (!result || result.status !== "completed") return result;
+
+      const publication = parseRemoteIdentityPublications(result);
+      if (publication.status === "absent") return result;
+      if (publication.status === "invalid") {
+        return {
+          status: "blocked",
+          summary: publication.summary,
+          evidenceRefs: Array.isArray(result.evidenceRefs) ? result.evidenceRefs : [],
+        };
+      }
+      if (
+        !Array.isArray(result.evidenceRefs)
+        || result.evidenceRefs.length === 0
+        || !result.evidenceRefs.every(validText)
+      ) {
+        return {
+          status: "blocked",
+          summary: "Remote-identity publication requires successful verifier completion with objective evidence.",
+          evidenceRefs: [],
+        };
+      }
+
+      const retained = identityAuthority.retainVerified({
+        run: request.run,
+        verifierStepId: request.stepId,
+        evidenceRefs: result.evidenceRefs,
+        bindings: publication.bindings,
+      });
+      if (retained.status === "rejected") {
+        return {
+          status: "blocked",
+          summary: retained.summary,
+          evidenceRefs: result.evidenceRefs,
+        };
+      }
+      return result;
+    },
+  };
+}
+
+type ValidationMaterializedExpectation =
+  | { readonly status: "materialized"; readonly expectation: Record<string, unknown> }
+  | { readonly status: "blocked"; readonly summary: string };
+
+function materializeRemoteIdentityBindings(input: {
+  readonly run: ValidationRunIdentity;
+  readonly expectation: Record<string, unknown>;
+  readonly identityAuthority: ValidationRunScopedRemoteIdentityAuthority;
+}): ValidationMaterializedExpectation {
+  const rawOperations = input.expectation.expectedOperations;
+  if (!Array.isArray(rawOperations)) {
+    return { status: "materialized", expectation: { ...input.expectation } };
+  }
+
+  const expectedOperations: unknown[] = [];
+  for (const rawOperation of rawOperations) {
+    if (!isRecord(rawOperation)) {
+      expectedOperations.push(rawOperation);
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(rawOperation, "remoteObjectIdBinding")) {
+      expectedOperations.push({ ...rawOperation });
+      continue;
+    }
+
+    const bindingName = rawOperation.remoteObjectIdBinding;
+    if (!validText(bindingName)) {
+      return {
+        status: "blocked",
+        summary: "Plan assertion remoteObjectIdBinding must be a non-empty, trim-stable binding name.",
+      };
+    }
+    const boundRemoteObjectId = input.identityAuthority.resolve(input.run, bindingName);
+    if (!boundRemoteObjectId) {
+      return {
+        status: "blocked",
+        summary: `No verified remote-identity binding named ${bindingName} exists for this validation run.`,
+      };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(rawOperation, "remoteObjectId")) {
+      if (!validText(rawOperation.remoteObjectId)) {
+        return {
+          status: "blocked",
+          summary: `Static remoteObjectId paired with binding ${bindingName} is malformed.`,
+        };
+      }
+      if (rawOperation.remoteObjectId !== boundRemoteObjectId) {
+        return {
+          status: "blocked",
+          summary: `Runtime binding ${bindingName} cannot weaken conflicting static remoteObjectId expectation ${rawOperation.remoteObjectId}.`,
+        };
+      }
+    }
+
+    const { remoteObjectIdBinding: _bindingReference, ...staticOperation } = rawOperation;
+    expectedOperations.push({
+      ...staticOperation,
+      remoteObjectId: boundRemoteObjectId,
+    });
+  }
+
+  return {
+    status: "materialized",
+    expectation: {
+      ...input.expectation,
+      expectedOperations,
+    },
   };
 }
 
@@ -393,6 +679,7 @@ function productionDelegate(
 
 function planAssertionDelegate(
   authority: ValidationRunScopedPlanAuthority,
+  identityAuthority: ValidationRunScopedRemoteIdentityAuthority,
 ): ValidationRunnerApprovedModuleDelegate {
   return {
     async execute(request) {
@@ -420,11 +707,24 @@ function planAssertionDelegate(
         };
       }
 
+      const materialized = materializeRemoteIdentityBindings({
+        run: request.run,
+        expectation: input.expectation,
+        identityAuthority,
+      });
+      if (materialized.status === "blocked") {
+        return {
+          status: "blocked",
+          summary: materialized.summary,
+          evidenceRefs: [],
+        };
+      }
+
       let assertion;
       try {
         assertion = assertValidationPlan({
           assertionId: input.assertionId,
-          expectation: { ...input.expectation, run: request.run } as unknown as ValidationPlanExpectation,
+          expectation: { ...materialized.expectation, run: request.run } as unknown as ValidationPlanExpectation,
           plan,
         });
       } catch (error) {
@@ -464,6 +764,7 @@ function planAssertionDelegate(
 function buildModules(
   driver: ValidationProductionPathDriver,
   authority: ValidationRunScopedPlanAuthority,
+  identityAuthority: ValidationRunScopedRemoteIdentityAuthority,
   overrides: ValidationModeModuleOverrides | undefined,
 ): ValidationRunnerApprovedModuleDelegates {
   if (overrides?.["production-path-driver"]) {
@@ -476,9 +777,13 @@ function buildModules(
     VALIDATION_RUNNER_MODULE_IDS.map(moduleId => [moduleId, blockedModule(moduleId)]),
   ) as unknown as Record<ValidationRunnerModuleId, ValidationRunnerApprovedModuleDelegate>;
   modules["production-path-driver"] = productionDelegate(driver, authority);
-  modules["plan-assertion-engine"] = planAssertionDelegate(authority);
+  modules["plan-assertion-engine"] = planAssertionDelegate(authority, identityAuthority);
+  const verifier = overrides?.["state-convergence-verifier"];
+  if (verifier) {
+    modules["state-convergence-verifier"] = trustedVerifierDelegate(verifier, identityAuthority);
+  }
   for (const [moduleId, delegate] of Object.entries(overrides ?? {})) {
-    if (!delegate) continue;
+    if (!delegate || moduleId === "state-convergence-verifier") continue;
     modules[moduleId as ValidationRunnerModuleId] = delegate;
   }
   return modules as ValidationRunnerApprovedModuleDelegates;
@@ -501,6 +806,7 @@ export class ValidationModeRuntime {
   private active = false;
   private composition?: IntegratedValidationScenarioRunner;
   private authority?: ValidationRunScopedPlanAuthority;
+  private identityAuthority?: ValidationRunScopedRemoteIdentityAuthority;
   private readonly definitions = new Map<ValidationScenarioId, ValidationRunnerScenarioDefinition>();
 
   constructor(private readonly options: ValidationModeRuntimeOptions) {
@@ -520,7 +826,9 @@ export class ValidationModeRuntime {
     this.active = enabled;
     if (!enabled) {
       this.authority?.clearAll();
+      this.identityAuthority?.clearAll();
       this.authority = undefined;
+      this.identityAuthority = undefined;
       this.composition = undefined;
     }
   }
@@ -548,6 +856,7 @@ export class ValidationModeRuntime {
     const run = validationRunIdentity((this.options.createRunId ?? defaultRunId)(), scenarioId);
     const harness = this.harness();
     this.authority?.clearRun(run);
+    this.identityAuthority?.clearRun(run);
     const result = await harness.runner.startScenario({ run, definition });
     return await this.drive(result);
   }
@@ -599,13 +908,15 @@ export class ValidationModeRuntime {
       );
     const driver = new ValidationProductionPathDriver(this.options.productionRuntime);
     const authority = new ValidationRunScopedPlanAuthority();
+    const identityAuthority = new ValidationRunScopedRemoteIdentityAuthority();
     this.authority = authority;
+    this.identityAuthority = identityAuthority;
 
     this.composition = composeValidationScenarioRunner({
       stateStore,
       resumeAdoptionStore,
       prerequisites: this.options.prerequisites ?? defaultPrerequisites(),
-      modules: buildModules(driver, authority, this.options.moduleOverrides),
+      modules: buildModules(driver, authority, identityAuthority, this.options.moduleOverrides),
       humanCheckpoints: this.options.humanCheckpoints ?? defaultHumanCheckpoints(),
       definitions: [...this.definitions.values()],
     });
@@ -628,6 +939,7 @@ export class ValidationModeRuntime {
     }
     if (result.status === "PASS" || result.status === "FAIL" || result.status === "BLOCKED") {
       this.authority?.clearRun(result.state.run);
+      this.identityAuthority?.clearRun(result.state.run);
     }
     return { status: "runner", result };
   }
