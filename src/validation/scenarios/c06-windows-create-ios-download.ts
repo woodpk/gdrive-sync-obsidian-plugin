@@ -25,7 +25,10 @@ import {
   type ValidationStepId,
 } from "../run-sandbox-checkpoint-contracts";
 import type { ValidationRunnerScenarioDefinition } from "../scenario-runner-contracts";
-import type {\n  ValidationRunnerApprovedModuleDelegate,\n  ValidationRunnerApprovedModuleResult,\n} from "../scenario-runner-module-adapter";
+import type {
+  ValidationRunnerApprovedModuleDelegate,
+  ValidationRunnerApprovedModuleResult,
+} from "../scenario-runner-module-adapter";
 import type {
   StateConvergenceVerifier,
   ValidationStateConvergenceReport,
