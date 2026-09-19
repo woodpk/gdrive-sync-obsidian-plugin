@@ -29,13 +29,32 @@ function Invoke-Git {
         [string[]]$Arguments
     )
 
-    $output = & git @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -ne 0) {
-        $rendered = ($output | Out-String).Trim()
-        throw "git $($Arguments -join ' ') failed with exit code $exitCode. $rendered"
+    $stderrPath = Join-Path ([System.IO.Path]::GetTempPath()) ("vh15-r2-git-stderr-" + [Guid]::NewGuid().ToString("N") + ".txt")
+    try {
+        $output = @(& git @Arguments 2> $stderrPath)
+        $exitCode = $LASTEXITCODE
+        $stderrText = if (Test-Path -LiteralPath $stderrPath) {
+            [System.IO.File]::ReadAllText($stderrPath).Trim()
+        }
+        else {
+            ""
+        }
+
+        if ($exitCode -ne 0) {
+            $stdoutText = ($output | Out-String).Trim()
+            $detail = @($stdoutText, $stderrText) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            throw "git $($Arguments -join ' ') failed with exit code $exitCode. $($detail -join ' ')"
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($stderrText)) {
+            Write-Host $stderrText
+        }
+
+        return $output
     }
-    return $output
+    finally {
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-RemoteHead {
