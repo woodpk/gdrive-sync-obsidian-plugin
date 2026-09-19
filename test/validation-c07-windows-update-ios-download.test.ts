@@ -377,7 +377,7 @@ test("VH20 C07 uses real H6B fixed plan handoff for trusted baseline, Windows up
   assert.equal(mobileAssertion.operation, "assert-observed-plan");
   const mobileInput = mobileAssertion.input as {
     readonly authorityCycleId: string;
-    readonly expectation: { readonly expectedOperations: readonly Array<{ readonly kind: string; readonly path: VaultPath }> };
+    readonly expectation: { readonly expectedOperations: ReadonlyArray<{ readonly kind: string; readonly path: VaultPath }> };
   };
   assert.equal(mobileInput.authorityCycleId, C07_AUTHORITY_CYCLES.mobileDownloadUpdate);
   assert.deepEqual(
