@@ -101,7 +101,7 @@ function planExpectation(input: {
       ...(input.toPath === undefined ? {} : { toPath: input.toPath }),
       destructive: false,
     })]),
-    allowedBackgroundKinds: Object.freeze(["noop"]),
+    allowedBackgroundKinds: Object.freeze(["noop"] as const),
     forbiddenKinds: forbiddenExcept(input.expectedKind),
     conflictExpectation: "forbidden",
     destructiveExpectation: "forbidden",
