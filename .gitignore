@@ -4,4 +4,5 @@ main.js
 coverage/
 .build/
 .test-build/
+.phx-ci/
 .DS_Store

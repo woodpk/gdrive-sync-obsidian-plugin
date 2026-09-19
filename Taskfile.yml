@@ -1,0 +1,24 @@
+version: '3'
+
+includes:
+  phx-node:
+    taskfile: D:/dev-tools/phx-ci/taskfiles/node.yml
+    flatten: true
+    vars:
+      PHX_FRAMEWORK_ROOT: D:/dev-tools/phx-ci
+      PHX_PROJECT_ROOT: '{{.ROOT_DIR}}'
+      PHX_PROJECT_NAME: gdrive-sync-obsidian-plugin
+      PHX_EXPECTED_FRAMEWORK_VERSION: 0.2.0-dev.2
+      PHX_INSTALL_COMMAND: npm ci
+      PHX_TYPECHECK_COMMAND: npm run typecheck
+      PHX_FOCUSED_TEST_COMMAND: npx tsc -p tsconfig.test.json && node --test .test-build/test/contracts.test.js
+      PHX_FULL_TEST_COMMAND: npm test
+      PHX_BUILD_COMMAND: npm run build
+      PHX_REPOSITORY_CHECK_COMMAND: npm run check
+      PHX_EXPECTED_ARTIFACTS: main.js
+      PHX_EXPECTED_REPOSITORY: gdrive-sync-obsidian-plugin
+      PHX_EXPECTED_BRANCH: ci-3-phx-ci-obsidian-pilot
+      PHX_EXPECTED_BASE_SHA: 4d4042aa168a9b83b00a929556a736dc9db7bd3e
+      PHX_REQUIRE_CLEAN_TREE: false
+      PHX_ALLOWED_CHANGED_FILES: Taskfile.yml;.gitignore;dev/_ca-output.md
+      PHX_EVIDENCE_ABSOLUTE: '{{.ROOT_DIR}}/dev/_ca-output.md'
