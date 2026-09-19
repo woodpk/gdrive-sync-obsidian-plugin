@@ -24,6 +24,7 @@ import type {
 } from "../scenario-runner-module-adapter";
 import type {
   ValidationRunnerScenarioDefinition,
+  ValidationRunnerStepDefinition,
 } from "../scenario-runner-contracts";
 import {
   validationStepId,
@@ -183,76 +184,45 @@ function executionStep(id: string, cycleId: string) {
   });
 }
 
+function moduleStep(
+  id: string,
+  module: ValidationRunnerStepDefinition["module"],
+  operation: string,
+  requiredCompletionProof: ValidationRunnerStepDefinition["requiredCompletionProof"],
+): ValidationRunnerStepDefinition {
+  return Object.freeze({
+    stepId: validationStepId(id),
+    module,
+    operation,
+    requiredCompletionProof,
+  });
+}
+
 export const C08_SCENARIO_DEFINITION: ValidationRunnerScenarioDefinition = Object.freeze({
   scenarioId: C08_SCENARIO_ID,
   prerequisiteIds: Object.freeze([]),
   steps: Object.freeze([
-    {
-      stepId: validationStepId("c08-lineage-create"),
-      module: "fixture-manager",
-      operation: "c08-lineage-create",
-      requiredCompletionProof: "operation-complete",
-    },
+    moduleStep("c08-lineage-create", "fixture-manager", "c08-lineage-create", "operation-complete"),
     previewStep("c08-lineage-windows-preview", C08_AUTHORITY_CYCLES.lineageWindows),
     assertionStep("c08-lineage-windows-assert", C08_AUTHORITY_CYCLES.lineageWindows, C08_PLAN_EXPECTATIONS.lineageWindows),
     executionStep("c08-lineage-windows-execute", C08_AUTHORITY_CYCLES.lineageWindows),
-    {
-      stepId: validationStepId("c08-lineage-mobile-handoff"),
-      module: "cross-device-coordinator",
-      operation: "c08-handoff-mobile",
-      requiredCompletionProof: "operation-complete",
-    },
+    moduleStep("c08-lineage-mobile-handoff", "cross-device-coordinator", "c08-handoff-mobile", "operation-complete"),
     previewStep("c08-lineage-mobile-preview", C08_AUTHORITY_CYCLES.lineageMobile),
     assertionStep("c08-lineage-mobile-assert", C08_AUTHORITY_CYCLES.lineageMobile, C08_PLAN_EXPECTATIONS.lineageMobile),
     executionStep("c08-lineage-mobile-execute", C08_AUTHORITY_CYCLES.lineageMobile),
-    {
-      stepId: validationStepId("c08-lineage-verify"),
-      module: "state-convergence-verifier",
-      operation: "c08-lineage-verify",
-      requiredCompletionProof: "verification-passed",
-    },
-    {
-      stepId: validationStepId("c08-windows-handoff"),
-      module: "cross-device-coordinator",
-      operation: "c08-handoff-windows",
-      requiredCompletionProof: "operation-complete",
-    },
-    {
-      stepId: validationStepId("c08-windows-move-fixture"),
-      module: "fixture-manager",
-      operation: "c08-windows-move-fixture",
-      requiredCompletionProof: "operation-complete",
-    },
+    moduleStep("c08-lineage-verify", "state-convergence-verifier", "c08-lineage-verify", "verification-passed"),
+    moduleStep("c08-windows-handoff", "cross-device-coordinator", "c08-handoff-windows", "operation-complete"),
+    moduleStep("c08-windows-move-fixture", "fixture-manager", "c08-windows-move-fixture", "operation-complete"),
     previewStep("c08-windows-move-preview", C08_AUTHORITY_CYCLES.moveWindows),
     assertionStep("c08-windows-move-assert", C08_AUTHORITY_CYCLES.moveWindows, C08_PLAN_EXPECTATIONS.moveWindows),
     executionStep("c08-windows-move-execute", C08_AUTHORITY_CYCLES.moveWindows),
-    {
-      stepId: validationStepId("c08-remote-move-verify"),
-      module: "state-convergence-verifier",
-      operation: "c08-remote-move-verify",
-      requiredCompletionProof: "verification-passed",
-    },
-    {
-      stepId: validationStepId("c08-mobile-handoff"),
-      module: "cross-device-coordinator",
-      operation: "c08-handoff-mobile",
-      requiredCompletionProof: "operation-complete",
-    },
+    moduleStep("c08-remote-move-verify", "state-convergence-verifier", "c08-remote-move-verify", "verification-passed"),
+    moduleStep("c08-mobile-handoff", "cross-device-coordinator", "c08-handoff-mobile", "operation-complete"),
     previewStep("c08-mobile-move-preview", C08_AUTHORITY_CYCLES.moveMobile),
     assertionStep("c08-mobile-move-assert", C08_AUTHORITY_CYCLES.moveMobile, C08_PLAN_EXPECTATIONS.moveMobile),
     executionStep("c08-mobile-move-execute", C08_AUTHORITY_CYCLES.moveMobile),
-    {
-      stepId: validationStepId("c08-final-verify"),
-      module: "state-convergence-verifier",
-      operation: "c08-final-verify",
-      requiredCompletionProof: "verification-passed",
-    },
-    {
-      stepId: validationStepId("c08-evidence"),
-      module: "scenario-evidence-recorder",
-      operation: "c08-evidence",
-      requiredCompletionProof: "evidence-recorded",
-    },
+    moduleStep("c08-final-verify", "state-convergence-verifier", "c08-final-verify", "verification-passed"),
+    moduleStep("c08-evidence", "scenario-evidence-recorder", "c08-evidence", "evidence-recorded"),
   ]),
 });
 
