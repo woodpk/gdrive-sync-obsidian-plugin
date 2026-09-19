@@ -31,7 +31,7 @@ param(
 
     [string]$FrameworkRoot = "D:\dev-tools\phx-ci",
 
-    [string]$FrameworkHead = "f3e66abd3d83f5c4f1680677f5b0574ee510ec9e",
+    [string]$FrameworkHead = "bf8958f8aa355f7a303a226f353e808d8edc2c2a",
 
     [string]$FrameworkVersion = "0.2.0-dev.2",
 
@@ -479,6 +479,9 @@ $published = $false
 $pushError = ""
 $cleanupIssue = ""
 $verificationStatus = "BLOCKED"
+$changeSetVerificationStatus = "BLOCKED"
+$repositoryVerificationStatus = "BLOCKED"
+$overallVerificationStatus = "BLOCKED"
 $ciExit = 999
 $taskInvocationFailed = $false
 
@@ -707,6 +710,19 @@ includes:
     else {
         "BLOCKED"
     }
+    $overallVerificationStatus = if ($verificationStatus -eq 'COMPLETE') { 'PASS' } else { 'BLOCKED' }
+
+    if (Test-Path -LiteralPath $evidenceJson -PathType Leaf) {
+        $evidenceModel = Get-Content -LiteralPath $evidenceJson -Raw | ConvertFrom-Json
+        if ($evidenceModel.PSObject.Properties.Name -contains 'verification') {
+            if ($evidenceModel.verification.PSObject.Properties.Name -contains 'changeSet') {
+                $changeSetVerificationStatus = [string]$evidenceModel.verification.changeSet.status
+            }
+            if ($evidenceModel.verification.PSObject.Properties.Name -contains 'repository') {
+                $repositoryVerificationStatus = [string]$evidenceModel.verification.repository.status
+            }
+        }
+    }
 
     # Before publication, permit only canonical evidence and this run's immutable history files.
     $permittedPostRun = @(
@@ -815,7 +831,10 @@ if (-not $controlCheckoutPreserved) {
 
 Write-Host ""
 Write-Host "PHX-CI RUN RESULT"
-Write-Host "Verification: $verificationStatus"
+Write-Host "Change-set verification: $changeSetVerificationStatus"
+Write-Host "Repository verification: $repositoryVerificationStatus"
+Write-Host "Overall verification: $overallVerificationStatus"
+Write-Host "Compatibility status: $verificationStatus"
 Write-Host "Task exit code: $ciExit"
 Write-Host "Source branch: $Branch"
 Write-Host "Source build HEAD: $ExpectedHead"
@@ -833,6 +852,9 @@ Write-Host ""
 
 [pscustomobject]@{
     VerificationStatus       = $verificationStatus
+    ChangeSetVerification    = $changeSetVerificationStatus
+    RepositoryVerification   = $repositoryVerificationStatus
+    OverallVerification      = $overallVerificationStatus
     TaskExitCode             = $ciExit
     SourceBranch             = $Branch
     SourceBuildHead          = $ExpectedHead

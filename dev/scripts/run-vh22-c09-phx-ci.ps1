@@ -1,7 +1,12 @@
+[CmdletBinding()]
+param(
+    [string]$InfrastructureBranch = 'ci-4-split-verification-status'
+)
+
 $ErrorActionPreference = "Stop"
 
 $repo = "D:\obsidian-brain-dev"
-$infraBranch = "ci-3-phx-ci-obsidian-pilot"
+$infraBranch = $InfrastructureBranch
 $tempRunner = Join-Path $env:TEMP "run-phx-ci.ps1"
 
 git -C $repo fetch origin --prune
