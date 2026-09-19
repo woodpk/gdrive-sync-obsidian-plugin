@@ -261,21 +261,21 @@ function sameScenario(run: ValidationRunIdentity): boolean {
 
 function completed(
   evidenceRefs: readonly ValidationEvidenceRef[] = [],
-): Awaited<ReturnType<ValidationRunnerApprovedModuleDelegate["execute"]>> {
+): ValidationRunnerApprovedModuleResult {
   return { status: "completed", evidenceRefs };
 }
 
 function failed(
   summary: string,
   evidenceRefs: readonly ValidationEvidenceRef[] = [],
-): Awaited<ReturnType<ValidationRunnerApprovedModuleDelegate["execute"]>> {
+): ValidationRunnerApprovedModuleResult {
   return { status: "failed", summary, evidenceRefs };
 }
 
 function blocked(
   summary: string,
   evidenceRefs: readonly ValidationEvidenceRef[] = [],
-): Awaited<ReturnType<ValidationRunnerApprovedModuleDelegate["execute"]>> {
+): ValidationRunnerApprovedModuleResult {
   return { status: "blocked", summary, evidenceRefs };
 }
 
@@ -495,7 +495,7 @@ function finalConvergenceRequest(
 function reportOutcome(
   report: ValidationStateConvergenceReport,
   label: string,
-): Awaited<ReturnType<ValidationRunnerApprovedModuleDelegate["execute"]>> {
+): ValidationRunnerApprovedModuleResult {
   const refs = report.evidence.map(item => item.ref);
   if (report.result.verdict === "pass") {
     if (refs.length === 0) return blocked(`${label} produced no objective evidence references.`);
