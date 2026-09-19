@@ -85,6 +85,22 @@ function Add-LogLine {
     Add-Content -LiteralPath $Path -Value $Text -Encoding utf8
 }
 
+function Remove-StalePhxRuntime {
+    $runtimeDir = Join-Path $RepoRoot ".phx-ci"
+    if (-not (Test-Path -LiteralPath $runtimeDir)) {
+        return
+    }
+
+    # .phx-ci is framework-owned ephemeral runtime state. Never remove it if
+    # any path beneath it is tracked by Git.
+    $trackedRuntime = (Invoke-Git -Args @("ls-files", "--", ".phx-ci")).Output
+    if (-not [string]::IsNullOrWhiteSpace($trackedRuntime)) {
+        throw ".phx-ci contains tracked files; refusing automatic runtime cleanup.`n$trackedRuntime"
+    }
+
+    Remove-Item -LiteralPath $runtimeDir -Recurse -Force
+}
+
 $RepoRoot = [IO.Path]::GetFullPath($RepoRoot).TrimEnd("\", "/")
 $FrameworkRoot = [IO.Path]::GetFullPath($FrameworkRoot).TrimEnd("\", "/")
 
@@ -119,7 +135,12 @@ if ($actualFrameworkVersion -ne $FrameworkVersion) {
     throw "phx-ci VERSION mismatch. Expected $FrameworkVersion; actual $actualFrameworkVersion"
 }
 
-# Never switch away from a dirty repository.
+# A prior interrupted/failed phx-ci run may leave only framework-owned
+# untracked runtime records behind. Remove those safely before enforcing
+# the real clean-tree gate.
+Remove-StalePhxRuntime
+
+# Never switch away from a genuinely dirty repository.
 Assert-CleanWorkingTree
 
 Invoke-Git -Args @("fetch", "origin", "--prune") | Out-Null
