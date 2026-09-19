@@ -297,7 +297,7 @@ function authorityState(world: World, device: "mobile" | "windows") {
       entityKind: "file",
       localExisted: true,
       remoteExisted: true,
-      content: { hash: contentHash },
+      content: { hash: contentHash, sizeBytes: bytes.byteLength },
       remoteObjectId,
     }],
     remoteMappings: [{ path: fixturePath, remoteObjectId, entityKind: "file" }],
