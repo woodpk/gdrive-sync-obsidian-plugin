@@ -473,7 +473,7 @@ function c09Definition(trustedFixture: C09TrustedFixtureSet): ValidationRunnerSc
   const windowsExpectation = c09WindowsDeleteExpectation(trustedFixture);
   const mobileExpectation = c09MobileRecoverableDeleteExpectation(trustedFixture);
 
-  return Object.freeze({
+  const definition: ValidationRunnerScenarioDefinition = {
     scenarioId: "C09",
     prerequisiteIds: Object.freeze([]),
     steps: Object.freeze([
@@ -558,7 +558,8 @@ function c09Definition(trustedFixture: C09TrustedFixtureSet): ValidationRunnerSc
         requiredCompletionProof: "evidence-recorded",
       },
     ]),
-  });
+  };
+  return Object.freeze(definition);
 }
 
 function completed(evidenceRefs: readonly ValidationEvidenceRef[] = []) {
