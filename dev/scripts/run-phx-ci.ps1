@@ -54,7 +54,10 @@ function Invoke-GitAt {
 
     $output = & git.exe -C $WorkingTree @Args 2>&1
     $code = $LASTEXITCODE
-    $text = ($output | Out-String).Trim()
+    # Normalize Windows native-process line endings at the Git boundary.
+    # Otherwise LF-only splitting can leave a trailing CR on every non-final
+    # path and cause exact allowlist checks to reject valid generated files.
+    $text = ($output | Out-String).Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd()
 
     if (-not $AllowFailure -and $code -ne 0) {
         throw "git -C '$WorkingTree' $($Args -join ' ') failed (exit $code).`n$text"
@@ -63,6 +66,22 @@ function Invoke-GitAt {
     [pscustomobject]@{
         ExitCode = $code
         Output   = $text
+    }
+}
+
+function Convert-GitOutputToLines {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return
+    }
+
+    foreach ($line in ($Text -split "`n")) {
+        # Defense in depth for any text not normalized by Invoke-GitAt.
+        $clean = $line.TrimEnd([char]13)
+        if (-not [string]::IsNullOrWhiteSpace($clean)) {
+            $clean
+        }
     }
 }
 
@@ -122,8 +141,8 @@ function Test-PathRule {
         [Parameter(Mandatory)][string]$Rule
     )
 
-    $normalizedPath = $Path.Replace("\", "/")
-    $normalizedRule = $Rule.Replace("\", "/")
+    $normalizedPath = $Path.TrimEnd([char]13).Replace("\", "/")
+    $normalizedRule = $Rule.TrimEnd([char]13).Replace("\", "/")
 
     if ($normalizedRule.EndsWith("/")) {
         return $normalizedPath.StartsWith($normalizedRule, [StringComparison]::OrdinalIgnoreCase)
@@ -418,7 +437,7 @@ $publicationOnlyRules = @(
 )
 if ($remoteHead -ne $ExpectedHead) {
     $postBuildDeltaRaw = (Invoke-GitAt -WorkingTree $RepoRoot -Args @("diff", "--name-only", "$ExpectedHead..$remoteHead")).Output
-    $postBuildDelta = @($postBuildDeltaRaw -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $postBuildDelta = @(Convert-GitOutputToLines -Text $postBuildDeltaRaw)
     Assert-OnlyAllowedPaths -Paths $postBuildDelta -Rules $publicationOnlyRules -Context "Commits after ExpectedHead on origin/$Branch"
 }
 
@@ -629,16 +648,13 @@ includes:
     )
 
     $modifiedTracked = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--name-only")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--name-only")).Output
     )
     $stagedTracked = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output
     )
     $untracked = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("ls-files", "--others", "--exclude-standard")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("ls-files", "--others", "--exclude-standard")).Output
     )
 
     $unexpectedTracked = @(($modifiedTracked + $stagedTracked) | Sort-Object -Unique | Where-Object { $_ -notin $expectedEvidencePaths })
@@ -702,16 +718,13 @@ includes:
     )
 
     $remainingModified = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--name-only")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--name-only")).Output
     )
     $remainingStaged = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output
     )
     $remainingUntracked = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("ls-files", "--others", "--exclude-standard")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("ls-files", "--others", "--exclude-standard")).Output
     )
     $remainingPaths = @(($remainingModified + $remainingStaged + $remainingUntracked) | Sort-Object -Unique)
     Assert-OnlyAllowedPaths -Paths $remainingPaths -Rules $permittedPostRun -Context "Post-run publication state"
@@ -725,8 +738,7 @@ includes:
     }
 
     $staged = @(
-    (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output -split "`n" |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Convert-GitOutputToLines -Text (Invoke-GitAt -WorkingTree $worktreeRoot -Args @("diff", "--cached", "--name-only")).Output
     )
     Assert-OnlyAllowedPaths -Paths $staged -Rules $permittedPostRun -Context "Staged verification publication"
 
