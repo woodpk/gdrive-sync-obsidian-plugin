@@ -22,6 +22,8 @@ jobs:
         run: npm run typecheck
       - name: Test TypeScript compile
         run: npx tsc -p tsconfig.test.json
+      - name: Focused VH22 C09 correction tests
+        run: node --test .test-build/test/validation-c09-windows-delete-ios-trash.test.js
       - name: Full tests
         shell: bash
         run: |
