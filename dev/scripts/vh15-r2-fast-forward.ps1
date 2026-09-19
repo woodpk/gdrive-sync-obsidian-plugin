@@ -141,74 +141,63 @@ function Publish-Report {
         "",
         "## Report publication",
         "",
-        "This report is committed and pushed by the promotion script to:",
-        "",
-        "$ToolingBranch`:$OutputPath",
-        "",
-        "The report commit SHA is intentionally resolved independently from the remote branch head",
-        "by the supervisor after script termination."
+        "This report was committed and pushed by the promotion script on the tooling branch."
     )
 
-    $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("vh15-r2-promotion-report-" + [Guid]::NewGuid().ToString("N"))
-    $worktreeAdded = $false
+    $currentBranch = ((Invoke-Git -Arguments @("branch", "--show-current")) | Select-Object -Last 1).Trim()
+    if ($currentBranch -ne $ToolingBranch) {
+        throw "Report publication requires checked-out tooling branch $ToolingBranch; current branch is $currentBranch."
+    }
+
+    $dirtyBefore = @((Invoke-Git -Arguments @("status", "--porcelain=v1", "-uall")))
+    if ($dirtyBefore.Count -gt 0) {
+        throw "Tooling working tree is not clean before report publication: $($dirtyBefore -join '; ')"
+    }
+
+    $reportFile = Join-Path $script:RepoRoot ($OutputPath -replace "/", [System.IO.Path]::DirectorySeparatorChar)
+    $reportDirectory = Split-Path -Parent $reportFile
+    if (-not (Test-Path -LiteralPath $reportDirectory)) {
+        New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null
+    }
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText(
+        $reportFile,
+        ($reportLines -join [Environment]::NewLine) + [Environment]::NewLine,
+        $utf8NoBom
+    )
+
+    [void](Invoke-Git -Arguments @("add", "--", $OutputPath))
+
+    $staged = @((Invoke-Git -Arguments @("status", "--porcelain=v1", "--", $OutputPath)))
+    if ($staged.Count -eq 0) {
+        throw "Report publication produced no Git change at $OutputPath."
+    }
+
     try {
-        [void](Invoke-Git -Arguments @("fetch", $Remote, $ToolingBranch))
-        [void](Invoke-Git -Arguments @("worktree", "add", "--detach", $tempRoot, "$Remote/$ToolingBranch"))
-        $worktreeAdded = $true
-
-        $reportFile = Join-Path $tempRoot ($OutputPath -replace "/", [System.IO.Path]::DirectorySeparatorChar)
-        $reportDirectory = Split-Path -Parent $reportFile
-        if (-not (Test-Path -LiteralPath $reportDirectory)) {
-            New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null
-        }
-
-        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText(
-            $reportFile,
-            ($reportLines -join [Environment]::NewLine) + [Environment]::NewLine,
-            $utf8NoBom
-        )
-
-        Push-Location $tempRoot
-        try {
-            [void](Invoke-Git -Arguments @("add", "--", $OutputPath))
-
-            & git diff --cached --quiet -- $OutputPath
-            if ($LASTEXITCODE -eq 0) {
-                throw "Report publication produced no staged change at $OutputPath."
-            }
-
-            $gitName = (& git config user.name 2>$null)
-            $gitEmail = (& git config user.email 2>$null)
-            if ([string]::IsNullOrWhiteSpace([string]$gitName) -or [string]::IsNullOrWhiteSpace([string]$gitEmail)) {
-                throw "git user.name and user.email must be configured so the report commit can be created."
-            }
-
-            [void](Invoke-Git -Arguments @("commit", "-m", "docs: record VH15-R2 canonical fast-forward"))
-            $reportCommit = ((Invoke-Git -Arguments @("rev-parse", "HEAD")) | Select-Object -Last 1).Trim()
-
-            [void](Invoke-Git -Arguments @("push", $Remote, "HEAD:refs/heads/$ToolingBranch"))
-
-            $publishedHead = Get-RemoteHead -RemoteName $Remote -BranchName $ToolingBranch
-            if ($publishedHead -ne $reportCommit) {
-                throw "Tooling report push verification failed: remote head $publishedHead != report commit $reportCommit."
-            }
-
-            Write-Host "Report pushed: $ToolingBranch -> $publishedHead"
-            Write-Host "Report path: $OutputPath"
-        }
-        finally {
-            Pop-Location
-        }
+        $gitName = ((Invoke-Git -Arguments @("config", "--get", "user.name")) | Select-Object -Last 1).Trim()
+        $gitEmail = ((Invoke-Git -Arguments @("config", "--get", "user.email")) | Select-Object -Last 1).Trim()
     }
-    finally {
-        if ($worktreeAdded) {
-            & git worktree remove --force $tempRoot 2>$null | Out-Null
-        }
-        elseif (Test-Path -LiteralPath $tempRoot) {
-            Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
-        }
+    catch {
+        throw "git user.name and user.email must be configured so the report commit can be created."
     }
+
+    if ([string]::IsNullOrWhiteSpace($gitName) -or [string]::IsNullOrWhiteSpace($gitEmail)) {
+        throw "git user.name and user.email must be configured so the report commit can be created."
+    }
+
+    [void](Invoke-Git -Arguments @("commit", "-m", "docs: record VH15-R2 canonical fast-forward"))
+    $reportCommit = ((Invoke-Git -Arguments @("rev-parse", "HEAD")) | Select-Object -Last 1).Trim()
+
+    [void](Invoke-Git -Arguments @("push", $Remote, "HEAD:refs/heads/$ToolingBranch"))
+
+    $publishedHead = Get-RemoteHead -RemoteName $Remote -BranchName $ToolingBranch
+    if ($publishedHead -ne $reportCommit) {
+        throw "Tooling report push verification failed: remote head $publishedHead != report commit $reportCommit."
+    }
+
+    Write-Host "Report pushed: $ToolingBranch -> $publishedHead"
+    Write-Host "Report path: $OutputPath"
 }
 
 $mainError = $null
