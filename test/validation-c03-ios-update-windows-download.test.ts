@@ -326,7 +326,7 @@ function localSource(world: World, device: "mobile" | "windows"): ValidationDevi
     deviceId,
     local: {
       enumerate: async () => ({ entries: [], completeness: { status: "complete" } }),
-      observe: async path => {
+      observe: async (path: VaultPath) => {
         const bytes = bytesFor(path);
         return bytes
           ? {
@@ -340,7 +340,7 @@ function localSource(world: World, device: "mobile" | "windows"): ValidationDevi
             }
           : { status: "absent", side: "local", path };
       },
-      readFileBypassingEvidenceCache: async path => {
+      readFileBypassingEvidenceCache: async (path: VaultPath) => {
         const bytes = bytesFor(path);
         if (!bytes) throw new Error(`Missing test bytes at ${String(path)}`);
         return {
@@ -387,7 +387,7 @@ function remoteSource(world: World): ValidationRemoteObservationSource {
           completeness: { status: "complete" },
         },
       }),
-      download: async id => {
+      download: async (id: RemoteObjectId) => {
         if (id === remoteObjectId) {
           return {
             ok: true,
