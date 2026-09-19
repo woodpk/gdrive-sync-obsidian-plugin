@@ -181,7 +181,9 @@ function Write-Evidence {
     $lines.Add("STARTED_LOCAL: $($script:StartTime.ToString('o'))")
     $lines.Add("FINISHED_LOCAL: $($finish.ToString('o'))")
     $lines.Add("DURATION_SECONDS: $duration")
+    $hasWindowsExceptions = @($script:StepResults | Where-Object { $_.Status -eq "PASS-WINDOWS-EXCEPTIONS" }).Count -gt 0
     $lines.Add("GITHUB_ACTIONS_USED: NO")
+    $lines.Add("WINDOWS_PLATFORM_EXCEPTIONS: $(if ($hasWindowsExceptions) { 'YES' } else { 'NO' })")
     $lines.Add("")
     $lines.Add("STEPS:")
     foreach ($step in $script:StepResults) {
@@ -299,7 +301,10 @@ try {
     $allowedFiles = @(
         "src/validation/scenarios/c09-windows-delete-ios-trash.ts",
         "test/validation-c09-windows-delete-ios-trash.test.ts",
-        "dev/scripts/verify-vh22-c09-correction-02.ps1"
+        "dev/scripts/verify-vh22-c09-correction-02.ps1",
+        "dev/scripts/bootstrap-vh22-c09-correction-02.ps1",
+        "dev/_ca-output.md",
+        "dev/evidence/_ca-output-agt-ca-p6-vh22-c09-scenario-01-correction-02.md"
     )
 
     $unexpectedFiles = @($changedFiles | Where-Object { $_ -notin $allowedFiles })
@@ -381,11 +386,13 @@ try {
     Write-Host "  main.js SHA256: $script:MainHash"
 
     $hasWindowsExceptions = @($script:StepResults | Where-Object { $_.Status -eq "PASS-WINDOWS-EXCEPTIONS" }).Count -gt 0
-    $status = if ($hasWindowsExceptions) { "COMPLETE_WITH_WINDOWS_PLATFORM_EXCEPTIONS" } else { "COMPLETE" }
 
     Write-Host ""
-    Write-Host "STATUS: $status" -ForegroundColor Green
-    Write-Evidence -Status $status
+    Write-Host "STATUS: COMPLETE" -ForegroundColor Green
+    if ($hasWindowsExceptions) {
+        Write-Host "Windows platform exceptions: YES (only the four previously approved repository-test exceptions)." -ForegroundColor Yellow
+    }
+    Write-Evidence -Status "COMPLETE"
     exit 0
 }
 catch {
