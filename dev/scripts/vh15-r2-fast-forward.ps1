@@ -30,9 +30,17 @@ function Invoke-Git {
     )
 
     $stderrPath = Join-Path ([System.IO.Path]::GetTempPath()) ("vh15-r2-git-stderr-" + [Guid]::NewGuid().ToString("N") + ".txt")
+    $priorErrorActionPreference = $ErrorActionPreference
     try {
+        # Windows PowerShell 5.1 promotes native stderr to ErrorRecord objects.
+        # Git writes normal progress to stderr even when it exits 0. Temporarily
+        # disable terminating-error promotion for the native invocation and use
+        # Git's process exit code as the sole command-success authority.
+        $ErrorActionPreference = "Continue"
         $output = @(& git @Arguments 2> $stderrPath)
         $exitCode = $LASTEXITCODE
+        $ErrorActionPreference = $priorErrorActionPreference
+
         $stderrText = if (Test-Path -LiteralPath $stderrPath) {
             [System.IO.File]::ReadAllText($stderrPath).Trim()
         }
@@ -53,6 +61,7 @@ function Invoke-Git {
         return $output
     }
     finally {
+        $ErrorActionPreference = $priorErrorActionPreference
         Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
     }
 }
