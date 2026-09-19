@@ -53,8 +53,8 @@ export const C09_TARGET_RELATIVE_PATH = "test-win-c08-renamed.md" as const;
 export const C09_GUARD_RELATIVE_PATH = "c08-unrelated-guard.md" as const;
 
 const path = (value: string): VaultPath => contractId<"VaultPath">(value) as VaultPath;
-export const C09_TARGET_PATH = path(\`\${C09_FIXTURE_ROOT}/\${C09_TARGET_RELATIVE_PATH}\`);
-export const C09_GUARD_PATH = path(\`\${C09_FIXTURE_ROOT}/\${C09_GUARD_RELATIVE_PATH}\`);
+export const C09_TARGET_PATH = path(`${C09_FIXTURE_ROOT}/${C09_TARGET_RELATIVE_PATH}`);
+export const C09_GUARD_PATH = path(`${C09_FIXTURE_ROOT}/${C09_GUARD_RELATIVE_PATH}`);
 
 export const C09_AUTHORITY_CYCLES = Object.freeze({
   lineageWindows: "c09-lineage-windows",
@@ -214,7 +214,7 @@ function assertionStep(
     requiredCompletionProof: "operation-complete",
     input: Object.freeze({
       authorityCycleId: cycleId,
-      assertionId: \`c09:\${id}\`,
+      assertionId: `c09:${id}`,
       expectation: planExpectation,
     }),
   });
@@ -365,11 +365,11 @@ interface C09RunContext {
 }
 
 function runKey(run: ValidationRunIdentity): string {
-  return \`\${String(run.scenarioId)}\u0000\${String(run.runId)}\`;
+  return `${String(run.scenarioId)}\u0000${String(run.runId)}`;
 }
 
 function requireHash(descriptor: ValidationFixtureDescriptor, label: string): ContentHash {
-  if (!descriptor.hash) throw new Error(\`\${label} fixture has no content hash.\`);
+  if (!descriptor.hash) throw new Error(`${label} fixture has no content hash.`);
   return descriptor.hash;
 }
 
@@ -402,7 +402,7 @@ function convergenceAssertion(
 function requireRole(bindings: C09ScenarioBindings, role: C09DeviceRole): string | undefined {
   return bindings.handoff.currentRole() === role
     ? undefined
-    : \`C09 step requires \${role} ownership; current role is \${bindings.handoff.currentRole()}.\`;
+    : `C09 step requires ${role} ownership; current role is ${bindings.handoff.currentRole()}.`;
 }
 
 async function sameStableId(
@@ -424,13 +424,13 @@ function reportResult(
   if (report.result.verdict === "pass") {
     return refs.length > 0
       ? { status: "completed" as const, evidenceRefs: refs }
-      : { status: "blocked" as const, summary: \`\${phase} produced no objective verification evidence.\`, evidenceRefs: [] };
+      : { status: "blocked" as const, summary: `${phase} produced no objective verification evidence.`, evidenceRefs: [] };
   }
   return {
     status: report.result.verdict === "fail" ? "failed" as const : "blocked" as const,
     summary: report.result.verdict === "fail"
-      ? \`\${phase} objective verification failed.\`
-      : \`\${phase} required objective proof was not observable.\`,
+      ? `${phase} objective verification failed.`
+      : `${phase} required objective proof was not observable.`,
     evidenceRefs: refs,
   };
 }
@@ -699,7 +699,7 @@ export function createC09ScenarioPackage(
 
       return {
         status: "blocked",
-        summary: \`Unsupported C09 fixture operation: \${request.operation}\`,
+        summary: `Unsupported C09 fixture operation: ${request.operation}`,
         evidenceRefs: [],
       };
     },
@@ -716,7 +716,7 @@ export function createC09ScenarioPackage(
       if (!targetRole) {
         return {
           status: "blocked",
-          summary: \`Unsupported C09 handoff operation: \${request.operation}\`,
+          summary: `Unsupported C09 handoff operation: ${request.operation}`,
           evidenceRefs: [],
         };
       }
@@ -730,7 +730,7 @@ export function createC09ScenarioPackage(
         if (bindings.handoff.currentRole() !== targetRole) {
           return {
             status: "blocked",
-            summary: \`C09 handoff did not establish \${targetRole} step ownership.\`,
+            summary: `C09 handoff did not establish ${targetRole} step ownership.`,
             evidenceRefs,
           };
         }
@@ -852,7 +852,7 @@ export function createC09ScenarioPackage(
 
         return {
           status: "blocked",
-          summary: \`Unsupported C09 verification operation: \${request.operation}\`,
+          summary: `Unsupported C09 verification operation: ${request.operation}`,
           evidenceRefs: [],
         };
       } catch (error) {
@@ -870,7 +870,7 @@ export function createC09ScenarioPackage(
       if (request.operation !== C09_SCENARIO_OPERATIONS.recordEvidence) {
         return {
           status: "blocked",
-          summary: \`Unsupported C09 evidence operation: \${request.operation}\`,
+          summary: `Unsupported C09 evidence operation: ${request.operation}`,
           evidenceRefs: [],
         };
       }
@@ -929,5 +929,5 @@ export function createC09ScenarioPackage(
 }
 
 export function c09EvidenceRef(value: string): ValidationEvidenceRef {
-  return validationEvidenceRef(\`c09:\${value}\`);
+  return validationEvidenceRef(`c09:${value}`);
 }
