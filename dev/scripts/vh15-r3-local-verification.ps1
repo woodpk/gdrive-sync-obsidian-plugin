@@ -40,6 +40,7 @@ $script:ChangedFiles = @()
 $script:MainJsHash = ""
 $script:MainJsBytes = ""
 $script:Failure = ""
+$script:StartGatePassed = $false
 $script:StartTime = Get-Date
 
 function Add-EvidenceLine {
@@ -53,18 +54,10 @@ function Render-Command {
         [Parameter(Mandatory = $false)][string[]]$Arguments = @()
     )
 
-    $rendered = New-Object System.Collections.Generic.List[string]
-    $rendered.Add($File) | Out-Null
-    foreach ($argument in $Arguments) {
-        if ($argument -match "[\s`"']") {
-            $escaped = $argument.Replace('"', '\"')
-            $rendered.Add('"' + $escaped + '"') | Out-Null
-        }
-        else {
-            $rendered.Add($argument) | Out-Null
-        }
+    if ($Arguments.Count -eq 0) {
+        return $File
     }
-    return ($rendered -join " ")
+    return ($File + " " + ($Arguments -join " "))
 }
 
 function Invoke-CapturedNative {
@@ -236,6 +229,16 @@ function Write-EvidenceFile {
 function Publish-Evidence {
     param([Parameter(Mandatory = $true)][string]$Status)
 
+    if (-not $script:StartGatePassed) {
+        Write-Host "Start gate did not pass; evidence will not be committed or pushed." -ForegroundColor Red
+        return
+    }
+
+    $actualBranch = Read-NativeValue -File "git" -Arguments @("branch", "--show-current")
+    if ($actualBranch -ne $ExpectedBranch) {
+        throw "Refusing evidence persistence from unexpected branch '$actualBranch'."
+    }
+
     $unrelated = Get-UnrelatedDirtyFiles
     if ($unrelated.Count -gt 0) {
         Write-Host "Evidence was written but will not be committed because unrelated working-tree changes exist:" -ForegroundColor Red
@@ -314,6 +317,7 @@ try {
     $script:VerifiedTree = Read-NativeValue -File "git" -Arguments @("rev-parse", "HEAD^{tree}")
 
     Assert-Scope
+    $script:StartGatePassed = $true
 
     Add-EvidenceLine ""
     Add-EvidenceLine "### Toolchain"
@@ -380,8 +384,13 @@ finally {
                 try { Assert-Scope } catch {}
             }
 
-            Write-EvidenceFile -Status $finalStatus
-            Publish-Evidence -Status $finalStatus
+            if ($script:StartGatePassed) {
+                Write-EvidenceFile -Status $finalStatus
+                Publish-Evidence -Status $finalStatus
+            }
+            else {
+                Write-Host "Hard-stop gate failed before verification; no evidence file was written." -ForegroundColor Red
+            }
         }
         catch {
             Write-Host "Evidence persistence failed: $($_.Exception.Message)" -ForegroundColor Red
