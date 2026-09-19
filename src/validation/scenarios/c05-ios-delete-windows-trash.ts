@@ -122,7 +122,7 @@ function deletePlanExpectation(
           : {}),
       }),
     ]),
-    allowedBackgroundKinds: Object.freeze(["noop"]),
+    allowedBackgroundKinds: Object.freeze(["noop"] as const),
     forbiddenKinds: forbiddenKinds(expected),
     conflictExpectation: "forbidden",
     destructiveExpectation: "allowed-exactly-as-expected",
