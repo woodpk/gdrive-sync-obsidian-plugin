@@ -130,6 +130,488 @@ function Get-LocalBranches {
     return $map
 }
 
+function Get-CheckedOutLocalBranches {
+    $checked = [ordered]@{}
+    $text = (Invoke-Git -Arguments @("worktree", "list", "--porcelain")).Text
+    $currentWorktree = ""
+
+    foreach ($line in ($text -split "`n")) {
+        if ($line -match '^worktree (.+)    param([Parameter(Mandatory)][string]$Tag)
+
+    $text = (Invoke-Git -Arguments @(
+        "ls-remote",
+        "--tags",
+        "origin",
+        "refs/tags/$Tag"
+    )).Text
+
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    if ($text -notmatch '^([0-9a-f]{40})\s+refs/tags/.+$') {
+        throw "Unexpected remote tag ref: $text"
+    }
+
+    return $Matches[1]
+}
+
+function Assert-RemoteCleanupState {
+    $remote = Get-RemoteBranches
+    $names = @($remote.Keys | Sort-Object)
+
+    if ($names.Count -ne 2 -or
+        $names[0] -ne "master" -or
+        $names[1] -ne "phase6-integration") {
+        throw "Remote cleanup state has changed. Expected only master and phase6-integration; actual: $($names -join ', ')"
+    }
+
+    if ($remote["master"] -ne $MasterSha) {
+        throw "Remote master drift. Expected $MasterSha; actual $($remote["master"])"
+    }
+
+    return $remote
+}
+
+function Assert-AllPreservationTags {
+    foreach ($entry in $Frozen.GetEnumerator()) {
+        $branch = [string]$entry.Key
+        $expected = [string]$entry.Value
+        $tag = "$TagPrefix/$branch"
+        $actual = Get-RemoteTagSha -Tag $tag
+
+        if ($actual -ne $expected) {
+            throw "Preservation tag mismatch: $tag expected $expected; actual '$actual'"
+        }
+    }
+}
+
+if ((Invoke-Git -Arguments @("rev-parse", "--is-inside-work-tree")).Text -ne "true") {
+    throw "Script location does not resolve to a Git working tree: $Root"
+}
+
+if ($Frozen.Count -ne 27 -or $DeleteOrder.Count -ne 27) {
+    throw "Frozen branch map and deletion order must each contain exactly 27 entries."
+}
+
+if (@($DeleteOrder | Sort-Object -Unique).Count -ne 27) {
+    throw "Deletion order contains duplicate entries."
+}
+
+foreach ($name in $DeleteOrder) {
+    if (-not $Frozen.Contains($name)) {
+        throw "Deletion order contains an unknown branch: $name"
+    }
+}
+
+$origin = (Invoke-Git -Arguments @("remote", "get-url", "origin")).Text
+if ($origin -notmatch '(?i)(?:github\.com[/:])woodpk/gdrive-sync-obsidian-plugin(?:\.git)?$') {
+    throw "Unexpected origin: $origin"
+}
+
+$dirty = (Invoke-Git -Arguments @(
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=no"
+)).Text
+if (-not [string]::IsNullOrWhiteSpace($dirty)) {
+    throw "Tracked/index state must be clean before local branch cleanup.`n$dirty"
+}
+
+Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
+
+$remoteBefore = Assert-RemoteCleanupState
+Assert-AllPreservationTags
+
+$currentResult = Invoke-Git -Arguments @(
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "HEAD"
+) -AllowFailure
+
+if ($currentResult.ExitCode -ne 0) {
+    throw "Detached HEAD is not allowed for this cleanup. Check out master or phase6-integration first."
+}
+
+$currentBranch = $currentResult.Text
+if ($currentBranch -ne "master" -and $currentBranch -ne "phase6-integration") {
+    throw "Current branch must be master or phase6-integration before cleanup. Current: $currentBranch"
+}
+
+$locals = Get-LocalBranches
+$candidates = [Collections.Generic.List[string]]::new()
+$unrelated = [Collections.Generic.List[string]]::new()
+
+foreach ($name in $locals.Keys) {
+    if ($Frozen.Contains($name)) {
+        $candidates.Add([string]$name)
+        continue
+    }
+
+    if ($name -ne "master" -and $name -ne "phase6-integration") {
+        $unrelated.Add([string]$name)
+    }
+}
+
+# Fail closed before deleting anything: every targeted local branch must still be
+# exactly the frozen branch tip, its remote recovery tag must independently verify,
+# and it must not be checked out in any Git worktree.
+$checkedOut = Get-CheckedOutLocalBranches
+foreach ($name in $candidates) {
+    if ($checkedOut.Contains($name)) {
+        throw "Retired local branch is checked out in a worktree: $name at $($checkedOut[$name]). No local branches were deleted."
+    }
+    $expected = [string]$Frozen[$name]
+    $actual = [string]$locals[$name]
+    $tag = "$TagPrefix/$name"
+    $tagSha = Get-RemoteTagSha -Tag $tag
+
+    if ($actual -ne $expected) {
+        throw "Local branch drift: $name expected $expected; actual $actual. No local branches were deleted."
+    }
+
+    if ($tagSha -ne $expected) {
+        throw "Recovery tag mismatch for $name: $tag expected $expected; actual '$tagSha'. No local branches were deleted."
+    }
+}
+
+Write-Host ""
+if ($DryRun) {
+    Write-Host "DRY RUN — no local branch refs will be deleted." -ForegroundColor Yellow
+}
+else {
+    Write-Host "LOCAL PHASE 6 BRANCH CLEANUP" -ForegroundColor Cyan
+}
+
+Write-Host ""
+Write-Host "Retained local branch names:" -ForegroundColor Cyan
+Write-Host "  master"
+Write-Host "  phase6-integration"
+
+if ($unrelated.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Unrelated local branches — LEFT UNTOUCHED:" -ForegroundColor Yellow
+    foreach ($name in ($unrelated | Sort-Object)) {
+        Write-Host "  $name @ $($locals[$name])"
+    }
+}
+
+Write-Host ""
+Write-Host "Retired Phase 6 local branches:" -ForegroundColor Cyan
+
+if ($candidates.Count -eq 0) {
+    Write-Host "  None present."
+}
+else {
+    foreach ($name in $DeleteOrder) {
+        if (-not $locals.Contains($name)) {
+            continue
+        }
+
+        $expected = [string]$Frozen[$name]
+        $tag = "$TagPrefix/$name"
+
+        if ($DryRun) {
+            Write-Host "  WOULD DELETE LOCAL BRANCH  $name @ $expected"
+            Write-Host "    recovery: $tag -> $expected"
+        }
+        else {
+            # update-ref uses the expected old SHA as a compare-and-delete guard.
+            # If the local branch moves after preflight, deletion fails rather than
+            # removing a different branch tip.
+            Invoke-Git -Arguments @(
+                "update-ref",
+                "-d",
+                "refs/heads/$name",
+                $expected
+            ) | Out-Null
+
+            $check = Invoke-Git -Arguments @(
+                "show-ref",
+                "--verify",
+                "--quiet",
+                "refs/heads/$name"
+            ) -AllowFailure
+
+            if ($check.ExitCode -eq 0) {
+                throw "Local branch deletion verification failed: $name"
+            }
+
+            Write-Host "  DELETED / VERIFIED ABSENT  $name @ $expected" -ForegroundColor Green
+        }
+    }
+}
+
+if ($DryRun) {
+    Write-Host ""
+    Write-Host "DRY RUN PASS — all targeted local branches match their immutable recovery tags." -ForegroundColor Green
+    Write-Host "Would delete: $($candidates.Count) retired Phase 6 local branch(es)."
+    Write-Host "Would leave untouched: $($unrelated.Count) unrelated local branch(es)."
+    Write-Host "Remote branches/tags are not modified by this script."
+    return
+}
+
+$localsAfter = Get-LocalBranches
+$remainingRetired = @($Frozen.Keys | Where-Object { $localsAfter.Contains($_) })
+if ($remainingRetired.Count -gt 0) {
+    throw "Retired Phase 6 local branches remain after cleanup: $($remainingRetired -join ', ')"
+}
+
+# Reconfirm that the completed remote cleanup/recovery state remained intact.
+Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
+$remoteAfter = Assert-RemoteCleanupState
+Assert-AllPreservationTags
+
+Write-Host ""
+Write-Host "LOCAL PHASE 6 BRANCH CLEANUP COMPLETE" -ForegroundColor Green
+Write-Host "Deleted retired local branches: $($candidates.Count)"
+Write-Host "Unrelated local branches left untouched: $($unrelated.Count)"
+Write-Host "Current branch: $currentBranch"
+Write-Host "Remote branches remain: master, phase6-integration"
+Write-Host "All 27 remote preservation tags remain verified."
+) {
+            $currentWorktree = $Matches[1]
+            continue
+        }
+
+        if ($line -match '^branch refs/heads/(.+)    param([Parameter(Mandatory)][string]$Tag)
+
+    $text = (Invoke-Git -Arguments @(
+        "ls-remote",
+        "--tags",
+        "origin",
+        "refs/tags/$Tag"
+    )).Text
+
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    if ($text -notmatch '^([0-9a-f]{40})\s+refs/tags/.+$') {
+        throw "Unexpected remote tag ref: $text"
+    }
+
+    return $Matches[1]
+}
+
+function Assert-RemoteCleanupState {
+    $remote = Get-RemoteBranches
+    $names = @($remote.Keys | Sort-Object)
+
+    if ($names.Count -ne 2 -or
+        $names[0] -ne "master" -or
+        $names[1] -ne "phase6-integration") {
+        throw "Remote cleanup state has changed. Expected only master and phase6-integration; actual: $($names -join ', ')"
+    }
+
+    if ($remote["master"] -ne $MasterSha) {
+        throw "Remote master drift. Expected $MasterSha; actual $($remote["master"])"
+    }
+
+    return $remote
+}
+
+function Assert-AllPreservationTags {
+    foreach ($entry in $Frozen.GetEnumerator()) {
+        $branch = [string]$entry.Key
+        $expected = [string]$entry.Value
+        $tag = "$TagPrefix/$branch"
+        $actual = Get-RemoteTagSha -Tag $tag
+
+        if ($actual -ne $expected) {
+            throw "Preservation tag mismatch: $tag expected $expected; actual '$actual'"
+        }
+    }
+}
+
+if ((Invoke-Git -Arguments @("rev-parse", "--is-inside-work-tree")).Text -ne "true") {
+    throw "Script location does not resolve to a Git working tree: $Root"
+}
+
+if ($Frozen.Count -ne 27 -or $DeleteOrder.Count -ne 27) {
+    throw "Frozen branch map and deletion order must each contain exactly 27 entries."
+}
+
+if (@($DeleteOrder | Sort-Object -Unique).Count -ne 27) {
+    throw "Deletion order contains duplicate entries."
+}
+
+foreach ($name in $DeleteOrder) {
+    if (-not $Frozen.Contains($name)) {
+        throw "Deletion order contains an unknown branch: $name"
+    }
+}
+
+$origin = (Invoke-Git -Arguments @("remote", "get-url", "origin")).Text
+if ($origin -notmatch '(?i)(?:github\.com[/:])woodpk/gdrive-sync-obsidian-plugin(?:\.git)?$') {
+    throw "Unexpected origin: $origin"
+}
+
+$dirty = (Invoke-Git -Arguments @(
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=no"
+)).Text
+if (-not [string]::IsNullOrWhiteSpace($dirty)) {
+    throw "Tracked/index state must be clean before local branch cleanup.`n$dirty"
+}
+
+Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
+
+$remoteBefore = Assert-RemoteCleanupState
+Assert-AllPreservationTags
+
+$currentResult = Invoke-Git -Arguments @(
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "HEAD"
+) -AllowFailure
+
+if ($currentResult.ExitCode -ne 0) {
+    throw "Detached HEAD is not allowed for this cleanup. Check out master or phase6-integration first."
+}
+
+$currentBranch = $currentResult.Text
+if ($currentBranch -ne "master" -and $currentBranch -ne "phase6-integration") {
+    throw "Current branch must be master or phase6-integration before cleanup. Current: $currentBranch"
+}
+
+$locals = Get-LocalBranches
+$candidates = [Collections.Generic.List[string]]::new()
+$unrelated = [Collections.Generic.List[string]]::new()
+
+foreach ($name in $locals.Keys) {
+    if ($Frozen.Contains($name)) {
+        $candidates.Add([string]$name)
+        continue
+    }
+
+    if ($name -ne "master" -and $name -ne "phase6-integration") {
+        $unrelated.Add([string]$name)
+    }
+}
+
+# Fail closed before deleting anything: every targeted local branch must still be
+# exactly the frozen branch tip, and its remote recovery tag must independently verify.
+foreach ($name in $candidates) {
+    $expected = [string]$Frozen[$name]
+    $actual = [string]$locals[$name]
+    $tag = "$TagPrefix/$name"
+    $tagSha = Get-RemoteTagSha -Tag $tag
+
+    if ($actual -ne $expected) {
+        throw "Local branch drift: $name expected $expected; actual $actual. No local branches were deleted."
+    }
+
+    if ($tagSha -ne $expected) {
+        throw "Recovery tag mismatch for $name: $tag expected $expected; actual '$tagSha'. No local branches were deleted."
+    }
+}
+
+Write-Host ""
+if ($DryRun) {
+    Write-Host "DRY RUN — no local branch refs will be deleted." -ForegroundColor Yellow
+}
+else {
+    Write-Host "LOCAL PHASE 6 BRANCH CLEANUP" -ForegroundColor Cyan
+}
+
+Write-Host ""
+Write-Host "Retained local branch names:" -ForegroundColor Cyan
+Write-Host "  master"
+Write-Host "  phase6-integration"
+
+if ($unrelated.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Unrelated local branches — LEFT UNTOUCHED:" -ForegroundColor Yellow
+    foreach ($name in ($unrelated | Sort-Object)) {
+        Write-Host "  $name @ $($locals[$name])"
+    }
+}
+
+Write-Host ""
+Write-Host "Retired Phase 6 local branches:" -ForegroundColor Cyan
+
+if ($candidates.Count -eq 0) {
+    Write-Host "  None present."
+}
+else {
+    foreach ($name in $DeleteOrder) {
+        if (-not $locals.Contains($name)) {
+            continue
+        }
+
+        $expected = [string]$Frozen[$name]
+        $tag = "$TagPrefix/$name"
+
+        if ($DryRun) {
+            Write-Host "  WOULD DELETE LOCAL BRANCH  $name @ $expected"
+            Write-Host "    recovery: $tag -> $expected"
+        }
+        else {
+            # update-ref uses the expected old SHA as a compare-and-delete guard.
+            # If the local branch moves after preflight, deletion fails rather than
+            # removing a different branch tip.
+            Invoke-Git -Arguments @(
+                "update-ref",
+                "-d",
+                "refs/heads/$name",
+                $expected
+            ) | Out-Null
+
+            $check = Invoke-Git -Arguments @(
+                "show-ref",
+                "--verify",
+                "--quiet",
+                "refs/heads/$name"
+            ) -AllowFailure
+
+            if ($check.ExitCode -eq 0) {
+                throw "Local branch deletion verification failed: $name"
+            }
+
+            Write-Host "  DELETED / VERIFIED ABSENT  $name @ $expected" -ForegroundColor Green
+        }
+    }
+}
+
+if ($DryRun) {
+    Write-Host ""
+    Write-Host "DRY RUN PASS — all targeted local branches match their immutable recovery tags." -ForegroundColor Green
+    Write-Host "Would delete: $($candidates.Count) retired Phase 6 local branch(es)."
+    Write-Host "Would leave untouched: $($unrelated.Count) unrelated local branch(es)."
+    Write-Host "Remote branches/tags are not modified by this script."
+    return
+}
+
+$localsAfter = Get-LocalBranches
+$remainingRetired = @($Frozen.Keys | Where-Object { $localsAfter.Contains($_) })
+if ($remainingRetired.Count -gt 0) {
+    throw "Retired Phase 6 local branches remain after cleanup: $($remainingRetired -join ', ')"
+}
+
+# Reconfirm that the completed remote cleanup/recovery state remained intact.
+Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
+$remoteAfter = Assert-RemoteCleanupState
+Assert-AllPreservationTags
+
+Write-Host ""
+Write-Host "LOCAL PHASE 6 BRANCH CLEANUP COMPLETE" -ForegroundColor Green
+Write-Host "Deleted retired local branches: $($candidates.Count)"
+Write-Host "Unrelated local branches left untouched: $($unrelated.Count)"
+Write-Host "Current branch: $currentBranch"
+Write-Host "Remote branches remain: master, phase6-integration"
+Write-Host "All 27 remote preservation tags remain verified."
+) {
+            $checked[$Matches[1]] = $currentWorktree
+        }
+    }
+
+    return $checked
+}
+
 function Get-RemoteTagSha {
     param([Parameter(Mandatory)][string]$Tag)
 
