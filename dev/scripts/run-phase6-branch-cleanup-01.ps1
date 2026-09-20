@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$DryRun
+)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -147,18 +149,22 @@ $rm=$rv.Text|ConvertFrom-Json
 if($rm.nameWithOwner -ne $Repo -or $rm.defaultBranchRef.name -ne "master"){throw "Repository/default-branch mismatch."}
 
 $current=(Git @("branch","--show-current")).Text
-if($current -ne "phase6-integration"){
-    Git @("switch","phase6-integration")|Out-Null
+if($DryRun){
+    Write-Host "DRY RUN: no local branch switch/fast-forward, tag creation, branch deletion, evidence write, commit, or push will occur." -ForegroundColor Yellow
+}else{
+    if($current -ne "phase6-integration"){
+        Git @("switch","phase6-integration")|Out-Null
+    }
+    Git @("merge","--ff-only","origin/phase6-integration")|Out-Null
+    if((Git @("status","--porcelain=v1","--untracked-files=no")).Text){throw "Tracked/index state not clean after integration fast-forward."}
 }
-Git @("merge","--ff-only","origin/phase6-integration")|Out-Null
-if((Git @("status","--porcelain=v1","--untracked-files=no")).Text){throw "Tracked/index state not clean after integration fast-forward."}
 
 NoRetiringPrs
 $b=Branches
 if(!$b.Contains("master") -or $b["master"] -ne $MasterSha){throw "master drift."}
 if(!$b.Contains("phase6-integration")){throw "phase6-integration missing."}
 $integrationHead=[string]$b["phase6-integration"]
-if((Git @("rev-parse","HEAD")).Text -ne $integrationHead){throw "Local phase6-integration is not at the remote integration head."}
+if(!$DryRun -and (Git @("rev-parse","HEAD")).Text -ne $integrationHead){throw "Local phase6-integration is not at the remote integration head."}
 $prep=(Git @("log","-1","--format=%H","origin/phase6-integration","--","dev/scripts/run-phase6-branch-cleanup-01.ps1")).Text
 if(!$prep){throw "Cleanup preparation commit containing this executor could not be resolved."}
 Ancestor $Vh22Sha $integrationHead "VH22"
@@ -174,6 +180,12 @@ if(!$onlyTwo -and $integrationHead -ne $prep){throw "integration advanced beyond
 if($onlyTwo -and $integrationHead -ne $prep -and !$evComplete){throw "integration advanced beyond cleanup preparation without COMPLETE evidence: prep $prep current $integrationHead"}
 if($onlyTwo){
     VerifyAllTags;NoRetiringPrs
+    if($DryRun){
+        Write-Host "DRY RUN PASS: repository already has exactly master and phase6-integration; all 27 preservation tags verify." -ForegroundColor Green
+        if($evComplete){Write-Host "Existing cleanup evidence is COMPLETE." -ForegroundColor Green}
+        else{Write-Host "Existing cleanup evidence is not COMPLETE; dry run will not modify it." -ForegroundColor Yellow}
+        return
+    }
     if($evComplete){Write-Host "Cleanup already COMPLETE and re-verified." -ForegroundColor Green;return}
     foreach($n in $Frozen.Keys){$tags[$n]="VERIFIED";$deletes[$n]="ALREADY DELETED / VERIFIED ABSENT"}
     CompleteEvidence $prep $tags $deletes @("master","phase6-integration");return
@@ -187,6 +199,69 @@ foreach($e in $Frozen.GetEnumerator()){
 $extra=@($b.Keys|Where-Object{$_ -ne "master" -and $_ -ne "phase6-integration" -and !$Frozen.Contains($_)})
 if($extra.Count){throw "Unexpected branch(es): $($extra -join ', ')"}
 if($missing.Count){VerifyAllTags}
+
+if($DryRun){
+    Git @("fetch","origin","--prune","--tags")|Out-Null
+    $b=Branches
+
+    if(!$b.Contains("master") -or $b["master"] -ne $MasterSha){throw "master drift during dry-run recheck."}
+    if(!$b.Contains("phase6-integration")){throw "phase6-integration missing during dry-run recheck."}
+    if([string]$b["phase6-integration"] -ne $integrationHead){throw "phase6-integration changed during dry-run recheck."}
+
+    foreach($e in $Frozen.GetEnumerator()){
+        $n=[string]$e.Key;$sha=[string]$e.Value
+        if($b.Contains($n) -and $b[$n] -ne $sha){throw "Retiring branch drift during dry-run recheck: $n expected $sha actual $($b[$n])"}
+        if(!$b.Contains($n)){
+            $rt=TagSha "archive/branch-cleanup-20260920/$n"
+            if($rt -ne $sha){throw "Retiring branch $n is absent but its preservation tag is not verified at $sha."}
+        }
+    }
+
+    $dryCreate=0;$dryExisting=0;$dryDelete=0;$dryAbsent=0
+    Write-Host ""
+    Write-Host "DRY RUN — preservation-tag plan" -ForegroundColor Cyan
+    foreach($e in $Frozen.GetEnumerator()){
+        $n=[string]$e.Key;$sha=[string]$e.Value;$tag="archive/branch-cleanup-20260920/$n";$rt=TagSha $tag
+        if($rt){
+            if($rt -ne $sha){throw "Existing remote tag mismatch $tag expected $sha actual $rt"}
+            $dryExisting++
+            Write-Host "  VERIFY EXISTING TAG  $tag -> $sha"
+            continue
+        }
+
+        $lt=Git @("rev-parse","--verify","refs/tags/$tag") -AllowFail
+        if($lt.Code -eq 0 -and $lt.Text -ne $sha){throw "Local tag mismatch $tag expected $sha actual $($lt.Text)"}
+        $dryCreate++
+        Write-Host "  WOULD CREATE TAG     $tag -> $sha"
+    }
+
+    NoRetiringPrs
+    Write-Host ""
+    Write-Host "DRY RUN — remote-branch deletion plan" -ForegroundColor Cyan
+    foreach($n in $DeleteOrder){
+        if($b.Contains($n)){
+            if($b[$n] -ne $Frozen[$n]){throw "Branch drift before dry-run deletion simulation $n"}
+            $dryDelete++
+            Write-Host "  WOULD DELETE BRANCH  $n @ $($Frozen[$n])"
+        }else{
+            $dryAbsent++
+            Write-Host "  ALREADY ABSENT       $n"
+        }
+    }
+
+    $survivors=@($b.Keys|Where-Object{$_ -eq "master" -or $_ -eq "phase6-integration"}|Sort-Object)
+    $unexpected=@($b.Keys|Where-Object{$_ -ne "master" -and $_ -ne "phase6-integration" -and !$Frozen.Contains($_)})
+    if($unexpected.Count){throw "Unexpected branch(es) during dry-run simulation: $($unexpected -join ', ')"}
+    if($survivors.Count -ne 2 -or $survivors[0] -ne "master" -or $survivors[1] -ne "phase6-integration"){throw "Dry-run retained-branch simulation failed."}
+
+    Write-Host ""
+    Write-Host "DRY RUN PASS — no repository or remote mutations performed." -ForegroundColor Green
+    Write-Host "  Preservation tags: would create $dryCreate; already verified $dryExisting; total 27."
+    Write-Host "  Retiring branches: would delete $dryDelete; already absent $dryAbsent; total 27."
+    Write-Host "  Expected final remote branches after real execution: master, phase6-integration."
+    Write-Host "Run without -DryRun only after reviewing this plan."
+    return
+}
 
 Git @("fetch","origin","--prune","--tags")|Out-Null
 $b=Branches
