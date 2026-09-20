@@ -31,7 +31,7 @@ param(
 
     [string]$FrameworkRoot = "D:\dev-tools\phx-ci",
 
-    [string]$FrameworkHead = "bf8958f8aa355f7a303a226f353e808d8edc2c2a",
+    [string]$FrameworkHead = "c8792047e8a994218dc7d61f4e6da4a24fe205df",
 
     [string]$FrameworkVersion = "0.2.0-dev.2",
 
