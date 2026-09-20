@@ -131,6 +131,28 @@ function Get-RawSuiteSummary {
     }) -join [Environment]::NewLine
 }
 
+function Get-ImplementationHead {
+    $candidate = Get-NativeOutput -Command "git" -Arguments @("rev-parse", "HEAD")
+    $evidenceOnlyPaths = @($EvidenceRepoPath, $TaskEvidenceRepoPath)
+
+    while ($candidate -ne $RepairInputSha) {
+        $changed = Get-NativeOutput -Command "git" -Arguments @("diff-tree", "--no-commit-id", "--name-only", "-r", $candidate)
+        $files = @()
+        if (-not [string]::IsNullOrWhiteSpace($changed)) {
+            $files = $changed -split "\r?\n"
+        }
+
+        if ($files.Count -gt 0 -and @($files | Where-Object { $_ -notin $evidenceOnlyPaths }).Count -eq 0) {
+            $candidate = Get-NativeOutput -Command "git" -Arguments @("rev-parse", ("{0}^" -f $candidate))
+            continue
+        }
+
+        return $candidate
+    }
+
+    return $candidate
+}
+
 function Write-Evidence {
     param(
         [Parameter(Mandatory = $true)][ValidateSet("COMPLETE", "BLOCKED")][string]$Status,
@@ -280,8 +302,11 @@ try {
         throw ("Repair branch is not rooted at exact input SHA {0}." -f $RepairInputSha)
     }
 
-    $script:ImplementationSha = $localHead
-    $script:ImplementationTree = Get-NativeOutput -Command "git" -Arguments @("rev-parse", "HEAD^{tree}")
+    $script:ImplementationSha = Get-ImplementationHead
+    if ($script:ImplementationSha -eq $RepairInputSha) {
+        throw "No implementation commit exists above the exact repair input SHA."
+    }
+    $script:ImplementationTree = Get-NativeOutput -Command "git" -Arguments @("rev-parse", ("{0}^{tree}" -f $script:ImplementationSha))
 
     $changedText = Get-NativeOutput -Command "git" -Arguments @("diff", "--name-only", ("{0}...HEAD" -f $RepairInputSha))
     $script:ChangedFiles = @()
