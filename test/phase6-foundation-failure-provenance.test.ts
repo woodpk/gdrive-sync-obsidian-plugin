@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -231,11 +232,11 @@ test("foundation v1.3 C14: recovery-required physical state cannot be erased by 
 
 test("foundation v1.3 C15: predecessor approved contract/document bytes remain exact immutable prefixes", () => {
   for (const [file, predecessorSize, predecessorBlobSha] of predecessorPrefixes) {
-    const current = readFileSync(file);
+    const current = readCanonicalGitBlob(file);
     assert.ok(current.length > predecessorSize, `${file} must append successor material`);
     assert.equal(gitBlobSha1(current.subarray(0, predecessorSize)), predecessorBlobSha, `${file} predecessor prefix changed`);
   }
-  const untouchedFoundation = readFileSync("src/contracts/synchronization-foundation.ts");
+  const untouchedFoundation = readCanonicalGitBlob("src/contracts/synchronization-foundation.ts");
   assert.equal(gitBlobSha1(untouchedFoundation), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
 });
 
