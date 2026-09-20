@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: phase6-vh22-repository-suite-blocker-repair-01
+- Source build HEAD requested: 29f11394f9da3f7ff5db58a8e5359cc32686acb4
+- Verification checkout HEAD: 29f11394f9da3f7ff5db58a8e5359cc32686acb4
+- Evidence publication target: origin/phase6-vh22-repository-suite-blocker-repair-01
