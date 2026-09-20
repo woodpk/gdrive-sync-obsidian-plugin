@@ -54,6 +54,10 @@ function gitBlobSha1(bytes: Buffer): string {
   return createHash("sha1").update(header).update(bytes).digest("hex");
 }
 
+function readCanonicalGitBlob(path: string): Buffer {
+  return execFileSync("git", ["show", `HEAD:${path}`]);
+}
+
 const predecessorPrefixes = [
   ["src/contracts/common.ts", 2559, "4048ceca9bd2a5022ededf7406a736360330572c"],
   ["src/contracts/google-drive.ts", 5457, "dc331d4acd1e7d9c308c0df73232497bf5d85d55"],
