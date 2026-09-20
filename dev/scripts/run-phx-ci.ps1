@@ -378,9 +378,12 @@ if ($originUrl -notmatch '(?i)(?:/|:)woodpk/gdrive-sync-obsidian-plugin(?:\.git)
 }
 
 # Framework integrity gate.
-$frameworkStatus = (Invoke-GitAt -WorkingTree $FrameworkRoot -Args @("status", "--porcelain=v1", "--untracked-files=all")).Output
+# The pinned framework is allowed to coexist with unrelated untracked local files.
+# Only tracked/staged drift can change committed framework behavior at the exact
+# FrameworkHead, so untracked files must not block an otherwise valid run.
+$frameworkStatus = (Invoke-GitAt -WorkingTree $FrameworkRoot -Args @("status", "--porcelain=v1", "--untracked-files=no")).Output
 if (-not [string]::IsNullOrWhiteSpace($frameworkStatus)) {
-    throw "phx-ci working tree is not clean.`n$frameworkStatus"
+    throw "phx-ci tracked working tree is not clean.`n$frameworkStatus"
 }
 
 $actualFrameworkHead = (Invoke-GitAt -WorkingTree $FrameworkRoot -Args @("rev-parse", "HEAD")).Output
