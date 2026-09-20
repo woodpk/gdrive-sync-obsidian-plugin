@@ -6,7 +6,6 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$Repo = "woodpk/gdrive-sync-obsidian-plugin"
 $MasterSha = "b1b3a4bd70cd14be49ae9085a8305f5825fccf4f"
 $TagPrefix = "archive/branch-cleanup-20260920"
 
@@ -181,7 +180,7 @@ function Assert-RemoteCleanupState {
     }
 
     if ($remote["master"] -ne $MasterSha) {
-        throw "Remote master drift. Expected $MasterSha; actual $($remote["master"])"
+        throw "Remote master drift. Expected $MasterSha; actual $($remote['master'])"
     }
 
     return $remote
@@ -234,7 +233,7 @@ if (-not [string]::IsNullOrWhiteSpace($dirty)) {
 
 Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
 
-$remoteBefore = Assert-RemoteCleanupState
+Assert-RemoteCleanupState | Out-Null
 Assert-AllPreservationTags
 
 $currentResult = Invoke-Git -Arguments @(
@@ -254,17 +253,17 @@ if ($currentBranch -ne "master" -and $currentBranch -ne "phase6-integration") {
 }
 
 $locals = Get-LocalBranches
-$candidates = [Collections.Generic.List[string]]::new()
-$unrelated = [Collections.Generic.List[string]]::new()
+$candidates = @()
+$unrelated = @()
 
 foreach ($name in $locals.Keys) {
     if ($Frozen.Contains($name)) {
-        $candidates.Add([string]$name)
+        $candidates += [string]$name
         continue
     }
 
     if ($name -ne "master" -and $name -ne "phase6-integration") {
-        $unrelated.Add([string]$name)
+        $unrelated += [string]$name
     }
 }
 
@@ -286,13 +285,13 @@ foreach ($name in $candidates) {
     }
 
     if ($tagSha -ne $expected) {
-        throw "Recovery tag mismatch for $name: $tag expected $expected; actual '$tagSha'. No local branches were deleted."
+        throw "Recovery tag mismatch for ${name}: $tag expected $expected; actual '$tagSha'. No local branches were deleted."
     }
 }
 
 Write-Host ""
 if ($DryRun) {
-    Write-Host "DRY RUN — no local branch refs will be deleted." -ForegroundColor Yellow
+    Write-Host "DRY RUN - no local branch refs will be deleted." -ForegroundColor Yellow
 }
 else {
     Write-Host "LOCAL PHASE 6 BRANCH CLEANUP" -ForegroundColor Cyan
@@ -305,7 +304,7 @@ Write-Host "  phase6-integration"
 
 if ($unrelated.Count -gt 0) {
     Write-Host ""
-    Write-Host "Unrelated local branches — LEFT UNTOUCHED:" -ForegroundColor Yellow
+    Write-Host "Unrelated local branches - LEFT UNTOUCHED:" -ForegroundColor Yellow
     foreach ($name in ($unrelated | Sort-Object)) {
         Write-Host "  $name @ $($locals[$name])"
     }
@@ -359,7 +358,7 @@ else {
 
 if ($DryRun) {
     Write-Host ""
-    Write-Host "DRY RUN PASS — all targeted local branches match their immutable recovery tags." -ForegroundColor Green
+    Write-Host "DRY RUN PASS - all targeted local branches match their immutable recovery tags." -ForegroundColor Green
     Write-Host "Would delete: $($candidates.Count) retired Phase 6 local branch(es)."
     Write-Host "Would leave untouched: $($unrelated.Count) unrelated local branch(es)."
     Write-Host "Remote branches/tags are not modified by this script."
@@ -374,7 +373,7 @@ if ($remainingRetired.Count -gt 0) {
 
 # Reconfirm that the completed remote cleanup/recovery state remained intact.
 Invoke-Git -Arguments @("fetch", "origin", "--prune", "--tags") | Out-Null
-$remoteAfter = Assert-RemoteCleanupState
+Assert-RemoteCleanupState | Out-Null
 Assert-AllPreservationTags
 
 Write-Host ""
