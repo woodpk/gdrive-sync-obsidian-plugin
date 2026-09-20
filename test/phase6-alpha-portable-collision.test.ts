@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, mkdtemp, rm, stat as fsStat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import type { App, DataAdapter, Stat } from "obsidian";
 import type { ContentEvidence, ManagedRemoteIdentity, RemoteObjectId, VaultPath } from "../src/contracts";
@@ -44,16 +44,16 @@ function containedOps(missingAt: (path: string) => boolean, missingCode: "ENOENT
 test("Phase 6 Alpha portable collision: direct missing child is safe containment evidence, not an external-reference failure", async () => {
   const base = "/vault";
   const guard = new DesktopExternalReferenceGuard(base, containedOps(path => path.endsWith(CONFIG_REMOTE_NAMESPACE)));
-  assert.equal(await guard.resolveSafePath(vp(CONFIG_REMOTE_NAMESPACE), "observe"), join(base, CONFIG_REMOTE_NAMESPACE));
+  assert.equal(await guard.resolveSafePath(vp(CONFIG_REMOTE_NAMESPACE), "observe"), resolve(base, CONFIG_REMOTE_NAMESPACE));
 });
 
 test("Phase 6 Alpha portable collision: nested missing target and missing intermediate component remain truthful absence candidates", async () => {
   const base = "/vault";
   const missingTarget = new DesktopExternalReferenceGuard(base, containedOps(path => path.endsWith("notes/missing.md")));
-  assert.equal(await missingTarget.resolveSafePath(vp("notes/missing.md"), "observe"), join(base, "notes", "missing.md"));
+  assert.equal(await missingTarget.resolveSafePath(vp("notes/missing.md"), "observe"), resolve(base, "notes", "missing.md"));
 
   const missingIntermediate = new DesktopExternalReferenceGuard(base, containedOps(path => path.endsWith("missing-dir"), "ENOTDIR"));
-  assert.equal(await missingIntermediate.resolveSafePath(vp("missing-dir/child.md"), "observe"), join(base, "missing-dir", "child.md"));
+  assert.equal(await missingIntermediate.resolveSafePath(vp("missing-dir/child.md"), "observe"), resolve(base, "missing-dir", "child.md"));
 });
 
 test("Phase 6 Alpha portable collision: permission uncertainty is not converted into absence", async () => {
