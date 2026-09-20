@@ -30,6 +30,11 @@ export interface ProductSettingsHost {
   clearDiagnosticLog(): Promise<void>;
   testExternalBrowser(): void;
   testDelayedExternalBrowser(): Promise<void>;
+  validationModeEnabled(): boolean;
+  setValidationModeEnabled(enabled: boolean): Promise<void>;
+  validationScenarioIds(): readonly string[];
+  startValidationScenario(scenarioId: string): Promise<void>;
+  resumeValidationScenario(): Promise<void>;
 }
 
 export class BrainSyncSettingsTab extends PluginSettingTab {
@@ -259,6 +264,36 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
       .setName("Test delayed external browser")
       .setDesc("Same fixed page and _external target after one controlled Promise microtask boundary; no OAuth transaction occurs.")
       .addButton(button => button.setButtonText("Test delayed external browser").onClick(() => this.host.testDelayedExternalBrowser()));
+
+    containerEl.createEl("h3", { text: "Validation harness" });
+    new Setting(containerEl)
+      .setName("Validation mode")
+      .setDesc("Disabled by default on every plugin load. Enable only for controlled Phase 6 validation; ordinary synchronization does not use this authority.")
+      .addToggle(toggle => toggle.setValue(this.host.validationModeEnabled()).onChange(async enabled => {
+        await this.host.setValidationModeEnabled(enabled);
+        this.display();
+      }));
+    if (this.host.validationModeEnabled()) {
+      const scenarioIds = this.host.validationScenarioIds();
+      let selectedScenarioId = scenarioIds[0] ?? "";
+      const startSetting = new Setting(containerEl)
+        .setName("Validation scenario")
+        .setDesc("Start one frozen C03–F03 scenario through the validation runner. Scenario definitions are installed by their owning scenario packages.");
+      if (scenarioIds.length > 0) {
+        startSetting
+          .addDropdown(dropdown => {
+            for (const scenarioId of scenarioIds) dropdown.addOption(scenarioId, scenarioId);
+            dropdown.setValue(selectedScenarioId).onChange(value => { selectedScenarioId = value; });
+          })
+          .addButton(button => button.setButtonText("Start scenario").onClick(() => this.host.startValidationScenario(selectedScenarioId)));
+      } else {
+        startSetting.setDesc("No validation scenario identifiers are available in this build.");
+      }
+      new Setting(containerEl)
+        .setName("Resume validation scenario")
+        .setDesc("Continue the durable active scenario or process its current human-checkpoint resume state.")
+        .addButton(button => button.setButtonText("Resume").onClick(() => this.host.resumeValidationScenario()));
+    }
 
     containerEl.createEl("h3", { text: "Portable configuration allowlist" });
     containerEl.createEl("p", { text: "Only the explicitly portable entries below are mapped through a private managed-remote namespace to the runtime active configuration directory; the configuration directory is never synchronized wholesale." });

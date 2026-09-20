@@ -289,7 +289,7 @@ test("LOG-06 operator wiring is one local clipboard command and runtime bundle c
   assert.match(main, /exportDiagnosticBundleText\(\{[\s\S]*?pluginId: this\.manifest\.id[\s\S]*?pluginVersion: this\.manifest\.version/);
   assert.match(main, /copyDiagnosticLogText\(text\)/);
   assert.match(main, /diagnostic-bundle-copy-failed/);
-  const method = runtime.match(/async exportDiagnosticBundleText\([\s\S]*?\n  }\n\n  async readSyncAttention/)?.[0] ?? "";
+  const method = runtime.match(/async exportDiagnosticBundleText\([\s\S]*?\r?\n  }\r?\n\r?\n  async readSyncAttention/)?.[0] ?? "";
   assert.match(method, /this\.state \? await this\.state\.loadAuthority\(\)/);
   assert.match(method, /this\.audit \? await this\.audit\.read\(\) : await this\.host\.data\.load\(\)/);
   assert.match(method, /this\.attention \? await this\.attention\.all\(\) : \[\]/);
