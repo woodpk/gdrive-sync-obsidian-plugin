@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 965891 bytes; SHA-256 6fa672f2f5d7e2dae249b5ea1546f18fc47386e456ff9eb83410258dea6a2583
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: phase6-vh22-repository-suite-blocker-repair-01
+- Source build HEAD requested: 29f11394f9da3f7ff5db58a8e5359cc32686acb4
+- Verification checkout HEAD: d22c96c1c53771162f374e466a32afb8dfe976c8
+- Evidence publication target: origin/phase6-vh22-repository-suite-blocker-repair-01
