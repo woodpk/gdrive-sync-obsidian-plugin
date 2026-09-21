@@ -11,7 +11,7 @@ STATUS: COMPLETE
 - Framework version: 0.2.0-dev.2
 - Run ID: 8c716649-6857-4e46-91a4-756cc163c6d5
 - Repository: C:/Users/woodpk/AppData/Local/Temp/phx-ci-run-7563132f42d647f2858ba0aa0c0357a9/gdrive-sync-obsidian-plugin
-- Branch: 
+- Branch:
 - Verified HEAD: 2872d19870edceae800eca339af5ea979812326e
 - Verified tree: 23274e21ddf7bdb991b8b8144f7c1687603c98c0
 - Expected HEAD: 2872d19870edceae800eca339af5ea979812326e
