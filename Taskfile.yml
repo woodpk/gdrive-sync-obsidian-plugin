@@ -1,0 +1,8 @@
+version: '3'
+
+# PHX-CI BEGIN
+includes:
+  phx-ci:
+    taskfile: ./Taskfile.phx-ci.yml
+    flatten: true
+# PHX-CI END

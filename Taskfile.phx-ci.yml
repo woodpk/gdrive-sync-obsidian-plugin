@@ -1,0 +1,18 @@
+# PHX-CI managed consumer integration v1
+version: '3'
+
+includes:
+  phx-ci-node:
+    taskfile: '{{.PHX_FRAMEWORK_ROOT}}/taskfiles/node.yml'
+    flatten: true
+    vars:
+      PHX_FRAMEWORK_ROOT: '{{.PHX_FRAMEWORK_ROOT}}'
+      PHX_PROJECT_ROOT: '{{.ROOT_DIR}}'
+      PHX_PROJECT_NAME: 'gdrive-sync-obsidian-plugin'
+      PHX_EXPECTED_FRAMEWORK_VERSION: '0.2.0-dev.2'
+      PHX_FOCUSED_TEST_COMMAND: '{{.PHX_FOCUSED_TEST_COMMAND | default ""}}'
+      PHX_EXPECTED_ARTIFACTS: 'main.js'
+      PHX_EXPECTED_REPOSITORY: '{{.ROOT_DIR}}'
+      PHX_REQUIRED_FILES: ''
+      PHX_PROHIBITED_CHANGED_FILES: '.github/workflows/'
+      PHX_EVIDENCE_ABSOLUTE: '{{.ROOT_DIR}}/dev/_ca-output.md'

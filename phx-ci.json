@@ -1,0 +1,21 @@
+{
+  "repositoryIdentity": "woodpk/gdrive-sync-obsidian-plugin",
+  "projectName": "gdrive-sync-obsidian-plugin",
+  "adapter": "node-typescript",
+  "framework": {
+    "version": "0.2.0-dev.2",
+    "sha": "f27088d51bfb62b4d6f14a1adc2213415766c24a",
+    "pinPolicy": "exact"
+  },
+  "expectedArtifacts": [
+    "main.js"
+  ],
+  "evidence": {
+    "canonicalPath": "dev/_ca-output.md",
+    "historyDirectory": "dev/test-results"
+  },
+  "repositoryPolicy": {
+    "requiredPaths": [],
+    "prohibitedChangedPaths": []
+  }
+}
