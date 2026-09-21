@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 965891 bytes; SHA-256 6fa672f2f5d7e2dae249b5ea1546f18fc47386e456ff9eb83410258dea6a2583
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: phx-ci-bootstrap-refactor-s07-migration
+- Source build HEAD requested: 2872d19870edceae800eca339af5ea979812326e
+- Verification checkout HEAD: 2872d19870edceae800eca339af5ea979812326e
+- Evidence publication target: origin/phx-ci-bootstrap-refactor-s07-migration
