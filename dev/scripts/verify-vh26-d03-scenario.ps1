@@ -327,111 +327,15 @@ function Get-LastRuntimeField {
     return $matches[$matches.Count - 1].Groups[1].Value.Trim()
 }
 
-$phxVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$changeSetVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$repositoryVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Repository verification:\s+([^\r\n]+?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$overallVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Overall verification:\s+([^\r\n]+?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$taskExitCode = Get-LastRuntimeField -Text $runtimeText -Pattern '^Task exit code:\s+([^\r\n]+?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$evidenceCommit = Get-LastRuntimeField -Text $runtimeText -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$evidencePublished = Get-LastRuntimeField -Text $runtimeText -Pattern '^Evidence published:\s*([^\r\n]*?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-
-$publicationIssue = Get-LastRuntimeField -Text $runtimeText -Pattern '^Publication issue:\s*([^\r\n]*?)\s*
-
-Assert-FrozenIntegration -Stage 'post-verification'
-Assert-PeerCommonBases
-
-Write-Host ""
-Write-Host "VH26 D03 VERIFICATION: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
- -DefaultValue '<none reported>'
+$phxVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*$'
+$changeSetVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*$'
+$repositoryVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Repository verification:\s+([^\r\n]+?)\s*$'
+$overallVerdict = Get-LastRuntimeField -Text $runtimeText -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
+$taskExitCode = Get-LastRuntimeField -Text $runtimeText -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
+$evidenceCommit = Get-LastRuntimeField -Text $runtimeText -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$'
+$evidencePublished = Get-LastRuntimeField -Text $runtimeText -Pattern '^Evidence published:\s*([^\r\n]*?)\s*$'
 $localEvidenceBranch = Get-LastRuntimeField -Text $runtimeText -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
+$publicationIssue = Get-LastRuntimeField -Text $runtimeText -Pattern '^Publication issue:\s*([^\r\n]*?)\s*$' -DefaultValue '<none reported>'
 
 $failureSummary = @(
     "PHX-CI verdict: $phxVerdict",
@@ -446,15 +350,13 @@ $failureSummary = @(
     "Runtime process exit code: $runtimeExit"
 ) -join [Environment]::NewLine
 
-$changeSetPass = $changeSetVerdict -ceq 'PASS'
-$repositoryPass = $repositoryVerdict -ceq 'PASS'
-$overallPass = $overallVerdict -ceq 'PASS'
-$frontDoorPass = $phxVerdict -ceq 'PASS'
+$authoritativePass = $runtimeExit -eq 0 -and
+    $phxVerdict -ceq 'PASS' -and
+    $changeSetVerdict -ceq 'PASS' -and
+    $repositoryVerdict -ceq 'PASS' -and
+    $overallVerdict -ceq 'PASS'
 
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+if (-not $authoritativePass) {
     throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
 }
 
@@ -465,6 +367,7 @@ Write-Host ""
 Write-Host "VH26 D03 VERIFICATION: PASS"
 Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
 Write-Host "IMPLEMENTATION_HEAD: $implementationHead"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
+Write-Host "PHX-CI verdict: $phxVerdict"
+Write-Host "Change-set verification: $changeSetVerdict"
+Write-Host "Repository verification: $repositoryVerdict"
+Write-Host "Overall verification: $overallVerdict"
