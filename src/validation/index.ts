@@ -18,3 +18,4 @@ export * from "./scenario-runner-module-adapter";
 export * from "./scenario-runner";
 
 export * from "./validation-mode-runtime";
+export * from "./c-series-composition";
