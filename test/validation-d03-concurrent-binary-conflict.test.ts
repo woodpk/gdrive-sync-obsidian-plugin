@@ -752,6 +752,34 @@ test("VH26 D03 previews and proves the binary conflict without ever executing th
     ],
   );
 
+  const assertCaptureBetweenPreviewAndExecute = (
+    preview: string,
+    diagnostic: string,
+    execute: string,
+  ) => {
+    const previewIndex = s.timeline.indexOf(preview);
+    const diagnosticIndex = s.timeline.indexOf(diagnostic);
+    const executeIndex = s.timeline.indexOf(execute);
+    assert.ok(previewIndex >= 0);
+    assert.ok(diagnosticIndex > previewIndex);
+    assert.ok(executeIndex > diagnosticIndex);
+  };
+  assertCaptureBetweenPreviewAndExecute(
+    "preview:plan:d03:baseline-windows",
+    `diagnostic:windows:${WINDOWS_BASE_RUN_ID}`,
+    "execute:plan:d03:baseline-windows",
+  );
+  assertCaptureBetweenPreviewAndExecute(
+    "preview:plan:d03:baseline-mobile",
+    `diagnostic:mobile:${MOBILE_BASE_RUN_ID}`,
+    "execute:plan:d03:baseline-mobile",
+  );
+  assertCaptureBetweenPreviewAndExecute(
+    "preview:plan:d03:windows-publish",
+    `diagnostic:windows:${WINDOWS_PUBLISH_RUN_ID}`,
+    "execute:plan:d03:windows-publish",
+  );
+
   const final = s.verifier.requests[s.verifier.requests.length - 1]!;
   assert.equal(final.state.some(item => item.kind === "terminal-product-result"), false);
 
