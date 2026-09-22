@@ -355,7 +355,10 @@ function mobileConflictPlan(): SynchronizationPlan {
   );
 }
 
-function opaqueConflict(remoteHash: ContentHash = WINDOWS_HASH): Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> {
+function opaqueConflict(
+  remoteHash: ContentHash = WINDOWS_HASH,
+  localDeviceId = String(MOBILE.deviceId),
+): Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> {
   return Object.freeze({
     kind: "opaque-binary",
     conflictId: contractId<"ConflictId">("conflict:binary:validation/d03/d03-binary-conflict.bin"),
@@ -363,7 +366,7 @@ function opaqueConflict(remoteHash: ContentHash = WINDOWS_HASH): Extract<Conflic
     preserved: Object.freeze({
       local: Object.freeze({
         source: "local",
-        deviceId: contractId<"DeviceIdentity">("device:d03:mobile"),
+        deviceId: contractId<"DeviceIdentity">(localDeviceId),
         version: Object.freeze({
           path: TARGET_PATH,
           entityKind: "file",
@@ -400,6 +403,19 @@ function opaqueConflict(remoteHash: ContentHash = WINDOWS_HASH): Extract<Conflic
   });
 }
 
+function unresolvedTextConflict(
+  path: VaultPath,
+  suffix: string,
+): Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> {
+  const preserved = opaqueConflict().preserved;
+  return Object.freeze({
+    kind: "unresolved-text",
+    conflictId: contractId<"ConflictId">(`conflict:text:${suffix}`),
+    path,
+    preserved,
+  });
+}
+
 interface DiagnosticState {
   windows?: number;
   mobile?: number;
@@ -414,7 +430,8 @@ function productionFixture(
   timeline: string[],
   diagnostics: DiagnosticState,
   surfaceState: SurfaceState,
-  conflict: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> = opaqueConflict(),
+  conflicts: readonly ConflictAssessment[] = [opaqueConflict()],
+  reportedConflictCount: number = conflicts.filter(conflict => conflict.kind !== "none").length,
 ) {
   let previewIndex = 0;
   const executedPlanIds: string[] = [];
@@ -434,8 +451,8 @@ function productionFixture(
 
       if (planId === "plan:d03:mobile-conflict") {
         surfaceState.current = {
-          status: { kind: "conflict-present", conflictCount: 1 },
-          conflicts: [conflict],
+          status: { kind: "conflict-present", conflictCount: reportedConflictCount },
+          conflicts,
           ...(observed ? { planPreview: observed } : {}),
         };
       } else {
@@ -616,14 +633,16 @@ function runtimeFor(
     windowsPublishPlan(),
     mobileConflictPlan(),
   ],
-  conflict: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> = opaqueConflict(),
+  conflicts: readonly ConflictAssessment[] = [opaqueConflict()],
+  reportedConflictCount?: number,
 ) {
   const production = productionFixture(
     plans,
     harness.timeline,
     harness.diagnostics,
     harness.surface,
-    conflict,
+    conflicts,
+    reportedConflictCount,
   );
   const runtime = new ValidationModeRuntime({
     productionRuntime: production.runtime,
@@ -640,7 +659,8 @@ function runtimeFor(
 
 function subject(input?: {
   readonly plans?: readonly SynchronizationPlan[];
-  readonly conflict?: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }>;
+  readonly conflicts?: readonly ConflictAssessment[];
+  readonly reportedConflictCount?: number;
   readonly mobileHash?: ContentHash;
 }) {
   const harness = packageHarness({ mobileHash: input?.mobileHash });
@@ -648,7 +668,8 @@ function subject(input?: {
     harness,
     RUN,
     input?.plans,
-    input?.conflict,
+    input?.conflicts,
+    input?.reportedConflictCount,
   );
   return { ...harness, ...execution };
 }
@@ -1036,7 +1057,7 @@ test("VH26 D03 rejects newest-wins or silent overwrite planning and never execut
 });
 
 test("VH26 D03 rejects incomplete or substituted opaque conflict provenance", async () => {
-  const s = subject({ conflict: opaqueConflict(WRONG_HASH) });
+  const s = subject({ conflicts: [opaqueConflict(WRONG_HASH)] });
 
   s.runtime.setEnabled(true);
   const result = runnerResult(await s.runtime.startScenario("D03"));
@@ -1046,6 +1067,74 @@ test("VH26 D03 rejects incomplete or substituted opaque conflict provenance", as
     "plan:d03:baseline-mobile",
     "plan:d03:windows-publish",
   ]);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH26 D03 rejects otherwise-correct mobile provenance owned by the wrong device", async () => {
+  const s = subject({ conflicts: [opaqueConflict(WINDOWS_HASH, String(WINDOWS.deviceId))] });
+
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D03"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") {
+    assert.match(result.reason.summary, /exact mobile participant/i);
+  }
+  assert.deepEqual(s.production.executedPlanIds, [
+    "plan:d03:baseline-windows",
+    "plan:d03:baseline-mobile",
+    "plan:d03:windows-publish",
+  ]);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH26 D03 rejects the expected target opaque conflict plus an unrelated second conflict", async () => {
+  const s = subject({
+    conflicts: [
+      opaqueConflict(),
+      unresolvedTextConflict(SAFE_PATH, "unrelated-safe-path"),
+    ],
+    reportedConflictCount: 2,
+  });
+
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D03"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") {
+    assert.match(result.reason.summary, /exactly one|conflict/i);
+  }
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH26 D03 rejects the expected target opaque conflict plus a second target conflict of another kind", async () => {
+  const s = subject({
+    conflicts: [
+      opaqueConflict(),
+      unresolvedTextConflict(TARGET_PATH, "second-target-conflict"),
+    ],
+    reportedConflictCount: 2,
+  });
+
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D03"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") {
+    assert.match(result.reason.summary, /exactly one|conflict/i);
+  }
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH26 D03 rejects inconsistent surface conflict count even when the collection has the expected sole conflict", async () => {
+  const s = subject({
+    conflicts: [opaqueConflict()],
+    reportedConflictCount: 2,
+  });
+
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D03"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") {
+    assert.match(result.reason.summary, /exactly one conflict|conflictCount/i);
+  }
   assert.equal(s.evidence.calls.length, 0);
 });
 
