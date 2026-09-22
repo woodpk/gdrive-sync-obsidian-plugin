@@ -741,7 +741,8 @@ function terminalDiagnostic(
   const events = productionObservation(options, cycle.role).diagnosticSnapshot();
   const terminal = events.filter(
     event =>
-      event.runId === cycle.diagnosticRunId
+      event.sequence > cycle.checkpointSequence
+      && event.runId === cycle.diagnosticRunId
       && event.component === "sync.controller"
       && event.fields?.stage === "terminal"
       && (
