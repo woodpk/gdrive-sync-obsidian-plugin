@@ -533,6 +533,31 @@ test("VH28 D05 pauses for genuine offline/reconnect checkpoints and converges bo
   assert.equal(mobileConvergence.content.hash, MOBILE_HASH_V2);
   assert.equal(windowsConvergence.content.hash, WINDOWS_HASH_V2);
 
+  const remoteContent = final.state.filter(postcondition => postcondition.kind === "remote-content");
+  assert.deepEqual(
+    remoteContent.map(postcondition => [postcondition.path, postcondition.content.hash]),
+    [
+      [MOBILE_PATH, MOBILE_HASH_V2],
+      [WINDOWS_PATH, WINDOWS_HASH_V2],
+    ],
+    "remote-content verification must require one exact occupant per independent D05 path",
+  );
+
+  const baseAuthority = final.state.filter(postcondition => postcondition.kind === "base-authority");
+  assert.equal(baseAuthority.length, 4, "both devices must converge BASE authority for both D05 paths");
+  assert.deepEqual(
+    new Set(baseAuthority.map(postcondition => String(postcondition.deviceId))),
+    new Set([String(WINDOWS.deviceId), String(MOBILE.deviceId)]),
+  );
+
+  const liveMappings = final.state.filter(postcondition => postcondition.kind === "mapping-or-tombstone");
+  assert.equal(liveMappings.length, 4, "both devices must retain live mappings for both D05 paths");
+  assert.ok(liveMappings.every(postcondition => postcondition.expected === "mapping"));
+
+  const outstandingEffects = final.state.filter(postcondition => postcondition.kind === "durable-intent-or-effect");
+  assert.equal(outstandingEffects.length, 2, "each device must prove no outstanding D05 effect remains");
+  assert.ok(outstandingEffects.every(postcondition => postcondition.expected === "none-outstanding"));
+
   assert.equal(s.evidence.calls.length, 1);
   const evidence = s.evidence.calls[0]!;
   assert.equal(evidence.mobileFixture.hash, MOBILE_HASH_V2);
