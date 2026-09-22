@@ -142,15 +142,36 @@ export interface D01EvidenceRecorderPort {
     readonly cleanMergeVerification: ValidationStateConvergenceReport;
     readonly finalVerification: ValidationStateConvergenceReport;
     readonly noConflictCopyEvidence: readonly ValidationEvidenceRef[];
+    readonly terminalDiagnostics: Readonly<Record<D01TerminalPhase, ValidationDiagnosticExpectation>>;
   }): Promise<readonly ValidationEvidenceRef[]>;
 }
 
-export interface D01TerminalDiagnostics {
-  readonly establishWindows: ValidationDiagnosticExpectation;
-  readonly establishMobile: ValidationDiagnosticExpectation;
-  readonly windowsFirstSync: ValidationDiagnosticExpectation;
-  readonly mobileCleanMerge: ValidationDiagnosticExpectation;
-  readonly windowsReconcile: ValidationDiagnosticExpectation;
+export type D01TerminalPhase =
+  | "establish-windows"
+  | "establish-mobile"
+  | "windows-first-sync"
+  | "mobile-clean-merge"
+  | "windows-reconcile";
+
+export interface D01TerminalDiagnosticCorrelationPort {
+  begin(input: {
+    readonly run: ValidationRunIdentity;
+    readonly stepId: ValidationStepId;
+    readonly phase: D01TerminalPhase;
+    readonly deviceId: ValidationDeviceIdentity["deviceId"];
+  }): Promise<
+    | { readonly status: "armed"; readonly evidenceRefs: readonly ValidationEvidenceRef[] }
+    | { readonly status: "not-observable" | "failed"; readonly summary: string; readonly evidenceRefs: readonly ValidationEvidenceRef[] }
+  >;
+  resolve(input: {
+    readonly run: ValidationRunIdentity;
+    readonly stepId: ValidationStepId;
+    readonly phase: D01TerminalPhase;
+    readonly deviceId: ValidationDeviceIdentity["deviceId"];
+  }): Promise<
+    | { readonly status: "observed"; readonly diagnostic: ValidationDiagnosticExpectation; readonly evidenceRefs: readonly ValidationEvidenceRef[] }
+    | { readonly status: "not-observable" | "failed"; readonly summary: string; readonly evidenceRefs: readonly ValidationEvidenceRef[] }
+  >;
 }
 
 export interface D01ScenarioPackageOptions {
@@ -165,7 +186,7 @@ export interface D01ScenarioPackageOptions {
   readonly verifier: D01VerifierPort;
   readonly conflictArtifacts: D01ConflictArtifactProbe;
   readonly handoffs: D01CrossDeviceHandoffPort;
-  readonly terminalDiagnostics: D01TerminalDiagnostics;
+  readonly terminalCorrelation: D01TerminalDiagnosticCorrelationPort;
   readonly evidence: D01EvidenceRecorderPort;
 }
 
@@ -187,6 +208,7 @@ interface D01Context {
   cleanMergeVerification?: ValidationStateConvergenceReport;
   finalVerification?: ValidationStateConvergenceReport;
   noConflictCopyEvidence?: readonly ValidationEvidenceRef[];
+  readonly terminalDiagnostics: Partial<Record<D01TerminalPhase, ValidationDiagnosticExpectation>>;
 }
 
 function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
@@ -277,6 +299,23 @@ function requireTerminalDiagnostic(
     throw new Error("D01 " + label + " terminal diagnostic must require result=complete.");
   }
 }
+
+function terminalDiagnostic(state: D01Context, phase: D01TerminalPhase): ValidationDiagnosticExpectation {
+  const diagnostic = state.terminalDiagnostics[phase];
+  if (!diagnostic) throw new Error("D01 terminal diagnostic has not been correlated for phase " + phase + ".");
+  return diagnostic;
+}
+
+function completeTerminalDiagnostics(state: D01Context): Readonly<Record<D01TerminalPhase, ValidationDiagnosticExpectation>> {
+  return Object.freeze({
+    "establish-windows": terminalDiagnostic(state, "establish-windows"),
+    "establish-mobile": terminalDiagnostic(state, "establish-mobile"),
+    "windows-first-sync": terminalDiagnostic(state, "windows-first-sync"),
+    "mobile-clean-merge": terminalDiagnostic(state, "mobile-clean-merge"),
+    "windows-reconcile": terminalDiagnostic(state, "windows-reconcile"),
+  });
+}
+
 
 
 function expectedOperation(
@@ -495,6 +534,10 @@ function baselineRequest(
   target: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
   remoteObjectId: RemoteObjectId,
+  terminals: {
+    readonly establishWindows: ValidationDiagnosticExpectation;
+    readonly establishMobile: ValidationDiagnosticExpectation;
+  },
 ): ValidationStateConvergenceRequest {
   const targetContent = { hash: target.hash!, sizeBytes: target.sizeBytes };
   const sentinelContent = { hash: sentinel.hash!, sizeBytes: sentinel.sizeBytes };
@@ -507,8 +550,8 @@ function baselineRequest(
       { kind: "remote-content", assertion: stateAssertion("d01.base.remote.target", "remote-content", String(target.path), "Remote has the exact trusted D01 BASE bytes."), path: target.path, content: targetContent, remoteObjectId },
       { kind: "base-authority", assertion: stateAssertion("d01.base.windows.authority", "base-authority", String(target.path), "Windows trusted BASE records the exact D01 object and bytes."), deviceId: options.windowsDevice.deviceId, path: target.path, expectedRemoteObjectId: remoteObjectId, expectedContent: targetContent },
       { kind: "base-authority", assertion: stateAssertion("d01.base.mobile.authority", "base-authority", String(target.path), "Mobile trusted BASE records the same exact D01 object and bytes."), deviceId: options.mobileDevice.deviceId, path: target.path, expectedRemoteObjectId: remoteObjectId, expectedContent: targetContent },
-      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.windows-terminal", "terminal-product-result", "Windows BASE establishment", "Windows BASE upload completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.establishWindows },
-      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.mobile-terminal", "terminal-product-result", "Mobile BASE establishment", "Mobile BASE download completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.establishMobile },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.windows-terminal", "terminal-product-result", "Windows BASE establishment", "Windows BASE upload completed in the exact production synchronization run."), diagnostic: terminals.establishWindows },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.mobile-terminal", "terminal-product-result", "Mobile BASE establishment", "Mobile BASE download completed in the exact production synchronization run."), diagnostic: terminals.establishMobile },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.base.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel is identical on both devices and remote."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -528,6 +571,7 @@ function independentEditsRequest(
   mobileTarget: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
   remoteObjectId: RemoteObjectId,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const windowsContent = { hash: windowsTarget.hash!, sizeBytes: windowsTarget.sizeBytes };
   const mobileContent = { hash: mobileTarget.hash!, sizeBytes: mobileTarget.sizeBytes };
@@ -538,7 +582,7 @@ function independentEditsRequest(
       { kind: "local-content", assertion: stateAssertion("d01.independent.windows", "local-content", String(windowsTarget.path), "Windows retains its non-overlap-a edit after the first production sync."), deviceId: options.windowsDevice.deviceId, path: windowsTarget.path, content: windowsContent },
       { kind: "remote-content", assertion: stateAssertion("d01.independent.remote", "remote-content", String(windowsTarget.path), "Remote contains the Windows first-sync edit before mobile observes it."), path: windowsTarget.path, content: windowsContent, remoteObjectId },
       { kind: "local-content", assertion: stateAssertion("d01.independent.mobile", "local-content", String(mobileTarget.path), "Mobile still retains its independently-created non-overlap-b edit before merge planning."), deviceId: options.mobileDevice.deviceId, path: mobileTarget.path, content: mobileContent },
-      { kind: "terminal-product-result", assertion: stateAssertion("d01.independent.windows-terminal", "terminal-product-result", "Windows first synchronization", "Windows first-sync upload completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.windowsFirstSync },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.independent.windows-terminal", "terminal-product-result", "Windows first synchronization", "Windows first-sync upload completed in the exact production synchronization run."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.independent.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel remains unchanged during independent edits and first sync."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -556,6 +600,7 @@ function cleanMergeRequest(
   windowsTarget: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
   remoteObjectId: RemoteObjectId,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const mergedContent = { hash: D01_EXPECTED_MERGED_HASH, sizeBytes: D01_EXPECTED_MERGED_SIZE_BYTES };
   const windowsContent = { hash: windowsTarget.hash!, sizeBytes: windowsTarget.sizeBytes };
@@ -569,7 +614,7 @@ function cleanMergeRequest(
       { kind: "local-content", assertion: stateAssertion("d01.merge.windows-pre-reconcile", "local-content", String(options.targetPath), "Windows still has its first-sync edit until the required reconciliation step."), deviceId: options.windowsDevice.deviceId, path: options.targetPath, content: windowsContent },
       { kind: "base-authority", assertion: stateAssertion("d01.merge.mobile-base", "base-authority", String(options.targetPath), "Mobile trusted BASE commits the verified merged bytes on the same remote object."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedContent: mergedContent },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.merge.mobile-effects", "durable-intent-or-effect", String(options.targetPath), "No mobile durable effect remains outstanding after the clean merge commits."), deviceId: options.mobileDevice.deviceId, expected: "none-outstanding" },
-      { kind: "terminal-product-result", assertion: stateAssertion("d01.merge.mobile-terminal", "terminal-product-result", "Mobile clean merge", "Mobile clean-merge execution completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.mobileCleanMerge },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.merge.mobile-terminal", "terminal-product-result", "Mobile clean merge", "Mobile clean-merge execution completed in the exact production synchronization run."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.merge.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel remains unchanged through clean merge execution."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -586,6 +631,7 @@ function finalRequest(
   options: D01ScenarioPackageOptions,
   sentinel: ValidationFixtureDescriptor,
   remoteObjectId: RemoteObjectId,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const mergedContent = { hash: D01_EXPECTED_MERGED_HASH, sizeBytes: D01_EXPECTED_MERGED_SIZE_BYTES };
   const sentinelContent = { hash: sentinel.hash!, sizeBytes: sentinel.sizeBytes };
@@ -603,7 +649,7 @@ function finalRequest(
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d01.final.mobile-mapping", "mapping-or-tombstone", String(options.targetPath), "Mobile retains one live mapping to the original D01 remote object and no tombstone."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, expected: "mapping", remoteObjectId, entityKind: "file" },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.final.windows-effects", "durable-intent-or-effect", String(options.targetPath), "No Windows durable effect remains outstanding after reconciliation."), deviceId: options.windowsDevice.deviceId, expected: "none-outstanding" },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.final.mobile-effects", "durable-intent-or-effect", String(options.targetPath), "No mobile durable effect remains outstanding after merge."), deviceId: options.mobileDevice.deviceId, expected: "none-outstanding" },
-      { kind: "terminal-product-result", assertion: stateAssertion("d01.final.windows-terminal", "terminal-product-result", "Windows final reconciliation", "Windows reconciliation completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.windowsReconcile },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.final.windows-terminal", "terminal-product-result", "Windows final reconciliation", "Windows reconciliation completed in the exact production synchronization run."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.final.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The unrelated D01 sentinel remains byte-identical everywhere."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -612,7 +658,7 @@ function finalRequest(
     convergence: [
       { kind: "cross-device-content", assertion: convergenceAssertion("d01.final.content", "cross-device-content", String(options.targetPath), "Both devices converge on the exact combined D01 content."), deviceIds: devices, path: options.targetPath, content: mergedContent },
       { kind: "cross-device-authority", assertion: convergenceAssertion("d01.final.authority", "cross-device-authority", String(options.targetPath), "Both devices converge on the same live remote object without a tombstone."), deviceIds: devices, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedTombstone: false },
-      { kind: "final-reconciliation-stable", assertion: convergenceAssertion("d01.final.stable", "final-reconciliation-stable", String(options.targetPath), "Final D01 reconciliation has terminal completion, complete remote visibility, no outstanding intents/backlog, and fully converged recorded paths."), deviceIds: devices, terminalDiagnostic: options.terminalDiagnostics.windowsReconcile, requireRemoteComplete: true, requireNoOutstandingIntents: true, requireNoLearnedRemoteBatches: true, requireAllRecordedPathsConverged: true },
+      { kind: "final-reconciliation-stable", assertion: convergenceAssertion("d01.final.stable", "final-reconciliation-stable", String(options.targetPath), "Final D01 reconciliation has terminal completion, complete remote visibility, no outstanding intents/backlog, and fully converged recorded paths."), deviceIds: devices, terminalDiagnostic: terminal, requireRemoteComplete: true, requireNoOutstandingIntents: true, requireNoLearnedRemoteBatches: true, requireAllRecordedPathsConverged: true },
     ],
   };
 }
@@ -632,20 +678,74 @@ export function createD01CleanTextMergeScenario(
   if (options.targetPath === options.sentinelPath) {
     throw new Error("D01 target and sentinel paths must be distinct.");
   }
-  requireTerminalDiagnostic(options.terminalDiagnostics.establishWindows, options.windowsDevice.deviceId, "Windows BASE establishment");
-  requireTerminalDiagnostic(options.terminalDiagnostics.establishMobile, options.mobileDevice.deviceId, "mobile BASE establishment");
-  requireTerminalDiagnostic(options.terminalDiagnostics.windowsFirstSync, options.windowsDevice.deviceId, "Windows first sync");
-  requireTerminalDiagnostic(options.terminalDiagnostics.mobileCleanMerge, options.mobileDevice.deviceId, "mobile clean merge");
-  requireTerminalDiagnostic(options.terminalDiagnostics.windowsReconcile, options.windowsDevice.deviceId, "Windows final reconciliation");
-
   const contexts = new Map<string, D01Context>();
   const context = (run: ValidationRunIdentity): D01Context => {
     const key = String(run.scenarioId) + "\u0000" + String(run.runId);
     const existing = contexts.get(key);
     if (existing) return existing;
-    const created: D01Context = {};
+    const created: D01Context = { terminalDiagnostics: {} };
     contexts.set(key, created);
     return created;
+  };
+
+  const beginTerminalCorrelation = async (
+    run: ValidationRunIdentity,
+    stepId: ValidationStepId,
+    phase: D01TerminalPhase,
+    deviceId: ValidationDeviceIdentity["deviceId"],
+  ) => {
+    const result = await options.terminalCorrelation.begin({ run, stepId, phase, deviceId });
+    if (result.status !== "armed") {
+      return {
+        status: result.status === "failed" ? "failed" as const : "blocked" as const,
+        summary: result.summary,
+        evidenceRefs: result.evidenceRefs,
+      };
+    }
+    if (result.evidenceRefs.length === 0) {
+      return {
+        status: "blocked" as const,
+        summary: "D01 terminal correlation watermark produced no objective evidence for phase " + phase + ".",
+        evidenceRefs: [],
+      };
+    }
+    return { status: "completed" as const, evidenceRefs: result.evidenceRefs };
+  };
+
+  const resolveTerminalCorrelation = async (
+    state: D01Context,
+    run: ValidationRunIdentity,
+    stepId: ValidationStepId,
+    phase: D01TerminalPhase,
+    deviceId: ValidationDeviceIdentity["deviceId"],
+    label: string,
+  ) => {
+    const result = await options.terminalCorrelation.resolve({ run, stepId, phase, deviceId });
+    if (result.status !== "observed") {
+      return {
+        status: result.status === "failed" ? "failed" as const : "blocked" as const,
+        summary: result.summary,
+        evidenceRefs: result.evidenceRefs,
+      };
+    }
+    try {
+      requireTerminalDiagnostic(result.diagnostic, deviceId, label);
+    } catch (error) {
+      return {
+        status: "blocked" as const,
+        summary: error instanceof Error ? error.message : String(error),
+        evidenceRefs: result.evidenceRefs,
+      };
+    }
+    if (result.evidenceRefs.length === 0) {
+      return {
+        status: "blocked" as const,
+        summary: "D01 terminal correlation produced no objective evidence for phase " + phase + ".",
+        evidenceRefs: [],
+      };
+    }
+    state.terminalDiagnostics[phase] = result.diagnostic;
+    return { status: "completed" as const, diagnostic: result.diagnostic, evidenceRefs: result.evidenceRefs };
   };
 
   const fixtureDelegate: ValidationRunnerApprovedModuleDelegate = {
@@ -666,7 +766,12 @@ export function createD01CleanTextMergeScenario(
           if (state.targetBase.hash !== D01_BASE_HASH || await options.windowsFixtures.hash(D01_TARGET_FIXTURE_ID) !== D01_BASE_HASH) {
             return { status: "failed", summary: "D01 deterministic BASE bytes/hash do not match the fixture contract.", evidenceRefs: [] };
           }
-          return { status: "completed", evidenceRefs: [] };
+          return beginTerminalCorrelation(
+            request.run,
+            request.stepId,
+            "establish-windows",
+            options.windowsDevice.deviceId,
+          );
         }
 
         if (request.operation === D01_OPERATIONS.editWindows) {
@@ -757,7 +862,24 @@ export function createD01CleanTextMergeScenario(
         if (options.handoffs.currentRole() !== target.role) {
           return { status: "blocked", summary: "D01 handoff did not establish " + target.role + " ownership.", evidenceRefs };
         }
-        return { status: "completed", evidenceRefs };
+
+        const nextTerminalPhase: D01TerminalPhase | undefined =
+          target.phase === "baseline-to-mobile" ? "establish-mobile"
+          : target.phase === "first-sync-to-windows" ? "windows-first-sync"
+          : target.phase === "merge-to-mobile" ? "mobile-clean-merge"
+          : target.phase === "reconcile-to-windows" ? "windows-reconcile"
+          : undefined;
+        if (!nextTerminalPhase) return { status: "completed", evidenceRefs };
+
+        const correlated = await beginTerminalCorrelation(
+          request.run,
+          request.stepId,
+          nextTerminalPhase,
+          target.role === "windows" ? options.windowsDevice.deviceId : options.mobileDevice.deviceId,
+        );
+        return correlated.status === "completed"
+          ? { status: "completed", evidenceRefs: [...evidenceRefs, ...correlated.evidenceRefs] }
+          : { ...correlated, evidenceRefs: [...evidenceRefs, ...correlated.evidenceRefs] };
       } catch (error) {
         return { status: "blocked", summary: error instanceof Error ? error.message : String(error), evidenceRefs: [] };
       }
@@ -772,19 +894,49 @@ export function createD01CleanTextMergeScenario(
         const sentinel = requireDescriptor(state.sentinel, "sentinel");
 
         if (request.operation === D01_OPERATIONS.verifyTrustedBaseline) {
+          const windowsTerminal = await resolveTerminalCorrelation(
+            state,
+            request.run,
+            request.stepId,
+            "establish-windows",
+            options.windowsDevice.deviceId,
+            "Windows BASE establishment",
+          );
+          if (windowsTerminal.status !== "completed") return windowsTerminal;
+          const mobileTerminal = await resolveTerminalCorrelation(
+            state,
+            request.run,
+            request.stepId,
+            "establish-mobile",
+            options.mobileDevice.deviceId,
+            "mobile BASE establishment",
+          );
+          if (mobileTerminal.status !== "completed") {
+            return { ...mobileTerminal, evidenceRefs: [...windowsTerminal.evidenceRefs, ...mobileTerminal.evidenceRefs] };
+          }
+
           const remoteObjectId = await stableRemoteId(options, options.targetPath);
           if (!remoteObjectId) {
-            return { status: "failed", summary: "D01 common BASE did not establish one stable remote identity on both participants.", evidenceRefs: [] };
+            return {
+              status: "failed",
+              summary: "D01 common BASE did not establish one stable remote identity on both participants.",
+              evidenceRefs: [...windowsTerminal.evidenceRefs, ...mobileTerminal.evidenceRefs],
+            };
           }
           const report = await options.verifier.verify(
-            baselineRequest(request.run, options, targetBase, sentinel, remoteObjectId),
+            baselineRequest(request.run, options, targetBase, sentinel, remoteObjectId, {
+              establishWindows: windowsTerminal.diagnostic,
+              establishMobile: mobileTerminal.diagnostic,
+            }),
           );
           const result = passOrStop(report, "D01 trusted BASE");
+          const evidenceRefs = [...windowsTerminal.evidenceRefs, ...mobileTerminal.evidenceRefs, ...result.evidenceRefs];
           if (result.status === "completed") {
             state.remoteObjectId = remoteObjectId;
             state.baselineVerification = report;
+            return { status: "completed", evidenceRefs };
           }
-          return result;
+          return { ...result, evidenceRefs };
         }
 
         if (!state.baselineVerification || !state.remoteObjectId) {
@@ -797,12 +949,25 @@ export function createD01CleanTextMergeScenario(
           if (windowsTarget.hash === mobileTarget.hash || windowsTarget.hash === targetBase.hash || mobileTarget.hash === targetBase.hash) {
             return { status: "failed", summary: "D01 independent edits are not distinct from each other and the trusted BASE.", evidenceRefs: [] };
           }
+          const terminal = await resolveTerminalCorrelation(
+            state,
+            request.run,
+            request.stepId,
+            "windows-first-sync",
+            options.windowsDevice.deviceId,
+            "Windows first sync",
+          );
+          if (terminal.status !== "completed") return terminal;
           const report = await options.verifier.verify(
-            independentEditsRequest(request.run, options, windowsTarget, mobileTarget, sentinel, state.remoteObjectId),
+            independentEditsRequest(request.run, options, windowsTarget, mobileTarget, sentinel, state.remoteObjectId, terminal.diagnostic),
           );
           const result = passOrStop(report, "D01 independent edits");
-          if (result.status === "completed") state.independentEditsVerification = report;
-          return result;
+          const evidenceRefs = [...terminal.evidenceRefs, ...result.evidenceRefs];
+          if (result.status === "completed") {
+            state.independentEditsVerification = report;
+            return { status: "completed", evidenceRefs };
+          }
+          return { ...result, evidenceRefs };
         }
 
         if (!state.independentEditsVerification) {
@@ -811,11 +976,22 @@ export function createD01CleanTextMergeScenario(
 
         if (request.operation === D01_OPERATIONS.verifyCleanMerge) {
           const windowsTarget = requireDescriptor(state.targetWindows, "Windows edited target");
+          const terminal = await resolveTerminalCorrelation(
+            state,
+            request.run,
+            request.stepId,
+            "mobile-clean-merge",
+            options.mobileDevice.deviceId,
+            "mobile clean merge",
+          );
+          if (terminal.status !== "completed") return terminal;
           const report = await options.verifier.verify(
-            cleanMergeRequest(request.run, options, windowsTarget, sentinel, state.remoteObjectId),
+            cleanMergeRequest(request.run, options, windowsTarget, sentinel, state.remoteObjectId, terminal.diagnostic),
           );
           const reportResult = passOrStop(report, "D01 clean three-way merge");
-          if (reportResult.status !== "completed") return reportResult;
+          if (reportResult.status !== "completed") {
+            return { ...reportResult, evidenceRefs: [...terminal.evidenceRefs, ...reportResult.evidenceRefs] };
+          }
 
           const conflictProbe = await options.conflictArtifacts.verifyNoConflictCopy({
             run: request.run,
@@ -826,26 +1002,26 @@ export function createD01CleanTextMergeScenario(
             return {
               status: conflictProbe.status === "failed" ? "failed" : "blocked",
               summary: conflictProbe.summary,
-              evidenceRefs: [...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs],
+              evidenceRefs: [...terminal.evidenceRefs, ...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs],
             };
           }
           if (conflictProbe.evidenceRefs.length === 0) {
             return {
               status: "blocked",
               summary: "D01 no-conflict-copy probe returned no objective evidence.",
-              evidenceRefs: reportResult.evidenceRefs,
+              evidenceRefs: [...terminal.evidenceRefs, ...reportResult.evidenceRefs],
             };
           }
 
           const mobileId = await options.mappingReader.remoteObjectId(options.mobileDevice.deviceId, options.targetPath);
           if (mobileId !== state.remoteObjectId) {
-            return { status: "failed", summary: "D01 clean merge changed or lost the stable remote identity.", evidenceRefs: [...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs] };
+            return { status: "failed", summary: "D01 clean merge changed or lost the stable remote identity.", evidenceRefs: [...terminal.evidenceRefs, ...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs] };
           }
           state.cleanMergeVerification = report;
           state.noConflictCopyEvidence = conflictProbe.evidenceRefs;
           return {
             status: "completed",
-            evidenceRefs: [...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs],
+            evidenceRefs: [...terminal.evidenceRefs, ...reportResult.evidenceRefs, ...conflictProbe.evidenceRefs],
           };
         }
 
@@ -857,12 +1033,25 @@ export function createD01CleanTextMergeScenario(
           if (finalId !== state.remoteObjectId) {
             return { status: "failed", summary: "D01 final convergence does not preserve the original stable remote identity.", evidenceRefs: [] };
           }
+          const terminal = await resolveTerminalCorrelation(
+            state,
+            request.run,
+            request.stepId,
+            "windows-reconcile",
+            options.windowsDevice.deviceId,
+            "Windows final reconciliation",
+          );
+          if (terminal.status !== "completed") return terminal;
           const report = await options.verifier.verify(
-            finalRequest(request.run, options, sentinel, state.remoteObjectId),
+            finalRequest(request.run, options, sentinel, state.remoteObjectId, terminal.diagnostic),
           );
           const result = passOrStop(report, "D01 final convergence");
-          if (result.status === "completed") state.finalVerification = report;
-          return result;
+          const evidenceRefs = [...terminal.evidenceRefs, ...result.evidenceRefs];
+          if (result.status === "completed") {
+            state.finalVerification = report;
+            return { status: "completed", evidenceRefs };
+          }
+          return { ...result, evidenceRefs };
         }
 
         return { status: "blocked", summary: "Unsupported D01 verification operation: " + request.operation, evidenceRefs: [] };
@@ -908,6 +1097,7 @@ export function createD01CleanTextMergeScenario(
           cleanMergeVerification: state.cleanMergeVerification,
           finalVerification: state.finalVerification,
           noConflictCopyEvidence: state.noConflictCopyEvidence,
+          terminalDiagnostics: completeTerminalDiagnostics(state),
         });
         return refs.length > 0
           ? { status: "completed", evidenceRefs: refs }
