@@ -1,8 +1,12 @@
 import {
   PLAN_OPERATION_KINDS,
+  type ConflictAssessment,
   type PlanOperationKind,
+  type ProductSurfaceState,
+  type RemoteObjectId,
   type VaultPath,
 } from "../../contracts";
+import type { DiagnosticEvent } from "../../diagnostics/diagnostic-logger";
 import {
   validationAssertionId,
   type ValidationConvergenceAssertion,
@@ -32,6 +36,7 @@ import type {
 } from "../scenario-runner-module-adapter";
 import type {
   StateConvergenceVerifier,
+  type ValidationDiagnosticExpectation,
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
 } from "../state-convergence-verifier";
@@ -72,6 +77,9 @@ export const D04_OPERATIONS = Object.freeze({
   editWindowsTarget: "d04-edit-windows-target",
   handoffSubcaseBConflictToMobile: "d04-handoff-subcase-b-conflict-to-mobile",
   verifySubcaseB: "d04-verify-subcase-b",
+  captureProductionCycle: "d04-capture-production-cycle",
+  bindProductionRun: "d04-bind-production-run",
+  verifyConflictPresentation: "d04-verify-conflict-presentation",
   recordEvidence: "d04-record-evidence",
 } as const);
 
@@ -80,6 +88,13 @@ export type D04FixtureManagerPort = Pick<
   "create" | "edit" | "delete" | "restoreVersion" | "hash"
 >;
 export type D04VerifierPort = Pick<StateConvergenceVerifier, "verify">;
+
+export interface D04ProductionObservationPort {
+  currentSurface(): ProductSurfaceState;
+  diagnosticSnapshot(): readonly DiagnosticEvent[];
+}
+
+export type D04DeviceRole = "windows" | "mobile";
 
 export type D04HandoffPhase =
   | "baseline-to-mobile"
@@ -120,6 +135,8 @@ export interface D04ScenarioPackageOptions {
   readonly mobileDevice: ValidationDeviceIdentity;
   readonly windowsFixtures: D04FixtureManagerPort;
   readonly mobileFixtures: D04FixtureManagerPort;
+  readonly windowsProduction: D04ProductionObservationPort;
+  readonly mobileProduction: D04ProductionObservationPort;
   readonly verifier: D04VerifierPort;
   readonly handoffs: D04CrossDeviceHandoffPort;
   readonly evidence: D04EvidenceRecorderPort;
@@ -133,13 +150,29 @@ export interface D04ScenarioPackage {
 
 type PlanExpectationWithoutRun = Omit<ValidationPlanExpectation, "run">;
 
+interface D04CycleObservation {
+  readonly role: D04DeviceRole;
+  readonly checkpointSequence: number;
+  diagnosticRunId?: number;
+  planId?: string;
+}
+
+interface D04ConflictObservation {
+  readonly conflictId: string;
+  readonly remoteObjectId: RemoteObjectId;
+  readonly diagnosticRunId: number;
+}
+
 interface D04Context {
+  readonly cycleObservations: Map<string, D04CycleObservation>;
   baseline?: ValidationFixtureDescriptor;
   windowsTarget?: ValidationFixtureDescriptor;
   mobileTarget?: ValidationFixtureDescriptor;
   sentinel?: ValidationFixtureDescriptor;
   subcaseAModified?: ValidationFixtureDescriptor;
   subcaseBModified?: ValidationFixtureDescriptor;
+  subcaseAConflict?: D04ConflictObservation;
+  subcaseBConflict?: D04ConflictObservation;
   baselineVerification?: ValidationStateConvergenceReport;
   subcaseAVerification?: ValidationStateConvergenceReport;
   restoredBaseVerification?: ValidationStateConvergenceReport;
@@ -299,15 +332,34 @@ function moduleStep(
   });
 }
 
+function observationStep(
+  stepId: string,
+  operation: string,
+  cycleId: string,
+  role: D04DeviceRole,
+  proof: ValidationRunnerStepDefinition["requiredCompletionProof"] = "operation-complete",
+): ValidationRunnerStepDefinition {
+  return Object.freeze({
+    stepId: validationStepId(stepId),
+    module: "state-convergence-verifier",
+    operation,
+    requiredCompletionProof: proof,
+    input: Object.freeze({ authorityCycleId: cycleId, deviceRole: role }),
+  });
+}
+
 function productionCycle(
   prefix: string,
   cycleId: string,
   assertionId: string,
   expectation: PlanExpectationWithoutRun,
+  role: D04DeviceRole,
 ): readonly ValidationRunnerStepDefinition[] {
   return Object.freeze([
+    observationStep(prefix + "-capture", D04_OPERATIONS.captureProductionCycle, cycleId, role),
     previewStep(prefix + "-preview", cycleId),
     assertionStep(prefix + "-assert", cycleId, assertionId, expectation),
+    observationStep(prefix + "-bind-run", D04_OPERATIONS.bindProductionRun, cycleId, role),
     executeStep(prefix + "-execute", cycleId),
   ]);
 }
@@ -323,10 +375,19 @@ function conflictObservation(
   cycleId: string,
   assertionId: string,
   path: VaultPath,
+  role: D04DeviceRole,
 ): readonly ValidationRunnerStepDefinition[] {
   return Object.freeze([
+    observationStep(prefix + "-capture", D04_OPERATIONS.captureProductionCycle, cycleId, role),
     previewStep(prefix + "-preview", cycleId),
     assertionStep(prefix + "-assert", cycleId, assertionId, conflictExpectation(path)),
+    observationStep(
+      prefix + "-verify-presentation",
+      D04_OPERATIONS.verifyConflictPresentation,
+      cycleId,
+      role,
+      "verification-passed",
+    ),
   ]);
 }
 
@@ -366,6 +427,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.establishWindows,
         "d04:establish-windows",
         establishWindows,
+        "windows",
       ),
 
       moduleStep("d04-handoff-baseline-to-mobile", "cross-device-coordinator", D04_OPERATIONS.handoffBaselineToMobile),
@@ -375,6 +437,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.establishMobile,
         "d04:establish-mobile-identical",
         establishMobile,
+        "mobile",
       ),
       moduleStep(
         "d04-verify-trusted-baseline",
@@ -391,6 +454,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.subcaseAMobileModify,
         "d04:subcase-a-mobile-upload-update",
         mobileModify,
+        "mobile",
       ),
       moduleStep("d04-handoff-subcase-a-to-windows", "cross-device-coordinator", D04_OPERATIONS.handoffSubcaseAToWindows),
       ...conflictObservation(
@@ -398,6 +462,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.subcaseAWindowsConflict,
         "d04:subcase-a-delete-vs-modify-conflict",
         input.targetPath,
+        "windows",
       ),
       moduleStep(
         "d04-verify-subcase-a",
@@ -416,6 +481,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.restoreWindowsBase,
         "d04:restore-windows-download-update",
         restoreWindows,
+        "windows",
       ),
       moduleStep(
         "d04-verify-restored-base",
@@ -433,6 +499,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.subcaseBWindowsModify,
         "d04:subcase-b-windows-upload-update",
         windowsModify,
+        "windows",
       ),
       moduleStep(
         "d04-handoff-subcase-b-conflict-to-mobile",
@@ -444,6 +511,7 @@ export function createD04ScenarioDefinition(input: {
         D04_AUTHORITY_CYCLES.subcaseBMobileConflict,
         "d04:subcase-b-delete-vs-modify-conflict",
         input.targetPath,
+        "mobile",
       ),
       moduleStep(
         "d04-verify-subcase-b",
@@ -486,6 +554,222 @@ function requireDescriptor(
   return descriptor;
 }
 
+function productionObservation(
+  options: D04ScenarioPackageOptions,
+  role: D04DeviceRole,
+): D04ProductionObservationPort {
+  return role === "windows" ? options.windowsProduction : options.mobileProduction;
+}
+
+function observationInput(input: unknown): { readonly cycleId: string; readonly role: D04DeviceRole } | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const value = input as { readonly authorityCycleId?: unknown; readonly deviceRole?: unknown };
+  if (typeof value.authorityCycleId !== "string" || value.authorityCycleId.length === 0) return undefined;
+  if (value.deviceRole !== "windows" && value.deviceRole !== "mobile") return undefined;
+  return { cycleId: value.authorityCycleId, role: value.deviceRole };
+}
+
+function maxDiagnosticSequence(events: readonly DiagnosticEvent[]): number {
+  return events.reduce((max, event) => Math.max(max, event.sequence), 0);
+}
+
+function captureProductionCycle(
+  context: D04Context,
+  options: D04ScenarioPackageOptions,
+  cycleId: string,
+  role: D04DeviceRole,
+): void {
+  if (context.cycleObservations.has(cycleId)) {
+    throw new Error("D04 production cycle diagnostic checkpoint was already captured: " + cycleId);
+  }
+  const checkpointSequence = maxDiagnosticSequence(productionObservation(options, role).diagnosticSnapshot());
+  context.cycleObservations.set(cycleId, { role, checkpointSequence });
+}
+
+function expectedPreparedFields(plan: ProductSurfaceState["planPreview"]): Readonly<Record<string, string | number>> {
+  if (!plan) throw new Error("D04 current production surface has no plan preview.");
+  const count = (predicate: (kind: PlanOperationKind) => boolean) =>
+    plan.operations.filter(operation => predicate(operation.kind)).length;
+  return Object.freeze({
+    trigger: plan.trigger,
+    planDisposition: plan.executionDisposition,
+    operationCount: plan.operations.length,
+    conflictCount: count(kind => kind === "unresolved-conflict"),
+    destructiveCount: plan.operations.filter(operation => operation.destructive).length,
+    uploadCount: count(kind => kind.startsWith("upload-")),
+    downloadCount: count(kind => kind.startsWith("download-")),
+    noopCount: count(kind => kind === "noop"),
+  });
+}
+
+function fieldsContain(
+  actual: DiagnosticEvent["fields"],
+  expected: Readonly<Record<string, string | number>>,
+): boolean {
+  if (!actual) return false;
+  return Object.entries(expected).every(([key, value]) => actual[key as keyof typeof actual] === value);
+}
+
+function bindProductionRun(
+  context: D04Context,
+  options: D04ScenarioPackageOptions,
+  cycleId: string,
+  role: D04DeviceRole,
+): D04CycleObservation {
+  const cycle = context.cycleObservations.get(cycleId);
+  if (!cycle || cycle.role !== role) {
+    throw new Error("D04 production cycle has no matching pre-preview diagnostic checkpoint: " + cycleId);
+  }
+  if (cycle.diagnosticRunId !== undefined) return cycle;
+
+  const observation = productionObservation(options, role);
+  const surface = observation.currentSurface();
+  const plan = surface.planPreview;
+  if (!plan) throw new Error("D04 cannot bind production run without the exact current production plan surface.");
+
+  const afterCheckpoint = observation.diagnosticSnapshot().filter(
+    event => event.sequence > cycle.checkpointSequence,
+  );
+  const starts = afterCheckpoint.filter(
+    event =>
+      event.component === "sync.controller"
+      && event.event === "manual-sync-request-enter"
+      && event.runId !== undefined
+      && event.fields?.operation === "preview-manual"
+      && event.fields?.trigger === "manual",
+  );
+  if (starts.length !== 1) {
+    throw new Error(
+      "D04 requires exactly one new manual production preview run after its diagnostic checkpoint; observed "
+      + starts.length + ".",
+    );
+  }
+
+  const diagnosticRunId = starts[0]!.runId!;
+  const preparedFields = expectedPreparedFields(plan);
+  const prepared = afterCheckpoint.filter(
+    event =>
+      event.component === "sync.controller"
+      && event.event === "plan-preview-preparation-start"
+      && event.runId === diagnosticRunId
+      && event.fields?.stage === "preview-prepared"
+      && fieldsContain(event.fields, preparedFields),
+  );
+  if (prepared.length !== 1) {
+    throw new Error("D04 could not bind the current production plan to its exact diagnostic run.");
+  }
+
+  cycle.diagnosticRunId = diagnosticRunId;
+  cycle.planId = String(plan.planId);
+  return cycle;
+}
+
+function exactFixtureContent(
+  version: Extract<ConflictAssessment, { readonly kind: "delete-vs-modify" }>["modifiedVersion"]["version"],
+  fixture: ValidationFixtureDescriptor,
+): boolean {
+  return version.path === fixture.path
+    && version.entityKind === "file"
+    && version.content?.hash === fixture.hash
+    && version.content?.sizeBytes === fixture.sizeBytes;
+}
+
+function observeDeleteVsModifyConflict(
+  context: D04Context,
+  options: D04ScenarioPackageOptions,
+  cycleId: string,
+  role: D04DeviceRole,
+  expectedModified: ValidationFixtureDescriptor,
+  expectedBase: ValidationFixtureDescriptor,
+): D04ConflictObservation {
+  const cycle = bindProductionRun(context, options, cycleId, role);
+  const observation = productionObservation(options, role);
+  const surface = observation.currentSurface();
+  const pathConflicts = surface.conflicts.filter(conflict => conflict.kind !== "none" && "path" in conflict && conflict.path === options.targetPath);
+  const matches = pathConflicts.filter(
+    (conflict): conflict is Extract<ConflictAssessment, { readonly kind: "delete-vs-modify" }> =>
+      conflict.kind === "delete-vs-modify",
+  );
+  if (pathConflicts.length !== 1 || matches.length !== 1) {
+    throw new Error("D04 production surface must present exactly one delete-vs-modify conflict at the target path.");
+  }
+
+  const conflict = matches[0]!;
+  if (conflict.modifiedSide !== "remote") {
+    throw new Error("D04 deleting-side preview must identify the surviving independent modification as remote.");
+  }
+  if (conflict.modifiedVersion.source !== "remote" || !exactFixtureContent(conflict.modifiedVersion.version, expectedModified)) {
+    throw new Error("D04 conflict presentation does not identify the exact surviving independent modification.");
+  }
+
+  const versionRemoteId = conflict.modifiedVersion.version.remoteObjectId;
+  const provenanceRemoteId = conflict.modifiedVersion.remoteObjectId;
+  const remoteObjectId = versionRemoteId ?? provenanceRemoteId;
+  if (!remoteObjectId) {
+    throw new Error("D04 conflict presentation does not preserve the surviving remote object identity.");
+  }
+  if (versionRemoteId && provenanceRemoteId && versionRemoteId !== provenanceRemoteId) {
+    throw new Error("D04 conflict presentation contains contradictory surviving remote identities.");
+  }
+
+  if (conflict.base) {
+    if (conflict.base.source !== "base" || !exactFixtureContent(conflict.base.version, expectedBase)) {
+      throw new Error("D04 conflict BASE provenance does not match the exact trusted pre-conflict BASE.");
+    }
+    const baseRemoteId = conflict.base.version.remoteObjectId ?? conflict.base.remoteObjectId;
+    if (baseRemoteId && baseRemoteId !== remoteObjectId) {
+      throw new Error("D04 conflict BASE provenance points to a different remote identity.");
+    }
+  }
+
+  return Object.freeze({
+    conflictId: String(conflict.conflictId),
+    remoteObjectId,
+    diagnosticRunId: cycle.diagnosticRunId!,
+  });
+}
+
+function terminalDiagnostic(
+  context: D04Context,
+  options: D04ScenarioPackageOptions,
+  cycleId: string,
+): ValidationDiagnosticExpectation {
+  const cycle = context.cycleObservations.get(cycleId);
+  if (!cycle || cycle.diagnosticRunId === undefined) {
+    throw new Error("D04 has no exact diagnostic run binding for production cycle: " + cycleId);
+  }
+  const events = productionObservation(options, cycle.role).diagnosticSnapshot();
+  const terminal = events.filter(
+    event =>
+      event.runId === cycle.diagnosticRunId
+      && event.component === "sync.controller"
+      && event.fields?.stage === "terminal"
+      && (
+        event.event === "sync-run-complete"
+        || event.event === "sync-run-failed"
+        || event.event === "sync-run-cancelled"
+      ),
+  );
+  if (terminal.length !== 1) {
+    throw new Error("D04 requires exactly one run-correlated terminal diagnostic for cycle: " + cycleId);
+  }
+  const event = terminal[0]!;
+  if (event.event !== "sync-run-complete" || event.fields?.result !== "complete") {
+    throw new Error(
+      "D04 production execution did not complete successfully for cycle "
+      + cycleId + ": " + event.event + "/" + String(event.fields?.result),
+    );
+  }
+  const deviceId = cycle.role === "windows" ? options.windowsDevice.deviceId : options.mobileDevice.deviceId;
+  return Object.freeze({
+    deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: cycle.diagnosticRunId,
+    expectedFields: Object.freeze({ stage: "terminal", result: "complete" }),
+  });
+}
+
 function protectedSentinel(
   options: D04ScenarioPackageOptions,
   sentinel: ValidationFixtureDescriptor,
@@ -507,6 +791,8 @@ function baselineVerificationRequest(
   options: D04ScenarioPackageOptions,
   baseline: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
+  windowsTerminal: ValidationDiagnosticExpectation,
+  mobileTerminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const targetContent = { hash: baseline.hash!, sizeBytes: baseline.sizeBytes };
   const sentinelContent = { hash: sentinel.hash!, sizeBytes: sentinel.sizeBytes };
@@ -521,6 +807,8 @@ function baselineVerificationRequest(
       { kind: "base-authority", assertion: stateAssertion("d04.baseline.mobile.base", "base-authority", String(baseline.path), "Mobile authoritative BASE equals the common fixture."), deviceId: options.mobileDevice.deviceId, path: baseline.path, expectedContent: targetContent },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.baseline.windows.mapping", "mapping-or-tombstone", String(baseline.path), "Windows has a live mapping and no deletion tombstone."), deviceId: options.windowsDevice.deviceId, path: baseline.path, expected: "mapping", entityKind: "file" },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.baseline.mobile.mapping", "mapping-or-tombstone", String(baseline.path), "Mobile has a live mapping and no deletion tombstone."), deviceId: options.mobileDevice.deviceId, path: baseline.path, expected: "mapping", entityKind: "file" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d04.baseline.windows-terminal", "terminal-product-result", "Windows BASE establishment", "Windows BASE establishment reaches exact run-correlated sync-run-complete."), diagnostic: windowsTerminal },
+      { kind: "terminal-product-result", assertion: stateAssertion("d04.baseline.mobile-terminal", "terminal-product-result", "Mobile BASE establishment", "Mobile BASE establishment reaches exact run-correlated sync-run-complete."), diagnostic: mobileTerminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d04.baseline.sentinel", "unrelated-mutation-absence", String(sentinel.path), "Sentinel is unchanged on both devices and remote."), local: protectedPaths.local, remote: protectedPaths.remote },
     ],
     convergence: [
@@ -536,6 +824,8 @@ function subcaseAVerificationRequest(
   baseline: ValidationFixtureDescriptor,
   modified: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
+  remoteObjectId: RemoteObjectId,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const baselineContent = { hash: baseline.hash!, sizeBytes: baseline.sizeBytes };
   const modifiedContent = { hash: modified.hash!, sizeBytes: modified.sizeBytes };
@@ -549,11 +839,12 @@ function subcaseAVerificationRequest(
     run,
     state: [
       { kind: "local-content", assertion: stateAssertion("d04.a.mobile.modified", "local-content", String(modified.path), "Mobile retains the independent modification after publishing it."), deviceId: options.mobileDevice.deviceId, path: modified.path, content: modifiedContent },
-      { kind: "remote-content", assertion: stateAssertion("d04.a.remote.modified", "remote-content", String(modified.path), "Remote retains the independently modified bytes after Windows deletion conflict is surfaced."), path: modified.path, content: modifiedContent },
-      { kind: "live-trash-absence-state", assertion: stateAssertion("d04.a.remote.live", "live-trash-absence-state", String(modified.path), "Deletion conflict must not trash the modified remote object."), path: modified.path, expectedState: "live" },
+      { kind: "remote-content", assertion: stateAssertion("d04.a.remote.modified", "remote-content", String(modified.path), "Remote retains the independently modified bytes after Windows deletion conflict is surfaced."), path: modified.path, content: modifiedContent, remoteObjectId },
+      { kind: "live-trash-absence-state", assertion: stateAssertion("d04.a.remote.live", "live-trash-absence-state", String(modified.path), "Deletion conflict must not trash the modified remote object."), path: modified.path, expectedState: "live", remoteObjectId },
       { kind: "base-authority", assertion: stateAssertion("d04.a.windows.base-preserved", "base-authority", String(baseline.path), "Windows BASE remains the pre-conflict BASE; conflict observation cannot guess a winner."), deviceId: options.windowsDevice.deviceId, path: baseline.path, expectedContent: baselineContent },
       { kind: "base-authority", assertion: stateAssertion("d04.a.mobile.base-modified", "base-authority", String(modified.path), "Mobile BASE records its verified modification."), deviceId: options.mobileDevice.deviceId, path: modified.path, expectedContent: modifiedContent },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.a.windows.no-tombstone", "mapping-or-tombstone", String(baseline.path), "Windows deletion remains unpropagated and does not become a tombstone after conflict observation."), deviceId: options.windowsDevice.deviceId, path: baseline.path, expected: "mapping", entityKind: "file" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d04.a.mobile-terminal", "terminal-product-result", "Mobile independent modification", "Mobile upload-update reaches exact run-correlated sync-run-complete."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d04.a.protected-state", "unrelated-mutation-absence", D04_SCENARIO_ID, "Windows target remains locally absent after conflict observation while the sentinel stays untouched; the modified copy remains live on mobile and remote."), local: localProtected, remote: protectedPaths.remote },
     ],
     convergence: [
@@ -567,6 +858,7 @@ function restoredBaseVerificationRequest(
   options: D04ScenarioPackageOptions,
   modified: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const content = { hash: modified.hash!, sizeBytes: modified.sizeBytes };
   const sentinelContent = { hash: sentinel.hash!, sizeBytes: sentinel.sizeBytes };
@@ -581,6 +873,7 @@ function restoredBaseVerificationRequest(
       { kind: "base-authority", assertion: stateAssertion("d04.restore.mobile.base", "base-authority", String(modified.path), "Mobile BASE remains the same verified modified version."), deviceId: options.mobileDevice.deviceId, path: modified.path, expectedContent: content },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.restore.windows.mapping", "mapping-or-tombstone", String(modified.path), "Windows returns to a live mapping with no tombstone."), deviceId: options.windowsDevice.deviceId, path: modified.path, expected: "mapping", entityKind: "file" },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.restore.mobile.mapping", "mapping-or-tombstone", String(modified.path), "Mobile retains a live mapping with no tombstone."), deviceId: options.mobileDevice.deviceId, path: modified.path, expected: "mapping", entityKind: "file" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d04.restore.windows-terminal", "terminal-product-result", "Windows BASE restoration", "Windows download-update reaches exact run-correlated sync-run-complete."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d04.restore.sentinel", "unrelated-mutation-absence", String(sentinel.path), "BASE restoration leaves the sentinel untouched."), local: protectedPaths.local, remote: protectedPaths.remote },
     ],
     convergence: [
@@ -596,6 +889,8 @@ function subcaseBVerificationRequest(
   priorBase: ValidationFixtureDescriptor,
   modified: ValidationFixtureDescriptor,
   sentinel: ValidationFixtureDescriptor,
+  remoteObjectId: RemoteObjectId,
+  terminal: ValidationDiagnosticExpectation,
 ): ValidationStateConvergenceRequest {
   const priorContent = { hash: priorBase.hash!, sizeBytes: priorBase.sizeBytes };
   const modifiedContent = { hash: modified.hash!, sizeBytes: modified.sizeBytes };
@@ -609,11 +904,12 @@ function subcaseBVerificationRequest(
     run,
     state: [
       { kind: "local-content", assertion: stateAssertion("d04.b.windows.modified", "local-content", String(modified.path), "Windows retains the independent modification after publishing it."), deviceId: options.windowsDevice.deviceId, path: modified.path, content: modifiedContent },
-      { kind: "remote-content", assertion: stateAssertion("d04.b.remote.modified", "remote-content", String(modified.path), "Remote retains the independently modified bytes after mobile deletion conflict is surfaced."), path: modified.path, content: modifiedContent },
-      { kind: "live-trash-absence-state", assertion: stateAssertion("d04.b.remote.live", "live-trash-absence-state", String(modified.path), "Mobile deletion conflict must not trash the independently modified remote object."), path: modified.path, expectedState: "live" },
+      { kind: "remote-content", assertion: stateAssertion("d04.b.remote.modified", "remote-content", String(modified.path), "Remote retains the independently modified bytes after mobile deletion conflict is surfaced."), path: modified.path, content: modifiedContent, remoteObjectId },
+      { kind: "live-trash-absence-state", assertion: stateAssertion("d04.b.remote.live", "live-trash-absence-state", String(modified.path), "Mobile deletion conflict must not trash the independently modified remote object."), path: modified.path, expectedState: "live", remoteObjectId },
       { kind: "base-authority", assertion: stateAssertion("d04.b.windows.base-modified", "base-authority", String(modified.path), "Windows BASE records its verified modification."), deviceId: options.windowsDevice.deviceId, path: modified.path, expectedContent: modifiedContent },
       { kind: "base-authority", assertion: stateAssertion("d04.b.mobile.base-preserved", "base-authority", String(priorBase.path), "Mobile BASE remains the restored common BASE after conflict observation; no newest-wins guess is committed."), deviceId: options.mobileDevice.deviceId, path: priorBase.path, expectedContent: priorContent },
       { kind: "mapping-or-tombstone", assertion: stateAssertion("d04.b.mobile.no-tombstone", "mapping-or-tombstone", String(priorBase.path), "Mobile local deletion remains unpropagated and does not become a tombstone after conflict observation."), deviceId: options.mobileDevice.deviceId, path: priorBase.path, expected: "mapping", entityKind: "file" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d04.b.windows-terminal", "terminal-product-result", "Windows independent modification", "Windows upload-update reaches exact run-correlated sync-run-complete."), diagnostic: terminal },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d04.b.protected-state", "unrelated-mutation-absence", D04_SCENARIO_ID, "Mobile target is still locally absent while the sentinel remains untouched; surviving modified bytes remain live on Windows and remote."), local: localProtected, remote: protectedPaths.remote },
     ],
     convergence: [
@@ -651,7 +947,7 @@ export function createD04DeleteVsIndependentModifyScenario(
   options: D04ScenarioPackageOptions,
 ): D04ScenarioPackage {
   assertPackageOptions(options);
-  const context: D04Context = {};
+  const context: D04Context = { cycleObservations: new Map() };
 
   const fixtureDelegate: ValidationRunnerApprovedModuleDelegate = Object.freeze({
     async execute(request) {
@@ -807,23 +1103,103 @@ export function createD04DeleteVsIndependentModifyScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = Object.freeze({
     async execute(request) {
       try {
+        if (
+          request.operation === D04_OPERATIONS.captureProductionCycle
+          || request.operation === D04_OPERATIONS.bindProductionRun
+          || request.operation === D04_OPERATIONS.verifyConflictPresentation
+        ) {
+          const input = observationInput(request.input);
+          if (!input) return blocked("D04 production observation input is malformed.");
+
+          if (request.operation === D04_OPERATIONS.captureProductionCycle) {
+            captureProductionCycle(context, options, input.cycleId, input.role);
+            return completed();
+          }
+
+          if (request.operation === D04_OPERATIONS.bindProductionRun) {
+            bindProductionRun(context, options, input.cycleId, input.role);
+            return completed();
+          }
+
+          if (input.cycleId === D04_AUTHORITY_CYCLES.subcaseAWindowsConflict) {
+            const baseline = requireDescriptor(context.baseline, "baseline");
+            const modified = requireDescriptor(context.subcaseAModified, "subcase-a-modified");
+            context.subcaseAConflict = observeDeleteVsModifyConflict(
+              context,
+              options,
+              input.cycleId,
+              input.role,
+              modified,
+              baseline,
+            );
+            return completed();
+          }
+          if (input.cycleId === D04_AUTHORITY_CYCLES.subcaseBMobileConflict) {
+            const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
+            const modified = requireDescriptor(context.subcaseBModified, "subcase-b-modified");
+            context.subcaseBConflict = observeDeleteVsModifyConflict(
+              context,
+              options,
+              input.cycleId,
+              input.role,
+              modified,
+              priorBase,
+            );
+            return completed();
+          }
+          return blocked("D04 conflict-presentation verification was requested for a non-conflict cycle.");
+        }
+
         const baseline = requireDescriptor(context.baseline, "baseline");
         const sentinel = requireDescriptor(context.sentinel, "sentinel");
         let verificationRequest: ValidationStateConvergenceRequest | undefined;
-        let phase = request.operation;
+        const phase = request.operation;
 
         if (request.operation === D04_OPERATIONS.verifyTrustedBaseline) {
-          verificationRequest = baselineVerificationRequest(request.run, options, baseline, sentinel);
+          verificationRequest = baselineVerificationRequest(
+            request.run,
+            options,
+            baseline,
+            sentinel,
+            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.establishWindows),
+            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.establishMobile),
+          );
         } else if (request.operation === D04_OPERATIONS.verifySubcaseA) {
           const modified = requireDescriptor(context.subcaseAModified, "subcase-a-modified");
-          verificationRequest = subcaseAVerificationRequest(request.run, options, baseline, modified, sentinel);
+          const conflict = context.subcaseAConflict;
+          if (!conflict) throw new Error("D04 subcase A conflict presentation has not been objectively verified.");
+          verificationRequest = subcaseAVerificationRequest(
+            request.run,
+            options,
+            baseline,
+            modified,
+            sentinel,
+            conflict.remoteObjectId,
+            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.subcaseAMobileModify),
+          );
         } else if (request.operation === D04_OPERATIONS.verifyRestoredBase) {
           const modified = requireDescriptor(context.subcaseAModified, "restored-base");
-          verificationRequest = restoredBaseVerificationRequest(request.run, options, modified, sentinel);
+          verificationRequest = restoredBaseVerificationRequest(
+            request.run,
+            options,
+            modified,
+            sentinel,
+            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.restoreWindowsBase),
+          );
         } else if (request.operation === D04_OPERATIONS.verifySubcaseB) {
           const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
           const modified = requireDescriptor(context.subcaseBModified, "subcase-b-modified");
-          verificationRequest = subcaseBVerificationRequest(request.run, options, priorBase, modified, sentinel);
+          const conflict = context.subcaseBConflict;
+          if (!conflict) throw new Error("D04 subcase B conflict presentation has not been objectively verified.");
+          verificationRequest = subcaseBVerificationRequest(
+            request.run,
+            options,
+            priorBase,
+            modified,
+            sentinel,
+            conflict.remoteObjectId,
+            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.subcaseBWindowsModify),
+          );
         }
 
         if (!verificationRequest) return blocked("Unsupported D04 verifier operation: " + request.operation);
