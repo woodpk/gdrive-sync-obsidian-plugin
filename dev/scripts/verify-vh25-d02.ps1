@@ -104,9 +104,15 @@ if ($implementationAncestorExit -ne 0) {
     throw "Implementation HEAD is not contained in origin/${ExpectedBranch}: $ImplementationHead !<= $remoteHead"
 }
 
-Invoke-GitCheck -Label 'D02 committed diff check' -Arguments @('diff','--check',"$BaseSha..$remoteHead")
+$preservationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-vh25-d02-scenario-pre-h6b-restart')
+$requiredPreservationHead = '863a73008b556003a15ba5f1757e45285c3a1a54'
+if ($preservationHead -cne $requiredPreservationHead) {
+    throw "D02 preservation branch drifted. Required $requiredPreservationHead; observed $preservationHead."
+}
 
-$changedFilesText = Invoke-GitText @('diff','--name-only',"$BaseSha..$remoteHead")
+Invoke-GitCheck -Label 'D02 implementation diff check' -Arguments @('diff','--check',"$BaseSha..$ImplementationHead")
+
+$changedFilesText = Invoke-GitText @('diff','--name-only',"$BaseSha..$ImplementationHead")
 $changedFiles = @()
 if (-not [string]::IsNullOrWhiteSpace($changedFilesText)) {
     $changedFiles = $changedFilesText -split "\r?\n"
@@ -115,14 +121,30 @@ $allowedFiles = @(
     'src/validation/scenarios/d02-true-text-conflict.ts',
     'test/validation-d02-true-text-conflict.test.ts',
     'dev/scripts/verify-vh25-d02.ps1',
-    'dev/scripts/bootstrap-vh25-d02.ps1',
-    'dev/evidence/_ca-output-agt-ca-p6-vh25-d02-scenario-01.md',
-    'dev/_ca-output.md',
-    'dev/_ca-output.json'
+    'dev/scripts/bootstrap-vh25-d02.ps1'
 )
-$unexpectedFiles = @($changedFiles | Where-Object { $_ -notin $allowedFiles -and $_ -notlike 'dev/test-results/*' })
+$unexpectedFiles = @($changedFiles | Where-Object { $_ -notin $allowedFiles })
 if ($unexpectedFiles.Count -gt 0) {
-    throw "Unexpected files in D02 branch delta:$([Environment]::NewLine)$($unexpectedFiles -join [Environment]::NewLine)"
+    throw "Unexpected files in D02 implementation range $BaseSha..$ImplementationHead:$([Environment]::NewLine)$($unexpectedFiles -join [Environment]::NewLine)"
+}
+$missingImplementationFiles = @($allowedFiles | Where-Object { $_ -notin $changedFiles })
+if ($missingImplementationFiles.Count -gt 0) {
+    throw "Required D02 implementation files are absent from the implementation range:$([Environment]::NewLine)$($missingImplementationFiles -join [Environment]::NewLine)"
+}
+
+$postImplementationText = Invoke-GitText @('diff','--name-only',"$ImplementationHead..$remoteHead")
+$postImplementationFiles = @()
+if (-not [string]::IsNullOrWhiteSpace($postImplementationText)) {
+    $postImplementationFiles = $postImplementationText -split "\r?\n"
+}
+$unexpectedPostImplementation = @($postImplementationFiles | Where-Object {
+    $_ -ne 'dev/evidence/_ca-output-agt-ca-p6-vh25-d02-scenario-01.md' -and
+    $_ -ne 'dev/_ca-output.md' -and
+    $_ -ne 'dev/_ca-output.json' -and
+    $_ -notlike 'dev/test-results/*'
+})
+if ($unexpectedPostImplementation.Count -gt 0) {
+    throw "Non-evidence changes exist after D02 ImplementationHead:$([Environment]::NewLine)$($unexpectedPostImplementation -join [Environment]::NewLine)"
 }
 $frozenChanges = @($changedFiles | Where-Object {
     $_ -like 'src/contracts/*' -or
@@ -228,17 +250,257 @@ function Get-LastRuntimeField {
 }
 
 $script:RuntimeText = $runtimeText
-$phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*$'
-$overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
-$taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
-$evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$'
+$phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$changeSetVerdict = Get-LastRuntimeField -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$repositoryVerdict = Get-LastRuntimeField -Pattern '^Repository verification:\s+([^\r\n]+?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+
+$publicationStatus = Get-LastRuntimeField -Pattern '^Publication status:\s*([^\r\n]*?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+ -DefaultValue '<not reported>'
+$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]*?)\s*
+
+$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
+$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
+$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
+$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
+if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
+}
+
+$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
+$finalFetchExit = $LASTEXITCODE
+foreach ($line in $finalFetch) { Write-Host ([string]$line) }
+if ($finalFetchExit -ne 0) { throw "final git fetch failed with exit code $finalFetchExit." }
+$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
+if ($finalIntegrationHead -cne $requiredIntegrationHead) {
+    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
+}
+
+Write-Host ""
+Write-Host "VH25 D02 VERIFICATION: PASS"
+Write-Host "Change-set verification: PASS"
+Write-Host "Repository verification: PASS"
+Write-Host "Overall verification: PASS"
+Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
+ -DefaultValue '<none reported>'
 $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
 $failureSummary = @(
     "PHX-CI verdict: $phxVerdict",
+    "Change-set verification: $changeSetVerdict",
+    "Repository verification: $repositoryVerdict",
     "Overall verification: $overallVerdict",
     "Task exit code: $taskExitCode",
     "Evidence commit: $evidenceCommit",
     "Local evidence branch: $localEvidenceBranch",
+    "Publication status: $publicationStatus",
+    "Publication issue: $publicationIssue",
     "Runtime process exit code: $runtimeExit"
 ) -join [Environment]::NewLine
 
