@@ -3,12 +3,15 @@ import test from "node:test";
 
 import {
   contractId,
+  type ConflictAssessment,
   type ContentHash,
   type PlanOperationKind,
   type ProductSurfaceState,
+  type RemoteObjectId,
   type SynchronizationPlan,
   type VaultPath,
 } from "../src/contracts";
+import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
 import {
   validationAssertionGroupResult,
   validationEvidenceRef,
@@ -50,6 +53,7 @@ import {
   type D04CrossDeviceHandoffPort,
   type D04EvidenceRecorderPort,
   type D04FixtureManagerPort,
+  type D04ProductionObservationPort,
   type D04VerifierPort,
 } from "../src/validation/scenarios/d04-delete-vs-independent-modify";
 
@@ -70,6 +74,7 @@ const TARGET_HASH_V3 = contractId<"ContentHash">(
 const SENTINEL_HASH = contractId<"ContentHash">(
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 ) as ContentHash;
+const TARGET_REMOTE_ID = contractId<"RemoteObjectId">("remote:d04:target") as RemoteObjectId;
 
 function revisionOf(value: unknown): number | null {
   if (value === null || value === undefined || typeof value !== "object") return null;
@@ -344,27 +349,137 @@ function completePlans(): readonly SynchronizationPlan[] {
   ];
 }
 
-function productionFixture(plans: readonly SynchronizationPlan[]) {
+type ConflictFixtureMode = "normal" | "missing" | "wrong-modified" | "wrong-base";
+type TerminalFixtureMode = "complete" | "partial" | "failed" | "missing" | "wrong-run";
+
+interface ProductionFixtureOptions {
+  readonly conflictMode?: ConflictFixtureMode;
+  readonly terminalByPlanId?: Readonly<Record<string, TerminalFixtureMode>>;
+}
+
+function conflictAssessment(
+  planId: string,
+  mode: ConflictFixtureMode,
+): Extract<ConflictAssessment, { readonly kind: "delete-vs-modify" }> | undefined {
+  if (mode === "missing") return undefined;
+  const subcaseA = planId === "plan:d04:subcase-a-conflict";
+  const modifiedHash = subcaseA ? TARGET_HASH_V2 : TARGET_HASH_V3;
+  const baseHash = subcaseA ? TARGET_HASH_V1 : TARGET_HASH_V2;
+  const modifiedVersion = subcaseA ? 2 : 3;
+  const baseVersion = subcaseA ? 1 : 2;
+  const actualModifiedHash = mode === "wrong-modified" ? TARGET_HASH_V1 : modifiedHash;
+  const actualBaseHash = mode === "wrong-base" ? TARGET_HASH_V3 : baseHash;
+  return Object.freeze({
+    kind: "delete-vs-modify",
+    conflictId: contractId<"ConflictId">("conflict:" + planId),
+    path: TARGET_PATH,
+    modifiedSide: "remote",
+    modifiedVersion: Object.freeze({
+      source: "remote",
+      remoteObjectId: TARGET_REMOTE_ID,
+      version: Object.freeze({
+        path: TARGET_PATH,
+        entityKind: "file",
+        remoteObjectId: TARGET_REMOTE_ID,
+        content: Object.freeze({
+          hash: actualModifiedHash,
+          sizeBytes: 128 + modifiedVersion,
+        }),
+      }),
+    }),
+    base: Object.freeze({
+      source: "base",
+      remoteObjectId: TARGET_REMOTE_ID,
+      version: Object.freeze({
+        path: TARGET_PATH,
+        entityKind: "file",
+        remoteObjectId: TARGET_REMOTE_ID,
+        content: Object.freeze({
+          hash: actualBaseHash,
+          sizeBytes: 128 + baseVersion,
+        }),
+      }),
+    }),
+  });
+}
+
+function preparedFields(observed: SynchronizationPlan): DiagnosticEvent["fields"] {
+  const count = (predicate: (kind: PlanOperationKind) => boolean) =>
+    observed.operations.filter(item => predicate(item.kind)).length;
+  return {
+    stage: "preview-prepared",
+    trigger: "manual",
+    planDisposition: observed.executionDisposition,
+    operationCount: observed.operations.length,
+    conflictCount: count(kind => kind === "unresolved-conflict"),
+    destructiveCount: observed.operations.filter(item => item.destructive).length,
+    uploadCount: count(kind => kind.startsWith("upload-")),
+    downloadCount: count(kind => kind.startsWith("download-")),
+    noopCount: count(kind => kind === "noop"),
+  };
+}
+
+function productionFixture(
+  plans: readonly SynchronizationPlan[],
+  options: ProductionFixtureOptions = {},
+) {
   let previewIndex = 0;
+  let sequence = 0;
+  let nextRunId = 100;
+  let currentRunId: number | undefined;
+  let currentPlan: SynchronizationPlan | undefined;
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const diagnostics: DiagnosticEvent[] = [];
+  let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+
+  const pushDiagnostic = (
+    event: string,
+    runId: number,
+    fields: DiagnosticEvent["fields"],
+  ) => {
+    sequence += 1;
+    diagnostics.push({
+      timestamp: "2026-09-22T17:30:00.000Z",
+      sequence,
+      level: "trace",
+      component: "sync.controller",
+      event,
+      runId,
+      platform: "desktop",
+      fields,
+    });
+  };
+
+  const preview = async () => {
+    calls.push("preview-manual");
+    const observed = plans[previewIndex];
+    previewIndex += 1;
+    if (!observed) throw new Error("No D04 plan fixture remains for preview.");
+    currentPlan = observed;
+    currentRunId = nextRunId++;
+    pushDiagnostic("manual-sync-request-enter", currentRunId, {
+      operation: "preview-manual",
+      trigger: "manual",
+    });
+
+    const isConflict = observed.planId === contractId<"PlanId">("plan:d04:subcase-a-conflict")
+      || observed.planId === contractId<"PlanId">("plan:d04:subcase-b-conflict");
+    const conflict = isConflict
+      ? conflictAssessment(String(observed.planId), options.conflictMode ?? "normal")
+      : undefined;
+    surface = {
+      status: conflict ? { kind: "conflict-present", conflictCount: 1 } : { kind: "idle-ready" },
+      planPreview: observed,
+      conflicts: conflict ? [conflict] : [],
+    };
+    pushDiagnostic("plan-preview-preparation-start", currentRunId, preparedFields(observed));
+    return observed;
+  };
 
   const controller: ValidationProductionControllerPort = {
-    previewManual: async () => {
-      calls.push("preview-manual");
-      const observed = plans[previewIndex];
-      previewIndex += 1;
-      if (!observed) throw new Error("No D04 plan fixture remains for preview.");
-      return observed;
-    },
-    previewVerifyReconcile: async () => {
-      calls.push("preview-verify-reconcile");
-      const observed = plans[previewIndex];
-      previewIndex += 1;
-      if (!observed) throw new Error("No D04 plan fixture remains for reconciliation preview.");
-      return observed;
-    },
+    previewManual: preview,
+    previewVerifyReconcile: preview,
     runAutomatic: async trigger => {
       calls.push("automatic:" + trigger);
     },
@@ -375,6 +490,21 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     requestPreviewAction: async action => {
       calls.push("execute:" + String(action.planId));
       executedPlanIds.push(String(action.planId));
+      if (!currentPlan || currentPlan.planId !== action.planId || currentRunId === undefined) {
+        throw new Error("D04 fake production execution is not bound to the current preview run.");
+      }
+      const mode = options.terminalByPlanId?.[String(action.planId)] ?? "complete";
+      if (mode !== "missing") {
+        const terminalRunId = mode === "wrong-run" ? currentRunId + 1000 : currentRunId;
+        pushDiagnostic(
+          mode === "failed" ? "sync-run-failed" : "sync-run-complete",
+          terminalRunId,
+          {
+            stage: "terminal",
+            result: mode === "partial" ? "partial" : mode === "failed" ? "failed" : "complete",
+          },
+        );
+      }
       return { status: "accepted" };
     },
     currentSurface: () => surface,
@@ -384,9 +514,16 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     },
   };
 
+  const observation: D04ProductionObservationPort = {
+    currentSurface: () => surface,
+    diagnosticSnapshot: () => diagnostics.map(event => ({ ...event, fields: event.fields ? { ...event.fields } : undefined })),
+  };
+
   return {
     calls,
     executedPlanIds,
+    diagnostics,
+    observation,
     previewCount: () => previewIndex,
     runtime: { productController: () => controller },
   };
@@ -450,12 +587,14 @@ class RecordingEvidence implements D04EvidenceRecorderPort {
 function subject(
   plans: readonly SynchronizationPlan[],
   definitionTransform?: (definition: ValidationRunnerScenarioDefinition) => ValidationRunnerScenarioDefinition,
+  productionOptions: ProductionFixtureOptions = {},
 ) {
   const windowsFixtures = new FakeFixtureManager("windows");
   const mobileFixtures = new FakeFixtureManager("mobile");
   const verifier = new PassingVerifier();
   const handoffs = new RecordingHandoffs();
   const evidence = new RecordingEvidence();
+  const production = productionFixture(plans, productionOptions);
   const packageBinding = createD04DeleteVsIndependentModifyScenario({
     targetPath: TARGET_PATH,
     sentinelPath: SENTINEL_PATH,
@@ -463,12 +602,13 @@ function subject(
     mobileDevice: MOBILE,
     windowsFixtures,
     mobileFixtures,
+    windowsProduction: production.observation,
+    mobileProduction: production.observation,
     verifier,
     handoffs,
     evidence,
   });
   const definition = definitionTransform?.(packageBinding.definition) ?? packageBinding.definition;
-  const production = productionFixture(plans);
   const runtime = new ValidationModeRuntime({
     productionRuntime: production.runtime,
     definitions: [definition],
@@ -513,8 +653,13 @@ test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fix
 
   for (const cycle of [D04_AUTHORITY_CYCLES.subcaseAWindowsConflict, D04_AUTHORITY_CYCLES.subcaseBMobileConflict]) {
     const steps = s.definition.steps.filter(step => stepCycle(step) === cycle);
-    assert.deepEqual(steps.map(step => step.operation), ["preview-manual", "assert-observed-plan"]);
-    const assertion = steps[1]!;
+    assert.deepEqual(steps.map(step => step.operation), [
+      D04_OPERATIONS.captureProductionCycle,
+      "preview-manual",
+      "assert-observed-plan",
+      D04_OPERATIONS.verifyConflictPresentation,
+    ]);
+    const assertion = steps[2]!;
     const expectation = (assertion.input as {
       readonly expectation: {
         readonly expectedOperations: ReadonlyArray<{ readonly kind: string; readonly path: VaultPath }>;
@@ -577,11 +722,21 @@ test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fix
   }]);
 
   assert.equal(s.verifier.requests.length, 4);
+  const terminalProofs = s.verifier.requests.flatMap(request =>
+    request.state.filter(item => item.kind === "terminal-product-result")
+  );
+  assert.equal(terminalProofs.length, 5);
+  const terminalRunIds = terminalProofs.map(item =>
+    item.kind === "terminal-product-result" ? item.diagnostic.diagnosticRunId : undefined
+  );
+  assert.equal(terminalRunIds.every(runId => typeof runId === "number"), true);
+  assert.equal(new Set(terminalRunIds).size, 5);
 
   const subcaseA = s.verifier.requests[1]!;
   const aRemote = subcaseA.state.find(item => item.kind === "remote-content" && item.path === TARGET_PATH);
   assert.ok(aRemote && aRemote.kind === "remote-content");
   assert.equal(aRemote.content.hash, TARGET_HASH_V2);
+  assert.equal(aRemote.remoteObjectId, TARGET_REMOTE_ID);
   const aWindowsBase = subcaseA.state.find(item =>
     item.kind === "base-authority"
     && item.deviceId === WINDOWS.deviceId
@@ -610,6 +765,7 @@ test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fix
   const bRemote = subcaseB.state.find(item => item.kind === "remote-content" && item.path === TARGET_PATH);
   assert.ok(bRemote && bRemote.kind === "remote-content");
   assert.equal(bRemote.content.hash, TARGET_HASH_V3);
+  assert.equal(bRemote.remoteObjectId, TARGET_REMOTE_ID);
   const bMobileBase = subcaseB.state.find(item =>
     item.kind === "base-authority"
     && item.deviceId === MOBILE.deviceId
@@ -631,6 +787,75 @@ test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fix
   assert.equal(s.evidence.calls[0]?.subcaseBModified.hash, TARGET_HASH_V3);
   assert.equal(s.evidence.calls[0]?.sentinel.hash, SENTINEL_HASH);
 });
+
+test("VH27 D04 rejects an unresolved-conflict plan when the production surface does not present delete-vs-modify", async () => {
+  const s = subject(
+    [establishWindowsPlan(), establishMobilePlan(), mobileModifyPlan(), subcaseAConflictPlan()],
+    undefined,
+    { conflictMode: "missing" },
+  );
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D04"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") assert.match(result.reason.summary, /production surface|delete-vs-modify/i);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+for (const conflictMode of ["wrong-modified", "wrong-base"] as const) {
+  test("VH27 D04 rejects incorrect conflict provenance: " + conflictMode, async () => {
+    const s = subject(
+      [establishWindowsPlan(), establishMobilePlan(), mobileModifyPlan(), subcaseAConflictPlan()],
+      undefined,
+      { conflictMode },
+    );
+    s.runtime.setEnabled(true);
+    const result = runnerResult(await s.runtime.startScenario("D04"));
+    assert.equal(result.status, "FAIL");
+    if (result.status === "FAIL") assert.match(result.reason.summary, /surviving independent modification|BASE provenance/i);
+    assert.equal(s.evidence.calls.length, 0);
+  });
+}
+
+test("VH27 D04 rejects missing terminal proof for a relied-upon production execution", async () => {
+  const s = subject(
+    [establishWindowsPlan(), establishMobilePlan(), mobileModifyPlan(), subcaseAConflictPlan()],
+    undefined,
+    { terminalByPlanId: { "plan:d04:mobile-modify": "missing" } },
+  );
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D04"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") assert.match(result.reason.summary, /run-correlated terminal diagnostic/i);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH27 D04 rejects terminal proof from a different production run", async () => {
+  const s = subject(
+    [establishWindowsPlan(), establishMobilePlan(), mobileModifyPlan(), subcaseAConflictPlan()],
+    undefined,
+    { terminalByPlanId: { "plan:d04:mobile-modify": "wrong-run" } },
+  );
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D04"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") assert.match(result.reason.summary, /run-correlated terminal diagnostic/i);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+for (const terminalMode of ["failed", "partial"] as const) {
+  test("VH27 D04 rejects non-complete production terminal result: " + terminalMode, async () => {
+    const s = subject(
+      [establishWindowsPlan(), establishMobilePlan(), mobileModifyPlan(), subcaseAConflictPlan()],
+      undefined,
+      { terminalByPlanId: { "plan:d04:mobile-modify": terminalMode } },
+    );
+    s.runtime.setEnabled(true);
+    const result = runnerResult(await s.runtime.startScenario("D04"));
+    assert.equal(result.status, "FAIL");
+    if (result.status === "FAIL") assert.match(result.reason.summary, /did not complete successfully/i);
+    assert.equal(s.evidence.calls.length, 0);
+  });
+}
 
 test("VH27 D04 rejects silent deletion propagation before destructive production execution", async () => {
   const silentDeletion = plan("plan:d04:silent-delete", [
