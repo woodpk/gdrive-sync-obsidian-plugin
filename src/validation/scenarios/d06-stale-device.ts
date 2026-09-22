@@ -12,12 +12,10 @@ import {
   validationAssertionId,
   validationEvidenceRef,
   type ValidationConvergenceAssertion,
-  type ValidationConvergencePostcondition,
   type ValidationEvidenceRef,
   type ValidationExpectedPlanOperation,
   type ValidationPlanExpectation,
   type ValidationStateAssertion,
-  type ValidationStatePostcondition,
 } from "../driver-plan-fault-verifier-contracts";
 import {
   validationDeletionFixture,
@@ -49,6 +47,8 @@ import {
 import type {
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
+  ValidationStatePostcondition,
+  ValidationConvergencePostcondition,
 } from "../state-convergence-verifier";
 import type { ValidationModeModuleOverrides } from "../validation-mode-runtime";
 
