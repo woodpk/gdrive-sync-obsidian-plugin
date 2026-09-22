@@ -6,183 +6,231 @@ Agent: `agt-ca-p6-vh24-d01-scenario-01`
 Repository: `woodpk/gdrive-sync-obsidian-plugin`  
 Branch: `phase6-vh24-d01-scenario`
 
-## 1. Restart / Common-Base Authority
+## 1. Frozen D-Series Authority
 
-- Replacement frozen common base:
-  `D_SERIES_COMMON_BASE_SHA = c6daa20ad287f395a99cf88943465a9ecc3159dd`
-- Required `origin/phase6-integration` gate at restart: PASS — resolved exactly to the replacement common base.
-- Superseded common base:
-  `4b57ce65eb771a2a6ed2cc3375178db41d899084`
-- Existing pre-restart task branch HEAD:
-  `4b57ce65eb771a2a6ed2cc3375178db41d899084`
-- The old task branch contained no commits beyond the superseded base. Therefore no
-  `phase6-vh24-d01-scenario-pre-h6b-restart` preservation branch was required.
-- The required task branch was re-established directly from exactly
+- `D_SERIES_COMMON_BASE_SHA = c6daa20ad287f395a99cf88943465a9ecc3159dd`
+- Supervisor-reviewed pre-correction branch HEAD:
+  `859f9c449c0a4a620b084e665ebea1570169a0d1`
+- Supervisor-reviewed pre-correction implementation HEAD:
+  `c532873b17ff5a04296c8046ca7f9d26cde1dc00`
+- Before this correction and immediately before this evidence update,
+  `origin/phase6-integration` resolved exactly to
   `c6daa20ad287f395a99cf88943465a9ecc3159dd`.
-- No rebase, merge, or cherry-pick from the superseded branch was used.
-- The task file and shared live-validation protocol were reread from the replacement common base before implementation.
+- No rebase, merge, peer D-series integration, or `phase6-integration` modification was performed.
 
-## 2. Implementation Identity
+## 2. Corrected Implementation HEAD
 
-Implementation / test / task-local verifier HEAD:
+`a54b8b5225981b8bf5366cf14f5a1eeb6417781b`
 
-`c532873b17ff5a04296c8046ca7f9d26cde1dc00`
+Bounded correction commits after reviewed branch HEAD:
 
-Commits after the replacement common base:
+1. `740eef139b62a8ff6766aafb6a7992b1455534e1` — require D01 terminal and duplicate proof.
+2. `487f13bba82a1f3ab739f23f6d21f317d6cc2c74` — add focused terminal/duplicate regressions.
+3. `650e4d34eacd190ab6b6eca10f20d954d39e7674` — correct diagnostic contract import.
+4. `aa05eabe430c43e0fd7c851320035ca54bfa4783` — replace pre-supplied terminal IDs with read-only per-cycle correlation.
+5. `2e120fa26a6adaa3b4c68878ecb34ae9c8f047d0` — exercise terminal correlation ordering in focused tests.
+6. `ec3559c08719fac94f595073ea87529da9af3de0` — document correlation authority and stale-event rejection.
+7. `a54b8b5225981b8bf5366cf14f5a1eeb6417781b` — harden focused proof-shape guards.
 
-1. `cc5d67823432fb904482d34ae15e866f932c02a0` — `feat(validation): add D01 clean text merge scenario`
-2. `aeb01c3cd7f97103316b123a872749f0d14f14d5` — `test(validation): cover D01 clean text merge scenario`
-3. `bbe66778afe97cf0bbbde0c90ce78e5a687be32f` — `fix(validation): make D01 edits truly non-overlapping`
-4. `0b87c001af8f7f706cabaa1d3a2e3158f3fdf17e` — `test(validation): enforce truly disjoint D01 edits`
-5. `9dddec553fdf54b8308f2c4e97c9d801feb311dc` — `test(validation): prove D01 edits merge cleanly`
-6. `c532873b17ff5a04296c8046ca7f9d26cde1dc00` — `chore(validation): add VH24 local PHX-CI verifier`
-
-Exact implementation-range changed files:
+Correction implementation/test files changed relative to reviewed HEAD:
 
 - `src/validation/scenarios/d01-clean-text-merge.ts`
 - `test/validation-d01-clean-text-merge.test.ts`
-- `dev/scripts/verify-vh24-d01-scenario.ps1`
 
-No `src/contracts/**`, frozen H0 contract, production synchronization-policy, or peer D-series scenario file was modified.
+The committed verifier `dev/scripts/verify-vh24-d01-scenario.ps1` was re-audited but not modified by this correction.
 
-## 3. D01 Scenario Implemented
+## 3. Terminal Product-Result / Stability Repair
 
-The D01 package maps the authoritative live-validation scenario one-to-one:
+D01 no longer accepts caller-supplied terminal run IDs.
 
-1. create one harness-owned text fixture and unrelated sentinel on Windows;
-2. production preview/assert/execute the Windows baseline upload;
-3. hand off to mobile;
-4. production preview/assert/execute the mobile baseline download;
-5. objectively verify a common trusted BASE and one stable remote object identity;
-6. hand off to Windows and apply a guarded exact left-line-only local edit;
-7. hand off to mobile and apply a guarded exact right-line-only local edit while mobile still has the common BASE;
-8. hand off to Windows and require the exact first-sync `upload-update` plan;
-9. objectively verify that Windows/remote contain the Windows edit while mobile still contains its independent edit;
-10. hand off to mobile and require the exact `clean-text-merge` production plan;
-11. execute only after the fixed H6B plan assertion authorizes that exact observed plan;
-12. objectively verify exact merged local/remote bytes and hash, stable remote identity, and no conflict-copy artifact;
-13. hand off to Windows and require the exact `download-update` reconciliation plan;
-14. objectively verify final Windows/mobile/remote convergence, exact merged BASE authority, no outstanding effects, stable remote identity, and unchanged sentinel;
-15. record scenario evidence.
+A task-local read-only `D01TerminalDiagnosticCorrelationPort` now requires:
 
-The package does not override the fixed H6B `production-path-driver` or
-`plan-assertion-engine`, and it does not import/reimplement their policy.
+1. `begin(...)` before each named production synchronization cycle to capture a diagnostic sequence/watermark;
+2. `resolve(...)` after execution to identify the terminal event produced after that watermark;
+3. exact binding to:
+   - the expected device;
+   - `sync.controller`;
+   - `sync-run-complete`;
+   - a concrete non-negative `diagnosticRunId`;
+   - `result=complete`;
+4. fail-closed behavior for missing, ambiguous, stale/pre-watermark, contradictory, or evidence-free correlation;
+5. no advisory timestamp authority.
 
-## 4. Proactive Defect-Family Review and Correction
+The correlation lifecycle is attached only to existing task-owned fixture/handoff/verification orchestration:
 
-A proactive review against the production three-way merge algorithm found a harness-input defect in the first implementation draft.
+- Windows BASE cycle is armed during fixture establishment before production preview;
+- mobile BASE is armed on the baseline handoff before production preview;
+- Windows first sync is armed on the first-sync handoff;
+- mobile clean merge is armed on the merge handoff;
+- final Windows reconciliation is armed on the reconciliation handoff.
 
-The shared deterministic fixture manager's `edit(..., version=2, non-overlap-a/b)` variants change both:
+Each verification phase resolves its exact terminal event after execution and passes that exact diagnostic expectation into the frozen `StateConvergenceVerifier`.
 
-- the intended independent line; and
-- the embedded `version=` line.
+D01 verification now requires `terminal-product-result` for all five accepted production cycles:
 
-That means the two nominally “non-overlap” edits can share a modified line and produce overlapping merge hunks, violating D01's actual premise.
+- Windows BASE establishment;
+- mobile BASE establishment;
+- Windows first sync;
+- mobile clean merge;
+- final Windows reconciliation.
 
-The implementation was corrected before closure:
+Final D01 verification additionally requires frozen
+`final-reconciliation-stable` semantics with:
 
-- common BASE remains established through the existing fixture-manager/sandbox path;
-- D01 task-local edit ports perform guarded exact local replacements against the expected BASE hash;
-- Windows changes only `left=base` to `left=edit-a`;
-- mobile changes only `right=base` to `right=edit-b`;
-- both retain `version=1`;
-- the expected merged bytes contain each independent edit exactly once.
+- the exact correlated final Windows terminal diagnostic;
+- `requireRemoteComplete: true`;
+- `requireNoOutstandingIntents: true`;
+- `requireNoLearnedRemoteBatches: true`;
+- `requireAllRecordedPathsConverged: true`.
 
-Focused regression coverage now invokes the real production `mergeThreeWayText` algorithm in both local/remote orderings and requires the exact expected merged text.
+The correlated terminal diagnostics are also included in task evidence input so the final evidence recorder cannot complete without all five exact run identities.
 
-Additional adjacent failure-family review covers:
+No H0 contract, H6B production-path driver, H6B plan-assertion engine, production diagnostic policy, or production synchronization semantics were changed.
 
-- unexpected `unresolved-conflict` plan: hard-stop before merge execution;
-- newest-wins-style `download-update` at the merge point: hard-stop before execution;
-- missing objective no-conflict-copy proof: BLOCKED;
-- stable remote-object identity drift: FAIL before Windows reconciliation;
-- fixed H6B module override/bypass: absent;
-- direct plan-assertion or production-driver reimplementation: absent;
-- destructive and unexpected operation kinds: forbidden by the exact plan expectation;
-- unrelated sentinel mutation: included in objective verification.
+## 4. No-Unexpected-Duplicate Repair
 
-## 5. Task-Local Verification Entry Point
+D01 retains stable-object proof and adds independent path-level uniqueness proof.
 
-Added:
+For clean merge and final state:
 
-`dev/scripts/verify-vh24-d01-scenario.ps1`
+- `remote-content` still requires the original stable `remoteObjectId` and exact expected bytes;
+- a second `live-trash-absence-state` assertion targets the canonical path **without** supplying a remote object ID.
 
-The script is a thin gate over the installed immutable PHX-CI runtime. It:
+Under the frozen `StateConvergenceVerifier`, the latter requires a complete managed-remote enumeration and rejects multiple occupants at the same logical path.
 
-- requires PowerShell 7+;
-- fetches current remote state;
-- requires `origin/phase6-integration` to remain exactly
-  `c6daa20ad287f395a99cf88943465a9ecc3159dd` before verification;
-- validates task branch/base/implementation ancestry;
-- runs committed-range `git diff --check`;
-- reads the exact runtime authority from the target branch's `phx-ci.json`;
-- locates the installed runtime under the runtime store;
-- invokes only the deployed `scripts\Invoke-PhxCi.ps1` production front door;
-- runs the focused D01 TypeScript compile/test command through PHX-CI;
-- requires Change-set / Repository / Overall = `PASS / PASS / PASS`;
-- re-fetches and requires the D-series common base to remain frozen after verification.
+Therefore stable identity and canonical-path uniqueness are separate required facts.
 
-It does not use GitHub Actions, a mutable PHX-CI source checkout, `FrameworkRoot`,
-`PHX_FRAMEWORK_ROOT`, or direct `task ci`.
+Final PASS also requires explicit `mapping-or-tombstone` assertions on both Windows and mobile:
 
-## 6. Static Review Performed in This Session
+- expected live mapping;
+- original stable remote object ID;
+- entity kind `file`;
+- no tombstone overlap.
 
-PASS:
+The existing no-conflict-copy probe remains independent and mandatory; it is not treated as generic duplicate-path proof.
 
-- replacement-base gate resolved exactly at restart;
-- implementation branch was cleanly restarted from the replacement base;
-- committed diff is limited to the three D01-owned implementation/test/verifier files;
-- no merge-conflict markers detected;
-- no trailing whitespace detected in the D01 source, focused test, or verifier script;
-- D01 source does not directly import the production-path driver or plan-assertion engine;
-- D01 source does not override either fixed H6B module;
-- deterministic D01 merge inputs keep the common `version=1` line and differ only on separate edit lines;
-- focused test calls the production `mergeThreeWayText` algorithm for both local/remote orderings;
-- verifier contains no ordinary unbraced `$variable:` parser hazards;
-- verifier contains no GitHub Actions invocation;
-- verifier contains no mutable PHX-CI source-checkout or direct-`task ci` dependency;
-- verifier includes both pre-verification and post-verification frozen-common-base gates;
-- production executor inspection confirms `clean-text-merge` applies both a local transactional replacement and remote update before durable verification, matching the D01 post-merge verifier model.
+## 5. Final D01 PASS Contract After Correction
 
-These static checks are not a substitute for authoritative PHX-CI execution.
+The final D01 request now requires, at minimum:
 
-## 7. Authoritative Verification Status
+- exact merged Windows bytes;
+- exact merged mobile bytes;
+- exact merged remote bytes;
+- original stable remote identity;
+- complete-enumeration proof of exactly one live canonical-path occupant;
+- no conflict-copy artifact;
+- exact BASE authority on both devices;
+- exact live mapping/no-tombstone state on both devices;
+- no outstanding durable effects on either device;
+- exact final terminal product result;
+- stable final reconciliation;
+- unchanged unrelated sentinel;
+- exact cross-device merged content;
+- cross-device authority convergence.
 
-**BLOCKED — authoritative local PHX-CI execution is not available from this ChatGPT execution environment.**
+## 6. Focused Regression Additions
 
-The required installed immutable PHX-CI runtime and the user's Windows repository checkout are not accessible through the available execution tools. GitHub Actions were not used and will not be substituted.
+The focused D01 tests now:
 
-Therefore the required authoritative result:
+- validate the required terminal diagnostic run IDs on every D01 verification phase;
+- validate final `terminal-product-result` and `final-reconciliation-stable` request shape;
+- validate final complete-enumeration canonical-path uniqueness proof;
+- validate stable-ID `remote-content` proof independently of path uniqueness;
+- validate both live mapping/no-tombstone assertions;
+- use the frozen `StateConvergenceVerifier` to prove that missing/not-observable terminal evidence yields BLOCKED, never PASS;
+- use the frozen `StateConvergenceVerifier` with a complete remote listing containing two target-path occupants to prove ambiguous duplicate occupancy yields FAIL;
+- enforce a focused proof-shape guard that fails if final terminal or final-stability proof is omitted;
+- prove each terminal cycle is armed before its production preview and resolved only after the corresponding execution;
+- retain the existing:
+  - clean production merge test;
+  - unresolved-conflict rejection;
+  - newest-wins-style `download-update` rejection;
+  - stable remote-identity drift rejection;
+  - no-conflict-copy fail-closed test;
+  - production `mergeThreeWayText` disjoint-edit regression.
+
+The success test double no longer blindly accepts arbitrary request shapes: every verification request must first satisfy the D01 phase-specific acceptance-proof structure.
+
+## 7. Proactive Adjacent-Defect Audit
+
+PASS — no direct import or replacement of the fixed H6B production-path driver.
+
+PASS — no direct import or replacement of the fixed H6B plan-assertion engine.
+
+PASS — no `src/contracts/**` changes.
+
+PASS — no production merge/synchronization-policy changes.
+
+PASS — no peer D-series scenario changes.
+
+PASS — no advisory timestamp authority was introduced.
+
+PASS — terminal correlation rejects missing exact run IDs and stale/pre-watermark evidence by contract.
+
+PASS — stable object identity cannot substitute for complete path-level uniqueness.
+
+PASS — conflict-copy absence cannot substitute for generic duplicate absence.
+
+PASS — final mapping/tombstone authority is now explicit on both devices.
+
+PASS — no merge-conflict markers or trailing whitespace were found in the corrected source/test files.
+
+## 8. Committed Verifier / Future Handoff Audit
+
+`dev/scripts/verify-vh24-d01-scenario.ps1` remains a thin installed-runtime PHX-CI gate.
+
+Re-audit PASS:
+
+- no GitHub Actions invocation;
+- no mutable PHX-CI source checkout;
+- no `FrameworkRoot`;
+- no `PHX_FRAMEWORK_ROOT`;
+- no direct `task ci`;
+- installed immutable `scripts\Invoke-PhxCi.ps1` front door only;
+- pre-verification frozen `phase6-integration` gate retained;
+- post-verification frozen `phase6-integration` gate retained;
+- no ordinary unbraced `$variable:` parser hazard found;
+- native-command `$LASTEXITCODE` captures remain present immediately after checked native commands;
+- active checkout mutation remains absent from the verifier.
+
+No user-run bootstrap is supplied in this correction.
+
+The next supervisor-approved bootstrap must independently:
+
+- validate the initial repository-root command and capture its native exit code immediately;
+- fetch/prune;
+- require the exact frozen common base;
+- require the task remote branch to equal the supervisor-reviewed post-repair branch HEAD exactly;
+- preserve the active checkout;
+- use a disposable worktree only to load the committed verifier if needed;
+- pass the normal repository root to the verifier/PHX-CI;
+- use only the installed immutable PHX-CI runtime;
+- preserve complete actionable BLOCKED/FAIL diagnostics;
+- obey Windows PowerShell 5.1 paste-wrapper continuation rules.
+
+## 9. Verification Status
+
+Authoritative local PHX-CI verification was **not run**, per supervisor instruction.
 
 - Change-set verification: NOT EXECUTED
 - Repository verification: NOT EXECUTED
 - Overall verification: NOT EXECUTED
-- Required `PASS / PASS / PASS`: **NOT ESTABLISHED**
+- Required `PASS / PASS / PASS`: NOT ESTABLISHED
+- GitHub Actions: NOT USED
 
-Per the task contract, `STATUS: COMPLETE` is prohibited.
+Therefore `STATUS: COMPLETE` remains prohibited and this evidence remains
+`STATUS: BLOCKED` pending supervisor review and later authorized local PHX-CI verification.
 
-The committed verifier is ready for execution on the authorized local machine through the installed immutable PHX-CI runtime.
-
-## 8. Frozen Common-Base Recheck Before This Evidence
-
-Immediately before writing this evidence, remote authority was re-read:
-
-`origin/phase6-integration = c6daa20ad287f395a99cf88943465a9ecc3159dd`
-
-Result: PASS — the frozen D-series common base had not drifted.
-
-## 9. Scope / Stop
+## 10. Scope / Stop
 
 Not performed:
 
+- local PHX-CI execution;
 - GitHub Actions;
-- live Google Drive validation;
-- physical Windows/iPhone/iPad D01 execution;
+- live/physical validation;
 - D02-D06 work;
 - peer D-series integration;
 - `phase6-integration` modification;
 - VH30;
 - Stage 3;
 - merge, promotion, tag, or release.
-
-Current blocker is limited to the mandatory authoritative installed-runtime PHX-CI verification gate.
