@@ -560,6 +560,35 @@ test("VH29 D06 returns the exact required BLOCKED classification before mutation
   assert.equal(harness.evidenceCalls.length, 0);
 });
 
+test("VH29 D06 acknowledgement alone cannot manufacture staleness or release absent-device mutation", async () => {
+  const harness = createHarness();
+  harness.runtime.setEnabled(true);
+
+  const started = runnerResult(await harness.runtime.startScenario("D06"));
+  assert.equal(started.status, "PAUSED-HUMAN-ACTION");
+  if (started.status !== "PAUSED-HUMAN-ACTION") throw new Error("Expected D06 stale checkpoint.");
+
+  const acknowledged = await harness.scenario.staleCheckpoint.acknowledge(run);
+  assert.equal(acknowledged.status, "paused");
+
+  const verified = await harness.scenario.staleCheckpoint.verify(run);
+  assert.equal(verified.status, "paused");
+  if (verified.status === "paused") assert.equal(verified.reason, "postcondition-not-observed");
+
+  const resumed = await harness.runtime.resumeCurrent();
+  assert.equal(resumed.status, "runner");
+  if (resumed.status !== "runner") throw new Error("Expected paused D06 runner result.");
+  assert.equal(resumed.result.status, "PAUSED-HUMAN-ACTION");
+
+  assert.deepEqual(harness.edited, []);
+  assert.deepEqual(harness.deleted, []);
+  assert.deepEqual(harness.production.executedPlanIds, [
+    "plan:d06:seed-windows",
+    "plan:d06:seed-mobile",
+  ]);
+  assert.equal(harness.evidenceCalls.length, 0);
+});
+
 test("VH29 D06 uses VH13 genuine-staleness checkpoint, executes safe reconciliation, and keeps stale deletion hard-stopped", async () => {
   const harness = createHarness();
 
