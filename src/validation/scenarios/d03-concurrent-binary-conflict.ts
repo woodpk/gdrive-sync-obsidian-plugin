@@ -785,6 +785,7 @@ function conflictMatchesDescriptor(
 
 function requireOpaqueConflict(input: {
   readonly surface: ProductSurfaceState;
+  readonly expectedMobileDeviceId: ValidationDeviceIdentity["deviceId"];
   readonly targetBase: ValidationFixtureDescriptor;
   readonly windowsTarget: ValidationFixtureDescriptor;
   readonly mobileTarget: ValidationFixtureDescriptor;
@@ -793,24 +794,27 @@ function requireOpaqueConflict(input: {
     || input.surface.status.kind === "conflict-present"
     ? input.surface.status.conflictCount
     : 0;
-  if (conflictCount < 1) {
-    throw new Error("D03 production surface does not present the unresolved binary conflict.");
+  if (conflictCount !== 1) {
+    throw new Error(`D03 production surface must report exactly one conflict; observed conflictCount=${conflictCount}.`);
   }
-  const matches = input.surface.conflicts.filter(
-    (conflict): conflict is D03OpaqueConflict =>
-      conflict.kind === "opaque-binary" && conflict.path === input.targetBase.path,
-  );
-  if (matches.length !== 1) {
-    throw new Error(`D03 requires exactly one production opaque-binary conflict at the target path; observed ${matches.length}.`);
+
+  const activeConflicts = input.surface.conflicts.filter(conflict => conflict.kind !== "none");
+  if (activeConflicts.length !== 1) {
+    throw new Error(`D03 production surface must contain exactly one non-none conflict; observed ${activeConflicts.length}.`);
   }
-  const conflict = matches[0]!;
+
+  const onlyConflict = activeConflicts[0]!;
+  if (onlyConflict.kind !== "opaque-binary" || onlyConflict.path !== input.targetBase.path) {
+    throw new Error("D03 sole production conflict is not the expected target-path opaque-binary conflict.");
+  }
+  const conflict: D03OpaqueConflict = onlyConflict;
   const base = conflict.preserved.base;
   if (!base) throw new Error("D03 opaque-binary conflict did not preserve trusted BASE provenance.");
   if (!conflictMatchesDescriptor(conflict.preserved.local, "local", input.mobileTarget)) {
     throw new Error("D03 opaque-binary conflict did not preserve the complete mobile/local variant with provenance.");
   }
-  if (!conflict.preserved.local.deviceId) {
-    throw new Error("D03 opaque-binary local provenance is missing device identity.");
+  if (conflict.preserved.local.deviceId !== input.expectedMobileDeviceId) {
+    throw new Error("D03 opaque-binary local provenance is not owned by the exact mobile participant.");
   }
   if (!conflictMatchesDescriptor(conflict.preserved.remote, "remote", input.windowsTarget)) {
     throw new Error("D03 opaque-binary conflict did not preserve the complete Windows/remote variant with provenance.");
@@ -1194,6 +1198,7 @@ export function createD03ConcurrentBinaryConflictScenario(
           const safeFinal = requireDescriptor(request.run, context.safeFinal, "safe final");
           const conflict = requireOpaqueConflict({
             surface: options.conflicts.current(),
+            expectedMobileDeviceId: options.mobileDevice.deviceId,
             targetBase,
             windowsTarget,
             mobileTarget,
