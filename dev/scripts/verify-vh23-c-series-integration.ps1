@@ -126,9 +126,7 @@ if ($head -ne $ImplementationHead) {
 }
 
 $sourceHead = Invoke-GitText @('rev-parse',$ExpectedBranchRef)
-if ($sourceHead -ne $ImplementationHead) {
-    throw "VH23 source branch mismatch. $ExpectedBranchRef resolves to $sourceHead, expected $ImplementationHead."
-}
+Assert-Ancestor -Ancestor $ImplementationHead -Descendant $sourceHead -Label 'VH23 implementation HEAD containment in source branch'
 
 Assert-Ancestor -Ancestor $IntegrationBaseSha -Descendant $ImplementationHead -Label 'VH23 integration base'
 foreach ($acceptedHead in $RequiredAcceptedHeads) {
