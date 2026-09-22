@@ -62,12 +62,17 @@ export const D03_AUTHORITY_CYCLES = Object.freeze({
 
 export const D03_OPERATIONS = Object.freeze({
   establishFixtures: "d03-establish-trusted-fixtures",
+  captureEstablishWindowsDiagnosticRun: "d03-capture-establish-windows-diagnostic-run",
+  verifyEstablishWindowsTerminal: "d03-verify-establish-windows-terminal",
   handoffBaselineToMobile: "d03-handoff-baseline-to-mobile",
+  captureEstablishMobileDiagnosticRun: "d03-capture-establish-mobile-diagnostic-run",
+  verifyEstablishMobileTerminal: "d03-verify-establish-mobile-terminal",
   verifyTrustedBaseline: "d03-verify-trusted-baseline",
   editWindowsVariants: "d03-edit-windows-variants",
   prepareMobileVariant: "d03-prepare-mobile-variant",
+  captureWindowsPublishDiagnosticRun: "d03-capture-windows-publish-diagnostic-run",
+  verifyWindowsPublishTerminal: "d03-verify-windows-publish-terminal",
   handoffWindowsUpdatesToMobile: "d03-handoff-windows-updates-to-mobile",
-  captureMobileConflictDiagnosticRun: "d03-capture-mobile-conflict-diagnostic-run",
   verifyConflictOutcome: "d03-verify-conflict-outcome",
   recordEvidence: "d03-record-evidence",
 });
@@ -114,7 +119,16 @@ export interface D03EvidenceRecorderPort {
     readonly safeBase: ValidationFixtureDescriptor;
     readonly safeFinal: ValidationFixtureDescriptor;
     readonly conflict: D03OpaqueConflict;
-    readonly mobileConflictDiagnosticRunId: number;
+    readonly executedDiagnosticRunIds: Readonly<{
+      establishWindows: number;
+      establishMobile: number;
+      windowsPublish: number;
+    }>;
+    readonly executionVerifications: Readonly<{
+      establishWindows: ValidationStateConvergenceReport;
+      establishMobile: ValidationStateConvergenceReport;
+      windowsPublish: ValidationStateConvergenceReport;
+    }>;
     readonly baselineVerification: ValidationStateConvergenceReport;
     readonly finalVerification: ValidationStateConvergenceReport;
   }): Promise<readonly ValidationEvidenceRef[]>;
@@ -125,10 +139,11 @@ export interface D03ScenarioPackageOptions {
   readonly safePath: VaultPath;
   readonly windowsDevice: ValidationDeviceIdentity;
   readonly mobileDevice: ValidationDeviceIdentity;
-  readonly windowsFixtures: D03FixtureManagerPort;
+  readonly windowsFixturesForRun: (run: ValidationRunIdentity) => D03FixtureManagerPort;
   readonly verifier: D03VerifierPort;
   readonly crossDevice: D03CrossDevicePort;
   readonly conflicts: D03ConflictObserverPort;
+  readonly windowsDiagnostics: D03DiagnosticRunIdSource;
   readonly mobileDiagnostics: D03DiagnosticRunIdSource;
   readonly evidence: D03EvidenceRecorderPort;
 }
@@ -140,19 +155,29 @@ export interface D03ScenarioPackage {
 }
 
 interface D03Context {
+  readonly run: ValidationRunIdentity;
   targetBase?: ValidationFixtureDescriptor;
   windowsTarget?: ValidationFixtureDescriptor;
   mobileTarget?: ValidationFixtureDescriptor;
   safeBase?: ValidationFixtureDescriptor;
   safeFinal?: ValidationFixtureDescriptor;
   conflict?: D03OpaqueConflict;
-  mobileConflictDiagnosticRunId?: number;
+  establishWindowsDiagnosticRunId?: number;
+  establishMobileDiagnosticRunId?: number;
+  windowsPublishDiagnosticRunId?: number;
+  establishWindowsVerification?: ValidationStateConvergenceReport;
+  establishMobileVerification?: ValidationStateConvergenceReport;
+  windowsPublishVerification?: ValidationStateConvergenceReport;
   baselineVerification?: ValidationStateConvergenceReport;
   finalVerification?: ValidationStateConvergenceReport;
 }
 
 function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
   return left.runId === right.runId && left.scenarioId === right.scenarioId;
+}
+
+function runKey(run: ValidationRunIdentity): string {
+  return `${String(run.scenarioId)}\u0000${String(run.runId)}`;
 }
 
 function completed(evidenceRefs: readonly ValidationEvidenceRef[] = []) {
@@ -321,6 +346,12 @@ export function createD03ScenarioDefinition(input: {
       moduleStep("d03-establish-fixtures", "fixture-manager", D03_OPERATIONS.establishFixtures, "operation-complete"),
 
       previewStep("d03-establish-windows-preview", D03_AUTHORITY_CYCLES.establishWindows),
+      moduleStep(
+        "d03-capture-establish-windows-diagnostic-run",
+        "state-convergence-verifier",
+        D03_OPERATIONS.captureEstablishWindowsDiagnosticRun,
+        "operation-complete",
+      ),
       assertionStep(
         "d03-establish-windows-assert",
         D03_AUTHORITY_CYCLES.establishWindows,
@@ -328,6 +359,12 @@ export function createD03ScenarioDefinition(input: {
         baselineWindowsExpectation,
       ),
       executeStep("d03-establish-windows-execute", D03_AUTHORITY_CYCLES.establishWindows),
+      moduleStep(
+        "d03-verify-establish-windows-terminal",
+        "state-convergence-verifier",
+        D03_OPERATIONS.verifyEstablishWindowsTerminal,
+        "verification-passed",
+      ),
 
       moduleStep(
         "d03-handoff-baseline-to-mobile",
@@ -336,6 +373,12 @@ export function createD03ScenarioDefinition(input: {
         "operation-complete",
       ),
       previewStep("d03-establish-mobile-preview", D03_AUTHORITY_CYCLES.establishMobile),
+      moduleStep(
+        "d03-capture-establish-mobile-diagnostic-run",
+        "state-convergence-verifier",
+        D03_OPERATIONS.captureEstablishMobileDiagnosticRun,
+        "operation-complete",
+      ),
       assertionStep(
         "d03-establish-mobile-assert",
         D03_AUTHORITY_CYCLES.establishMobile,
@@ -343,6 +386,12 @@ export function createD03ScenarioDefinition(input: {
         baselineMobileExpectation,
       ),
       executeStep("d03-establish-mobile-execute", D03_AUTHORITY_CYCLES.establishMobile),
+      moduleStep(
+        "d03-verify-establish-mobile-terminal",
+        "state-convergence-verifier",
+        D03_OPERATIONS.verifyEstablishMobileTerminal,
+        "verification-passed",
+      ),
       moduleStep(
         "d03-verify-trusted-baseline",
         "state-convergence-verifier",
@@ -364,6 +413,12 @@ export function createD03ScenarioDefinition(input: {
       ),
 
       previewStep("d03-windows-publish-preview", D03_AUTHORITY_CYCLES.windowsPublish),
+      moduleStep(
+        "d03-capture-windows-publish-diagnostic-run",
+        "state-convergence-verifier",
+        D03_OPERATIONS.captureWindowsPublishDiagnosticRun,
+        "operation-complete",
+      ),
       assertionStep(
         "d03-windows-publish-assert",
         D03_AUTHORITY_CYCLES.windowsPublish,
@@ -371,6 +426,12 @@ export function createD03ScenarioDefinition(input: {
         windowsPublishExpectation,
       ),
       executeStep("d03-windows-publish-execute", D03_AUTHORITY_CYCLES.windowsPublish),
+      moduleStep(
+        "d03-verify-windows-publish-terminal",
+        "state-convergence-verifier",
+        D03_OPERATIONS.verifyWindowsPublishTerminal,
+        "verification-passed",
+      ),
 
       moduleStep(
         "d03-handoff-windows-updates-to-mobile",
@@ -379,19 +440,12 @@ export function createD03ScenarioDefinition(input: {
         "operation-complete",
       ),
       previewStep("d03-mobile-conflict-preview", D03_AUTHORITY_CYCLES.mobileConflict),
-      moduleStep(
-        "d03-capture-mobile-conflict-diagnostic-run",
-        "state-convergence-verifier",
-        D03_OPERATIONS.captureMobileConflictDiagnosticRun,
-        "operation-complete",
-      ),
       assertionStep(
         "d03-mobile-conflict-assert",
         D03_AUTHORITY_CYCLES.mobileConflict,
         "d03:mobile-conflict",
         mobileConflictExpectation,
       ),
-      executeStep("d03-mobile-conflict-execute", D03_AUTHORITY_CYCLES.mobileConflict),
 
       moduleStep(
         "d03-verify-conflict-outcome",
