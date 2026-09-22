@@ -1078,7 +1078,10 @@ test("VH26 D03 mutable context is exact-run scoped across repeated use of one sc
     operation: D03_OPERATIONS.recordEvidence,
   });
   assert.ok(preRunBEvidence);
-  assert.notEqual(preRunBEvidence.status, "completed");
+  assert.equal(preRunBEvidence.status, "failed");
+  if (preRunBEvidence.status === "failed") {
+    assert.match(preRunBEvidence.summary, /exact validation run/i);
+  }
   assert.equal(harness.evidence.calls.length, 1);
 
   harness.fixtures.useDescriptorsFrom(RUN_B, RUN_A);
