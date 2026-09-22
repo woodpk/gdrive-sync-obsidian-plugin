@@ -400,7 +400,6 @@ function createDefinition(
       moduleStep("d02-handoff-conflict-mobile", "cross-device-coordinator", D02_OPERATIONS.handoffConflictMobile, "operation-complete"),
       previewStep("d02-mobile-conflict-preview", D02_AUTHORITY_CYCLES.mobileConflict),
       assertionStep("d02-mobile-conflict-assert", D02_AUTHORITY_CYCLES.mobileConflict, mobileConflict),
-      executionStep("d02-mobile-conflict-execute", D02_AUTHORITY_CYCLES.mobileConflict),
       moduleStep("d02-verify-conflict-preserved", "state-convergence-verifier", D02_OPERATIONS.verifyConflictPreserved, "verification-passed"),
 
       resolveConflictStep(targetPath),
