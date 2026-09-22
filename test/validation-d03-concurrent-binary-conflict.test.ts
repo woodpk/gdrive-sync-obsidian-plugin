@@ -10,6 +10,7 @@ import {
   type SynchronizationPlan,
   type VaultPath,
 } from "../src/contracts";
+import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
 import {
   validationAssertionGroupResult,
   validationAssertionId,
@@ -834,7 +835,7 @@ test("VH26 D03 previews and proves the binary conflict without ever executing th
 
 function diagnosticVerifier(
   deviceId: typeof WINDOWS.deviceId | typeof MOBILE.deviceId,
-  events: ValidationDeviceObservationSource["diagnostics"]["snapshot"] extends () => infer T ? T : never,
+  events: readonly DiagnosticEvent[],
 ): StateConvergenceVerifier {
   const device: ValidationDeviceObservationSource = {
     deviceId,
