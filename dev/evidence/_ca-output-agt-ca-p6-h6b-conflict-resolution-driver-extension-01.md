@@ -5,97 +5,124 @@ STATUS: BLOCKED
 - Agent: `agt-ca-p6-h6b-conflict-resolution-driver-extension-01`
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Required branch: `phase6-h6b-conflict-resolution-driver-extension`
-- Exact base SHA: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
-- Implementation SHA: `38e0d72595894395c32fbfe90cfe4b78f7e883f6`
+- Exact starting base: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
+- Corrected implementation HEAD: `93d23ec05fb3a8a0660459085ece503d6fb501ab`
+- Repair was applied to the existing branch lineage; it did not restart from the base.
 
-## Changed-file manifest — implementation
+## Corrected implementation
 
-- `dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1` — added task-specific PowerShell launcher over the pinned centralized PHX-CI consumer workflow.
-- `src/validation/driver-plan-fault-verifier-contracts.ts` — added validation-only `resolve-observed-conflict` request vocabulary and bounded conflict kind/resolution types.
-- `src/validation/production-path-driver.ts` — retained run-scoped production conflict observations after preview; fail-closed targeting/revalidation; production `resolve-conflict` delegation using the real observed conflict ID.
-- `src/validation/validation-mode-runtime.ts` — validated runtime input for `resolve-observed-conflict`, prohibited caller-supplied `conflictId`, and delegated only through the fixed production-path driver.
-- `test/validation-driver-plan-fault-verifier-contracts.test.ts` — contract vocabulary and compile-time prohibition coverage.
-- `test/validation-production-path-driver.test.ts` — exact observed delegation, run/path/kind/ambiguity/staleness guards, production rejection, and no-manufactured-success coverage.
-- `test/validation-mode-runtime-plan-handoff.test.ts` — fixed runtime path, malformed/caller-ID rejection, production-rejection-to-BLOCKED behavior, and non-overridable driver preservation coverage.
+### Exact observed-conflict identity
 
-This evidence file is committed separately from the implementation/tests as required.
+`src/validation/production-path-driver.ts` now snapshots the public unresolved-text conflict observation produced during production preview, including:
 
-## Exact validation contract added
+- conflict ID, path, and kind;
+- preserved local, remote, and optional base provenance;
+- provenance source, device identity, and remote identity;
+- version path and entity kind;
+- version remote-object identity and observation token;
+- content hash, size, and revision.
 
-New validation-only production driver request:
+The snapshot deliberately excludes:
 
-`resolve-observed-conflict`
+- `ConflictProvenance.advisoryObservedAtMs`;
+- `ContentEvidence.advisoryModifiedTimeMs`.
 
-Required public targeting inputs:
+Before production conflict resolution is delegated, the current production surface must still contain exactly one path/kind match and that conflict must match the retained conflict ID plus the complete retained non-advisory public provenance/version observation. A same-ID conflict whose preserved local/remote/base authority or content identity changed is stale and is rejected.
 
-- validation `run`;
-- validation `stepId`;
-- `expectedVaultPath`;
-- `expectedConflictKind`, currently restricted to `unresolved-text`;
-- explicit non-manual resolution choice: `keep-local`, `keep-remote`, or `keep-both`.
-
-The request type contains no `conflictId`. Runtime and driver guards also reject a caller-supplied `conflictId` at runtime.
-
-Production preview captures relevant unresolved-text conflicts from `ProductController.currentSurface().conflicts` for the same validation run. Resolution delegates only when exactly one observed conflict matches the expected path/kind and the current production surface still contains exactly that same conflict identity/path/kind. The real production `conflictId` is then obtained from the retained observation and passed to:
+The validation harness still obtains the real `conflictId` only from the production conflict observation and delegates only through:
 
 `controller.request({ kind: "resolve-conflict", conflictId, resolution })`
 
-Accepted delegation remains acknowledgement only and reports `productionOutcomeEstablished: false`.
+No private conflict-ID derivation or production conflict policy was added.
 
-No `src/contracts/**`, product controller, production conflict resolver, D-series scenario implementation, or D-series task-prompt surface was modified.
+### Mandatory regression
 
-## Static repository verification performed in this session
+`test/validation-production-path-driver.test.ts` preserves the existing different-ID stale-conflict case and adds the required replacement regression:
 
-PASS — exact-base ancestry inspected through GitHub compare:
-- base: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
-- implementation: `38e0d72595894395c32fbfe90cfe4b78f7e883f6`
-- comparison: implementation is 3 commits ahead, 0 behind, with the exact base as merge base.
+- preview observes conflict A;
+- current surface is replaced by conflict B;
+- B uses the same conflict ID, same path, and same `unresolved-text` kind;
+- B changes preserved version/content identity;
+- `resolve-observed-conflict` is rejected;
+- no production `resolve-conflict` request is added.
 
-PASS — remote branch ref inspected and confirmed at implementation SHA before the evidence commit.
+### Installed immutable PHX-CI runtime
 
-PASS — complete implementation changed-file manifest reconstructed through GitHub compare; no unauthorized product-contract or D-series files are present.
+`dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1` no longer uses the obsolete source-checkout execution model.
 
-PASS — all seven implementation files were re-read from the implementation SHA and checked for trailing whitespace and unresolved Git conflict markers; none were found.
+Removed requirements include:
 
-These static checks are not represented as a substitute for PHX-CI or `git diff --check`.
+- `FrameworkRoot`;
+- `PHX_FRAMEWORK_ROOT`;
+- a PHX-CI source Git checkout;
+- PHX-CI checkout HEAD validation;
+- direct Go Task discovery;
+- direct `task ci` invocation.
 
-## Focused verification results
+The verifier now:
 
-NOT EXECUTED IN THIS SESSION.
+1. validates the H6B branch/base/implementation ancestry gates;
+2. runs the committed-range `git diff --check` gate;
+3. reads the exact PHX-CI SHA from the target branch's `phx-ci.json`;
+4. locates the runtime store, defaulting to `%LOCALAPPDATA%\PHX-CI\runtimes`;
+5. requires `<runtime-store>\<framework-sha>\phx-ci-runtime.json` and matching `sourceCommit`;
+6. requires the installed production front door at `scripts\Invoke-PhxCi.ps1`;
+7. invokes that front door with `RepoRoot`, `Branch`, `BaseRef`, `FocusedTestCommand`, `PublicationMode`, and `RuntimeStoreRoot`;
+8. requires runtime exit code 0 plus:
+   - `Change-set verification: PASS`;
+   - `Repository verification: PASS`;
+   - `Overall verification: PASS`;
+   - `PHX-CI RESULT: PASS`.
 
-Required focused command is encoded in `dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1` and covers:
+The installed PHX-CI runtime remains responsible for runtime-manifest payload integrity, isolated verification, exact pin enforcement, verification sequencing, evidence production, and control-checkout preservation.
 
-- `validation-driver-plan-fault-verifier-contracts.test`
-- `validation-production-path-driver.test`
-- `validation-mode-runtime-plan-handoff.test`
-- `validation-mode-runtime-canary.test`
+## Focused verification coverage
 
-The current ChatGPT execution container cannot run the repository-controlled PHX-CI workflow: it has no network-capable GitHub checkout, `pwsh` is unavailable, and the Go Task executable used by PHX-CI is unavailable. GitHub Actions were not used.
+The focused command remains bounded to:
 
-## PHX-CI results
+- `validation-driver-plan-fault-verifier-contracts.test`;
+- `validation-production-path-driver.test`;
+- `validation-mode-runtime-plan-handoff.test`;
+- `validation-mode-runtime-canary.test`.
 
-- Change-set verification: NOT EXECUTED
-- Repository verification: NOT EXECUTED
-- Overall verification: NOT EXECUTED
+Full repository verification remains delegated to PHX-CI.
+
+## Static verification performed in this ChatGPT session
+
+PASS — correction was committed as a descendant of the existing rejected branch HEAD.
+
+PASS — the corrected implementation files were re-read from `93d23ec05fb3a8a0660459085ece503d6fb501ab`.
+
+PASS — no trailing whitespace or unresolved merge markers were found in the three corrected files.
+
+PASS — the corrected verifier contains none of the prohibited obsolete execution markers:
+- `FrameworkRoot`;
+- `PHX_FRAMEWORK_ROOT`;
+- direct `task ci`;
+- direct Go Task discovery;
+- `PHX_FOCUSED_TEST_COMMAND`.
+
+PASS — the pinned PHX-CI implementation's public installed-runtime front door was inspected and supports the invocation parameters used by the verifier.
+
+These static checks are not represented as authoritative PHX-CI execution.
+
+## Authoritative verification status
+
+- Focused H6B execution: NOT EXECUTED IN THIS SESSION
+- PHX-CI Change-set verification: NOT EXECUTED
+- PHX-CI Repository verification: NOT EXECUTED
+- PHX-CI Overall verification: NOT EXECUTED
 - Required `PASS / PASS / PASS`: NOT ESTABLISHED
+- GitHub Actions: NOT USED
 
-## git diff --check
+The task therefore remains `STATUS: BLOCKED` until the installed immutable PHX-CI runtime executes successfully on the pushed branch and produces authoritative `PASS / PASS / PASS`.
 
-NOT EXECUTED IN THIS SESSION.
+## Remaining gate
 
-A static trailing-whitespace/conflict-marker scan of all implementation files passed, but that is not claimed as execution of the required Git command. The committed verifier runs both the committed-range and post-PHX-CI working-tree `git diff --check` gates.
+Run the committed local verifier against implementation HEAD:
 
-## Deviations
+`93d23ec05fb3a8a0660459085ece503d6fb501ab`
 
-- No implementation-scope deviation identified.
-- Required dynamic verification/evidence closure could not be executed in this ChatGPT session because the pinned local PHX-CI runtime is not available here.
-- GitHub Actions were not used or restored.
-
-## Blockers
-
-1. Execute `dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1` against implementation SHA `38e0d72595894395c32fbfe90cfe4b78f7e883f6` using the installed PHX-CI framework pinned by `phx-ci.json`.
-2. Require authoritative PHX-CI `PASS / PASS / PASS`.
-3. Require both committed-range and working-tree `git diff --check` PASS.
-4. Replace this blocked evidence with `STATUS: COMPLETE` and record the actual PHX-CI run/evidence only after those gates pass.
+Do not change this evidence to `STATUS: COMPLETE` until the runtime output establishes `PASS / PASS / PASS`.
 
 No D02 implementation, Parallel Wave D restart, integration promotion, or physical/live validation was performed.
