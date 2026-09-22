@@ -1,4 +1,4 @@
-STATUS: BLOCKED
+STATUS: COMPLETE
 
 # Phase 6 01-test PHX-CI Prompt Migration Evidence
 
@@ -127,15 +127,30 @@ Static authored-file checks:
 - parentheses, braces, and brackets are balanced in the repaired file;
 - accidental identifier-token corruption scan is clean.
 
-Migration-verifier execution result: **BLOCKED PENDING RE-RUN**.
+Migration-verifier execution result: **PASS**.
 
-A first local execution attempt by the human supervisor reached the verifier but failed at PowerShell parse time because the prior verifier revision used the invalid expandable-string form `$relative:$($i + 1)` on two violation-reporting lines. That defect was repaired by replacing both expressions with format-operator rendering (`-f`), and a full static scan now reports **zero** remaining non-scope `$variable:` parser traps. Delimiter balance and accidental-token-corruption scans also pass. The repaired verifier is commit `3537f388ddbe593d084abb06673bf8666410d6c1` with blob `a3bba5e25eeda59fdecb44e5abc6545eb5fd1106`.
+A first local execution attempt exposed a PowerShell parser defect in the verifier. That defect was repaired in commit `3537f388ddbe593d084abb06673bf8666410d6c1` (blob `a3bba5e25eeda59fdecb44e5abc6545eb5fd1106`).
 
-The repaired verifier still requires a fresh local PowerShell 7 execution. `STATUS: COMPLETE` remains prohibited until that rerun passes.
+The repaired verifier was then executed locally in PowerShell 7 against detached verification HEAD `e2b237b3c8b92f86881af28d410962c551be7737`, with base `e9a107bb21cabbe7556862ba8193c892fea2808c`.
+
+Observed authoritative local result:
+
+- `TOTAL_MARKDOWN_FILES: 82`
+- `MIGRATION_VERIFIER_RESULT: PASS`
+- `FUTURE_VH23_PLUS_POLICY: PASS`
+- `ACTIVE_GITHUB_ACTIONS_INSTRUCTIONS: NONE`
+- `ACTIVE_RETIRED_RUNNER_INSTRUCTIONS: NONE`
+- `CANONICAL_EVIDENCE_POLICY: PASS`
+- `ALLOWED_PATH_SCOPE: PASS`
+- `GIT_DIFF_CHECK: PASS`
+- `git diff --check base..HEAD`: exit 0
+- `git diff --check working tree`: exit 0
+
+The local environmental blocker is resolved.
 
 ## Repository / path verification
 
-GitHub repository comparison from base `e9a107bb21cabbe7556862ba8193c892fea2808c` to implementation SHA `064ec6d23f393ab22b4368cc2f0c428fdf03e8f7` reports exactly **53 changed paths**:
+GitHub repository comparison from base `e9a107bb21cabbe7556862ba8193c892fea2808c` to repaired implementation SHA `3537f388ddbe593d084abb06673bf8666410d6c1` reports exactly **53 changed non-evidence paths**:
 
 - **52** Markdown files under `dev/agents/st2a/ph6/04-lv/01-test/`;
 - **1** verifier script at `dev/scripts/verify-phase6-01-test-phx-ci-migration.ps1`;
@@ -145,7 +160,7 @@ GitHub repository comparison from base `e9a107bb21cabbe7556862ba8193c892fea2808c
 
 Allowed-path static result: **PASS**.
 
-`git diff --check` result: **NOT AVAILABLE IN THIS SESSION**.
+`git diff --check` result: **PASS** — both base-to-HEAD and working-tree checks returned exit code 0 in the local PowerShell 7 run.
 
 Pinned PHX-CI repository verification: **NOT AVAILABLE IN THIS SESSION**. No GitHub Actions were used.
 
@@ -207,20 +222,11 @@ Pinned PHX-CI repository verification: **NOT AVAILABLE IN THIS SESSION**. No Git
 
 ## Deviations
 
-- The first human local execution of `dev/scripts/verify-phase6-01-test-phx-ci-migration.ps1` exposed a verifier parser defect; that defect is repaired, but the repaired verifier has not yet been rerun.
-- Required `git diff --check` could not be executed in this ChatGPT environment.
-- Optional pinned PHX-CI repository verification could not be executed.
+- The first local verifier execution exposed a PowerShell parser defect; the repaired verifier was subsequently rerun successfully.
+- Optional full pinned PHX-CI repository verification was not required for this documentation-only migration closure and was not used as a substitute for the dedicated migration verifier.
 - No physical Drive/mobile validation was executed.
 - No GitHub Actions were added, modified, or used.
 
 ## Blockers
 
-The branch must remain `STATUS: BLOCKED` until a fresh local PowerShell 7 run against the repaired exact branch executes:
-
-1. `dev/scripts/verify-phase6-01-test-phx-ci-migration.ps1`;
-2. the required repository checks;
-3. `git diff --check`;
-
-and those gates pass.
-
-No product, harness, test, PHX-CI framework, workflow, release, or physical-validation work is authorized by this blocker.
+None. The dedicated local migration verifier passed all required policy, path-scope, and `git diff --check` gates.
