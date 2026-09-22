@@ -785,7 +785,7 @@ function conflictMatchesDescriptor(
 
 function requireOpaqueConflict(input: {
   readonly surface: ProductSurfaceState;
-  readonly expectedMobileDeviceId: ValidationDeviceIdentity["deviceId"];
+  readonly expectedMobileDeviceId: string;
   readonly targetBase: ValidationFixtureDescriptor;
   readonly windowsTarget: ValidationFixtureDescriptor;
   readonly mobileTarget: ValidationFixtureDescriptor;
