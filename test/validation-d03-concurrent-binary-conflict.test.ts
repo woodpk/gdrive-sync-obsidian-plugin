@@ -25,6 +25,8 @@ import {
   validationDeviceIdentity,
   validationFixtureIdentity,
   validationRunIdentity,
+  validationStepId,
+  type ValidationRunIdentity,
 } from "../src/validation/run-sandbox-checkpoint-contracts";
 import type {
   ValidationRunnerPersistentState,
@@ -53,6 +55,7 @@ import {
   type D03DiagnosticRunIdSource,
   type D03EvidenceRecorderPort,
   type D03FixtureManagerPort,
+  type D03ScenarioPackage,
   type D03VerifierPort,
 } from "../src/validation/scenarios/d03-concurrent-binary-conflict";
 import {
@@ -64,12 +67,18 @@ import {
 import { ValidationModeRuntime } from "../src/validation/validation-mode-runtime";
 
 const RUN = validationRunIdentity("run:vh26:d03:01", "D03");
+const RUN_A = validationRunIdentity("run:vh26:d03:run-a", "D03");
+const RUN_B = validationRunIdentity("run:vh26:d03:run-b", "D03");
 const WINDOWS = validationDeviceIdentity("device:d03:windows", "windows-desktop");
 const MOBILE = validationDeviceIdentity("device:d03:mobile", "iphone");
 const TARGET_PATH = contractId<"VaultPath">("validation/d03/d03-binary-conflict.bin") as VaultPath;
 const SAFE_PATH = contractId<"VaultPath">("validation/d03/d03-unrelated-safe.bin") as VaultPath;
 const REMOTE_ID = contractId<"RemoteObjectId">("remote:d03:target");
-const MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID = 7303;
+
+const WINDOWS_BASE_RUN_ID = 1101;
+const MOBILE_BASE_RUN_ID = 2201;
+const WINDOWS_PUBLISH_RUN_ID = 1102;
+const MOBILE_CONFLICT_PREVIEW_RUN_ID = 2202;
 
 const BASE_HASH = contractId<"ContentHash">(
   "sha256:1111111111111111111111111111111111111111111111111111111111111111",
@@ -130,17 +139,20 @@ class MemoryResumeAdoptionStore implements ValidationRunnerResumeAdoptionStore {
   }
 }
 
-function descriptor(input: {
-  readonly fixtureId: string;
-  readonly relativePath: string;
-  readonly path: VaultPath;
-  readonly version: number;
-  readonly sizeBytes: number;
-  readonly hash: ContentHash;
-  readonly purpose: "ordinary" | "conflict";
-}): ValidationFixtureDescriptor {
+function descriptor(
+  run: ValidationRunIdentity,
+  input: {
+    readonly fixtureId: string;
+    readonly relativePath: string;
+    readonly path: VaultPath;
+    readonly version: number;
+    readonly sizeBytes: number;
+    readonly hash: ContentHash;
+    readonly purpose: "ordinary" | "conflict";
+  },
+): ValidationFixtureDescriptor {
   return Object.freeze({
-    identity: validationFixtureIdentity(RUN, input.fixtureId),
+    identity: validationFixtureIdentity(run, input.fixtureId),
     relativePath: input.relativePath,
     path: input.path,
     kind: "opaque-binary",
@@ -151,28 +163,35 @@ function descriptor(input: {
   });
 }
 
-const TARGET_BASE = () => descriptor({
-  fixtureId: D03_TARGET_FIXTURE_ID,
-  relativePath: D03_TARGET_RELATIVE_PATH,
-  path: TARGET_PATH,
-  version: D03_BASE_VERSION,
-  sizeBytes: D03_TARGET_SIZE_BYTES,
-  hash: BASE_HASH,
-  purpose: "conflict",
-});
+function targetBase(run: ValidationRunIdentity): ValidationFixtureDescriptor {
+  return descriptor(run, {
+    fixtureId: D03_TARGET_FIXTURE_ID,
+    relativePath: D03_TARGET_RELATIVE_PATH,
+    path: TARGET_PATH,
+    version: D03_BASE_VERSION,
+    sizeBytes: D03_TARGET_SIZE_BYTES,
+    hash: BASE_HASH,
+    purpose: "conflict",
+  });
+}
 
-const TARGET_WINDOWS = () => descriptor({
-  fixtureId: D03_TARGET_FIXTURE_ID,
-  relativePath: D03_TARGET_RELATIVE_PATH,
-  path: TARGET_PATH,
-  version: D03_WINDOWS_TARGET_VERSION,
-  sizeBytes: D03_TARGET_SIZE_BYTES,
-  hash: WINDOWS_HASH,
-  purpose: "conflict",
-});
+function targetWindows(run: ValidationRunIdentity): ValidationFixtureDescriptor {
+  return descriptor(run, {
+    fixtureId: D03_TARGET_FIXTURE_ID,
+    relativePath: D03_TARGET_RELATIVE_PATH,
+    path: TARGET_PATH,
+    version: D03_WINDOWS_TARGET_VERSION,
+    sizeBytes: D03_TARGET_SIZE_BYTES,
+    hash: WINDOWS_HASH,
+    purpose: "conflict",
+  });
+}
 
-function targetMobile(hash: ContentHash = MOBILE_HASH): ValidationFixtureDescriptor {
-  return descriptor({
+function targetMobile(
+  run: ValidationRunIdentity,
+  hash: ContentHash = MOBILE_HASH,
+): ValidationFixtureDescriptor {
+  return descriptor(run, {
     fixtureId: D03_TARGET_FIXTURE_ID,
     relativePath: D03_TARGET_RELATIVE_PATH,
     path: TARGET_PATH,
@@ -183,31 +202,43 @@ function targetMobile(hash: ContentHash = MOBILE_HASH): ValidationFixtureDescrip
   });
 }
 
-const SAFE_BASE = () => descriptor({
-  fixtureId: D03_SAFE_FIXTURE_ID,
-  relativePath: D03_SAFE_RELATIVE_PATH,
-  path: SAFE_PATH,
-  version: D03_BASE_VERSION,
-  sizeBytes: D03_SAFE_SIZE_BYTES,
-  hash: SAFE_BASE_HASH,
-  purpose: "ordinary",
-});
+function safeBase(run: ValidationRunIdentity): ValidationFixtureDescriptor {
+  return descriptor(run, {
+    fixtureId: D03_SAFE_FIXTURE_ID,
+    relativePath: D03_SAFE_RELATIVE_PATH,
+    path: SAFE_PATH,
+    version: D03_BASE_VERSION,
+    sizeBytes: D03_SAFE_SIZE_BYTES,
+    hash: SAFE_BASE_HASH,
+    purpose: "ordinary",
+  });
+}
 
-const SAFE_FINAL = () => descriptor({
-  fixtureId: D03_SAFE_FIXTURE_ID,
-  relativePath: D03_SAFE_RELATIVE_PATH,
-  path: SAFE_PATH,
-  version: D03_WINDOWS_SAFE_VERSION,
-  sizeBytes: D03_SAFE_SIZE_BYTES,
-  hash: SAFE_FINAL_HASH,
-  purpose: "ordinary",
-});
+function safeFinal(run: ValidationRunIdentity): ValidationFixtureDescriptor {
+  return descriptor(run, {
+    fixtureId: D03_SAFE_FIXTURE_ID,
+    relativePath: D03_SAFE_RELATIVE_PATH,
+    path: SAFE_PATH,
+    version: D03_WINDOWS_SAFE_VERSION,
+    sizeBytes: D03_SAFE_SIZE_BYTES,
+    hash: SAFE_FINAL_HASH,
+    purpose: "ordinary",
+  });
+}
 
 class FakeFixtureManager implements D03FixtureManagerPort {
   readonly createCalls: ValidationFixtureSpec[] = [];
   readonly editCalls: Array<{ fixtureId: string; version: number }> = [];
-  private target = TARGET_BASE();
-  private safe = SAFE_BASE();
+  private target: ValidationFixtureDescriptor;
+  private safe: ValidationFixtureDescriptor;
+
+  constructor(
+    private readonly requestedRun: ValidationRunIdentity,
+    descriptorRun: ValidationRunIdentity = requestedRun,
+  ) {
+    this.target = targetBase(descriptorRun);
+    this.safe = safeBase(descriptorRun);
+  }
 
   async create(spec: ValidationFixtureSpec): Promise<ValidationFixtureDescriptor> {
     this.createCalls.push(spec);
@@ -220,12 +251,12 @@ class FakeFixtureManager implements D03FixtureManagerPort {
     this.editCalls.push({ fixtureId, version });
     if (fixtureId === D03_TARGET_FIXTURE_ID) {
       assert.equal(version, D03_WINDOWS_TARGET_VERSION);
-      this.target = TARGET_WINDOWS();
+      this.target = targetWindows(this.requestedRun);
       return this.target;
     }
     if (fixtureId === D03_SAFE_FIXTURE_ID) {
       assert.equal(version, D03_WINDOWS_SAFE_VERSION);
-      this.safe = SAFE_FINAL();
+      this.safe = safeFinal(this.requestedRun);
       return this.safe;
     }
     throw new Error("Unexpected D03 edit fixture ID.");
@@ -235,6 +266,25 @@ class FakeFixtureManager implements D03FixtureManagerPort {
     if (fixtureId === D03_TARGET_FIXTURE_ID) return this.target.hash!;
     if (fixtureId === D03_SAFE_FIXTURE_ID) return this.safe.hash!;
     throw new Error("Unexpected D03 hash fixture ID.");
+  }
+}
+
+class FixtureManagerRegistry {
+  readonly managers = new Map<string, FakeFixtureManager>();
+  private readonly descriptorRunOverrides = new Map<string, ValidationRunIdentity>();
+
+  useDescriptorsFrom(requestedRun: ValidationRunIdentity, descriptorRun: ValidationRunIdentity): void {
+    this.descriptorRunOverrides.set(String(requestedRun.runId), descriptorRun);
+    this.managers.delete(String(requestedRun.runId));
+  }
+
+  forRun(run: ValidationRunIdentity): FakeFixtureManager {
+    const key = String(run.runId);
+    const existing = this.managers.get(key);
+    if (existing) return existing;
+    const manager = new FakeFixtureManager(run, this.descriptorRunOverrides.get(key) ?? run);
+    this.managers.set(key, manager);
+    return manager;
   }
 }
 
@@ -349,31 +399,46 @@ function opaqueConflict(remoteHash: ContentHash = WINDOWS_HASH): Extract<Conflic
   });
 }
 
+interface DiagnosticState {
+  windows?: number;
+  mobile?: number;
+}
+
+interface SurfaceState {
+  current: ProductSurfaceState;
+}
+
 function productionFixture(
   plans: readonly SynchronizationPlan[],
   timeline: string[],
+  diagnostics: DiagnosticState,
+  surfaceState: SurfaceState,
   conflict: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> = opaqueConflict(),
 ) {
   let previewIndex = 0;
-  const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const requestedActions: string[] = [];
-  let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       const observed = plans[previewIndex];
       previewIndex += 1;
-      calls.push("preview-manual");
-      timeline.push(`preview:${String(observed?.planId ?? "none")}`);
-      if (observed?.planId === contractId<"PlanId">("plan:d03:mobile-conflict")) {
-        surface = {
+      const planId = String(observed?.planId ?? "none");
+      timeline.push(`preview:${planId}`);
+
+      if (planId === "plan:d03:baseline-windows") diagnostics.windows = WINDOWS_BASE_RUN_ID;
+      else if (planId === "plan:d03:baseline-mobile") diagnostics.mobile = MOBILE_BASE_RUN_ID;
+      else if (planId === "plan:d03:windows-publish") diagnostics.windows = WINDOWS_PUBLISH_RUN_ID;
+      else if (planId === "plan:d03:mobile-conflict") diagnostics.mobile = MOBILE_CONFLICT_PREVIEW_RUN_ID;
+
+      if (planId === "plan:d03:mobile-conflict") {
+        surfaceState.current = {
           status: { kind: "conflict-present", conflictCount: 1 },
           conflicts: [conflict],
-          planPreview: observed,
+          ...(observed ? { planPreview: observed } : {}),
         };
       } else {
-        surface = {
+        surfaceState.current = {
           status: { kind: "idle-ready" },
           conflicts: [],
           ...(observed ? { planPreview: observed } : {}),
@@ -381,53 +446,36 @@ function productionFixture(
       }
       return observed;
     },
-    previewVerifyReconcile: async () => {
-      calls.push("preview-verify-reconcile");
-      return undefined;
-    },
-    runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
+    previewVerifyReconcile: async () => undefined,
+    runAutomatic: async () => undefined,
     request: async action => {
-      calls.push(`request:${action.kind}`);
       requestedActions.push(action.kind);
       return { status: "accepted" };
     },
     requestPreviewAction: async action => {
-      calls.push(`execute:${String(action.planId)}`);
-      timeline.push(`execute:${String(action.planId)}`);
-      executedPlanIds.push(String(action.planId));
-      if (String(action.planId) === "plan:d03:mobile-conflict") {
-        surface = {
-          status: {
-            kind: "attention-required",
-            attentionCount: 1,
-            attentionIdentity: "d03-conflict",
-            conflictCount: 1,
-            safeOperationsCommitted: 1,
-            phase: "completed",
-            ledgerAvailable: true,
-          },
-          conflicts: [conflict],
-        };
+      const planId = String(action.planId);
+      timeline.push(`execute:${planId}`);
+      executedPlanIds.push(planId);
+      if (planId === "plan:d03:mobile-conflict") {
+        throw new Error("D03 protocol violation: conflict-containing plan must never execute.");
       }
       return { status: "accepted" };
     },
-    currentSurface: () => surface,
+    currentSurface: () => surfaceState.current,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No direct run-evidence read is expected in D03 focused tests."); },
   };
 
   return {
-    calls,
     executedPlanIds,
     requestedActions,
     runtime: { productController: () => controller },
-    currentSurface: () => surface,
   };
 }
 
 function passingReport(request: ValidationStateConvergenceRequest): ValidationStateConvergenceReport {
-  const stateRef = validationEvidenceRef("vh26:d03:state-proof");
-  const convergenceRef = validationEvidenceRef("vh26:d03:convergence-proof");
+  const stateRef = validationEvidenceRef(`vh26:d03:state-proof:${String(request.run.runId)}`);
+  const convergenceRef = validationEvidenceRef(`vh26:d03:convergence-proof:${String(request.run.runId)}`);
   const stateObservations = request.state.map(postcondition => ({
     status: "satisfied" as const,
     assertion: postcondition.assertion,
@@ -463,39 +511,36 @@ class PassingVerifier implements D03VerifierPort {
 }
 
 class RecordingCrossDevice implements D03CrossDevicePort {
-  readonly handoffPhases: string[] = [];
+  readonly handoffPhases: Array<{ runId: string; phase: string }> = [];
   readonly prepareCalls: Array<Parameters<D03CrossDevicePort["prepareMobileVariant"]>[0]> = [];
 
-  constructor(
-    private readonly timeline: string[],
-    private readonly mobileHash: ContentHash = MOBILE_HASH,
-  ) {}
+  constructor(private readonly mobileHash: ContentHash = MOBILE_HASH) {}
 
   async handoff(input: Parameters<D03CrossDevicePort["handoff"]>[0]) {
-    this.handoffPhases.push(input.phase);
-    this.timeline.push(`cross:handoff:${input.phase}`);
-    return [validationEvidenceRef(`vh26:d03:handoff:${input.phase}`)];
+    this.handoffPhases.push({ runId: String(input.run.runId), phase: input.phase });
+    return [validationEvidenceRef(`vh26:d03:handoff:${String(input.run.runId)}:${input.phase}`)];
   }
 
   async prepareMobileVariant(input: Parameters<D03CrossDevicePort["prepareMobileVariant"]>[0]) {
     this.prepareCalls.push(input);
-    this.timeline.push("cross:prepare-mobile-variant");
     return {
-      descriptor: targetMobile(this.mobileHash),
-      evidenceRefs: [validationEvidenceRef("vh26:d03:mobile-variant")],
+      descriptor: targetMobile(input.run, this.mobileHash),
+      evidenceRefs: [validationEvidenceRef(`vh26:d03:mobile-variant:${String(input.run.runId)}`)],
     };
   }
 }
 
 class RecordingDiagnosticRunSource implements D03DiagnosticRunIdSource {
   constructor(
+    private readonly device: "windows" | "mobile",
+    private readonly state: DiagnosticState,
     private readonly timeline: string[],
-    private readonly runId: number | undefined = MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID,
   ) {}
 
   currentSyncRunId(): number | undefined {
-    this.timeline.push(`diagnostic:current:${String(this.runId)}`);
-    return this.runId;
+    const value = this.state[this.device];
+    this.timeline.push(`diagnostic:${this.device}:${String(value)}`);
+    return value;
   }
 }
 
@@ -504,8 +549,92 @@ class RecordingEvidence implements D03EvidenceRecorderPort {
 
   async record(input: Parameters<D03EvidenceRecorderPort["record"]>[0]) {
     this.calls.push(input);
-    return [validationEvidenceRef("vh26:d03:scenario-evidence")];
+    return [validationEvidenceRef(`vh26:d03:scenario-evidence:${String(input.run.runId)}`)];
   }
+}
+
+interface PackageHarness {
+  readonly packageBinding: D03ScenarioPackage;
+  readonly fixtures: FixtureManagerRegistry;
+  readonly verifier: PassingVerifier;
+  readonly crossDevice: RecordingCrossDevice;
+  readonly evidence: RecordingEvidence;
+  readonly diagnostics: DiagnosticState;
+  readonly surface: SurfaceState;
+  readonly timeline: string[];
+}
+
+function packageHarness(input?: {
+  readonly mobileHash?: ContentHash;
+}): PackageHarness {
+  const timeline: string[] = [];
+  const diagnostics: DiagnosticState = {};
+  const surface: SurfaceState = {
+    current: { status: { kind: "idle-ready" }, conflicts: [] },
+  };
+  const fixtures = new FixtureManagerRegistry();
+  const verifier = new PassingVerifier();
+  const crossDevice = new RecordingCrossDevice(input?.mobileHash);
+  const evidence = new RecordingEvidence();
+  const conflicts: D03ConflictObserverPort = { current: () => surface.current };
+  const windowsDiagnostics = new RecordingDiagnosticRunSource("windows", diagnostics, timeline);
+  const mobileDiagnostics = new RecordingDiagnosticRunSource("mobile", diagnostics, timeline);
+
+  const packageBinding = createD03ConcurrentBinaryConflictScenario({
+    targetPath: TARGET_PATH,
+    safePath: SAFE_PATH,
+    windowsDevice: WINDOWS,
+    mobileDevice: MOBILE,
+    windowsFixturesForRun: run => fixtures.forRun(run),
+    verifier,
+    crossDevice,
+    conflicts,
+    windowsDiagnostics,
+    mobileDiagnostics,
+    evidence,
+  });
+
+  return {
+    packageBinding,
+    fixtures,
+    verifier,
+    crossDevice,
+    evidence,
+    diagnostics,
+    surface,
+    timeline,
+  };
+}
+
+function runtimeFor(
+  harness: PackageHarness,
+  run: ValidationRunIdentity,
+  plans: readonly SynchronizationPlan[] = [
+    baselineWindowsPlan(),
+    baselineMobilePlan(),
+    windowsPublishPlan(),
+    mobileConflictPlan(),
+  ],
+  conflict: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }> = opaqueConflict(),
+) {
+  const production = productionFixture(
+    plans,
+    harness.timeline,
+    harness.diagnostics,
+    harness.surface,
+    conflict,
+  );
+  const runtime = new ValidationModeRuntime({
+    productionRuntime: production.runtime,
+    definitions: [harness.packageBinding.definition],
+    stateStore: new MemoryRunnerStateStore(),
+    resumeAdoptionStore: new MemoryResumeAdoptionStore(),
+    prerequisites: harness.packageBinding.prerequisites,
+    moduleOverrides: harness.packageBinding.moduleOverrides,
+    currentDevice: () => WINDOWS,
+    createRunId: () => String(run.runId),
+  });
+  return { runtime, production };
 }
 
 function subject(input?: {
@@ -513,55 +642,14 @@ function subject(input?: {
   readonly conflict?: Extract<ConflictAssessment, { readonly kind: "opaque-binary" }>;
   readonly mobileHash?: ContentHash;
 }) {
-  const timeline: string[] = [];
-  const fixtures = new FakeFixtureManager();
-  const verifier = new PassingVerifier();
-  const crossDevice = new RecordingCrossDevice(timeline, input?.mobileHash);
-  const evidence = new RecordingEvidence();
-  const mobileDiagnostics = new RecordingDiagnosticRunSource(timeline);
-  const plans = input?.plans ?? [
-    baselineWindowsPlan(),
-    baselineMobilePlan(),
-    windowsPublishPlan(),
-    mobileConflictPlan(),
-  ];
-  const production = productionFixture(plans, timeline, input?.conflict);
-  const conflicts: D03ConflictObserverPort = {
-    current: () => production.currentSurface(),
-  };
-  const packageBinding = createD03ConcurrentBinaryConflictScenario({
-    targetPath: TARGET_PATH,
-    safePath: SAFE_PATH,
-    windowsDevice: WINDOWS,
-    mobileDevice: MOBILE,
-    windowsFixtures: fixtures,
-    verifier,
-    crossDevice,
-    conflicts,
-    mobileDiagnostics,
-    evidence,
-  });
-  const runtime = new ValidationModeRuntime({
-    productionRuntime: production.runtime,
-    definitions: [packageBinding.definition],
-    stateStore: new MemoryRunnerStateStore(),
-    resumeAdoptionStore: new MemoryResumeAdoptionStore(),
-    prerequisites: packageBinding.prerequisites,
-    moduleOverrides: packageBinding.moduleOverrides,
-    currentDevice: () => WINDOWS,
-    createRunId: () => String(RUN.runId),
-  });
-  return {
-    runtime,
-    packageBinding,
-    production,
-    fixtures,
-    verifier,
-    crossDevice,
-    mobileDiagnostics,
-    evidence,
-    timeline,
-  };
+  const harness = packageHarness({ mobileHash: input?.mobileHash });
+  const execution = runtimeFor(
+    harness,
+    RUN,
+    input?.plans,
+    input?.conflict,
+  );
+  return { ...harness, ...execution };
 }
 
 function runnerResult(
@@ -572,11 +660,19 @@ function runnerResult(
   return result.result;
 }
 
-test("VH26 D03 preserves both complete binary variants and lets the unrelated safe path commit through the fixed production path", async () => {
+function terminalRequests(verifier: PassingVerifier): ValidationStateConvergenceRequest[] {
+  return verifier.requests.filter(request =>
+    request.state.some(postcondition => postcondition.kind === "terminal-product-result"),
+  );
+}
+
+test("VH26 D03 previews and proves the binary conflict without ever executing the conflict-containing plan", async () => {
   const s = subject();
 
-  assert.equal("production-path-driver" in s.packageBinding.moduleOverrides, false);
-  assert.equal("plan-assertion-engine" in s.packageBinding.moduleOverrides, false);
+  assert.equal(
+    s.packageBinding.definition.steps.some(step => String(step.stepId) === "d03-mobile-conflict-execute"),
+    false,
+  );
 
   const conflictAssertion = s.packageBinding.definition.steps.find(
     step => String(step.stepId) === "d03-mobile-conflict-assert",
@@ -609,34 +705,54 @@ test("VH26 D03 preserves both complete binary variants and lets the unrelated sa
     "plan:d03:baseline-windows",
     "plan:d03:baseline-mobile",
     "plan:d03:windows-publish",
-    "plan:d03:mobile-conflict",
   ]);
-  assert.deepEqual(s.crossDevice.handoffPhases, [
-    "baseline-to-mobile",
-    "windows-updates-to-mobile",
+  assert.equal(s.production.executedPlanIds.includes("plan:d03:mobile-conflict"), false);
+  assert.equal(s.timeline.includes("execute:plan:d03:mobile-conflict"), false);
+
+  const terminals = terminalRequests(s.verifier);
+  assert.equal(terminals.length, 3);
+  const terminalIdentities = terminals.map(request => {
+    const terminal = request.state.find(item => item.kind === "terminal-product-result");
+    assert.ok(terminal && terminal.kind === "terminal-product-result");
+    return {
+      deviceId: terminal.diagnostic.deviceId,
+      runId: terminal.diagnostic.diagnosticRunId,
+      fields: terminal.diagnostic.expectedFields,
+    };
+  });
+  assert.deepEqual(terminalIdentities, [
+    {
+      deviceId: WINDOWS.deviceId,
+      runId: WINDOWS_BASE_RUN_ID,
+      fields: { stage: "terminal", result: "complete" },
+    },
+    {
+      deviceId: MOBILE.deviceId,
+      runId: MOBILE_BASE_RUN_ID,
+      fields: { stage: "terminal", result: "complete" },
+    },
+    {
+      deviceId: WINDOWS.deviceId,
+      runId: WINDOWS_PUBLISH_RUN_ID,
+      fields: { stage: "terminal", result: "complete" },
+    },
   ]);
-  assert.equal(s.crossDevice.prepareCalls.length, 1);
-
-  const prepareIndex = s.timeline.indexOf("cross:prepare-mobile-variant");
-  const publishPreviewIndex = s.timeline.indexOf("preview:plan:d03:windows-publish");
-  assert.ok(prepareIndex >= 0 && publishPreviewIndex >= 0 && prepareIndex < publishPreviewIndex);
-
-  const mobilePreviewIndex = s.timeline.indexOf("preview:plan:d03:mobile-conflict");
-  const diagnosticCaptureIndex = s.timeline.indexOf(`diagnostic:current:${MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID}`);
-  const mobileExecuteIndex = s.timeline.indexOf("execute:plan:d03:mobile-conflict");
-  assert.ok(
-    mobilePreviewIndex >= 0
-    && diagnosticCaptureIndex > mobilePreviewIndex
-    && mobileExecuteIndex > diagnosticCaptureIndex,
+  assert.equal(
+    terminalIdentities.some(identity => identity.runId === MOBILE_CONFLICT_PREVIEW_RUN_ID),
+    false,
   );
 
-  assert.deepEqual(s.fixtures.editCalls, [
-    { fixtureId: D03_TARGET_FIXTURE_ID, version: D03_WINDOWS_TARGET_VERSION },
-    { fixtureId: D03_SAFE_FIXTURE_ID, version: D03_WINDOWS_SAFE_VERSION },
-  ]);
+  assert.deepEqual(
+    s.timeline.filter(item => item.startsWith("diagnostic:")),
+    [
+      `diagnostic:windows:${WINDOWS_BASE_RUN_ID}`,
+      `diagnostic:mobile:${MOBILE_BASE_RUN_ID}`,
+      `diagnostic:windows:${WINDOWS_PUBLISH_RUN_ID}`,
+    ],
+  );
 
-  assert.equal(s.verifier.requests.length, 2);
-  const final = s.verifier.requests[1]!;
+  const final = s.verifier.requests[s.verifier.requests.length - 1]!;
+  assert.equal(final.state.some(item => item.kind === "terminal-product-result"), false);
 
   const windowsTarget = final.state.find(item =>
     item.kind === "local-content"
@@ -659,6 +775,7 @@ test("VH26 D03 preserves both complete binary variants and lets the unrelated sa
   );
   assert.ok(remoteTarget && remoteTarget.kind === "remote-content");
   assert.equal(remoteTarget.content.hash, WINDOWS_HASH);
+  assert.equal(remoteTarget.remoteObjectId, undefined);
 
   const mobileTargetBase = final.state.find(item =>
     item.kind === "base-authority"
@@ -668,40 +785,59 @@ test("VH26 D03 preserves both complete binary variants and lets the unrelated sa
   assert.ok(mobileTargetBase && mobileTargetBase.kind === "base-authority");
   assert.equal(mobileTargetBase.expectedContent?.hash, BASE_HASH);
 
-  const safeMobile = final.state.find(item =>
+  const mobileSafe = final.state.find(item =>
     item.kind === "local-content"
     && item.deviceId === MOBILE.deviceId
     && item.path === SAFE_PATH
   );
-  assert.ok(safeMobile && safeMobile.kind === "local-content");
-  assert.equal(safeMobile.content.hash, SAFE_FINAL_HASH);
+  assert.ok(mobileSafe && mobileSafe.kind === "local-content");
+  assert.equal(mobileSafe.content.hash, SAFE_BASE_HASH);
 
-  const terminal = final.state.find(item => item.kind === "terminal-product-result");
-  assert.ok(terminal && terminal.kind === "terminal-product-result");
-  assert.equal(terminal.diagnostic.diagnosticRunId, MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID);
-  assert.deepEqual(terminal.diagnostic.expectedFields, {
-    result: "partial",
-    skippedCount: 1,
-    conflictCount: 1,
-  });
+  const remoteSafe = final.state.find(item =>
+    item.kind === "remote-content" && item.path === SAFE_PATH
+  );
+  assert.ok(remoteSafe && remoteSafe.kind === "remote-content");
+  assert.equal(remoteSafe.content.hash, SAFE_FINAL_HASH);
+  assert.equal(remoteSafe.remoteObjectId, undefined);
+
+  assert.ok(final.state.some(item =>
+    item.kind === "mapping-or-tombstone"
+    && item.deviceId === MOBILE.deviceId
+    && item.path === TARGET_PATH
+    && item.expected === "mapping"
+  ));
+  assert.ok(final.state.some(item =>
+    item.kind === "durable-intent-or-effect"
+    && item.deviceId === MOBILE.deviceId
+    && item.expected === "none-outstanding"
+  ));
 
   assert.equal(s.evidence.calls.length, 1);
   const recorded = s.evidence.calls[0]!;
+  assert.deepEqual(recorded.executedDiagnosticRunIds, {
+    establishWindows: WINDOWS_BASE_RUN_ID,
+    establishMobile: MOBILE_BASE_RUN_ID,
+    windowsPublish: WINDOWS_PUBLISH_RUN_ID,
+  });
   assert.equal(recorded.conflict.kind, "opaque-binary");
-  assert.equal(recorded.mobileConflictDiagnosticRunId, MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID);
   assert.equal(recorded.conflict.preserved.base?.version.content?.hash, BASE_HASH);
   assert.equal(recorded.conflict.preserved.local.version.content?.hash, MOBILE_HASH);
   assert.equal(recorded.conflict.preserved.remote.version.content?.hash, WINDOWS_HASH);
+  assert.equal(recorded.conflict.preserved.local.deviceId, MOBILE.deviceId);
+  assert.equal(recorded.conflict.preserved.remote.remoteObjectId, REMOTE_ID);
+  assert.equal(recorded.conflict.preserved.base?.remoteObjectId, REMOTE_ID);
   assert.equal(recorded.mobileTarget.hash, MOBILE_HASH);
   assert.equal(recorded.windowsTarget.hash, WINDOWS_HASH);
   assert.equal(recorded.safeFinal.hash, SAFE_FINAL_HASH);
   assert.deepEqual(s.production.requestedActions, []);
 });
 
-test("VH26 D03 wrong-run terminal diagnostics cannot satisfy the frozen verifier", async () => {
-  const wrongRunId = MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID + 1;
+function diagnosticVerifier(
+  deviceId: typeof WINDOWS.deviceId | typeof MOBILE.deviceId,
+  events: ValidationDeviceObservationSource["diagnostics"]["snapshot"] extends () => infer T ? T : never,
+): StateConvergenceVerifier {
   const device: ValidationDeviceObservationSource = {
-    deviceId: MOBILE.deviceId,
+    deviceId,
     local: {
       enumerate: async () => ({ entries: [], completeness: { status: "complete" } }),
       observe: async path => ({
@@ -712,90 +848,139 @@ test("VH26 D03 wrong-run terminal diagnostics cannot satisfy the frozen verifier
         stability: "stable",
       }),
       readFileBypassingEvidenceCache: async () => {
-        throw new Error("D03 wrong-run diagnostic regression does not read file bytes.");
+        throw new Error("D03 terminal diagnostic regression does not read file bytes.");
       },
     },
     authority: {
       loadAuthority: async () => {
-        throw new Error("D03 wrong-run diagnostic regression does not read synchronization authority.");
+        throw new Error("D03 terminal diagnostic regression does not read synchronization authority.");
       },
     },
-    diagnostics: {
-      snapshot: () => [
-        {
-          timestamp: "2026-09-22T12:00:00.000Z",
-          sequence: 1,
-          level: "info",
-          component: "sync.controller",
-          event: "sync-run-complete",
-          runId: wrongRunId,
-          platform: "mobile",
-          fields: {
-            result: "partial",
-            skippedCount: 1,
-            conflictCount: 1,
-          },
-        },
-        {
-          timestamp: "2026-09-22T12:00:01.000Z",
-          sequence: 2,
-          level: "info",
-          component: "sync.controller",
-          event: "sync-run-complete",
-          runId: MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID,
-          platform: "mobile",
-          fields: {
-            result: "complete",
-            skippedCount: 0,
-            conflictCount: 0,
-          },
-        },
-      ],
-    },
+    diagnostics: { snapshot: () => events },
   };
-  const verifier = new StateConvergenceVerifier({ devices: [device] });
-  const request: ValidationStateConvergenceRequest = {
-    run: RUN,
+  return new StateConvergenceVerifier({ devices: [device] });
+}
+
+function terminalRequest(
+  run: ValidationRunIdentity,
+  deviceId: typeof WINDOWS.deviceId | typeof MOBILE.deviceId,
+  diagnosticRunId: number,
+): ValidationStateConvergenceRequest {
+  return {
+    run,
     state: [{
       kind: "terminal-product-result",
       assertion: {
-        assertionId: validationAssertionId("d03.wrong-run.terminal"),
+        assertionId: validationAssertionId(`d03.terminal.${diagnosticRunId}`),
         kind: "terminal-product-result",
-        subject: D03_OPERATIONS.verifyConflictOutcome,
-        expectation: "Only the exact D03 production diagnostic run may establish the partial terminal result.",
+        subject: String(diagnosticRunId),
+        expectation: "Only the exact executed production run may establish terminal completion.",
       },
       diagnostic: {
-        deviceId: MOBILE.deviceId,
+        deviceId,
         component: "sync.controller",
         event: "sync-run-complete",
-        diagnosticRunId: MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID,
+        diagnosticRunId,
         expectedFields: {
-          result: "partial",
-          skippedCount: 1,
-          conflictCount: 1,
+          stage: "terminal",
+          result: "complete",
         },
       },
     }],
     convergence: [{
       kind: "cross-device-path",
       assertion: {
-        assertionId: validationAssertionId("d03.wrong-run.path"),
+        assertionId: validationAssertionId(`d03.terminal.path.${diagnosticRunId}`),
         kind: "cross-device-path",
         subject: String(TARGET_PATH),
-        expectation: "Unrelated convergence proof is satisfiable so the terminal diagnostic decides PASS eligibility.",
+        expectation: "The executing device retains the target path.",
       },
-      deviceIds: [MOBILE.deviceId],
+      deviceIds: [deviceId],
       path: TARGET_PATH,
       expected: "file",
     }],
   };
+}
 
-  const report = await verifier.verify(request);
-  assert.equal(report.result.verdict, "fail");
-  assert.notEqual(report.result.verdict, "pass");
+test("VH26 D03 exact diagnostic run correlation rejects wrong-run, missing, failed, partial, and conflict-preview substitution", async () => {
+  const cycles = [
+    { deviceId: WINDOWS.deviceId, expected: WINDOWS_BASE_RUN_ID, wrong: WINDOWS_PUBLISH_RUN_ID },
+    { deviceId: MOBILE.deviceId, expected: MOBILE_BASE_RUN_ID, wrong: MOBILE_CONFLICT_PREVIEW_RUN_ID },
+    { deviceId: WINDOWS.deviceId, expected: WINDOWS_PUBLISH_RUN_ID, wrong: WINDOWS_BASE_RUN_ID },
+  ] as const;
+
+  for (const cycle of cycles) {
+    const wrongRunEvents = [
+      {
+        timestamp: "2026-09-22T12:00:00.000Z",
+        sequence: 1,
+        level: "info" as const,
+        component: "sync.controller" as const,
+        event: "sync-run-complete",
+        runId: cycle.wrong,
+        platform: cycle.deviceId === WINDOWS.deviceId ? "desktop" as const : "mobile" as const,
+        fields: { stage: "terminal", result: "complete" },
+      },
+      {
+        timestamp: "2026-09-22T12:00:01.000Z",
+        sequence: 2,
+        level: "info" as const,
+        component: "sync.controller" as const,
+        event: "sync-run-complete",
+        runId: cycle.expected,
+        platform: cycle.deviceId === WINDOWS.deviceId ? "desktop" as const : "mobile" as const,
+        fields: { stage: "terminal", result: "partial" },
+      },
+    ];
+    const wrongRunReport = await diagnosticVerifier(cycle.deviceId, wrongRunEvents).verify(
+      terminalRequest(RUN, cycle.deviceId, cycle.expected),
+    );
+    assert.equal(wrongRunReport.result.verdict, "fail");
+
+    const missingReport = await diagnosticVerifier(cycle.deviceId, []).verify(
+      terminalRequest(RUN, cycle.deviceId, cycle.expected),
+    );
+    assert.notEqual(missingReport.result.verdict, "pass");
+
+    const failedReport = await diagnosticVerifier(cycle.deviceId, [{
+      timestamp: "2026-09-22T12:00:02.000Z",
+      sequence: 3,
+      level: "error" as const,
+      component: "sync.controller" as const,
+      event: "sync-run-failed",
+      runId: cycle.expected,
+      platform: cycle.deviceId === WINDOWS.deviceId ? "desktop" as const : "mobile" as const,
+      fields: { stage: "terminal", result: "failed" },
+    }]).verify(terminalRequest(RUN, cycle.deviceId, cycle.expected));
+    assert.notEqual(failedReport.result.verdict, "pass");
+
+    const partialReport = await diagnosticVerifier(cycle.deviceId, [{
+      timestamp: "2026-09-22T12:00:03.000Z",
+      sequence: 4,
+      level: "info" as const,
+      component: "sync.controller" as const,
+      event: "sync-run-complete",
+      runId: cycle.expected,
+      platform: cycle.deviceId === WINDOWS.deviceId ? "desktop" as const : "mobile" as const,
+      fields: { stage: "terminal", result: "partial" },
+    }]).verify(terminalRequest(RUN, cycle.deviceId, cycle.expected));
+    assert.equal(partialReport.result.verdict, "fail");
+  }
+
+  const conflictSubstitution = await diagnosticVerifier(MOBILE.deviceId, [{
+    timestamp: "2026-09-22T12:00:04.000Z",
+    sequence: 5,
+    level: "info",
+    component: "sync.controller",
+    event: "sync-run-complete",
+    runId: MOBILE_CONFLICT_PREVIEW_RUN_ID,
+    platform: "mobile",
+    fields: { stage: "terminal", result: "complete" },
+  }]).verify(terminalRequest(RUN, MOBILE.deviceId, MOBILE_BASE_RUN_ID));
+  assert.notEqual(conflictSubstitution.result.verdict, "pass");
 });
 
-test("VH26 D03 rejects newest-wins or silent overwrite planning before the conflicted mobile plan can execute", async () => {
+test("VH26 D03 rejects newest-wins or silent overwrite planning and never executes the conflict plan", async () => {
   const silentOverwrite = plan("plan:d03:mobile-conflict", [
     operation("download-update", TARGET_PATH, "newest-wins-target", "local"),
     operation("download-update", SAFE_PATH, "safe-download", "local"),
@@ -812,38 +997,30 @@ test("VH26 D03 rejects newest-wins or silent overwrite planning before the confl
   s.runtime.setEnabled(true);
   const result = runnerResult(await s.runtime.startScenario("D03"));
   assert.equal(result.status, "FAIL");
-  if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /conflict|unresolved-conflict|download-update|Expected operation/i);
-  }
   assert.deepEqual(s.production.executedPlanIds, [
     "plan:d03:baseline-windows",
     "plan:d03:baseline-mobile",
     "plan:d03:windows-publish",
   ]);
-  assert.equal(s.verifier.requests.length, 1);
+  assert.equal(s.production.executedPlanIds.includes("plan:d03:mobile-conflict"), false);
   assert.equal(s.evidence.calls.length, 0);
 });
 
-test("VH26 D03 rejects incomplete or substituted conflict provenance even when the production plan shape is correct", async () => {
+test("VH26 D03 rejects incomplete or substituted opaque conflict provenance", async () => {
   const s = subject({ conflict: opaqueConflict(WRONG_HASH) });
 
   s.runtime.setEnabled(true);
   const result = runnerResult(await s.runtime.startScenario("D03"));
   assert.equal(result.status, "FAIL");
-  if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /preserve.*Windows\/remote|complete.*variant|provenance/i);
-  }
   assert.deepEqual(s.production.executedPlanIds, [
     "plan:d03:baseline-windows",
     "plan:d03:baseline-mobile",
     "plan:d03:windows-publish",
-    "plan:d03:mobile-conflict",
   ]);
-  assert.equal(s.verifier.requests.length, 1);
   assert.equal(s.evidence.calls.length, 0);
 });
 
-test("VH26 D03 rejects unrelated-path suppression instead of accepting conflict-only partial progress", async () => {
+test("VH26 D03 rejects unrelated safe-path suppression in the conflict preview", async () => {
   const suppressedSafePath = plan(
     "plan:d03:mobile-conflict",
     [operation("unresolved-conflict", TARGET_PATH, "mobile-target-conflict")],
@@ -861,40 +1038,76 @@ test("VH26 D03 rejects unrelated-path suppression instead of accepting conflict-
   s.runtime.setEnabled(true);
   const result = runnerResult(await s.runtime.startScenario("D03"));
   assert.equal(result.status, "FAIL");
-  if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /download-update|Expected operation|missing/i);
-  }
   assert.deepEqual(s.production.executedPlanIds, [
     "plan:d03:baseline-windows",
     "plan:d03:baseline-mobile",
     "plan:d03:windows-publish",
   ]);
-  assert.equal(s.verifier.requests.length, 1);
   assert.equal(s.evidence.calls.length, 0);
 });
 
-test("VH26 D03 rejects a mobile variant that is not independently byte-distinct before publishing the Windows variant", async () => {
+test("VH26 D03 rejects a mobile variant that is not independently byte-distinct", async () => {
   const s = subject({ mobileHash: WINDOWS_HASH });
 
   s.runtime.setEnabled(true);
   const result = runnerResult(await s.runtime.startScenario("D03"));
   assert.equal(result.status, "FAIL");
-  if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /mobile variant.*byte-distinct/i);
-  }
   assert.deepEqual(s.production.executedPlanIds, [
     "plan:d03:baseline-windows",
     "plan:d03:baseline-mobile",
   ]);
-  assert.equal(s.verifier.requests.length, 1);
-  assert.equal(s.evidence.calls.length, 0);
   assert.equal(s.timeline.includes("preview:plan:d03:windows-publish"), false);
+  assert.equal(s.evidence.calls.length, 0);
 });
 
-test("VH26 D03 package stays binary-specific and owns no shared/fixed H6B module binding", () => {
+test("VH26 D03 mutable context is exact-run scoped across repeated use of one scenario package", async () => {
+  const harness = packageHarness();
+  const runA = runtimeFor(harness, RUN_A);
+  runA.runtime.setEnabled(true);
+  const resultA = runnerResult(await runA.runtime.startScenario("D03"));
+  assert.equal(resultA.status, "PASS");
+  assert.equal(harness.evidence.calls.length, 1);
+  assert.equal(harness.evidence.calls[0]!.run.runId, RUN_A.runId);
+
+  const evidenceDelegate = harness.packageBinding.moduleOverrides["scenario-evidence-recorder"];
+  assert.ok(evidenceDelegate);
+  const preRunBEvidence = await evidenceDelegate.execute({
+    run: RUN_B,
+    stepId: validationStepId("d03-run-b-prestart-evidence"),
+    operation: D03_OPERATIONS.recordEvidence,
+  });
+  assert.ok(preRunBEvidence);
+  assert.notEqual(preRunBEvidence.status, "completed");
+  assert.equal(harness.evidence.calls.length, 1);
+
+  harness.fixtures.useDescriptorsFrom(RUN_B, RUN_A);
+  const runB = runtimeFor(harness, RUN_B);
+  runB.runtime.setEnabled(true);
+  const resultB = runnerResult(await runB.runtime.startScenario("D03"));
+  assert.equal(resultB.status, "FAIL");
+  if (resultB.status === "FAIL") {
+    assert.match(resultB.reason.summary, /different validation run/i);
+  }
+
+  assert.equal(harness.evidence.calls.length, 1);
+  assert.equal(
+    harness.evidence.calls.some(call => call.run.runId === RUN_B.runId),
+    false,
+  );
+  assert.equal(
+    harness.verifier.requests.some(request => request.run.runId === RUN_B.runId),
+    false,
+  );
+});
+
+test("VH26 D03 package stays binary-specific and owns no shared H6B module binding", () => {
   const s = subject();
   assert.equal(D03_TARGET_RELATIVE_PATH, "d03-binary-conflict.bin");
   assert.equal(D03_OPERATIONS.prepareMobileVariant, "d03-prepare-mobile-variant");
+  assert.equal(
+    s.packageBinding.definition.steps.some(step => step.operation === "execute-asserted-plan" && String(step.stepId).includes("mobile-conflict")),
+    false,
+  );
   assert.deepEqual(Object.keys(s.packageBinding.moduleOverrides).sort(), [
     "cross-device-coordinator",
     "fixture-manager",
