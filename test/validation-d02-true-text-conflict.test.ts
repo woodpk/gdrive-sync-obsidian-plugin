@@ -30,12 +30,14 @@ import {
   D02_TARGET_RELATIVE_PATH,
   createD02ConcurrentOverlappingTextConflictScenario,
   type D02FixtureManagerPort,
+  type D02FixtureManagerProvider,
   type D02StateVerifierPort,
 } from "../src/validation/scenarios/d02-true-text-conflict";
 import {
   validationDeviceIdentity,
   validationFixtureIdentity,
   validationRunIdentity,
+  validationStepId,
 } from "../src/validation/run-sandbox-checkpoint-contracts";
 import type {
   ValidationRunnerPersistentState,
@@ -54,6 +56,8 @@ import { ValidationModeRuntime } from "../src/validation/validation-mode-runtime
 const id = <T extends string>(value: string) => contractId<T>(value);
 
 const RUN = validationRunIdentity("run:d02:focused", "D02");
+const RUN_A = validationRunIdentity("run:d02:sequence-a", "D02");
+const RUN_B = validationRunIdentity("run:d02:sequence-b", "D02");
 const WINDOWS = validationDeviceIdentity("validation-device:d02:windows", "windows-desktop");
 const MOBILE = validationDeviceIdentity("validation-device:d02:mobile", "iphone");
 
@@ -133,6 +137,12 @@ function pathFor(relativePath: string): VaultPath {
 class ScriptedFixtureManager implements D02FixtureManagerPort {
   private readonly values = new Map<string, ValidationFixtureDescriptor>();
 
+  constructor(private readonly run: ReturnType<typeof validationRunIdentity> = RUN) {}
+
+  get(fixtureId: string): ValidationFixtureDescriptor | undefined {
+    return this.values.get(fixtureId);
+  }
+
   async create(spec: ValidationFixtureSpec): Promise<ValidationFixtureDescriptor> {
     if (this.values.has(spec.fixtureId)) throw new Error("duplicate fixture");
     const descriptor = this.descriptor(spec.fixtureId, spec.relativePath, spec.version, spec.textVariant, spec.purpose);
@@ -167,7 +177,7 @@ class ScriptedFixtureManager implements D02FixtureManagerPort {
   ): ValidationFixtureDescriptor {
     const content = hashFor(relativePath, variant);
     return Object.freeze({
-      identity: validationFixtureIdentity(RUN, fixtureId),
+      identity: validationFixtureIdentity(this.run, fixtureId),
       relativePath,
       path: pathFor(relativePath),
       kind: "text" as const,
@@ -176,6 +186,29 @@ class ScriptedFixtureManager implements D02FixtureManagerPort {
       sizeBytes: content.sizeBytes,
       hash: content.hash,
     });
+  }
+}
+
+function testRunKey(run: ReturnType<typeof validationRunIdentity>): string {
+  return String(run.scenarioId) + "\u0000" + String(run.runId);
+}
+
+class ScriptedFixtureManagerProvider implements D02FixtureManagerProvider {
+  private readonly managers = new Map<string, ScriptedFixtureManager>();
+
+  constructor(
+    private readonly createManager: (
+      run: ReturnType<typeof validationRunIdentity>,
+    ) => ScriptedFixtureManager = run => new ScriptedFixtureManager(run),
+  ) {}
+
+  forRun(run: ReturnType<typeof validationRunIdentity>): ScriptedFixtureManager {
+    const key = testRunKey(run);
+    const existing = this.managers.get(key);
+    if (existing) return existing;
+    const created = this.createManager(run);
+    this.managers.set(key, created);
+    return created;
   }
 }
 
@@ -419,6 +452,8 @@ function harness(input?: {
   readonly conflict?: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>;
   readonly mobileConflictPlan?: SynchronizationPlan;
   readonly exposeConflictSurface?: boolean;
+  readonly windowsFixtureProvider?: ScriptedFixtureManagerProvider;
+  readonly mobileFixtureProvider?: ScriptedFixtureManagerProvider;
   readonly verifierVerdict?: (
     request: ValidationStateConvergenceRequest,
     index: number,
@@ -436,6 +471,11 @@ function harness(input?: {
     input?.mobileConflictPlan ?? unresolvedConflictPlan(),
   ], conflict, input?.exposeConflictSurface ?? true);
   const verifier = new CapturingVerifier(input?.verifierVerdict);
+  const windowsFixtureProvider = input?.windowsFixtureProvider ?? new ScriptedFixtureManagerProvider();
+  const mobileFixtureProvider = input?.mobileFixtureProvider ?? new ScriptedFixtureManagerProvider();
+  const mappingsByRun = new Map<string, { target?: RemoteObjectId; guard?: RemoteObjectId }>();
+  mappingsByRun.set(testRunKey(RUN), { target: TARGET_REMOTE_ID, guard: GUARD_REMOTE_ID });
+  const conflictSurfacesByRun = new Map<string, ProductSurfaceState>();
   const handoffs: string[] = [];
   const evidenceInputs: Array<{
     conflictId: string;
@@ -449,8 +489,8 @@ function harness(input?: {
     guardPath: GUARD_PATH,
     windowsDevice: WINDOWS,
     mobileDevice: MOBILE,
-    windowsFixtures: new ScriptedFixtureManager(),
-    mobileFixtures: new ScriptedFixtureManager(),
+    windowsFixtures: windowsFixtureProvider,
+    mobileFixtures: mobileFixtureProvider,
     handoff: {
       currentRole: () => active,
       async handoff(handoff) {
@@ -460,16 +500,24 @@ function harness(input?: {
       },
     },
     mappingReader: {
-      async remoteObjectId(_deviceId, path) {
-        if (path === TARGET_PATH) return TARGET_REMOTE_ID;
-        if (path === GUARD_PATH) return GUARD_REMOTE_ID;
+      async remoteObjectId(run, _deviceId, path) {
+        const mapping = mappingsByRun.get(testRunKey(run));
+        if (path === TARGET_PATH) return mapping?.target;
+        if (path === GUARD_PATH) return mapping?.guard;
         return undefined;
       },
     },
     conflictSurface: {
-      currentSurface: () => active === "windows"
-        ? windows.controller.currentSurface()
-        : mobile.controller.currentSurface(),
+      currentSurface: run => {
+        const explicit = conflictSurfacesByRun.get(testRunKey(run));
+        if (explicit) return explicit;
+        if (run.runId !== RUN.runId || run.scenarioId !== RUN.scenarioId) {
+          return { status: { kind: "idle-ready" }, conflicts: [] };
+        }
+        return active === "windows"
+          ? windows.controller.currentSurface()
+          : mobile.controller.currentSurface();
+      },
     },
     verifier,
     evidence: {
@@ -506,6 +554,46 @@ function harness(input?: {
     verifier,
     handoffs,
     evidenceInputs,
+    windowsFixtureProvider,
+    mobileFixtureProvider,
+    setMappingForRun(run: ReturnType<typeof validationRunIdentity>, target?: RemoteObjectId, guard?: RemoteObjectId) {
+      mappingsByRun.set(testRunKey(run), { target, guard });
+    },
+    setConflictSurfaceForRun(run: ReturnType<typeof validationRunIdentity>, surface: ProductSurfaceState) {
+      conflictSurfacesByRun.set(testRunKey(run), surface);
+    },
+  };
+}
+
+async function executeOverride(
+  subject: ReturnType<typeof harness>,
+  module: "fixture-manager" | "cross-device-coordinator" | "state-convergence-verifier" | "scenario-evidence-recorder",
+  run: ReturnType<typeof validationRunIdentity>,
+  operation: string,
+) {
+  const delegate = subject.scenario.moduleOverrides[module];
+  assert.ok(delegate, "D02 test requires task-local module override: " + module);
+  return await delegate.execute({
+    run,
+    stepId: validationStepId("test:" + String(run.runId) + ":" + module + ":" + operation),
+    operation,
+  });
+}
+
+async function initializeD02Run(
+  subject: ReturnType<typeof harness>,
+  run: ReturnType<typeof validationRunIdentity>,
+) {
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", run, D02_OPERATIONS.handoffSeedMobile))?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", run, D02_OPERATIONS.establishMobileFixtures))?.status, "completed");
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", run, D02_OPERATIONS.handoffSeedWindows))?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", run, D02_OPERATIONS.establishWindowsFixtures))?.status, "completed");
+}
+
+function conflictSurfaceForRun(): ProductSurfaceState {
+  return {
+    status: { kind: "conflict-present", conflictCount: 1 },
+    conflicts: [unresolvedConflict()],
   };
 }
 
@@ -675,6 +763,86 @@ test("VH25 D02 rejects incomplete conflict preservation before explicit resoluti
   assert.equal(subject.verifier.requests.length, 1);
   assert.deepEqual(subject.mobile.executedPlanIds, ["plan:d02:seed-mobile"]);
   assert.equal(subject.mobile.executedPlanIds.includes("plan:d02:mobile-conflict"), false);
+});
+
+test("VH25 D02 same package initializes distinct sequential runs with fresh run-scoped fixtures", async () => {
+  const subject = harness();
+
+  await initializeD02Run(subject, RUN_A);
+  await initializeD02Run(subject, RUN_B);
+
+  const aMobile = subject.mobileFixtureProvider.forRun(RUN_A).get(D02_TARGET_FIXTURE_ID);
+  const bMobile = subject.mobileFixtureProvider.forRun(RUN_B).get(D02_TARGET_FIXTURE_ID);
+  const aWindows = subject.windowsFixtureProvider.forRun(RUN_A).get(D02_TARGET_FIXTURE_ID);
+  const bWindows = subject.windowsFixtureProvider.forRun(RUN_B).get(D02_TARGET_FIXTURE_ID);
+
+  assert.ok(aMobile && bMobile && aWindows && bWindows);
+  assert.equal(aMobile.identity.run.runId, RUN_A.runId);
+  assert.equal(bMobile.identity.run.runId, RUN_B.runId);
+  assert.equal(aWindows.identity.run.runId, RUN_A.runId);
+  assert.equal(bWindows.identity.run.runId, RUN_B.runId);
+  assert.notEqual(aMobile.identity.run.runId, bMobile.identity.run.runId);
+  assert.notEqual(subject.mobileFixtureProvider.forRun(RUN_A), subject.mobileFixtureProvider.forRun(RUN_B));
+  assert.notEqual(subject.windowsFixtureProvider.forRun(RUN_A), subject.windowsFixtureProvider.forRun(RUN_B));
+});
+
+test("VH25 D02 run B cannot inherit run A mappings, conflict IDs, verification reports, or evidence readiness", async () => {
+  const subject = harness();
+
+  await initializeD02Run(subject, RUN_A);
+  subject.setMappingForRun(RUN_A, TARGET_REMOTE_ID, GUARD_REMOTE_ID);
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_A, D02_OPERATIONS.handoffBaselineMobile))?.status, "completed");
+  assert.equal((await executeOverride(subject, "state-convergence-verifier", RUN_A, D02_OPERATIONS.verifyTrustedBaseline))?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", RUN_A, D02_OPERATIONS.editMobileOverlap))?.status, "completed");
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_A, D02_OPERATIONS.handoffEditWindows))?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", RUN_A, D02_OPERATIONS.editWindowsOverlap))?.status, "completed");
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_A, D02_OPERATIONS.handoffConflictMobile))?.status, "completed");
+  subject.setConflictSurfaceForRun(RUN_A, conflictSurfaceForRun());
+  assert.equal((await executeOverride(subject, "state-convergence-verifier", RUN_A, D02_OPERATIONS.verifyConflictPreserved))?.status, "completed");
+
+  await initializeD02Run(subject, RUN_B);
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_B, D02_OPERATIONS.handoffBaselineMobile))?.status, "completed");
+
+  const bBaseline = await executeOverride(subject, "state-convergence-verifier", RUN_B, D02_OPERATIONS.verifyTrustedBaseline);
+  assert.equal(bBaseline?.status, "blocked");
+  if (bBaseline?.status === "blocked") {
+    assert.match(bBaseline.summary, /does not expose distinct stable Drive identities/i);
+  }
+
+  subject.setMappingForRun(RUN_B, TARGET_REMOTE_ID, GUARD_REMOTE_ID);
+  const bOwnBaseline = await executeOverride(subject, "state-convergence-verifier", RUN_B, D02_OPERATIONS.verifyTrustedBaseline);
+  assert.equal(bOwnBaseline?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", RUN_B, D02_OPERATIONS.editMobileOverlap))?.status, "completed");
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_B, D02_OPERATIONS.handoffEditWindows))?.status, "completed");
+  assert.equal((await executeOverride(subject, "fixture-manager", RUN_B, D02_OPERATIONS.editWindowsOverlap))?.status, "completed");
+
+  subject.setConflictSurfaceForRun(RUN_B, conflictSurfaceForRun());
+  const bEvidence = await executeOverride(subject, "scenario-evidence-recorder", RUN_B, D02_OPERATIONS.recordEvidence);
+  assert.equal(bEvidence?.status, "blocked");
+  if (bEvidence?.status === "blocked") {
+    assert.match(bEvidence.summary, /cannot be recorded before every objective phase completes/i);
+  }
+  assert.equal(subject.evidenceInputs.length, 0);
+  assert.equal(subject.verifier.requests.filter(request => request.run.runId === RUN_A.runId).length, 2);
+  assert.equal(subject.verifier.requests.filter(request => request.run.runId === RUN_B.runId).length, 1);
+});
+
+test("VH25 D02 stale run-A fixture state fails closed when presented during run B initialization", async () => {
+  const staleMobileProvider = new ScriptedFixtureManagerProvider(run =>
+    run.runId === RUN_B.runId
+      ? new ScriptedFixtureManager(RUN_A)
+      : new ScriptedFixtureManager(run),
+  );
+  const subject = harness({ mobileFixtureProvider: staleMobileProvider });
+
+  await initializeD02Run(subject, RUN_A);
+
+  assert.equal((await executeOverride(subject, "cross-device-coordinator", RUN_B, D02_OPERATIONS.handoffSeedMobile))?.status, "completed");
+  const staleResult = await executeOverride(subject, "fixture-manager", RUN_B, D02_OPERATIONS.establishMobileFixtures);
+  assert.equal(staleResult?.status, "failed");
+  if (staleResult?.status === "failed") {
+    assert.match(staleResult.summary, /fixture belongs to a different validation run/i);
+  }
 });
 
 test("VH25 D02 rejects premature mobile BASE authority commit before resolution", async () => {
