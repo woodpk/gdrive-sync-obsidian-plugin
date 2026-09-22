@@ -8,6 +8,7 @@ import {
 import {
   validationAssertionId,
   type ValidationConvergenceAssertion,
+  type ValidationDiagnosticExpectation,
   type ValidationEvidenceRef,
   type ValidationExpectedPlanOperation,
   type ValidationPlanExpectation,
@@ -144,6 +145,14 @@ export interface D01EvidenceRecorderPort {
   }): Promise<readonly ValidationEvidenceRef[]>;
 }
 
+export interface D01TerminalDiagnostics {
+  readonly establishWindows: ValidationDiagnosticExpectation;
+  readonly establishMobile: ValidationDiagnosticExpectation;
+  readonly windowsFirstSync: ValidationDiagnosticExpectation;
+  readonly mobileCleanMerge: ValidationDiagnosticExpectation;
+  readonly windowsReconcile: ValidationDiagnosticExpectation;
+}
+
 export interface D01ScenarioPackageOptions {
   readonly targetPath: VaultPath;
   readonly sentinelPath: VaultPath;
@@ -156,6 +165,7 @@ export interface D01ScenarioPackageOptions {
   readonly verifier: D01VerifierPort;
   readonly conflictArtifacts: D01ConflictArtifactProbe;
   readonly handoffs: D01CrossDeviceHandoffPort;
+  readonly terminalDiagnostics: D01TerminalDiagnostics;
   readonly evidence: D01EvidenceRecorderPort;
 }
 
@@ -244,6 +254,30 @@ function convergenceAssertion(
     expectation,
   });
 }
+
+function requireTerminalDiagnostic(
+  diagnostic: ValidationDiagnosticExpectation,
+  expectedDeviceId: ValidationDeviceIdentity["deviceId"],
+  label: string,
+): void {
+  if (diagnostic.deviceId !== expectedDeviceId) {
+    throw new Error("D01 " + label + " terminal diagnostic is bound to the wrong device.");
+  }
+  if (diagnostic.component !== "sync.controller" || diagnostic.event !== "sync-run-complete") {
+    throw new Error("D01 " + label + " terminal diagnostic must bind sync.controller/sync-run-complete.");
+  }
+  if (
+    diagnostic.diagnosticRunId === undefined
+    || !Number.isSafeInteger(diagnostic.diagnosticRunId)
+    || diagnostic.diagnosticRunId < 0
+  ) {
+    throw new Error("D01 " + label + " terminal diagnostic requires an exact non-negative diagnosticRunId.");
+  }
+  if (diagnostic.expectedFields?.result !== "complete") {
+    throw new Error("D01 " + label + " terminal diagnostic must require result=complete.");
+  }
+}
+
 
 function expectedOperation(
   kind: "upload-create" | "download-create" | "upload-update" | "download-update" | "clean-text-merge",
@@ -473,6 +507,8 @@ function baselineRequest(
       { kind: "remote-content", assertion: stateAssertion("d01.base.remote.target", "remote-content", String(target.path), "Remote has the exact trusted D01 BASE bytes."), path: target.path, content: targetContent, remoteObjectId },
       { kind: "base-authority", assertion: stateAssertion("d01.base.windows.authority", "base-authority", String(target.path), "Windows trusted BASE records the exact D01 object and bytes."), deviceId: options.windowsDevice.deviceId, path: target.path, expectedRemoteObjectId: remoteObjectId, expectedContent: targetContent },
       { kind: "base-authority", assertion: stateAssertion("d01.base.mobile.authority", "base-authority", String(target.path), "Mobile trusted BASE records the same exact D01 object and bytes."), deviceId: options.mobileDevice.deviceId, path: target.path, expectedRemoteObjectId: remoteObjectId, expectedContent: targetContent },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.windows-terminal", "terminal-product-result", "Windows BASE establishment", "Windows BASE upload completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.establishWindows },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.base.mobile-terminal", "terminal-product-result", "Mobile BASE establishment", "Mobile BASE download completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.establishMobile },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.base.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel is identical on both devices and remote."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -502,6 +538,7 @@ function independentEditsRequest(
       { kind: "local-content", assertion: stateAssertion("d01.independent.windows", "local-content", String(windowsTarget.path), "Windows retains its non-overlap-a edit after the first production sync."), deviceId: options.windowsDevice.deviceId, path: windowsTarget.path, content: windowsContent },
       { kind: "remote-content", assertion: stateAssertion("d01.independent.remote", "remote-content", String(windowsTarget.path), "Remote contains the Windows first-sync edit before mobile observes it."), path: windowsTarget.path, content: windowsContent, remoteObjectId },
       { kind: "local-content", assertion: stateAssertion("d01.independent.mobile", "local-content", String(mobileTarget.path), "Mobile still retains its independently-created non-overlap-b edit before merge planning."), deviceId: options.mobileDevice.deviceId, path: mobileTarget.path, content: mobileContent },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.independent.windows-terminal", "terminal-product-result", "Windows first synchronization", "Windows first-sync upload completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.windowsFirstSync },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.independent.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel remains unchanged during independent edits and first sync."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -528,9 +565,11 @@ function cleanMergeRequest(
     state: [
       { kind: "local-content", assertion: stateAssertion("d01.merge.mobile", "local-content", String(options.targetPath), "Mobile contains the exact clean three-way merge: each independent edit appears exactly once."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, content: mergedContent },
       { kind: "remote-content", assertion: stateAssertion("d01.merge.remote", "remote-content", String(options.targetPath), "Remote contains the exact clean three-way merge on the original stable object."), path: options.targetPath, content: mergedContent, remoteObjectId },
+      { kind: "live-trash-absence-state", assertion: stateAssertion("d01.merge.remote-unique-path", "live-trash-absence-state", String(options.targetPath), "Complete remote enumeration proves one live occupant at the canonical D01 target path."), path: options.targetPath, expectedState: "live" },
       { kind: "local-content", assertion: stateAssertion("d01.merge.windows-pre-reconcile", "local-content", String(options.targetPath), "Windows still has its first-sync edit until the required reconciliation step."), deviceId: options.windowsDevice.deviceId, path: options.targetPath, content: windowsContent },
       { kind: "base-authority", assertion: stateAssertion("d01.merge.mobile-base", "base-authority", String(options.targetPath), "Mobile trusted BASE commits the verified merged bytes on the same remote object."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedContent: mergedContent },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.merge.mobile-effects", "durable-intent-or-effect", String(options.targetPath), "No mobile durable effect remains outstanding after the clean merge commits."), deviceId: options.mobileDevice.deviceId, expected: "none-outstanding" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.merge.mobile-terminal", "terminal-product-result", "Mobile clean merge", "Mobile clean-merge execution completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.mobileCleanMerge },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.merge.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The D01 sentinel remains unchanged through clean merge execution."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -557,10 +596,14 @@ function finalRequest(
       { kind: "local-content", assertion: stateAssertion("d01.final.windows", "local-content", String(options.targetPath), "Windows reconciles to the exact combined D01 bytes."), deviceId: options.windowsDevice.deviceId, path: options.targetPath, content: mergedContent },
       { kind: "local-content", assertion: stateAssertion("d01.final.mobile", "local-content", String(options.targetPath), "Mobile retains the exact combined D01 bytes."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, content: mergedContent },
       { kind: "remote-content", assertion: stateAssertion("d01.final.remote", "remote-content", String(options.targetPath), "Remote retains the exact combined D01 bytes on the original object."), path: options.targetPath, content: mergedContent, remoteObjectId },
+      { kind: "live-trash-absence-state", assertion: stateAssertion("d01.final.remote-unique-path", "live-trash-absence-state", String(options.targetPath), "Complete remote enumeration proves there is exactly one live occupant at the canonical D01 target path."), path: options.targetPath, expectedState: "live" },
       { kind: "base-authority", assertion: stateAssertion("d01.final.windows-base", "base-authority", String(options.targetPath), "Windows trusted BASE records the verified merged bytes and stable object identity."), deviceId: options.windowsDevice.deviceId, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedContent: mergedContent },
       { kind: "base-authority", assertion: stateAssertion("d01.final.mobile-base", "base-authority", String(options.targetPath), "Mobile trusted BASE records the verified merged bytes and stable object identity."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedContent: mergedContent },
+      { kind: "mapping-or-tombstone", assertion: stateAssertion("d01.final.windows-mapping", "mapping-or-tombstone", String(options.targetPath), "Windows retains one live mapping to the original D01 remote object and no tombstone."), deviceId: options.windowsDevice.deviceId, path: options.targetPath, expected: "mapping", remoteObjectId, entityKind: "file" },
+      { kind: "mapping-or-tombstone", assertion: stateAssertion("d01.final.mobile-mapping", "mapping-or-tombstone", String(options.targetPath), "Mobile retains one live mapping to the original D01 remote object and no tombstone."), deviceId: options.mobileDevice.deviceId, path: options.targetPath, expected: "mapping", remoteObjectId, entityKind: "file" },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.final.windows-effects", "durable-intent-or-effect", String(options.targetPath), "No Windows durable effect remains outstanding after reconciliation."), deviceId: options.windowsDevice.deviceId, expected: "none-outstanding" },
       { kind: "durable-intent-or-effect", assertion: stateAssertion("d01.final.mobile-effects", "durable-intent-or-effect", String(options.targetPath), "No mobile durable effect remains outstanding after merge."), deviceId: options.mobileDevice.deviceId, expected: "none-outstanding" },
+      { kind: "terminal-product-result", assertion: stateAssertion("d01.final.windows-terminal", "terminal-product-result", "Windows final reconciliation", "Windows reconciliation completed in the exact production synchronization run."), diagnostic: options.terminalDiagnostics.windowsReconcile },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("d01.final.sentinel", "unrelated-mutation-absence", String(sentinel.path), "The unrelated D01 sentinel remains byte-identical everywhere."), local: [
         { deviceId: options.windowsDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
         { deviceId: options.mobileDevice.deviceId, path: sentinel.path, state: "file", content: sentinelContent },
@@ -569,6 +612,7 @@ function finalRequest(
     convergence: [
       { kind: "cross-device-content", assertion: convergenceAssertion("d01.final.content", "cross-device-content", String(options.targetPath), "Both devices converge on the exact combined D01 content."), deviceIds: devices, path: options.targetPath, content: mergedContent },
       { kind: "cross-device-authority", assertion: convergenceAssertion("d01.final.authority", "cross-device-authority", String(options.targetPath), "Both devices converge on the same live remote object without a tombstone."), deviceIds: devices, path: options.targetPath, expectedRemoteObjectId: remoteObjectId, expectedTombstone: false },
+      { kind: "final-reconciliation-stable", assertion: convergenceAssertion("d01.final.stable", "final-reconciliation-stable", String(options.targetPath), "Final D01 reconciliation has terminal completion, complete remote visibility, no outstanding intents/backlog, and fully converged recorded paths."), deviceIds: devices, terminalDiagnostic: options.terminalDiagnostics.windowsReconcile, requireRemoteComplete: true, requireNoOutstandingIntents: true, requireNoLearnedRemoteBatches: true, requireAllRecordedPathsConverged: true },
     ],
   };
 }
@@ -588,6 +632,11 @@ export function createD01CleanTextMergeScenario(
   if (options.targetPath === options.sentinelPath) {
     throw new Error("D01 target and sentinel paths must be distinct.");
   }
+  requireTerminalDiagnostic(options.terminalDiagnostics.establishWindows, options.windowsDevice.deviceId, "Windows BASE establishment");
+  requireTerminalDiagnostic(options.terminalDiagnostics.establishMobile, options.mobileDevice.deviceId, "mobile BASE establishment");
+  requireTerminalDiagnostic(options.terminalDiagnostics.windowsFirstSync, options.windowsDevice.deviceId, "Windows first sync");
+  requireTerminalDiagnostic(options.terminalDiagnostics.mobileCleanMerge, options.mobileDevice.deviceId, "mobile clean merge");
+  requireTerminalDiagnostic(options.terminalDiagnostics.windowsReconcile, options.windowsDevice.deviceId, "Windows final reconciliation");
 
   const contexts = new Map<string, D01Context>();
   const context = (run: ValidationRunIdentity): D01Context => {
