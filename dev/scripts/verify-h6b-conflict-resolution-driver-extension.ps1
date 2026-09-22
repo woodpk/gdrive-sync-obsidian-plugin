@@ -95,7 +95,7 @@ if ($baseAncestorExit -ne 0) {
 & git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $remoteHead
 $implementationAncestorExit = $LASTEXITCODE
 if ($implementationAncestorExit -ne 0) {
-    throw "Implementation HEAD is not contained in origin/$ExpectedBranch: $ImplementationHead !<= $remoteHead"
+    throw "Implementation HEAD is not contained in origin/${ExpectedBranch}: $ImplementationHead !<= $remoteHead"
 }
 
 Invoke-GitCheck -Label 'H6B committed diff check' -Arguments @('diff','--check',"$BaseSha..$remoteHead")
