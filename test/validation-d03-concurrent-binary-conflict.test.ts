@@ -721,20 +721,36 @@ test("VH26 D03 wrong-run terminal diagnostics cannot satisfy the frozen verifier
       },
     },
     diagnostics: {
-      snapshot: () => [{
-        timestamp: "2026-09-22T12:00:00.000Z",
-        sequence: 1,
-        level: "info",
-        component: "sync.controller",
-        event: "sync-run-complete",
-        runId: wrongRunId,
-        platform: "mobile",
-        fields: {
-          result: "partial",
-          skippedCount: 1,
-          conflictCount: 1,
+      snapshot: () => [
+        {
+          timestamp: "2026-09-22T12:00:00.000Z",
+          sequence: 1,
+          level: "info",
+          component: "sync.controller",
+          event: "sync-run-complete",
+          runId: wrongRunId,
+          platform: "mobile",
+          fields: {
+            result: "partial",
+            skippedCount: 1,
+            conflictCount: 1,
+          },
         },
-      }],
+        {
+          timestamp: "2026-09-22T12:00:01.000Z",
+          sequence: 2,
+          level: "info",
+          component: "sync.controller",
+          event: "sync-run-complete",
+          runId: MOBILE_CONFLICT_DIAGNOSTIC_RUN_ID,
+          platform: "mobile",
+          fields: {
+            result: "complete",
+            skippedCount: 0,
+            conflictCount: 0,
+          },
+        },
+      ],
     },
   };
   const verifier = new StateConvergenceVerifier({ devices: [device] });
@@ -775,7 +791,7 @@ test("VH26 D03 wrong-run terminal diagnostics cannot satisfy the frozen verifier
   };
 
   const report = await verifier.verify(request);
-  assert.equal(report.result.verdict, "blocked");
+  assert.equal(report.result.verdict, "fail");
   assert.notEqual(report.result.verdict, "pass");
 });
 
