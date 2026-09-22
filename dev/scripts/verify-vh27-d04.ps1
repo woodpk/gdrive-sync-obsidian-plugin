@@ -305,199 +305,23 @@ function Get-LastRuntimeField {
     return $regexMatches[$regexMatches.Count - 1].Groups[1].Value.Trim()
 }
 
-$phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*
+$phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*$'
+$changeSetVerdict = Get-LastRuntimeField -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*$'
+$repositoryVerdict = Get-LastRuntimeField -Pattern '^Repository verification:\s+([^\r\n]+?)\s*$'
+$overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
+$taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
+$evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$'
+$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]+?)\s*$' -DefaultValue '<none reported>'
+$publicationStatus = Get-LastRuntimeField -Pattern '^Evidence published:\s*([^\r\n]+?)\s*$' -DefaultValue '<not reported>'
+$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]+?)\s*$' -DefaultValue '<none reported>'
 
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$changeSetVerdict = Get-LastRuntimeField -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$repositoryVerdict = Get-LastRuntimeField -Pattern '^Repository verification:\s+([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
-
-$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
- -DefaultValue '<none reported>'
-$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
- -DefaultValue '<none reported>'
-$publicationStatus = Get-LastRuntimeField -Pattern '^Evidence published:\s*([^\r\n]+?)\s*
-
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
-}
-if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-Invoke-Fetch
-Assert-FrozenIntegration
-
-Write-Host ""
-Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
-Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
-Write-Host "Implementation HEAD: $ImplementationHead"
-Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
- -DefaultValue '<not reported>'
 if ($localEvidenceBranch -eq '<none reported>' -and $publicationIssue -ne '<none reported>') {
     $branchMatch = [regex]::Match($publicationIssue, 'local branch\s+([^\s.]+)')
-    if ($branchMatch.Success) { $localEvidenceBranch = $branchMatch.Groups[1].Value }
+    if ($branchMatch.Success) {
+        $localEvidenceBranch = $branchMatch.Groups[1].Value
+    }
 }
+
 $failureSummary = @(
     "PHX-CI verdict: $phxVerdict",
     "Change-set verification: $changeSetVerdict",
@@ -525,12 +349,20 @@ if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorP
 
 Invoke-Fetch
 Assert-FrozenIntegration
+Assert-PeerCommonBaseConsistency
 
 Write-Host ""
 Write-Host "VH27 D04 VERIFICATION: PASS"
-Write-Host "Change-set verification: PASS"
-Write-Host "Repository verification: PASS"
-Write-Host "Overall verification: PASS"
+Write-Host "PHX-CI verdict: $phxVerdict"
+Write-Host "Change-set verification: $changeSetVerdict"
+Write-Host "Repository verification: $repositoryVerdict"
+Write-Host "Overall verification: $overallVerdict"
+Write-Host "Task exit code: $taskExitCode"
+Write-Host "Evidence commit: $evidenceCommit"
+Write-Host "Local evidence branch: $localEvidenceBranch"
+Write-Host "Publication status: $publicationStatus"
+Write-Host "Publication issue: $publicationIssue"
+Write-Host "Runtime process exit code: $runtimeExit"
 Write-Host "D_SERIES_COMMON_BASE_SHA: $BaseSha"
 Write-Host "Implementation HEAD: $ImplementationHead"
 Write-Host "Pre-H6B preserved HEAD: $PreH6bHead"
