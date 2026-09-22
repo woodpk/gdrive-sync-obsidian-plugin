@@ -130,7 +130,7 @@ export type D06StaleAuthorityObservation =
   | { readonly status: "not-observable"; readonly reason: string; readonly evidenceRefs: readonly ValidationEvidenceRef[] };
 
 export interface D06StaleAuthorityPort {
-  observeCurrentDeviceStale(deviceId: ValidationDeviceId): Promise<D06StaleAuthorityObservation>;
+  observeDeviceStale(deviceId: ValidationDeviceId): Promise<D06StaleAuthorityObservation>;
 }
 
 export type D06StaleConditionConfiguration =
@@ -174,7 +174,8 @@ export interface D06ScenarioPackage {
 }
 
 export interface D06AuthorityObservationSource {
-  readonly deviceId: ValidationDeviceId;
+  /** Exact device whose stale status this trusted production authority attests. */
+  readonly subjectDeviceId: ValidationDeviceId;
   readonly authority: Pick<
     SynchronizationAuthorityStoreV1_1<DurableSynchronizationAuthorityState>,
     "loadAuthority"
@@ -183,21 +184,22 @@ export interface D06AuthorityObservationSource {
 
 /**
  * Read-only adapter over production synchronization authority. D06 never ages,
- * rewrites, clears, or synthesizes device state; it only observes the active
- * installation's own trusted known-device record.
+ * rewrites, clears, or synthesizes device state. It proves the exact target
+ * device's known-device record from a trusted production authority source;
+ * another stale peer can never satisfy the observation.
  */
 export class D06ProductionStaleAuthorityObserver implements D06StaleAuthorityPort {
   private readonly sources = new Map<string, D06AuthorityObservationSource>();
 
   constructor(sources: readonly D06AuthorityObservationSource[]) {
     for (const source of sources) {
-      const key = String(source.deviceId);
-      if (this.sources.has(key)) throw new Error("Duplicate D06 authority source: " + key);
+      const key = String(source.subjectDeviceId);
+      if (this.sources.has(key)) throw new Error("Duplicate D06 authority subject: " + key);
       this.sources.set(key, source);
     }
   }
 
-  async observeCurrentDeviceStale(deviceId: ValidationDeviceId): Promise<D06StaleAuthorityObservation> {
+  async observeDeviceStale(deviceId: ValidationDeviceId): Promise<D06StaleAuthorityObservation> {
     const source = this.sources.get(String(deviceId));
     if (!source) {
       return { status: "not-observable", reason: "No production authority source is bound for the returning device.", evidenceRefs: [] };
@@ -211,25 +213,18 @@ export class D06ProductionStaleAuthorityObserver implements D06StaleAuthorityPor
           evidenceRefs: [],
         };
       }
-      if (String(loaded.state.deviceIdentity) !== String(deviceId)) {
+      const target = loaded.state.knownDevices.find(entry => String(entry.deviceId) === String(deviceId));
+      if (!target) {
         return {
           status: "not-observable",
-          reason: "Bound authority does not belong to the returning installation.",
-          evidenceRefs: [],
-        };
-      }
-      const self = loaded.state.knownDevices.find(entry => String(entry.deviceId) === String(deviceId));
-      if (!self) {
-        return {
-          status: "not-observable",
-          reason: "Trusted authority contains no self device-state entry.",
+          reason: "Trusted authority contains no known-device entry for the returning installation.",
           evidenceRefs: [],
         };
       }
       const evidence = validationEvidenceRef(
-        "d06:authority:" + String(deviceId) + ":" + String(loaded.state.persistenceRevision) + ":" + String(loaded.state.semanticGeneration),
+        "d06:authority:" + String(loaded.state.deviceIdentity) + ":subject:" + String(deviceId) + ":" + String(loaded.state.persistenceRevision) + ":" + String(loaded.state.semanticGeneration),
       );
-      return self.stale
+      return target.stale
         ? { status: "stale", evidenceRefs: [evidence] }
         : { status: "fresh", evidenceRefs: [evidence] };
     } catch {
@@ -788,7 +783,7 @@ export function createD06ScenarioPackage(bindings: D06ScenarioBindings): D06Scen
         if (!state.seedVerified) {
           return { status: "blocked", summary: "D06 cannot mutate newer authority before objective seed verification.", evidenceRefs: [] };
         }
-        const stale = await bindings.staleAuthority.observeCurrentDeviceStale(bindings.mobileDevice.deviceId);
+        const stale = await bindings.staleAuthority.observeDeviceStale(bindings.mobileDevice.deviceId);
         if (stale.status !== "stale" || stale.evidenceRefs.length === 0) {
           return { status: "failed", summary: "D06 refused absent-device mutation because genuine returning-device staleness was no longer objectively proven.", evidenceRefs: stale.evidenceRefs };
         }
@@ -833,7 +828,7 @@ export function createD06ScenarioPackage(bindings: D06ScenarioBindings): D06Scen
         || input.run.scenarioId !== D06_SCENARIO_ID
         || input.device.deviceId !== bindings.mobileDevice.deviceId
       ) return { status: "ambiguous" };
-      const observation = await bindings.staleAuthority.observeCurrentDeviceStale(bindings.mobileDevice.deviceId);
+      const observation = await bindings.staleAuthority.observeDeviceStale(bindings.mobileDevice.deviceId);
       if (observation.status === "stale" && observation.evidenceRefs.length > 0) return { status: "verified" };
       if (observation.status === "fresh") return { status: "pending" };
       return { status: "ambiguous" };
@@ -851,7 +846,7 @@ export function createD06ScenarioPackage(bindings: D06ScenarioBindings): D06Scen
         return { status: "blocked", summary: D06_STALE_CONDITION_BLOCKED, evidenceRefs: [] };
       }
 
-      const observed = await bindings.staleAuthority.observeCurrentDeviceStale(bindings.mobileDevice.deviceId);
+      const observed = await bindings.staleAuthority.observeDeviceStale(bindings.mobileDevice.deviceId);
       if (observed.status === "stale" && observed.evidenceRefs.length > 0) {
         return { status: "completed", evidenceRefs: observed.evidenceRefs };
       }
@@ -908,7 +903,7 @@ export function createD06ScenarioPackage(bindings: D06ScenarioBindings): D06Scen
         if (request.operation === D06_SCENARIO_OPERATIONS.verifyStaleAuthority) {
           const roleProblem = requireRole(bindings, "mobile");
           if (roleProblem) return { status: "blocked", summary: roleProblem, evidenceRefs: [] };
-          const observed = await bindings.staleAuthority.observeCurrentDeviceStale(bindings.mobileDevice.deviceId);
+          const observed = await bindings.staleAuthority.observeDeviceStale(bindings.mobileDevice.deviceId);
           if (observed.status !== "stale" || observed.evidenceRefs.length === 0) {
             return {
               status: "failed",
@@ -931,7 +926,7 @@ export function createD06ScenarioPackage(bindings: D06ScenarioBindings): D06Scen
         if (request.operation === D06_SCENARIO_OPERATIONS.verifySafeReconciliation) {
           const roleProblem = requireRole(bindings, "mobile");
           if (roleProblem) return { status: "blocked", summary: roleProblem, evidenceRefs: [] };
-          const stale = await bindings.staleAuthority.observeCurrentDeviceStale(bindings.mobileDevice.deviceId);
+          const stale = await bindings.staleAuthority.observeDeviceStale(bindings.mobileDevice.deviceId);
           if (stale.status !== "stale" || stale.evidenceRefs.length === 0) {
             return {
               status: "failed",
