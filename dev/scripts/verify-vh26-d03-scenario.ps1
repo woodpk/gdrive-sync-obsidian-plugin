@@ -131,15 +131,16 @@ function Assert-PeerCommonBases {
         $evidence = Invoke-GitText -Arguments @('show',$evidenceSpec) -AllowFailure
         if ($evidence.ExitCode -ne 0) { continue }
 
-        $matches = [regex]::Matches(
-            $evidence.Text,
-            '(?m)^D_SERIES_COMMON_BASE_SHA\s*(?:=|:)\s*\x60?([0-9a-fA-F]{40})\x60?\s*$'
-        )
-        if ($matches.Count -eq 0) {
+        $baseLines = @($evidence.Text -split '\r?\n' | Where-Object { $_ -match 'D_SERIES_COMMON_BASE_SHA' })
+        if ($baseLines.Count -eq 0) {
             throw "Wave D peer evidence exists but does not record D_SERIES_COMMON_BASE_SHA: $($peer.Path) on $($peer.Branch)"
         }
-        foreach ($match in $matches) {
-            $peerBase = $match.Groups[1].Value
+        foreach ($baseLine in $baseLines) {
+            $shaMatch = [regex]::Match($baseLine, '[0-9a-fA-F]{40}')
+            if (-not $shaMatch.Success) {
+                throw "Wave D peer evidence has an unparsable D_SERIES_COMMON_BASE_SHA line: $baseLine"
+            }
+            $peerBase = $shaMatch.Value
             if ($peerBase -cne $BaseSha) {
                 throw "D-SERIES COMMON BASE MISMATCH. $($peer.Branch) records $peerBase; required $BaseSha."
             }
