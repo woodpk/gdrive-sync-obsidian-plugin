@@ -333,6 +333,7 @@ function controllerFor(
   role: "windows" | "mobile",
   plans: readonly SynchronizationPlan[],
   conflict: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>,
+  exposeConflictSurface = true,
 ): ScriptedController {
   let previewIndex = 0;
   let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
@@ -346,11 +347,17 @@ function controllerFor(
       if (!observed) throw new Error(role + " has no scripted D02 plan for preview " + previewIndex + ".");
       previewedPlanIds.push(String(observed.planId));
       if (observed.operations.some(item => item.kind === "unresolved-conflict")) {
-        surface = {
-          status: { kind: "conflict-present", conflictCount: 1 },
-          planPreview: observed,
-          conflicts: [conflict],
-        };
+        surface = exposeConflictSurface
+          ? {
+              status: { kind: "conflict-present", conflictCount: 1 },
+              planPreview: observed,
+              conflicts: [conflict],
+            }
+          : {
+              status: { kind: "idle-ready" },
+              planPreview: observed,
+              conflicts: [],
+            };
       } else {
         surface = { status: { kind: "idle-ready" }, planPreview: observed, conflicts: [] };
       }
@@ -411,6 +418,7 @@ class CapturingVerifier implements D02StateVerifierPort {
 function harness(input?: {
   readonly conflict?: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>;
   readonly mobileConflictPlan?: SynchronizationPlan;
+  readonly exposeConflictSurface?: boolean;
   readonly verifierVerdict?: (
     request: ValidationStateConvergenceRequest,
     index: number,
@@ -426,7 +434,7 @@ function harness(input?: {
   const mobile = controllerFor("mobile", [
     seedMobilePlan(),
     input?.mobileConflictPlan ?? unresolvedConflictPlan(),
-  ], conflict);
+  ], conflict, input?.exposeConflictSurface ?? true);
   const verifier = new CapturingVerifier(input?.verifierVerdict);
   const handoffs: string[] = [];
   const evidenceInputs: Array<{
@@ -538,7 +546,8 @@ test("VH25 D02 preserves both overlapping originals, resolves through fixed H6B 
     "plan:d02:seed-mobile",
     "plan:d02:mobile-conflict",
   ]);
-  assert.deepEqual(subject.mobile.executedPlanIds, subject.mobile.previewedPlanIds);
+  assert.deepEqual(subject.mobile.executedPlanIds, ["plan:d02:seed-mobile"]);
+  assert.equal(subject.mobile.executedPlanIds.includes("plan:d02:mobile-conflict"), false);
 
   const resolutions = subject.mobile.requestedActions.filter(
     action => action.kind === "resolve-conflict",
@@ -632,6 +641,26 @@ test("VH25 D02 rejects newest-wins silent overwrite before conflicting mobile pl
   assert.equal(subject.verifier.requests.length, 1);
 });
 
+test("VH25 D02 rejects a correct unresolved-conflict plan when the production surface lacks matching conflict provenance", async () => {
+  const subject = harness({ exposeConflictSurface: false });
+  subject.runtime.setEnabled(true);
+
+  const result = runnerResult(await subject.runtime.startScenario("D02"));
+  assert.equal(result.status, "FAIL");
+  if (result.status === "FAIL") {
+    assert.match(result.reason.summary, /production conflict surface did not preserve exact local, remote, and BASE provenance/i);
+  }
+
+  assert.deepEqual(subject.mobile.previewedPlanIds, [
+    "plan:d02:seed-mobile",
+    "plan:d02:mobile-conflict",
+  ]);
+  assert.deepEqual(subject.mobile.executedPlanIds, ["plan:d02:seed-mobile"]);
+  assert.equal(subject.mobile.executedPlanIds.includes("plan:d02:mobile-conflict"), false);
+  assert.equal(subject.mobile.requestedActions.some(action => action.kind === "resolve-conflict"), false);
+  assert.equal(subject.verifier.requests.length, 1);
+});
+
 test("VH25 D02 rejects incomplete conflict preservation before explicit resolution", async () => {
   const subject = harness({ conflict: unresolvedConflict({ omitBase: true }) });
   subject.runtime.setEnabled(true);
@@ -644,10 +673,8 @@ test("VH25 D02 rejects incomplete conflict preservation before explicit resoluti
 
   assert.equal(subject.mobile.requestedActions.some(action => action.kind === "resolve-conflict"), false);
   assert.equal(subject.verifier.requests.length, 1);
-  assert.deepEqual(subject.mobile.executedPlanIds, [
-    "plan:d02:seed-mobile",
-    "plan:d02:mobile-conflict",
-  ]);
+  assert.deepEqual(subject.mobile.executedPlanIds, ["plan:d02:seed-mobile"]);
+  assert.equal(subject.mobile.executedPlanIds.includes("plan:d02:mobile-conflict"), false);
 });
 
 test("VH25 D02 rejects premature mobile BASE authority commit before resolution", async () => {
