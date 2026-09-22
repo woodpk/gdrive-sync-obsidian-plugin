@@ -27,19 +27,25 @@ After C01 real-platform PASS, the validated repair was integrated into `phase6-i
 ## Automated verification policy for executable and reusable task prompts
 
 - GitHub Actions are prohibited for Phase 6 build, verification, integration, and independent-verification completion gates.
-- Authoritative automated verification runs locally through the centralized PHX-CI framework at the exact revision pinned by `phx-ci.json.framework.sha`.
-- A repository-controlled task-specific PowerShell launcher under `dev/scripts/` may prepare and invoke a PHX-CI run, but it is orchestration only and MUST NOT duplicate or reimplement PHX-CI core sequencing.
-- Every launcher must validate that the PHX-CI checkout HEAD equals the configured exact pin, preserve the user's active/control checkout without reset, clean, switch, or stash, and capture complete command output and exit codes.
-- Focused/change-set verification and complete repository verification are separate required dimensions. Required task-specific tests remain mandatory, and PHX-CI must also execute the applicable typecheck, full tests, build, repository checks, artifact checks, and `git diff --check`.
+- Authoritative automated verification runs locally through the **installed PHX-CI runtime** associated with the repository's configured PHX-CI framework/runtime authority in `phx-ci.json`. The deployed runtime production front door is the execution engine.
+- The consumer repository MUST NOT require a mutable PHX-CI source checkout, a source-mode `FrameworkRoot`, or manual positioning of a PHX-CI checkout at `phx-ci.json.framework.sha`. If the installed runtime cannot validate/attest the configured repository authority, verification is blocked.
+- A repository-controlled bootstrap or task-specific focused command MAY prepare the consumer invocation, but it is orchestration only and MUST NOT duplicate PHX-CI core sequencing or turn a PHX-CI source checkout into an execution dependency.
+- Every authoritative PHX-CI run must preserve the user's active/control checkout without reset, clean, switch, or stash, and must capture complete command output and exit codes.
+- Focused/change-set verification and complete repository verification are separate required dimensions. Required task-specific focused tests remain mandatory, and PHX-CI must also execute the applicable typecheck, full tests, build, repository checks, artifact checks, and `git diff --check`.
 - Canonical PHX-CI evidence is `dev/_ca-output.md` and `dev/_ca-output.json`; historical run evidence belongs under `dev/test-results/`. Task-specific evidence under `dev/evidence/` remains separate where a task requires it.
 - Authoritative completion requires Change-set verification PASS, Repository verification PASS, and Overall verification PASS — shorthand `PASS / PASS / PASS`.
-- `STATUS: COMPLETE` is forbidden while PHX-CI is blocked or failed.
+- `STATUS: COMPLETE` is forbidden while authoritative PHX-CI verification is blocked or failed.
 - The retired BRAIN-owned `dev/scripts/run-phx-ci.ps1` is not an active entrypoint and MUST NOT be restored.
 - Historical task text may describe older CI mechanisms only when clearly labeled non-executable history; current execution always follows this policy.
 
 ## Common rules
 
-- Run tasks in filename order; prior task must PASS unless the current task explicitly says otherwise.
+- Tasks execute in filename/dependency order by default.
+- Tasks explicitly designated by governing task authority as members of the same **parallel-safe wave** may execute concurrently from their frozen common base.
+- A dependent integration/closure task may begin only after every required member of that wave has completed and received the required approval.
+- **Parallel Wave D** is explicitly authorized: VH24/D01, VH25/D02, VH26/D03, VH27/D04, VH28/D05, and VH29/D06 may execute concurrently from common base `108ab6ddfccb331c62d1ac18041faf8fd49d26c4`.
+- Each Parallel Wave D task must create its own scenario branch from that exact common base, own only its assigned scenario implementation/tests/evidence, consume no other D-series scenario branch, and preserve all frozen/shared semantic authority. If a scenario requires a shared contract change rather than implementation behind existing contracts, that task must stop and report the required contract-change condition instead of modifying the shared contract independently.
+- VH30/H8I is **not** a member of Parallel Wave D. It remains the serial D-series integration gate and may begin only after VH24–VH29 have all independently completed and the supervisor has approved each exact scenario HEAD.
 - Keep diagnostics at `Trace`, retention `5000`; capture **Copy diagnostic bundle** immediately before and after each scenario.
 - Use disposable fixtures only. Do not edit source/tests or reset/re-pair state unless the scenario explicitly requires it.
 - Beginning with C02, controlled manual scenarios must disable the three automatic synchronization toggles on every participating device before creating the fixture: **Startup / resume**, **Local changes**, and **Periodic remote reconciliation**. Leave them disabled until post-scenario evidence is captured unless the scenario explicitly tests automatic synchronization.
