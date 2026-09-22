@@ -38,6 +38,7 @@ import type {
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
 } from "../src/validation/state-convergence-verifier";
+import { mergeThreeWayText } from "../src/core/conflict-resolver";
 import { ValidationModeRuntime } from "../src/validation/validation-mode-runtime";
 import {
   D01_AUTHORITY_CYCLES,
@@ -499,6 +500,19 @@ function runnerResult(
   if (result.status !== "runner") throw new Error("Expected D01 runner result.");
   return result.result;
 }
+
+test("VH24 D01 deterministic edits are truly disjoint under the production three-way merge algorithm", () => {
+  assert.equal(D01_WINDOWS_EDIT_TEXT.includes("version=1"), true);
+  assert.equal(D01_MOBILE_EDIT_TEXT.includes("version=1"), true);
+  assert.deepEqual(
+    mergeThreeWayText(D01_BASE_TEXT, D01_MOBILE_EDIT_TEXT, D01_WINDOWS_EDIT_TEXT),
+    { clean: true, text: D01_EXPECTED_MERGED_TEXT },
+  );
+  assert.deepEqual(
+    mergeThreeWayText(D01_BASE_TEXT, D01_WINDOWS_EDIT_TEXT, D01_MOBILE_EDIT_TEXT),
+    { clean: true, text: D01_EXPECTED_MERGED_TEXT },
+  );
+});
 
 test("VH24 D01 maps one-to-one to clean merge sequencing over fixed H6B plan authority", () => {
   const s = subject();
