@@ -144,6 +144,7 @@ export interface D02ScenarioPackage {
 }
 
 interface D02RunContext {
+  run?: ValidationRunIdentity;
   mobileBaseTarget?: ValidationFixtureDescriptor;
   mobileGuard?: ValidationFixtureDescriptor;
   windowsBaseTarget?: ValidationFixtureDescriptor;
@@ -446,6 +447,12 @@ function requireRole(options: D02ScenarioPackageOptions, role: D02DeviceRole): s
     : "D02 step requires " + role + " ownership; current role is " + options.handoff.currentRole() + ".";
 }
 
+function requireContextRun(context: D02RunContext, run: ValidationRunIdentity): string | undefined {
+  return context.run && !sameRun(context.run, run)
+    ? "D02 task-local state belongs to a different validation run."
+    : undefined;
+}
+
 async function sameStableId(
   options: D02ScenarioPackageOptions,
   path: VaultPath,
@@ -620,7 +627,7 @@ function verifyPreservedConflict(input: {
     (value): value is Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> =>
       value.kind === "unresolved-text" && value.path === input.path,
   );
-  if (conflicts.length !== 1) return undefined;
+  if (conflicts.length !== 1 || input.surface.conflicts.length !== 1) return undefined;
   const conflict = conflicts[0]!;
   const base = conflict.preserved.base;
   if (!base) return undefined;
@@ -628,6 +635,7 @@ function verifyPreservedConflict(input: {
     conflict.preserved.local.source !== "local"
     || conflict.preserved.remote.source !== "remote"
     || base.source !== "base"
+    || conflict.preserved.local.deviceId === undefined
     || conflict.preserved.local.version.path !== input.path
     || conflict.preserved.remote.version.path !== input.path
     || base.version.path !== input.path
@@ -638,6 +646,7 @@ function verifyPreservedConflict(input: {
     || conflict.preserved.remote.version.content?.sizeBytes !== input.windowsEdit.sizeBytes
     || base.version.content?.sizeBytes !== input.base.sizeBytes
     || conflictRemoteId(conflict.preserved.remote) !== String(input.targetRemoteObjectId)
+    || (base.version.remoteObjectId === undefined ? base.remoteObjectId : base.version.remoteObjectId) !== input.targetRemoteObjectId
   ) {
     return undefined;
   }
@@ -678,6 +687,9 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
     async execute(request) {
       try {
         if (request.operation === D02_OPERATIONS.establishMobileFixtures) {
+          const runError = requireContextRun(context, request.run);
+          if (runError) return blocked(runError);
+          context.run = request.run;
           const roleError = requireRole(options, "mobile");
           if (roleError) return blocked(roleError);
           const target = await options.mobileFixtures.create(
@@ -698,6 +710,9 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           context.mobileGuard = guard;
           return completed();
         }
+
+        const runError = requireContextRun(context, request.run);
+        if (runError) return blocked(runError);
 
         if (request.operation === D02_OPERATIONS.establishWindowsFixtures) {
           const roleError = requireRole(options, "windows");
@@ -776,6 +791,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
   const handoffDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
+      const runError = requireContextRun(context, request.run);
+      if (context.run && runError) return blocked(runError);
       const route = handoffReasons[request.operation];
       if (!route) return blocked("Unsupported D02 handoff operation: " + request.operation);
       try {
@@ -794,6 +811,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
+        const runError = requireContextRun(context, request.run);
+        if (runError) return blocked(runError);
         const base = requireDescriptor(context.mobileBaseTarget, "mobile BASE target");
         const guard = requireDescriptor(context.mobileGuard, "mobile guard");
 
@@ -859,10 +878,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
         }
 
         if (request.operation === D02_OPERATIONS.verifyResolution) {
-          const remaining = options.conflictSurface.currentSurface().conflicts.some(
-            value => value.kind === "unresolved-text" && value.path === options.targetPath,
-          );
-          if (remaining) return failed("D02 explicit production resolution left the target unresolved on the production surface.");
+          const remaining = options.conflictSurface.currentSurface().conflicts;
+          if (remaining.length !== 0) return failed("D02 explicit production resolution left conflict state on the production surface.");
           const report = await options.verifier.verify(
             resolutionRequest(request.run, options, windowsEdit, mobileEdit, guard, targetRemoteObjectId, guardRemoteObjectId),
           );
@@ -874,10 +891,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           if (!context.resolutionVerification) {
             return blocked("D02 final convergence cannot be verified before explicit resolution passes.");
           }
-          const remaining = options.conflictSurface.currentSurface().conflicts.some(
-            value => value.kind === "unresolved-text" && value.path === options.targetPath,
-          );
-          if (remaining) return failed("D02 target re-entered unresolved conflict during final Windows reconciliation.");
+          const remaining = options.conflictSurface.currentSurface().conflicts;
+          if (remaining.length !== 0) return failed("D02 conflict state reappeared during final Windows reconciliation.");
           const report = await options.verifier.verify(
             finalRequest(request.run, options, mobileEdit, guard, targetRemoteObjectId, guardRemoteObjectId),
           );
@@ -894,6 +909,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
   const evidenceDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
+      const runError = requireContextRun(context, request.run);
+      if (runError) return blocked(runError);
       if (request.operation !== D02_OPERATIONS.recordEvidence) {
         return blocked("Unsupported D02 evidence operation: " + request.operation);
       }
