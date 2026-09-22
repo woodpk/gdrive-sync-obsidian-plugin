@@ -342,11 +342,11 @@ export function createD04ScenarioDefinition(input: {
   const establishWindows = ordinaryExpectation([
     expectedOperation("upload-create", input.targetPath),
     expectedOperation("upload-create", input.sentinelPath),
-  ], false);
+  ]);
   const establishMobile = ordinaryExpectation([
     expectedOperation("noop", input.targetPath),
     expectedOperation("noop", input.sentinelPath),
-  ], false);
+  ]);
   const mobileModify = ordinaryExpectation([
     expectedOperation("upload-update", input.targetPath),
   ]);
