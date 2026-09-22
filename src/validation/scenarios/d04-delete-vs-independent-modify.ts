@@ -36,7 +36,7 @@ import type {
 } from "../scenario-runner-module-adapter";
 import type {
   StateConvergenceVerifier,
-  type ValidationDiagnosticExpectation,
+  ValidationDiagnosticExpectation,
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
 } from "../state-convergence-verifier";
