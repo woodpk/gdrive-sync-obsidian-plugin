@@ -292,7 +292,15 @@ const validResolveTypeCheck: ValidationProductionDriverRequest = {
 };
 void validResolveTypeCheck;
 // @ts-expect-error conflict identity is production-observed and may not be supplied by a validation caller.
-const invalidResolveConflictIdTypeCheck: ValidationProductionDriverRequest = { ...validResolveTypeCheck, conflictId: contractId<"ConflictId">("conflict:forged") };
+const invalidResolveConflictIdTypeCheck: ValidationProductionDriverRequest = {
+  kind: "resolve-observed-conflict",
+  run,
+  stepId,
+  expectedVaultPath: contractId<"VaultPath">("Notes/typecheck-conflict.md"),
+  expectedConflictKind: "unresolved-text",
+  resolution: { kind: "keep-local" },
+  conflictId: contractId<"ConflictId">("conflict:forged"),
+};
 void invalidResolveConflictIdTypeCheck;
 // @ts-expect-error manual conflict-resolution payloads are outside the H6B validation production-path extension.
 const invalidManualResolveTypeCheck: ValidationProductionDriverRequest = { ...validResolveTypeCheck, resolution: { kind: "manual", resolvedVersion: { path: contractId<"VaultPath">("Notes/typecheck-conflict.md"), entityKind: "file" } } };
