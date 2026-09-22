@@ -26,7 +26,22 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 
 $ExpectedBranch = 'phase6-vh28-d05-scenario'
 $IntegrationRef = 'refs/remotes/origin/phase6-integration'
+$PreservationBranch = 'phase6-vh28-d05-scenario-pre-h6b-restart'
+$PreservationHead = '38df16aa5bb5cb28f068d448d4cdeacdabc9deee'
+$TaskEvidencePath = 'dev/evidence/_ca-output-agt-ca-p6-vh28-d05-scenario-01.md'
 $FocusedTestCommand = 'node ./node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-build/test/validation-d05-offline-reconnect.test.js'
+$AllowedImplementationPaths = @(
+    'dev/scripts/verify-vh28-d05.ps1',
+    'src/validation/scenarios/d05-offline-reconnect.ts',
+    'test/validation-d05-offline-reconnect.test.ts'
+)
+$PeerEvidence = @(
+    [pscustomobject]@{ Branch = 'phase6-vh24-d01-scenario'; Path = 'dev/evidence/_ca-output-agt-ca-p6-vh24-d01-scenario-01.md' },
+    [pscustomobject]@{ Branch = 'phase6-vh25-d02-scenario'; Path = 'dev/evidence/_ca-output-agt-ca-p6-vh25-d02-scenario-01.md' },
+    [pscustomobject]@{ Branch = 'phase6-vh26-d03-scenario'; Path = 'dev/evidence/_ca-output-agt-ca-p6-vh26-d03-scenario-01.md' },
+    [pscustomobject]@{ Branch = 'phase6-vh27-d04-scenario'; Path = 'dev/evidence/_ca-output-agt-ca-p6-vh27-d04-scenario-01.md' },
+    [pscustomobject]@{ Branch = 'phase6-vh29-d06-scenario'; Path = 'dev/evidence/_ca-output-agt-ca-p6-vh29-d06-scenario-01.md' }
+)
 
 function Assert-FullSha {
     param(
@@ -82,6 +97,116 @@ function Assert-FrozenIntegration {
     }
 }
 
+function Get-GitPathList {
+    param([Parameter(Mandatory)][string]$Range)
+    $text = Invoke-GitText @('diff','--name-only',$Range)
+    if ([string]::IsNullOrWhiteSpace($text)) { return @() }
+    return @($text -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Assert-ExactImplementationPaths {
+    $changedPaths = @(Get-GitPathList -Range "$BaseSha..$ImplementationHead")
+    $actual = @($changedPaths | Sort-Object -CaseSensitive)
+    $expected = @($AllowedImplementationPaths | Sort-Object -CaseSensitive)
+    if (($actual -join [Environment]::NewLine) -cne ($expected -join [Environment]::NewLine)) {
+        throw "VH28 D05 implementation path gate failed.$([Environment]::NewLine)Expected:$([Environment]::NewLine)$($expected -join [Environment]::NewLine)$([Environment]::NewLine)Actual:$([Environment]::NewLine)$($actual -join [Environment]::NewLine)"
+    }
+
+    $prohibitedExact = @(
+        'src/validation/driver-plan-fault-verifier-contracts.ts',
+        'src/validation/production-path-driver.ts',
+        'src/validation/plan-assertion-engine.ts',
+        'src/validation/validation-mode-runtime.ts'
+    )
+    $prohibitedPrefixes = @(
+        'src/contracts/',
+        'src/product/',
+        'src/drive/',
+        'src/sync/',
+        'src/validation/scenarios/d01-',
+        'src/validation/scenarios/d02-',
+        'src/validation/scenarios/d03-',
+        'src/validation/scenarios/d04-',
+        'src/validation/scenarios/d06-'
+    )
+    foreach ($path in $changedPaths) {
+        if ($prohibitedExact -ccontains $path) {
+            throw "VH28 D05 implementation changes prohibited shared path: $path"
+        }
+        foreach ($prefix in $prohibitedPrefixes) {
+            if ($path.StartsWith($prefix, [StringComparison]::Ordinal)) {
+                throw "VH28 D05 implementation changes prohibited shared/peer path: $path"
+            }
+        }
+    }
+}
+
+function Assert-TaskEvidenceAfterImplementation {
+    $implementationEvidenceSpec = "{0}:{1}" -f $ImplementationHead, $TaskEvidencePath
+    & git -C $script:RepoRoot cat-file -e $implementationEvidenceSpec 2>$null
+    $evidenceAtImplementationExit = $LASTEXITCODE
+    if ($evidenceAtImplementationExit -eq 0) {
+        throw "Dedicated task evidence must not exist at ImplementationHead $ImplementationHead."
+    }
+
+    $remoteEvidenceSpec = "{0}:{1}" -f $script:remoteHead, $TaskEvidencePath
+    & git -C $script:RepoRoot cat-file -e $remoteEvidenceSpec 2>$null
+    $evidenceAtRemoteExit = $LASTEXITCODE
+    if ($evidenceAtRemoteExit -ne 0) {
+        throw "Dedicated task evidence is missing after ImplementationHead: $TaskEvidencePath"
+    }
+
+    $tailPaths = @(Get-GitPathList -Range "$ImplementationHead..$script:remoteHead")
+    $unexpectedTail = @($tailPaths | Where-Object { $_ -cne $TaskEvidencePath })
+    if ($unexpectedTail.Count -ne 0) {
+        throw "Unexpected paths exist between ImplementationHead and pre-verification branch HEAD:$([Environment]::NewLine)$($unexpectedTail -join [Environment]::NewLine)"
+    }
+}
+
+function Assert-PreservationBranch {
+    $preservationRef = "refs/remotes/origin/$PreservationBranch"
+    $preserved = Invoke-GitText @('rev-parse',$preservationRef)
+    Assert-FullSha -Name 'preservation branch HEAD' -Value $preserved
+    if ($preserved -cne $PreservationHead) {
+        throw "VH28 D05 preservation branch drift: expected $PreservationHead; observed $preserved."
+    }
+}
+
+function Assert-PeerCommonBases {
+    foreach ($peer in $PeerEvidence) {
+        $peerRef = "refs/remotes/origin/$($peer.Branch)"
+        & git -C $script:RepoRoot show-ref --verify --quiet $peerRef
+        $peerRefExit = $LASTEXITCODE
+        if ($peerRefExit -ne 0) {
+            Write-Host "Peer evidence unavailable: origin/$($peer.Branch) does not exist."
+            continue
+        }
+
+        $peerHead = Invoke-GitText @('rev-parse',$peerRef)
+        $peerEvidenceSpec = "{0}:{1}" -f $peerHead, $peer.Path
+        & git -C $script:RepoRoot cat-file -e $peerEvidenceSpec 2>$null
+        $peerEvidenceExit = $LASTEXITCODE
+        if ($peerEvidenceExit -ne 0) {
+            Write-Host "Peer evidence unavailable on origin/$($peer.Branch): $($peer.Path)"
+            continue
+        }
+
+        $peerText = Invoke-GitText @('show',$peerEvidenceSpec)
+        $match = [regex]::Match(
+            $peerText,
+            '(?m)^.*D_SERIES_COMMON_BASE_SHA\s*[:=]\s*.*?([0-9a-fA-F]{40}).*$'
+        )
+        if (-not $match.Success) {
+            throw "Peer evidence on origin/$($peer.Branch) does not record D_SERIES_COMMON_BASE_SHA."
+        }
+        $peerBase = $match.Groups[1].Value
+        if ($peerBase -cne $BaseSha) {
+            throw "D-SERIES COMMON BASE MISMATCH in origin/$($peer.Branch): expected $BaseSha; evidence records $peerBase."
+        }
+        Write-Host "Peer common base PASS: $($peer.Branch) -> $peerBase"
+    }
+}
+
 Assert-FullSha -Name 'ImplementationHead' -Value $ImplementationHead
 Assert-FullSha -Name 'BaseSha' -Value $BaseSha
 
@@ -97,10 +222,12 @@ if (-not [string]::Equals($script:RepoRoot, $actualRoot, [StringComparison]::Ord
 
 Invoke-Fetch
 Assert-FrozenIntegration
+Assert-PreservationBranch
+Assert-PeerCommonBases
 
 $remoteRef = "refs/remotes/origin/$ExpectedBranch"
-$remoteHead = Invoke-GitText @('rev-parse',$remoteRef)
-Assert-FullSha -Name 'remote branch HEAD' -Value $remoteHead
+$script:remoteHead = Invoke-GitText @('rev-parse',$remoteRef)
+Assert-FullSha -Name 'remote branch HEAD' -Value $script:remoteHead
 
 & git -C $script:RepoRoot merge-base --is-ancestor $BaseSha $ImplementationHead
 $baseAncestorExit = $LASTEXITCODE
@@ -108,15 +235,18 @@ if ($baseAncestorExit -ne 0) {
     throw "Required D-series common base is not an ancestor of implementation HEAD: $BaseSha !<= $ImplementationHead"
 }
 
-& git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $remoteHead
+& git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $script:remoteHead
 $implementationAncestorExit = $LASTEXITCODE
 if ($implementationAncestorExit -ne 0) {
-    throw ("Implementation HEAD is not contained in origin/{0}: {1} !<= {2}" -f $ExpectedBranch, $ImplementationHead, $remoteHead)
+    throw ("Implementation HEAD is not contained in origin/{0}: {1} !<= {2}" -f $ExpectedBranch, $ImplementationHead, $script:remoteHead)
 }
 
-Invoke-GitCheck -Label 'VH28 D05 committed diff check' -Arguments @('diff','--check',"$BaseSha..$remoteHead")
+Assert-ExactImplementationPaths
+Assert-TaskEvidenceAfterImplementation
+Invoke-GitCheck -Label 'VH28 D05 implementation diff check' -Arguments @('diff','--check',"$BaseSha..$ImplementationHead")
+Invoke-GitCheck -Label 'VH28 D05 branch diff check' -Arguments @('diff','--check',"$BaseSha..$script:remoteHead")
 
-$configText = Invoke-GitText @('show',($remoteHead + ':phx-ci.json'))
+$configText = Invoke-GitText @('show',($script:remoteHead + ':phx-ci.json'))
 try {
     $config = $configText | ConvertFrom-Json -ErrorAction Stop
 }
@@ -176,20 +306,22 @@ Write-Host "===== Installed PHX-CI runtime ====="
 Write-Host "Runtime SHA: $expectedFrameworkSha"
 Write-Host "Runtime root: $runtimeRoot"
 Write-Host "Branch: $ExpectedBranch"
-Write-Host "Remote HEAD: $remoteHead"
+Write-Host "Remote HEAD: $script:remoteHead"
 Write-Host "Implementation HEAD: $ImplementationHead"
 Write-Host "D-series common base: $BaseSha"
 Write-Host "Publication mode: $PublicationMode"
 
-$runtimeOutput = @(
-    & $powerShellPath -NoProfile -File $frontDoor `
-        -RepoRoot $script:RepoRoot `
-        -Branch $ExpectedBranch `
-        -BaseRef $BaseSha `
-        -FocusedTestCommand $FocusedTestCommand `
-        -PublicationMode $PublicationMode `
-        -RuntimeStoreRoot $RuntimeStoreRoot 2>&1
+$runtimeArgs = @(
+    '-NoProfile',
+    '-File', $frontDoor,
+    '-RepoRoot', $script:RepoRoot,
+    '-Branch', $ExpectedBranch,
+    '-BaseRef', $BaseSha,
+    '-FocusedTestCommand', $FocusedTestCommand,
+    '-PublicationMode', $PublicationMode,
+    '-RuntimeStoreRoot', $RuntimeStoreRoot
 )
+$runtimeOutput = @(& $powerShellPath @runtimeArgs 2>&1)
 $runtimeExit = $LASTEXITCODE
 foreach ($line in $runtimeOutput) { Write-Host ([string]$line) }
 $runtimeText = ($runtimeOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
@@ -210,23 +342,35 @@ function Get-LastRuntimeField {
 
 $script:RuntimeText = $runtimeText
 $phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*$'
+$changeSetVerdict = Get-LastRuntimeField -Pattern '^Change-set verification:\s+([^\r\n]+?)\s*$'
+$repositoryVerdict = Get-LastRuntimeField -Pattern '^Repository verification:\s+([^\r\n]+?)\s*$'
 $overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
 $taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
 $evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$'
-$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
+$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]+?)\s*$' -DefaultValue '<none reported>'
+if ($localEvidenceBranch -eq '<none reported>') {
+    $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
+}
+$publicationStatus = Get-LastRuntimeField -Pattern '^Evidence published:\s*([^\r\n]+?)\s*$'
+$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]+?)\s*$' -DefaultValue '<none reported>'
+
 $failureSummary = @(
     "PHX-CI verdict: $phxVerdict",
+    "Change-set verification: $changeSetVerdict",
+    "Repository verification: $repositoryVerdict",
     "Overall verification: $overallVerdict",
     "Task exit code: $taskExitCode",
     "Evidence commit: $evidenceCommit",
     "Local evidence branch: $localEvidenceBranch",
+    "Evidence published: $publicationStatus",
+    "Publication issue: $publicationIssue",
     "Runtime process exit code: $runtimeExit"
 ) -join [Environment]::NewLine
 
-$changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
-$repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
-$overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
-$frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+$changeSetPass = $changeSetVerdict -ceq 'PASS'
+$repositoryPass = $repositoryVerdict -ceq 'PASS'
+$overallPass = $overallVerdict -ceq 'PASS'
+$frontDoorPass = $phxVerdict -ceq 'PASS'
 
 if ($runtimeExit -ne 0) {
     throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
@@ -236,9 +380,11 @@ if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorP
 }
 
 Write-Host ""
-Write-Host "===== Post-verification common-base gate ====="
+Write-Host "===== Post-verification authority gates ====="
 Invoke-Fetch
 Assert-FrozenIntegration
+Assert-PreservationBranch
+Assert-PeerCommonBases
 
 Write-Host ""
 Write-Host "VH28 D05 VERIFICATION: PASS"
