@@ -1,9 +1,12 @@
-import type { SynchronizationPlan } from "../contracts";
+import { contractId, type SynchronizationPlan, type VaultPath } from "../contracts";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
-import type {
-  ValidationPlanExecutionAuthorization,
-  ValidationPlanExpectation,
-  ValidationProductionDriverResult,
+import {
+  VALIDATION_OBSERVED_CONFLICT_KINDS,
+  VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS,
+  type ValidationObservedConflictResolution,
+  type ValidationPlanExecutionAuthorization,
+  type ValidationPlanExpectation,
+  type ValidationProductionDriverResult,
 } from "./driver-plan-fault-verifier-contracts";
 import { assertValidationPlan } from "./plan-assertion-engine";
 import {
@@ -216,6 +219,35 @@ class ValidationRunScopedPlanAuthority {
   }
 }
 
+function parseResolveObservedConflictInput(input: unknown): {
+  readonly expectedVaultPath: VaultPath;
+  readonly expectedConflictKind: "unresolved-text";
+  readonly resolution: ValidationObservedConflictResolution;
+} | undefined {
+  if (!isRecord(input)) return undefined;
+  if (!validText(input.expectedVaultPath) || input.expectedVaultPath.includes("\u0000")) return undefined;
+  if (
+    typeof input.expectedConflictKind !== "string"
+    || !(VALIDATION_OBSERVED_CONFLICT_KINDS as readonly string[]).includes(input.expectedConflictKind)
+  ) {
+    return undefined;
+  }
+  if (!isRecord(input.resolution)) return undefined;
+  const resolutionKind = input.resolution.kind;
+  if (
+    typeof resolutionKind !== "string"
+    || !(VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS as readonly string[]).includes(resolutionKind)
+    || Object.keys(input.resolution).some(key => key !== "kind")
+  ) {
+    return undefined;
+  }
+  return {
+    expectedVaultPath: contractId<"VaultPath">(input.expectedVaultPath),
+    expectedConflictKind: input.expectedConflictKind as "unresolved-text",
+    resolution: { kind: resolutionKind as ValidationObservedConflictResolution["kind"] },
+  };
+}
+
 function parseAssertionStepInput(input: unknown): {
   readonly cycleId: string;
   readonly assertionId: string;
@@ -350,6 +382,32 @@ function productionDelegate(
             return { status: "blocked", summary: "run-automatic requires an approved automatic trigger.", evidenceRefs: [] };
           }
           result = await driver.dispatch({ kind: "run-automatic", run: request.run, stepId: request.stepId, trigger });
+          break;
+        }
+        case "resolve-observed-conflict": {
+          if (isRecord(request.input) && Object.prototype.hasOwnProperty.call(request.input, "conflictId")) {
+            return {
+              status: "blocked",
+              summary: "Caller-supplied conflictId is prohibited; conflict identity must come from the production conflict observed by the fixed driver.",
+              evidenceRefs: [],
+            };
+          }
+          const input = parseResolveObservedConflictInput(request.input);
+          if (!input) {
+            return {
+              status: "blocked",
+              summary: "resolve-observed-conflict requires a valid expectedVaultPath, supported expectedConflictKind, and non-manual resolution choice.",
+              evidenceRefs: [],
+            };
+          }
+          result = await driver.dispatch({
+            kind: "resolve-observed-conflict",
+            run: request.run,
+            stepId: request.stepId,
+            expectedVaultPath: input.expectedVaultPath,
+            expectedConflictKind: input.expectedConflictKind,
+            resolution: input.resolution,
+          });
           break;
         }
         case "execute-asserted-plan": {

@@ -1,13 +1,16 @@
 import type {
+  ConflictAssessment,
   ProductSurfaceState,
   SynchronizationPlan,
   UserAction,
   UserActionResult,
+  VaultPath,
 } from "../contracts";
 import type { ExecutorRunEvidence } from "../product/production-executor";
-import type {
-  ValidationProductionDriverRequest,
-  ValidationProductionDriverResult,
+import {
+  VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS,
+  type ValidationProductionDriverRequest,
+  type ValidationProductionDriverResult,
 } from "./driver-plan-fault-verifier-contracts";
 import type { ValidationRunIdentity } from "./run-sandbox-checkpoint-contracts";
 
@@ -47,6 +50,17 @@ function failureReason(error: unknown): string {
     : "production request failed without an Error reason";
 }
 
+interface ObservedProductionConflict {
+  readonly kind: "unresolved-text";
+  readonly conflictId: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>["conflictId"];
+  readonly path: VaultPath;
+}
+
+function isSupportedObservedConflictResolution(value: unknown): value is "keep-local" | "keep-remote" | "keep-both" {
+  return typeof value === "string"
+    && (VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS as readonly string[]).includes(value);
+}
+
 /**
  * Thin validation-only adapter over ProductRuntime/ProductController.
  *
@@ -56,6 +70,7 @@ function failureReason(error: unknown): string {
  */
 export class ValidationProductionPathDriver {
   private readonly observedPlanByRun = new Map<string, SynchronizationPlan["planId"]>();
+  private readonly observedConflictsByRun = new Map<string, readonly ObservedProductionConflict[]>();
 
   constructor(private readonly runtime: ValidationProductionRuntimePort) {}
 
@@ -84,10 +99,18 @@ export class ValidationProductionPathDriver {
 
     try {
       switch (request.kind) {
-        case "preview-manual":
-          return this.observePlan(request.run, await controller.previewManual());
-        case "preview-verify-reconcile":
-          return this.observePlan(request.run, await controller.previewVerifyReconcile());
+        case "preview-manual": {
+          this.observedConflictsByRun.delete(runKey(request.run));
+          const plan = await controller.previewManual();
+          this.observeConflicts(request.run, controller.currentSurface());
+          return this.observePlan(request.run, plan);
+        }
+        case "preview-verify-reconcile": {
+          this.observedConflictsByRun.delete(runKey(request.run));
+          const plan = await controller.previewVerifyReconcile();
+          this.observeConflicts(request.run, controller.currentSurface());
+          return this.observePlan(request.run, plan);
+        }
         case "run-automatic":
           await controller.runAutomatic(request.trigger);
           return this.accepted(request.run, request.kind);
@@ -108,6 +131,65 @@ export class ValidationProductionPathDriver {
             request.run,
             request.kind,
             await controller.requestPreviewAction({ kind: "execute-plan", planId: authorization.planId }),
+          );
+        }
+        case "resolve-observed-conflict": {
+          if (Object.prototype.hasOwnProperty.call(request, "conflictId")) {
+            return this.rejected(request.run, "caller-supplied conflictId is prohibited");
+          }
+          if (
+            typeof request.expectedVaultPath !== "string"
+            || request.expectedVaultPath.length === 0
+            || request.expectedVaultPath.trim() !== request.expectedVaultPath
+            || request.expectedVaultPath.includes("\u0000")
+          ) {
+            return this.rejected(request.run, "expected conflict vault path is malformed");
+          }
+          if (request.expectedConflictKind !== "unresolved-text") {
+            return this.rejected(request.run, "expected conflict kind is not supported by this validation path");
+          }
+          if (
+            !request.resolution
+            || !isSupportedObservedConflictResolution(request.resolution.kind)
+            || Object.keys(request.resolution).some(key => key !== "kind")
+          ) {
+            return this.rejected(request.run, "conflict resolution choice is malformed or unsupported");
+          }
+
+          const observedMatches = (this.observedConflictsByRun.get(runKey(request.run)) ?? []).filter(
+            conflict => conflict.path === request.expectedVaultPath
+              && conflict.kind === request.expectedConflictKind,
+          );
+          if (observedMatches.length !== 1) {
+            return this.rejected(
+              request.run,
+              observedMatches.length === 0
+                ? "requested conflict was not observed by this driver during production planning for this validation run"
+                : "requested conflict is ambiguous in the production conflicts observed for this validation run",
+            );
+          }
+
+          const observed = observedMatches[0]!;
+          const currentMatches = controller.currentSurface().conflicts.filter(
+            (conflict): conflict is Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> =>
+              conflict.kind === request.expectedConflictKind
+              && conflict.path === request.expectedVaultPath,
+          );
+          if (currentMatches.length !== 1 || currentMatches[0]!.conflictId !== observed.conflictId) {
+            return this.rejected(
+              request.run,
+              "observed conflict is absent, stale, ambiguous, or replaced on the current production surface",
+            );
+          }
+
+          return this.fromActionResult(
+            request.run,
+            request.kind,
+            await controller.request({
+              kind: "resolve-conflict",
+              conflictId: observed.conflictId,
+              resolution: request.resolution,
+            }),
           );
         }
       }
@@ -135,9 +217,23 @@ export class ValidationProductionPathDriver {
     return { status: "plan-observed", run, plan };
   }
 
+  private observeConflicts(run: ValidationRunIdentity, surface: ProductSurfaceState): void {
+    const observations = surface.conflicts
+      .filter(
+        (conflict): conflict is Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> =>
+          conflict.kind === "unresolved-text",
+      )
+      .map(conflict => Object.freeze({
+        kind: conflict.kind,
+        conflictId: conflict.conflictId,
+        path: conflict.path,
+      }));
+    this.observedConflictsByRun.set(runKey(run), Object.freeze(observations));
+  }
+
   private accepted(
     run: ValidationRunIdentity,
-    requestKind: "run-automatic" | "execute-asserted-plan" | "cancel-active-sync",
+    requestKind: "run-automatic" | "execute-asserted-plan" | "resolve-observed-conflict" | "cancel-active-sync",
   ): ValidationProductionDriverResult {
     return { status: "request-accepted", run, requestKind, productionOutcomeEstablished: false };
   }
@@ -148,7 +244,7 @@ export class ValidationProductionPathDriver {
 
   private fromActionResult(
     run: ValidationRunIdentity,
-    requestKind: "execute-asserted-plan" | "cancel-active-sync",
+    requestKind: "execute-asserted-plan" | "resolve-observed-conflict" | "cancel-active-sync",
     result: UserActionResult,
   ): ValidationProductionDriverResult {
     return result.status === "accepted"

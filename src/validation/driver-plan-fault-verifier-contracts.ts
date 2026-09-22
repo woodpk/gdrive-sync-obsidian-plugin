@@ -34,9 +34,24 @@ export const VALIDATION_PRODUCTION_DRIVER_REQUEST_KINDS = [
   "preview-verify-reconcile",
   "run-automatic",
   "execute-asserted-plan",
+  "resolve-observed-conflict",
   "cancel-active-sync",
 ] as const;
 export type ValidationProductionDriverRequestKind = (typeof VALIDATION_PRODUCTION_DRIVER_REQUEST_KINDS)[number];
+
+export const VALIDATION_OBSERVED_CONFLICT_KINDS = ["unresolved-text"] as const;
+export type ValidationObservedConflictKind = (typeof VALIDATION_OBSERVED_CONFLICT_KINDS)[number];
+
+export const VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS = [
+  "keep-local",
+  "keep-remote",
+  "keep-both",
+] as const;
+export type ValidationObservedConflictResolutionKind =
+  (typeof VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS)[number];
+export interface ValidationObservedConflictResolution {
+  readonly kind: ValidationObservedConflictResolutionKind;
+}
 
 export interface ValidationPlanExecutionAuthorization {
   readonly assertionId: ValidationPlanAssertionId;
@@ -50,6 +65,14 @@ export type ValidationProductionDriverRequest =
   | { readonly kind: "preview-verify-reconcile"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId }
   | { readonly kind: "run-automatic"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly trigger: "startup-resume" | "local-change" | "periodic" }
   | { readonly kind: "execute-asserted-plan"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly authorization: ValidationPlanExecutionAuthorization }
+  | {
+      readonly kind: "resolve-observed-conflict";
+      readonly run: ValidationRunIdentity;
+      readonly stepId: ValidationStepId;
+      readonly expectedVaultPath: VaultPath;
+      readonly expectedConflictKind: ValidationObservedConflictKind;
+      readonly resolution: ValidationObservedConflictResolution;
+    }
   | { readonly kind: "cancel-active-sync"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId };
 
 /** Driver acknowledgement never claims that a production mutation succeeded. */

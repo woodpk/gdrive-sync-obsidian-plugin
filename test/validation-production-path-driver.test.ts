@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type {
+  ConflictAssessment,
   ManagedRemoteIdentity,
   ProductSurfaceState,
   SynchronizationPlan,
@@ -55,7 +56,7 @@ function recordingController(input?: {
   const calls: string[] = [];
   const actions: UserAction[] = [];
   let listener: ((surface: ProductSurfaceState) => void) | undefined;
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [], planPreview: manualPlan };
+  let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [], planPreview: manualPlan };
   const evidence: ExecutorRunEvidence = {
     managedRemote: {
       rootId: id<"RemoteObjectId">("remote:vh06"),
@@ -74,7 +75,28 @@ function recordingController(input?: {
     onSurface: next => { calls.push("on-surface"); listener = next; return () => { listener = undefined; }; },
     currentRunEvidence: () => evidence,
   };
-  return { controller, calls, actions, surface, evidence, emit: (value: ProductSurfaceState) => listener?.(value) };
+  return {
+    controller,
+    calls,
+    actions,
+    get surface() { return surface; },
+    evidence,
+    emit: (value: ProductSurfaceState) => listener?.(value),
+    setSurface: (value: ProductSurfaceState) => { surface = value; },
+  };
+}
+
+function unresolvedTextConflict(conflictId: string, pathValue: string): Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> {
+  const path = id<"VaultPath">(pathValue);
+  return {
+    kind: "unresolved-text",
+    conflictId: id<"ConflictId">(conflictId),
+    path,
+    preserved: {
+      local: { source: "local", version: { path, entityKind: "file" } },
+      remote: { source: "remote", version: { path, entityKind: "file" } },
+    },
+  };
 }
 
 test("VH06 driver delegates planning, Verify/Reconcile, automatic sync, cancellation, status, and lifecycle observation to production seams", async () => {
@@ -113,6 +135,130 @@ test("VH06 driver delegates planning, Verify/Reconcile, automatic sync, cancella
     "request:cancel-active-sync",
     "on-surface",
   ]);
+});
+
+test("H6B resolve-observed-conflict delegates only the exact production conflict observed for the same run", async () => {
+  for (const resolutionKind of ["keep-local", "keep-remote", "keep-both"] as const) {
+    const fixture = recordingController();
+    const conflict = unresolvedTextConflict("conflict:h6b:exact:" + resolutionKind, "Notes/conflict.md");
+    fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+    const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
+    const run = validationRunIdentity("run:h6b:exact:" + resolutionKind, "D02");
+
+    const preview = await driver.dispatch({ kind: "preview-manual", run, stepId: step });
+    assert.equal(preview.status, "plan-observed");
+
+    const result = await driver.dispatch({
+      kind: "resolve-observed-conflict",
+      run,
+      stepId: step,
+      expectedVaultPath: conflict.path,
+      expectedConflictKind: "unresolved-text",
+      resolution: { kind: resolutionKind },
+    });
+    assert.deepEqual(result, {
+      status: "request-accepted",
+      run,
+      requestKind: "resolve-observed-conflict",
+      productionOutcomeEstablished: false,
+    });
+    assert.deepEqual(fixture.actions.at(-1), {
+      kind: "resolve-conflict",
+      conflictId: conflict.conflictId,
+      resolution: { kind: resolutionKind },
+    });
+  }
+});
+
+test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambiguity, and stale current surface", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:guarded", "Notes/guarded.md");
+  const replacement = unresolvedTextConflict("conflict:h6b:replacement", "Notes/guarded.md");
+  const fixture = recordingController();
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
+  const runA = validationRunIdentity("run:h6b:a", "D02");
+  const runB = validationRunIdentity("run:h6b:b", "D02");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+
+  const before = fixture.actions.length;
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runB,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-local" },
+  })).status, "request-rejected");
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runA,
+    stepId: step,
+    expectedVaultPath: id<"VaultPath">("Notes/wrong.md"),
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-local" },
+  })).status, "request-rejected");
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runA,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "opaque-binary",
+    resolution: { kind: "keep-local" },
+  } as never)).status, "request-rejected");
+  assert.equal(fixture.actions.length, before);
+
+  fixture.setSurface({
+    status: { kind: "conflict-present", conflictCount: 2 },
+    conflicts: [conflict, unresolvedTextConflict("conflict:h6b:ambiguous", "Notes/guarded.md")],
+    planPreview: fixture.surface.planPreview,
+  });
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runA,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-both" },
+  })).status, "request-rejected");
+  assert.equal(fixture.actions.length, before);
+
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [replacement], planPreview: fixture.surface.planPreview });
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runA,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-remote" },
+  })).status, "request-rejected");
+  assert.equal(fixture.actions.length, before);
+});
+
+test("H6B resolve-observed-conflict preserves production rejection and never converts request acceptance into convergence proof", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:rejected", "Notes/rejected.md");
+  const fixture = recordingController({ actionResult: { status: "rejected", reason: "conflict is no longer current" } });
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
+  const run = validationRunIdentity("run:h6b:rejected", "D02");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run, stepId: step })).status, "plan-observed");
+
+  const rejected = await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-local" },
+  });
+  assert.deepEqual(rejected, {
+    status: "request-rejected",
+    run,
+    reason: "conflict is no longer current",
+    productionOutcomeEstablished: false,
+  });
 });
 
 test("VH06 asserted execution is run-bound, must reference a plan observed by the driver, and never manufactures production success", async () => {
