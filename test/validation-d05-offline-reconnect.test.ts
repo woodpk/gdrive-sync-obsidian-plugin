@@ -117,6 +117,16 @@ class MemoryResumeAdoptionStore implements ValidationRunnerResumeAdoptionStore {
   }
 }
 
+class RejectingResumeAdoptionStore implements ValidationRunnerResumeAdoptionStore {
+  async load(): Promise<unknown> {
+    return null;
+  }
+
+  async compareAndSet(): Promise<boolean> {
+    return false;
+  }
+}
+
 class MemoryCheckpointStore implements HumanCheckpointStateStore {
   readonly durability = "device-local" as const;
   private value: HumanCheckpointDurableState | null = null;
@@ -254,7 +264,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   let previewIndex = 0;
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -287,6 +297,10 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   return {
     calls,
     executedPlanIds,
+    currentSurface: () => surface,
+    setConflicts(conflicts: ProductSurfaceState["conflicts"]) {
+      surface = { ...surface, conflicts };
+    },
     runtime: { productController: () => controller },
   };
 }
@@ -346,7 +360,10 @@ class RecordingEvidence implements D05EvidenceRecorderPort {
   }
 }
 
-function subject(plans: readonly SynchronizationPlan[]) {
+function subject(
+  plans: readonly SynchronizationPlan[],
+  resumeAdoptionStore: ValidationRunnerResumeAdoptionStore = new MemoryResumeAdoptionStore(),
+) {
   const windowsFixtures = new FakeFixtureManager(
     D05_WINDOWS_FIXTURE_ID,
     D05_WINDOWS_RELATIVE_PATH,
@@ -370,6 +387,7 @@ function subject(plans: readonly SynchronizationPlan[]) {
       return () => new Date(Date.UTC(2026, 8, 22, 14, 0, tick++));
     })()),
   );
+  const production = productionFixture(plans);
   const packageBinding = createD05OfflineReconnectScenario({
     mobilePath: MOBILE_PATH,
     windowsPath: WINDOWS_PATH,
@@ -380,14 +398,14 @@ function subject(plans: readonly SynchronizationPlan[]) {
     verifier,
     handoffs,
     checkpoints,
+    currentProductSurface: production.currentSurface,
     evidence,
   });
-  const production = productionFixture(plans);
   const runtime = new ValidationModeRuntime({
     productionRuntime: production.runtime,
     definitions: [packageBinding.definition],
     stateStore: new MemoryRunnerStateStore(),
-    resumeAdoptionStore: new MemoryResumeAdoptionStore(),
+    resumeAdoptionStore,
     prerequisites: packageBinding.prerequisites,
     moduleOverrides: packageBinding.moduleOverrides,
     humanCheckpoints: packageBinding.humanCheckpoints,
@@ -467,8 +485,8 @@ test("VH28 D05 pauses for genuine offline/reconnect checkpoints and converges bo
   if (reconnectPause.status !== "PAUSED-HUMAN-ACTION") throw new Error("D05 must pause for genuine reconnect.");
   assert.equal(String(reconnectPause.checkpoint.checkpointId), D05_RECONNECT_CHECKPOINT_ID);
   assert.equal(reconnectPause.checkpoint.requestedAction, "restore-mobile-connectivity");
-  assert.equal(s.checkpoints.records().length, 1);
-  assert.equal(s.checkpoints.records()[0]?.action, "disable-mobile-connectivity");
+  assert.equal(s.checkpoints.records(RUN).length, 1);
+  assert.equal(s.checkpoints.records(RUN)[0]?.action, "disable-mobile-connectivity");
 
   assert.deepEqual(s.mobileFixtures.editCalls, [{
     fixtureId: D05_MOBILE_FIXTURE_ID,
@@ -576,6 +594,133 @@ test("VH28 D05 pauses for genuine offline/reconnect checkpoints and converges bo
       ["restore-mobile-connectivity", MOBILE.deviceId, "iphone", true, true],
     ],
   );
+});
+
+test("VH28 D05 does not record or advance a checkpoint when resume adoption fails", async () => {
+  const s = subject(normalPlans(), new RejectingResumeAdoptionStore());
+
+  s.runtime.setEnabled(true);
+  const offlinePause = runnerResult(await s.runtime.startScenario("D05"));
+  assert.equal(offlinePause.status, "PAUSED-HUMAN-ACTION");
+
+  await s.checkpoints.acknowledge(RUN, D05_OFFLINE_CHECKPOINT_ID);
+  await s.checkpoints.verify(RUN, D05_OFFLINE_CHECKPOINT_ID, MOBILE, verifiedProbe);
+
+  const failedResume = runnerResult(await s.runtime.resumeCurrent());
+  assert.equal(failedResume.status, "PAUSED-HUMAN-ACTION");
+  assert.equal(s.checkpoints.records(RUN).length, 0);
+  assert.equal(s.mobileFixtures.editCalls.length, 0);
+  assert.equal(s.windowsFixtures.editCalls.length, 0);
+  assert.deepEqual(s.production.executedPlanIds, [
+    "plan:d05:establish-windows",
+    "plan:d05:establish-mobile",
+    "plan:d05:establish-windows-remote",
+  ]);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH28 D05 checkpoint observations are isolated by exact run identity across retries and later runs", async () => {
+  const store = new MemoryCheckpointStore();
+  const checkpoints = new D05ConnectivityCheckpointController(
+    new HumanCheckpointResumeController(store, (() => {
+      let tick = 0;
+      return () => new Date(Date.UTC(2026, 8, 22, 15, 0, tick++));
+    })()),
+  );
+  const nextRun = validationRunIdentity("run:vh28:d05:next", "D05");
+  const resumeCommit = {
+    async commitResume() {},
+  };
+
+  await checkpoints.begin({
+    run: RUN,
+    checkpointId: D05_OFFLINE_CHECKPOINT_ID,
+    device: MOBILE,
+    action: "disable-mobile-connectivity",
+    resumeStepId: "d05-edit-mobile-offline",
+  });
+  await checkpoints.acknowledge(RUN, D05_OFFLINE_CHECKPOINT_ID);
+  await checkpoints.verify(RUN, D05_OFFLINE_CHECKPOINT_ID, MOBILE, verifiedProbe);
+  const firstConsumed = await checkpoints.consumeResume(
+    RUN,
+    D05_OFFLINE_CHECKPOINT_ID,
+    MOBILE,
+    resumeCommit,
+  );
+  assert.equal(firstConsumed.status, "resumed");
+  assert.equal(checkpoints.records(RUN).length, 1);
+  assert.equal(checkpoints.records(nextRun).length, 0);
+
+  await checkpoints.begin({
+    run: nextRun,
+    checkpointId: D05_OFFLINE_CHECKPOINT_ID,
+    device: MOBILE,
+    action: "disable-mobile-connectivity",
+    resumeStepId: "d05-edit-mobile-offline",
+  });
+  await checkpoints.acknowledge(nextRun, D05_OFFLINE_CHECKPOINT_ID);
+  await checkpoints.verify(nextRun, D05_OFFLINE_CHECKPOINT_ID, MOBILE, verifiedProbe);
+  const secondConsumed = await checkpoints.consumeResume(
+    nextRun,
+    D05_OFFLINE_CHECKPOINT_ID,
+    MOBILE,
+    resumeCommit,
+  );
+  assert.equal(secondConsumed.status, "resumed");
+
+  assert.equal(checkpoints.records(RUN).length, 1);
+  assert.equal(checkpoints.records(nextRun).length, 1);
+  assert.ok(checkpoints.records(RUN).every(record => record.run.runId === RUN.runId));
+  assert.ok(checkpoints.records(nextRun).every(record => record.run.runId === nextRun.runId));
+});
+
+test("VH28 D05 fails final verification when a clean plan leaves a retained conflict on a D05 path", async () => {
+  const s = subject(normalPlans());
+
+  s.runtime.setEnabled(true);
+  const offlinePause = runnerResult(await s.runtime.startScenario("D05"));
+  assert.equal(offlinePause.status, "PAUSED-HUMAN-ACTION");
+  await s.checkpoints.acknowledge(RUN, D05_OFFLINE_CHECKPOINT_ID);
+  await s.checkpoints.verify(RUN, D05_OFFLINE_CHECKPOINT_ID, MOBILE, verifiedProbe);
+
+  const reconnectPause = runnerResult(await s.runtime.resumeCurrent());
+  assert.equal(reconnectPause.status, "PAUSED-HUMAN-ACTION");
+  await s.checkpoints.acknowledge(RUN, D05_RECONNECT_CHECKPOINT_ID);
+  await s.checkpoints.verify(RUN, D05_RECONNECT_CHECKPOINT_ID, MOBILE, verifiedProbe);
+
+  s.production.setConflicts([
+    {
+      kind: "unresolved-text",
+      conflictId: contractId<"ConflictId">("conflict:d05:retained"),
+      path: MOBILE_PATH,
+      preserved: {
+        local: {
+          source: "local",
+          version: { path: MOBILE_PATH, entityKind: "file" },
+        },
+        remote: {
+          source: "remote",
+          version: { path: MOBILE_PATH, entityKind: "file" },
+        },
+      },
+    },
+  ]);
+
+  const failed = runnerResult(await s.runtime.resumeCurrent());
+  assert.equal(failed.status, "FAIL");
+  if (failed.status === "FAIL") {
+    assert.match(failed.reason.summary, /retains a conflict/i);
+  }
+  assert.equal(s.verifier.requests.length, 1, "final state verifier must not bless a retained conflict surface");
+  assert.equal(s.evidence.calls.length, 0);
+  assert.deepEqual(s.production.executedPlanIds, [
+    "plan:d05:establish-windows",
+    "plan:d05:establish-mobile",
+    "plan:d05:establish-windows-remote",
+    "plan:d05:windows-online-update",
+    "plan:d05:mobile-reconnect",
+    "plan:d05:windows-final-reconcile",
+  ]);
 });
 
 test("VH28 D05 rejects a reconnect conflict before mutation because the independent paths do not genuinely conflict", async () => {
