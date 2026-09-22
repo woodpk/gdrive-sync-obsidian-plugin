@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ConflictAssessment, ProductSurfaceState, SynchronizationPlan, UserAction } from "../src/contracts";
+import type { ConflictAssessment, ProductSurfaceState, SynchronizationPlan, UserAction, UserActionResult } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
@@ -82,7 +82,11 @@ function plan(planId: string, trigger: SynchronizationPlan["trigger"] = "manual"
   };
 }
 
-function productionFixture(plans: readonly SynchronizationPlan[], conflicts: readonly ConflictAssessment[] = []) {
+function productionFixture(
+  plans: readonly SynchronizationPlan[],
+  conflicts: readonly ConflictAssessment[] = [],
+  actionResult: UserActionResult = { status: "accepted" },
+) {
   let previewIndex = 0;
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
@@ -108,7 +112,7 @@ function productionFixture(plans: readonly SynchronizationPlan[], conflicts: rea
     request: async action => {
       calls.push(`request:${action.kind}`);
       requestedActions.push(action);
-      return { status: "accepted" };
+      return actionResult;
     },
     requestPreviewAction: async action => {
       calls.push(`preview-action:${action.kind}`);
@@ -563,6 +567,37 @@ test("H6B runtime delegates resolve-observed-conflict through the fixed producti
     resolution: { kind: "keep-both" },
   }]);
   assert.deepEqual(production.calls, ["preview-manual", "request:resolve-conflict"]);
+});
+
+test("H6B runtime preserves production resolve-conflict rejection as BLOCKED", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:runtime-reject", "Notes/runtime-reject.md");
+  const production = productionFixture(
+    [plan("plan:h6b:runtime-reject")],
+    [conflict],
+    { status: "rejected", reason: "conflict is stale" },
+  );
+  const definition: ValidationRunnerScenarioDefinition = {
+    scenarioId: "D02",
+    prerequisiteIds: [],
+    steps: [
+      preview("h6b-runtime-reject-preview", "h6b-runtime-reject-cycle"),
+      resolveObservedConflict("h6b-runtime-reject-resolve", {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "keep-local" },
+      }),
+    ],
+  };
+  const { runtime } = runtimeFor({ production, definitions: [definition] });
+  runtime.setEnabled(true);
+
+  const result = assertRunnerStatus(await runtime.startScenario("D02"), "BLOCKED");
+  if (result.status === "BLOCKED") assert.match(result.reason.summary, /conflict is stale/);
+  assert.deepEqual(production.requestedActions, [{
+    kind: "resolve-conflict",
+    conflictId: conflict.conflictId,
+    resolution: { kind: "keep-local" },
+  }]);
 });
 
 test("H6B runtime rejects caller conflictId and malformed path, conflict kind, or resolution before production resolution", async () => {

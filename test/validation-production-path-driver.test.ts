@@ -141,7 +141,7 @@ test("H6B resolve-observed-conflict delegates only the exact production conflict
   for (const resolutionKind of ["keep-local", "keep-remote", "keep-both"] as const) {
     const fixture = recordingController();
     const conflict = unresolvedTextConflict("conflict:h6b:exact:" + resolutionKind, "Notes/conflict.md");
-    fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+    fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
     const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
     const run = validationRunIdentity("run:h6b:exact:" + resolutionKind, "D02");
 
@@ -174,7 +174,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
   const conflict = unresolvedTextConflict("conflict:h6b:guarded", "Notes/guarded.md");
   const replacement = unresolvedTextConflict("conflict:h6b:replacement", "Notes/guarded.md");
   const fixture = recordingController();
-  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const runA = validationRunIdentity("run:h6b:a", "D02");
   const runB = validationRunIdentity("run:h6b:b", "D02");
@@ -223,9 +223,9 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
   })).status, "request-rejected");
   assert.equal(fixture.actions.length, before);
 
-  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
   assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
-  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [replacement], planPreview: fixture.surface.planPreview });
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [replacement] });
   assert.equal((await driver.dispatch({
     kind: "resolve-observed-conflict",
     run: runA,
@@ -240,7 +240,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
 test("H6B resolve-observed-conflict preserves production rejection and never converts request acceptance into convergence proof", async () => {
   const conflict = unresolvedTextConflict("conflict:h6b:rejected", "Notes/rejected.md");
   const fixture = recordingController({ actionResult: { status: "rejected", reason: "conflict is no longer current" } });
-  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict], planPreview: fixture.surface.planPreview });
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const run = validationRunIdentity("run:h6b:rejected", "D02");
   assert.equal((await driver.dispatch({ kind: "preview-manual", run, stepId: step })).status, "plan-observed");
