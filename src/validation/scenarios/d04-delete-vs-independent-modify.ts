@@ -15,7 +15,6 @@ import {
   validationTextFixture,
   type ValidationFixtureDescriptor,
   type ValidationFixtureManager,
-  type ValidationTextVariant,
 } from "../fixture-manager";
 import {
   validationStepId,
