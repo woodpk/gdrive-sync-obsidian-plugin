@@ -222,6 +222,19 @@ function Assert-ImplementationSurface {
         throw ("Required VH24 implementation path(s) missing from BaseSha..ImplementationHead: " + ($missingImplementation -join ', '))
     }
 
+    foreach ($requiredPath in $AllowedImplementationPaths) {
+        & git -C $script:RepoRoot cat-file -e ("{0}:{1}" -f $ImplementationHead, $requiredPath) 2>$null
+        $requiredPathExit = $LASTEXITCODE
+        if ($requiredPathExit -ne 0) {
+            throw "Required VH24 implementation path is absent at ImplementationHead: $requiredPath"
+        }
+    }
+
+    $mergeCommits = @(Get-GitLines @('rev-list','--merges',("$BaseSha..$TaskRemoteHead")))
+    if ($mergeCommits.Count -gt 0) {
+        throw ("VH24 task ancestry contains merge commit(s); exact linear task ancestry is required: " + ($mergeCommits -join ', '))
+    }
+
     $revListArguments = @('rev-list','-1',$TaskRemoteHead,'--') + $AllowedImplementationPaths
     $latestImplementationCommit = Invoke-GitText $revListArguments
     Assert-FullSha -Name 'latest task implementation commit' -Value $latestImplementationCommit
@@ -473,7 +486,7 @@ $authoritativePass = (
 )
 
 if (-not $authoritativePass) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$resultSummary"
+    throw "Installed PHX-CI runtime did not establish all required authoritative verdicts.$([Environment]::NewLine)$resultSummary"
 }
 
 Invoke-Fetch -Label 'Re-fetch remote state after PHX-CI'
