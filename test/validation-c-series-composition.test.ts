@@ -5,10 +5,7 @@ import {
   validationRunIdentity,
   validationStepId,
 } from "../src/validation/run-sandbox-checkpoint-contracts";
-import type {
-  ValidationRunnerPrerequisiteResult,
-  ValidationRunnerScenarioDefinition,
-} from "../src/validation/scenario-runner-contracts";
+import type { ValidationRunnerScenarioDefinition } from "../src/validation/scenario-runner-contracts";
 import type {
   ValidationRunnerApprovedModuleDelegate,
   ValidationRunnerPrerequisiteDelegate,
