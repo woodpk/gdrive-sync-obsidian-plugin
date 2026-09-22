@@ -871,13 +871,74 @@ export function createD03ConcurrentBinaryConflictScenario(
     throw new Error("D03 target and unrelated-safe paths must be distinct.");
   }
 
-  const context: D03Context = {};
+  const contexts = new Map<string, D03Context>();
+
+  const startContext = (run: ValidationRunIdentity): D03Context => {
+    const context: D03Context = { run };
+    contexts.set(runKey(run), context);
+    return context;
+  };
+
+  const requireContext = (run: ValidationRunIdentity): D03Context => {
+    const context = contexts.get(runKey(run));
+    if (!context || !sameRun(context.run, run)) {
+      throw new Error("D03 mutable scenario state is unavailable for this exact validation run.");
+    }
+    return context;
+  };
+
+  const captureDiagnosticRun = (
+    context: D03Context,
+    cycle: "establishWindows" | "establishMobile" | "windowsPublish",
+    source: D03DiagnosticRunIdSource,
+  ): number => {
+    const diagnosticRunId = source.currentSyncRunId();
+    if (diagnosticRunId === undefined || !Number.isSafeInteger(diagnosticRunId) || diagnosticRunId < 1) {
+      throw new Error(`D03 ${cycle} preview did not expose an active authoritative production diagnostic run ID.`);
+    }
+
+    if (cycle === "establishWindows") {
+      if (
+        context.establishWindowsDiagnosticRunId !== undefined
+        && context.establishWindowsDiagnosticRunId !== diagnosticRunId
+      ) {
+        throw new Error("D03 Windows BASE diagnostic run identity changed within the active validation run.");
+      }
+      context.establishWindowsDiagnosticRunId = diagnosticRunId;
+      return diagnosticRunId;
+    }
+
+    if (cycle === "establishMobile") {
+      if (
+        context.establishMobileDiagnosticRunId !== undefined
+        && context.establishMobileDiagnosticRunId !== diagnosticRunId
+      ) {
+        throw new Error("D03 mobile BASE diagnostic run identity changed within the active validation run.");
+      }
+      context.establishMobileDiagnosticRunId = diagnosticRunId;
+      return diagnosticRunId;
+    }
+
+    if (
+      context.windowsPublishDiagnosticRunId !== undefined
+      && context.windowsPublishDiagnosticRunId !== diagnosticRunId
+    ) {
+      throw new Error("D03 Windows publication diagnostic run identity changed within the active validation run.");
+    }
+    if (context.establishWindowsDiagnosticRunId === diagnosticRunId) {
+      throw new Error("D03 Windows publication reused the Windows BASE diagnostic run ID.");
+    }
+    context.windowsPublishDiagnosticRunId = diagnosticRunId;
+    return diagnosticRunId;
+  };
 
   const fixtureDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
         if (request.operation === D03_OPERATIONS.establishFixtures) {
-          const target = await options.windowsFixtures.create(
+          const context = startContext(request.run);
+          const windowsFixtures = options.windowsFixturesForRun(request.run);
+          const target = await windowsFixtures.create(
             validationOpaqueBinaryFixture(
               D03_TARGET_FIXTURE_ID,
               D03_TARGET_RELATIVE_PATH,
@@ -886,7 +947,7 @@ export function createD03ConcurrentBinaryConflictScenario(
               "conflict",
             ),
           );
-          const safe = await options.windowsFixtures.create(
+          const safe = await windowsFixtures.create(
             validationOpaqueBinaryFixture(
               D03_SAFE_FIXTURE_ID,
               D03_SAFE_RELATIVE_PATH,
@@ -913,8 +974,8 @@ export function createD03ConcurrentBinaryConflictScenario(
             expectedVersion: D03_BASE_VERSION,
             expectedSizeBytes: D03_SAFE_SIZE_BYTES,
           });
-          const targetHash = await options.windowsFixtures.hash(D03_TARGET_FIXTURE_ID);
-          const safeHash = await options.windowsFixtures.hash(D03_SAFE_FIXTURE_ID);
+          const targetHash = await windowsFixtures.hash(D03_TARGET_FIXTURE_ID);
+          const safeHash = await windowsFixtures.hash(D03_SAFE_FIXTURE_ID);
           if (targetHash !== target.hash || safeHash !== safe.hash) {
             return failed("D03 trusted binary fixture setup failed deterministic hash verification.");
           }
@@ -923,14 +984,16 @@ export function createD03ConcurrentBinaryConflictScenario(
           return completed();
         }
 
+        const context = requireContext(request.run);
         if (request.operation === D03_OPERATIONS.editWindowsVariants) {
-          const targetBase = requireDescriptor(context.targetBase, "target BASE");
-          const safeBase = requireDescriptor(context.safeBase, "safe BASE");
-          const windowsTarget = await options.windowsFixtures.edit(
+          const targetBase = requireDescriptor(request.run, context.targetBase, "target BASE");
+          const safeBase = requireDescriptor(request.run, context.safeBase, "safe BASE");
+          const windowsFixtures = options.windowsFixturesForRun(request.run);
+          const windowsTarget = await windowsFixtures.edit(
             D03_TARGET_FIXTURE_ID,
             D03_WINDOWS_TARGET_VERSION,
           );
-          const safeFinal = await options.windowsFixtures.edit(
+          const safeFinal = await windowsFixtures.edit(
             D03_SAFE_FIXTURE_ID,
             D03_WINDOWS_SAFE_VERSION,
           );
@@ -955,8 +1018,8 @@ export function createD03ConcurrentBinaryConflictScenario(
           if (windowsTarget.hash === targetBase.hash || safeFinal.hash === safeBase.hash) {
             return failed("D03 Windows binary edits did not change the target and unrelated-safe bytes.");
           }
-          const targetHash = await options.windowsFixtures.hash(D03_TARGET_FIXTURE_ID);
-          const safeHash = await options.windowsFixtures.hash(D03_SAFE_FIXTURE_ID);
+          const targetHash = await windowsFixtures.hash(D03_TARGET_FIXTURE_ID);
+          const safeHash = await windowsFixtures.hash(D03_SAFE_FIXTURE_ID);
           if (targetHash !== windowsTarget.hash || safeHash !== safeFinal.hash) {
             return failed("D03 Windows binary edits failed deterministic post-edit hash verification.");
           }
@@ -975,6 +1038,7 @@ export function createD03ConcurrentBinaryConflictScenario(
   const crossDeviceDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
+        const context = requireContext(request.run);
         if (request.operation === D03_OPERATIONS.handoffBaselineToMobile) {
           const refs = await options.crossDevice.handoff({
             run: request.run,
@@ -987,8 +1051,8 @@ export function createD03ConcurrentBinaryConflictScenario(
         }
 
         if (request.operation === D03_OPERATIONS.prepareMobileVariant) {
-          const targetBase = requireDescriptor(context.targetBase, "target BASE");
-          const windowsTarget = requireDescriptor(context.windowsTarget, "Windows target");
+          const targetBase = requireDescriptor(request.run, context.targetBase, "target BASE");
+          const windowsTarget = requireDescriptor(request.run, context.windowsTarget, "Windows target");
           const prepared = await options.crossDevice.prepareMobileVariant({
             run: request.run,
             stepId: request.stepId,
@@ -1037,23 +1101,71 @@ export function createD03ConcurrentBinaryConflictScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
-        if (request.operation === D03_OPERATIONS.captureMobileConflictDiagnosticRun) {
-          const diagnosticRunId = options.mobileDiagnostics.currentSyncRunId();
-          if (diagnosticRunId === undefined || !Number.isSafeInteger(diagnosticRunId) || diagnosticRunId < 1) {
-            return blocked("D03 mobile conflict preview did not expose an active authoritative production diagnostic run ID.");
-          }
-          if (
-            context.mobileConflictDiagnosticRunId !== undefined
-            && context.mobileConflictDiagnosticRunId !== diagnosticRunId
-          ) {
-            return blocked("D03 mobile conflict diagnostic run identity changed within the active scenario.");
-          }
-          context.mobileConflictDiagnosticRunId = diagnosticRunId;
+        const context = requireContext(request.run);
+
+        if (request.operation === D03_OPERATIONS.captureEstablishWindowsDiagnosticRun) {
+          captureDiagnosticRun(context, "establishWindows", options.windowsDiagnostics);
+          return completed();
+        }
+        if (request.operation === D03_OPERATIONS.captureEstablishMobileDiagnosticRun) {
+          captureDiagnosticRun(context, "establishMobile", options.mobileDiagnostics);
+          return completed();
+        }
+        if (request.operation === D03_OPERATIONS.captureWindowsPublishDiagnosticRun) {
+          captureDiagnosticRun(context, "windowsPublish", options.windowsDiagnostics);
           return completed();
         }
 
-        const targetBase = requireDescriptor(context.targetBase, "target BASE");
-        const safeBase = requireDescriptor(context.safeBase, "safe BASE");
+        const targetBase = requireDescriptor(request.run, context.targetBase, "target BASE");
+        const safeBase = requireDescriptor(request.run, context.safeBase, "safe BASE");
+
+        const verifyTerminal = async (
+          cycle: "establishWindows" | "establishMobile" | "windowsPublish",
+          device: ValidationDeviceIdentity,
+          diagnosticRunId: number | undefined,
+          observedPath: VaultPath,
+        ): Promise<ReturnType<typeof completed> | ReturnType<typeof failed> | ReturnType<typeof blocked>> => {
+          if (diagnosticRunId === undefined) {
+            return blocked(`D03 ${cycle} terminal verification has no captured production diagnostic run ID.`);
+          }
+          const report = await options.verifier.verify(
+            executedCycleTerminalVerificationRequest(
+              request.run,
+              device.deviceId,
+              diagnosticRunId,
+              cycle === "establishWindows"
+                ? "establish-windows"
+                : cycle === "establishMobile"
+                  ? "establish-mobile"
+                  : "windows-publish",
+              observedPath,
+            ),
+          );
+          if (cycle === "establishWindows") context.establishWindowsVerification = report;
+          else if (cycle === "establishMobile") context.establishMobileVerification = report;
+          else context.windowsPublishVerification = report;
+          const refs = report.evidence.map(item => item.ref);
+          if (report.result.verdict === "pass") return completed(refs);
+          const summary = `D03 ${cycle} terminal verification ${report.result.verdict}.`;
+          return report.result.verdict === "fail" ? failed(summary, refs) : blocked(summary, refs);
+        };
+
+        if (request.operation === D03_OPERATIONS.verifyEstablishWindowsTerminal) {
+          return verifyTerminal(
+            "establishWindows",
+            options.windowsDevice,
+            context.establishWindowsDiagnosticRunId,
+            targetBase.path,
+          );
+        }
+        if (request.operation === D03_OPERATIONS.verifyEstablishMobileTerminal) {
+          return verifyTerminal(
+            "establishMobile",
+            options.mobileDevice,
+            context.establishMobileDiagnosticRunId,
+            targetBase.path,
+          );
+        }
 
         if (request.operation === D03_OPERATIONS.verifyTrustedBaseline) {
           const report = await options.verifier.verify(
@@ -1066,14 +1178,20 @@ export function createD03ConcurrentBinaryConflictScenario(
           return report.result.verdict === "fail" ? failed(summary, refs) : blocked(summary, refs);
         }
 
+        if (request.operation === D03_OPERATIONS.verifyWindowsPublishTerminal) {
+          const windowsTarget = requireDescriptor(request.run, context.windowsTarget, "Windows target");
+          return verifyTerminal(
+            "windowsPublish",
+            options.windowsDevice,
+            context.windowsPublishDiagnosticRunId,
+            windowsTarget.path,
+          );
+        }
+
         if (request.operation === D03_OPERATIONS.verifyConflictOutcome) {
-          const windowsTarget = requireDescriptor(context.windowsTarget, "Windows target");
-          const mobileTarget = requireDescriptor(context.mobileTarget, "mobile target");
-          const safeFinal = requireDescriptor(context.safeFinal, "safe final");
-          const mobileConflictDiagnosticRunId = context.mobileConflictDiagnosticRunId;
-          if (mobileConflictDiagnosticRunId === undefined) {
-            return blocked("D03 final verification has no authoritative mobile conflict diagnostic run ID.");
-          }
+          const windowsTarget = requireDescriptor(request.run, context.windowsTarget, "Windows target");
+          const mobileTarget = requireDescriptor(request.run, context.mobileTarget, "mobile target");
+          const safeFinal = requireDescriptor(request.run, context.safeFinal, "safe final");
           const conflict = requireOpaqueConflict({
             surface: options.conflicts.current(),
             targetBase,
@@ -1087,8 +1205,8 @@ export function createD03ConcurrentBinaryConflictScenario(
               targetBase,
               windowsTarget,
               mobileTarget,
+              safeBase,
               safeFinal,
-              mobileConflictDiagnosticRunId,
             ),
           );
           context.conflict = conflict;
@@ -1112,18 +1230,46 @@ export function createD03ConcurrentBinaryConflictScenario(
         return blocked(`Unsupported D03 evidence operation: ${request.operation}`);
       }
       try {
-        const targetBase = requireDescriptor(context.targetBase, "target BASE");
-        const windowsTarget = requireDescriptor(context.windowsTarget, "Windows target");
-        const mobileTarget = requireDescriptor(context.mobileTarget, "mobile target");
-        const safeBase = requireDescriptor(context.safeBase, "safe BASE");
-        const safeFinal = requireDescriptor(context.safeFinal, "safe final");
+        const context = requireContext(request.run);
+        const targetBase = requireDescriptor(request.run, context.targetBase, "target BASE");
+        const windowsTarget = requireDescriptor(request.run, context.windowsTarget, "Windows target");
+        const mobileTarget = requireDescriptor(request.run, context.mobileTarget, "mobile target");
+        const safeBase = requireDescriptor(request.run, context.safeBase, "safe BASE");
+        const safeFinal = requireDescriptor(request.run, context.safeFinal, "safe final");
         const conflict = context.conflict;
-        const mobileConflictDiagnosticRunId = context.mobileConflictDiagnosticRunId;
         const baselineVerification = context.baselineVerification;
         const finalVerification = context.finalVerification;
-        if (!conflict || mobileConflictDiagnosticRunId === undefined || !baselineVerification || !finalVerification) {
-          return blocked("D03 evidence cannot be recorded before baseline verification, diagnostic-run correlation, conflict proof, and final verification complete.");
+        const establishWindowsVerification = context.establishWindowsVerification;
+        const establishMobileVerification = context.establishMobileVerification;
+        const windowsPublishVerification = context.windowsPublishVerification;
+        const establishWindowsDiagnosticRunId = context.establishWindowsDiagnosticRunId;
+        const establishMobileDiagnosticRunId = context.establishMobileDiagnosticRunId;
+        const windowsPublishDiagnosticRunId = context.windowsPublishDiagnosticRunId;
+
+        if (
+          !conflict
+          || establishWindowsDiagnosticRunId === undefined
+          || establishMobileDiagnosticRunId === undefined
+          || windowsPublishDiagnosticRunId === undefined
+          || !establishWindowsVerification
+          || !establishMobileVerification
+          || !windowsPublishVerification
+          || !baselineVerification
+          || !finalVerification
+        ) {
+          return blocked("D03 evidence cannot be recorded before all executed-cycle terminal proofs, baseline verification, conflict proof, and final verification complete for this exact validation run.");
         }
+
+        if (
+          establishWindowsVerification.result.verdict !== "pass"
+          || establishMobileVerification.result.verdict !== "pass"
+          || windowsPublishVerification.result.verdict !== "pass"
+          || baselineVerification.result.verdict !== "pass"
+          || finalVerification.result.verdict !== "pass"
+        ) {
+          return blocked("D03 evidence cannot be recorded from non-PASS verification reports.");
+        }
+
         const refs = await options.evidence.record({
           run: request.run,
           targetBase,
@@ -1132,11 +1278,21 @@ export function createD03ConcurrentBinaryConflictScenario(
           safeBase,
           safeFinal,
           conflict,
-          mobileConflictDiagnosticRunId,
+          executedDiagnosticRunIds: {
+            establishWindows: establishWindowsDiagnosticRunId,
+            establishMobile: establishMobileDiagnosticRunId,
+            windowsPublish: windowsPublishDiagnosticRunId,
+          },
+          executionVerifications: {
+            establishWindows: establishWindowsVerification,
+            establishMobile: establishMobileVerification,
+            windowsPublish: windowsPublishVerification,
+          },
           baselineVerification,
           finalVerification,
         });
         if (refs.length === 0) return blocked("D03 evidence recorder returned no durable evidence reference.");
+        contexts.delete(runKey(request.run));
         return completed(refs);
       } catch (error) {
         return failed(error instanceof Error ? error.message : "D03 evidence recording failed.");
