@@ -13,6 +13,7 @@ import {
 } from "../src/contracts";
 import {
   validationAssertionGroupResult,
+  validationAssertionId,
   validationEvidenceRef,
   validationVerificationResult,
 } from "../src/validation/driver-plan-fault-verifier-contracts";
@@ -34,9 +35,12 @@ import type {
   ValidationRunnerResumeAdoptionJournal,
   ValidationRunnerResumeAdoptionStore,
 } from "../src/validation/scenario-runner-durable-state";
-import type {
-  ValidationStateConvergenceReport,
-  ValidationStateConvergenceRequest,
+import {
+  StateConvergenceVerifier,
+  type ValidationDeviceObservationSource,
+  type ValidationRemoteObservationSource,
+  type ValidationStateConvergenceReport,
+  type ValidationStateConvergenceRequest,
 } from "../src/validation/state-convergence-verifier";
 import { mergeThreeWayText } from "../src/core/conflict-resolver";
 import { ValidationModeRuntime } from "../src/validation/validation-mode-runtime";
@@ -78,6 +82,44 @@ const SENTINEL_HASH = contractId<"ContentHash">(
   "sha256:9999999999999999999999999999999999999999999999999999999999999999",
 );
 const SENTINEL_SIZE = 173;
+
+const TERMINAL_DIAGNOSTICS = Object.freeze({
+  establishWindows: {
+    deviceId: WINDOWS.deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: 101,
+    expectedFields: { result: "complete" },
+  },
+  establishMobile: {
+    deviceId: MOBILE.deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: 102,
+    expectedFields: { result: "complete" },
+  },
+  windowsFirstSync: {
+    deviceId: WINDOWS.deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: 103,
+    expectedFields: { result: "complete" },
+  },
+  mobileCleanMerge: {
+    deviceId: MOBILE.deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: 104,
+    expectedFields: { result: "complete" },
+  },
+  windowsReconcile: {
+    deviceId: WINDOWS.deviceId,
+    component: "sync.controller",
+    event: "sync-run-complete",
+    diagnosticRunId: 105,
+    expectedFields: { result: "complete" },
+  },
+} as const);
 
 function revisionOf(value: unknown): number | null {
   if (value === null || value === undefined || typeof value !== "object") return null;
@@ -371,11 +413,171 @@ function passingReport(request: ValidationStateConvergenceRequest): ValidationSt
   };
 }
 
+type D01VerifierMode = "pass" | "final-terminal-not-observable" | "final-duplicate-target";
+
+function assertD01RequestShape(request: ValidationStateConvergenceRequest, phaseIndex: number): void {
+  const terminal = request.state.filter(item => item.kind === "terminal-product-result");
+  if (phaseIndex === 0) {
+    assert.deepEqual(terminal.map(item => item.diagnostic.diagnosticRunId), [101, 102]);
+  } else if (phaseIndex === 1) {
+    assert.deepEqual(terminal.map(item => item.diagnostic.diagnosticRunId), [103]);
+  } else if (phaseIndex === 2) {
+    assert.deepEqual(terminal.map(item => item.diagnostic.diagnosticRunId), [104]);
+    assert.ok(request.state.some(item =>
+      item.kind === "live-trash-absence-state"
+      && item.path === TARGET_PATH
+      && item.expectedState === "live"
+      && item.remoteObjectId === undefined
+    ));
+  } else if (phaseIndex === 3) {
+    assert.deepEqual(terminal.map(item => item.diagnostic.diagnosticRunId), [105]);
+    assert.ok(request.state.some(item =>
+      item.kind === "live-trash-absence-state"
+      && item.path === TARGET_PATH
+      && item.expectedState === "live"
+      && item.remoteObjectId === undefined
+    ));
+    assert.equal(request.state.filter(item => item.kind === "mapping-or-tombstone").length, 2);
+    const stable = request.convergence.find(item => item.kind === "final-reconciliation-stable");
+    assert.ok(stable);
+    assert.equal(stable.terminalDiagnostic.diagnosticRunId, 105);
+    assert.equal(stable.requireRemoteComplete, true);
+    assert.equal(stable.requireNoOutstandingIntents, true);
+    assert.equal(stable.requireNoLearnedRemoteBatches, true);
+    assert.equal(stable.requireAllRecordedPathsConverged, true);
+  } else {
+    assert.fail("Unexpected D01 verifier phase index.");
+  }
+
+  for (const item of terminal) {
+    assert.equal(item.diagnostic.component, "sync.controller");
+    assert.equal(item.diagnostic.event, "sync-run-complete");
+    assert.equal(item.diagnostic.expectedFields?.result, "complete");
+    assert.ok(Number.isSafeInteger(item.diagnostic.diagnosticRunId));
+  }
+}
+
+function minimalDevice(
+  diagnostics: readonly {
+    readonly sequence: number;
+    readonly runId: number;
+    readonly component: "sync.controller";
+    readonly event: string;
+    readonly fields: Readonly<Record<string, string>>;
+  }[] = [],
+): ValidationDeviceObservationSource {
+  return {
+    deviceId: WINDOWS.deviceId,
+    local: {
+      observe: async (path: VaultPath) => ({
+        status: "present",
+        side: "local",
+        path,
+        entityKind: "file",
+        stability: "stable",
+        observationToken: contractId<"ObservationToken">("token:d01:minimal"),
+      }),
+    },
+    authority: {
+      loadAuthority: async () => {
+        throw new Error("Minimal focused verifier does not require authority reads.");
+      },
+    },
+    diagnostics: {
+      snapshot: () => diagnostics.map(item => ({
+        timestamp: "2026-09-22T13:00:00.000-04:00",
+        sequence: item.sequence,
+        level: "trace" as const,
+        component: item.component,
+        event: item.event,
+        runId: item.runId,
+        platform: "desktop" as const,
+        fields: item.fields,
+      })),
+    },
+  } as unknown as ValidationDeviceObservationSource;
+}
+
+function duplicateRemote(): ValidationRemoteObservationSource {
+  const identity = {
+    rootId: contractId<"RemoteObjectId">("remote:d01:root"),
+    vaultIdentity: contractId<"VaultIdentity">("vault:d01"),
+    protocolVersion: contractId<"ProtocolVersion">("1"),
+  };
+  const duplicateId = contractId<"RemoteObjectId">("remote:d01:duplicate") as RemoteObjectId;
+  return {
+    identity,
+    drive: {
+      validateManagedRoot: async () => ({ ok: true, value: { status: "valid", identity } }),
+      listForReconciliation: async () => ({
+        ok: true,
+        value: {
+          entries: [
+            { path: TARGET_PATH, entityKind: "file", remoteObjectId: REMOTE_ID, content: { hash: D01_EXPECTED_MERGED_HASH, sizeBytes: D01_EXPECTED_MERGED_SIZE_BYTES }, trashed: false },
+            { path: TARGET_PATH, entityKind: "file", remoteObjectId: duplicateId, content: { hash: D01_EXPECTED_MERGED_HASH, sizeBytes: D01_EXPECTED_MERGED_SIZE_BYTES }, trashed: false },
+          ],
+          completeness: { status: "complete" },
+        },
+      }),
+      download: async () => {
+        throw new Error("Duplicate-path proof must fail before remote download.");
+      },
+    },
+  } as unknown as ValidationRemoteObservationSource;
+}
+
+function minimalPassingConvergence(run: ValidationStateConvergenceRequest["run"]): ValidationStateConvergenceRequest["convergence"][number] {
+  return {
+    kind: "cross-device-path",
+    assertion: {
+      assertionId: validationAssertionId("d01.minimal.cross-device-path"),
+      kind: "cross-device-path",
+      subject: "D01 target",
+      expectation: "Minimal focused verifier keeps the local target observable.",
+    },
+    deviceIds: [WINDOWS.deviceId],
+    path: TARGET_PATH,
+    expected: "file",
+  };
+}
+
+async function frozenAcceptanceFailure(
+  request: ValidationStateConvergenceRequest,
+  mode: Exclude<D01VerifierMode, "pass">,
+): Promise<ValidationStateConvergenceReport> {
+  const state = mode === "final-terminal-not-observable"
+    ? request.state.find(item => item.kind === "terminal-product-result" && item.diagnostic.diagnosticRunId === 105)
+    : request.state.find(item =>
+      item.kind === "live-trash-absence-state"
+      && item.path === TARGET_PATH
+      && item.expectedState === "live"
+      && item.remoteObjectId === undefined
+    );
+  assert.ok(state);
+
+  const verifier = new StateConvergenceVerifier({
+    devices: [minimalDevice()],
+    ...(mode === "final-duplicate-target" ? { remote: duplicateRemote() } : {}),
+  });
+  return verifier.verify({
+    run: request.run,
+    state: [state],
+    convergence: [minimalPassingConvergence(request.run)],
+  });
+}
+
 class CapturingVerifier implements D01VerifierPort {
   readonly requests: ValidationStateConvergenceRequest[] = [];
 
+  constructor(private readonly mode: D01VerifierMode = "pass") {}
+
   async verify(request: ValidationStateConvergenceRequest) {
+    const phaseIndex = this.requests.length;
     this.requests.push(request);
+    assertD01RequestShape(request, phaseIndex);
+    if (phaseIndex === 3 && this.mode !== "pass") {
+      return frozenAcceptanceFailure(request, this.mode);
+    }
     return passingReport(request);
   }
 }
@@ -439,12 +641,13 @@ function subject(input?: {
   readonly mergeKind?: "clean-text-merge" | "unresolved-conflict" | "download-update";
   readonly conflictProbeResult?: "verified" | "failed" | "not-observable";
   readonly driftAfterMerge?: boolean;
+  readonly verifierMode?: D01VerifierMode;
 }) {
   const world = freshWorld();
   const windowsFixtures = new FakeWindowsFixtures();
   const windowsEdit = new FakeExactEditPort(D01_WINDOWS_EDIT_TEXT, D01_WINDOWS_EDIT_HASH, WINDOWS_DESCRIPTOR);
   const mobileEdit = new FakeExactEditPort(D01_MOBILE_EDIT_TEXT, D01_MOBILE_EDIT_HASH, MOBILE_DESCRIPTOR);
-  const verifier = new CapturingVerifier();
+  const verifier = new CapturingVerifier(input?.verifierMode);
   const handoffs = new RecordingHandoffs(world);
   const evidence = new RecordingEvidence();
   const packageBinding = createD01CleanTextMergeScenario({
@@ -459,6 +662,7 @@ function subject(input?: {
     verifier,
     conflictArtifacts: conflictProbe(input?.conflictProbeResult),
     handoffs,
+    terminalDiagnostics: TERMINAL_DIAGNOSTICS,
     evidence,
   });
   const plans = [
@@ -618,6 +822,31 @@ test("VH24 D01 success preserves independent edits until sync, executes clean th
     .filter(postcondition => postcondition.kind === "local-content" || postcondition.kind === "remote-content")
     .map(postcondition => postcondition.content.hash);
   assert.ok(mergeHashes.includes(D01_EXPECTED_MERGED_HASH));
+  assert.ok(cleanMergeRequest.state.some(postcondition =>
+    postcondition.kind === "terminal-product-result"
+    && postcondition.diagnostic.diagnosticRunId === 104
+  ));
+
+  const finalRequest = s.verifier.requests[3]!;
+  assert.ok(finalRequest.state.some(postcondition =>
+    postcondition.kind === "terminal-product-result"
+    && postcondition.diagnostic.diagnosticRunId === 105
+  ));
+  assert.ok(finalRequest.state.some(postcondition =>
+    postcondition.kind === "live-trash-absence-state"
+    && postcondition.path === TARGET_PATH
+    && postcondition.expectedState === "live"
+    && postcondition.remoteObjectId === undefined
+  ));
+  assert.equal(finalRequest.state.filter(postcondition => postcondition.kind === "mapping-or-tombstone").length, 2);
+  assert.ok(finalRequest.convergence.some(postcondition =>
+    postcondition.kind === "final-reconciliation-stable"
+    && postcondition.terminalDiagnostic.diagnosticRunId === 105
+    && postcondition.requireRemoteComplete
+    && postcondition.requireNoOutstandingIntents
+    && postcondition.requireNoLearnedRemoteBatches === true
+    && postcondition.requireAllRecordedPathsConverged === true
+  ));
 
   assert.equal(s.evidence.calls.length, 1);
   assert.equal(s.evidence.calls[0]?.mergedHash, D01_EXPECTED_MERGED_HASH);
@@ -654,6 +883,46 @@ test("VH24 D01 rejects newest-wins-style download selection instead of accepting
   }
   assert.equal(s.world.mergeExecuted, false);
   assert.equal(s.world.reconcileExecuted, false);
+});
+
+test("VH24 D01 missing terminal proof is BLOCKED by the frozen verifier and cannot yield PASS", async () => {
+  const s = subject({ verifierMode: "final-terminal-not-observable" });
+  s.runtime.setEnabled(true);
+
+  const result = runnerResult(await s.runtime.startScenario("D01"));
+  assert.equal(result.status, "BLOCKED");
+  assert.equal(s.world.reconcileExecuted, true);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH24 D01 ambiguous duplicate canonical-path occupancy is FAIL under complete remote enumeration", async () => {
+  const s = subject({ verifierMode: "final-duplicate-target" });
+  s.runtime.setEnabled(true);
+
+  const result = runnerResult(await s.runtime.startScenario("D01"));
+  assert.equal(result.status, "FAIL");
+  assert.equal(s.world.reconcileExecuted, true);
+  assert.equal(s.evidence.calls.length, 0);
+});
+
+test("VH24 D01 focused proof-shape guard rejects omission of terminal or final-stability acceptance proof", async () => {
+  const s = subject();
+  s.runtime.setEnabled(true);
+  const result = runnerResult(await s.runtime.startScenario("D01"));
+  assert.equal(result.status, "PASS");
+
+  const finalRequest = s.verifier.requests[3]!;
+  const withoutTerminal: ValidationStateConvergenceRequest = {
+    ...finalRequest,
+    state: finalRequest.state.filter(item => item.kind !== "terminal-product-result") as ValidationStateConvergenceRequest["state"],
+  };
+  assert.throws(() => assertD01RequestShape(withoutTerminal, 3));
+
+  const withoutStability: ValidationStateConvergenceRequest = {
+    ...finalRequest,
+    convergence: finalRequest.convergence.filter(item => item.kind !== "final-reconciliation-stable") as ValidationStateConvergenceRequest["convergence"],
+  };
+  assert.throws(() => assertD01RequestShape(withoutStability, 3));
 });
 
 test("VH24 D01 fails closed when no-conflict-copy proof or stable remote identity is not established", async () => {
