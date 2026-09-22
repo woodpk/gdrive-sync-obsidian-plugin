@@ -75,6 +75,11 @@ export const D02_OPERATIONS = Object.freeze({
 });
 
 export type D02FixtureManagerPort = Pick<ValidationFixtureManager, "create" | "edit" | "hash">;
+
+export interface D02FixtureManagerProvider {
+  forRun(run: ValidationRunIdentity): D02FixtureManagerPort;
+}
+
 export type D02DeviceRole = "windows" | "mobile";
 
 export interface D02CrossDeviceHandoffPort {
@@ -94,11 +99,15 @@ export interface D02CrossDeviceHandoffPort {
 }
 
 export interface D02TrustedMappingReader {
-  remoteObjectId(deviceId: ValidationDeviceIdentity["deviceId"], path: VaultPath): Promise<RemoteObjectId | undefined>;
+  remoteObjectId(
+    run: ValidationRunIdentity,
+    deviceId: ValidationDeviceIdentity["deviceId"],
+    path: VaultPath,
+  ): Promise<RemoteObjectId | undefined>;
 }
 
 export interface D02ConflictSurfacePort {
-  currentSurface(): ProductSurfaceState;
+  currentSurface(run: ValidationRunIdentity): ProductSurfaceState;
 }
 
 export interface D02StateVerifierPort {
@@ -127,8 +136,8 @@ export interface D02ScenarioPackageOptions {
   readonly guardPath: VaultPath;
   readonly windowsDevice: ValidationDeviceIdentity;
   readonly mobileDevice: ValidationDeviceIdentity;
-  readonly windowsFixtures: D02FixtureManagerPort;
-  readonly mobileFixtures: D02FixtureManagerPort;
+  readonly windowsFixtures: D02FixtureManagerProvider;
+  readonly mobileFixtures: D02FixtureManagerProvider;
   readonly handoff: D02CrossDeviceHandoffPort;
   readonly mappingReader: D02TrustedMappingReader;
   readonly conflictSurface: D02ConflictSurfacePort;
@@ -143,8 +152,13 @@ export interface D02ScenarioPackage {
   readonly moduleOverrides: ValidationModeModuleOverrides;
 }
 
+interface D02RunScopedVerification {
+  readonly run: ValidationRunIdentity;
+  readonly report: ValidationStateConvergenceReport;
+}
+
 interface D02RunContext {
-  run?: ValidationRunIdentity;
+  readonly run: ValidationRunIdentity;
   mobileBaseTarget?: ValidationFixtureDescriptor;
   mobileGuard?: ValidationFixtureDescriptor;
   windowsBaseTarget?: ValidationFixtureDescriptor;
@@ -154,10 +168,10 @@ interface D02RunContext {
   targetRemoteObjectId?: RemoteObjectId;
   guardRemoteObjectId?: RemoteObjectId;
   conflictId?: string;
-  baselineVerification?: ValidationStateConvergenceReport;
-  conflictVerification?: ValidationStateConvergenceReport;
-  resolutionVerification?: ValidationStateConvergenceReport;
-  finalVerification?: ValidationStateConvergenceReport;
+  baselineVerification?: D02RunScopedVerification;
+  conflictVerification?: D02RunScopedVerification;
+  resolutionVerification?: D02RunScopedVerification;
+  finalVerification?: D02RunScopedVerification;
 }
 
 function completed(evidenceRefs: readonly ValidationEvidenceRef[] = []) {
@@ -307,31 +321,9 @@ function resolveConflictStep(path: VaultPath): ValidationRunnerStepDefinition {
   });
 }
 
-function exactRemoteOperation(
-  kind: "upload-update" | "download-update",
-  path: VaultPath,
-  targetSide: "remote" | "local",
-  resolveRemoteObjectId: () => RemoteObjectId | undefined,
-): ValidationExpectedPlanOperation {
-  return Object.freeze({
-    kind,
-    path,
-    targetSide,
-    destructive: false,
-    get remoteObjectId(): RemoteObjectId {
-      const remoteObjectId = resolveRemoteObjectId();
-      if (!remoteObjectId) {
-        throw new Error("D02 exact target Drive identity is unavailable before trusted-baseline verification.");
-      }
-      return remoteObjectId;
-    },
-  });
-}
-
 function createDefinition(
   targetPath: VaultPath,
   guardPath: VaultPath,
-  resolveTargetRemoteObjectId: () => RemoteObjectId | undefined,
 ): ValidationRunnerScenarioDefinition {
   const seedWindows = expectation({
     expectedOperations: [
@@ -351,7 +343,7 @@ function createDefinition(
   });
   const publishWindows = expectation({
     expectedOperations: [
-      exactRemoteOperation("upload-update", targetPath, "remote", resolveTargetRemoteObjectId),
+      expectedOperation({ kind: "upload-update", path: targetPath, targetSide: "remote" }),
     ],
     expectedKinds: ["upload-update"],
   });
@@ -365,7 +357,7 @@ function createDefinition(
   });
   const convergeWindows = expectation({
     expectedOperations: [
-      exactRemoteOperation("download-update", targetPath, "local", resolveTargetRemoteObjectId),
+      expectedOperation({ kind: "download-update", path: targetPath, targetSide: "local" }),
     ],
     expectedKinds: ["download-update"],
   });
@@ -446,19 +438,59 @@ function requireRole(options: D02ScenarioPackageOptions, role: D02DeviceRole): s
     : "D02 step requires " + role + " ownership; current role is " + options.handoff.currentRole() + ".";
 }
 
-function requireContextRun(context: D02RunContext, run: ValidationRunIdentity): string | undefined {
-  return context.run && !sameRun(context.run, run)
-    ? "D02 task-local state belongs to a different validation run."
-    : undefined;
+function runKey(run: ValidationRunIdentity): string {
+  return String(run.scenarioId) + "\u0000" + String(run.runId);
+}
+
+function contextForRun(
+  contexts: Map<string, D02RunContext>,
+  run: ValidationRunIdentity,
+): D02RunContext {
+  const key = runKey(run);
+  const existing = contexts.get(key);
+  if (existing) {
+    if (!sameRun(existing.run, run)) throw new Error("D02 run-key collision detected.");
+    return existing;
+  }
+  const created: D02RunContext = { run };
+  contexts.set(key, created);
+  return created;
+}
+
+function fixtureManagerForRun(
+  provider: D02FixtureManagerProvider,
+  run: ValidationRunIdentity,
+): D02FixtureManagerPort {
+  const manager = provider.forRun(run);
+  if (!manager) throw new Error("D02 fixture-manager provider did not return a manager for the active run.");
+  return manager;
+}
+
+function scopedVerification(
+  run: ValidationRunIdentity,
+  report: ValidationStateConvergenceReport,
+): D02RunScopedVerification {
+  return Object.freeze({ run, report });
+}
+
+function requireScopedVerification(
+  value: D02RunScopedVerification | undefined,
+  run: ValidationRunIdentity,
+  label: string,
+): ValidationStateConvergenceReport {
+  if (!value) throw new Error("D02 " + label + " verification is unavailable for the active run.");
+  if (!sameRun(value.run, run)) throw new Error("D02 " + label + " verification belongs to a different validation run.");
+  return value.report;
 }
 
 async function sameStableId(
   options: D02ScenarioPackageOptions,
+  run: ValidationRunIdentity,
   path: VaultPath,
 ): Promise<RemoteObjectId | undefined> {
   const [windows, mobile] = await Promise.all([
-    options.mappingReader.remoteObjectId(options.windowsDevice.deviceId, path),
-    options.mappingReader.remoteObjectId(options.mobileDevice.deviceId, path),
+    options.mappingReader.remoteObjectId(run, options.windowsDevice.deviceId, path),
+    options.mappingReader.remoteObjectId(run, options.mobileDevice.deviceId, path),
   ]);
   return windows !== undefined && windows === mobile ? windows : undefined;
 }
@@ -680,28 +712,28 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
     throw new Error("D02 target and guard paths must be distinct.");
   }
 
-  const context: D02RunContext = {};
+  const contexts = new Map<string, D02RunContext>();
 
   const fixtureDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
+        const context = contextForRun(contexts, request.run);
+
         if (request.operation === D02_OPERATIONS.establishMobileFixtures) {
-          const runError = requireContextRun(context, request.run);
-          if (runError) return blocked(runError);
-          context.run = request.run;
           const roleError = requireRole(options, "mobile");
           if (roleError) return blocked(roleError);
-          const target = await options.mobileFixtures.create(
+          const mobileFixtures = fixtureManagerForRun(options.mobileFixtures, request.run);
+          const target = await mobileFixtures.create(
             validationTextFixture(D02_TARGET_FIXTURE_ID, D02_TARGET_RELATIVE_PATH, 1, "base", "conflict"),
           );
-          const guard = await options.mobileFixtures.create(
+          const guard = await mobileFixtures.create(
             validationTextFixture(D02_GUARD_FIXTURE_ID, D02_GUARD_RELATIVE_PATH, 1, "base", "ordinary"),
           );
           assertFixture(request.run, target, D02_TARGET_RELATIVE_PATH, options.targetPath);
           assertFixture(request.run, guard, D02_GUARD_RELATIVE_PATH, options.guardPath);
           if (
-            await options.mobileFixtures.hash(D02_TARGET_FIXTURE_ID) !== target.hash
-            || await options.mobileFixtures.hash(D02_GUARD_FIXTURE_ID) !== guard.hash
+            await mobileFixtures.hash(D02_TARGET_FIXTURE_ID) !== target.hash
+            || await mobileFixtures.hash(D02_GUARD_FIXTURE_ID) !== guard.hash
           ) {
             return failed("D02 mobile deterministic BASE fixture hash verification failed.");
           }
@@ -710,18 +742,16 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           return completed();
         }
 
-        const runError = requireContextRun(context, request.run);
-        if (runError) return blocked(runError);
-
         if (request.operation === D02_OPERATIONS.establishWindowsFixtures) {
           const roleError = requireRole(options, "windows");
           if (roleError) return blocked(roleError);
           const mobileTarget = requireDescriptor(context.mobileBaseTarget, "mobile BASE target");
           const mobileGuard = requireDescriptor(context.mobileGuard, "mobile guard");
-          const target = await options.windowsFixtures.create(
+          const windowsFixtures = fixtureManagerForRun(options.windowsFixtures, request.run);
+          const target = await windowsFixtures.create(
             validationTextFixture(D02_TARGET_FIXTURE_ID, D02_TARGET_RELATIVE_PATH, 1, "base", "conflict"),
           );
-          const guard = await options.windowsFixtures.create(
+          const guard = await windowsFixtures.create(
             validationTextFixture(D02_GUARD_FIXTURE_ID, D02_GUARD_RELATIVE_PATH, 1, "base", "ordinary"),
           );
           assertFixture(request.run, target, D02_TARGET_RELATIVE_PATH, options.targetPath);
@@ -731,8 +761,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
             || target.sizeBytes !== mobileTarget.sizeBytes
             || guard.hash !== mobileGuard.hash
             || guard.sizeBytes !== mobileGuard.sizeBytes
-            || await options.windowsFixtures.hash(D02_TARGET_FIXTURE_ID) !== target.hash
-            || await options.windowsFixtures.hash(D02_GUARD_FIXTURE_ID) !== guard.hash
+            || await windowsFixtures.hash(D02_TARGET_FIXTURE_ID) !== target.hash
+            || await windowsFixtures.hash(D02_GUARD_FIXTURE_ID) !== guard.hash
           ) {
             return failed("D02 Windows/mobile deterministic BASE fixtures are not byte-identical.");
           }
@@ -745,9 +775,10 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           const roleError = requireRole(options, "mobile");
           if (roleError) return blocked(roleError);
           const base = requireDescriptor(context.mobileBaseTarget, "mobile BASE target");
-          const edited = await options.mobileFixtures.edit(D02_TARGET_FIXTURE_ID, base.version + 1, "overlap-b");
+          const mobileFixtures = fixtureManagerForRun(options.mobileFixtures, request.run);
+          const edited = await mobileFixtures.edit(D02_TARGET_FIXTURE_ID, base.version + 1, "overlap-b");
           assertFixture(request.run, edited, D02_TARGET_RELATIVE_PATH, options.targetPath);
-          if (edited.hash === base.hash || await options.mobileFixtures.hash(D02_TARGET_FIXTURE_ID) !== edited.hash) {
+          if (edited.hash === base.hash || await mobileFixtures.hash(D02_TARGET_FIXTURE_ID) !== edited.hash) {
             return failed("D02 mobile overlapping edit did not produce and retain deterministic changed bytes.");
           }
           context.mobileEdit = edited;
@@ -759,12 +790,13 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           if (roleError) return blocked(roleError);
           const base = requireDescriptor(context.windowsBaseTarget, "Windows BASE target");
           const mobileEdit = requireDescriptor(context.mobileEdit, "mobile overlapping edit");
-          const edited = await options.windowsFixtures.edit(D02_TARGET_FIXTURE_ID, base.version + 1, "overlap-a");
+          const windowsFixtures = fixtureManagerForRun(options.windowsFixtures, request.run);
+          const edited = await windowsFixtures.edit(D02_TARGET_FIXTURE_ID, base.version + 1, "overlap-a");
           assertFixture(request.run, edited, D02_TARGET_RELATIVE_PATH, options.targetPath);
           if (
             edited.hash === base.hash
             || edited.hash === mobileEdit.hash
-            || await options.windowsFixtures.hash(D02_TARGET_FIXTURE_ID) !== edited.hash
+            || await windowsFixtures.hash(D02_TARGET_FIXTURE_ID) !== edited.hash
           ) {
             return failed("D02 Windows overlapping edit is not a distinct deterministic variant.");
           }
@@ -790,8 +822,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
   const handoffDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
-      const runError = requireContextRun(context, request.run);
-      if (context.run && runError) return blocked(runError);
+      contextForRun(contexts, request.run);
       const route = handoffReasons[request.operation];
       if (!route) return blocked("Unsupported D02 handoff operation: " + request.operation);
       try {
@@ -810,8 +841,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
-        const runError = requireContextRun(context, request.run);
-        if (runError) return blocked(runError);
+        const context = contextForRun(contexts, request.run);
         const base = requireDescriptor(context.mobileBaseTarget, "mobile BASE target");
         const guard = requireDescriptor(context.mobileGuard, "mobile guard");
 
@@ -826,8 +856,8 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           ) {
             return failed("D02 common BASE fixtures diverged before trusted-baseline verification.");
           }
-          const targetRemoteObjectId = await sameStableId(options, options.targetPath);
-          const guardRemoteObjectId = await sameStableId(options, options.guardPath);
+          const targetRemoteObjectId = await sameStableId(options, request.run, options.targetPath);
+          const guardRemoteObjectId = await sameStableId(options, request.run, options.guardPath);
           if (!targetRemoteObjectId || !guardRemoteObjectId || targetRemoteObjectId === guardRemoteObjectId) {
             return blocked("D02 trusted baseline does not expose distinct stable Drive identities on both devices.");
           }
@@ -837,7 +867,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           if (report.result.verdict === "pass") {
             context.targetRemoteObjectId = targetRemoteObjectId;
             context.guardRemoteObjectId = guardRemoteObjectId;
-            context.baselineVerification = report;
+            context.baselineVerification = scopedVerification(request.run, report);
           }
           return reportResult(report, "trusted-baseline");
         }
@@ -852,7 +882,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
         if (request.operation === D02_OPERATIONS.verifyConflictPreserved) {
           const conflict = verifyPreservedConflict({
-            surface: options.conflictSurface.currentSurface(),
+            surface: options.conflictSurface.currentSurface(request.run),
             path: options.targetPath,
             base,
             windowsEdit,
@@ -867,7 +897,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           );
           if (report.result.verdict === "pass") {
             context.conflictId = String(conflict.conflictId);
-            context.conflictVerification = report;
+            context.conflictVerification = scopedVerification(request.run, report);
           }
           return reportResult(report, "pre-resolution conflict preservation");
         }
@@ -877,12 +907,12 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
         }
 
         if (request.operation === D02_OPERATIONS.verifyResolution) {
-          const remaining = options.conflictSurface.currentSurface().conflicts;
+          const remaining = options.conflictSurface.currentSurface(request.run).conflicts;
           if (remaining.length !== 0) return failed("D02 explicit production resolution left conflict state on the production surface.");
           const report = await options.verifier.verify(
             resolutionRequest(request.run, options, windowsEdit, mobileEdit, guard, targetRemoteObjectId, guardRemoteObjectId),
           );
-          if (report.result.verdict === "pass") context.resolutionVerification = report;
+          if (report.result.verdict === "pass") context.resolutionVerification = scopedVerification(request.run, report);
           return reportResult(report, "explicit-resolution");
         }
 
@@ -890,12 +920,12 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           if (!context.resolutionVerification) {
             return blocked("D02 final convergence cannot be verified before explicit resolution passes.");
           }
-          const remaining = options.conflictSurface.currentSurface().conflicts;
+          const remaining = options.conflictSurface.currentSurface(request.run).conflicts;
           if (remaining.length !== 0) return failed("D02 conflict state reappeared during final Windows reconciliation.");
           const report = await options.verifier.verify(
             finalRequest(request.run, options, mobileEdit, guard, targetRemoteObjectId, guardRemoteObjectId),
           );
-          if (report.result.verdict === "pass") context.finalVerification = report;
+          if (report.result.verdict === "pass") context.finalVerification = scopedVerification(request.run, report);
           return reportResult(report, "final-convergence");
         }
 
@@ -908,8 +938,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
   const evidenceDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
-      const runError = requireContextRun(context, request.run);
-      if (runError) return blocked(runError);
+      const context = contextForRun(contexts, request.run);
       if (request.operation !== D02_OPERATIONS.recordEvidence) {
         return blocked("Unsupported D02 evidence operation: " + request.operation);
       }
@@ -937,10 +966,10 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
           mobileEditHash: mobileEdit.hash!,
           conflictId: context.conflictId,
           resolution: D02_RESOLUTION,
-          baselineVerification: context.baselineVerification,
-          conflictVerification: context.conflictVerification,
-          resolutionVerification: context.resolutionVerification,
-          finalVerification: context.finalVerification,
+          baselineVerification: requireScopedVerification(context.baselineVerification, request.run, "baseline"),
+          conflictVerification: requireScopedVerification(context.conflictVerification, request.run, "conflict"),
+          resolutionVerification: requireScopedVerification(context.resolutionVerification, request.run, "resolution"),
+          finalVerification: requireScopedVerification(context.finalVerification, request.run, "final"),
         });
         return refs.length > 0
           ? completed(refs)
@@ -971,7 +1000,7 @@ export function createD02ConcurrentOverlappingTextConflictScenario(
 
   return Object.freeze({
     scenarioId: D02_SCENARIO_ID,
-    definition: createDefinition(options.targetPath, options.guardPath, () => context.targetRemoteObjectId),
+    definition: createDefinition(options.targetPath, options.guardPath),
     prerequisites,
     moduleOverrides,
   });
