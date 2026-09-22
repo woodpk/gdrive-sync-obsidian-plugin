@@ -2,6 +2,7 @@ import {
   PLAN_OPERATION_KINDS,
   type ConflictAssessment,
   type PlanOperationKind,
+  type ProductSurfaceState,
   type VaultPath,
 } from "../../contracts";
 import {
@@ -74,7 +75,7 @@ export type D03VerifierPort = Pick<StateConvergenceVerifier, "verify">;
 export type D03OpaqueConflict = Extract<ConflictAssessment, { readonly kind: "opaque-binary" }>;
 
 export interface D03ConflictObserverPort {
-  current(): readonly ConflictAssessment[];
+  current(): ProductSurfaceState;
 }
 
 export interface D03CrossDevicePort {
@@ -497,6 +498,20 @@ function baselineVerificationRequest(
         path: target.path,
         expectedContent: targetContent,
       },
+      {
+        kind: "base-authority",
+        assertion: stateAssertion("d03.baseline.windows.safe-base", "base-authority", String(safe.path), "Windows trusted BASE contains the unrelated safe baseline."),
+        deviceId: options.windowsDevice.deviceId,
+        path: safe.path,
+        expectedContent: safeContent,
+      },
+      {
+        kind: "base-authority",
+        assertion: stateAssertion("d03.baseline.mobile.safe-base", "base-authority", String(safe.path), "Mobile trusted BASE contains the unrelated safe baseline."),
+        deviceId: options.mobileDevice.deviceId,
+        path: safe.path,
+        expectedContent: safeContent,
+      },
     ],
     convergence: [
       {
@@ -616,7 +631,6 @@ function finalVerificationRequest(
           event: "sync-run-complete",
           expectedFields: {
             result: "partial",
-            safeCommittedCount: 1,
             skippedCount: 1,
             conflictCount: 1,
           },
@@ -662,12 +676,19 @@ function conflictMatchesDescriptor(
 }
 
 function requireOpaqueConflict(input: {
-  readonly conflicts: readonly ConflictAssessment[];
+  readonly surface: ProductSurfaceState;
   readonly targetBase: ValidationFixtureDescriptor;
   readonly windowsTarget: ValidationFixtureDescriptor;
   readonly mobileTarget: ValidationFixtureDescriptor;
 }): D03OpaqueConflict {
-  const matches = input.conflicts.filter(
+  const conflictCount = input.surface.status.kind === "attention-required"
+    || input.surface.status.kind === "conflict-present"
+    ? input.surface.status.conflictCount
+    : 0;
+  if (conflictCount < 1) {
+    throw new Error("D03 production surface does not present the unresolved binary conflict.");
+  }
+  const matches = input.surface.conflicts.filter(
     (conflict): conflict is D03OpaqueConflict =>
       conflict.kind === "opaque-binary" && conflict.path === input.targetBase.path,
   );
@@ -680,11 +701,27 @@ function requireOpaqueConflict(input: {
   if (!conflictMatchesDescriptor(conflict.preserved.local, "local", input.mobileTarget)) {
     throw new Error("D03 opaque-binary conflict did not preserve the complete mobile/local variant with provenance.");
   }
+  if (!conflict.preserved.local.deviceId) {
+    throw new Error("D03 opaque-binary local provenance is missing device identity.");
+  }
   if (!conflictMatchesDescriptor(conflict.preserved.remote, "remote", input.windowsTarget)) {
     throw new Error("D03 opaque-binary conflict did not preserve the complete Windows/remote variant with provenance.");
   }
+  if (
+    !conflict.preserved.remote.remoteObjectId
+    || conflict.preserved.remote.version.remoteObjectId !== conflict.preserved.remote.remoteObjectId
+  ) {
+    throw new Error("D03 opaque-binary remote provenance is missing stable remote identity.");
+  }
   if (!conflictMatchesDescriptor(base, "base", input.targetBase)) {
     throw new Error("D03 opaque-binary conflict did not preserve the complete trusted BASE provenance.");
+  }
+  if (
+    !base.remoteObjectId
+    || base.version.remoteObjectId !== base.remoteObjectId
+    || base.remoteObjectId !== conflict.preserved.remote.remoteObjectId
+  ) {
+    throw new Error("D03 opaque-binary BASE provenance lost the stable remote identity lineage.");
   }
 
   const hashes = [
@@ -702,10 +739,10 @@ export function createD03ProductionConflictObserver(
   runtime: ValidationProductionRuntimePort,
 ): D03ConflictObserverPort {
   return Object.freeze({
-    current(): readonly ConflictAssessment[] {
+    current(): ProductSurfaceState {
       const controller = runtime.productController();
       if (!controller) throw new Error("D03 production conflict observation requires the production controller.");
-      return controller.currentSurface().conflicts;
+      return controller.currentSurface();
     },
   });
 }
@@ -911,7 +948,7 @@ export function createD03ConcurrentBinaryConflictScenario(
           const mobileTarget = requireDescriptor(context.mobileTarget, "mobile target");
           const safeFinal = requireDescriptor(context.safeFinal, "safe final");
           const conflict = requireOpaqueConflict({
-            conflicts: options.conflicts.current(),
+            surface: options.conflicts.current(),
             targetBase,
             windowsTarget,
             mobileTarget,
