@@ -42,6 +42,7 @@ import type {
   StateConvergenceVerifier,
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
+  ValidationStatePostcondition,
 } from "../state-convergence-verifier";
 import type { ValidationModeModuleOverrides } from "../validation-mode-runtime";
 
@@ -562,7 +563,7 @@ function finalVerificationRequest(
 ): ValidationStateConvergenceRequest {
   const mobileContent = contentOf(mobile);
   const windowsContent = contentOf(windows);
-  const state = [
+  const state: ValidationStatePostcondition[] = [
     {
       kind: "local-content" as const,
       assertion: stateAssertion("d05.final.mobile.mobile", "local-content", String(options.mobilePath), "Mobile offline edit survives reconnect."),
@@ -651,7 +652,7 @@ function finalVerificationRequest(
 
   return {
     run,
-    state: state as ValidationStateConvergenceRequest["state"],
+    state: state as unknown as ValidationStateConvergenceRequest["state"],
     convergence: [
       {
         kind: "cross-device-content",
