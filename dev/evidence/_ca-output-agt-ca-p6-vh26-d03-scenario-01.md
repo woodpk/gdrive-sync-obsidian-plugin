@@ -221,3 +221,92 @@ Authoritative local PHX-CI verification remains intentionally **NOT EXECUTED** a
 - live/physical D03 validation performed: **NO**
 
 Evidence remains `STATUS: BLOCKED` pending supervisor approval for local PHX-CI execution.
+
+## Remaining conflict-provenance acceptance repair
+
+Supervisor-rejected implementation HEAD entering this repair:
+
+`3a6fed1ba22d51d420bf07267973a899d38eff0e`
+
+Supervisor-rejected branch HEAD entering this repair:
+
+`4eac6cffc3f12df13c072be3a02a5a1392417665`
+
+Corrected implementation HEAD before this evidence-only commit:
+
+`e20c7508e55ccc8f7adb301f4e462e577144b147`
+
+### Exact mobile-device provenance enforcement
+
+D03 no longer accepts mere presence of a local conflict-provenance device ID.
+
+The sole expected `opaque-binary` conflict must satisfy exact participant identity:
+
+`conflict.preserved.local.deviceId === options.mobileDevice.deviceId`
+
+at runtime value equality.
+
+Otherwise-correct mobile/local bytes, path, hash, size, and provenance are rejected when the production conflict identifies the Windows participant or any other device as the local source.
+
+### Exact single-conflict production surface enforcement
+
+D03 now fails closed unless all of the following are true:
+
+1. production surface status reports `conflictCount === 1`;
+2. the production surface conflict collection contains exactly one non-`none` conflict;
+3. that sole non-`none` conflict is `opaque-binary`;
+4. that sole conflict path is the D03 target path;
+5. all existing exact local/mobile, remote/Windows, BASE, stable remote-object lineage, distinct-hash, and provenance checks then pass.
+
+Therefore D03 rejects:
+
+- the expected target opaque conflict plus an unrelated second conflict;
+- the expected target opaque conflict plus a second target conflict of another kind;
+- any mismatch between the surface-reported conflict count and the actual non-`none` conflict collection.
+
+All such failures occur before scenario evidence recording.
+
+### Focused deterministic regressions added
+
+The focused test suite now additionally proves:
+
+- otherwise-correct local/mobile conflict provenance with the Windows device ID fails and records no evidence;
+- expected target `opaque-binary` conflict plus unrelated second `unresolved-text` conflict fails and records no evidence;
+- expected target `opaque-binary` conflict plus a second target-path conflict of another kind fails and records no evidence;
+- a sole expected conflict with inconsistent surface `conflictCount` fails and records no evidence.
+
+All previously accepted D03 protocol, terminal-correlation, exact-run context isolation, binary-provenance, safe-path, mapping/tombstone, durable-effect, and duplicate-ambiguity protections remain unchanged.
+
+### Verifier re-audit after focused repair
+
+The complete committed `dev/scripts/verify-vh26-d03-scenario.ps1` was re-audited and no actual verifier defect was found, so the verifier was not modified.
+
+Confirmed:
+
+- exactly one PHX-CI verdict assignment;
+- exactly one Change-set verdict assignment;
+- exactly one Repository verdict assignment;
+- exactly one Overall verdict assignment;
+- exactly one Task exit-code assignment;
+- exactly one Evidence commit assignment;
+- exactly one Evidence published assignment;
+- exactly one local evidence-branch extraction;
+- exactly one Publication issue assignment;
+- exactly one failure-summary construction;
+- exactly one authoritative PASS decision;
+- exactly one final `VH26 D03 VERIFICATION: PASS` footer;
+- exactly one pre-verification frozen-integration gate;
+- exactly one post-verification frozen-integration gate;
+- peer common-base gate invoked before and after PHX-CI;
+- every direct native `git` and PHX-CI runtime invocation captures `$LASTEXITCODE` immediately on the next statement;
+- installed immutable PHX-CI runtime only;
+- no source-mode `FrameworkRoot` or `PHX_FRAMEWORK_ROOT`;
+- no direct `task ci`;
+- no active-checkout reset/clean/switch/checkout/stash/worktree mutation;
+- implementation allowlist remains limited to:
+  - `src/validation/scenarios/d03-concurrent-binary-conflict.ts`;
+  - `test/validation-d03-concurrent-binary-conflict.test.ts`;
+  - `dev/scripts/verify-vh26-d03-scenario.ps1`;
+- no GitHub Actions execution path.
+
+No local PHX-CI run and no bootstrap were performed or supplied for this repair.
