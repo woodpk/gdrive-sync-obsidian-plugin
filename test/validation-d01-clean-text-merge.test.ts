@@ -439,6 +439,11 @@ function assertD01RequestShape(request: ValidationStateConvergenceRequest, phase
       && item.expectedState === "live"
       && item.remoteObjectId === undefined
     ));
+    assert.ok(request.state.some(item =>
+      item.kind === "remote-content"
+      && item.path === TARGET_PATH
+      && item.remoteObjectId === REMOTE_ID
+    ));
     assert.equal(request.state.filter(item => item.kind === "mapping-or-tombstone").length, 2);
     const stable = request.convergence.find(item => item.kind === "final-reconciliation-stable");
     assert.ok(stable);
@@ -528,7 +533,7 @@ function duplicateRemote(): ValidationRemoteObservationSource {
   } as unknown as ValidationRemoteObservationSource;
 }
 
-function minimalPassingConvergence(run: ValidationStateConvergenceRequest["run"]): ValidationStateConvergenceRequest["convergence"][number] {
+function minimalPassingConvergence(): ValidationStateConvergenceRequest["convergence"][number] {
   return {
     kind: "cross-device-path",
     assertion: {
@@ -564,7 +569,7 @@ async function frozenAcceptanceFailure(
   return verifier.verify({
     run: request.run,
     state: [state],
-    convergence: [minimalPassingConvergence(request.run)],
+    convergence: [minimalPassingConvergence()],
   });
 }
 
@@ -989,13 +994,13 @@ test("VH24 D01 focused proof-shape guard rejects omission of terminal or final-s
   const finalRequest = s.verifier.requests[3]!;
   const withoutTerminal: ValidationStateConvergenceRequest = {
     ...finalRequest,
-    state: finalRequest.state.filter(item => item.kind !== "terminal-product-result") as ValidationStateConvergenceRequest["state"],
+    state: finalRequest.state.filter(item => item.kind !== "terminal-product-result") as unknown as ValidationStateConvergenceRequest["state"],
   };
   assert.throws(() => assertD01RequestShape(withoutTerminal, 3));
 
   const withoutStability: ValidationStateConvergenceRequest = {
     ...finalRequest,
-    convergence: finalRequest.convergence.filter(item => item.kind !== "final-reconciliation-stable") as ValidationStateConvergenceRequest["convergence"],
+    convergence: finalRequest.convergence.filter(item => item.kind !== "final-reconciliation-stable") as unknown as ValidationStateConvergenceRequest["convergence"],
   };
   assert.throws(() => assertD01RequestShape(withoutStability, 3));
 });
