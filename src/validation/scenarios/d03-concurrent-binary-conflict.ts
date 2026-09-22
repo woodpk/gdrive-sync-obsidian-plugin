@@ -945,7 +945,7 @@ export function createD03ConcurrentBinaryConflictScenario(
       try {
         if (request.operation === D03_OPERATIONS.captureMobileConflictDiagnosticRun) {
           const diagnosticRunId = options.mobileDiagnostics.currentSyncRunId();
-          if (!Number.isSafeInteger(diagnosticRunId) || diagnosticRunId === undefined || diagnosticRunId < 1) {
+          if (diagnosticRunId === undefined || !Number.isSafeInteger(diagnosticRunId) || diagnosticRunId < 1) {
             return blocked("D03 mobile conflict preview did not expose an active authoritative production diagnostic run ID.");
           }
           if (
