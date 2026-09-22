@@ -153,6 +153,16 @@ export type D01TerminalPhase =
   | "mobile-clean-merge"
   | "windows-reconcile";
 
+/**
+ * Task-local read-only diagnostic correlation seam.
+ *
+ * begin() must capture a device diagnostic sequence/watermark before the named
+ * production cycle can execute. resolve() must use that retained watermark to
+ * identify the terminal sync.controller/sync-run-complete event produced after
+ * the watermark and return its exact diagnostic run ID. It must fail closed on
+ * missing, ambiguous, stale/pre-watermark, or contradictory terminal evidence.
+ * Advisory timestamps are never correlation authority.
+ */
 export interface D01TerminalDiagnosticCorrelationPort {
   begin(input: {
     readonly run: ValidationRunIdentity;
