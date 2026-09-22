@@ -1,6 +1,7 @@
 import {
   PLAN_OPERATION_KINDS,
   type PlanOperationKind,
+  type ProductSurfaceState,
   type VaultPath,
 } from "../../contracts";
 import {
@@ -99,6 +100,7 @@ export interface D05CrossDeviceHandoffPort {
 }
 
 export interface D05ConnectivityCheckpointEvidence {
+  readonly run: ValidationRunIdentity;
   readonly checkpointId: HumanCheckpointId;
   readonly action: Extract<HumanCheckpointAction, "disable-mobile-connectivity" | "restore-mobile-connectivity">;
   readonly device: ValidationDeviceIdentity;
@@ -110,8 +112,8 @@ export interface D05ConnectivityCheckpointEvidence {
  * Scenario-local evidence adapter over the approved VH13 controller.
  *
  * It delegates all checkpoint authority to HumanCheckpointResumeController and
- * merely retains the already-durable acknowledgement/device facts immediately
- * before VH13 consumes the checkpoint.
+ * retains already-durable acknowledgement/device facts only after VH13 reports
+ * that the exact checkpoint was successfully consumed and adopted.
  */
 export class D05ConnectivityCheckpointController implements ValidationRunnerHumanCheckpointResumePort {
   private readonly observations: D05ConnectivityCheckpointEvidence[] = [];
@@ -149,10 +151,9 @@ export class D05ConnectivityCheckpointController implements ValidationRunnerHuma
     resumeCommit: HumanCheckpointResumeCommitPort,
   ): Promise<HumanCheckpointControllerResult> {
     const current = await this.inner.current();
-    if (
+    const candidate = (
       current.status === "resumable"
-      && current.state.checkpoint.run.runId === run.runId
-      && current.state.checkpoint.run.scenarioId === run.scenarioId
+      && sameRun(current.state.checkpoint.run, run)
       && String(current.state.checkpoint.checkpointId) === checkpointId
       && current.state.checkpoint.deviceId === currentDevice.deviceId
       && current.state.devicePlatform === currentDevice.platform
@@ -162,15 +163,9 @@ export class D05ConnectivityCheckpointController implements ValidationRunnerHuma
         current.state.checkpoint.requestedAction === "disable-mobile-connectivity"
         || current.state.checkpoint.requestedAction === "restore-mobile-connectivity"
       )
-    ) {
-      const duplicate = this.observations.some(
-        observation =>
-          observation.checkpointId === current.state.checkpoint.checkpointId
-          && observation.acknowledgedAt === current.state.acknowledgedAt
-          && observation.verifiedAt === current.state.verifiedAt,
-      );
-      if (!duplicate) {
-        this.observations.push(Object.freeze({
+    )
+      ? Object.freeze({
+          run: Object.freeze({ ...current.state.checkpoint.run }),
           checkpointId: current.state.checkpoint.checkpointId,
           action: current.state.checkpoint.requestedAction,
           device: Object.freeze({
@@ -179,17 +174,46 @@ export class D05ConnectivityCheckpointController implements ValidationRunnerHuma
           }),
           acknowledgedAt: current.state.acknowledgedAt,
           verifiedAt: current.state.verifiedAt,
+          resumeStepId: current.state.resumeStepId,
+        })
+      : undefined;
+
+    const consumed = await this.inner.consumeResume(run, checkpointId, currentDevice, resumeCommit);
+    if (
+      candidate
+      && consumed.status === "resumed"
+      && consumed.checkpointId === candidate.checkpointId
+      && consumed.resumeStepId === candidate.resumeStepId
+    ) {
+      const duplicate = this.observations.some(
+        observation =>
+          sameRun(observation.run, candidate.run)
+          && observation.checkpointId === candidate.checkpointId
+          && observation.acknowledgedAt === candidate.acknowledgedAt
+          && observation.verifiedAt === candidate.verifiedAt,
+      );
+      if (!duplicate) {
+        this.observations.push(Object.freeze({
+          run: candidate.run,
+          checkpointId: candidate.checkpointId,
+          action: candidate.action,
+          device: candidate.device,
+          acknowledgedAt: candidate.acknowledgedAt,
+          verifiedAt: candidate.verifiedAt,
         }));
       }
     }
-    return await this.inner.consumeResume(run, checkpointId, currentDevice, resumeCommit);
+    return consumed;
   }
 
-  records(): readonly D05ConnectivityCheckpointEvidence[] {
-    return Object.freeze(this.observations.map(record => Object.freeze({
-      ...record,
-      device: Object.freeze({ ...record.device }),
-    })));
+  records(run: ValidationRunIdentity): readonly D05ConnectivityCheckpointEvidence[] {
+    return Object.freeze(this.observations
+      .filter(record => sameRun(record.run, run))
+      .map(record => Object.freeze({
+        ...record,
+        run: Object.freeze({ ...record.run }),
+        device: Object.freeze({ ...record.device }),
+      })));
   }
 }
 
@@ -214,6 +238,7 @@ export interface D05ScenarioPackageOptions {
   readonly verifier: D05VerifierPort;
   readonly handoffs: D05CrossDeviceHandoffPort;
   readonly checkpoints: D05ConnectivityCheckpointController;
+  readonly currentProductSurface: () => ProductSurfaceState;
   readonly evidence: D05EvidenceRecorderPort;
 }
 
@@ -763,10 +788,10 @@ export function createD05OfflineReconnectScenario(
 
         if (request.operation === D05_OPERATIONS.editMobileOffline) {
           const prior = requireFixture(context.mobileFixture, "mobile");
-          if (options.checkpoints.records().some(record => record.action === "restore-mobile-connectivity")) {
+          if (options.checkpoints.records(request.run).some(record => record.action === "restore-mobile-connectivity")) {
             return blocked("D05 mobile offline edit cannot occur after reconnect acknowledgement.");
           }
-          const offlineRecord = options.checkpoints.records().find(record => record.action === "disable-mobile-connectivity");
+          const offlineRecord = options.checkpoints.records(request.run).find(record => record.action === "disable-mobile-connectivity");
           if (!offlineRecord) {
             return blocked("D05 mobile offline edit requires a verified genuine-offline checkpoint.");
           }
@@ -788,8 +813,8 @@ export function createD05OfflineReconnectScenario(
 
         if (request.operation === D05_OPERATIONS.editWindowsOnline) {
           const prior = requireFixture(context.windowsFixture, "Windows");
-          const offlineRecord = options.checkpoints.records().find(record => record.action === "disable-mobile-connectivity");
-          const reconnectRecord = options.checkpoints.records().find(record => record.action === "restore-mobile-connectivity");
+          const offlineRecord = options.checkpoints.records(request.run).find(record => record.action === "disable-mobile-connectivity");
+          const reconnectRecord = options.checkpoints.records(request.run).find(record => record.action === "restore-mobile-connectivity");
           if (!offlineRecord || reconnectRecord) {
             return blocked("D05 Windows edit must occur while the verified mobile participant remains offline.");
           }
@@ -895,12 +920,23 @@ export function createD05OfflineReconnectScenario(
         if (
           request.operation === D05_OPERATIONS.verifyFinalConvergence
           && (
-            options.checkpoints.records().length !== 2
-            || options.checkpoints.records()[0]?.action !== "disable-mobile-connectivity"
-            || options.checkpoints.records()[1]?.action !== "restore-mobile-connectivity"
+            options.checkpoints.records(request.run).length !== 2
+            || options.checkpoints.records(request.run)[0]?.action !== "disable-mobile-connectivity"
+            || options.checkpoints.records(request.run)[1]?.action !== "restore-mobile-connectivity"
           )
         ) {
           return blocked("D05 final verification requires both ordered, verified connectivity checkpoints.");
+        }
+
+        if (request.operation === D05_OPERATIONS.verifyFinalConvergence) {
+          const retainedConflicts = options.currentProductSurface().conflicts.filter(
+            conflict =>
+              "path" in conflict
+              && (conflict.path === options.mobilePath || conflict.path === options.windowsPath),
+          );
+          if (retainedConflicts.length > 0) {
+            return failed("D05 final production surface retains a conflict for a D05 fixture path.");
+          }
         }
 
         const report = await options.verifier.verify(verification);
@@ -927,7 +963,7 @@ export function createD05OfflineReconnectScenario(
         if (!context.baselineVerification || !context.finalVerification) {
           return blocked("D05 evidence requires both baseline and final verification reports.");
         }
-        const connectivityCheckpoints = options.checkpoints.records();
+        const connectivityCheckpoints = options.checkpoints.records(request.run);
         if (
           connectivityCheckpoints.length !== 2
           || connectivityCheckpoints.some(record => record.device.deviceId !== options.mobileDevice.deviceId)
