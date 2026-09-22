@@ -27,6 +27,7 @@ import {
   validationDeviceIdentity,
   validationFixtureIdentity,
   validationRunIdentity,
+  type ValidationRunIdentity,
 } from "../src/validation/run-sandbox-checkpoint-contracts";
 import type {
   ValidationRunnerPersistentState,
@@ -58,6 +59,7 @@ import {
 } from "../src/validation/scenarios/d04-delete-vs-independent-modify";
 
 const RUN = validationRunIdentity("run:vh27:d04", "D04");
+const RUN_B = validationRunIdentity("run:vh27:d04:b", "D04");
 const WINDOWS = validationDeviceIdentity("device:d04:windows", "windows-desktop");
 const MOBILE = validationDeviceIdentity("device:d04:mobile", "iphone");
 const TARGET_PATH = contractId<"VaultPath">("validation/d04/d04-delete-vs-modify.md") as VaultPath;
@@ -117,6 +119,7 @@ class MemoryResumeAdoptionStore implements ValidationRunnerResumeAdoptionStore {
 }
 
 function descriptor(
+  run: ValidationRunIdentity,
   fixtureId: string,
   relativePath: string,
   path: VaultPath,
@@ -125,7 +128,7 @@ function descriptor(
   purpose: "conflict" | "ordinary",
 ): ValidationFixtureDescriptor {
   return Object.freeze({
-    identity: validationFixtureIdentity(RUN, fixtureId),
+    identity: validationFixtureIdentity(run, fixtureId),
     relativePath,
     path,
     kind: "text",
@@ -142,9 +145,11 @@ class FakeFixtureManager implements D04FixtureManagerPort {
   readonly deleteCalls: string[] = [];
   readonly restoreCalls: Array<{ fixtureId: string; version: number; textVariant?: ValidationTextVariant }> = [];
 
+  private activeRun = RUN;
   private targetActive = false;
   private sentinelActive = false;
   private target = descriptor(
+    this.activeRun,
     D04_TARGET_FIXTURE_ID,
     D04_TARGET_RELATIVE_PATH,
     TARGET_PATH,
@@ -153,6 +158,7 @@ class FakeFixtureManager implements D04FixtureManagerPort {
     "conflict",
   );
   private sentinel = descriptor(
+    this.activeRun,
     D04_SENTINEL_FIXTURE_ID,
     D04_SENTINEL_RELATIVE_PATH,
     SENTINEL_PATH,
@@ -163,12 +169,37 @@ class FakeFixtureManager implements D04FixtureManagerPort {
 
   constructor(readonly role: "windows" | "mobile") {}
 
+  beginRun(run: ValidationRunIdentity): void {
+    this.activeRun = run;
+    this.targetActive = false;
+    this.sentinelActive = false;
+    this.target = descriptor(
+      run,
+      D04_TARGET_FIXTURE_ID,
+      D04_TARGET_RELATIVE_PATH,
+      TARGET_PATH,
+      1,
+      TARGET_HASH_V1,
+      "conflict",
+    );
+    this.sentinel = descriptor(
+      run,
+      D04_SENTINEL_FIXTURE_ID,
+      D04_SENTINEL_RELATIVE_PATH,
+      SENTINEL_PATH,
+      1,
+      SENTINEL_HASH,
+      "ordinary",
+    );
+  }
+
   async create(spec: ValidationFixtureSpec): Promise<ValidationFixtureDescriptor> {
     this.createCalls.push(spec);
     if (spec.fixtureId === D04_TARGET_FIXTURE_ID) {
       assert.equal(this.targetActive, false);
       this.targetActive = true;
       this.target = descriptor(
+        this.activeRun,
         D04_TARGET_FIXTURE_ID,
         D04_TARGET_RELATIVE_PATH,
         TARGET_PATH,
@@ -198,6 +229,7 @@ class FakeFixtureManager implements D04FixtureManagerPort {
     const hash = version === 2 ? TARGET_HASH_V2 : version === 3 ? TARGET_HASH_V3 : undefined;
     if (!hash) throw new Error("Unexpected D04 edit version.");
     this.target = descriptor(
+      this.activeRun,
       D04_TARGET_FIXTURE_ID,
       D04_TARGET_RELATIVE_PATH,
       TARGET_PATH,
@@ -228,6 +260,7 @@ class FakeFixtureManager implements D04FixtureManagerPort {
     }
     this.targetActive = true;
     this.target = descriptor(
+      this.activeRun,
       D04_TARGET_FIXTURE_ID,
       D04_TARGET_RELATIVE_PATH,
       TARGET_PATH,
@@ -428,6 +461,8 @@ function productionFixture(
   let nextRunId = 100;
   let currentRunId: number | undefined;
   let currentPlan: SynchronizationPlan | undefined;
+  let conflictMode: ConflictFixtureMode = options.conflictMode ?? "normal";
+  let terminalByPlanId: Readonly<Record<string, TerminalFixtureMode>> = options.terminalByPlanId ?? {};
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const diagnostics: DiagnosticEvent[] = [];
@@ -466,7 +501,7 @@ function productionFixture(
     const isConflict = observed.planId === contractId<"PlanId">("plan:d04:subcase-a-conflict")
       || observed.planId === contractId<"PlanId">("plan:d04:subcase-b-conflict");
     const conflict = isConflict
-      ? conflictAssessment(String(observed.planId), options.conflictMode ?? "normal")
+      ? conflictAssessment(String(observed.planId), conflictMode)
       : undefined;
     surface = {
       status: conflict ? { kind: "conflict-present", conflictCount: 1 } : { kind: "idle-ready" },
@@ -493,7 +528,7 @@ function productionFixture(
       if (!currentPlan || currentPlan.planId !== action.planId || currentRunId === undefined) {
         throw new Error("D04 fake production execution is not bound to the current preview run.");
       }
-      const mode = options.terminalByPlanId?.[String(action.planId)] ?? "complete";
+      const mode = terminalByPlanId[String(action.planId)] ?? "complete";
       if (mode !== "missing") {
         const terminalRunId = mode === "wrong-run" ? currentRunId + 1000 : currentRunId;
         pushDiagnostic(
@@ -524,6 +559,10 @@ function productionFixture(
     executedPlanIds,
     diagnostics,
     observation,
+    setConflictMode: (mode: ConflictFixtureMode) => { conflictMode = mode; },
+    setTerminalMode: (planId: string, mode: TerminalFixtureMode) => {
+      terminalByPlanId = { ...terminalByPlanId, [planId]: mode };
+    },
     previewCount: () => previewIndex,
     runtime: { productController: () => controller },
   };
@@ -584,6 +623,24 @@ class RecordingEvidence implements D04EvidenceRecorderPort {
   }
 }
 
+function runtimeFor(
+  packageBinding: ReturnType<typeof createD04DeleteVsIndependentModifyScenario>,
+  production: ReturnType<typeof productionFixture>,
+  definition: ValidationRunnerScenarioDefinition,
+  run: ValidationRunIdentity,
+): ValidationModeRuntime {
+  return new ValidationModeRuntime({
+    productionRuntime: production.runtime,
+    definitions: [definition],
+    stateStore: new MemoryRunnerStateStore(),
+    resumeAdoptionStore: new MemoryResumeAdoptionStore(),
+    prerequisites: packageBinding.prerequisites,
+    moduleOverrides: packageBinding.moduleOverrides,
+    currentDevice: () => WINDOWS,
+    createRunId: () => String(run.runId),
+  });
+}
+
 function subject(
   plans: readonly SynchronizationPlan[],
   definitionTransform?: (definition: ValidationRunnerScenarioDefinition) => ValidationRunnerScenarioDefinition,
@@ -609,16 +666,7 @@ function subject(
     evidence,
   });
   const definition = definitionTransform?.(packageBinding.definition) ?? packageBinding.definition;
-  const runtime = new ValidationModeRuntime({
-    productionRuntime: production.runtime,
-    definitions: [definition],
-    stateStore: new MemoryRunnerStateStore(),
-    resumeAdoptionStore: new MemoryResumeAdoptionStore(),
-    prerequisites: packageBinding.prerequisites,
-    moduleOverrides: packageBinding.moduleOverrides,
-    currentDevice: () => WINDOWS,
-    createRunId: () => String(RUN.runId),
-  });
+  const runtime = runtimeFor(packageBinding, production, definition, RUN);
   return {
     runtime,
     packageBinding,
@@ -643,6 +691,22 @@ function stepCycle(step: ValidationRunnerScenarioDefinition["steps"][number]): s
   if (!input || typeof input !== "object") return undefined;
   const value = (input as { readonly authorityCycleId?: unknown }).authorityCycleId;
   return typeof value === "string" ? value : undefined;
+}
+
+function twoCompleteRuns(): readonly SynchronizationPlan[] {
+  return [...completePlans(), ...completePlans()];
+}
+
+function terminalRunIdsFor(
+  verifier: PassingVerifier,
+  run: ValidationRunIdentity,
+): number[] {
+  return verifier.requests
+    .filter(request => request.run.runId === run.runId && request.run.scenarioId === run.scenarioId)
+    .flatMap(request => request.state)
+    .filter(item => item.kind === "terminal-product-result")
+    .map(item => item.kind === "terminal-product-result" ? item.diagnostic.diagnosticRunId : undefined)
+    .filter((value): value is number => typeof value === "number");
 }
 
 test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fixed H6B preview/assertion authority and preserves modifications", async () => {
@@ -786,6 +850,117 @@ test("VH27 D04 executes both role-reversed delete-vs-modify subcases through fix
   assert.equal(s.evidence.calls[0]?.subcaseAModified.hash, TARGET_HASH_V2);
   assert.equal(s.evidence.calls[0]?.subcaseBModified.hash, TARGET_HASH_V3);
   assert.equal(s.evidence.calls[0]?.sentinel.hash, SENTINEL_HASH);
+});
+
+test("VH27 D04 isolates sequential runs on the same scenario package", async () => {
+  const s = subject(twoCompleteRuns());
+
+  s.runtime.setEnabled(true);
+  const runAResult = runnerResult(await s.runtime.startScenario("D04"));
+  assert.equal(runAResult.status, "PASS");
+  const runATerminals = terminalRunIdsFor(s.verifier, RUN);
+  assert.equal(runATerminals.length, 5);
+
+  s.windowsFixtures.beginRun(RUN_B);
+  s.mobileFixtures.beginRun(RUN_B);
+  const runtimeB = runtimeFor(s.packageBinding, s.production, s.definition, RUN_B);
+  runtimeB.setEnabled(true);
+  const runBResult = runnerResult(await runtimeB.startScenario("D04"));
+  assert.equal(runBResult.status, "PASS");
+
+  const runBTerminals = terminalRunIdsFor(s.verifier, RUN_B);
+  assert.equal(runBTerminals.length, 5);
+  assert.equal(runBTerminals.some(id => runATerminals.includes(id)), false);
+
+  assert.equal(s.evidence.calls.length, 2);
+  assert.equal(s.evidence.calls[0]?.run.runId, RUN.runId);
+  assert.equal(s.evidence.calls[1]?.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.baseline.identity.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.subcaseAModified.identity.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.subcaseBModified.identity.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.baselineVerification.result.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.subcaseAVerification.result.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.restoredBaseVerification.result.run.runId, RUN_B.runId);
+  assert.equal(s.evidence.calls[1]?.subcaseBVerification.result.run.runId, RUN_B.runId);
+});
+
+test("VH27 D04 fails closed when run B reaches a stateful step with only run A context available", async () => {
+  const s = subject(completePlans());
+  s.runtime.setEnabled(true);
+  const runAResult = runnerResult(await s.runtime.startScenario("D04"));
+  assert.equal(runAResult.status, "PASS");
+
+  const withoutRunEstablishment: ValidationRunnerScenarioDefinition = Object.freeze({
+    ...s.definition,
+    steps: Object.freeze(s.definition.steps.slice(1)),
+  });
+  const runtimeB = runtimeFor(s.packageBinding, s.production, withoutRunEstablishment, RUN_B);
+  runtimeB.setEnabled(true);
+  const runBResult = runnerResult(await runtimeB.startScenario("D04"));
+  assert.equal(runBResult.status, "FAIL");
+  if (runBResult.status === "FAIL") {
+    assert.match(runBResult.reason.summary, /current validation run|task-local state/i);
+  }
+  assert.equal(s.evidence.calls.length, 1);
+});
+
+test("VH27 D04 retained run-A terminal diagnostics cannot establish run-B terminal proof", async () => {
+  const s = subject([
+    ...completePlans(),
+    establishWindowsPlan(),
+    establishMobilePlan(),
+    mobileModifyPlan(),
+    subcaseAConflictPlan(),
+  ]);
+  s.runtime.setEnabled(true);
+  assert.equal(runnerResult(await s.runtime.startScenario("D04")).status, "PASS");
+  const runATerminals = terminalRunIdsFor(s.verifier, RUN);
+  assert.equal(runATerminals.length, 5);
+
+  s.windowsFixtures.beginRun(RUN_B);
+  s.mobileFixtures.beginRun(RUN_B);
+  s.production.setTerminalMode("plan:d04:mobile-modify", "missing");
+  const runtimeB = runtimeFor(s.packageBinding, s.production, s.definition, RUN_B);
+  runtimeB.setEnabled(true);
+  const runBResult = runnerResult(await runtimeB.startScenario("D04"));
+  assert.equal(runBResult.status, "FAIL");
+  if (runBResult.status === "FAIL") {
+    assert.match(runBResult.reason.summary, /run-correlated terminal diagnostic/i);
+  }
+
+  const retainedRunATerminals = s.production.diagnostics.filter(event =>
+    runATerminals.includes(event.runId ?? -1)
+    && event.event === "sync-run-complete"
+    && event.fields?.result === "complete"
+  );
+  assert.equal(retainedRunATerminals.length, 5);
+  assert.equal(terminalRunIdsFor(s.verifier, RUN_B).length, 2);
+  assert.equal(s.evidence.calls.length, 1);
+});
+
+test("VH27 D04 run-A conflict observation cannot satisfy run B", async () => {
+  const s = subject([
+    ...completePlans(),
+    establishWindowsPlan(),
+    establishMobilePlan(),
+    mobileModifyPlan(),
+    subcaseAConflictPlan(),
+  ]);
+
+  s.runtime.setEnabled(true);
+  assert.equal(runnerResult(await s.runtime.startScenario("D04")).status, "PASS");
+
+  s.windowsFixtures.beginRun(RUN_B);
+  s.mobileFixtures.beginRun(RUN_B);
+  s.production.setConflictMode("missing");
+  const runtimeB = runtimeFor(s.packageBinding, s.production, s.definition, RUN_B);
+  runtimeB.setEnabled(true);
+  const runBResult = runnerResult(await runtimeB.startScenario("D04"));
+  assert.equal(runBResult.status, "FAIL");
+  if (runBResult.status === "FAIL") {
+    assert.match(runBResult.reason.summary, /production surface|delete-vs-modify/i);
+  }
+  assert.equal(s.evidence.calls.length, 1);
 });
 
 test("VH27 D04 rejects an unresolved-conflict plan when the production surface does not present delete-vs-modify", async () => {
