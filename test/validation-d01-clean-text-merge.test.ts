@@ -66,6 +66,8 @@ import {
   type D01CrossDeviceHandoffPort,
   type D01EvidenceRecorderPort,
   type D01ExistingTextFixturePort,
+  type D01TerminalDiagnosticCorrelationPort,
+  type D01TerminalPhase,
   type D01TrustedMappingReader,
   type D01VerifierPort,
   type D01WindowsFixtureManagerPort,
@@ -599,6 +601,46 @@ class RecordingHandoffs implements D01CrossDeviceHandoffPort {
   }
 }
 
+function terminalForPhase(phase: D01TerminalPhase) {
+  switch (phase) {
+    case "establish-windows": return TERMINAL_DIAGNOSTICS.establishWindows;
+    case "establish-mobile": return TERMINAL_DIAGNOSTICS.establishMobile;
+    case "windows-first-sync": return TERMINAL_DIAGNOSTICS.windowsFirstSync;
+    case "mobile-clean-merge": return TERMINAL_DIAGNOSTICS.mobileCleanMerge;
+    case "windows-reconcile": return TERMINAL_DIAGNOSTICS.windowsReconcile;
+  }
+}
+
+class RecordingTerminalCorrelation implements D01TerminalDiagnosticCorrelationPort {
+  readonly begun = new Set<D01TerminalPhase>();
+  readonly resolved: D01TerminalPhase[] = [];
+
+  constructor(private readonly world: World) {}
+
+  async begin(input: Parameters<D01TerminalDiagnosticCorrelationPort["begin"]>[0]) {
+    assert.equal(this.begun.has(input.phase), false, "D01 terminal phase must be armed exactly once.");
+    this.begun.add(input.phase);
+    this.world.events.push("terminal-begin:" + input.phase);
+    return {
+      status: "armed" as const,
+      evidenceRefs: [validationEvidenceRef("vh24:d01:terminal-watermark:" + input.phase)],
+    };
+  }
+
+  async resolve(input: Parameters<D01TerminalDiagnosticCorrelationPort["resolve"]>[0]) {
+    assert.equal(this.begun.has(input.phase), true, "D01 terminal resolution requires a pre-execution watermark.");
+    this.resolved.push(input.phase);
+    this.world.events.push("terminal-resolve:" + input.phase);
+    const diagnostic = terminalForPhase(input.phase);
+    assert.equal(diagnostic.deviceId, input.deviceId);
+    return {
+      status: "observed" as const,
+      diagnostic,
+      evidenceRefs: [validationEvidenceRef("vh24:d01:terminal-observed:" + input.phase)],
+    };
+  }
+}
+
 class StableMappingReader implements D01TrustedMappingReader {
   constructor(private readonly world: World, private readonly driftAfterMerge = false) {}
 
@@ -649,6 +691,7 @@ function subject(input?: {
   const mobileEdit = new FakeExactEditPort(D01_MOBILE_EDIT_TEXT, D01_MOBILE_EDIT_HASH, MOBILE_DESCRIPTOR);
   const verifier = new CapturingVerifier(input?.verifierMode);
   const handoffs = new RecordingHandoffs(world);
+  const terminalCorrelation = new RecordingTerminalCorrelation(world);
   const evidence = new RecordingEvidence();
   const packageBinding = createD01CleanTextMergeScenario({
     targetPath: TARGET_PATH,
@@ -662,7 +705,7 @@ function subject(input?: {
     verifier,
     conflictArtifacts: conflictProbe(input?.conflictProbeResult),
     handoffs,
-    terminalDiagnostics: TERMINAL_DIAGNOSTICS,
+    terminalCorrelation,
     evidence,
   });
   const plans = [
@@ -693,6 +736,7 @@ function subject(input?: {
     mobileEdit,
     verifier,
     handoffs,
+    terminalCorrelation,
     evidence,
   };
 }
@@ -799,6 +843,37 @@ test("VH24 D01 success preserves independent edits until sync, executes clean th
   assert.equal(s.mobileEdit.replaceCalls[0]?.replacementText, D01_MOBILE_EDIT_TEXT);
   assert.equal(D01_WINDOWS_EDIT_TEXT.includes("version=1"), true);
   assert.equal(D01_MOBILE_EDIT_TEXT.includes("version=1"), true);
+
+  const terminalCycles: readonly D01TerminalPhase[] = [
+    "establish-windows",
+    "establish-mobile",
+    "windows-first-sync",
+    "mobile-clean-merge",
+    "windows-reconcile",
+  ];
+  assert.deepEqual(s.terminalCorrelation.resolved, terminalCycles);
+  for (const phase of terminalCycles) {
+    const beginIndex = s.world.events.indexOf("terminal-begin:" + phase);
+    const resolveIndex = s.world.events.indexOf("terminal-resolve:" + phase);
+    assert.ok(beginIndex >= 0);
+    assert.ok(resolveIndex > beginIndex);
+  }
+  assert.ok(
+    s.world.events.indexOf("terminal-begin:windows-first-sync")
+      < s.world.events.indexOf("preview:" + String(windowsFirstSyncPlan().planId)),
+  );
+  assert.ok(
+    s.world.events.indexOf("terminal-resolve:windows-first-sync")
+      > s.world.events.indexOf("execute:" + String(windowsFirstSyncPlan().planId)),
+  );
+  assert.ok(
+    s.world.events.indexOf("terminal-begin:mobile-clean-merge")
+      < s.world.events.indexOf("preview:" + String(mobileMergePlan().planId)),
+  );
+  assert.ok(
+    s.world.events.indexOf("terminal-resolve:mobile-clean-merge")
+      > s.world.events.indexOf("execute:" + String(mobileMergePlan().planId)),
+  );
 
   const firstSyncPreviewIndex = s.world.events.findIndex(event =>
     event === "preview:" + String(windowsFirstSyncPlan().planId),
