@@ -17,14 +17,17 @@ VH30 MUST NOT begin until VH24–VH29 have each independently completed and the 
 At execution:
 
 1. run `git fetch origin --prune --tags`;
-2. require approved common integration base `D_SERIES_COMMON_BASE_SHA = 108ab6ddfccb331c62d1ac18041faf8fd49d26c4` to exist locally as a commit;
-3. obtain and record the six supervisor-approved exact inputs named `D01_APPROVED_HEAD`, `D02_APPROVED_HEAD`, `D03_APPROVED_HEAD`, `D04_APPROVED_HEAD`, `D05_APPROVED_HEAD`, and `D06_APPROVED_HEAD`;
-4. for each approved input, require that exact commit to exist, require `D_SERIES_COMMON_BASE_SHA` to be its ancestor, and require that scenario's task evidence **at that exact commit** to begin `STATUS: COMPLETE` and record authoritative `PASS / PASS / PASS`;
-5. require the supervisor approval to apply to that exact SHA.
+2. obtain and record the six supervisor-approved exact inputs named `D01_APPROVED_HEAD`, `D02_APPROVED_HEAD`, `D03_APPROVED_HEAD`, `D04_APPROVED_HEAD`, `D05_APPROVED_HEAD`, and `D06_APPROVED_HEAD`;
+3. for each approved input, require that exact commit to exist and require that scenario's task evidence **at that exact commit** to begin `STATUS: COMPLETE`, record authoritative `PASS / PASS / PASS`, and record its `D_SERIES_COMMON_BASE_SHA`;
+4. require all six scenario evidence records to contain the **same exact** `D_SERIES_COMMON_BASE_SHA`; any mismatch is a hard stop with `D-SERIES COMMON BASE MISMATCH`;
+5. use that one identical recorded SHA as VH30's `D_SERIES_COMMON_BASE_SHA`;
+6. require `D_SERIES_COMMON_BASE_SHA` to be an ancestor of every approved scenario HEAD;
+7. require the exact current `origin/phase6-integration` HEAD to equal `D_SERIES_COMMON_BASE_SHA`; if it has advanced, stop with `D-SERIES COMMON BASE DRIFT`;
+8. require the supervisor approval to apply to each exact scenario HEAD.
 
-Do **not** substitute a scenario branch tip for an approved SHA, do not assume any scenario branch still exists, and do not restore deleted historical branches.
+Do **not** substitute a scenario branch tip for an approved SHA, do not assume any scenario branch still exists, do not restore deleted historical branches, and do not manually edit this prompt to insert the common-base SHA.
 
-Only after all six exact inputs pass those gates: create `phase6-vh30-d-series-integration` from exactly `D_SERIES_COMMON_BASE_SHA`, integrate the six approved exact scenario HEADs, and record every consumed SHA and resulting integration commit. No future value other than those six exact approved scenario SHAs is deferred.
+Only after all six exact inputs pass those gates: create `phase6-vh30-d-series-integration` from exactly `D_SERIES_COMMON_BASE_SHA`, integrate the six approved exact scenario HEADs, and record every consumed SHA and resulting integration commit.
 
 ## Authority / boundaries
 Read the harness plan, DEC-301–DEC-310, shared protocol, D01–D06 package files, the approved common integration baseline after VH23, all six exact approved scenario evidence files, and merged source/tests. Preserve the no-forged-stale-authority rule and D05 human checkpoint semantics. Resolve integration conflicts without changing frozen H0 contracts, production semantics, or scenario acceptance criteria. If a shared deficiency is exposed, stop with `CONTRACT CHANGE REQUEST`.
