@@ -260,12 +260,12 @@ $repositoryVerdict = Get-LastRuntimeField -Pattern '^Repository verification:\s+
 $overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
 $taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
 $evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$' -DefaultValue '<not reported>'
-$publicationStatus = Get-LastRuntimeField -Pattern '^Evidence published:\s*([^\r\n]+?)\s*
-$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]*?)\s*$' -DefaultValue '<not reported>'
+$publicationStatus = Get-LastRuntimeField -Pattern '^Evidence published:\s*([^\r\n]+?)\s*$' -DefaultValue '<not reported>'
+$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]+?)\s*$' -DefaultValue '<not reported>'
 if ($localEvidenceBranch -eq '<not reported>') {
-    $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+(.+?)\.\s*
+    $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+(.+?)\.\s*$' -DefaultValue '<none reported>'
 }
-$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]*?)\s*$' -DefaultValue '<none reported>'
+$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]+?)\s*$' -DefaultValue '<none reported>'
 
 $failureSummary = @(
     "PHX-CI verdict: $phxVerdict",
@@ -315,6 +315,7 @@ $finalBaseAncestorExit = $LASTEXITCODE
 if ($finalBaseAncestorExit -ne 0) {
     throw "Required base is no longer an ancestor of implementation HEAD: $BaseSha !<= $ImplementationHead"
 }
+
 & git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $finalRemoteHead
 $finalImplementationAncestorExit = $LASTEXITCODE
 if ($finalImplementationAncestorExit -ne 0) {
@@ -327,209 +328,6 @@ Write-Host "PHX-CI verdict: $phxVerdict"
 Write-Host "Change-set verification: $changeSetVerdict"
 Write-Host "Repository verification: $repositoryVerdict"
 Write-Host "Overall verification: $overallVerdict"
-Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
-Write-Host "preservation branch frozen: PASS ($finalPreservationHead)"
- -DefaultValue '<not reported>'
-$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]*?)\s*$' -DefaultValue '<not reported>'
-if ($localEvidenceBranch -eq '<not reported>') {
-    $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
-}
-$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]*?)\s*$' -DefaultValue '<none reported>'
-
-$failureSummary = @(
-    "PHX-CI verdict: $phxVerdict",
-    "Change-set verification: $changeSetVerdict",
-    "Repository verification: $repositoryVerdict",
-    "Overall verification: $overallVerdict",
-    "Task exit code: $taskExitCode",
-    "Evidence commit: $evidenceCommit",
-    "Evidence publication status: $publicationStatus",
-    "Local evidence branch: $localEvidenceBranch",
-    "Publication issue: $publicationIssue",
-    "Runtime process exit code: $runtimeExit"
-) -join [Environment]::NewLine
-
-$authoritativePass = (
-    $runtimeExit -eq 0 -and
-    $phxVerdict -eq 'PASS' -and
-    $changeSetVerdict -eq 'PASS' -and
-    $repositoryVerdict -eq 'PASS' -and
-    $overallVerdict -eq 'PASS'
-)
-
-if (-not $authoritativePass) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
-$finalFetchExit = $LASTEXITCODE
-foreach ($line in $finalFetch) { Write-Host ([string]$line) }
-if ($finalFetchExit -ne 0) {
-    throw "Final git fetch failed with exit code $finalFetchExit."
-}
-
-$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
-if ($finalIntegrationHead -cne $requiredIntegrationHead) {
-    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
-}
-
-$finalPreservationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-vh25-d02-scenario-pre-h6b-restart')
-if ($finalPreservationHead -cne $requiredPreservationHead) {
-    throw "D02 preservation branch drifted after verification. Required $requiredPreservationHead; observed $finalPreservationHead."
-}
-
-$finalRemoteHead = Invoke-GitText @('rev-parse',$remoteRef)
-& git -C $script:RepoRoot merge-base --is-ancestor $BaseSha $ImplementationHead
-$finalBaseAncestorExit = $LASTEXITCODE
-if ($finalBaseAncestorExit -ne 0) {
-    throw "Required base is no longer an ancestor of implementation HEAD: $BaseSha !<= $ImplementationHead"
-}
-& git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $finalRemoteHead
-$finalImplementationAncestorExit = $LASTEXITCODE
-if ($finalImplementationAncestorExit -ne 0) {
-    throw "Implementation HEAD is no longer contained in origin/${ExpectedBranch}: $ImplementationHead !<= $finalRemoteHead"
-}
-
-Write-Host ""
-Write-Host "VH25 D02 VERIFICATION: PASS"
-Write-Host "PHX-CI verdict: $phxVerdict"
-Write-Host "Change-set verification: $changeSetVerdict"
-Write-Host "Repository verification: $repositoryVerdict"
-Write-Host "Overall verification: $overallVerdict"
-Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
-Write-Host "preservation branch frozen: PASS ($finalPreservationHead)"
- -DefaultValue '<none reported>'
-}
-$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]*?)\s*$' -DefaultValue '<none reported>'
-
-$failureSummary = @(
-    "PHX-CI verdict: $phxVerdict",
-    "Change-set verification: $changeSetVerdict",
-    "Repository verification: $repositoryVerdict",
-    "Overall verification: $overallVerdict",
-    "Task exit code: $taskExitCode",
-    "Evidence commit: $evidenceCommit",
-    "Evidence publication status: $publicationStatus",
-    "Local evidence branch: $localEvidenceBranch",
-    "Publication issue: $publicationIssue",
-    "Runtime process exit code: $runtimeExit"
-) -join [Environment]::NewLine
-
-$authoritativePass = (
-    $runtimeExit -eq 0 -and
-    $phxVerdict -eq 'PASS' -and
-    $changeSetVerdict -eq 'PASS' -and
-    $repositoryVerdict -eq 'PASS' -and
-    $overallVerdict -eq 'PASS'
-)
-
-if (-not $authoritativePass) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
-$finalFetchExit = $LASTEXITCODE
-foreach ($line in $finalFetch) { Write-Host ([string]$line) }
-if ($finalFetchExit -ne 0) {
-    throw "Final git fetch failed with exit code $finalFetchExit."
-}
-
-$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
-if ($finalIntegrationHead -cne $requiredIntegrationHead) {
-    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
-}
-
-$finalPreservationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-vh25-d02-scenario-pre-h6b-restart')
-if ($finalPreservationHead -cne $requiredPreservationHead) {
-    throw "D02 preservation branch drifted after verification. Required $requiredPreservationHead; observed $finalPreservationHead."
-}
-
-$finalRemoteHead = Invoke-GitText @('rev-parse',$remoteRef)
-& git -C $script:RepoRoot merge-base --is-ancestor $BaseSha $ImplementationHead
-$finalBaseAncestorExit = $LASTEXITCODE
-if ($finalBaseAncestorExit -ne 0) {
-    throw "Required base is no longer an ancestor of implementation HEAD: $BaseSha !<= $ImplementationHead"
-}
-& git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $finalRemoteHead
-$finalImplementationAncestorExit = $LASTEXITCODE
-if ($finalImplementationAncestorExit -ne 0) {
-    throw "Implementation HEAD is no longer contained in origin/${ExpectedBranch}: $ImplementationHead !<= $finalRemoteHead"
-}
-
-Write-Host ""
-Write-Host "VH25 D02 VERIFICATION: PASS"
-Write-Host "PHX-CI verdict: $phxVerdict"
-Write-Host "Change-set verification: $changeSetVerdict"
-Write-Host "Repository verification: $repositoryVerdict"
-Write-Host "Overall verification: $overallVerdict"
-Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
-Write-Host "preservation branch frozen: PASS ($finalPreservationHead)"
- -DefaultValue '<not reported>'
-$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Local evidence branch:\s*([^\r\n]*?)\s*$' -DefaultValue '<not reported>'
-if ($localEvidenceBranch -eq '<not reported>') {
-    $localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
-}
-$publicationIssue = Get-LastRuntimeField -Pattern '^Publication issue:\s*([^\r\n]*?)\s*$' -DefaultValue '<none reported>'
-
-$failureSummary = @(
-    "PHX-CI verdict: $phxVerdict",
-    "Change-set verification: $changeSetVerdict",
-    "Repository verification: $repositoryVerdict",
-    "Overall verification: $overallVerdict",
-    "Task exit code: $taskExitCode",
-    "Evidence commit: $evidenceCommit",
-    "Evidence publication status: $publicationStatus",
-    "Local evidence branch: $localEvidenceBranch",
-    "Publication issue: $publicationIssue",
-    "Runtime process exit code: $runtimeExit"
-) -join [Environment]::NewLine
-
-$authoritativePass = (
-    $runtimeExit -eq 0 -and
-    $phxVerdict -eq 'PASS' -and
-    $changeSetVerdict -eq 'PASS' -and
-    $repositoryVerdict -eq 'PASS' -and
-    $overallVerdict -eq 'PASS'
-)
-
-if (-not $authoritativePass) {
-    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
-}
-
-$finalFetch = @(& git -C $script:RepoRoot fetch origin --prune --tags 2>&1)
-$finalFetchExit = $LASTEXITCODE
-foreach ($line in $finalFetch) { Write-Host ([string]$line) }
-if ($finalFetchExit -ne 0) {
-    throw "Final git fetch failed with exit code $finalFetchExit."
-}
-
-$finalIntegrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
-if ($finalIntegrationHead -cne $requiredIntegrationHead) {
-    throw "D-SERIES COMMON BASE MISMATCH after verification: origin/phase6-integration is $finalIntegrationHead; required $requiredIntegrationHead."
-}
-
-$finalPreservationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-vh25-d02-scenario-pre-h6b-restart')
-if ($finalPreservationHead -cne $requiredPreservationHead) {
-    throw "D02 preservation branch drifted after verification. Required $requiredPreservationHead; observed $finalPreservationHead."
-}
-
-$finalRemoteHead = Invoke-GitText @('rev-parse',$remoteRef)
-& git -C $script:RepoRoot merge-base --is-ancestor $BaseSha $ImplementationHead
-$finalBaseAncestorExit = $LASTEXITCODE
-if ($finalBaseAncestorExit -ne 0) {
-    throw "Required base is no longer an ancestor of implementation HEAD: $BaseSha !<= $ImplementationHead"
-}
-& git -C $script:RepoRoot merge-base --is-ancestor $ImplementationHead $finalRemoteHead
-$finalImplementationAncestorExit = $LASTEXITCODE
-if ($finalImplementationAncestorExit -ne 0) {
-    throw "Implementation HEAD is no longer contained in origin/${ExpectedBranch}: $ImplementationHead !<= $finalRemoteHead"
-}
-
-Write-Host ""
-Write-Host "VH25 D02 VERIFICATION: PASS"
-Write-Host "PHX-CI verdict: $phxVerdict"
-Write-Host "Change-set verification: $changeSetVerdict"
-Write-Host "Repository verification: $repositoryVerdict"
-Write-Host "Overall verification: $overallVerdict"
+Write-Host "Evidence publication status: $publicationStatus"
 Write-Host "phase6-integration frozen: PASS ($finalIntegrationHead)"
 Write-Host "preservation branch frozen: PASS ($finalPreservationHead)"
