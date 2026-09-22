@@ -419,10 +419,7 @@ if ([string]::IsNullOrWhiteSpace($RuntimeStoreRoot)) {
     if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
         throw 'LOCALAPPDATA is unavailable; specify -RuntimeStoreRoot explicitly.'
     }
-    $RuntimeStoreRoot = Join-Path(
-        (Join-Path $env:LOCALAPPDATA 'PHX-CI'),
-        'runtimes'
-    )
+    $RuntimeStoreRoot = Join-Path (Join-Path $env:LOCALAPPDATA 'PHX-CI') 'runtimes'
 }
 
 $RuntimeStoreRoot = [IO.Path]::GetFullPath($RuntimeStoreRoot).TrimEnd('\','/')
@@ -475,16 +472,25 @@ Write-Host "Implementation HEAD: $ImplementationHead"
 Write-Host "Base SHA: $BaseSha"
 Write-Host "Publication mode: $PublicationMode"
 
-$runtimeArgs = @{
-    RepoRoot = $script:RepoRoot
-    Branch = $ExpectedBranch
-    BaseRef = $BaseSha
-    FocusedTestCommand = $FocusedTestCommand
-    PublicationMode = $PublicationMode
-    RuntimeStoreRoot = $RuntimeStoreRoot
-}
+$runtimeArgumentList = @(
+    '-NoProfile',
+    '-File',
+    $frontDoor,
+    '-RepoRoot',
+    $script:RepoRoot,
+    '-Branch',
+    $ExpectedBranch,
+    '-BaseRef',
+    $BaseSha,
+    '-FocusedTestCommand',
+    $FocusedTestCommand,
+    '-PublicationMode',
+    $PublicationMode,
+    '-RuntimeStoreRoot',
+    $RuntimeStoreRoot
+)
 $runtimeOutput = @(
-    & $powerShellPath -NoProfile -File $frontDoor @runtimeArgs 2>&1
+    & $powerShellPath @runtimeArgumentList 2>&1
 )
 $runtimeExit = $LASTEXITCODE
 foreach ($line in $runtimeOutput) {
