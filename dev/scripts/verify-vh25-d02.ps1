@@ -83,6 +83,9 @@ foreach ($line in $fetchOutput) { Write-Host ([string]$line) }
 if ($fetchExit -ne 0) { throw "git fetch failed with exit code $fetchExit." }
 
 $requiredIntegrationHead = "c6daa20ad287f395a99cf88943465a9ecc3159dd"
+if ($BaseSha -cne $requiredIntegrationHead) {
+    throw "D02 verifier BaseSha is $BaseSha; required frozen common base $requiredIntegrationHead."
+}
 $integrationHead = Invoke-GitText @('rev-parse','refs/remotes/origin/phase6-integration')
 if ($integrationHead -cne $requiredIntegrationHead) {
     throw "D-SERIES COMMON BASE MISMATCH: origin/phase6-integration is $integrationHead; required $requiredIntegrationHead."
