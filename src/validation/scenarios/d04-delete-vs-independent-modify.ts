@@ -151,6 +151,7 @@ export interface D04ScenarioPackage {
 type PlanExpectationWithoutRun = Omit<ValidationPlanExpectation, "run">;
 
 interface D04CycleObservation {
+  readonly run: ValidationRunIdentity;
   readonly role: D04DeviceRole;
   readonly checkpointSequence: number;
   diagnosticRunId?: number;
@@ -158,12 +159,14 @@ interface D04CycleObservation {
 }
 
 interface D04ConflictObservation {
+  readonly run: ValidationRunIdentity;
   readonly conflictId: string;
   readonly remoteObjectId: RemoteObjectId;
   readonly diagnosticRunId: number;
 }
 
-interface D04Context {
+interface D04RunContext {
+  readonly run: ValidationRunIdentity;
   readonly cycleObservations: Map<string, D04CycleObservation>;
   baseline?: ValidationFixtureDescriptor;
   windowsTarget?: ValidationFixtureDescriptor;
@@ -181,6 +184,51 @@ interface D04Context {
 
 function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
   return left.runId === right.runId && left.scenarioId === right.scenarioId;
+}
+
+function runKey(run: ValidationRunIdentity): string {
+  return String(run.scenarioId) + "\u0000" + String(run.runId);
+}
+
+function newRunContext(run: ValidationRunIdentity): D04RunContext {
+  return {
+    run,
+    cycleObservations: new Map(),
+  };
+}
+
+function requireRunContext(
+  contexts: Map<string, D04RunContext>,
+  run: ValidationRunIdentity,
+): D04RunContext {
+  const context = contexts.get(runKey(run));
+  if (!context || !sameRun(context.run, run)) {
+    throw new Error("D04 has no task-local state established for the current validation run.");
+  }
+  return context;
+}
+
+function establishRunContext(
+  contexts: Map<string, D04RunContext>,
+  run: ValidationRunIdentity,
+): D04RunContext {
+  const key = runKey(run);
+  const existing = contexts.get(key);
+  if (existing) {
+    if (!sameRun(existing.run, run)) {
+      throw new Error("D04 run-context identity collision.");
+    }
+    throw new Error("D04 task-local state is already established for this validation run.");
+  }
+  const context = newRunContext(run);
+  contexts.set(key, context);
+  return context;
+}
+
+function assertContextRun(context: D04RunContext, run: ValidationRunIdentity): void {
+  if (!sameRun(context.run, run)) {
+    throw new Error("D04 task-local state belongs to a different validation run.");
+  }
 }
 
 function completed(evidenceRefs: readonly ValidationEvidenceRef[] = []) {
@@ -547,11 +595,27 @@ function assertFixture(
 }
 
 function requireDescriptor(
+  run: ValidationRunIdentity,
   descriptor: ValidationFixtureDescriptor | undefined,
   label: string,
 ): ValidationFixtureDescriptor {
   if (!descriptor || !descriptor.hash) throw new Error("D04 " + label + " fixture is unavailable.");
+  if (!sameRun(descriptor.identity.run, run)) {
+    throw new Error("D04 " + label + " fixture belongs to a different validation run.");
+  }
   return descriptor;
+}
+
+function requireVerification(
+  run: ValidationRunIdentity,
+  report: ValidationStateConvergenceReport | undefined,
+  label: string,
+): ValidationStateConvergenceReport {
+  if (!report) throw new Error("D04 " + label + " verification is unavailable.");
+  if (!sameRun(report.result.run, run)) {
+    throw new Error("D04 " + label + " verification belongs to a different validation run.");
+  }
+  return report;
 }
 
 function productionObservation(
@@ -574,16 +638,18 @@ function maxDiagnosticSequence(events: readonly DiagnosticEvent[]): number {
 }
 
 function captureProductionCycle(
-  context: D04Context,
+  context: D04RunContext,
   options: D04ScenarioPackageOptions,
+  run: ValidationRunIdentity,
   cycleId: string,
   role: D04DeviceRole,
 ): void {
+  assertContextRun(context, run);
   if (context.cycleObservations.has(cycleId)) {
-    throw new Error("D04 production cycle diagnostic checkpoint was already captured: " + cycleId);
+    throw new Error("D04 production cycle diagnostic checkpoint was already captured for this validation run: " + cycleId);
   }
   const checkpointSequence = maxDiagnosticSequence(productionObservation(options, role).diagnosticSnapshot());
-  context.cycleObservations.set(cycleId, { role, checkpointSequence });
+  context.cycleObservations.set(cycleId, { run, role, checkpointSequence });
 }
 
 function expectedPreparedFields(plan: ProductSurfaceState["planPreview"]): Readonly<Record<string, string | number>> {
@@ -611,13 +677,15 @@ function fieldsContain(
 }
 
 function bindProductionRun(
-  context: D04Context,
+  context: D04RunContext,
   options: D04ScenarioPackageOptions,
+  run: ValidationRunIdentity,
   cycleId: string,
   role: D04DeviceRole,
 ): D04CycleObservation {
+  assertContextRun(context, run);
   const cycle = context.cycleObservations.get(cycleId);
-  if (!cycle || cycle.role !== role) {
+  if (!cycle || !sameRun(cycle.run, run) || cycle.role !== role) {
     throw new Error("D04 production cycle has no matching pre-preview diagnostic checkpoint: " + cycleId);
   }
   if (cycle.diagnosticRunId !== undefined) return cycle;
@@ -675,14 +743,18 @@ function exactFixtureContent(
 }
 
 function observeDeleteVsModifyConflict(
-  context: D04Context,
+  context: D04RunContext,
   options: D04ScenarioPackageOptions,
+  run: ValidationRunIdentity,
   cycleId: string,
   role: D04DeviceRole,
   expectedModified: ValidationFixtureDescriptor,
   expectedBase: ValidationFixtureDescriptor,
 ): D04ConflictObservation {
-  const cycle = bindProductionRun(context, options, cycleId, role);
+  assertContextRun(context, run);
+  assertFixture(run, expectedModified, D04_TARGET_RELATIVE_PATH, options.targetPath);
+  assertFixture(run, expectedBase, D04_TARGET_RELATIVE_PATH, options.targetPath);
+  const cycle = bindProductionRun(context, options, run, cycleId, role);
   const observation = productionObservation(options, role);
   const surface = observation.currentSurface();
   const pathConflicts = surface.conflicts.filter(conflict => conflict.kind !== "none" && "path" in conflict && conflict.path === options.targetPath);
@@ -723,6 +795,7 @@ function observeDeleteVsModifyConflict(
   }
 
   return Object.freeze({
+    run,
     conflictId: String(conflict.conflictId),
     remoteObjectId,
     diagnosticRunId: cycle.diagnosticRunId!,
@@ -730,12 +803,14 @@ function observeDeleteVsModifyConflict(
 }
 
 function terminalDiagnostic(
-  context: D04Context,
+  context: D04RunContext,
   options: D04ScenarioPackageOptions,
+  run: ValidationRunIdentity,
   cycleId: string,
 ): ValidationDiagnosticExpectation {
+  assertContextRun(context, run);
   const cycle = context.cycleObservations.get(cycleId);
-  if (!cycle || cycle.diagnosticRunId === undefined) {
+  if (!cycle || !sameRun(cycle.run, run) || cycle.diagnosticRunId === undefined) {
     throw new Error("D04 has no exact diagnostic run binding for production cycle: " + cycleId);
   }
   const events = productionObservation(options, cycle.role).diagnosticSnapshot();
@@ -948,12 +1023,13 @@ export function createD04DeleteVsIndependentModifyScenario(
   options: D04ScenarioPackageOptions,
 ): D04ScenarioPackage {
   assertPackageOptions(options);
-  const context: D04Context = { cycleObservations: new Map() };
+  const contexts = new Map<string, D04RunContext>();
 
   const fixtureDelegate: ValidationRunnerApprovedModuleDelegate = Object.freeze({
     async execute(request) {
       try {
         if (request.operation === D04_OPERATIONS.establishWindowsFixtures) {
+          const context = establishRunContext(contexts, request.run);
           const target = await options.windowsFixtures.create(
             validationTextFixture(D04_TARGET_FIXTURE_ID, D04_TARGET_RELATIVE_PATH, 1, "base", "conflict"),
           );
@@ -974,9 +1050,11 @@ export function createD04DeleteVsIndependentModifyScenario(
           return completed();
         }
 
+        const context = requireRunContext(contexts, request.run);
+
         if (request.operation === D04_OPERATIONS.establishMobileFixtures) {
-          const baseline = requireDescriptor(context.baseline, "baseline");
-          const sentinel = requireDescriptor(context.sentinel, "sentinel");
+          const baseline = requireDescriptor(request.run, context.baseline, "baseline");
+          const sentinel = requireDescriptor(request.run, context.sentinel, "sentinel");
           const target = await options.mobileFixtures.create(
             validationTextFixture(D04_TARGET_FIXTURE_ID, D04_TARGET_RELATIVE_PATH, 1, "base", "conflict"),
           );
@@ -999,8 +1077,9 @@ export function createD04DeleteVsIndependentModifyScenario(
         }
 
         if (request.operation === D04_OPERATIONS.deleteWindowsTarget) {
-          const baseline = requireDescriptor(context.baseline, "baseline");
+          const baseline = requireDescriptor(request.run, context.baseline, "baseline");
           const deleted = await options.windowsFixtures.delete(D04_TARGET_FIXTURE_ID);
+          assertFixture(request.run, deleted, D04_TARGET_RELATIVE_PATH, options.targetPath);
           if (deleted.hash !== baseline.hash || deleted.path !== baseline.path) {
             return failed("D04 Windows deletion did not originate from the common trusted BASE fixture.");
           }
@@ -1009,7 +1088,7 @@ export function createD04DeleteVsIndependentModifyScenario(
         }
 
         if (request.operation === D04_OPERATIONS.editMobileTarget) {
-          const baseline = requireDescriptor(context.baseline, "baseline");
+          const baseline = requireDescriptor(request.run, context.baseline, "baseline");
           const edited = await options.mobileFixtures.edit(D04_TARGET_FIXTURE_ID, 2, "non-overlap-a");
           assertFixture(request.run, edited, D04_TARGET_RELATIVE_PATH, options.targetPath);
           if (edited.hash === baseline.hash || edited.version !== 2) {
@@ -1024,7 +1103,7 @@ export function createD04DeleteVsIndependentModifyScenario(
         }
 
         if (request.operation === D04_OPERATIONS.restoreWindowsBaselineBytes) {
-          const baseline = requireDescriptor(context.baseline, "baseline");
+          const baseline = requireDescriptor(request.run, context.baseline, "baseline");
           const restored = await options.windowsFixtures.restoreVersion(D04_TARGET_FIXTURE_ID, 1, "base");
           assertFixture(request.run, restored, D04_TARGET_RELATIVE_PATH, options.targetPath);
           if (restored.hash !== baseline.hash || restored.sizeBytes !== baseline.sizeBytes) {
@@ -1038,8 +1117,9 @@ export function createD04DeleteVsIndependentModifyScenario(
         }
 
         if (request.operation === D04_OPERATIONS.deleteMobileTarget) {
-          const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
+          const priorBase = requireDescriptor(request.run, context.subcaseAModified, "restored-base");
           const deleted = await options.mobileFixtures.delete(D04_TARGET_FIXTURE_ID);
+          assertFixture(request.run, deleted, D04_TARGET_RELATIVE_PATH, options.targetPath);
           if (deleted.hash !== priorBase.hash || deleted.path !== priorBase.path) {
             return failed("D04 mobile deletion did not originate from the restored common BASE fixture.");
           }
@@ -1048,7 +1128,7 @@ export function createD04DeleteVsIndependentModifyScenario(
         }
 
         if (request.operation === D04_OPERATIONS.editWindowsTarget) {
-          const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
+          const priorBase = requireDescriptor(request.run, context.subcaseAModified, "restored-base");
           const edited = await options.windowsFixtures.edit(D04_TARGET_FIXTURE_ID, 3, "non-overlap-b");
           assertFixture(request.run, edited, D04_TARGET_RELATIVE_PATH, options.targetPath);
           if (edited.hash === priorBase.hash || edited.version !== 3) {
@@ -1087,6 +1167,7 @@ export function createD04DeleteVsIndependentModifyScenario(
       const route = handoffByOperation[request.operation];
       if (!route) return blocked("Unsupported D04 handoff operation: " + request.operation);
       try {
+        requireRunContext(contexts, request.run);
         const refs = await options.handoffs.handoff({
           run: request.run,
           stepId: request.stepId,
@@ -1104,6 +1185,7 @@ export function createD04DeleteVsIndependentModifyScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = Object.freeze({
     async execute(request) {
       try {
+        const context = requireRunContext(contexts, request.run);
         if (
           request.operation === D04_OPERATIONS.captureProductionCycle
           || request.operation === D04_OPERATIONS.bindProductionRun
@@ -1113,21 +1195,22 @@ export function createD04DeleteVsIndependentModifyScenario(
           if (!input) return blocked("D04 production observation input is malformed.");
 
           if (request.operation === D04_OPERATIONS.captureProductionCycle) {
-            captureProductionCycle(context, options, input.cycleId, input.role);
+            captureProductionCycle(context, options, request.run, input.cycleId, input.role);
             return completed();
           }
 
           if (request.operation === D04_OPERATIONS.bindProductionRun) {
-            bindProductionRun(context, options, input.cycleId, input.role);
+            bindProductionRun(context, options, request.run, input.cycleId, input.role);
             return completed();
           }
 
           if (input.cycleId === D04_AUTHORITY_CYCLES.subcaseAWindowsConflict) {
-            const baseline = requireDescriptor(context.baseline, "baseline");
-            const modified = requireDescriptor(context.subcaseAModified, "subcase-a-modified");
+            const baseline = requireDescriptor(request.run, context.baseline, "baseline");
+            const modified = requireDescriptor(request.run, context.subcaseAModified, "subcase-a-modified");
             context.subcaseAConflict = observeDeleteVsModifyConflict(
               context,
               options,
+              request.run,
               input.cycleId,
               input.role,
               modified,
@@ -1136,11 +1219,12 @@ export function createD04DeleteVsIndependentModifyScenario(
             return completed();
           }
           if (input.cycleId === D04_AUTHORITY_CYCLES.subcaseBMobileConflict) {
-            const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
-            const modified = requireDescriptor(context.subcaseBModified, "subcase-b-modified");
+            const priorBase = requireDescriptor(request.run, context.subcaseAModified, "restored-base");
+            const modified = requireDescriptor(request.run, context.subcaseBModified, "subcase-b-modified");
             context.subcaseBConflict = observeDeleteVsModifyConflict(
               context,
               options,
+              request.run,
               input.cycleId,
               input.role,
               modified,
@@ -1151,8 +1235,8 @@ export function createD04DeleteVsIndependentModifyScenario(
           return blocked("D04 conflict-presentation verification was requested for a non-conflict cycle.");
         }
 
-        const baseline = requireDescriptor(context.baseline, "baseline");
-        const sentinel = requireDescriptor(context.sentinel, "sentinel");
+        const baseline = requireDescriptor(request.run, context.baseline, "baseline");
+        const sentinel = requireDescriptor(request.run, context.sentinel, "sentinel");
         let verificationRequest: ValidationStateConvergenceRequest | undefined;
         const phase = request.operation;
 
@@ -1162,13 +1246,15 @@ export function createD04DeleteVsIndependentModifyScenario(
             options,
             baseline,
             sentinel,
-            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.establishWindows),
-            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.establishMobile),
+            terminalDiagnostic(context, options, request.run, D04_AUTHORITY_CYCLES.establishWindows),
+            terminalDiagnostic(context, options, request.run, D04_AUTHORITY_CYCLES.establishMobile),
           );
         } else if (request.operation === D04_OPERATIONS.verifySubcaseA) {
-          const modified = requireDescriptor(context.subcaseAModified, "subcase-a-modified");
+          const modified = requireDescriptor(request.run, context.subcaseAModified, "subcase-a-modified");
           const conflict = context.subcaseAConflict;
-          if (!conflict) throw new Error("D04 subcase A conflict presentation has not been objectively verified.");
+          if (!conflict || !sameRun(conflict.run, request.run)) {
+            throw new Error("D04 subcase A conflict presentation has not been objectively verified for the current validation run.");
+          }
           verificationRequest = subcaseAVerificationRequest(
             request.run,
             options,
@@ -1176,22 +1262,24 @@ export function createD04DeleteVsIndependentModifyScenario(
             modified,
             sentinel,
             conflict.remoteObjectId,
-            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.subcaseAMobileModify),
+            terminalDiagnostic(context, options, request.run, D04_AUTHORITY_CYCLES.subcaseAMobileModify),
           );
         } else if (request.operation === D04_OPERATIONS.verifyRestoredBase) {
-          const modified = requireDescriptor(context.subcaseAModified, "restored-base");
+          const modified = requireDescriptor(request.run, context.subcaseAModified, "restored-base");
           verificationRequest = restoredBaseVerificationRequest(
             request.run,
             options,
             modified,
             sentinel,
-            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.restoreWindowsBase),
+            terminalDiagnostic(context, options, request.run, D04_AUTHORITY_CYCLES.restoreWindowsBase),
           );
         } else if (request.operation === D04_OPERATIONS.verifySubcaseB) {
-          const priorBase = requireDescriptor(context.subcaseAModified, "restored-base");
-          const modified = requireDescriptor(context.subcaseBModified, "subcase-b-modified");
+          const priorBase = requireDescriptor(request.run, context.subcaseAModified, "restored-base");
+          const modified = requireDescriptor(request.run, context.subcaseBModified, "subcase-b-modified");
           const conflict = context.subcaseBConflict;
-          if (!conflict) throw new Error("D04 subcase B conflict presentation has not been objectively verified.");
+          if (!conflict || !sameRun(conflict.run, request.run)) {
+            throw new Error("D04 subcase B conflict presentation has not been objectively verified for the current validation run.");
+          }
           verificationRequest = subcaseBVerificationRequest(
             request.run,
             options,
@@ -1199,12 +1287,15 @@ export function createD04DeleteVsIndependentModifyScenario(
             modified,
             sentinel,
             conflict.remoteObjectId,
-            terminalDiagnostic(context, options, D04_AUTHORITY_CYCLES.subcaseBWindowsModify),
+            terminalDiagnostic(context, options, request.run, D04_AUTHORITY_CYCLES.subcaseBWindowsModify),
           );
         }
 
         if (!verificationRequest) return blocked("Unsupported D04 verifier operation: " + request.operation);
         const report = await options.verifier.verify(verificationRequest);
+        if (!sameRun(report.result.run, request.run)) {
+          return failed("D04 verifier returned a report for a different validation run.");
+        }
         if (request.operation === D04_OPERATIONS.verifyTrustedBaseline) context.baselineVerification = report;
         else if (request.operation === D04_OPERATIONS.verifySubcaseA) context.subcaseAVerification = report;
         else if (request.operation === D04_OPERATIONS.verifyRestoredBase) context.restoredBaseVerification = report;
@@ -1222,16 +1313,20 @@ export function createD04DeleteVsIndependentModifyScenario(
         return blocked("Unsupported D04 evidence operation: " + request.operation);
       }
       try {
-        const baseline = requireDescriptor(context.baseline, "baseline");
-        const subcaseAModified = requireDescriptor(context.subcaseAModified, "subcase-a-modified");
-        const subcaseBModified = requireDescriptor(context.subcaseBModified, "subcase-b-modified");
-        const sentinel = requireDescriptor(context.sentinel, "sentinel");
-        const baselineVerification = context.baselineVerification;
-        const subcaseAVerification = context.subcaseAVerification;
-        const restoredBaseVerification = context.restoredBaseVerification;
-        const subcaseBVerification = context.subcaseBVerification;
-        if (!baselineVerification || !subcaseAVerification || !restoredBaseVerification || !subcaseBVerification) {
-          return blocked("D04 evidence cannot be recorded before every verification phase completes.");
+        const context = requireRunContext(contexts, request.run);
+        const baseline = requireDescriptor(request.run, context.baseline, "baseline");
+        const subcaseAModified = requireDescriptor(request.run, context.subcaseAModified, "subcase-a-modified");
+        const subcaseBModified = requireDescriptor(request.run, context.subcaseBModified, "subcase-b-modified");
+        const sentinel = requireDescriptor(request.run, context.sentinel, "sentinel");
+        const baselineVerification = requireVerification(request.run, context.baselineVerification, "baseline");
+        const subcaseAVerification = requireVerification(request.run, context.subcaseAVerification, "subcase-a");
+        const restoredBaseVerification = requireVerification(request.run, context.restoredBaseVerification, "restored-base");
+        const subcaseBVerification = requireVerification(request.run, context.subcaseBVerification, "subcase-b");
+        if (
+          !context.subcaseAConflict || !sameRun(context.subcaseAConflict.run, request.run)
+          || !context.subcaseBConflict || !sameRun(context.subcaseBConflict.run, request.run)
+        ) {
+          return blocked("D04 evidence cannot be recorded without current-run conflict observations for both subcases.");
         }
         const refs = await options.evidence.record({
           run: request.run,
