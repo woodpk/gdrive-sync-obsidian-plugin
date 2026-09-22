@@ -120,7 +120,7 @@ export function composeCSeriesValidationMode(
   );
 
   const prerequisiteRouter: ValidationRunnerPrerequisiteDelegate = Object.freeze({
-    async evaluate(input) {
+    async evaluate(input: Parameters<ValidationRunnerPrerequisiteDelegate["evaluate"]>[0]) {
       if (input.prerequisiteIds.length === 0) return Object.freeze([]);
       const scenarioId = scenarioIdOf(String(input.run.scenarioId));
       if (!scenarioId) {
@@ -165,7 +165,7 @@ export function composeCSeriesValidationMode(
   const routedOverrides: ValidationModeModuleOverrides = {};
   for (const [moduleId, routes] of moduleRoutes) {
     routedOverrides[moduleId] = Object.freeze({
-      async execute(request) {
+      async execute(request: Parameters<ValidationRunnerApprovedModuleDelegate["execute"]>[0]) {
         const scenarioId = scenarioIdOf(String(request.run.scenarioId));
         if (!scenarioId) return await failClosedModule(moduleId, String(request.run.scenarioId)).execute(request);
         const delegate = routes.get(scenarioId);

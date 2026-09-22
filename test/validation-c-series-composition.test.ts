@@ -41,16 +41,16 @@ function definition(
 
 function completedDelegate(label: string, calls: string[]): ValidationRunnerApprovedModuleDelegate {
   return Object.freeze({
-    async execute(request) {
+    async execute(request: Parameters<ValidationRunnerApprovedModuleDelegate["execute"]>[0]) {
       calls.push(`${label}:${request.run.scenarioId}:${request.operation}`);
-      return { status: "completed", evidenceRefs: [] };
+      return { status: "completed" as const, evidenceRefs: [] };
     },
   });
 }
 
 function satisfiedPrerequisites(label: string, calls: string[]): ValidationRunnerPrerequisiteDelegate {
   return Object.freeze({
-    async evaluate(input) {
+    async evaluate(input: Parameters<ValidationRunnerPrerequisiteDelegate["evaluate"]>[0]) {
       calls.push(`${label}:${input.run.scenarioId}`);
       return Object.freeze(input.prerequisiteIds.map(prerequisiteId => Object.freeze({
         prerequisiteId,
