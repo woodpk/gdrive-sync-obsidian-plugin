@@ -1,4 +1,4 @@
-STATUS: BLOCKED
+STATUS: COMPLETE
 
 # VH23 — H7I C-Series Harness Integration Evidence
 
@@ -195,3 +195,18 @@ Environmental verification blocker only:
 The current agent execution environment cannot run the committed PowerShell launcher and pinned centralized PHX-CI framework. The current VH23 repository task explicitly forbids `STATUS: COMPLETE` until authoritative local PHX-CI reports `PASS / PASS / PASS`.
 
 Run the committed verifier locally against `IMPLEMENTATION_HEAD`. Until that succeeds, VH23 remains `STATUS: BLOCKED`.
+
+## PHX-CI deployed-runtime pilot completion
+
+The historical blocker above was environmental/runtime-path related: the earlier execution environment could not run the committed PowerShell launcher or its pinned source-checkout framework. That historical context is preserved; it was not a product-validation PASS.
+
+Local production-path verification later completed on the separate pilot branch `phase6-vh23-phx-ci-runtime-pilot` using the self-contained deployed PHX-CI runtime at exact SHA `f5123d21cc13511a5ee1185cfc4e1689785188ed`. The production commands used the deployed runtime front door and BRAIN repository only; the old task-specific launcher was inspected solely to recover its historical focused command and was not used as the execution engine.
+
+An initial pilot attempt exposed a VH23 TypeScript typecheck blocker. The supervisor-approved repair is commit `b21a53a6e0b046cd8c0a71dc15c8b9b0dbd9aecc`; this evidence update does not reopen or modify that repair.
+
+- Run A, normal operator path with only `RepoRoot` and `Branch`: `PASS` (`Change-set verification: PASS`, `Repository verification: PASS`, `Overall verification: PASS`, task exit code `0`). Automatic target was `b21a53a6e0b046cd8c0a71dc15c8b9b0dbd9aecc`; automatic base was `origin/master` at `7b4297adceb2fd6268a5801a207b7dce1f7b7728`; focused source was `adapter-default`.
+- Run B, the historical C03-C09/H7/H6B command supplied only as `FocusedTestCommand` to the same production front door: `PASS` (`Change-set verification: PASS`, `Repository verification: PASS`, `Overall verification: PASS`, task exit code `0`). Focused source was `explicit`.
+- Consumer control checkout preservation: `PASS` for both runs.
+- PHX source-checkout independence: `PASS`; production arguments contained no PHX source path or source-mode `FrameworkRoot`, and the deployed runtime root is not a Git repository.
+
+The completed local runs satisfy the dynamic verification that was unavailable to the original VH23 session. No physical Google Drive/mobile validation is claimed.
