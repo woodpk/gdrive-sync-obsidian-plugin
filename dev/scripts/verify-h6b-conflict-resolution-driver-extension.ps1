@@ -178,16 +178,45 @@ $runtimeExit = $LASTEXITCODE
 foreach ($line in $runtimeOutput) { Write-Host ([string]$line) }
 $runtimeText = ($runtimeOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
 
-if ($runtimeExit -ne 0) {
-    throw "Installed PHX-CI runtime failed with exit code $runtimeExit."
+function Get-LastRuntimeField {
+    param(
+        [Parameter(Mandatory)][string]$Pattern,
+        [string]$DefaultValue = '<unavailable>'
+    )
+    $regexMatches = [regex]::Matches(
+        $script:RuntimeText,
+        $Pattern,
+        [Text.RegularExpressions.RegexOptions]::Multiline
+    )
+    if ($regexMatches.Count -eq 0) { return $DefaultValue }
+    return $regexMatches[$regexMatches.Count - 1].Groups[1].Value.Trim()
 }
+
+$script:RuntimeText = $runtimeText
+$phxVerdict = Get-LastRuntimeField -Pattern '^PHX-CI RESULT:\s+([A-Z]+)(?:\s+\(exit code \d+\))?\s*$'
+$overallVerdict = Get-LastRuntimeField -Pattern '^Overall verification:\s+([^\r\n]+?)\s*$'
+$taskExitCode = Get-LastRuntimeField -Pattern '^Task exit code:\s+([^\r\n]+?)\s*$'
+$evidenceCommit = Get-LastRuntimeField -Pattern '^Evidence commit:\s*([^\r\n]*?)\s*$'
+$localEvidenceBranch = Get-LastRuntimeField -Pattern '^Publication issue:\s+.*?local branch\s+([^\s.]+)' -DefaultValue '<none reported>'
+$failureSummary = @(
+    "PHX-CI verdict: $phxVerdict",
+    "Overall verification: $overallVerdict",
+    "Task exit code: $taskExitCode",
+    "Evidence commit: $evidenceCommit",
+    "Local evidence branch: $localEvidenceBranch",
+    "Runtime process exit code: $runtimeExit"
+) -join [Environment]::NewLine
 
 $changeSetPass = $runtimeText -match '(?m)^Change-set verification:\s+PASS\s*$'
 $repositoryPass = $runtimeText -match '(?m)^Repository verification:\s+PASS\s*$'
 $overallPass = $runtimeText -match '(?m)^Overall verification:\s+PASS\s*$'
 $frontDoorPass = $runtimeText -match '(?m)^PHX-CI RESULT:\s+PASS\s*$'
+
+if ($runtimeExit -ne 0) {
+    throw "Installed PHX-CI runtime failed.$([Environment]::NewLine)$failureSummary"
+}
 if (-not ($changeSetPass -and $repositoryPass -and $overallPass -and $frontDoorPass)) {
-    throw 'Installed PHX-CI runtime exited successfully without authoritative PASS / PASS / PASS output.'
+    throw "Installed PHX-CI runtime did not establish authoritative PASS / PASS / PASS.$([Environment]::NewLine)$failureSummary"
 }
 
 Write-Host ""

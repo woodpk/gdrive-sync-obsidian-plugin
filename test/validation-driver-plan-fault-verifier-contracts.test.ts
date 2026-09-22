@@ -291,7 +291,6 @@ const validResolveTypeCheck: ValidationProductionDriverRequest = {
   resolution: { kind: "keep-local" },
 };
 void validResolveTypeCheck;
-// @ts-expect-error conflict identity is production-observed and may not be supplied by a validation caller.
 const invalidResolveConflictIdTypeCheck: ValidationProductionDriverRequest = {
   kind: "resolve-observed-conflict",
   run,
@@ -299,6 +298,7 @@ const invalidResolveConflictIdTypeCheck: ValidationProductionDriverRequest = {
   expectedVaultPath: contractId<"VaultPath">("Notes/typecheck-conflict.md"),
   expectedConflictKind: "unresolved-text",
   resolution: { kind: "keep-local" },
+  // @ts-expect-error conflict identity is production-observed and may not be supplied by a validation caller.
   conflictId: contractId<"ConflictId">("conflict:forged"),
 };
 void invalidResolveConflictIdTypeCheck;
