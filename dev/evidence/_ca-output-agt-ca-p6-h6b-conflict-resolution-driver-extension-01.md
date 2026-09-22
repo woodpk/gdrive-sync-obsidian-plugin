@@ -6,7 +6,7 @@ STATUS: BLOCKED
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`
 - Required branch: `phase6-h6b-conflict-resolution-driver-extension`
 - Exact starting base: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
-- Corrected implementation HEAD: `a04e4483876ad16a772fcfa1bf64e46d0b546f6a`
+- Corrected implementation HEAD: `9ad25258446f6d347701cfe0fc2fa0195b260ed0`
 - Repair was applied to the existing branch lineage; it did not restart from the base.
 
 ## Corrected implementation
@@ -91,7 +91,7 @@ Full repository verification remains delegated to PHX-CI.
 
 PASS — correction was committed as a descendant of the existing rejected branch HEAD.
 
-PASS — the corrected implementation files were re-read from `a04e4483876ad16a772fcfa1bf64e46d0b546f6a`.
+PASS — the corrected implementation files were re-read from `9ad25258446f6d347701cfe0fc2fa0195b260ed0`.
 
 PASS — no trailing whitespace or unresolved merge markers were found in the three corrected files.
 
@@ -112,6 +112,36 @@ NOT EXECUTED — PowerShell parser-only validation of the committed verifier cou
 
 These static checks are not represented as authoritative PHX-CI execution.
 
+## Rejected-run repair — type assertion and failure diagnostics
+
+Authoritative PHX-CI reached the real repository typecheck and exposed the H6B negative type assertion placement defect:
+
+- `TS2578`: the declaration-level `@ts-expect-error` was unused;
+- `TS2353`: `conflictId` was correctly rejected on the later property line.
+
+The H6B contract test now keeps the negative compile-time assertion but places `@ts-expect-error` immediately before the rejected `conflictId:` property.
+
+Proactive annotation audit:
+
+- the two H6B-added directives were inspected;
+- the repaired `conflictId` directive now targets the rejected property line;
+- the H6B manual-resolution directive targets its rejected one-line expression;
+- all eight pre-existing directives in the same H6B-modified test file also immediately precede their rejected one-line expressions;
+- the other H6B-modified test files contain no `@ts-expect-error` directives.
+
+The H6B verifier was also strengthened so non-PASS PHX-CI handoff preserves terminal diagnostics for:
+
+- PHX-CI verdict;
+- overall verification verdict;
+- Task exit code;
+- evidence commit;
+- local evidence branch when PHX-CI reports one;
+- runtime process exit code.
+
+The installed-runtime invocation itself was not changed.
+
+PowerShell parser-only execution remains unavailable in the ChatGPT container because no PowerShell executable is installed. A complete static verifier audit found no ordinary unbraced `$variable:` hazards, no obsolete PHX-CI source-checkout/direct-`task ci` execution, and no active-checkout mutation commands.
+
 ## Authoritative verification status
 
 - Focused H6B execution: NOT EXECUTED IN THIS SESSION
@@ -119,6 +149,7 @@ These static checks are not represented as authoritative PHX-CI execution.
 - PHX-CI Repository verification: NOT EXECUTED
 - PHX-CI Overall verification: NOT EXECUTED
 - Required `PASS / PASS / PASS`: NOT ESTABLISHED
+- Most recent authoritative PHX-CI run: BLOCKED at TypeScript typecheck on the now-repaired `@ts-expect-error` placement; no post-repair authoritative rerun has been performed.
 - GitHub Actions: NOT USED
 
 The task therefore remains `STATUS: BLOCKED` until the installed immutable PHX-CI runtime executes successfully on the pushed branch and produces authoritative `PASS / PASS / PASS`.
@@ -127,7 +158,7 @@ The task therefore remains `STATUS: BLOCKED` until the installed immutable PHX-C
 
 Run the committed local verifier against implementation HEAD:
 
-`a04e4483876ad16a772fcfa1bf64e46d0b546f6a`
+`9ad25258446f6d347701cfe0fc2fa0195b260ed0`
 
 Do not change this evidence to `STATUS: COMPLETE` until the runtime output establishes `PASS / PASS / PASS`.
 
