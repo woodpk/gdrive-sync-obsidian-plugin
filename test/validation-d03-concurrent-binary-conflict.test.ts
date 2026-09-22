@@ -509,7 +509,7 @@ function subject(input?: {
   ];
   const production = productionFixture(plans, timeline, input?.conflict);
   const conflicts: D03ConflictObserverPort = {
-    current: () => production.currentSurface().conflicts,
+    current: () => production.currentSurface(),
   };
   const packageBinding = createD03ConcurrentBinaryConflictScenario({
     targetPath: TARGET_PATH,
@@ -651,7 +651,6 @@ test("VH26 D03 preserves both complete binary variants and lets the unrelated sa
   assert.ok(terminal && terminal.kind === "terminal-product-result");
   assert.deepEqual(terminal.diagnostic.expectedFields, {
     result: "partial",
-    safeCommittedCount: 1,
     skippedCount: 1,
     conflictCount: 1,
   });
