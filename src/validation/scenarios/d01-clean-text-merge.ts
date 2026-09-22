@@ -17,7 +17,6 @@ import {
   validationTextFixture,
   type ValidationFixtureDescriptor,
   type ValidationFixtureManager,
-  type ValidationTextVariant,
 } from "../fixture-manager";
 import {
   validationStepId,
@@ -69,17 +68,18 @@ export const D01_OPERATIONS = Object.freeze({
   recordEvidence: "d01-record-evidence",
 } as const);
 
-export type D01WindowsFixtureManagerPort = Pick<ValidationFixtureManager, "create" | "edit" | "hash">;
+export type D01WindowsFixtureManagerPort = Pick<ValidationFixtureManager, "create" | "hash">;
 
 export interface D01ExistingTextFixturePort {
-  editExisting(input: {
+  replaceExactText(input: {
     readonly run: ValidationRunIdentity;
     readonly fixtureId: string;
     readonly relativePath: string;
     readonly path: VaultPath;
     readonly expectedCurrentHash: ContentHash;
-    readonly nextVersion: number;
-    readonly textVariant: Extract<ValidationTextVariant, "non-overlap-a" | "non-overlap-b">;
+    readonly replacementText: string;
+    readonly expectedResultHash: ContentHash;
+    readonly descriptorVersion: number;
   }): Promise<ValidationFixtureDescriptor>;
   hashExisting(input: {
     readonly run: ValidationRunIdentity;
@@ -150,7 +150,8 @@ export interface D01ScenarioPackageOptions {
   readonly windowsDevice: ValidationDeviceIdentity;
   readonly mobileDevice: ValidationDeviceIdentity;
   readonly windowsFixtures: D01WindowsFixtureManagerPort;
-  readonly mobileFixture: D01ExistingTextFixturePort;
+  readonly windowsEdit: D01ExistingTextFixturePort;
+  readonly mobileEdit: D01ExistingTextFixturePort;
   readonly mappingReader: D01TrustedMappingReader;
   readonly verifier: D01VerifierPort;
   readonly conflictArtifacts: D01ConflictArtifactProbe;
@@ -200,9 +201,16 @@ function fixtureText(
 }
 
 export const D01_BASE_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 1, "base", "base");
-export const D01_WINDOWS_EDIT_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 2, "edit-a", "base");
-export const D01_MOBILE_EDIT_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 2, "base", "edit-b");
-export const D01_EXPECTED_MERGED_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 2, "edit-a", "edit-b");
+/*
+ * D01 edits must be truly line-disjoint relative to the common BASE.
+ * ValidationFixtureManager.edit intentionally advances the fixture's embedded
+ * version line, which would make both sides touch shared merge input. These
+ * task-local guarded replacements therefore keep version=1 unchanged and edit
+ * only the left or right line under the existing validation-sandbox authority.
+ */
+export const D01_WINDOWS_EDIT_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 1, "edit-a", "base");
+export const D01_MOBILE_EDIT_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 1, "base", "edit-b");
+export const D01_EXPECTED_MERGED_TEXT = fixtureText(D01_TARGET_FIXTURE_ID, 1, "edit-a", "edit-b");
 export const D01_BASE_HASH = sha256Text(D01_BASE_TEXT);
 export const D01_WINDOWS_EDIT_HASH = sha256Text(D01_WINDOWS_EDIT_TEXT);
 export const D01_MOBILE_EDIT_HASH = sha256Text(D01_MOBILE_EDIT_TEXT);
@@ -618,11 +626,24 @@ export function createD01CleanTextMergeScenario(
           if (!state.baselineVerification || !state.targetBase) {
             return { status: "blocked", summary: "D01 Windows edit requires objectively verified common BASE.", evidenceRefs: [] };
           }
-          const edited = await options.windowsFixtures.edit(D01_TARGET_FIXTURE_ID, 2, "non-overlap-a");
+          const edited = await options.windowsEdit.replaceExactText({
+            run: request.run,
+            fixtureId: D01_TARGET_FIXTURE_ID,
+            relativePath: D01_TARGET_RELATIVE_PATH,
+            path: options.targetPath,
+            expectedCurrentHash: D01_BASE_HASH,
+            replacementText: D01_WINDOWS_EDIT_TEXT,
+            expectedResultHash: D01_WINDOWS_EDIT_HASH,
+            descriptorVersion: 2,
+          });
           assertDescriptor(request.run, edited, D01_TARGET_FIXTURE_ID, D01_TARGET_RELATIVE_PATH, options.targetPath);
-          const observedHash = await options.windowsFixtures.hash(D01_TARGET_FIXTURE_ID);
+          const observedHash = await options.windowsEdit.hashExisting({
+            run: request.run,
+            fixtureId: D01_TARGET_FIXTURE_ID,
+            path: options.targetPath,
+          });
           if (edited.hash !== D01_WINDOWS_EDIT_HASH || observedHash !== D01_WINDOWS_EDIT_HASH) {
-            return { status: "failed", summary: "D01 Windows non-overlap-a edit is not the exact deterministic fixture variant.", evidenceRefs: [] };
+            return { status: "failed", summary: "D01 Windows edit did not establish the exact left-line-only deterministic bytes.", evidenceRefs: [] };
           }
           state.targetWindows = edited;
           return { status: "completed", evidenceRefs: [] };
@@ -634,23 +655,24 @@ export function createD01CleanTextMergeScenario(
           if (!state.baselineVerification || !state.targetBase || !state.targetWindows) {
             return { status: "blocked", summary: "D01 mobile edit requires verified BASE and the independent Windows edit to exist first.", evidenceRefs: [] };
           }
-          const edited = await options.mobileFixture.editExisting({
+          const edited = await options.mobileEdit.replaceExactText({
             run: request.run,
             fixtureId: D01_TARGET_FIXTURE_ID,
             relativePath: D01_TARGET_RELATIVE_PATH,
             path: options.targetPath,
             expectedCurrentHash: D01_BASE_HASH,
-            nextVersion: 2,
-            textVariant: "non-overlap-b",
+            replacementText: D01_MOBILE_EDIT_TEXT,
+            expectedResultHash: D01_MOBILE_EDIT_HASH,
+            descriptorVersion: 2,
           });
           assertDescriptor(request.run, edited, D01_TARGET_FIXTURE_ID, D01_TARGET_RELATIVE_PATH, options.targetPath);
-          const observedHash = await options.mobileFixture.hashExisting({
+          const observedHash = await options.mobileEdit.hashExisting({
             run: request.run,
             fixtureId: D01_TARGET_FIXTURE_ID,
             path: options.targetPath,
           });
           if (edited.hash !== D01_MOBILE_EDIT_HASH || observedHash !== D01_MOBILE_EDIT_HASH) {
-            return { status: "failed", summary: "D01 mobile non-overlap-b edit is not the exact deterministic fixture variant.", evidenceRefs: [] };
+            return { status: "failed", summary: "D01 mobile edit did not establish the exact right-line-only deterministic bytes.", evidenceRefs: [] };
           }
           state.targetMobile = edited;
           return { status: "completed", evidenceRefs: [] };
