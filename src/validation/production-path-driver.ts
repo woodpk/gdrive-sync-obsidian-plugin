@@ -1,10 +1,13 @@
 import type {
   ConflictAssessment,
+  ConflictProvenance,
+  ContentEvidence,
   ProductSurfaceState,
   SynchronizationPlan,
   UserAction,
   UserActionResult,
   VaultPath,
+  VersionReference,
 } from "../contracts";
 import type { ExecutorRunEvidence } from "../product/production-executor";
 import {
@@ -50,10 +53,99 @@ function failureReason(error: unknown): string {
     : "production request failed without an Error reason";
 }
 
+type ObservedContentEvidence = Omit<ContentEvidence, "advisoryModifiedTimeMs">;
+type ObservedVersionReference = Omit<VersionReference, "content"> & {
+  readonly content?: ObservedContentEvidence;
+};
+type ObservedConflictProvenance = Omit<ConflictProvenance, "version" | "advisoryObservedAtMs"> & {
+  readonly version: ObservedVersionReference;
+};
+interface ObservedConcurrentAlternates {
+  readonly local: ObservedConflictProvenance;
+  readonly remote: ObservedConflictProvenance;
+  readonly base?: ObservedConflictProvenance;
+}
 interface ObservedProductionConflict {
   readonly kind: "unresolved-text";
   readonly conflictId: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>["conflictId"];
   readonly path: VaultPath;
+  readonly preserved: ObservedConcurrentAlternates;
+}
+
+function captureContentEvidence(content: ContentEvidence | undefined): ObservedContentEvidence | undefined {
+  if (!content) return undefined;
+  return Object.freeze({
+    hash: content.hash,
+    sizeBytes: content.sizeBytes,
+    revision: content.revision,
+  });
+}
+
+function captureVersionReference(version: VersionReference): ObservedVersionReference {
+  return Object.freeze({
+    path: version.path,
+    entityKind: version.entityKind,
+    content: captureContentEvidence(version.content),
+    remoteObjectId: version.remoteObjectId,
+    observationToken: version.observationToken,
+  });
+}
+
+function captureConflictProvenance(provenance: ConflictProvenance): ObservedConflictProvenance {
+  return Object.freeze({
+    source: provenance.source,
+    version: captureVersionReference(provenance.version),
+    deviceId: provenance.deviceId,
+    remoteObjectId: provenance.remoteObjectId,
+  });
+}
+
+function captureConcurrentAlternates(
+  preserved: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>["preserved"],
+): ObservedConcurrentAlternates {
+  const base = preserved.base;
+  return Object.freeze({
+    local: captureConflictProvenance(preserved.local),
+    remote: captureConflictProvenance(preserved.remote),
+    ...(base ? { base: captureConflictProvenance(base) } : {}),
+  });
+}
+
+function sameContentEvidence(
+  observed: ObservedContentEvidence | undefined,
+  current: ContentEvidence | undefined,
+): boolean {
+  if (!observed || !current) return observed === current;
+  return observed.hash === current.hash
+    && observed.sizeBytes === current.sizeBytes
+    && observed.revision === current.revision;
+}
+
+function sameVersionReference(observed: ObservedVersionReference, current: VersionReference): boolean {
+  return observed.path === current.path
+    && observed.entityKind === current.entityKind
+    && observed.remoteObjectId === current.remoteObjectId
+    && observed.observationToken === current.observationToken
+    && sameContentEvidence(observed.content, current.content);
+}
+
+function sameConflictProvenance(observed: ObservedConflictProvenance, current: ConflictProvenance): boolean {
+  return observed.source === current.source
+    && observed.deviceId === current.deviceId
+    && observed.remoteObjectId === current.remoteObjectId
+    && sameVersionReference(observed.version, current.version);
+}
+
+function sameConcurrentAlternates(
+  observed: ObservedConcurrentAlternates,
+  current: Extract<ConflictAssessment, { readonly kind: "unresolved-text" }>["preserved"],
+): boolean {
+  const sameBase = observed.base === undefined
+    ? current.base === undefined
+    : current.base !== undefined && sameConflictProvenance(observed.base, current.base);
+  return sameBase
+    && sameConflictProvenance(observed.local, current.local)
+    && sameConflictProvenance(observed.remote, current.remote);
 }
 
 function isSupportedObservedConflictResolution(value: unknown): value is "keep-local" | "keep-remote" | "keep-both" {
@@ -175,7 +267,13 @@ export class ValidationProductionPathDriver {
               conflict.kind === request.expectedConflictKind
               && conflict.path === request.expectedVaultPath,
           );
-          if (currentMatches.length !== 1 || currentMatches[0]!.conflictId !== observed.conflictId) {
+          const current = currentMatches[0];
+          if (
+            currentMatches.length !== 1
+            || !current
+            || current.conflictId !== observed.conflictId
+            || !sameConcurrentAlternates(observed.preserved, current.preserved)
+          ) {
             return this.rejected(
               request.run,
               "observed conflict is absent, stale, ambiguous, or replaced on the current production surface",
@@ -227,6 +325,7 @@ export class ValidationProductionPathDriver {
         kind: conflict.kind,
         conflictId: conflict.conflictId,
         path: conflict.path,
+        preserved: captureConcurrentAlternates(conflict.preserved),
       }));
     this.observedConflictsByRun.set(runKey(run), Object.freeze(observations));
   }

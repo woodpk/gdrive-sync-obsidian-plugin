@@ -86,15 +86,45 @@ function recordingController(input?: {
   };
 }
 
-function unresolvedTextConflict(conflictId: string, pathValue: string): Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> {
+function unresolvedTextConflict(
+  conflictId: string,
+  pathValue: string,
+  versionMarker: string = "v1",
+): Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> {
   const path = id<"VaultPath">(pathValue);
   return {
     kind: "unresolved-text",
     conflictId: id<"ConflictId">(conflictId),
     path,
     preserved: {
-      local: { source: "local", version: { path, entityKind: "file" } },
-      remote: { source: "remote", version: { path, entityKind: "file" } },
+      local: {
+        source: "local",
+        version: {
+          path,
+          entityKind: "file",
+          content: {
+            hash: id<"ContentHash">(`hash:${versionMarker}:local`),
+            sizeBytes: 17,
+            revision: `revision:${versionMarker}:local`,
+            advisoryModifiedTimeMs: 10,
+          },
+        },
+        advisoryObservedAtMs: 100,
+      },
+      remote: {
+        source: "remote",
+        version: {
+          path,
+          entityKind: "file",
+          content: {
+            hash: id<"ContentHash">(`hash:${versionMarker}:remote`),
+            sizeBytes: 23,
+            revision: `revision:${versionMarker}:remote`,
+            advisoryModifiedTimeMs: 20,
+          },
+        },
+        advisoryObservedAtMs: 200,
+      },
     },
   };
 }
@@ -233,6 +263,24 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
     expectedVaultPath: conflict.path,
     expectedConflictKind: "unresolved-text",
     resolution: { kind: "keep-remote" },
+  })).status, "request-rejected");
+  assert.equal(fixture.actions.length, before);
+
+  const sameIdReplacement = unresolvedTextConflict(
+    String(conflict.conflictId),
+    String(conflict.path),
+    "replacement-v2",
+  );
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [sameIdReplacement] });
+  assert.equal((await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run: runA,
+    stepId: step,
+    expectedVaultPath: conflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-local" },
   })).status, "request-rejected");
   assert.equal(fixture.actions.length, before);
 });
