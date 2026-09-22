@@ -19,7 +19,6 @@ import {
 import type {
   ValidationFixtureDescriptor,
   ValidationFixtureSpec,
-  ValidationTextVariant,
 } from "../src/validation/fixture-manager";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
 import {
@@ -156,55 +155,47 @@ const SENTINEL_DESCRIPTOR = sentinelDescriptor();
 
 class FakeWindowsFixtures implements D01WindowsFixtureManagerPort {
   readonly createCalls: ValidationFixtureSpec[] = [];
-  readonly editCalls: Array<{ fixtureId: string; version: number; textVariant?: ValidationTextVariant }> = [];
-  private target = BASE_DESCRIPTOR;
 
   async create(spec: ValidationFixtureSpec): Promise<ValidationFixtureDescriptor> {
     this.createCalls.push(spec);
-    if (spec.fixtureId === D01_TARGET_FIXTURE_ID) return this.target;
+    if (spec.fixtureId === D01_TARGET_FIXTURE_ID) return BASE_DESCRIPTOR;
     if (spec.fixtureId === D01_SENTINEL_FIXTURE_ID) return SENTINEL_DESCRIPTOR;
     throw new Error("Unexpected D01 fixture ID.");
   }
 
-  async edit(
-    fixtureId: string,
-    version: number,
-    textVariant?: ValidationTextVariant,
-  ): Promise<ValidationFixtureDescriptor> {
-    this.editCalls.push({ fixtureId, version, ...(textVariant === undefined ? {} : { textVariant }) });
-    assert.equal(fixtureId, D01_TARGET_FIXTURE_ID);
-    assert.equal(version, 2);
-    assert.equal(textVariant, "non-overlap-a");
-    this.target = WINDOWS_DESCRIPTOR;
-    return this.target;
-  }
-
   async hash(fixtureId: string) {
-    if (fixtureId === D01_TARGET_FIXTURE_ID) return this.target.hash!;
+    if (fixtureId === D01_TARGET_FIXTURE_ID) return D01_BASE_HASH;
     if (fixtureId === D01_SENTINEL_FIXTURE_ID) return SENTINEL_HASH;
     throw new Error("Unexpected D01 fixture hash request.");
   }
 }
 
-class FakeMobileFixture implements D01ExistingTextFixturePort {
-  readonly editCalls: Array<Parameters<D01ExistingTextFixturePort["editExisting"]>[0]> = [];
-  private hash = D01_BASE_HASH;
+class FakeExactEditPort implements D01ExistingTextFixturePort {
+  readonly replaceCalls: Array<Parameters<D01ExistingTextFixturePort["replaceExactText"]>[0]> = [];
+  private currentHash = D01_BASE_HASH;
 
-  async editExisting(input: Parameters<D01ExistingTextFixturePort["editExisting"]>[0]) {
-    this.editCalls.push(input);
+  constructor(
+    private readonly replacementText: string,
+    private readonly replacementHash: typeof D01_BASE_HASH,
+    private readonly descriptor: ValidationFixtureDescriptor,
+  ) {}
+
+  async replaceExactText(input: Parameters<D01ExistingTextFixturePort["replaceExactText"]>[0]) {
+    this.replaceCalls.push(input);
     assert.equal(input.run.runId, RUN.runId);
     assert.equal(input.fixtureId, D01_TARGET_FIXTURE_ID);
     assert.equal(input.relativePath, D01_TARGET_RELATIVE_PATH);
     assert.equal(input.path, TARGET_PATH);
     assert.equal(input.expectedCurrentHash, D01_BASE_HASH);
-    assert.equal(input.nextVersion, 2);
-    assert.equal(input.textVariant, "non-overlap-b");
-    this.hash = D01_MOBILE_EDIT_HASH;
-    return MOBILE_DESCRIPTOR;
+    assert.equal(input.replacementText, this.replacementText);
+    assert.equal(input.expectedResultHash, this.replacementHash);
+    assert.equal(input.descriptorVersion, 2);
+    this.currentHash = this.replacementHash;
+    return this.descriptor;
   }
 
   async hashExisting() {
-    return this.hash;
+    return this.currentHash;
   }
 }
 
@@ -450,7 +441,8 @@ function subject(input?: {
 }) {
   const world = freshWorld();
   const windowsFixtures = new FakeWindowsFixtures();
-  const mobileFixture = new FakeMobileFixture();
+  const windowsEdit = new FakeExactEditPort(D01_WINDOWS_EDIT_TEXT, D01_WINDOWS_EDIT_HASH, WINDOWS_DESCRIPTOR);
+  const mobileEdit = new FakeExactEditPort(D01_MOBILE_EDIT_TEXT, D01_MOBILE_EDIT_HASH, MOBILE_DESCRIPTOR);
   const verifier = new CapturingVerifier();
   const handoffs = new RecordingHandoffs(world);
   const evidence = new RecordingEvidence();
@@ -460,7 +452,8 @@ function subject(input?: {
     windowsDevice: WINDOWS,
     mobileDevice: MOBILE,
     windowsFixtures,
-    mobileFixture,
+    windowsEdit,
+    mobileEdit,
     mappingReader: new StableMappingReader(world, input?.driftAfterMerge),
     verifier,
     conflictArtifacts: conflictProbe(input?.conflictProbeResult),
@@ -491,7 +484,8 @@ function subject(input?: {
     packageBinding,
     production,
     windowsFixtures,
-    mobileFixture,
+    windowsEdit,
+    mobileEdit,
     verifier,
     handoffs,
     evidence,
@@ -581,10 +575,12 @@ test("VH24 D01 success preserves independent edits until sync, executes clean th
     String(windowsReconcilePlan().planId),
   ]);
   assert.deepEqual(s.production.executedPlanIds, s.production.previewedPlanIds);
-  assert.equal(s.windowsFixtures.editCalls.length, 1);
-  assert.equal(s.windowsFixtures.editCalls[0]?.textVariant, "non-overlap-a");
-  assert.equal(s.mobileFixture.editCalls.length, 1);
-  assert.equal(s.mobileFixture.editCalls[0]?.textVariant, "non-overlap-b");
+  assert.equal(s.windowsEdit.replaceCalls.length, 1);
+  assert.equal(s.windowsEdit.replaceCalls[0]?.replacementText, D01_WINDOWS_EDIT_TEXT);
+  assert.equal(s.mobileEdit.replaceCalls.length, 1);
+  assert.equal(s.mobileEdit.replaceCalls[0]?.replacementText, D01_MOBILE_EDIT_TEXT);
+  assert.equal(D01_WINDOWS_EDIT_TEXT.includes("version=1"), true);
+  assert.equal(D01_MOBILE_EDIT_TEXT.includes("version=1"), true);
 
   const firstSyncPreviewIndex = s.world.events.findIndex(event =>
     event === "preview:" + String(windowsFirstSyncPlan().planId),
