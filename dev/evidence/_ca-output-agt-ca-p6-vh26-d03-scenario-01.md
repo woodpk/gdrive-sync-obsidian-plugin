@@ -6,147 +6,218 @@ Agent: `agt-ca-p6-vh26-d03-scenario-01`
 Repository: `woodpk/gdrive-sync-obsidian-plugin`  
 Required branch: `phase6-vh26-d03-scenario`
 
-## Authority / restart
+## Frozen authority
 
-- Superseded D-series base: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
 - `D_SERIES_COMMON_BASE_SHA = c6daa20ad287f395a99cf88943465a9ecc3159dd`
-- The old D03 branch contained no substantive task commits beyond the superseded base, so no `-pre-h6b-restart` preservation branch was required.
-- The required branch was re-established directly from the replacement common base.
-- No rebase, merge, wholesale cherry-pick, peer D-series integration, or `phase6-integration` mutation was performed.
-- `origin/phase6-integration` was rechecked after the correction implementation and remained exactly `c6daa20ad287f395a99cf88943465a9ecc3159dd`.
+- Superseded pre-H6B base: `4b57ce65eb771a2a6ed2cc3375178db41d899084`
+- No pre-H6B preservation branch was required because the old D03 branch had no substantive task commits beyond the superseded base.
+- `origin/phase6-integration` remained exactly `c6daa20ad287f395a99cf88943465a9ecc3159dd` through this correction.
+- No rebase, merge, peer D-series integration, promotion, release, VH30, Stage 3, or live validation was performed.
 
-## Corrected implementation identity
+## Correction lineage
 
-- Pre-rejection implementation HEAD: `713f43ec37547e7ab4bdfcb22c58aefecfce368e`
-- Pre-rejection branch/evidence HEAD: `fcc4c0f1f92d36f59402664f21ead47e5b3a4393`
-- Corrected implementation HEAD: `9657e10ecd26986d352c43018d9b88a9f80465b2`
-- Exact replacement common-base merge-base: `c6daa20ad287f395a99cf88943465a9ecc3159dd`
+Supervisor-rejected implementation HEAD entering this correction:
 
-## Exact changed files relative to the replacement common base
+`9657e10ecd26986d352c43018d9b88a9f80465b2`
 
-Task branch changes remain limited to:
+Supervisor-rejected branch HEAD entering this correction:
+
+`96a5bd908f74e8c87d9bd9e5d3e9ee4f0001db48`
+
+Corrected implementation HEAD before this evidence-only commit:
+
+`3a6fed1ba22d51d420bf07267973a899d38eff0e`
+
+## Exact branch delta
+
+Relative to the frozen D-series common base, D03 changes remain limited to:
 
 - `src/validation/scenarios/d03-concurrent-binary-conflict.ts`
 - `test/validation-d03-concurrent-binary-conflict.test.ts`
 - `dev/scripts/verify-vh26-d03-scenario.ps1`
 - `dev/evidence/_ca-output-agt-ca-p6-vh26-d03-scenario-01.md`
 
-No `src/contracts/**`, frozen H0 contracts, H6B `production-path-driver`, H6B `plan-assertion-engine`, `validation-mode-runtime`, production synchronization/conflict policy, peer D-series scenario, or `phase6-integration` file was modified.
+No `src/contracts/**`, frozen H0 contract, H6B `production-path-driver`, H6B `plan-assertion-engine`, `validation-mode-runtime`, production synchronization/conflict policy, peer D-series scenario, or `phase6-integration` file was modified.
 
-## Supervisor rejection correction — exact diagnostic-run correlation
+## Protocol correction — conflict plan is never executed
 
-The stale-terminal-evidence defect is corrected without changing shared contracts.
+The shared live-validation protocol requires a stop when preview presents a conflict.
 
-Existing frozen seam used:
+D03 now performs the mobile conflict phase as:
 
-`DiagnosticLogger.currentSyncRunId()`
+1. production `preview-manual`;
+2. assert exact expected `unresolved-conflict` at the target plus expected unrelated-safe `download-update`;
+3. verify the current production `opaque-binary` conflict surface and exact BASE/local/remote provenance;
+4. verify complete Windows and mobile target variants remain intact;
+5. verify mobile trusted target BASE remains the original common BASE;
+6. verify prior safe progress from the preceding Windows publication:
+   - Windows safe bytes are the updated safe variant;
+   - remote safe bytes are the updated safe variant;
+   - mobile safe bytes and mobile safe BASE remain the established BASE because the conflict plan is not executed;
+7. record evidence;
+8. stop.
 
-D03 now receives that existing logger read seam structurally as:
+There is no `d03-mobile-conflict-execute` step and the mobile conflict plan is never submitted to `execute-asserted-plan` or resolved.
 
-`Pick<DiagnosticLogger, "currentSyncRunId">`
+The conflict preview still requires the unrelated safe operation to be present, proving conflict handling does not globally suppress safe-path planning.
 
-Correlation sequence:
+## Exact terminal correlation for executed production cycles
 
-1. fixed H6B `production-path-driver` executes the mobile `preview-manual`;
-2. the production controller has already created the diagnostic run through `DiagnosticLogger.beginSyncRun(...)`;
-3. before assertion/execution, D03 executes `d03-capture-mobile-conflict-diagnostic-run`;
-4. that step reads the exact active production run with `currentSyncRunId()`;
-5. missing/invalid/changing run identity blocks the scenario;
-6. the captured ID is retained in D03 run context;
-7. final `terminal-product-result` sets `diagnosticRunId` to that exact captured production run ID;
-8. frozen `StateConvergenceVerifier` therefore filters retained `sync-run-complete` diagnostics by exact run ID before matching fields;
-9. the same ID is carried into D03 evidence recording.
+D03 executes only:
 
-No timestamp, event ordering, harness run ID, plan ID, or inferred “latest event” rule is used as diagnostic-run authority.
+- Windows BASE establishment;
+- mobile BASE establishment;
+- Windows publication of the divergent Windows target plus unrelated-safe update.
 
-## Preserved D03 acceptance proofs
+For each cycle:
 
-The correction preserves the existing D03 requirements for:
+1. production `preview-manual` runs first;
+2. D03 immediately captures `DiagnosticLogger.currentSyncRunId()` from the executing device;
+3. the exact production plan is asserted;
+4. the plan is executed;
+5. D03 invokes the frozen `StateConvergenceVerifier` with `terminal-product-result` bound to that exact diagnostic run ID and device;
+6. required terminal diagnostic:
+   - component `sync.controller`;
+   - event `sync-run-complete`;
+   - `stage=terminal`;
+   - `result=complete`.
 
-- complete Windows binary variant;
-- complete mobile binary variant;
-- retained trusted BASE;
-- opaque-binary conflict presentation;
-- exact BASE/local/remote conflict provenance;
-- local device provenance;
-- stable remote-object lineage;
-- rejection of newest-wins/silent overwrite;
-- unrelated safe-path progress;
-- live mapping/no tombstone;
-- no outstanding durable effect;
-- path-level remote content verification through frozen `StateConvergenceVerifier`, including rejection of ambiguous duplicate occupants where no exact remote object ID is supplied.
+Windows BASE and Windows publication must not reuse the same Windows diagnostic run ID.
 
-## Focused regression additions
+No terminal completion is required or accepted for the unexecuted mobile conflict preview.
 
-The focused suite now proves:
+No timestamp, sequence, “latest event,” harness run ID, or plan ID is used as diagnostic-run authority.
 
-- diagnostic run identity is captured after the mobile conflict preview and before asserted execution;
-- final D03 terminal expectation contains the captured `diagnosticRunId`;
-- recorded D03 evidence contains the same diagnostic run ID;
-- a stale `sync-run-complete` event from the wrong diagnostic run with perfectly matching `partial / skippedCount=1 / conflictCount=1` fields cannot establish PASS;
-- the wrong-run regression exercises the frozen `StateConvergenceVerifier`, while the correct diagnostic run contains contradictory terminal fields and therefore produces FAIL rather than accepting the stale matching event.
+## Exact-run mutable context isolation
 
-Previously implemented regression coverage remains in place for newest-wins/silent overwrite, substituted/incomplete provenance, unrelated-path suppression, non-distinct mobile bytes, and shared-H6B binding isolation.
+The old package-global mutable singleton has been removed.
 
-## PHX-CI verifier correction
+D03 now stores mutable scenario state in an exact-run map keyed by:
 
-`dev/scripts/verify-vh26-d03-scenario.ps1` now preserves actionable PHX-CI failure handoff. On any non-PASS result it surfaces:
+`scenarioId + NUL + runId`
+
+Each context also retains its owning `ValidationRunIdentity`.
+
+A fresh context is created only by that exact run's fixture-establishment step. All later D03-owned delegates require the matching run context. Every descriptor consumed from mutable context is revalidated against the exact requesting `ValidationRunIdentity`.
+
+Run-scoped context includes:
+
+- BASE/Windows/mobile/safe descriptors;
+- captured executed-cycle diagnostic run IDs;
+- executed-cycle terminal verification reports;
+- trusted-BASE verification report;
+- conflict assessment;
+- final conflict-state verification report.
+
+Evidence recording requires all of those prerequisites to belong to the exact requesting run and to be PASS where applicable. Successful evidence recording deletes the completed run context.
+
+Therefore a prior run's descriptors, conflict, diagnostic IDs, or verification reports cannot satisfy a later D03 run.
+
+## Preserved D03 safety/acceptance proofs
+
+The corrected scenario preserves:
+
+- deterministic complete opaque binary variants;
+- three distinct BASE/Windows/mobile target hashes;
+- exact production `opaque-binary` conflict presentation;
+- complete local/mobile, remote/Windows, and trusted-BASE provenance;
+- stable remote-object lineage between remote and BASE provenance;
+- local device identity;
+- newest-wins/silent-overwrite rejection;
+- unrelated safe operation presence in conflict preview;
+- safe update publication before conflict preview;
+- live target mapping/no tombstone;
+- no outstanding durable mobile effect;
+- path-level remote verification without supplying a remote object ID, preserving frozen duplicate-occupancy ambiguity rejection;
+- frozen H6B/shared-contract ownership boundaries.
+
+## Deterministic focused regressions
+
+The focused suite now covers:
+
+- conflict plan ID is never executed;
+- no scenario definition step exists for mobile conflict execution;
+- only three safe production plans execute;
+- exact diagnostic run capture occurs between preview and execution for each executed cycle;
+- each executed cycle has its own exact run-correlated terminal-complete expectation;
+- the conflict-preview diagnostic run is never used as terminal proof;
+- wrong-run matching `sync-run-complete` evidence cannot satisfy any executed cycle;
+- missing terminal evidence cannot establish PASS;
+- `sync-run-failed` evidence cannot establish PASS;
+- partial terminal completion cannot establish PASS where complete execution is required;
+- conflict-preview run identity cannot substitute for the earlier mobile BASE execution;
+- newest-wins/silent overwrite remains rejected;
+- incomplete/substituted opaque conflict provenance remains rejected;
+- unrelated safe-path suppression remains rejected;
+- non-distinct mobile binary bytes remain rejected;
+- the same D03 scenario package instance can complete run A, then run B begins with no run-B context;
+- run-A evidence prerequisites cannot permit run-B evidence recording;
+- run-A descriptors deliberately supplied to run B fail exact `ValidationRunIdentity` checks before run-B verifier/evidence work;
+- stale run-A conflict surface, diagnostic IDs, and verification reports therefore cannot be inherited through D03 mutable context.
+
+## PHX-CI verifier repair
+
+The malformed result-reporting tail was replaced wholesale from `Get-LastRuntimeField` through EOF.
+
+The verifier now contains exactly one assignment/extraction for each:
 
 - PHX-CI verdict;
-- Change-set verification verdict;
-- Repository verification verdict;
-- Overall verification verdict;
+- Change-set verdict;
+- Repository verdict;
+- Overall verdict;
 - Task exit code;
-- evidence commit;
-- evidence publication status;
-- local evidence branch when reported;
-- publication issue text;
-- runtime process exit code.
+- Evidence commit;
+- Evidence published;
+- local evidence branch;
+- Publication issue.
 
-The verifier still uses only the immutable installed runtime selected by the exact `phx-ci.json.framework.sha` and its runtime manifest. It has no PHX-CI source-checkout dependency and does not invoke `task ci` directly.
+It then performs exactly:
 
-The correction also accounts for the earlier BLOCKED evidence commit now appearing inside repaired branch ancestry: cumulative changed paths are partitioned into evidence-only paths versus implementation paths before the implementation allowlist/frozen-boundary gate is evaluated. The exact branch/base merge-base and latest non-evidence implementation HEAD checks remain unchanged.
+- one failure-summary construction;
+- one authoritative PASS/PASS/PASS decision;
+- one post-verification frozen-integration gate;
+- one post-verification peer-base gate;
+- one final PASS footer.
 
-## PowerShell / verification audit
+No PASS footer appears before result parsing and validation.
 
-Static audit of the complete committed verifier:
+Non-PASS output includes all parsed verdicts/publication fields plus the runtime process exit code.
 
-- unbraced ordinary `$variable:` parser hazards: none;
-- native `$LASTEXITCODE`: captured immediately after every direct native `git` or PHX-CI runtime invocation;
-- expected task branch: fixed to `phase6-vh26-d03-scenario`;
-- exact replacement base: fixed/defaulted to `c6daa20ad287f395a99cf88943465a9ecc3159dd`;
-- implementation lineage: exact merge-base plus latest non-evidence implementation-head resolution;
-- immutable installed PHX-CI runtime: required and manifest-attested;
-- PHX-CI source checkout / `FrameworkRoot` / `PHX_FRAMEWORK_ROOT`: absent;
-- direct `task ci`: absent;
-- active-checkout reset/clean/switch/checkout/stash/worktree mutation: absent;
-- frozen `origin/phase6-integration` check: required both before and after PHX-CI;
-- peer Wave D common-base evidence mismatch check: retained;
-- GitHub Actions: prohibited and not used.
+## Complete verifier static re-audit
 
-PowerShell parser execution was not claimed because this ChatGPT container has no PowerShell executable.
+Entire committed verifier re-audited after the tail replacement:
+
+- ordinary unbraced `$variable:` hazards: none;
+- unresolved merge markers: none;
+- trailing whitespace: none;
+- every direct native `git` invocation captures `$LASTEXITCODE` immediately;
+- installed PHX-CI runtime invocation captures `$LASTEXITCODE` immediately;
+- required branch fixed to `phase6-vh26-d03-scenario`;
+- required base fixed/defaulted to `c6daa20ad287f395a99cf88943465a9ecc3159dd`;
+- branch merge-base and non-evidence implementation-head lineage checks retained;
+- evidence-only paths are excluded from implementation allowlist evaluation;
+- configured immutable PHX-CI runtime SHA is read from `phx-ci.json`;
+- installed runtime manifest must attest the configured SHA;
+- deployed installed-runtime `scripts/Invoke-PhxCi.ps1` is the only PHX-CI execution front door;
+- no mutable PHX-CI source checkout dependency;
+- no `FrameworkRoot` or `PHX_FRAMEWORK_ROOT`;
+- no direct `task ci`;
+- no `git reset`, `clean`, `switch`, `checkout`, `stash`, or worktree mutation;
+- exact frozen `origin/phase6-integration` gate required before and after PHX-CI;
+- actionable non-PASS reporting retained.
+
+PowerShell execution/parser invocation was not performed because this environment has no PowerShell executable. No local PHX-CI run was performed.
 
 ## Verification status
 
-Authoritative local installed-runtime PHX-CI verification has **not** been executed after this correction.
-
-Therefore:
+Authoritative local PHX-CI verification remains intentionally **NOT EXECUTED** after this supervisor rejection.
 
 - Change-set verification: **BLOCKED / NOT EXECUTED**
 - Repository verification: **BLOCKED / NOT EXECUTED**
 - Overall verification: **BLOCKED**
 - Required `PASS / PASS / PASS`: **NOT ESTABLISHED**
 - GitHub Actions used: **NO**
-- Live/physical D03 validation performed: **NO**
+- user bootstrap supplied: **NO**
+- live/physical D03 validation performed: **NO**
 
-The task remains `STATUS: BLOCKED` until the corrected implementation receives authoritative local PHX-CI `PASS / PASS / PASS`.
-
-## Contract-change determination
-
-`CONTRACT CHANGE REQUEST` was **not required**.
-
-The existing frozen/public diagnostic lifecycle seam already exposes the exact active production run identity through `DiagnosticLogger.currentSyncRunId()`, so D03 can bind terminal evidence without modifying H6B, H0, contracts, or production synchronization policy.
-
-## Stop boundary
-
-No bootstrap was supplied after this rejection. No local PHX-CI run, merge, promotion, release, live validation, VH30, or Stage 3 work was performed.
+Evidence remains `STATUS: BLOCKED` pending supervisor approval for local PHX-CI execution.
