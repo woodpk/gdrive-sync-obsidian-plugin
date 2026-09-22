@@ -208,17 +208,18 @@ $changedPaths = @()
 if (-not [string]::IsNullOrWhiteSpace($changedText)) {
     $changedPaths = @($changedText -split '\r?\n')
 }
-$unexpected = @($changedPaths | Where-Object { $_ -notin $AllowedImplementationPaths })
+$implementationChangedPaths = @($changedPaths | Where-Object { -not (Test-EvidenceOnlyPath -Path $_) })
+$unexpected = @($implementationChangedPaths | Where-Object { $_ -notin $AllowedImplementationPaths })
 if ($unexpected.Count -gt 0) {
     throw ("D03 implementation delta contains unauthorized paths:" + [Environment]::NewLine + ($unexpected -join [Environment]::NewLine))
 }
 foreach ($required in $AllowedImplementationPaths) {
-    if ($required -notin $changedPaths) {
+    if ($required -notin $implementationChangedPaths) {
         throw "D03 required implementation/verification path is missing from the implementation delta: $required"
     }
 }
 
-$frozenChanges = @($changedPaths | Where-Object {
+$frozenChanges = @($implementationChangedPaths | Where-Object {
     $_ -like 'src/contracts/*' -or
     $_ -eq 'src/validation/production-path-driver.ts' -or
     $_ -eq 'src/validation/plan-assertion-engine.ts' -or
