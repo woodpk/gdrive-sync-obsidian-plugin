@@ -24,6 +24,19 @@ C01 revalidation and later C-series scenarios use the repaired prerelease `0.1.1
 
 After C01 real-platform PASS, the validated repair was integrated into `phase6-integration` at merge commit `2362b88808d806b7acd10e72325a237b238c22cf`.
 
+## Automated verification policy for executable and reusable task prompts
+
+- GitHub Actions are prohibited for Phase 6 build, verification, integration, and independent-verification completion gates.
+- Authoritative automated verification runs locally through the centralized PHX-CI framework at the exact revision pinned by `phx-ci.json.framework.sha`.
+- A repository-controlled task-specific PowerShell launcher under `dev/scripts/` may prepare and invoke a PHX-CI run, but it is orchestration only and MUST NOT duplicate or reimplement PHX-CI core sequencing.
+- Every launcher must validate that the PHX-CI checkout HEAD equals the configured exact pin, preserve the user's active/control checkout without reset, clean, switch, or stash, and capture complete command output and exit codes.
+- Focused/change-set verification and complete repository verification are separate required dimensions. Required task-specific tests remain mandatory, and PHX-CI must also execute the applicable typecheck, full tests, build, repository checks, artifact checks, and `git diff --check`.
+- Canonical PHX-CI evidence is `dev/_ca-output.md` and `dev/_ca-output.json`; historical run evidence belongs under `dev/test-results/`. Task-specific evidence under `dev/evidence/` remains separate where a task requires it.
+- Authoritative completion requires Change-set verification PASS, Repository verification PASS, and Overall verification PASS — shorthand `PASS / PASS / PASS`.
+- `STATUS: COMPLETE` is forbidden while PHX-CI is blocked or failed.
+- The retired BRAIN-owned `dev/scripts/run-phx-ci.ps1` is not an active entrypoint and MUST NOT be restored.
+- Historical task text may describe older CI mechanisms only when clearly labeled non-executable history; current execution always follows this policy.
+
 ## Common rules
 
 - Run tasks in filename order; prior task must PASS unless the current task explicitly says otherwise.

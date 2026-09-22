@@ -5,6 +5,7 @@ Repository: `woodpk/gdrive-sync-obsidian-plugin`
 Required branch: `phase6-vh38-e-series-integration`  
 Evidence: `dev/evidence/_ca-output-agt-ca-p6-vh38-e-series-integration-01.md`
 
+Local verification launcher: `dev/scripts/verify-vh38-e-series-integration.ps1`
 ## Assignment
 Integrate the independently built E01–E07 harness scenarios into one H9 E-series package, register them through the H6 runner extension point, and verify their combined recovery/fault/cancellation isolation without executing real-device or live-failure scenarios.
 
@@ -17,6 +18,8 @@ Read the harness plan, DEC-301–DEC-310, shared protocol/OBS-01, E01–E07 pack
 Required end state: all seven E scenarios are uniquely registered and independently invocable; injected faults remain scenario-bound/validation-only; E01/E06 checkpoints remain resumable; no scenario can leak fault state into another run.
 
 ## Verification / evidence
-Run all E-series harness tests plus `npm run check` and `git diff --check`. Commit only necessary integration/registry corrections, then evidence beginning exactly `STATUS: COMPLETE` or `STATUS: BLOCKED`, recording base/input SHAs, merge/conflict resolution, changed files, commands/results, deviations, blockers; commit evidence separately.
+GitHub Actions are prohibited. Create/use `dev/scripts/verify-vh38-e-series-integration.ps1` as the task-specific local verification launcher. It must be a thin orchestration layer over the centralized PHX-CI framework at the exact revision pinned by `phx-ci.json.framework.sha`, validate the PHX-CI checkout HEAD against that pin, preserve the user's active/control checkout without reset/clean/switch/stash, capture complete output and exit codes, and keep focused/change-set verification separate from complete repository verification. Through PHX-CI, run all E-series harness/integration tests plus applicable typecheck, full repository tests, build, repository checks, artifact checks, and `git diff --check`. Canonical PHX-CI evidence must be `dev/_ca-output.md` and `dev/_ca-output.json`, with run history under `dev/test-results/`; the existing VH38 `dev/evidence/` file remains separate. `STATUS: COMPLETE` is forbidden unless PHX-CI reports `PASS / PASS / PASS` and all E-series integration gates pass.
+
+Commit only necessary integration/registry corrections, then write the task evidence with first line exactly `STATUS: COMPLETE` or `STATUS: BLOCKED`, recording base/input SHAs, merge/conflict resolution, changed files, PHX-CI/focused results, deviations, and blockers; commit evidence separately.
 
 Stop without promotion/release/live validation or E01–E07 PASS claims.

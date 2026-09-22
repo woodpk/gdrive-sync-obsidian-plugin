@@ -5,6 +5,7 @@ Repository: `woodpk/gdrive-sync-obsidian-plugin`
 Required branch: `phase6-vh30-d-series-integration`  
 Evidence: `dev/evidence/_ca-output-agt-ca-p6-vh30-d-series-integration-01.md`
 
+Local verification launcher: `dev/scripts/verify-vh30-d-series-integration.ps1`
 ## Assignment
 Integrate the independently built D01–D06 harness scenarios into one H8 D-series package, wire them through the H6 registry/runner extension point, and verify their combined behavior and isolation without executing physical device scenarios.
 
@@ -17,6 +18,8 @@ Read the harness plan, DEC-301–DEC-310, shared protocol, D01–D06 package fil
 Required end state: all six D scenarios are uniquely registered, independently invocable, suite-order compatible, and retain conflict/offline/stale-device safety behavior.
 
 ## Verification / evidence
-Run all D-series harness tests plus `npm run check` and `git diff --check`. Commit only necessary integration/registry corrections, then evidence beginning exactly `STATUS: COMPLETE` or `STATUS: BLOCKED`, recording base/input SHAs, merges/conflicts, changed files, commands/results, deviations, blockers; commit evidence separately.
+GitHub Actions are prohibited. Create/use `dev/scripts/verify-vh30-d-series-integration.ps1` as the task-specific local verification launcher. It must be a thin orchestration layer over the centralized PHX-CI framework at the exact revision pinned by `phx-ci.json.framework.sha`, validate the PHX-CI checkout HEAD against that pin, preserve the user's active/control checkout without reset/clean/switch/stash, capture complete output and exit codes, and keep focused/change-set verification separate from complete repository verification. Through PHX-CI, run all D-series harness/integration tests plus applicable typecheck, full repository tests, build, repository checks, artifact checks, and `git diff --check`. Canonical PHX-CI evidence must be `dev/_ca-output.md` and `dev/_ca-output.json`, with run history under `dev/test-results/`; the existing VH30 `dev/evidence/` file remains separate. `STATUS: COMPLETE` is forbidden unless PHX-CI reports `PASS / PASS / PASS` and all D-series integration gates pass.
+
+Commit only necessary integration/registry corrections, then write the task evidence with first line exactly `STATUS: COMPLETE` or `STATUS: BLOCKED`, recording base/input SHAs, merges/conflicts, changed files, PHX-CI/focused results, deviations, and blockers; commit evidence separately.
 
 Stop without promotion/release/live validation or D01–D06 PASS claims.
