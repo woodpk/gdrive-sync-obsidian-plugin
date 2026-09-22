@@ -19,31 +19,30 @@ Do not run physical Google Drive/mobile validation.
 
 ---
 
-## 1. Authoritative current state
+## 1. Execution authority
 
-The repository has completed two supervisory changes after the original VH23 task was written:
+The **current repository copy of this file on `origin/phase6-integration` is the sole VH23 execution authority**.
 
-1. Phase 6 branch cleanup intentionally deleted the live VH15–VH22 scenario branches while preserving accepted heads under immutable archive tags.
-2. The complete `01-test/` task set was migrated to pinned local PHX-CI verification and promoted to `phase6-integration`.
+Any earlier copied, pasted, cached, conversational, or locally saved VH23 task text is superseded by the current repository file after:
 
-The exact supervisor-approved pre-VH23 base is:
+`git fetch origin --prune --tags`
 
-`SUPERVISOR_BASE_SHA = 931d94f840ccb1824baed731c6e85d823173f932`
+Do not execute an older VH23 prompt because it was supplied earlier in a conversation or task handoff.
 
-At that SHA:
+Do not compare the current integration branch to historical tasking anchors merely to decide whether VH23 may start. Approved repository evolution after those anchors is expected and is not a blocker.
 
-- the PHX-CI prompt migration evidence is `STATUS: COMPLETE`;
-- `phx-ci.json`, `Taskfile.phx-ci.yml`, and `Taskfile.yml` are present;
-- the retired BRAIN-owned `dev/scripts/run-phx-ci.ps1` is absent;
-- C09 source/test are already present and accepted;
-- C03–C08 scenario source/test/evidence are not yet integrated;
-- the accepted C03–C08 correction heads remain available through immutable archive tags.
+The current integration state intentionally includes:
 
-Do **not** restore deleted VH15–VH22 branch refs.
+- completed Phase 6 branch cleanup;
+- accepted/integrated C09;
+- centralized PHX-CI consumer migration;
+- the completed `01-test/` PHX-CI prompt conversion.
+
+Deleted VH15–VH22 working branches are not required and must not be restored.
 
 ---
 
-## 2. Executable task-provenance and base gate
+## 2. Minimal executable start gate
 
 Run:
 
@@ -51,26 +50,30 @@ Run:
 
 Resolve:
 
-`TASKING_REF_SHA = origin/phase6-integration`
+`INTEGRATION_BASE_SHA = git rev-parse origin/phase6-integration`
 
-Hard-stop unless all of the following are true:
+Then:
 
-1. `SUPERVISOR_BASE_SHA` is an ancestor of `TASKING_REF_SHA`.
-2. The exact changed-path set from `SUPERVISOR_BASE_SHA..TASKING_REF_SHA` is only:
-   `dev/agents/st2a/ph6/04-lv/01-test/00-vh23-h7i-c-series-integration.md`
-3. `dev/evidence/_ca-output-agt-ca-p6-01-test-phx-ci-prompt-migration-01.md` at `SUPERVISOR_BASE_SHA` begins exactly `STATUS: COMPLETE`.
-4. The task file being executed is byte-identical to the task file stored at `TASKING_REF_SHA`. Prove this by comparing the local task-file blob/hash with:
-   `git rev-parse "${TASKING_REF_SHA}:dev/agents/st2a/ph6/04-lv/01-test/00-vh23-h7i-c-series-integration.md"`
-5. `phx-ci.json`, `Taskfile.phx-ci.yml`, and `Taskfile.yml` exist at `TASKING_REF_SHA`.
-6. `dev/scripts/run-phx-ci.ps1` does not exist at `TASKING_REF_SHA`.
-7. The accepted VH22 repository-repair head `f94cadc247230164a5a5bac3aaef4111b2ea5b8f` is an ancestor of `TASKING_REF_SHA`.
-8. `phase6-vh23-c-series-integration` does not already exist on origin.
+1. read **this task file from `origin/phase6-integration` after the fetch** and use it as the task authority;
+2. require the PHX-CI migration evidence at `INTEGRATION_BASE_SHA`:
+   `dev/evidence/_ca-output-agt-ca-p6-01-test-phx-ci-prompt-migration-01.md`
+   to begin exactly `STATUS: COMPLETE`;
+3. require `phx-ci.json`, `Taskfile.phx-ci.yml`, and `Taskfile.yml` to exist;
+4. require the retired BRAIN-owned `dev/scripts/run-phx-ci.ps1` to be absent;
+5. require accepted VH22 repository-repair SHA
+   `f94cadc247230164a5a5bac3aaef4111b2ea5b8f`
+   to be an ancestor of `INTEGRATION_BASE_SHA`;
+6. require the immutable archive refs in Section 3 to resolve to their exact required SHAs.
 
-If any gate fails, stop with `STATUS: BLOCKED`. Do not substitute `master`, an old VH15 branch, a deleted scenario branch, or another branch tip.
+Those are the start gates.
 
-Create `phase6-vh23-c-series-integration` from exactly `TASKING_REF_SHA`.
+**Do not perform any historical changed-path-count, old-anchor, "only this file may differ", or generic drift gate.** Additional approved commits on `phase6-integration` are not by themselves a blocker.
 
-Record both `SUPERVISOR_BASE_SHA` and `TASKING_REF_SHA` in evidence.
+Create `phase6-vh23-c-series-integration` from exactly the resolved `INTEGRATION_BASE_SHA`.
+
+If that branch already exists, inspect it rather than overwriting it. If it contains no valid VH23 progress, stop and report the exact branch state for supervisor disposition. Never force-push.
+
+Record `INTEGRATION_BASE_SHA` in evidence.
 
 ---
 
@@ -167,7 +170,7 @@ Before merging C03–C08, prove the VH23 base has:
 
 and does **not** yet have any C03–C08 scenario source/test/evidence paths listed in Section 4.
 
-Require `f94cadc247230164a5a5bac3aaef4111b2ea5b8f` to be an ancestor of `TASKING_REF_SHA`.
+Require `f94cadc247230164a5a5bac3aaef4111b2ea5b8f` to be an ancestor of `INTEGRATION_BASE_SHA`.
 
 For C09 acceptance authority, use the accepted VH22 repository-suite history:
 
@@ -221,7 +224,7 @@ After each successful merge:
 - prove the before→after changed-path set is only that scenario's three accepted paths;
 - push the VH23 branch before beginning the next merge.
 
-After all six merges, prove that the cumulative merge-only delta from `TASKING_REF_SHA` consists exactly of the 18 accepted C03–C08 paths and nothing else.
+After all six merges, prove that the cumulative merge-only delta from `INTEGRATION_BASE_SHA` consists exactly of the 18 accepted C03–C08 paths and nothing else.
 
 ---
 
@@ -327,7 +330,7 @@ The launcher must:
 
 1. run locally under PowerShell;
 2. validate the PHX-CI checkout HEAD exactly equals `phx-ci.json.framework.sha`;
-3. verify the exact VH23 branch, `TASKING_REF_SHA`, and implementation HEAD;
+3. verify the exact VH23 branch, `INTEGRATION_BASE_SHA`, and implementation HEAD;
 4. preserve the user's active/control checkout — no reset, clean, switch, or stash;
 5. run the required focused C03–C09 integration/change-set tests;
 6. run complete repository verification through PHX-CI;
@@ -387,9 +390,8 @@ or:
 
 Record at minimum:
 
-- `SUPERVISOR_BASE_SHA`;
-- resolved `TASKING_REF_SHA`;
-- proof that the executed task file matched `TASKING_REF_SHA`;
+- resolved `INTEGRATION_BASE_SHA`;
+- confirmation that the current repository VH23 task file was used after fetch;
 - PHX-CI migration evidence status;
 - every archive ref and verified archive HEAD;
 - every accepted implementation/test SHA;
