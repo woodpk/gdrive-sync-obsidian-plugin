@@ -8,7 +8,6 @@ import {
 import {
   validationAssertionId,
   type ValidationConvergenceAssertion,
-  type ValidationDiagnosticExpectation,
   type ValidationEvidenceRef,
   type ValidationExpectedPlanOperation,
   type ValidationPlanExpectation,
@@ -31,6 +30,7 @@ import type {
 } from "../scenario-runner-module-adapter";
 import type { ValidationRunnerScenarioDefinition } from "../scenario-runner-contracts";
 import type {
+  ValidationDiagnosticExpectation,
   ValidationStateConvergenceReport,
   ValidationStateConvergenceRequest,
 } from "../state-convergence-verifier";
