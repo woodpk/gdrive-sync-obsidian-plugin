@@ -423,7 +423,7 @@ function createHarness(input?: {
   let staleObservations = 0;
 
   const staleAuthority: D06StaleAuthorityPort = {
-    async observeCurrentDeviceStale(deviceId) {
+    async observeDeviceStale(deviceId) {
       assert.equal(deviceId, mobileDevice.deviceId);
       staleObservations += 1;
       return stale
@@ -647,7 +647,7 @@ test("VH29 D06 fixed H6B assertion rejects stale resurrection before any returni
 
   assert.equal(result.status, "FAIL");
   if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /upload-create|forbidden|expected operation|scenario contract/i);
+    assert.equal(result.reason.kind, "module-failed");
   }
   assert.deepEqual(harness.production.executedPlanIds, [
     "plan:d06:seed-windows",
@@ -663,7 +663,7 @@ test("VH29 D06 fixed H6B assertion rejects a stale destructive proposal before e
 
   assert.equal(result.status, "FAIL");
   if (result.status === "FAIL") {
-    assert.match(result.reason.summary, /trash-local|destructive|blocked-unsafe|expected operation/i);
+    assert.equal(result.reason.kind, "module-failed");
   }
   assert.deepEqual(harness.production.executedPlanIds, [
     "plan:d06:seed-windows",
@@ -673,21 +673,24 @@ test("VH29 D06 fixed H6B assertion rejects a stale destructive proposal before e
   assert.equal(harness.evidenceCalls.length, 0);
 });
 
-test("VH29 D06 production stale-authority observer never mistakes a stale peer for a stale current device", async () => {
-  let selfStale = false;
-  let boundDeviceIdentity = String(mobileDevice.deviceId);
+test("VH29 D06 production stale-authority observer proves the exact returning peer and never substitutes another stale device", async () => {
+  let targetStale = false;
+  let includeTarget = true;
+  const unrelatedDeviceId = contractId<"DeviceIdentity">("device:d06:unrelated");
 
   const authority = {
     async loadAuthority() {
       return {
         status: "trusted",
         state: {
-          deviceIdentity: contractId<"DeviceIdentity">(boundDeviceIdentity),
+          deviceIdentity: contractId<"DeviceIdentity">(String(windowsDeviceId)),
           persistenceRevision: contractId<"StateRevision">("persistence:d06:7"),
           semanticGeneration: contractId<"SemanticStateGeneration">("semantic:d06:3"),
           knownDevices: [
-            { deviceId: contractId<"DeviceIdentity">(String(mobileDevice.deviceId)), stale: selfStale },
-            { deviceId: contractId<"DeviceIdentity">(String(windowsDeviceId)), stale: true },
+            ...(includeTarget
+              ? [{ deviceId: contractId<"DeviceIdentity">(String(mobileDevice.deviceId)), stale: targetStale }]
+              : []),
+            { deviceId: unrelatedDeviceId, stale: true },
           ],
         },
       } as any;
@@ -695,23 +698,23 @@ test("VH29 D06 production stale-authority observer never mistakes a stale peer f
   };
 
   const observer = new D06ProductionStaleAuthorityObserver([{
-    deviceId: mobileDevice.deviceId,
+    subjectDeviceId: mobileDevice.deviceId,
     authority,
   }]);
 
-  const peerOnly = await observer.observeCurrentDeviceStale(mobileDevice.deviceId);
-  assert.equal(peerOnly.status, "fresh");
-  assert.equal(peerOnly.evidenceRefs.length, 1);
+  const unrelatedOnly = await observer.observeDeviceStale(mobileDevice.deviceId);
+  assert.equal(unrelatedOnly.status, "fresh");
+  assert.equal(unrelatedOnly.evidenceRefs.length, 1);
 
-  selfStale = true;
-  const self = await observer.observeCurrentDeviceStale(mobileDevice.deviceId);
-  assert.equal(self.status, "stale");
-  assert.equal(self.evidenceRefs.length, 1);
+  targetStale = true;
+  const target = await observer.observeDeviceStale(mobileDevice.deviceId);
+  assert.equal(target.status, "stale");
+  assert.equal(target.evidenceRefs.length, 1);
 
-  boundDeviceIdentity = "device:d06:wrong-installation";
-  const wrongAuthority = await observer.observeCurrentDeviceStale(mobileDevice.deviceId);
-  assert.equal(wrongAuthority.status, "not-observable");
-  assert.match(wrongAuthority.reason, /does not belong/i);
+  includeTarget = false;
+  const missingTarget = await observer.observeDeviceStale(mobileDevice.deviceId);
+  assert.equal(missingTarget.status, "not-observable");
+  assert.match(missingTarget.reason, /no known-device entry/i);
 });
 
 test("VH29 D06 scenario owns only D06 modules and does not replace frozen H6B production authority", () => {
