@@ -5,6 +5,7 @@ import {
   type ProductSurfaceState,
   type VaultPath,
 } from "../../contracts";
+import type { DiagnosticLogger } from "../../diagnostics/diagnostic-logger";
 import {
   validationAssertionId,
   type ValidationConvergenceAssertion,
@@ -66,12 +67,14 @@ export const D03_OPERATIONS = Object.freeze({
   editWindowsVariants: "d03-edit-windows-variants",
   prepareMobileVariant: "d03-prepare-mobile-variant",
   handoffWindowsUpdatesToMobile: "d03-handoff-windows-updates-to-mobile",
+  captureMobileConflictDiagnosticRun: "d03-capture-mobile-conflict-diagnostic-run",
   verifyConflictOutcome: "d03-verify-conflict-outcome",
   recordEvidence: "d03-record-evidence",
 });
 
 export type D03FixtureManagerPort = Pick<ValidationFixtureManager, "create" | "edit" | "hash">;
 export type D03VerifierPort = Pick<StateConvergenceVerifier, "verify">;
+export type D03DiagnosticRunIdSource = Pick<DiagnosticLogger, "currentSyncRunId">;
 export type D03OpaqueConflict = Extract<ConflictAssessment, { readonly kind: "opaque-binary" }>;
 
 export interface D03ConflictObserverPort {
@@ -111,6 +114,7 @@ export interface D03EvidenceRecorderPort {
     readonly safeBase: ValidationFixtureDescriptor;
     readonly safeFinal: ValidationFixtureDescriptor;
     readonly conflict: D03OpaqueConflict;
+    readonly mobileConflictDiagnosticRunId: number;
     readonly baselineVerification: ValidationStateConvergenceReport;
     readonly finalVerification: ValidationStateConvergenceReport;
   }): Promise<readonly ValidationEvidenceRef[]>;
@@ -125,6 +129,7 @@ export interface D03ScenarioPackageOptions {
   readonly verifier: D03VerifierPort;
   readonly crossDevice: D03CrossDevicePort;
   readonly conflicts: D03ConflictObserverPort;
+  readonly mobileDiagnostics: D03DiagnosticRunIdSource;
   readonly evidence: D03EvidenceRecorderPort;
 }
 
@@ -141,6 +146,7 @@ interface D03Context {
   safeBase?: ValidationFixtureDescriptor;
   safeFinal?: ValidationFixtureDescriptor;
   conflict?: D03OpaqueConflict;
+  mobileConflictDiagnosticRunId?: number;
   baselineVerification?: ValidationStateConvergenceReport;
   finalVerification?: ValidationStateConvergenceReport;
 }
@@ -373,6 +379,12 @@ export function createD03ScenarioDefinition(input: {
         "operation-complete",
       ),
       previewStep("d03-mobile-conflict-preview", D03_AUTHORITY_CYCLES.mobileConflict),
+      moduleStep(
+        "d03-capture-mobile-conflict-diagnostic-run",
+        "state-convergence-verifier",
+        D03_OPERATIONS.captureMobileConflictDiagnosticRun,
+        "operation-complete",
+      ),
       assertionStep(
         "d03-mobile-conflict-assert",
         D03_AUTHORITY_CYCLES.mobileConflict,
@@ -539,6 +551,7 @@ function finalVerificationRequest(
   windowsTarget: ValidationFixtureDescriptor,
   mobileTarget: ValidationFixtureDescriptor,
   safeFinal: ValidationFixtureDescriptor,
+  mobileConflictDiagnosticRunId: number,
 ): ValidationStateConvergenceRequest {
   const baseContent = content(targetBase);
   const windowsContent = content(windowsTarget);
@@ -629,6 +642,7 @@ function finalVerificationRequest(
           deviceId: options.mobileDevice.deviceId,
           component: "sync.controller",
           event: "sync-run-complete",
+          diagnosticRunId: mobileConflictDiagnosticRunId,
           expectedFields: {
             result: "partial",
             skippedCount: 1,
@@ -929,6 +943,21 @@ export function createD03ConcurrentBinaryConflictScenario(
   const verifierDelegate: ValidationRunnerApprovedModuleDelegate = {
     async execute(request) {
       try {
+        if (request.operation === D03_OPERATIONS.captureMobileConflictDiagnosticRun) {
+          const diagnosticRunId = options.mobileDiagnostics.currentSyncRunId();
+          if (!Number.isSafeInteger(diagnosticRunId) || diagnosticRunId === undefined || diagnosticRunId < 1) {
+            return blocked("D03 mobile conflict preview did not expose an active authoritative production diagnostic run ID.");
+          }
+          if (
+            context.mobileConflictDiagnosticRunId !== undefined
+            && context.mobileConflictDiagnosticRunId !== diagnosticRunId
+          ) {
+            return blocked("D03 mobile conflict diagnostic run identity changed within the active scenario.");
+          }
+          context.mobileConflictDiagnosticRunId = diagnosticRunId;
+          return completed();
+        }
+
         const targetBase = requireDescriptor(context.targetBase, "target BASE");
         const safeBase = requireDescriptor(context.safeBase, "safe BASE");
 
@@ -947,6 +976,10 @@ export function createD03ConcurrentBinaryConflictScenario(
           const windowsTarget = requireDescriptor(context.windowsTarget, "Windows target");
           const mobileTarget = requireDescriptor(context.mobileTarget, "mobile target");
           const safeFinal = requireDescriptor(context.safeFinal, "safe final");
+          const mobileConflictDiagnosticRunId = context.mobileConflictDiagnosticRunId;
+          if (mobileConflictDiagnosticRunId === undefined) {
+            return blocked("D03 final verification has no authoritative mobile conflict diagnostic run ID.");
+          }
           const conflict = requireOpaqueConflict({
             surface: options.conflicts.current(),
             targetBase,
@@ -961,6 +994,7 @@ export function createD03ConcurrentBinaryConflictScenario(
               windowsTarget,
               mobileTarget,
               safeFinal,
+              mobileConflictDiagnosticRunId,
             ),
           );
           context.conflict = conflict;
@@ -990,10 +1024,11 @@ export function createD03ConcurrentBinaryConflictScenario(
         const safeBase = requireDescriptor(context.safeBase, "safe BASE");
         const safeFinal = requireDescriptor(context.safeFinal, "safe final");
         const conflict = context.conflict;
+        const mobileConflictDiagnosticRunId = context.mobileConflictDiagnosticRunId;
         const baselineVerification = context.baselineVerification;
         const finalVerification = context.finalVerification;
-        if (!conflict || !baselineVerification || !finalVerification) {
-          return blocked("D03 evidence cannot be recorded before baseline verification, conflict proof, and final verification complete.");
+        if (!conflict || mobileConflictDiagnosticRunId === undefined || !baselineVerification || !finalVerification) {
+          return blocked("D03 evidence cannot be recorded before baseline verification, diagnostic-run correlation, conflict proof, and final verification complete.");
         }
         const refs = await options.evidence.record({
           run: request.run,
@@ -1003,6 +1038,7 @@ export function createD03ConcurrentBinaryConflictScenario(
           safeBase,
           safeFinal,
           conflict,
+          mobileConflictDiagnosticRunId,
           baselineVerification,
           finalVerification,
         });
