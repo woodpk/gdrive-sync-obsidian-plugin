@@ -464,10 +464,14 @@ export function createD03ScenarioDefinition(input: {
 }
 
 function requireDescriptor(
+  run: ValidationRunIdentity,
   descriptor: ValidationFixtureDescriptor | undefined,
   label: string,
 ): ValidationFixtureDescriptor {
-  if (!descriptor) throw new Error(`D03 ${label} fixture is unavailable.`);
+  if (!descriptor) throw new Error(`D03 ${label} fixture is unavailable for this validation run.`);
+  if (!sameRun(descriptor.identity.run, run)) {
+    throw new Error(`D03 ${label} fixture belongs to a different validation run.`);
+  }
   if (!descriptor.hash) throw new Error(`D03 ${label} fixture has no exact content hash.`);
   return descriptor;
 }
@@ -598,82 +602,133 @@ function baselineVerificationRequest(
   };
 }
 
+function executedCycleTerminalVerificationRequest(
+  run: ValidationRunIdentity,
+  deviceId: ValidationDeviceIdentity["deviceId"],
+  diagnosticRunId: number,
+  cycle: "establish-windows" | "establish-mobile" | "windows-publish",
+  observedPath: VaultPath,
+): ValidationStateConvergenceRequest {
+  return {
+    run,
+    state: [{
+      kind: "terminal-product-result",
+      assertion: stateAssertion(
+        `d03.${cycle}.terminal`,
+        "terminal-product-result",
+        cycle,
+        "The exact production synchronization run completes successfully.",
+      ),
+      diagnostic: {
+        deviceId,
+        component: "sync.controller",
+        event: "sync-run-complete",
+        diagnosticRunId,
+        expectedFields: {
+          stage: "terminal",
+          result: "complete",
+        },
+      },
+    }],
+    convergence: [{
+      kind: "cross-device-path",
+      assertion: convergenceAssertion(
+        `d03.${cycle}.path`,
+        "cross-device-path",
+        String(observedPath),
+        "The executed cycle leaves its target path present on the executing device.",
+      ),
+      deviceIds: [deviceId],
+      path: observedPath,
+      expected: "file",
+    }],
+  };
+}
+
 function finalVerificationRequest(
   run: ValidationRunIdentity,
   options: D03ScenarioPackageOptions,
   targetBase: ValidationFixtureDescriptor,
   windowsTarget: ValidationFixtureDescriptor,
   mobileTarget: ValidationFixtureDescriptor,
+  safeBase: ValidationFixtureDescriptor,
   safeFinal: ValidationFixtureDescriptor,
-  mobileConflictDiagnosticRunId: number,
 ): ValidationStateConvergenceRequest {
   const baseContent = content(targetBase);
   const windowsContent = content(windowsTarget);
   const mobileContent = content(mobileTarget);
-  const safeContent = content(safeFinal);
+  const safeBaseContent = content(safeBase);
+  const safeFinalContent = content(safeFinal);
   return {
     run,
     state: [
       {
         kind: "local-content",
-        assertion: stateAssertion("d03.final.windows.target", "local-content", String(windowsTarget.path), "Windows retains its complete binary variant."),
+        assertion: stateAssertion("d03.final.windows.target", "local-content", String(windowsTarget.path), "Windows retains its complete divergent binary variant."),
         deviceId: options.windowsDevice.deviceId,
         path: windowsTarget.path,
         content: windowsContent,
       },
       {
         kind: "remote-content",
-        assertion: stateAssertion("d03.final.remote.target", "remote-content", String(windowsTarget.path), "Remote retains the complete Windows binary variant."),
+        assertion: stateAssertion("d03.final.remote.target", "remote-content", String(windowsTarget.path), "Remote retains the complete Windows binary variant without ambiguous duplicate occupancy."),
         path: windowsTarget.path,
         content: windowsContent,
       },
       {
         kind: "local-content",
-        assertion: stateAssertion("d03.final.mobile.target", "local-content", String(mobileTarget.path), "Mobile retains its distinct complete binary variant after conflict execution."),
+        assertion: stateAssertion("d03.final.mobile.target", "local-content", String(mobileTarget.path), "Mobile retains its distinct complete binary variant because the conflict plan is never executed."),
         deviceId: options.mobileDevice.deviceId,
         path: mobileTarget.path,
         content: mobileContent,
       },
       {
         kind: "base-authority",
-        assertion: stateAssertion("d03.final.mobile.target-base", "base-authority", String(targetBase.path), "Mobile conflict authority retains the original trusted BASE rather than committing either conflicting variant."),
+        assertion: stateAssertion("d03.final.mobile.target-base", "base-authority", String(targetBase.path), "Mobile trusted BASE remains the original common BASE while the binary conflict is unresolved."),
         deviceId: options.mobileDevice.deviceId,
         path: targetBase.path,
         expectedContent: baseContent,
       },
       {
         kind: "base-authority",
-        assertion: stateAssertion("d03.final.windows.target-base", "base-authority", String(windowsTarget.path), "Windows commits its verified upload as its new target BASE."),
+        assertion: stateAssertion("d03.final.windows.target-base", "base-authority", String(windowsTarget.path), "Windows committed its verified publication as trusted target BASE."),
         deviceId: options.windowsDevice.deviceId,
         path: windowsTarget.path,
         expectedContent: windowsContent,
       },
       {
         kind: "local-content",
-        assertion: stateAssertion("d03.final.windows.safe", "local-content", String(safeFinal.path), "Windows retains the unrelated safe update."),
+        assertion: stateAssertion("d03.final.windows.safe", "local-content", String(safeFinal.path), "Windows retains the unrelated safe update published before conflict preview."),
         deviceId: options.windowsDevice.deviceId,
         path: safeFinal.path,
-        content: safeContent,
-      },
-      {
-        kind: "local-content",
-        assertion: stateAssertion("d03.final.mobile.safe", "local-content", String(safeFinal.path), "Mobile applies the unrelated safe update despite the binary conflict."),
-        deviceId: options.mobileDevice.deviceId,
-        path: safeFinal.path,
-        content: safeContent,
+        content: safeFinalContent,
       },
       {
         kind: "remote-content",
-        assertion: stateAssertion("d03.final.remote.safe", "remote-content", String(safeFinal.path), "Remote retains the unrelated safe update."),
+        assertion: stateAssertion("d03.final.remote.safe", "remote-content", String(safeFinal.path), "Remote contains the unrelated safe update published before conflict preview, with no ambiguous duplicate occupant."),
         path: safeFinal.path,
-        content: safeContent,
+        content: safeFinalContent,
       },
       {
         kind: "base-authority",
-        assertion: stateAssertion("d03.final.mobile.safe-base", "base-authority", String(safeFinal.path), "Mobile commits the independently safe update into trusted BASE."),
-        deviceId: options.mobileDevice.deviceId,
+        assertion: stateAssertion("d03.final.windows.safe-base", "base-authority", String(safeFinal.path), "Windows commits the unrelated safe publication into trusted BASE."),
+        deviceId: options.windowsDevice.deviceId,
         path: safeFinal.path,
-        expectedContent: safeContent,
+        expectedContent: safeFinalContent,
+      },
+      {
+        kind: "local-content",
+        assertion: stateAssertion("d03.final.mobile.safe", "local-content", String(safeBase.path), "Mobile unrelated-safe bytes remain at the established BASE because the conflict-containing plan is not executed."),
+        deviceId: options.mobileDevice.deviceId,
+        path: safeBase.path,
+        content: safeBaseContent,
+      },
+      {
+        kind: "base-authority",
+        assertion: stateAssertion("d03.final.mobile.safe-base", "base-authority", String(safeBase.path), "Mobile unrelated-safe trusted BASE remains preserved while the conflict plan is only previewed."),
+        deviceId: options.mobileDevice.deviceId,
+        path: safeBase.path,
+        expectedContent: safeBaseContent,
       },
       {
         kind: "mapping-or-tombstone",
@@ -685,46 +740,31 @@ function finalVerificationRequest(
       },
       {
         kind: "durable-intent-or-effect",
-        assertion: stateAssertion("d03.final.mobile.effects", "durable-intent-or-effect", D03_SCENARIO_ID, "No mobile durable effect remains outstanding after the safe operation commits."),
+        assertion: stateAssertion("d03.final.mobile.effects", "durable-intent-or-effect", D03_SCENARIO_ID, "No mobile durable synchronization effect remains outstanding after the completed BASE cycle and unexecuted conflict preview."),
         deviceId: options.mobileDevice.deviceId,
         expected: "none-outstanding",
-      },
-      {
-        kind: "terminal-product-result",
-        assertion: stateAssertion("d03.final.partial-terminal", "terminal-product-result", D03_SCENARIO_ID, "Production records partial completion with one skipped binary conflict and one committed unrelated safe operation."),
-        diagnostic: {
-          deviceId: options.mobileDevice.deviceId,
-          component: "sync.controller",
-          event: "sync-run-complete",
-          diagnosticRunId: mobileConflictDiagnosticRunId,
-          expectedFields: {
-            result: "partial",
-            skippedCount: 1,
-            conflictCount: 1,
-          },
-        },
       },
     ],
     convergence: [
       {
         kind: "cross-device-path",
-        assertion: convergenceAssertion("d03.final.target-presence", "cross-device-path", String(windowsTarget.path), "Both complete conflicting variants remain live files; the scenario does not silently delete either side."),
+        assertion: convergenceAssertion("d03.final.target-presence", "cross-device-path", String(windowsTarget.path), "Both complete conflicting target variants remain live files."),
         deviceIds: [options.windowsDevice.deviceId, options.mobileDevice.deviceId],
         path: windowsTarget.path,
         expected: "file",
       },
       {
-        kind: "cross-device-content",
-        assertion: convergenceAssertion("d03.final.safe-content", "cross-device-content", String(safeFinal.path), "The unrelated safe path converges while the target remains unresolved."),
+        kind: "cross-device-path",
+        assertion: convergenceAssertion("d03.final.safe-presence", "cross-device-path", String(safeFinal.path), "The unrelated safe path remains live on both participants while its newer remote version is pending on mobile."),
         deviceIds: [options.windowsDevice.deviceId, options.mobileDevice.deviceId],
         path: safeFinal.path,
-        content: safeContent,
+        expected: "file",
       },
       {
         kind: "cross-device-authority",
-        assertion: convergenceAssertion("d03.final.safe-authority", "cross-device-authority", String(safeFinal.path), "Both participants converge on live authority for the unrelated safe path."),
+        assertion: convergenceAssertion("d03.final.target-authority", "cross-device-authority", String(targetBase.path), "Neither participant converts the unresolved binary conflict into a deletion tombstone."),
         deviceIds: [options.windowsDevice.deviceId, options.mobileDevice.deviceId],
-        path: safeFinal.path,
+        path: targetBase.path,
         expectedTombstone: false,
       },
     ],
