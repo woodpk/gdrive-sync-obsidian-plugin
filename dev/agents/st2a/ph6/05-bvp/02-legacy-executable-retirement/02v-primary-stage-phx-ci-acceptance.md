@@ -3,11 +3,14 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`  
-**Prompt maturity:** EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact integrated S02 verification input SHA:** `dd8f5f7d65598a2ec175627a6749316119b521c0`  
-**Verification branch:** `phase6-integration`
+**Verification branch:** `phase6-integration`  
+**Accepted integrated verification target:** `5f3d903967dadd2375c4f5273595368ccbeb0d05`  
+**Accepted PHX-CI evidence commit:** `798e4bfae8aaa167cf0462156a72da49b6440c1b`  
+**Accepted verification base:** `6da8794b947c51b6e5cc4a15a467215d2fe37831`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -93,12 +96,22 @@ Verify that PHX-CI reports:
 
 ## 5. Completion
 
-If all §3 checks and PHX-CI pass, report:
+**S02 PRIMARY STAGE ACCEPTED**
 
-`S02 PRIMARY STAGE ACCEPTED`
+Accepted evidence:
 
-and stop.
+- integrated verification target: `5f3d903967dadd2375c4f5273595368ccbeb0d05`;
+- PHX-CI evidence commit: `798e4bfae8aaa167cf0462156a72da49b6440c1b`;
+- verification base: `6da8794b947c51b6e5cc4a15a467215d2fe37831`;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS;
+- compatibility status: COMPLETE;
+- task exit code: 0;
+- full test result: 822 passed / 0 failed;
+- build and artifact verification: PASS;
+- control checkout preservation: PASS.
 
-If any verification check exposes a defect, do not repair it in this task. Return the exact blocker to the supervisor for bounded corrective tasking.
+This file is now a completed acceptance record and authorizes no further execution.
 
-Do not begin S03 in this task.
+Do not re-run 02V from this file. S03 remains subject to separate supervisor repository-grounding and prompt binding under `00-execution-contract.md`.
