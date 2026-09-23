@@ -361,8 +361,8 @@ function productionDelegate(
           }
           if (cycle.status === "valid") authority.beginPreview(request.run, cycle.cycleId);
           result = request.operation === "preview-manual"
-            ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId })
-            : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId });
+            ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId })
+            : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId });
           if (result.status === "plan-observed" && cycle.status === "valid") {
             const retained = authority.retainObservedPlan({
               run: request.run,
@@ -426,6 +426,7 @@ function productionDelegate(
             kind: "execute-asserted-plan",
             run: request.run,
             stepId: request.stepId,
+            authorityCycleId: cycle.cycleId,
             authorization,
           });
           break;
@@ -441,7 +442,30 @@ function productionDelegate(
           };
       }
 
-      if (result.status === "plan-observed" || result.status === "request-accepted") {
+      if (result.status === "plan-observed") {
+        return { status: "completed", evidenceRefs: [] };
+      }
+      if (result.status === "request-accepted") {
+        if (
+          (result.requestKind === "execute-asserted-plan" || result.requestKind === "resolve-observed-conflict")
+          && result.productionOutcomeEstablished !== true
+        ) {
+          return {
+            status: "blocked",
+            summary: result.terminalProofReason ?? "Exact production terminal diagnostic proof was not established.",
+            evidenceRefs: [],
+          };
+        }
+        if (
+          result.productionOutcomeEstablished === true
+          && (result.terminalResult === "failed" || result.terminalResult === "cancelled")
+        ) {
+          return {
+            status: "failed",
+            summary: `Exact production terminal result was ${result.terminalResult}.`,
+            evidenceRefs: [],
+          };
+        }
         return { status: "completed", evidenceRefs: [] };
       }
       return await productionFailure(result);
