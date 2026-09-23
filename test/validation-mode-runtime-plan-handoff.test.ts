@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ConflictAssessment, ProductSurfaceState, SynchronizationPlan, UserAction, UserActionResult } from "../src/contracts";
 import { contractId } from "../src/contracts";
+import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
+import type { ProductionDiagnosticCorrelation } from "../src/diagnostics/production-diagnostic-correlation";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
 import {
@@ -88,6 +90,9 @@ function productionFixture(
   actionResult: UserActionResult = { status: "accepted" },
 ) {
   let previewIndex = 0;
+  let diagnosticRunSequence = 0;
+  let correlation: ProductionDiagnosticCorrelation | undefined;
+  const diagnostics: DiagnosticEvent[] = [];
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const requestedActions: UserAction[] = [];
@@ -95,30 +100,62 @@ function productionFixture(
     status: conflicts.length > 0 ? { kind: "conflict-present", conflictCount: conflicts.length } : { kind: "idle-ready" },
     conflicts,
   };
+  const beginCorrelation = (
+    requestKind: ProductionDiagnosticCorrelation["requestKind"],
+    planId: SynchronizationPlan["planId"],
+  ): number => {
+    const diagnosticRunId = ++diagnosticRunSequence;
+    correlation = Object.freeze({ diagnosticRunId, requestKind, planId });
+    return diagnosticRunId;
+  };
+  const terminal = (diagnosticRunId: number): void => {
+    diagnostics.push({
+      timestamp: "2026-09-22T00:00:00.000Z",
+      sequence: diagnostics.length + 1,
+      level: "info",
+      component: "sync.controller",
+      event: "sync-run-complete",
+      runId: diagnosticRunId,
+      platform: "desktop",
+      fields: { stage: "terminal", result: "complete" },
+    });
+  };
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
       const observed = plans[Math.min(previewIndex, plans.length - 1)];
       previewIndex += 1;
+      if (observed) beginCorrelation("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
       calls.push("preview-verify-reconcile");
       const observed = plans[Math.min(previewIndex, plans.length - 1)];
       previewIndex += 1;
+      if (observed) beginCorrelation("verify-reconcile", observed.planId);
       return observed;
     },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
     request: async action => {
       calls.push(`request:${action.kind}`);
       requestedActions.push(action);
+      if (action.kind === "resolve-conflict" && actionResult.status === "accepted") {
+        const diagnosticRunId = beginCorrelation(
+          "conflict-resolution",
+          contractId<"PlanId">(`plan:h6c:runtime-conflict:${diagnosticRunSequence + 1}`),
+        );
+        terminal(diagnosticRunId);
+      }
       return actionResult;
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`preview-action:${action.kind}`);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) terminal(diagnosticRunId);
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => correlation,
+    diagnosticSnapshot: () => diagnostics.map(event => ({ ...event, fields: event.fields ? { ...event.fields } : undefined })),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No active production run evidence is expected in VH15-R2 handoff tests."); },
