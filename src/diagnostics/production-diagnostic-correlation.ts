@@ -26,7 +26,7 @@ export class ProductionDiagnosticCorrelationTracker {
   private currentValue?: ProductionDiagnosticCorrelation;
 
   begin(diagnosticRunId: number | undefined, requestKind: ProductionDiagnosticRequestKind): void {
-    if (!Number.isSafeInteger(diagnosticRunId) || diagnosticRunId === undefined || diagnosticRunId < 1) {
+    if (diagnosticRunId === undefined || !Number.isSafeInteger(diagnosticRunId) || diagnosticRunId < 1) {
       this.currentValue = undefined;
       return;
     }
