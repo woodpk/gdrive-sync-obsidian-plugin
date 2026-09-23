@@ -52,9 +52,9 @@ function Assert-Equal {
 Set-Content -Path $EvidencePath -Value @(
   "# Phase 6 H6C Local Verification Evidence",
   "",
-  "- Agent: `agt-ca-p6-h6c-production-diagnostic-correlation-01`",
-  "- Exact base: `$BaseSha`",
-  "- Required branch: `$Branch`",
+  "- Agent: agt-ca-p6-h6c-production-diagnostic-correlation-01",
+  ("- Exact base: " + $BaseSha),
+  ("- Required branch: " + $Branch),
   "- GitHub Actions: **NOT USED**",
   "- PHX-CI: **NOT RUN**",
   "- Physical Google Drive validation: **NOT RUN**",
@@ -63,12 +63,12 @@ Set-Content -Path $EvidencePath -Value @(
 
 $head = (& git rev-parse HEAD).Trim()
 $headExit = $LASTEXITCODE
-Write-Evidence ("- Verification HEAD: `" + $head + "`")
+Write-Evidence ("- Verification HEAD: " + $head)
 if ($headExit -ne 0) { $Failed = $true }
 
 $currentBranch = (& git branch --show-current).Trim()
 $branchExit = $LASTEXITCODE
-Write-Evidence ("- Current branch: `" + $currentBranch + "`")
+Write-Evidence ("- Current branch: " + $currentBranch)
 if ($branchExit -ne 0) { $Failed = $true }
 Assert-Equal "branch" $currentBranch $Branch
 
