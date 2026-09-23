@@ -224,6 +224,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
       previewIndex += 1;
       calls.push("preview-manual");
       previewedPlanIds.push(String(observed.planId));
+      productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -267,6 +268,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
       } else {
         throw new Error("Unexpected plan ID reached production execution.");
       }
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
     currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
