@@ -339,7 +339,13 @@ function terminalOnlyRequest(
         expectedFields: { stage: "terminal", result: "complete" },
       },
     }],
-    convergence: [],
+    convergence: [{
+      kind: "cross-device-content",
+      assertion: convergenceAssertion("h6c-terminal-content", "cross-device-content"),
+      deviceIds: [desktopId, mobileId],
+      path: notePath,
+      content: { hash: noteHash, sizeBytes: noteBytes.byteLength },
+    }],
   };
 }
 
@@ -349,7 +355,7 @@ test("H6C terminal production proof requires an exact diagnostic run ID and neve
     devices: [{
       ...desktop,
       diagnostics: { snapshot: () => [terminalEvent(99, "sync-run-complete", "complete")] },
-    }],
+    }, device(mobileId, authorityState("device-mobile"))],
     remote: { identity, drive: remoteSource() },
   });
 
@@ -367,7 +373,10 @@ test("H6C failed or cancelled exact terminal evidence cannot satisfy required co
   ]) {
     const desktop = device(desktopId, authorityState("device-desktop"));
     const verifier = new StateConvergenceVerifier({
-      devices: [{ ...desktop, diagnostics: { snapshot: () => [terminal] } }],
+      devices: [
+        { ...desktop, diagnostics: { snapshot: () => [terminal] } },
+        device(mobileId, authorityState("device-mobile")),
+      ],
       remote: { identity, drive: remoteSource() },
     });
     const report = await verifier.verify(terminalOnlyRequest(7));
@@ -386,7 +395,7 @@ test("H6C contradictory or duplicate terminal evidence for the exact run fails c
           terminalEvent(7, "sync-run-failed", "failed", 2),
         ],
       },
-    }],
+    }, device(mobileId, authorityState("device-mobile"))],
     remote: { identity, drive: remoteSource() },
   });
   const report = await verifier.verify(terminalOnlyRequest(7));

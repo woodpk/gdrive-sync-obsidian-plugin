@@ -224,6 +224,7 @@ class C08World {
   readonly executedPlanIds: string[] = [];
   readonly actions: UserAction[] = [];
   readonly handoffs: C08DeviceRole[] = [];
+  readonly productionDiagnostics = new ValidationProductionDiagnosticFixture();
   activeRole: C08DeviceRole = "windows";
   private readonly previewIndex = { windows: 0, mobile: 0 };
 

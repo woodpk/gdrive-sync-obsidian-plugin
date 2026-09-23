@@ -174,6 +174,7 @@ interface World {
   mobileSynced: boolean;
   handedOff: boolean;
   windowsSynced: boolean;
+  windowsDiagnosticRunId?: number;
   windowsDiagnostics: DiagnosticEvent[];
 }
 
@@ -192,14 +193,14 @@ function freshWorld(): World {
   };
 }
 
-function diagnostic(sequence: number, event: string, fields: DiagnosticEvent["fields"]): DiagnosticEvent {
+function diagnostic(diagnosticRunId: number, sequence: number, event: string, fields: DiagnosticEvent["fields"]): DiagnosticEvent {
   return {
     timestamp: `2026-09-18T23:00:0${sequence}.000-04:00`,
     sequence,
     level: "trace",
     component: event === "sync-run-complete" ? "sync.controller" : "sync.execute",
     event,
-    runId: 42,
+    runId: diagnosticRunId,
     platform: "desktop",
     fields,
   };
@@ -248,30 +249,40 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
         world.mobileSynced = true;
       } else if (action.planId === plans[1].planId) {
         assert.equal(world.handedOff, true);
+        assert.notEqual(diagnosticRunId, undefined, "Windows execution must carry its exact H6C production diagnostic run ID.");
+        if (diagnosticRunId === undefined) throw new Error("Windows execution omitted its exact H6C production diagnostic run ID.");
+        world.windowsDiagnosticRunId = diagnosticRunId;
         world.windowsBytes = world.remoteBytes;
         world.windowsSynced = true;
         world.windowsDiagnostics = [
-          diagnostic(1, "integrity-verification-complete", {
+          diagnostic(diagnosticRunId, 1, "integrity-verification-complete", {
             operationKind: "download-update",
             operationId: "op:c03:windows:download-update",
             remoteObjectId: String(remoteObjectId),
             result: "verified",
           }),
-          diagnostic(2, "state-commit-complete", {
+          diagnostic(diagnosticRunId, 2, "state-commit-complete", {
             operationKind: "download-update",
             operationId: "op:c03:windows:download-update",
             remoteObjectId: String(remoteObjectId),
             commitStatus: "committed",
           }),
-          diagnostic(3, "sync-run-complete", {
-            stage: "terminal",
-            result: "complete",
-          }),
         ];
       } else {
         throw new Error("Unexpected plan ID reached production execution.");
       }
-      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
+      if (diagnosticRunId !== undefined) {
+        productionDiagnostics.complete(diagnosticRunId);
+        if (action.planId === plans[1].planId) {
+          const terminal = productionDiagnostics.snapshot().find(event =>
+            event.runId === diagnosticRunId
+            && event.component === "sync.controller"
+            && event.event === "sync-run-complete"
+          );
+          assert.ok(terminal, "Windows exact production terminal diagnostic must exist for the captured run.");
+          world.windowsDiagnostics.push(terminal);
+        }
+      }
       return { status: "accepted" };
     },
     currentDiagnosticCorrelation: () => productionDiagnostics.current(),
@@ -458,6 +469,15 @@ function verifierDelegate(world: World): ValidationRunnerApprovedModuleDelegate 
         devices: [localSource(world, "mobile"), localSource(world, "windows")],
         remote: remoteSource(world),
       });
+      const windowsDiagnosticRunId = world.windowsDiagnosticRunId;
+      if (windowsDiagnosticRunId === undefined) {
+        return {
+          status: "blocked",
+          summary: "C03 exact Windows production diagnostic run ID was not captured.",
+          evidenceRefs: [],
+        };
+      }
+
       const verification = createC03VerificationRequest(request.run, {
         fixturePath,
         editedHash,
@@ -482,6 +502,7 @@ function verifierDelegate(world: World): ValidationRunnerApprovedModuleDelegate 
           deviceId: windowsDeviceId,
           component: "sync.controller",
           event: "sync-run-complete",
+          diagnosticRunId: windowsDiagnosticRunId,
           expectedFields: { stage: "terminal", result: "complete" },
         },
       });

@@ -340,10 +340,10 @@ export class StateConvergenceVerifier {
     }
 
     const terminal = inspectExactProductionTerminal(device.diagnostics.snapshot(), expectation.diagnosticRunId);
-    if (terminal.status === "missing") {
-      return { status: "not-observable", reason: terminal.reason, refs: [] };
-    }
-    if (terminal.status === "ambiguous" || terminal.status === "contradictory") {
+    if (terminal.status !== "established") {
+      if (terminal.status === "missing") {
+        return { status: "not-observable", reason: terminal.reason, refs: [] };
+      }
       return {
         status: "failed",
         reason: terminal.reason,
