@@ -324,3 +324,26 @@ for (const mode of ["failed", "cancelled"] as const) {
     if (result.productionOutcomeEstablished) assert.equal(result.terminalResult, mode);
   });
 }
+
+
+test("H6C conflict correlation is rejected when the same observed conflict is ambiguous across authority cycles", async () => {
+  const observedConflict = conflict();
+  const fixture = controllerFixture({ conflict: observedConflict });
+  const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
+  const run = validationRunIdentity("run:h6c:conflict-ambiguous", "D02");
+
+  await observeAndAuthorize(driver, run, cycleA, "preview-manual");
+  await observeAndAuthorize(driver, run, cycleB, "preview-manual");
+  const before = fixture.actions.length;
+  const result = await driver.dispatch({
+    kind: "resolve-observed-conflict",
+    run,
+    stepId,
+    expectedVaultPath: observedConflict.path,
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-local" },
+  });
+
+  assert.equal(result.status, "request-rejected");
+  assert.equal(fixture.actions.length, before);
+});
