@@ -19,6 +19,7 @@ import type {
   ValidationTextVariant,
 } from "../src/validation/fixture-manager";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   validationDeviceIdentity,
   validationFixtureIdentity,
@@ -228,18 +229,21 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
       const observed = plans[previewIndex];
       previewIndex += 1;
+      if (observed) productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
       calls.push("preview-verify-reconcile");
       const observed = plans[previewIndex];
       previewIndex += 1;
+      if (observed) productionDiagnostics.begin("verify-reconcile", observed.planId);
       return observed;
     },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
@@ -247,11 +251,14 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push(`request:${action.kind}`);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`execute:${String(action.planId)}`);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No direct run-evidence read is expected in C07 focused tests."); },

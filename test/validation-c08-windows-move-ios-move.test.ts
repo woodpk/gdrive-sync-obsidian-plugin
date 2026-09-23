@@ -14,6 +14,7 @@ import {
   type VaultPath,
 } from "../src/contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   ValidationFixtureManager,
 } from "../src/validation/fixture-manager";
@@ -223,6 +224,7 @@ class C08World {
   readonly executedPlanIds: string[] = [];
   readonly actions: UserAction[] = [];
   readonly handoffs: C08DeviceRole[] = [];
+  readonly productionDiagnostics = new ValidationProductionDiagnosticFixture();
   activeRole: C08DeviceRole = "windows";
   private readonly previewIndex = { windows: 0, mobile: 0 };
 
@@ -238,6 +240,7 @@ class C08World {
       const plan = plans[index];
       if (!plan) return undefined;
       this.previewedPlanIds.push(String(plan.planId));
+      this.productionDiagnostics.begin("manual", plan.planId);
       return plan;
     },
     previewVerifyReconcile: async () => undefined,
@@ -246,12 +249,15 @@ class C08World {
       this.actions.push(action);
       return { status: "accepted" as const };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       this.actions.push(action);
       this.executedPlanIds.push(String(action.planId));
       this.apply(String(action.planId));
+      if (diagnosticRunId !== undefined) this.productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" as const };
     },
+    currentDiagnosticCorrelation: () => this.productionDiagnostics.current(),
+    diagnosticSnapshot: () => this.productionDiagnostics.snapshot(),
     currentSurface: (): ProductSurfaceState => ({ status: { kind: "idle-ready" }, conflicts: [] }),
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("C08 focused runtime test does not require executor run evidence."); },

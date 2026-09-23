@@ -15,6 +15,7 @@ import { contractId } from "../src/contracts";
 import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   validationDeviceId,
   validationDeviceIdentity,
@@ -173,6 +174,7 @@ interface World {
   mobileSynced: boolean;
   handedOff: boolean;
   windowsSynced: boolean;
+  windowsDiagnosticRunId?: number;
   windowsDiagnostics: DiagnosticEvent[];
 }
 
@@ -191,14 +193,14 @@ function freshWorld(): World {
   };
 }
 
-function diagnostic(sequence: number, event: string, fields: DiagnosticEvent["fields"]): DiagnosticEvent {
+function diagnostic(diagnosticRunId: number, sequence: number, event: string, fields: DiagnosticEvent["fields"]): DiagnosticEvent {
   return {
     timestamp: `2026-09-18T23:00:0${sequence}.000-04:00`,
     sequence,
     level: "trace",
     component: event === "sync-run-complete" ? "sync.controller" : "sync.execute",
     event,
-    runId: 42,
+    runId: diagnosticRunId,
     platform: "desktop",
     fields,
   };
@@ -211,6 +213,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
   const previewedPlanIds: string[] = [];
   const executedPlanIds: string[] = [];
   const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -224,6 +227,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
       previewIndex += 1;
       calls.push("preview-manual");
       previewedPlanIds.push(String(observed.planId));
+      productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -236,7 +240,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
       calls.push(`request:${action.kind}`);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`execute:${String(action.planId)}`);
       executedPlanIds.push(String(action.planId));
       if (action.planId === plans[0].planId) {
@@ -245,30 +249,44 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
         world.mobileSynced = true;
       } else if (action.planId === plans[1].planId) {
         assert.equal(world.handedOff, true);
+        assert.notEqual(diagnosticRunId, undefined, "Windows execution must carry its exact H6C production diagnostic run ID.");
+        if (diagnosticRunId === undefined) throw new Error("Windows execution omitted its exact H6C production diagnostic run ID.");
+        world.windowsDiagnosticRunId = diagnosticRunId;
         world.windowsBytes = world.remoteBytes;
         world.windowsSynced = true;
         world.windowsDiagnostics = [
-          diagnostic(1, "integrity-verification-complete", {
+          diagnostic(diagnosticRunId, 1, "integrity-verification-complete", {
             operationKind: "download-update",
             operationId: "op:c03:windows:download-update",
             remoteObjectId: String(remoteObjectId),
             result: "verified",
           }),
-          diagnostic(2, "state-commit-complete", {
+          diagnostic(diagnosticRunId, 2, "state-commit-complete", {
             operationKind: "download-update",
             operationId: "op:c03:windows:download-update",
             remoteObjectId: String(remoteObjectId),
             commitStatus: "committed",
           }),
-          diagnostic(3, "sync-run-complete", {
-            result: "complete",
-          }),
         ];
       } else {
         throw new Error("Unexpected plan ID reached production execution.");
       }
+      if (diagnosticRunId !== undefined) {
+        productionDiagnostics.complete(diagnosticRunId);
+        if (action.planId === plans[1].planId) {
+          const terminal = productionDiagnostics.snapshot().find(event =>
+            event.runId === diagnosticRunId
+            && event.component === "sync.controller"
+            && event.event === "sync-run-complete"
+          );
+          assert.ok(terminal, "Windows exact production terminal diagnostic must exist for the captured run.");
+          world.windowsDiagnostics.push(terminal);
+        }
+      }
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => ({ managedRemote: remoteIdentity, remoteEnumerationComplete: true }),
@@ -451,6 +469,15 @@ function verifierDelegate(world: World): ValidationRunnerApprovedModuleDelegate 
         devices: [localSource(world, "mobile"), localSource(world, "windows")],
         remote: remoteSource(world),
       });
+      const windowsDiagnosticRunId = world.windowsDiagnosticRunId;
+      if (windowsDiagnosticRunId === undefined) {
+        return {
+          status: "blocked",
+          summary: "C03 exact Windows production diagnostic run ID was not captured.",
+          evidenceRefs: [],
+        };
+      }
+
       const verification = createC03VerificationRequest(request.run, {
         fixturePath,
         editedHash,
@@ -475,7 +502,8 @@ function verifierDelegate(world: World): ValidationRunnerApprovedModuleDelegate 
           deviceId: windowsDeviceId,
           component: "sync.controller",
           event: "sync-run-complete",
-          expectedFields: { result: "complete" },
+          diagnosticRunId: windowsDiagnosticRunId,
+          expectedFields: { stage: "terminal", result: "complete" },
         },
       });
       const report = await verifier.verify(verification);

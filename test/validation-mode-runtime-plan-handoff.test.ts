@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ConflictAssessment, ProductSurfaceState, SynchronizationPlan, UserAction, UserActionResult } from "../src/contracts";
 import { contractId } from "../src/contracts";
+import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
+import type { ProductionDiagnosticCorrelation } from "../src/diagnostics/production-diagnostic-correlation";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
 import {
@@ -86,8 +88,12 @@ function productionFixture(
   plans: readonly SynchronizationPlan[],
   conflicts: readonly ConflictAssessment[] = [],
   actionResult: UserActionResult = { status: "accepted" },
+  terminalMode: "complete" | "missing" | "failed" | "cancelled" = "complete",
 ) {
   let previewIndex = 0;
+  let diagnosticRunSequence = 0;
+  let correlation: ProductionDiagnosticCorrelation | undefined;
+  const diagnostics: DiagnosticEvent[] = [];
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const requestedActions: UserAction[] = [];
@@ -95,30 +101,73 @@ function productionFixture(
     status: conflicts.length > 0 ? { kind: "conflict-present", conflictCount: conflicts.length } : { kind: "idle-ready" },
     conflicts,
   };
+  const beginCorrelation = (
+    requestKind: ProductionDiagnosticCorrelation["requestKind"],
+    planId: SynchronizationPlan["planId"],
+  ): number => {
+    const diagnosticRunId = ++diagnosticRunSequence;
+    correlation = Object.freeze({ diagnosticRunId, requestKind, planId });
+    return diagnosticRunId;
+  };
+  const terminal = (diagnosticRunId: number): void => {
+    if (terminalMode === "missing") return;
+    const event = terminalMode === "failed"
+      ? "sync-run-failed"
+      : terminalMode === "cancelled"
+        ? "sync-run-cancelled"
+        : "sync-run-complete";
+    const result = terminalMode === "failed"
+      ? "failed"
+      : terminalMode === "cancelled"
+        ? "cancelled"
+        : "complete";
+    diagnostics.push({
+      timestamp: "2026-09-22T00:00:00.000Z",
+      sequence: diagnostics.length + 1,
+      level: "info",
+      component: "sync.controller",
+      event,
+      runId: diagnosticRunId,
+      platform: "desktop",
+      fields: { stage: "terminal", result },
+    });
+  };
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
       const observed = plans[Math.min(previewIndex, plans.length - 1)];
       previewIndex += 1;
+      if (observed) beginCorrelation("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
       calls.push("preview-verify-reconcile");
       const observed = plans[Math.min(previewIndex, plans.length - 1)];
       previewIndex += 1;
+      if (observed) beginCorrelation("verify-reconcile", observed.planId);
       return observed;
     },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
     request: async action => {
       calls.push(`request:${action.kind}`);
       requestedActions.push(action);
+      if (action.kind === "resolve-conflict" && actionResult.status === "accepted") {
+        const diagnosticRunId = beginCorrelation(
+          "conflict-resolution",
+          contractId<"PlanId">(`plan:h6c:runtime-conflict:${diagnosticRunSequence + 1}`),
+        );
+        terminal(diagnosticRunId);
+      }
       return actionResult;
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`preview-action:${action.kind}`);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) terminal(diagnosticRunId);
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => correlation,
+    diagnosticSnapshot: () => diagnostics.map(event => ({ ...event, fields: event.fields ? { ...event.fields } : undefined })),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No active production run evidence is expected in VH15-R2 handoff tests."); },
@@ -705,4 +754,49 @@ test("VH15-R2 T10 default-off isolation and platform classification remain intac
     userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) Mobile/15E148",
     maxTouchPoints: 5,
   }), "ipad");
+});
+
+
+test("H6C runtime blocks an accepted execute request until the exact production terminal event exists", async () => {
+  const production = productionFixture([plan("plan:h6c:runtime-missing-terminal")], [], { status: "accepted" }, "missing");
+  const definition: ValidationRunnerScenarioDefinition = {
+    scenarioId: "D04",
+    prerequisiteIds: [],
+    steps: [
+      preview("h6c-runtime-preview", "h6c-runtime-cycle"),
+      assertPlan("h6c-runtime-assert", "h6c-runtime-cycle"),
+      execute("h6c-runtime-execute", "h6c-runtime-cycle"),
+    ],
+  };
+  const { runtime } = runtimeFor({ production, definitions: [definition] });
+  runtime.setEnabled(true);
+
+  const result = assertRunnerStatus(await runtime.startScenario("D04"), "BLOCKED");
+  if (result.status === "BLOCKED") assert.match(result.reason.summary, /terminal/i);
+  assert.deepEqual(production.executedPlanIds, ["plan:h6c:runtime-missing-terminal"]);
+});
+
+test("H6C runtime distinguishes exact failed and cancelled terminals from successful completion", async () => {
+  for (const terminalMode of ["failed", "cancelled"] as const) {
+    const production = productionFixture(
+      [plan(`plan:h6c:runtime-${terminalMode}`)],
+      [],
+      { status: "accepted" },
+      terminalMode,
+    );
+    const definition: ValidationRunnerScenarioDefinition = {
+      scenarioId: "D05",
+      prerequisiteIds: [],
+      steps: [
+        preview(`h6c-${terminalMode}-preview`, `h6c-${terminalMode}-cycle`),
+        assertPlan(`h6c-${terminalMode}-assert`, `h6c-${terminalMode}-cycle`),
+        execute(`h6c-${terminalMode}-execute`, `h6c-${terminalMode}-cycle`),
+      ],
+    };
+    const { runtime } = runtimeFor({ production, definitions: [definition] });
+    runtime.setEnabled(true);
+
+    const result = assertRunnerStatus(await runtime.startScenario("D05"), "FAIL");
+    if (result.status === "FAIL") assert.match(result.reason.summary, new RegExp(terminalMode));
+  }
 });

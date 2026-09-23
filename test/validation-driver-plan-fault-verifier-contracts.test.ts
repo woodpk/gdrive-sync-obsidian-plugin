@@ -50,7 +50,7 @@ test("VH02 driver requests are bounded to production-path orchestration actions"
   assert.deepEqual(VALIDATION_OBSERVED_CONFLICT_KINDS, ["unresolved-text"]);
   assert.deepEqual(VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS, ["keep-local", "keep-remote", "keep-both"]);
   const matched = matchedValidationPlanAssertion({ assertionId: "assert-e02-plan", run, plan });
-  const execute: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorization: matched.authorization };
+  const execute: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorityCycleId: "cycle:contracts", authorization: matched.authorization };
   assert.equal(execute.authorization.executionAuthorized, true);
   assert.equal(execute.authorization.planId, plan.planId);
 
@@ -280,7 +280,7 @@ test("any failed state or convergence assertion dominates BLOCKED and yields FAI
 });
 
 const matchedForTypes = matchedValidationPlanAssertion({ assertionId: "typecheck-plan", run, plan });
-const validExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorization: matchedForTypes.authorization };
+const validExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorityCycleId: "cycle:types", authorization: matchedForTypes.authorization };
 void validExecuteTypeCheck;
 const validResolveTypeCheck: ValidationProductionDriverRequest = {
   kind: "resolve-observed-conflict",
@@ -306,7 +306,7 @@ void invalidResolveConflictIdTypeCheck;
 const invalidManualResolveTypeCheck: ValidationProductionDriverRequest = { ...validResolveTypeCheck, resolution: { kind: "manual", resolvedVersion: { path: contractId<"VaultPath">("Notes/typecheck-conflict.md"), entityKind: "file" } } };
 void invalidManualResolveTypeCheck;
 // @ts-expect-error raw observed plans are not sufficient authority for execution; an assertion authorization is required.
-const invalidExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, plan };
+const invalidExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorityCycleId: "cycle:invalid", plan };
 void invalidExecuteTypeCheck;
 
 const mismatchTypeCheck: Extract<ValidationPlanAssertionResult, { readonly status: "mismatch" }> = {

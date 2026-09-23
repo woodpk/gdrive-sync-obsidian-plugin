@@ -1,3 +1,4 @@
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -313,13 +314,17 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     status: { kind: "idle-ready" },
     conflicts: [],
   };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
       const observed = plans[previewIndex];
       previewIndex += 1;
-      if (observed) previewedPlanIds.push(String(observed.planId));
+      if (observed) {
+        previewedPlanIds.push(String(observed.planId));
+        productionDiagnostics.begin("manual", observed.planId);
+      }
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -333,14 +338,17 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push("request:" + action.kind);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push("preview-action:" + action.kind);
       if (action.kind !== "execute-plan") {
         return { status: "rejected", reason: "Focused C09 harness permits only fixed execute-plan dispatch." };
       }
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => {

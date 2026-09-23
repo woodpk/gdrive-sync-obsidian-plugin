@@ -1,4 +1,5 @@
 import { contractId, type SynchronizationPlan, type VaultPath } from "../contracts";
+import type { ProductionTerminalDiagnosticResult } from "../diagnostics/production-diagnostic-correlation";
 import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
 import {
   VALIDATION_OBSERVED_CONFLICT_KINDS,
@@ -13,6 +14,7 @@ import {
   ValidationProductionPathDriver,
   type ValidationProductionRuntimePort,
 } from "./production-path-driver";
+import type { ValidationProductionDiagnosticBinding } from "./production-diagnostic-correlation";
 import {
   VALIDATION_RUNNER_MODULE_IDS,
   VALIDATION_RUNNER_SCENARIO_IDS,
@@ -118,8 +120,14 @@ interface RetainedValidationPlanAuthority {
   readonly cycleId: string;
   readonly previewStepId: ValidationStepId;
   readonly plan: SynchronizationPlan;
+  readonly diagnosticBinding: ValidationProductionDiagnosticBinding;
   readonly assertionStepId?: ValidationStepId;
   readonly authorization?: ValidationPlanExecutionAuthorization;
+  readonly authorizationConsumed?: true;
+  readonly productionOutcome?: {
+    readonly binding: ValidationProductionDiagnosticBinding;
+    readonly terminalResult: ProductionTerminalDiagnosticResult;
+  };
 }
 
 /**
@@ -141,14 +149,23 @@ class ValidationRunScopedPlanAuthority {
     readonly cycleId: string;
     readonly previewStepId: ValidationStepId;
     readonly plan: SynchronizationPlan;
+    readonly diagnosticBinding: ValidationProductionDiagnosticBinding;
   }): boolean {
     const key = this.key(input.run, input.cycleId);
     if (this.entries.has(key)) return false;
+    if (
+      !sameRun(input.diagnosticBinding.run, input.run)
+      || input.diagnosticBinding.authorityCycleId !== input.cycleId
+      || input.diagnosticBinding.planId !== input.plan.planId
+    ) {
+      return false;
+    }
     this.entries.set(key, Object.freeze({
       run: input.run,
       cycleId: input.cycleId,
       previewStepId: input.previewStepId,
       plan: input.plan,
+      diagnosticBinding: input.diagnosticBinding,
     }));
     return true;
   }
@@ -170,6 +187,7 @@ class ValidationRunScopedPlanAuthority {
       !entry
       || !sameRun(entry.run, input.run)
       || entry.cycleId !== input.cycleId
+      || entry.authorizationConsumed === true
       || !sameRun(input.authorization.run, input.run)
       || input.authorization.executionAuthorized !== true
       || input.authorization.planId !== entry.plan.planId
@@ -190,8 +208,7 @@ class ValidationRunScopedPlanAuthority {
   ): ValidationPlanExecutionAuthorization | undefined {
     const key = this.key(run, cycleId);
     const entry = this.entries.get(key);
-    if (!entry || !entry.authorization) return undefined;
-    this.entries.delete(key);
+    if (!entry || !entry.authorization || entry.authorizationConsumed === true) return undefined;
     if (
       !sameRun(entry.run, run)
       || entry.cycleId !== cycleId
@@ -201,7 +218,45 @@ class ValidationRunScopedPlanAuthority {
     ) {
       return undefined;
     }
+    this.entries.set(key, Object.freeze({ ...entry, authorizationConsumed: true }));
     return entry.authorization;
+  }
+
+  retainProductionOutcome(input: {
+    readonly binding: ValidationProductionDiagnosticBinding;
+    readonly terminalResult: ProductionTerminalDiagnosticResult;
+  }): boolean {
+    const key = this.key(input.binding.run, input.binding.authorityCycleId);
+    const entry = this.entries.get(key);
+    if (
+      !entry
+      || !sameRun(entry.run, input.binding.run)
+      || entry.cycleId !== input.binding.authorityCycleId
+      || entry.productionOutcome
+    ) {
+      return false;
+    }
+
+    if (input.binding.requestKind === "manual" || input.binding.requestKind === "verify-reconcile") {
+      if (
+        entry.authorizationConsumed !== true
+        || input.binding.diagnosticRunId !== entry.diagnosticBinding.diagnosticRunId
+        || input.binding.planId !== entry.plan.planId
+      ) {
+        return false;
+      }
+    } else if (input.binding.requestKind !== "conflict-resolution") {
+      return false;
+    }
+
+    this.entries.set(key, Object.freeze({
+      ...entry,
+      productionOutcome: Object.freeze({
+        binding: input.binding,
+        terminalResult: input.terminalResult,
+      }),
+    }));
+    return true;
   }
 
   clearRun(run: ValidationRunIdentity): void {
@@ -356,19 +411,20 @@ function productionDelegate(
         case "preview-manual":
         case "preview-verify-reconcile": {
           const cycle = parseAuthorityCycle(request.input);
-          if (cycle.status === "invalid") {
-            return { status: "blocked", summary: "Production preview authorityCycleId is malformed.", evidenceRefs: [] };
+          if (cycle.status !== "valid") {
+            return { status: "blocked", summary: "Production preview requires a valid run-scoped authorityCycleId.", evidenceRefs: [] };
           }
-          if (cycle.status === "valid") authority.beginPreview(request.run, cycle.cycleId);
+          authority.beginPreview(request.run, cycle.cycleId);
           result = request.operation === "preview-manual"
-            ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId })
-            : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId });
+            ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId })
+            : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId });
           if (result.status === "plan-observed" && cycle.status === "valid") {
             const retained = authority.retainObservedPlan({
               run: request.run,
               cycleId: cycle.cycleId,
               previewStepId: request.stepId,
               plan: result.plan,
+              diagnosticBinding: result.diagnosticBinding,
             });
             if (!retained) {
               return { status: "blocked", summary: "Production preview produced ambiguous duplicated run-scoped plan authority.", evidenceRefs: [] };
@@ -426,6 +482,7 @@ function productionDelegate(
             kind: "execute-asserted-plan",
             run: request.run,
             stepId: request.stepId,
+            authorityCycleId: cycle.cycleId,
             authorization,
           });
           break;
@@ -441,7 +498,39 @@ function productionDelegate(
           };
       }
 
-      if (result.status === "plan-observed" || result.status === "request-accepted") {
+      if (result.status === "plan-observed") {
+        return { status: "completed", evidenceRefs: [] };
+      }
+      if (result.status === "request-accepted") {
+        if (
+          (result.requestKind === "execute-asserted-plan" || result.requestKind === "resolve-observed-conflict")
+          && result.productionOutcomeEstablished !== true
+        ) {
+          return {
+            status: "blocked",
+            summary: result.terminalProofReason ?? "Exact production terminal diagnostic proof was not established.",
+            evidenceRefs: [],
+          };
+        }
+        if (result.productionOutcomeEstablished === true) {
+          if (!authority.retainProductionOutcome({
+            binding: result.diagnosticBinding,
+            terminalResult: result.terminalResult,
+          })) {
+            return {
+              status: "blocked",
+              summary: "Exact production terminal evidence did not match the retained validation run/authority-cycle correlation.",
+              evidenceRefs: [],
+            };
+          }
+          if (result.terminalResult === "failed" || result.terminalResult === "cancelled") {
+            return {
+              status: "failed",
+              summary: `Exact production terminal result was ${result.terminalResult}.`,
+              evidenceRefs: [],
+            };
+          }
+        }
         return { status: "completed", evidenceRefs: [] };
       }
       return await productionFailure(result);

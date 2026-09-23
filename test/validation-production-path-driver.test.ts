@@ -9,6 +9,8 @@ import type {
   UserActionResult,
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
+import { DiagnosticLogger, type DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
+import type { ProductionDiagnosticCorrelation } from "../src/diagnostics/production-diagnostic-correlation";
 import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "../src/product/production-executor";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
@@ -33,6 +35,7 @@ import {
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const step = validationStepId("step:vh06");
+const cycle = "cycle:vh06";
 
 function plan(trigger: SynchronizationPlan["trigger"], suffix: string = trigger): SynchronizationPlan {
   return {
@@ -55,6 +58,9 @@ function recordingController(input?: {
   const actionResult = input?.actionResult ?? ({ status: "accepted" } as const);
   const calls: string[] = [];
   const actions: UserAction[] = [];
+  const diagnosticEvents: DiagnosticEvent[] = [];
+  let diagnosticRunSequence = 0;
+  let correlation: ProductionDiagnosticCorrelation | undefined;
   let listener: ((surface: ProductSurfaceState) => void) | undefined;
   let surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [], planPreview: manualPlan };
   const evidence: ExecutorRunEvidence = {
@@ -65,12 +71,58 @@ function recordingController(input?: {
     },
     remoteEnumerationComplete: true,
   };
+  const beginCorrelation = (
+    requestKind: ProductionDiagnosticCorrelation["requestKind"],
+    planId: SynchronizationPlan["planId"],
+  ): number => {
+    const diagnosticRunId = ++diagnosticRunSequence;
+    correlation = Object.freeze({ diagnosticRunId, requestKind, planId });
+    return diagnosticRunId;
+  };
+  const recordTerminal = (diagnosticRunId: number, result: "complete" | "partial" = "complete"): void => {
+    diagnosticEvents.push({
+      timestamp: "2026-09-22T00:00:00.000Z",
+      sequence: diagnosticEvents.length + 1,
+      level: "info",
+      component: "sync.controller",
+      event: "sync-run-complete",
+      runId: diagnosticRunId,
+      platform: "desktop",
+      fields: { stage: "terminal", result },
+    });
+  };
   const controller: ValidationProductionControllerPort = {
-    previewManual: async () => { calls.push("preview-manual"); return manualPlan; },
-    previewVerifyReconcile: async () => { calls.push("preview-verify-reconcile"); return verifyPlan; },
+    previewManual: async () => {
+      calls.push("preview-manual");
+      beginCorrelation("manual", manualPlan.planId);
+      return manualPlan;
+    },
+    previewVerifyReconcile: async () => {
+      calls.push("preview-verify-reconcile");
+      beginCorrelation("verify-reconcile", verifyPlan.planId);
+      return verifyPlan;
+    },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
-    request: async action => { calls.push(`request:${action.kind}`); actions.push(action); return actionResult; },
-    requestPreviewAction: async action => { calls.push(`preview-action:${action.kind}`); actions.push(action); return actionResult; },
+    request: async action => {
+      calls.push(`request:${action.kind}`);
+      actions.push(action);
+      if (action.kind === "resolve-conflict" && actionResult.status === "accepted") {
+        const diagnosticRunId = beginCorrelation(
+          "conflict-resolution",
+          id<"PlanId">(`plan:vh06:conflict:${diagnosticRunSequence + 1}`),
+        );
+        recordTerminal(diagnosticRunId);
+      }
+      return actionResult;
+    },
+    requestPreviewAction: async (action, diagnosticRunId) => {
+      calls.push(`preview-action:${action.kind}`);
+      actions.push(action);
+      if (actionResult.status === "accepted" && diagnosticRunId !== undefined) recordTerminal(diagnosticRunId);
+      return actionResult;
+    },
+    currentDiagnosticCorrelation: () => correlation,
+    diagnosticSnapshot: () => diagnosticEvents.map(event => ({ ...event, fields: event.fields ? { ...event.fields } : undefined })),
     currentSurface: () => surface,
     onSurface: next => { calls.push("on-surface"); listener = next; return () => { listener = undefined; }; },
     currentRunEvidence: () => evidence,
@@ -134,11 +186,11 @@ test("VH06 driver delegates planning, Verify/Reconcile, automatic sync, cancella
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const run = validationRunIdentity("run:vh06:delegation", "C03");
 
-  const manual = await driver.dispatch({ kind: "preview-manual", run, stepId: step });
+  const manual = await driver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
   assert.equal(manual.status, "plan-observed");
   if (manual.status === "plan-observed") assert.strictEqual(manual.plan, fixture.surface.planPreview);
 
-  const verify = await driver.dispatch({ kind: "preview-verify-reconcile", run, stepId: step });
+  const verify = await driver.dispatch({ kind: "preview-verify-reconcile", run, stepId: step, authorityCycleId: cycle });
   assert.equal(verify.status, "plan-observed");
   if (verify.status === "plan-observed") assert.equal(verify.plan.trigger, "verify-reconcile");
 
@@ -175,7 +227,7 @@ test("H6B resolve-observed-conflict delegates only the exact production conflict
     const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
     const run = validationRunIdentity("run:h6b:exact:" + resolutionKind, "D02");
 
-    const preview = await driver.dispatch({ kind: "preview-manual", run, stepId: step });
+    const preview = await driver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
     assert.equal(preview.status, "plan-observed");
 
     const result = await driver.dispatch({
@@ -186,12 +238,11 @@ test("H6B resolve-observed-conflict delegates only the exact production conflict
       expectedConflictKind: "unresolved-text",
       resolution: { kind: resolutionKind },
     });
-    assert.deepEqual(result, {
-      status: "request-accepted",
-      run,
-      requestKind: "resolve-observed-conflict",
-      productionOutcomeEstablished: false,
-    });
+    assert.equal(result.status, "request-accepted");
+    if (result.status === "request-accepted") {
+      assert.equal(result.productionOutcomeEstablished, true);
+      if (result.productionOutcomeEstablished) assert.equal(result.terminalResult, "complete");
+    }
     assert.deepEqual(fixture.actions.at(-1), {
       kind: "resolve-conflict",
       conflictId: conflict.conflictId,
@@ -208,7 +259,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const runA = validationRunIdentity("run:h6b:a", "D02");
   const runB = validationRunIdentity("run:h6b:b", "D02");
-  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step, authorityCycleId: cycle })).status, "plan-observed");
 
   const before = fixture.actions.length;
   assert.equal((await driver.dispatch({
@@ -242,7 +293,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
     conflicts: [conflict, unresolvedTextConflict("conflict:h6b:ambiguous", "Notes/guarded.md")],
     planPreview: fixture.surface.planPreview,
   });
-  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step, authorityCycleId: cycle })).status, "plan-observed");
   assert.equal((await driver.dispatch({
     kind: "resolve-observed-conflict",
     run: runA,
@@ -254,7 +305,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
   assert.equal(fixture.actions.length, before);
 
   fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
-  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step, authorityCycleId: cycle })).status, "plan-observed");
   fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [replacement] });
   assert.equal((await driver.dispatch({
     kind: "resolve-observed-conflict",
@@ -272,7 +323,7 @@ test("H6B resolve-observed-conflict fails closed for wrong run, path, kind, ambi
     "replacement-v2",
   );
   fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
-  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run: runA, stepId: step, authorityCycleId: cycle })).status, "plan-observed");
   fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [sameIdReplacement] });
   assert.equal((await driver.dispatch({
     kind: "resolve-observed-conflict",
@@ -291,7 +342,7 @@ test("H6B resolve-observed-conflict preserves production rejection and never con
   fixture.setSurface({ status: { kind: "conflict-present", conflictCount: 1 }, conflicts: [conflict] });
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const run = validationRunIdentity("run:h6b:rejected", "D02");
-  assert.equal((await driver.dispatch({ kind: "preview-manual", run, stepId: step })).status, "plan-observed");
+  assert.equal((await driver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle })).status, "plan-observed");
 
   const rejected = await driver.dispatch({
     kind: "resolve-observed-conflict",
@@ -314,13 +365,17 @@ test("VH06 asserted execution is run-bound, must reference a plan observed by th
   const driver = new ValidationProductionPathDriver({ productController: () => fixture.controller });
   const run = validationRunIdentity("run:vh06:execute", "D01");
   const otherRun = validationRunIdentity("run:vh06:other", "D01");
-  const observed = await driver.dispatch({ kind: "preview-manual", run, stepId: step });
+  const observed = await driver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
   assert.equal(observed.status, "plan-observed");
   if (observed.status !== "plan-observed") return;
 
   const matched = matchedValidationPlanAssertion({ assertionId: "assertion:vh06", run, plan: observed.plan });
-  const accepted = await driver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorization: matched.authorization });
-  assert.deepEqual(accepted, { status: "request-accepted", run, requestKind: "execute-asserted-plan", productionOutcomeEstablished: false });
+  const accepted = await driver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorityCycleId: cycle, authorization: matched.authorization });
+  assert.equal(accepted.status, "request-accepted");
+  if (accepted.status === "request-accepted") {
+    assert.equal(accepted.productionOutcomeEstablished, true);
+    if (accepted.productionOutcomeEstablished) assert.equal(accepted.terminalResult, "complete");
+  }
   assert.deepEqual(fixture.actions.at(-1), { kind: "execute-plan", planId: observed.plan.planId });
 
   const beforeMismatch = fixture.actions.length;
@@ -328,6 +383,7 @@ test("VH06 asserted execution is run-bound, must reference a plan observed by th
     kind: "execute-asserted-plan",
     run,
     stepId: step,
+    authorityCycleId: cycle,
     authorization: {
       assertionId: validationPlanAssertionId("assertion:other-run"),
       run: otherRun,
@@ -343,6 +399,7 @@ test("VH06 asserted execution is run-bound, must reference a plan observed by th
     kind: "execute-asserted-plan",
     run,
     stepId: step,
+    authorityCycleId: cycle,
     authorization: {
       assertionId: validationPlanAssertionId("assertion:unseen"),
       run,
@@ -358,11 +415,11 @@ test("VH06 preserves production rejection and failure instead of converting eith
   const rejectedFixture = recordingController({ actionResult: { status: "rejected", reason: "plan is stale or no longer current" } });
   const rejectedDriver = new ValidationProductionPathDriver({ productController: () => rejectedFixture.controller });
   const run = validationRunIdentity("run:vh06:reject", "E07");
-  const preview = await rejectedDriver.dispatch({ kind: "preview-manual", run, stepId: step });
+  const preview = await rejectedDriver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
   assert.equal(preview.status, "plan-observed");
   if (preview.status !== "plan-observed") return;
   const authorization = matchedValidationPlanAssertion({ assertionId: "assertion:reject", run, plan: preview.plan }).authorization;
-  const rejected = await rejectedDriver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorization });
+  const rejected = await rejectedDriver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorityCycleId: cycle, authorization });
   assert.deepEqual(rejected, {
     status: "request-rejected",
     run,
@@ -372,7 +429,7 @@ test("VH06 preserves production rejection and failure instead of converting eith
 
   const failingController = { ...rejectedFixture.controller, previewManual: async () => { throw new Error("production planning failed"); } };
   const failingDriver = new ValidationProductionPathDriver({ productController: () => failingController });
-  const failed = await failingDriver.dispatch({ kind: "preview-manual", run, stepId: step });
+  const failed = await failingDriver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
   assert.deepEqual(failed, {
     status: "request-failed",
     run,
@@ -413,6 +470,17 @@ test("VH06 delegates a reviewed manual plan through the real ProductController a
     remoteEnumeration: { status: "complete" as const },
     mode: "full" as const,
   };
+  const diagnostics = new DiagnosticLogger({
+    persistence: {
+      loadDiagnostics: async () => undefined,
+      saveDiagnostics: async () => undefined,
+    },
+    level: "trace",
+    retentionLimit: 2000,
+    consoleMirror: false,
+    platform: "desktop",
+  });
+  await diagnostics.initialize();
   let controller: ProductController;
   const executor = new ProductSynchronizationExecutor({} as never, {} as never, state, context, () => controller.currentRunEvidence());
   controller = new ProductController({
@@ -428,18 +496,23 @@ test("VH06 delegates a reviewed manual plan through the real ProductController a
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
     holderId: "vh06-production-driver-test",
+    diagnostics,
   });
 
   const driver = new ValidationProductionPathDriver({ productController: () => controller });
   const run = validationRunIdentity("run:vh06:production", "C06");
-  const preview = await driver.dispatch({ kind: "preview-manual", run, stepId: step });
+  const preview = await driver.dispatch({ kind: "preview-manual", run, stepId: step, authorityCycleId: cycle });
   assert.equal(preview.status, "plan-observed");
   if (preview.status !== "plan-observed") return;
   assert.equal(preview.plan.trigger, "manual");
 
   const authorization = matchedValidationPlanAssertion({ assertionId: "assertion:production", run, plan: preview.plan }).authorization;
-  const execution = await driver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorization });
-  assert.deepEqual(execution, { status: "request-accepted", run, requestKind: "execute-asserted-plan", productionOutcomeEstablished: false });
+  const execution = await driver.dispatch({ kind: "execute-asserted-plan", run, stepId: step, authorityCycleId: cycle, authorization });
+  assert.equal(execution.status, "request-accepted");
+  if (execution.status === "request-accepted") {
+    assert.equal(execution.productionOutcomeEstablished, true);
+    if (execution.productionOutcomeEstablished) assert.equal(execution.terminalResult, "complete");
+  }
   assert.equal(driver.currentSurface().status.kind, "idle-ready");
   assert.throws(() => driver.currentRunEvidence(), /no active synchronization run evidence/);
 });

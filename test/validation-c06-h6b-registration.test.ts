@@ -13,6 +13,7 @@ import {
 } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationFixtureSpec } from "../src/validation/fixture-manager";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   validationDeviceId,
   validationFixtureIdentity,
@@ -126,12 +127,14 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
   const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
       const observed = plans[previewIndex];
       previewIndex += 1;
+      if (observed) productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -143,11 +146,14 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push(`request:${action.kind}`);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`preview-action:${action.kind}`);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => {
