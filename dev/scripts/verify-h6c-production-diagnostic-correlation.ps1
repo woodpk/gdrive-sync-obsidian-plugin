@@ -1,5 +1,6 @@
 param(
-  [switch]$CommitAndPushEvidence
+  [switch]$CommitAndPushEvidence,
+  [switch]$AllowDetachedWorktree
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,9 +69,24 @@ if ($headExit -ne 0) { $Failed = $true }
 
 $currentBranch = (& git branch --show-current).Trim()
 $branchExit = $LASTEXITCODE
-Write-Evidence ("- Current branch: " + $currentBranch)
 if ($branchExit -ne 0) { $Failed = $true }
-Assert-Equal "branch" $currentBranch $Branch
+if ($currentBranch) {
+  Write-Evidence ("- Current branch: " + $currentBranch)
+  Assert-Equal "branch" $currentBranch $Branch
+} elseif ($AllowDetachedWorktree) {
+  Write-Evidence "- Current branch: DETACHED temporary verification worktree"
+  $remoteRequiredHead = (& git rev-parse ("origin/" + $Branch)).Trim()
+  $remoteRequiredHeadExit = $LASTEXITCODE
+  if ($remoteRequiredHeadExit -ne 0) {
+    Write-Evidence "FAIL: could not resolve origin required-branch HEAD for detached verification."
+    $Failed = $true
+  } else {
+    Assert-Equal "detached verification HEAD matches origin required branch" $head $remoteRequiredHead
+  }
+} else {
+  Write-Evidence "FAIL: detached HEAD is not permitted unless -AllowDetachedWorktree is supplied."
+  $Failed = $true
+}
 
 $mergeBase = (& git merge-base $BaseSha HEAD).Trim()
 $mergeBaseExit = $LASTEXITCODE
@@ -228,7 +244,7 @@ if ($CommitAndPushEvidence) {
   if ($hasStagedEvidence) {
     & git commit -m "test(h6c): record local verification evidence" -- $EvidencePath
     if ($LASTEXITCODE -ne 0) { throw "git commit evidence failed." }
-    & git push origin $Branch
+    & git push origin ("HEAD:" + $Branch)
     if ($LASTEXITCODE -ne 0) { throw "git push evidence failed." }
   }
 }
