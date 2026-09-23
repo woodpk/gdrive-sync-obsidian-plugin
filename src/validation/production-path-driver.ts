@@ -9,12 +9,21 @@ import type {
   VaultPath,
   VersionReference,
 } from "../contracts";
+import type { DiagnosticEvent } from "../diagnostics/diagnostic-logger";
+import type { ProductionDiagnosticCorrelation, ProductionDiagnosticRequestKind } from "../diagnostics/production-diagnostic-correlation";
 import type { ExecutorRunEvidence } from "../product/production-executor";
 import {
   VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS,
   type ValidationProductionDriverRequest,
   type ValidationProductionDriverResult,
 } from "./driver-plan-fault-verifier-contracts";
+import {
+  bindValidationProductionDiagnostic,
+  exactValidationProductionTerminal,
+  validationAuthorityCycleKey,
+  validValidationAuthorityCycleId,
+  type ValidationProductionDiagnosticBinding,
+} from "./production-diagnostic-correlation";
 import type { ValidationRunIdentity } from "./run-sandbox-checkpoint-contracts";
 
 /**
@@ -28,7 +37,10 @@ export interface ValidationProductionControllerPort {
   request(action: UserAction): Promise<UserActionResult>;
   requestPreviewAction(
     action: Extract<UserAction, { readonly kind: "execute-plan" | "approve-destructive-plan" }>,
+    diagnosticRunId?: number,
   ): Promise<UserActionResult>;
+  currentDiagnosticCorrelation(): ProductionDiagnosticCorrelation | undefined;
+  diagnosticSnapshot(): readonly DiagnosticEvent[];
   currentSurface(): ProductSurfaceState;
   onSurface(listener: (surface: ProductSurfaceState) => void): () => void;
   currentRunEvidence(): ExecutorRunEvidence;
@@ -41,10 +53,6 @@ export interface ValidationProductionRuntimePort {
 
 function sameRun(left: ValidationRunIdentity, right: ValidationRunIdentity): boolean {
   return left.runId === right.runId && left.scenarioId === right.scenarioId;
-}
-
-function runKey(run: ValidationRunIdentity): string {
-  return `${String(run.scenarioId)}\u0000${String(run.runId)}`;
 }
 
 function failureReason(error: unknown): string {
@@ -161,8 +169,8 @@ function isSupportedObservedConflictResolution(value: unknown): value is "keep-l
  * validation evidence/verifiers.
  */
 export class ValidationProductionPathDriver {
-  private readonly observedPlanByRun = new Map<string, SynchronizationPlan["planId"]>();
-  private readonly observedConflictsByRun = new Map<string, readonly ObservedProductionConflict[]>();
+  private readonly observedPlanByCycle = new Map<string, { readonly planId: SynchronizationPlan["planId"]; readonly binding: ValidationProductionDiagnosticBinding }>();
+  private readonly observedConflictsByCycle = new Map<string, { readonly run: ValidationRunIdentity; readonly authorityCycleId: string; readonly conflicts: readonly ObservedProductionConflict[] }>();
 
   constructor(private readonly runtime: ValidationProductionRuntimePort) {}
 
@@ -192,16 +200,24 @@ export class ValidationProductionPathDriver {
     try {
       switch (request.kind) {
         case "preview-manual": {
-          this.observedConflictsByRun.delete(runKey(request.run));
+          if (!validValidationAuthorityCycleId(request.authorityCycleId)) {
+            return this.rejected(request.run, "manual preview requires an exact validation authority cycle");
+          }
+          const key = validationAuthorityCycleKey(request.run, request.authorityCycleId);
+          this.observedConflictsByCycle.delete(key);
           const plan = await controller.previewManual();
-          this.observeConflicts(request.run, controller.currentSurface());
-          return this.observePlan(request.run, plan);
+          this.observeConflicts(request.run, request.authorityCycleId, controller.currentSurface());
+          return this.observePlan(request.run, request.authorityCycleId, "manual", plan);
         }
         case "preview-verify-reconcile": {
-          this.observedConflictsByRun.delete(runKey(request.run));
+          if (!validValidationAuthorityCycleId(request.authorityCycleId)) {
+            return this.rejected(request.run, "Verify/Reconcile preview requires an exact validation authority cycle");
+          }
+          const key = validationAuthorityCycleKey(request.run, request.authorityCycleId);
+          this.observedConflictsByCycle.delete(key);
           const plan = await controller.previewVerifyReconcile();
-          this.observeConflicts(request.run, controller.currentSurface());
-          return this.observePlan(request.run, plan);
+          this.observeConflicts(request.run, request.authorityCycleId, controller.currentSurface());
+          return this.observePlan(request.run, request.authorityCycleId, "verify-reconcile", plan);
         }
         case "run-automatic":
           await controller.runAutomatic(request.trigger);
@@ -210,20 +226,24 @@ export class ValidationProductionPathDriver {
           return this.fromActionResult(request.run, request.kind, await controller.request({ kind: "cancel-active-sync" }));
         case "execute-asserted-plan": {
           const authorization = request.authorization;
+          if (!validValidationAuthorityCycleId(request.authorityCycleId)) {
+            return this.rejected(request.run, "asserted execution requires an exact validation authority cycle");
+          }
           if (!sameRun(request.run, authorization.run)) {
             return this.rejected(request.run, "execution authorization belongs to a different validation run");
           }
           if (authorization.executionAuthorized !== true) {
             return this.rejected(request.run, "execution authorization is not asserted");
           }
-          if (this.observedPlanByRun.get(runKey(request.run)) !== authorization.planId) {
-            return this.rejected(request.run, "asserted plan was not observed by this driver for the active validation run");
+          const observed = this.observedPlanByCycle.get(validationAuthorityCycleKey(request.run, request.authorityCycleId));
+          if (!observed || observed.planId !== authorization.planId) {
+            return this.rejected(request.run, "asserted plan was not observed by this driver for the exact validation authority cycle");
           }
-          return this.fromActionResult(
-            request.run,
-            request.kind,
-            await controller.requestPreviewAction({ kind: "execute-plan", planId: authorization.planId }),
+          const action = await controller.requestPreviewAction(
+            { kind: "execute-plan", planId: authorization.planId },
+            observed.binding.diagnosticRunId,
           );
+          return this.fromCorrelatedActionResult(request.run, request.kind, action, observed.binding);
         }
         case "resolve-observed-conflict": {
           if (Object.prototype.hasOwnProperty.call(request, "conflictId")) {
@@ -248,20 +268,27 @@ export class ValidationProductionPathDriver {
             return this.rejected(request.run, "conflict resolution choice is malformed or unsupported");
           }
 
-          const observedMatches = (this.observedConflictsByRun.get(runKey(request.run)) ?? []).filter(
-            conflict => conflict.path === request.expectedVaultPath
-              && conflict.kind === request.expectedConflictKind,
-          );
-          if (observedMatches.length !== 1) {
+          const observedCycles = [...this.observedConflictsByCycle.values()]
+            .filter(entry => sameRun(entry.run, request.run))
+            .map(entry => ({
+              entry,
+              matches: entry.conflicts.filter(
+                conflict => conflict.path === request.expectedVaultPath
+                  && conflict.kind === request.expectedConflictKind,
+              ),
+            }))
+            .filter(candidate => candidate.matches.length > 0);
+          if (observedCycles.length !== 1 || observedCycles[0]!.matches.length !== 1) {
             return this.rejected(
               request.run,
-              observedMatches.length === 0
+              observedCycles.length === 0
                 ? "requested conflict was not observed by this driver during production planning for this validation run"
-                : "requested conflict is ambiguous in the production conflicts observed for this validation run",
+                : "requested conflict is ambiguous across validation authority cycles or production conflict observations",
             );
           }
 
-          const observed = observedMatches[0]!;
+          const observedCycle = observedCycles[0]!.entry;
+          const observed = observedCycles[0]!.matches[0]!;
           const currentMatches = controller.currentSurface().conflicts.filter(
             (conflict): conflict is Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> =>
               conflict.kind === request.expectedConflictKind
@@ -280,15 +307,28 @@ export class ValidationProductionPathDriver {
             );
           }
 
-          return this.fromActionResult(
-            request.run,
-            request.kind,
-            await controller.request({
-              kind: "resolve-conflict",
-              conflictId: observed.conflictId,
-              resolution: request.resolution,
-            }),
-          );
+          const action = await controller.request({
+            kind: "resolve-conflict",
+            conflictId: observed.conflictId,
+            resolution: request.resolution,
+          });
+          if (action.status !== "accepted") return this.fromActionResult(request.run, request.kind, action);
+          const binding = bindValidationProductionDiagnostic({
+            run: request.run,
+            authorityCycleId: observedCycle.authorityCycleId,
+            correlation: controller.currentDiagnosticCorrelation(),
+            expectedRequestKind: "conflict-resolution",
+          });
+          if (!binding) {
+            return {
+              status: "request-accepted",
+              run: request.run,
+              requestKind: request.kind,
+              productionOutcomeEstablished: false,
+              terminalProofReason: "Conflict resolution completed without exact production diagnostic correlation for its validation authority cycle.",
+            };
+          }
+          return this.correlatedAccepted(request.run, request.kind, binding);
         }
       }
     } catch (error) {
@@ -301,21 +341,42 @@ export class ValidationProductionPathDriver {
     }
   }
 
-  private observePlan(run: ValidationRunIdentity, plan: SynchronizationPlan | undefined): ValidationProductionDriverResult {
-    const key = runKey(run);
+  private observePlan(
+    run: ValidationRunIdentity,
+    authorityCycleId: string,
+    expectedRequestKind: Extract<ProductionDiagnosticRequestKind, "manual" | "verify-reconcile">,
+    plan: SynchronizationPlan | undefined,
+  ): ValidationProductionDriverResult {
+    const key = validationAuthorityCycleKey(run, authorityCycleId);
     if (!plan) {
-      this.observedPlanByRun.delete(key);
+      this.observedPlanByCycle.delete(key);
       return {
         status: "no-plan-observed",
         run,
         reason: `production planning returned no plan (status: ${this.requireController().currentSurface().status.kind})`,
       };
     }
-    this.observedPlanByRun.set(key, plan.planId);
-    return { status: "plan-observed", run, plan };
+    const binding = bindValidationProductionDiagnostic({
+      run,
+      authorityCycleId,
+      correlation: this.requireController().currentDiagnosticCorrelation(),
+      expectedRequestKind,
+      expectedPlanId: plan.planId,
+    });
+    if (!binding) {
+      this.observedPlanByCycle.delete(key);
+      return {
+        status: "request-failed",
+        run,
+        reason: "Production preview did not expose an exact diagnostic run/plan binding for the validation authority cycle.",
+        productionOutcomeEstablished: false,
+      };
+    }
+    this.observedPlanByCycle.set(key, Object.freeze({ planId: plan.planId, binding }));
+    return { status: "plan-observed", run, plan, diagnosticBinding: binding };
   }
 
-  private observeConflicts(run: ValidationRunIdentity, surface: ProductSurfaceState): void {
+  private observeConflicts(run: ValidationRunIdentity, authorityCycleId: string, surface: ProductSurfaceState): void {
     const observations = surface.conflicts
       .filter(
         (conflict): conflict is Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> =>
@@ -327,7 +388,12 @@ export class ValidationProductionPathDriver {
         path: conflict.path,
         preserved: captureConcurrentAlternates(conflict.preserved),
       }));
-    this.observedConflictsByRun.set(runKey(run), Object.freeze(observations));
+    const key = validationAuthorityCycleKey(run, authorityCycleId);
+    this.observedConflictsByCycle.set(key, Object.freeze({
+      run,
+      authorityCycleId,
+      conflicts: Object.freeze(observations),
+    }));
   }
 
   private accepted(
@@ -335,6 +401,43 @@ export class ValidationProductionPathDriver {
     requestKind: "run-automatic" | "execute-asserted-plan" | "resolve-observed-conflict" | "cancel-active-sync",
   ): ValidationProductionDriverResult {
     return { status: "request-accepted", run, requestKind, productionOutcomeEstablished: false };
+  }
+
+  private correlatedAccepted(
+    run: ValidationRunIdentity,
+    requestKind: "execute-asserted-plan" | "resolve-observed-conflict",
+    binding: ValidationProductionDiagnosticBinding,
+  ): ValidationProductionDriverResult {
+    const terminal = exactValidationProductionTerminal(this.requireController().diagnosticSnapshot(), binding);
+    if (terminal.status !== "established") {
+      return {
+        status: "request-accepted",
+        run,
+        requestKind,
+        productionOutcomeEstablished: false,
+        diagnosticBinding: binding,
+        terminalProofReason: terminal.reason,
+      };
+    }
+    return {
+      status: "request-accepted",
+      run,
+      requestKind,
+      productionOutcomeEstablished: true,
+      diagnosticBinding: binding,
+      terminalResult: terminal.result,
+    };
+  }
+
+  private fromCorrelatedActionResult(
+    run: ValidationRunIdentity,
+    requestKind: "execute-asserted-plan",
+    result: UserActionResult,
+    binding: ValidationProductionDiagnosticBinding,
+  ): ValidationProductionDriverResult {
+    return result.status === "accepted"
+      ? this.correlatedAccepted(run, requestKind, binding)
+      : this.rejected(run, result.reason);
   }
 
   private rejected(run: ValidationRunIdentity, reason: string): ValidationProductionDriverResult {
