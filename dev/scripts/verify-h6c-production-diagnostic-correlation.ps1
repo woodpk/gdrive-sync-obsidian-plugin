@@ -219,6 +219,18 @@ if ($stagedSourceDiffExit -eq 0) {
   $Failed = $true
 }
 
+$preSourceStatus = @(& git status --porcelain=v1 --untracked-files=all -- src)
+$preSourceStatusExit = $LASTEXITCODE
+if ($preSourceStatusExit -ne 0) {
+  Write-Evidence ("FAIL: pre-verification src/** status check exited " + $preSourceStatusExit)
+  $Failed = $true
+} elseif ($preSourceStatus.Count -eq 0) {
+  Write-Evidence "PASS: src/** has no staged, unstaged, or untracked files before verification."
+} else {
+  foreach ($line in $preSourceStatus) { Write-Evidence ("FAIL: pre-verification source status: " + [string]$line) }
+  $Failed = $true
+}
+
 if ($Failed) {
   Write-Evidence ""
   Write-Evidence "# RESULT: FAIL"
