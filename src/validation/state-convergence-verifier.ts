@@ -455,7 +455,7 @@ export class StateConvergenceVerifier {
         const result = strongest(evaluations);
         return result.status === "satisfied" ? { ...result, refs: [...result.refs, this.proof("convergence", "All declared unrelated protected paths remained unchanged.")] } : result;
       }
-      case "terminal-product-result": return this.terminalDiagnostic(postcondition.diagnostic);
+      case "terminal-product-result": return postcondition.diagnostic.component === "sync.controller" && postcondition.diagnostic.event === "sync-run-complete"\n        ? this.terminalDiagnostic(postcondition.diagnostic)\n        : this.diagnostic(postcondition.diagnostic);
     }
   }
 
