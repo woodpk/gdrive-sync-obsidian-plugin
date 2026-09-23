@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: phase6-integration
+- Source build HEAD requested: 5f3d903967dadd2375c4f5273595368ccbeb0d05
+- Verification checkout HEAD: 5f3d903967dadd2375c4f5273595368ccbeb0d05
+- Evidence publication target: origin/phase6-integration
