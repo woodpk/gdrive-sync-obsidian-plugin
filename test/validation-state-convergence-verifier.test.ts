@@ -303,3 +303,92 @@ test("read-source types do not expose production mutation authority", () => {
   }
   assert.ok(true);
 });
+
+
+function terminalEvent(
+  runId: number,
+  event: "sync-run-complete" | "sync-run-failed" | "sync-run-cancelled",
+  result: "complete" | "failed" | "cancelled",
+  sequence = 1,
+): DiagnosticEvent {
+  return {
+    timestamp: "2026-09-22T00:00:00.000Z",
+    sequence,
+    level: "info",
+    component: "sync.controller",
+    event,
+    runId,
+    platform: "desktop",
+    fields: { stage: "terminal", result },
+  };
+}
+
+function terminalOnlyRequest(
+  diagnosticRunId: number | undefined,
+): ValidationStateConvergenceRequest {
+  return {
+    run,
+    state: [{
+      kind: "terminal-product-result",
+      assertion: stateAssertion("h6c-terminal", "terminal-product-result"),
+      diagnostic: {
+        deviceId: desktopId,
+        component: "sync.controller",
+        event: "sync-run-complete",
+        ...(diagnosticRunId === undefined ? {} : { diagnosticRunId }),
+        expectedFields: { stage: "terminal", result: "complete" },
+      },
+    }],
+    convergence: [],
+  };
+}
+
+test("H6C terminal production proof requires an exact diagnostic run ID and never falls back to latest event", async () => {
+  const desktop = device(desktopId, authorityState("device-desktop"));
+  const verifier = new StateConvergenceVerifier({
+    devices: [{
+      ...desktop,
+      diagnostics: { snapshot: () => [terminalEvent(99, "sync-run-complete", "complete")] },
+    }],
+    remote: { identity, drive: remoteSource() },
+  });
+
+  const absent = await verifier.verify(terminalOnlyRequest(undefined));
+  assert.equal(absent.result.verdict, "blocked");
+
+  const wrong = await verifier.verify(terminalOnlyRequest(7));
+  assert.equal(wrong.result.verdict, "blocked");
+});
+
+test("H6C failed or cancelled exact terminal evidence cannot satisfy required completion", async () => {
+  for (const terminal of [
+    terminalEvent(7, "sync-run-failed", "failed"),
+    terminalEvent(7, "sync-run-cancelled", "cancelled"),
+  ]) {
+    const desktop = device(desktopId, authorityState("device-desktop"));
+    const verifier = new StateConvergenceVerifier({
+      devices: [{ ...desktop, diagnostics: { snapshot: () => [terminal] } }],
+      remote: { identity, drive: remoteSource() },
+    });
+    const report = await verifier.verify(terminalOnlyRequest(7));
+    assert.equal(report.result.verdict, "fail");
+  }
+});
+
+test("H6C contradictory or duplicate terminal evidence for the exact run fails closed", async () => {
+  const desktop = device(desktopId, authorityState("device-desktop"));
+  const verifier = new StateConvergenceVerifier({
+    devices: [{
+      ...desktop,
+      diagnostics: {
+        snapshot: () => [
+          terminalEvent(7, "sync-run-complete", "complete", 1),
+          terminalEvent(7, "sync-run-failed", "failed", 2),
+        ],
+      },
+    }],
+    remote: { identity, drive: remoteSource() },
+  });
+  const report = await verifier.verify(terminalOnlyRequest(7));
+  assert.equal(report.result.verdict, "fail");
+});
