@@ -13,6 +13,7 @@ import type {
 } from "../contracts";
 import type { DiagnosticComponent, DiagnosticEvent, DiagnosticFieldValue, DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { diagnosticPathKey } from "../diagnostics/diagnostic-logger";
+import { inspectExactProductionTerminal } from "../diagnostics/production-diagnostic-correlation";
 import type { DurableSynchronizationAuthorityState } from "../state/persistent-state-store";
 import { Sha256 } from "../util/sha256";
 import {
@@ -312,6 +313,48 @@ export class StateConvergenceVerifier {
     return { status: "not-observable", reason: `Required diagnostic proof ${expectation.component}/${expectation.event} is not retained.`, refs: [] };
   }
 
+  private terminalDiagnostic(expectation: ValidationDiagnosticExpectation): Evaluation {
+    const device = this.device(expectation.deviceId);
+    if (!device) return this.missingDevice(expectation.deviceId);
+    if (expectation.diagnosticRunId === undefined) {
+      return {
+        status: "not-observable",
+        reason: "Terminal production proof requires the exact production diagnostic run ID.",
+        refs: [],
+      };
+    }
+    if (expectation.component !== "sync.controller" || expectation.event !== "sync-run-complete") {
+      return {
+        status: "failed",
+        reason: "Successful terminal production proof must require sync.controller/sync-run-complete.",
+        refs: [],
+      };
+    }
+
+    const terminal = inspectExactProductionTerminal(device.diagnostics.snapshot(), expectation.diagnosticRunId);
+    if (terminal.status === "missing") {
+      return { status: "not-observable", reason: terminal.reason, refs: [] };
+    }
+    if (terminal.status === "ambiguous" || terminal.status === "contradictory") {
+      return {
+        status: "failed",
+        reason: terminal.reason,
+        refs: [this.proof("diagnostic", `Terminal evidence for diagnostic run ${expectation.diagnosticRunId} was ${terminal.status}.`)],
+      };
+    }
+    if (terminal.event.event !== expectation.event || !fieldsMatch(terminal.event, expectation.expectedFields)) {
+      return {
+        status: "failed",
+        reason: "Exact production diagnostic run reached a terminal result that contradicts the required successful completion.",
+        refs: [this.proof("diagnostic", `Exact terminal event for diagnostic run ${expectation.diagnosticRunId} contradicted required completion fields.`)],
+      };
+    }
+    return {
+      status: "satisfied",
+      refs: [this.proof("diagnostic", `Exact production terminal sync-run-complete observed for diagnostic run ${expectation.diagnosticRunId} at sequence ${terminal.event.sequence}.`)],
+    };
+  }
+
   private async evaluateState(postcondition: ValidationStatePostcondition): Promise<Evaluation> {
     switch (postcondition.kind) {
       case "local-content": return this.localPath(postcondition.deviceId, postcondition.path, "file", postcondition.content);
@@ -400,7 +443,7 @@ export class StateConvergenceVerifier {
         const result = strongest(evaluations);
         return result.status === "satisfied" ? { ...result, refs: [...result.refs, this.proof("convergence", "All declared unrelated protected paths remained unchanged.")] } : result;
       }
-      case "terminal-product-result": return this.diagnostic(postcondition.diagnostic);
+      case "terminal-product-result": return this.terminalDiagnostic(postcondition.diagnostic);
     }
   }
 
@@ -454,7 +497,7 @@ export class StateConvergenceVerifier {
       }
       case "final-reconciliation-stable": {
         if (!postcondition.deviceIds.length) return { status: "not-observable", reason: "No participant devices were supplied.", refs: [] };
-        const evaluations: Evaluation[] = [this.diagnostic(postcondition.terminalDiagnostic)];
+        const evaluations: Evaluation[] = [this.terminalDiagnostic(postcondition.terminalDiagnostic)];
         for (const deviceId of postcondition.deviceIds) {
           const loaded = await this.loadAuthority(deviceId);
           if (!loaded.state) { evaluations.push(loaded.evaluation); continue; }
