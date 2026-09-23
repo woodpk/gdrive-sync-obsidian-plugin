@@ -264,6 +264,7 @@ function productionFixture(world: World, windowsObservedPlan: SynchronizationPla
             commitStatus: "committed",
           }),
           diagnostic(3, "sync-run-complete", {
+            stage: "terminal",
             result: "complete",
           }),
         ];
@@ -481,7 +482,7 @@ function verifierDelegate(world: World): ValidationRunnerApprovedModuleDelegate 
           deviceId: windowsDeviceId,
           component: "sync.controller",
           event: "sync-run-complete",
-          expectedFields: { result: "complete" },
+          expectedFields: { stage: "terminal", result: "complete" },
         },
       });
       const report = await verifier.verify(verification);
