@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
 **Predecessor child:** See primary-stage predecessor in the session index.

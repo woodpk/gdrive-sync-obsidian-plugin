@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness

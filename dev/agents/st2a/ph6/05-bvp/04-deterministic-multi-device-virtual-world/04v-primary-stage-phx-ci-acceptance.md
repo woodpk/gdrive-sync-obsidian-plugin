@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s04-virtual-world-01`
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World

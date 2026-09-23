@@ -2,6 +2,8 @@
 
 ## Status
 
+
+**Agent name:** `agt-brain-bvp-s01-authority-archive-01`
 **COMPLETE / NON-EXECUTABLE**
 
 This child is retained as a task-history/structure record. Do not re-execute it.

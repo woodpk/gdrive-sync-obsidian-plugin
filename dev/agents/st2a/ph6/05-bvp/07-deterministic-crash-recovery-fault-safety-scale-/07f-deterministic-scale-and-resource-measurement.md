@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor child:** 07E

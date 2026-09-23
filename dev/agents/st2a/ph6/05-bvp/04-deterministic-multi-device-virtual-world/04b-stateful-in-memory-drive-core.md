@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s04-virtual-world-01`
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor child:** 04A

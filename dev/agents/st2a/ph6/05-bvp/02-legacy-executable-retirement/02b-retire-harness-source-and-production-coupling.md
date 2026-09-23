@@ -2,6 +2,8 @@
 
 ## 0. Status
 
+
+**Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`
 **Prompt maturity:** EXECUTABLE  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact accepted predecessor / implementation input SHA:** `ff87c49752844f1e52d884bcf4af94dea01c6eff`  
