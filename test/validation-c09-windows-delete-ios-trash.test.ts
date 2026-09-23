@@ -319,7 +319,10 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push("preview-manual");
       const observed = plans[previewIndex];
       previewIndex += 1;
-      if (observed) previewedPlanIds.push(String(observed.planId));
+      if (observed) {
+        previewedPlanIds.push(String(observed.planId));
+        productionDiagnostics.begin("manual", observed.planId);
+      }
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -339,9 +342,12 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
         return { status: "rejected", reason: "Focused C09 harness permits only fixed execute-plan dispatch." };
       }
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
-    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
+    currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => {
       throw new Error("Focused C09 correction tests do not require production run evidence.");
