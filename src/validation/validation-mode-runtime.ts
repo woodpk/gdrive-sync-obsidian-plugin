@@ -356,10 +356,10 @@ function productionDelegate(
         case "preview-manual":
         case "preview-verify-reconcile": {
           const cycle = parseAuthorityCycle(request.input);
-          if (cycle.status === "invalid") {
-            return { status: "blocked", summary: "Production preview authorityCycleId is malformed.", evidenceRefs: [] };
+          if (cycle.status !== "valid") {
+            return { status: "blocked", summary: "Production preview requires a valid run-scoped authorityCycleId.", evidenceRefs: [] };
           }
-          if (cycle.status === "valid") authority.beginPreview(request.run, cycle.cycleId);
+          authority.beginPreview(request.run, cycle.cycleId);
           result = request.operation === "preview-manual"
             ? await driver.dispatch({ kind: "preview-manual", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId })
             : await driver.dispatch({ kind: "preview-verify-reconcile", run: request.run, stepId: request.stepId, authorityCycleId: cycle.cycleId });
