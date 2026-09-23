@@ -234,12 +234,14 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push("preview-manual");
       const observed = plans[previewIndex];
       previewIndex += 1;
+      if (observed) productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => {
       calls.push("preview-verify-reconcile");
       const observed = plans[previewIndex];
       previewIndex += 1;
+      if (observed) productionDiagnostics.begin("verify-reconcile", observed.planId);
       return observed;
     },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
@@ -250,6 +252,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`execute:${String(action.planId)}`);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
     currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
