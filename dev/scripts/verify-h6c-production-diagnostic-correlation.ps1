@@ -89,17 +89,18 @@ if ($currentBranch) {
   Assert-Equal "branch" $currentBranch $Branch
 } elseif ($AllowDetachedWorktree) {
   Write-Evidence "- Current branch: DETACHED temporary verification worktree"
-  $remoteRequiredHead = (& git rev-parse ("origin/" + $Branch)).Trim()
-  $remoteRequiredHeadExit = $LASTEXITCODE
-  if ($remoteRequiredHeadExit -ne 0) {
-    Write-Evidence "FAIL: could not resolve origin required-branch HEAD for detached verification."
-    $Failed = $true
-  } else {
-    Assert-Equal "detached verification HEAD matches origin required branch" $head $remoteRequiredHead
-  }
 } else {
   Write-Evidence "FAIL: detached HEAD is not permitted unless -AllowDetachedWorktree is supplied."
   $Failed = $true
+}
+
+$remoteRequiredHead = (& git rev-parse ("origin/" + $Branch)).Trim()
+$remoteRequiredHeadExit = $LASTEXITCODE
+if ($remoteRequiredHeadExit -ne 0 -or -not $remoteRequiredHead) {
+  Write-Evidence "FAIL: could not resolve origin required-branch HEAD."
+  $Failed = $true
+} else {
+  Assert-Equal "verification HEAD matches origin required branch" $head $remoteRequiredHead
 }
 
 $mergeBase = (& git merge-base $BaseSha HEAD).Trim()
@@ -338,7 +339,7 @@ if ($CommitAndPushEvidence) {
   & git diff --cached --quiet -- $EvidencePath
   $stagedDiffExit = $LASTEXITCODE
   if ($stagedDiffExit -eq 0) {
-    Write-Evidence "No evidence-file change was staged; no evidence commit was created."
+    throw "Expected H6C evidence change was not staged; refusing to report a pushed evidence commit."
   } elseif ($stagedDiffExit -eq 1) {
     & git commit -m "test(h6c): record local verification evidence" -- $EvidencePath
     $gitCommitExit = $LASTEXITCODE
