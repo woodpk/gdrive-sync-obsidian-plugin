@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ProductSurfaceState, SynchronizationPlan } from "../src/contracts";
 import { contractId } from "../src/contracts";
+import type { ProductionDiagnosticCorrelation } from "../src/diagnostics/production-diagnostic-correlation";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import {
@@ -73,13 +74,21 @@ function plan(): SynchronizationPlan {
 
 function productionFixture() {
   const calls: string[] = [];
+  let diagnosticRunId = 0;
+  let correlation: ProductionDiagnosticCorrelation | undefined;
   const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const observe = (requestKind: "manual" | "verify-reconcile", observed: SynchronizationPlan): SynchronizationPlan => {
+    correlation = Object.freeze({ diagnosticRunId: ++diagnosticRunId, requestKind, planId: observed.planId });
+    return observed;
+  };
   const controller: ValidationProductionControllerPort = {
-    previewManual: async () => { calls.push("preview-manual"); return plan(); },
-    previewVerifyReconcile: async () => { calls.push("preview-verify-reconcile"); return plan(); },
+    previewManual: async () => { calls.push("preview-manual"); return observe("manual", plan()); },
+    previewVerifyReconcile: async () => { calls.push("preview-verify-reconcile"); return observe("verify-reconcile", plan()); },
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
     request: async action => { calls.push(`request:${action.kind}`); return { status: "accepted" }; },
     requestPreviewAction: async action => { calls.push(`preview-action:${action.kind}`); return { status: "accepted" }; },
+    currentDiagnosticCorrelation: () => correlation,
+    diagnosticSnapshot: () => [],
     currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No active production run evidence is expected in the local VH15 canary."); },
@@ -96,6 +105,7 @@ const canaryDefinition: ValidationRunnerScenarioDefinition = {
       module: "production-path-driver",
       operation: "preview-manual",
       requiredCompletionProof: "operation-complete",
+      input: { authorityCycleId: "vh15-canary-cycle" },
     },
     {
       stepId: validationStepId("vh15-objective-verification"),
