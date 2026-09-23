@@ -5,16 +5,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 $BaseSha = "c6daa20ad287f395a99cf88943465a9ecc3159dd"
-$ExpectedImplementationHead = "edbd13bc4c150a3d276a19ca95f02d5d8066eabd"
+$ExpectedImplementationHead = "dc0d44aa2dd2fc0f7f7abafb0b15eca3029b559b"
 $ExpectedProductControllerBlob = "876d30eec5eb36ca16fee375581c85f3c7a5fa16"
 $Branch = "phase6-h6c-production-diagnostic-correlation"
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
-$ArchivePath = Join-Path $RepoRoot "dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot"
+$ArchiveRelativePath = "dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot"
+$ArchivePath = Join-Path $RepoRoot $ArchiveRelativePath
 $ExpectedBlob = "fee7c40e715d277cea2b5e26059a86753bb316a0"
 $ExpectedSha256 = "55433da9a69d750be7aeb5cb5e6ffa77fa6ea28ba06c10fcbc81e8feab190750"
 $EvidenceRelativePath = "dev/_ca-output.md"
 $EvidencePath = Join-Path $RepoRoot $EvidenceRelativePath
 $Failed = $false
+$LastRecordedNativeExitCode = 0
 
 if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { throw "Verifier repository root does not exist: $RepoRoot" }
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "package.json") -PathType Leaf)) { throw "Verifier repository root is invalid: package.json not found under $RepoRoot" }
@@ -48,7 +50,7 @@ function Invoke-RecordedNative {
   if ($exitCode -ne 0) {
     $script:Failed = $true
   }
-  return $exitCode
+  $script:LastRecordedNativeExitCode = $exitCode
 }
 
 function Assert-Equal {
@@ -70,7 +72,7 @@ Set-Content -Path $EvidencePath -Value @(
   "",
   "- Agent: agt-ca-p6-h6c-production-diagnostic-correlation-01",
   ("- Exact base: " + $BaseSha),
-  ("- Reviewed implementation HEAD: " + $ExpectedImplementationHead),
+  ("- H6C validation implementation HEAD: " + $ExpectedImplementationHead),
   ("- Required branch: " + $Branch),
   ("- Verifier repository root: " + $RepoRoot),
   "- GitHub Actions: **NOT USED**",
@@ -142,13 +144,13 @@ if ($mergeBaseExit -ne 0 -or -not $mergeBase) {
 }
 
 Write-Evidence ""
-Write-Evidence "## Reviewed implementation pin"
+Write-Evidence "## H6C validation implementation pin"
 & git merge-base --is-ancestor $ExpectedImplementationHead HEAD
 $implementationAncestorExit = $LASTEXITCODE
 if ($implementationAncestorExit -eq 0) {
-  Write-Evidence ("PASS: reviewed implementation commit is an ancestor of verification HEAD: " + $ExpectedImplementationHead)
+  Write-Evidence ("PASS: H6C validation implementation commit is an ancestor of verification HEAD: " + $ExpectedImplementationHead)
 } elseif ($implementationAncestorExit -eq 1) {
-  Write-Evidence ("FAIL: reviewed implementation commit is not an ancestor of verification HEAD: " + $ExpectedImplementationHead)
+  Write-Evidence ("FAIL: H6C validation implementation commit is not an ancestor of verification HEAD: " + $ExpectedImplementationHead)
   $Failed = $true
 } else {
   Write-Evidence ("FAIL: implementation ancestry check exited " + $implementationAncestorExit)
@@ -158,9 +160,9 @@ if ($implementationAncestorExit -eq 0) {
 & git diff --quiet $ExpectedImplementationHead HEAD -- src
 $sourceDriftExit = $LASTEXITCODE
 if ($sourceDriftExit -eq 0) {
-  Write-Evidence "PASS: no src/** files changed after the reviewed implementation HEAD."
+  Write-Evidence "PASS: no src/** files changed after the H6C validation implementation HEAD."
 } elseif ($sourceDriftExit -eq 1) {
-  Write-Evidence "FAIL: src/** changed after the reviewed implementation HEAD."
+  Write-Evidence "FAIL: src/** changed after the H6C validation implementation HEAD."
   $sourceDrift = @(& git diff --name-only $ExpectedImplementationHead HEAD -- src)
   $sourceDriftListExit = $LASTEXITCODE
   if ($sourceDriftListExit -eq 0) {
@@ -248,18 +250,37 @@ if ($baseBlobExit -ne 0 -or -not $baseBlob) {
   $Failed = $true
 }
 
-$archiveBlobRaw = @(& git hash-object $ArchivePath)
+$archiveBlobRaw = @(& git rev-parse ("HEAD:" + $ArchiveRelativePath))
 $archiveBlobExit = $LASTEXITCODE
 if ($archiveBlobExit -eq 0) { $archiveBlob = ([string]($archiveBlobRaw -join "`n")).Trim() } else { $archiveBlob = "" }
 if ($archiveBlobExit -ne 0 -or -not $archiveBlob) {
-  Write-Evidence ("FAIL: could not hash archive file; git hash-object exited " + $archiveBlobExit)
+  Write-Evidence ("FAIL: could not resolve committed archive blob; git rev-parse exited " + $archiveBlobExit)
   $Failed = $true
 }
-$archiveSha256 = (Get-FileHash -Algorithm SHA256 -Path $ArchivePath).Hash.ToLowerInvariant()
+
+$canonicalShaScript = 'const { execFileSync } = require("node:child_process"); const { createHash } = require("node:crypto"); const bytes = execFileSync("git", ["cat-file", "blob", process.argv[1]], { encoding: null }); process.stdout.write(createHash("sha256").update(bytes).digest("hex"));'
+
+$baseCanonicalShaRaw = @(& node -e $canonicalShaScript $baseBlob 2>&1)
+$baseCanonicalShaExit = $LASTEXITCODE
+if ($baseCanonicalShaExit -eq 0) { $baseCanonicalSha256 = ([string]($baseCanonicalShaRaw -join "`n")).Trim().ToLowerInvariant() } else { $baseCanonicalSha256 = "" }
+if ($baseCanonicalShaExit -ne 0 -or -not $baseCanonicalSha256) {
+  Write-Evidence ("FAIL: canonical base Git-object SHA-256 calculation exited " + $baseCanonicalShaExit)
+  $Failed = $true
+}
+
+$archiveCanonicalShaRaw = @(& node -e $canonicalShaScript $archiveBlob 2>&1)
+$archiveCanonicalShaExit = $LASTEXITCODE
+if ($archiveCanonicalShaExit -eq 0) { $archiveCanonicalSha256 = ([string]($archiveCanonicalShaRaw -join "`n")).Trim().ToLowerInvariant() } else { $archiveCanonicalSha256 = "" }
+if ($archiveCanonicalShaExit -ne 0 -or -not $archiveCanonicalSha256) {
+  Write-Evidence ("FAIL: canonical archive Git-object SHA-256 calculation exited " + $archiveCanonicalShaExit)
+  $Failed = $true
+}
+
 Assert-Equal "base Git blob" $baseBlob $ExpectedBlob
-Assert-Equal "archive Git blob" $archiveBlob $ExpectedBlob
-Assert-Equal "archive/base byte equivalence" $archiveBlob $baseBlob
-Assert-Equal "archive SHA-256" $archiveSha256 $ExpectedSha256
+Assert-Equal "committed archive Git blob" $archiveBlob $ExpectedBlob
+Assert-Equal "archive/base canonical blob equality" $archiveBlob $baseBlob
+Assert-Equal "canonical base Git-object SHA-256" $baseCanonicalSha256 $ExpectedSha256
+Assert-Equal "canonical archive Git-object SHA-256" $archiveCanonicalSha256 $ExpectedSha256
 
 Write-Evidence ""
 Write-Evidence "## Scope and frozen-source checks"
@@ -316,7 +337,7 @@ Write-Evidence "HUNK 2: diagnostic metadata exposure - adds the non-authoritativ
 Write-Evidence "HUNK 3: diagnostic run creation + propagation + metadata exposure + diagnostic event emission - exposes read-only correlation/snapshot seams; manual and Verify/Reconcile previews begin diagnostic runs and pass them into existing planning."
 Write-Evidence "HUNK 4: diagnostic run propagation - binds the existing semantic plan ID to the already-created diagnostic run after planning, without changing the plan."
 Write-Evidence "HUNK 5: diagnostic lifecycle termination + diagnostic run creation + propagation + diagnostic event emission - terminates a superseded preview diagnostic scope before conflict resolution, creates the conflict-resolution diagnostic run, and passes only its run ID into the existing resolution-plan execution."
-Write-Evidence ("PASS: current src/** is mechanically pinned to reviewed implementation HEAD " + $ExpectedImplementationHead + "; the reviewed hunk classifications below therefore apply to the verified source.")
+Write-Evidence ("PASS: current src/** is mechanically pinned to H6C validation implementation HEAD " + $ExpectedImplementationHead + "; the production-controller blob is separately pinned to the reviewed H6C production controller.")
 Write-Evidence "PASS: reviewed production hunks are confined to the H6C authorized diagnostic-only categories."
 Write-Evidence "PASS: reviewed production hunks do not change planner inputs/outputs, operation selection/order, execution eligibility, mutation calls/results, synchronization authority state, conflict resolution choice semantics, or recovery decisions."
 
@@ -329,7 +350,19 @@ Write-Evidence "Terminal result: inspectExactProductionTerminal requires the exa
 Write-Evidence "Fail-closed: missing, wrong-run, cross-run/cycle, ambiguous, missing-terminal, contradictory, failed, and cancelled cases are covered by focused regressions; request acceptance alone is non-authoritative."
 
 Invoke-RecordedNative "Dependency install" "npm" @("ci")
+
+Write-Evidence ""
+Write-Evidence "## Focused test-build preparation"
+$testBuildPath = Join-Path $RepoRoot ".test-build"
+if (Test-Path -LiteralPath $testBuildPath) {
+  Remove-Item -LiteralPath $testBuildPath -Recurse -Force
+  Write-Evidence "PASS: removed stale .test-build before test TypeScript compilation."
+} else {
+  Write-Evidence "PASS: no stale .test-build existed before test TypeScript compilation."
+}
+
 Invoke-RecordedNative "Test TypeScript compilation" "npx" @("tsc", "-p", "tsconfig.test.json")
+$testCompilationExit = $LastRecordedNativeExitCode
 
 $focusedTests = @(
   ".test-build/test/phase6-h6c-production-diagnostic-correlation.test.js",
@@ -351,7 +384,14 @@ $focusedTests = @(
   ".test-build/test/phase6-alpha-mixed-plan-isolation.test.js",
   ".test-build/test/phase6-a03-first-sync-conflict-resolution-authority.test.js"
 )
-Invoke-RecordedNative "Focused H6C/diagnostic/controller/runtime/convergence/mixed-plan/conflict regressions" "node" (@("--test") + $focusedTests)
+if ($testCompilationExit -eq 0) {
+  Invoke-RecordedNative "Focused H6C/diagnostic/controller/runtime/convergence/mixed-plan/conflict regressions" "node" (@("--test") + $focusedTests)
+} else {
+  Write-Evidence ""
+  Write-Evidence "## Focused H6C/diagnostic/controller/runtime/convergence/mixed-plan/conflict regressions"
+  Write-Evidence "NOT RUN - prerequisite test TypeScript compilation failed; stale or partially emitted .test-build output is non-authoritative."
+}
+
 Invoke-RecordedNative "Typecheck" "npm" @("run", "typecheck")
 Invoke-RecordedNative "Complete automated test suite" "npm" @("test")
 Invoke-RecordedNative "Build" "npm" @("run", "build")
@@ -363,9 +403,9 @@ Write-Evidence "## Post-verification source-integrity gate"
 & git merge-base --is-ancestor $ExpectedImplementationHead HEAD
 $postImplementationAncestorExit = $LASTEXITCODE
 if ($postImplementationAncestorExit -eq 0) {
-  Write-Evidence ("PASS: reviewed implementation commit remains an ancestor after verification: " + $ExpectedImplementationHead)
+  Write-Evidence ("PASS: H6C validation implementation commit remains an ancestor after verification: " + $ExpectedImplementationHead)
 } elseif ($postImplementationAncestorExit -eq 1) {
-  Write-Evidence "FAIL: reviewed implementation commit is no longer an ancestor after verification."
+  Write-Evidence "FAIL: H6C validation implementation commit is no longer an ancestor after verification."
   $Failed = $true
 } else {
   Write-Evidence ("FAIL: post-verification implementation ancestry check exited " + $postImplementationAncestorExit)
