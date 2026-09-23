@@ -330,6 +330,14 @@ export class StateConvergenceVerifier {
         refs: [],
       };
     }
+    const expectedResult = expectation.expectedFields?.result;
+    if (expectedResult !== "complete" && expectedResult !== "partial") {
+      return {
+        status: "failed",
+        reason: "Terminal production proof must declare the exact expected successful result (complete or partial).",
+        refs: [],
+      };
+    }
 
     const terminal = inspectExactProductionTerminal(device.diagnostics.snapshot(), expectation.diagnosticRunId);
     if (terminal.status === "missing") {
@@ -342,7 +350,11 @@ export class StateConvergenceVerifier {
         refs: [this.proof("diagnostic", `Terminal evidence for diagnostic run ${expectation.diagnosticRunId} was ${terminal.status}.`)],
       };
     }
-    if (terminal.event.event !== expectation.event || !fieldsMatch(terminal.event, expectation.expectedFields)) {
+    if (
+      terminal.event.event !== expectation.event
+      || terminal.result !== expectedResult
+      || !fieldsMatch(terminal.event, expectation.expectedFields)
+    ) {
       return {
         status: "failed",
         reason: "Exact production diagnostic run reached a terminal result that contradicts the required successful completion.",
