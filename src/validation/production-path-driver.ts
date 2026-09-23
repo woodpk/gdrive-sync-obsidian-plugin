@@ -164,9 +164,9 @@ function isSupportedObservedConflictResolution(value: unknown): value is "keep-l
 /**
  * Thin validation-only adapter over ProductRuntime/ProductController.
  *
- * It deliberately returns request acknowledgement rather than mutation success.
- * Physical success remains established by production execution plus independent
- * validation evidence/verifiers.
+ * Request acceptance alone is non-authoritative. For H6C-supported execution
+ * paths, production outcome is established only from the exact correlated
+ * sync.controller terminal diagnostic; state/convergence remains independently verified.
  */
 export class ValidationProductionPathDriver {
   private readonly observedPlanByCycle = new Map<string, { readonly planId: SynchronizationPlan["planId"]; readonly binding: ValidationProductionDiagnosticBinding }>();
