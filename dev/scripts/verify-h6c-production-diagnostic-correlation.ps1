@@ -5,12 +5,24 @@ param(
 
 $ErrorActionPreference = "Stop"
 $BaseSha = "c6daa20ad287f395a99cf88943465a9ecc3159dd"
+$ExpectedImplementationHead = "edbd13bc4c150a3d276a19ca95f02d5d8066eabd"
+$ExpectedProductControllerBlob = "876d30eec5eb36ca16fee375581c85f3c7a5fa16"
 $Branch = "phase6-h6c-production-diagnostic-correlation"
-$ArchivePath = "dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot"
+$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
+$ArchivePath = Join-Path $RepoRoot "dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot"
 $ExpectedBlob = "fee7c40e715d277cea2b5e26059a86753bb316a0"
 $ExpectedSha256 = "55433da9a69d750be7aeb5cb5e6ffa77fa6ea28ba06c10fcbc81e8feab190750"
-$EvidencePath = "dev/_ca-output.md"
+$EvidencePath = Join-Path $RepoRoot "dev/_ca-output.md"
 $Failed = $false
+
+if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { throw "Verifier repository root does not exist: $RepoRoot" }
+if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "package.json") -PathType Leaf)) { throw "Verifier repository root is invalid: package.json not found under $RepoRoot" }
+Set-Location -LiteralPath $RepoRoot
+$resolvedRoot = (& git rev-parse --show-toplevel).Trim()
+$resolvedRootExit = $LASTEXITCODE
+if ($resolvedRootExit -ne 0 -or -not $resolvedRoot) { throw "Verifier could not resolve its own Git repository root." }
+$resolvedRootFull = [System.IO.Path]::GetFullPath($resolvedRoot)
+if ($resolvedRootFull -ne $RepoRoot) { throw ("Verifier repository-root mismatch. Script root resolved to " + $RepoRoot + " but Git resolved " + $resolvedRootFull) }
 
 function Write-Evidence {
   param([string]$Text)
@@ -55,7 +67,9 @@ Set-Content -Path $EvidencePath -Value @(
   "",
   "- Agent: agt-ca-p6-h6c-production-diagnostic-correlation-01",
   ("- Exact base: " + $BaseSha),
+  ("- Reviewed implementation HEAD: " + $ExpectedImplementationHead),
   ("- Required branch: " + $Branch),
+  ("- Verifier repository root: " + $RepoRoot),
   "- GitHub Actions: **NOT USED**",
   "- PHX-CI: **NOT RUN**",
   "- Physical Google Drive validation: **NOT RUN**",
@@ -95,6 +109,58 @@ if ($mergeBaseExit -ne 0) {
   $Failed = $true
 } else {
   Assert-Equal "merge base" $mergeBase $BaseSha
+}
+
+Write-Evidence ""
+Write-Evidence "## Reviewed implementation pin"
+& git merge-base --is-ancestor $ExpectedImplementationHead HEAD
+$implementationAncestorExit = $LASTEXITCODE
+if ($implementationAncestorExit -eq 0) {
+  Write-Evidence ("PASS: reviewed implementation commit is an ancestor of verification HEAD: " + $ExpectedImplementationHead)
+} elseif ($implementationAncestorExit -eq 1) {
+  Write-Evidence ("FAIL: reviewed implementation commit is not an ancestor of verification HEAD: " + $ExpectedImplementationHead)
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: implementation ancestry check exited " + $implementationAncestorExit)
+  $Failed = $true
+}
+
+& git diff --quiet $ExpectedImplementationHead HEAD -- src
+$sourceDriftExit = $LASTEXITCODE
+if ($sourceDriftExit -eq 0) {
+  Write-Evidence "PASS: no src/** files changed after the reviewed implementation HEAD."
+} elseif ($sourceDriftExit -eq 1) {
+  Write-Evidence "FAIL: src/** changed after the reviewed implementation HEAD."
+  $sourceDrift = @(& git diff --name-only $ExpectedImplementationHead HEAD -- src)
+  $sourceDriftListExit = $LASTEXITCODE
+  if ($sourceDriftListExit -eq 0) {
+    foreach ($file in $sourceDrift) { Write-Evidence ("SOURCE DRIFT: " + $file) }
+  } else {
+    Write-Evidence ("FAIL: could not enumerate source drift; git diff exited " + $sourceDriftListExit)
+  }
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: source-drift git diff --quiet exited " + $sourceDriftExit)
+  $Failed = $true
+}
+
+$reviewedProductBlob = (& git rev-parse ($ExpectedImplementationHead + ":src/product/product-controller-base.ts")).Trim()
+$reviewedProductBlobExit = $LASTEXITCODE
+$currentProductBlob = (& git rev-parse ("HEAD:src/product/product-controller-base.ts")).Trim()
+$currentProductBlobExit = $LASTEXITCODE
+if ($reviewedProductBlobExit -ne 0 -or $currentProductBlobExit -ne 0) {
+  Write-Evidence "FAIL: could not resolve reviewed/current product-controller-base.ts blob."
+  $Failed = $true
+} else {
+  Assert-Equal "reviewed product-controller-base.ts blob" $reviewedProductBlob $ExpectedProductControllerBlob
+  Assert-Equal "current product-controller-base.ts blob" $currentProductBlob $ExpectedProductControllerBlob
+}
+
+if ($Failed) {
+  Write-Evidence ""
+  Write-Evidence "# RESULT: FAIL"
+  Write-Evidence "Verification stopped before dependency install/tests because the reviewed source implementation pin failed."
+  exit 1
 }
 
 Write-Evidence ""
@@ -166,8 +232,9 @@ Write-Evidence "HUNK 2: diagnostic metadata exposure - adds the non-authoritativ
 Write-Evidence "HUNK 3: diagnostic run creation + propagation + metadata exposure + diagnostic event emission - exposes read-only correlation/snapshot seams; manual and Verify/Reconcile previews begin diagnostic runs and pass them into existing planning."
 Write-Evidence "HUNK 4: diagnostic run propagation - binds the existing semantic plan ID to the already-created diagnostic run after planning, without changing the plan."
 Write-Evidence "HUNK 5: diagnostic lifecycle termination + diagnostic run creation + propagation + diagnostic event emission - terminates a superseded preview diagnostic scope before conflict resolution, creates the conflict-resolution diagnostic run, and passes only its run ID into the existing resolution-plan execution."
-Write-Evidence "PASS: every production hunk is classified within the H6C authorized diagnostic-only categories."
-Write-Evidence "PASS: no production hunk changes planner inputs/outputs, operation selection/order, execution eligibility, mutation calls/results, synchronization authority state, conflict resolution choice semantics, or recovery decisions."
+Write-Evidence ("PASS: current src/** is mechanically pinned to reviewed implementation HEAD " + $ExpectedImplementationHead + "; the reviewed hunk classifications below therefore apply to the verified source.")
+Write-Evidence "PASS: reviewed production hunks are confined to the H6C authorized diagnostic-only categories."
+Write-Evidence "PASS: reviewed production hunks do not change planner inputs/outputs, operation selection/order, execution eligibility, mutation calls/results, synchronization authority state, conflict resolution choice semantics, or recovery decisions."
 
 Write-Evidence ""
 Write-Evidence "## Correlation-path audit"
@@ -238,14 +305,26 @@ if ($Failed) {
 
 if ($CommitAndPushEvidence) {
   & git add -- $EvidencePath
-  if ($LASTEXITCODE -ne 0) { throw "git add evidence failed." }
+  $gitAddExit = $LASTEXITCODE
+  if ($gitAddExit -ne 0) { throw ("git add evidence failed: " + $gitAddExit) }
+
   & git diff --cached --quiet -- $EvidencePath
-  $hasStagedEvidence = $LASTEXITCODE -ne 0
-  if ($hasStagedEvidence) {
+  $stagedDiffExit = $LASTEXITCODE
+  if ($stagedDiffExit -eq 0) {
+    Write-Evidence "No evidence-file change was staged; no evidence commit was created."
+  } elseif ($stagedDiffExit -eq 1) {
     & git commit -m "test(h6c): record local verification evidence" -- $EvidencePath
-    if ($LASTEXITCODE -ne 0) { throw "git commit evidence failed." }
+    $gitCommitExit = $LASTEXITCODE
+    if ($gitCommitExit -ne 0) { throw ("git commit evidence failed: " + $gitCommitExit) }
+    $evidenceCommit = (& git rev-parse HEAD).Trim()
+    $evidenceCommitExit = $LASTEXITCODE
+    if ($evidenceCommitExit -ne 0 -or -not $evidenceCommit) { throw "could not resolve evidence commit HEAD after commit." }
+    Write-Evidence ("Evidence commit: " + $evidenceCommit)
     & git push origin ("HEAD:" + $Branch)
-    if ($LASTEXITCODE -ne 0) { throw "git push evidence failed." }
+    $gitPushExit = $LASTEXITCODE
+    if ($gitPushExit -ne 0) { throw ("git push evidence failed: " + $gitPushExit) }
+  } else {
+    throw ("git diff --cached --quiet failed: " + $stagedDiffExit)
   }
 }
 
