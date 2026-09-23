@@ -33,10 +33,11 @@ Required end state:
 Before verification:
 
 1. fetch/prune origin;
-2. verify `origin/phase6-integration` resolves exactly to `dd8f5f7d65598a2ec175627a6749316119b521c0`;
-3. if it does not, stop for supervisor rebind;
-4. verify the branch's `phx-ci.json` and use its exact installed deployed runtime;
-5. do not modify production/test/build/governance/tasking files in this verification task.
+2. verify `dd8f5f7d65598a2ec175627a6749316119b521c0` is an ancestor of current `origin/phase6-integration`;
+3. verify every path changed on `phase6-integration` after `dd8f5f7d65598a2ec175627a6749316119b521c0` is under `dev/**` only; if any later change touches `src/**`, `test/**`, package/build configuration, Taskfiles, `phx-ci.json`, or another executable/build surface, stop for supervisor rebind;
+4. treat `dd8f5f7d65598a2ec175627a6749316119b521c0` as the immutable S02 implementation-under-test SHA and the current later `phase6-integration` tip only as supervisor/tasking metadata;
+5. verify the target branch's `phx-ci.json` and use its exact installed deployed runtime;
+6. do not modify production/test/build/governance/tasking files in this verification task.
 
 This task has **no production-code repair authority**.
 
