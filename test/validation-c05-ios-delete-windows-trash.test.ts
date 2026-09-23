@@ -15,7 +15,7 @@ import {
   type ValidationProductionDriverRequest,
 } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationFixtureDescriptor } from "../src/validation/fixture-manager";
-import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";\nimport { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   validationDeviceId,
   validationDeviceIdentity,
@@ -174,7 +174,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   const previewedPlanIds: string[] = [];
   const executedPlanIds: string[] = [];
   let physicalExecutionRequests = 0;
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };\n  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -195,13 +195,13 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push(`request:${action.kind}`);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push(`preview-action:${action.kind}`);
       physicalExecutionRequests += 1;
       executedPlanIds.push(String(action.planId));
       return { status: "accepted" };
     },
-    currentSurface: () => surface,
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => {
       throw new Error("C05 correction tests do not require active production run evidence.");
