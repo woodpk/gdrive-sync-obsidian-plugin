@@ -238,6 +238,7 @@ class C08World {
       const plan = plans[index];
       if (!plan) return undefined;
       this.previewedPlanIds.push(String(plan.planId));
+      this.productionDiagnostics.begin("manual", plan.planId);
       return plan;
     },
     previewVerifyReconcile: async () => undefined,
@@ -250,6 +251,7 @@ class C08World {
       this.actions.push(action);
       this.executedPlanIds.push(String(action.planId));
       this.apply(String(action.planId));
+      if (diagnosticRunId !== undefined) this.productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" as const };
     },
     currentDiagnosticCorrelation: () => this.productionDiagnostics.current(),\n    diagnosticSnapshot: () => this.productionDiagnostics.snapshot(),\n    currentSurface: (): ProductSurfaceState => ({ status: { kind: "idle-ready" }, conflicts: [] }),
