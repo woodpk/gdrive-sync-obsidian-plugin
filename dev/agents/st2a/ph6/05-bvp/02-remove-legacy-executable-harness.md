@@ -41,15 +41,29 @@ The following replacement rules are controlling:
 
 ## 2. Base / Drift Gate
 
+The **implementation base is frozen** at the exact locally verified BVP-S01 evidence commit:
+
+`S02_INPUT_SHA = 6da8794b947c51b6e5cc4a15a467215d2fe37831`
+
+The active `phase6-integration` branch may be ahead of that SHA **only by supervisor tasking/authority documentation commits required to dispatch S02**.
+
 Before editing:
 
 1. fetch/prune origin;
 2. resolve `origin/phase6-integration`;
-3. hard-stop unless it equals exactly `6da8794b947c51b6e5cc4a15a467215d2fe37831`;
-4. verify `dev/_ca-output.md` begins exactly `STATUS: COMPLETE`;
-5. create `bvp-s02-remove-legacy-harness` from exactly `6da8794b947c51b6e5cc4a15a467215d2fe37831`.
+3. verify `S02_INPUT_SHA` is an ancestor of the current `origin/phase6-integration`;
+4. compare `S02_INPUT_SHA..origin/phase6-integration` and hard-stop if that range changes anything outside:
+   - `dev/agents/**`;
+   - `dev/planning-and-building/project-state.yaml`;
+   - `dev/agents/agent-to-agent-communication.md`;
+   - other clearly tasking-only `dev/**` authority metadata explicitly added by the supervisor for S02 dispatch;
+5. hard-stop if the range contains any change under `src/**`, `test/**`, `scripts/**`, package/build configuration, or other executable/product surface;
+6. verify `dev/_ca-output.md` at `S02_INPUT_SHA` begins exactly `STATUS: COMPLETE`;
+7. create `bvp-s02-remove-legacy-harness` from exactly `S02_INPUT_SHA`, **not** from the later tasking tip.
 
-Do not substitute a later branch tip. If `phase6-integration` has moved, STOP and report the new SHA for supervisor re-grounding.
+Do not substitute the current `phase6-integration` tip as the implementation base. If post-S01 non-tasking changes exist, STOP and report the exact changed paths for supervisor re-grounding.
+
+The S02 prompt itself may be read from current `origin/phase6-integration` while the implementation branch is created from the frozen S02 input SHA.
 
 Do not modify the user's active checkout destructively. Use the repository execution mode already established for agent work; local verification must be safe for an active checkout.
 
