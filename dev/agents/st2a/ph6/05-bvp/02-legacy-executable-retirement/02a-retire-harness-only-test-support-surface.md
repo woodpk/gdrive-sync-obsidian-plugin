@@ -2,10 +2,13 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE  
+**Prompt maturity:** COMPLETE  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact input SHA:** `6da8794b947c51b6e5cc4a15a467215d2fe37831`  
-**Required branch:** `bvp-s02a-retire-harness-tests`
+**Required branch:** `bvp-s02a-retire-harness-tests`  
+**Accepted implementation SHA:** `cbc9b086432b9b521ab9246db4386f08b7533c55`  
+**PHX-CI evidence SHA:** `3a5c4577179fcd5e57e336c97c7632c54be639f5`  
+**Accepted integration SHA:** `ff87c49752844f1e52d884bcf4af94dea01c6eff`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
