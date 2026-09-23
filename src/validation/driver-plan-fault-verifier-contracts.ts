@@ -14,6 +14,8 @@ import {
   type SynchronizationPlan,
   type VaultPath,
 } from "../contracts";
+import type { ProductionTerminalDiagnosticResult } from "../diagnostics/production-diagnostic-correlation";
+import type { ValidationProductionDiagnosticBinding } from "./production-diagnostic-correlation";
 import type { ValidationRunIdentity, ValidationStepId } from "./run-sandbox-checkpoint-contracts";
 
 type ValidationH0BBrand<Name extends string> = string & { readonly __validationH0BBrand: Name };
@@ -61,10 +63,10 @@ export interface ValidationPlanExecutionAuthorization {
 }
 
 export type ValidationProductionDriverRequest =
-  | { readonly kind: "preview-manual"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId }
-  | { readonly kind: "preview-verify-reconcile"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId }
+  | { readonly kind: "preview-manual"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly authorityCycleId: string }
+  | { readonly kind: "preview-verify-reconcile"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly authorityCycleId: string }
   | { readonly kind: "run-automatic"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly trigger: "startup-resume" | "local-change" | "periodic" }
-  | { readonly kind: "execute-asserted-plan"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly authorization: ValidationPlanExecutionAuthorization }
+  | { readonly kind: "execute-asserted-plan"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId; readonly authorityCycleId: string; readonly authorization: ValidationPlanExecutionAuthorization }
   | {
       readonly kind: "resolve-observed-conflict";
       readonly run: ValidationRunIdentity;
@@ -77,9 +79,29 @@ export type ValidationProductionDriverRequest =
 
 /** Driver acknowledgement never claims that a production mutation succeeded. */
 export type ValidationProductionDriverResult =
-  | { readonly status: "plan-observed"; readonly run: ValidationRunIdentity; readonly plan: SynchronizationPlan }
+  | {
+      readonly status: "plan-observed";
+      readonly run: ValidationRunIdentity;
+      readonly plan: SynchronizationPlan;
+      readonly diagnosticBinding: ValidationProductionDiagnosticBinding;
+    }
   | { readonly status: "no-plan-observed"; readonly run: ValidationRunIdentity; readonly reason: string }
-  | { readonly status: "request-accepted"; readonly run: ValidationRunIdentity; readonly requestKind: Exclude<ValidationProductionDriverRequestKind, "preview-manual" | "preview-verify-reconcile">; readonly productionOutcomeEstablished: false }
+  | {
+      readonly status: "request-accepted";
+      readonly run: ValidationRunIdentity;
+      readonly requestKind: Exclude<ValidationProductionDriverRequestKind, "preview-manual" | "preview-verify-reconcile">;
+      readonly productionOutcomeEstablished: false;
+      readonly diagnosticBinding?: ValidationProductionDiagnosticBinding;
+      readonly terminalProofReason?: string;
+    }
+  | {
+      readonly status: "request-accepted";
+      readonly run: ValidationRunIdentity;
+      readonly requestKind: "execute-asserted-plan" | "resolve-observed-conflict";
+      readonly productionOutcomeEstablished: true;
+      readonly diagnosticBinding: ValidationProductionDiagnosticBinding;
+      readonly terminalResult: ProductionTerminalDiagnosticResult;
+    }
   | { readonly status: "request-rejected" | "request-failed"; readonly run: ValidationRunIdentity; readonly reason: string; readonly productionOutcomeEstablished: false };
 
 export interface ValidationExpectedPlanOperation {
