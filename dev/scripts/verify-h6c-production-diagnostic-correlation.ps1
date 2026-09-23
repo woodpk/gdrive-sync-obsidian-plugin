@@ -202,7 +202,11 @@ Write-Evidence "Invariant 7 PASS: BASE, mappings, tombstones, cursors, revisions
 Write-Evidence "Invariant 8 PASS: conflict-resolution user choices and synchronization semantics are unchanged."
 Write-Evidence "Invariant 9 PASS: when diagnostics are unavailable, added correlation state clears/fails closed for validation and does not alter the production synchronization path/result."
 Write-Evidence "Invariant 10 PASS: diagnostic failure remains non-authoritative and cannot change synchronization success, failure, or physical effects."
-Write-Evidence "Breaking-change gate PASS by scope + regression proof: persisted synchronization state shape, settings persistence shape, Drive protocol/metadata, synchronization contracts, planner output, executor behavior, mutation sequence, plan IDs, operation IDs, conflict outcomes, ordinary desktop/mobile behavior, and UserAction synchronization authority are unchanged."
+if ($Failed) {
+  Write-Evidence "Breaking-change gate: NOT ESTABLISHED because one or more verification commands/checks failed."
+} else {
+  Write-Evidence "Breaking-change gate PASS: persisted synchronization state shape, settings persistence shape, Drive protocol/metadata, synchronization contracts, planner output, executor behavior, mutation sequence, plan IDs, operation IDs, conflict outcomes, ordinary desktop/mobile behavior, and UserAction synchronization authority are unchanged by scope plus passing regressions."
+}
 Write-Evidence "GitHub Actions were not used."
 
 Write-Evidence ""
