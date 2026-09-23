@@ -12,7 +12,8 @@ $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 $ArchivePath = Join-Path $RepoRoot "dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot"
 $ExpectedBlob = "fee7c40e715d277cea2b5e26059a86753bb316a0"
 $ExpectedSha256 = "55433da9a69d750be7aeb5cb5e6ffa77fa6ea28ba06c10fcbc81e8feab190750"
-$EvidencePath = Join-Path $RepoRoot "dev/_ca-output.md"
+$EvidenceRelativePath = "dev/_ca-output.md"
+$EvidencePath = Join-Path $RepoRoot $EvidenceRelativePath
 $Failed = $false
 
 if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { throw "Verifier repository root does not exist: $RepoRoot" }
@@ -332,16 +333,16 @@ if ($Failed) {
 }
 
 if ($CommitAndPushEvidence) {
-  & git add -- $EvidencePath
+  & git add -- $EvidenceRelativePath
   $gitAddExit = $LASTEXITCODE
   if ($gitAddExit -ne 0) { throw ("git add evidence failed: " + $gitAddExit) }
 
-  & git diff --cached --quiet -- $EvidencePath
+  & git diff --cached --quiet -- $EvidenceRelativePath
   $stagedDiffExit = $LASTEXITCODE
   if ($stagedDiffExit -eq 0) {
     throw "Expected H6C evidence change was not staged; refusing to report a pushed evidence commit."
   } elseif ($stagedDiffExit -eq 1) {
-    & git commit -m "test(h6c): record local verification evidence" -- $EvidencePath
+    & git commit -m "test(h6c): record local verification evidence" -- $EvidenceRelativePath
     $gitCommitExit = $LASTEXITCODE
     if ($gitCommitExit -ne 0) { throw ("git commit evidence failed: " + $gitCommitExit) }
     $evidenceCommit = (& git rev-parse HEAD).Trim()
