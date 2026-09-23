@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-09-23"
+  as_of: "2026-09-15"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 — run BVP-S01 local authority/archive verification; only after passing evidence is committed may BVP-S02 be expanded from the exact verified repository state"
+    next_step: "Stage 2A / Phase 6 — after review of phase6-live-validation-harness-plan.md, generate repository-grounded H0 validation-harness tasking"
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"
@@ -825,115 +825,45 @@ decisions:
     decision: "A path-local blocked, conflicting, or transiently unstable operation must be isolated with any operation whose dependency on it cannot be disproven, while unrelated independently safe operations continue in both automatic and reviewed runs. Path attention is not run-wide execution authority: recovery/untrusted state, invalid managed-remote or authentication authority, stale-plan authority, and checkpoint-gated suspicious destruction remain global gates. Successfully committed safe operations retain normal crash-safe authoritative state; skipped paths remain uncommitted and retryable; partial runs do not advance an incompletely incorporated Drive cursor or complete the first-sync trust gate. Current skipped paths are recorded in a bounded device-local attention ledger with CSV export, outside vault synchronization scope and ordinary diagnostics."
 
   - id: DEC-301
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_automation
     decision: "Automate every remaining ordinary Phase 6 live-validation package from C03 through F03 through an internal BRAIN validation harness running inside the supported Obsidian/plugin runtimes. Appium or another external mobile UI-automation platform is not required for this plan and must not be introduced unless a later explicit decision establishes a material unmet need."
   - id: DEC-302
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_automation
     decision: "The validation harness must drive the same production planner, authoritative executor, synchronization-state authority, local-vault boundary, and Google Drive synchronization seams used by ordinary product synchronization. It must not implement an alternate synchronization engine, shadow policy, or production mutation bypass."
   - id: DEC-303
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_architecture
     decision: "The harness is decomposed into single-responsibility modules: scenario runner, validation safety sandbox, fixture manager, production-path driver, plan assertion engine, cross-device coordinator, deterministic fault-injection layer, state/convergence verifier, evidence recorder, and human checkpoint/resume controller. Shared harness contracts must be frozen before dependent parallel implementation."
   - id: DEC-304
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_safety
     decision: "Harness mutation authority is restricted to provably harness-owned disposable fixtures, explicitly disposable validation state/remotes required by a scenario, and non-secret validation coordination/evidence metadata. Ambiguous ownership fails closed; the harness may not mutate unrelated BRAIN content, canonical external BRAIN assets, credentials, or primary authoritative state merely to manufacture a test."
   - id: DEC-305
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_execution
     decision: "Before executing a harness-driven synchronization plan, the harness must assert the actual production plan against the scenario's allowed operation/safety contract. Any unexpected mutation, duplicate, conflict, destructive action, blocked operation, or recovery condition causes a pre-mutation hard stop unless that condition is explicitly expected by the scenario."
   - id: DEC-306
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_faults
     decision: "Deterministic fault injection may be implemented only through test-only adapters/fault points at existing boundaries and only while explicit validation mode is active. Injected causes must never fabricate stronger physical-effect certainty than the production system actually has; uncertain remote effects remain uncertain until physical reality is observed. Fault controls must be unreachable from ordinary product execution."
   - id: DEC-307
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_coordination
     decision: "Cross-device validation is coordinated by the internal harness without a developer-hosted automation backend or additional OAuth scope. Coordination metadata must be logically outside ordinary synchronized vault content, run-scoped, non-secret, resumable, and unable to become synchronization authority for the fixture under test."
   - id: DEC-308
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_human_checkpoints
     decision: "Genuine OS/provider-bound actions remain bounded resumable human checkpoints rather than justification for Appium: real offline/reconnect where necessary, actually stale-device conditions that cannot be forged, real Obsidian termination/restart, genuine authentication restoration where required, and disable/uninstall/reinstall/device-unlink lifecycle actions. The harness automates setup, evidence, verification, and resumption around those checkpoints."
   - id: DEC-309
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_validation_evidence
     decision: "Every harness scenario must produce objective machine-readable and human-readable evidence sufficient to determine PASS/FAIL/BLOCKED from actual plan, effect, state, identity, content/hash, convergence, fault/checkpoint, and terminal-run observations. Missing required proof is not PASS, and diagnostics/evidence must preserve existing privacy/secret rules."
   - id: DEC-310
-    status: superseded
-    superseded_by: DEC-311
+    status: locked
     category: phase6_mobile_validation
     decision: "For Phase 6 validation, iPhone and iPad are interchangeable mobile participants unless a scenario explicitly depends on a device-class-specific capability. Battery/charging-driven switching is allowed only at safe durable scenario boundaries/checkpoints; the harness/evidence must record the actual installation/device identity performing each step and must not merge distinct device authority."
-
-  - id: DEC-311
-    status: locked
-    category: phase6_validation_architecture
-    decision: "Replace the oversized internal Phase-6 validation harness with the BRAIN Verification Platform (BVP): an external repository-controlled test platform that uses deterministic virtual-world execution for most synchronization semantics and a thin validation-only live-device agent only for behavior that genuinely requires installed Windows/iOS Obsidian runtimes."
-
-  - id: DEC-312
-    status: locked
-    category: phase6_validation_architecture
-    decision: "Physically separate verification infrastructure from production: replacement platform code lives under top-level test-platform/**; production src/** must not import test-platform/**; ordinary production bundles must exclude the platform, scenarios, live validation agent, cross-device control, and validation-only UI. Any production-only BVP seam is explicitly enumerated and tightly budgeted."
-
-  - id: DEC-313
-    status: locked
-    category: phase6_validation_execution
-    decision: "Use stateful deterministic in-memory implementations of local-vault, Google Drive, device-local state, cursor/tombstone, time/order, and fault boundaries to run the real production planner/executor/state semantics for automated multi-device verification. Simulated boundaries model external reality and must not implement alternate synchronization policy."
-
-  - id: DEC-314
-    status: locked
-    category: phase6_validation_scenarios
-    decision: "Ordinary verification scenarios are typed declarative step definitions interpreted by one common external runner. Scenario-specific orchestration classes, scenario-specific production code, and scenario-specific PowerShell verification scripts are prohibited."
-
-  - id: DEC-315
-    status: locked
-    category: phase6_validation_live_devices
-    decision: "The external BVP runner owns scenario sequence, checkpoint state, assertions, evidence, and verdicts. A validation-only device agent may execute bounded addressed commands through the production path and return observations/results, but it must not contain a general scenario state machine or durable distributed suite orchestration."
-
-  - id: DEC-316
-    status: locked
-    category: phase6_validation_coordination
-    decision: "Live cross-device validation may use a minimal run/device/sequence command mailbox or relay within existing user-owned infrastructure, without a developer-hosted automation backend, token export, or additional Google OAuth scope. Coordination records are test control metadata and never synchronization authority or ordinary vault content."
-
-  - id: DEC-317
-    status: locked
-    category: phase6_validation_evidence
-    decision: "Verification verdicts derive from objective observations of production plans/results, content/hash/identity, authoritative state, remote reality, conflicts, and required platform outcomes. Production execution exposes a narrow authoritative run receipt or equivalent terminal observation when needed; diagnostics corroborate evidence but are not the test-control authority protocol."
-
-  - id: DEC-318
-    status: locked
-    category: validation_anti_drift
-    decision: "The BVP architecture is mechanically enforced by a machine-readable boundary manifest, repository-controlled PowerShell architecture guard, and architecture metrics. A failed architecture guard blocks acceptance regardless of functional test results."
-
-  - id: DEC-319
-    status: locked
-    category: validation_anti_drift
-    decision: "Initial hard complexity budgets are fixed until explicit user-approved architecture change: production BVP-only seam <=350 logical LOC across <=4 production files; BVP framework core <=4000 logical TypeScript LOC; live-device agent subset <=750 logical TypeScript LOC; ordinary declarative scenario hard maximum 200 logical LOC with <=120 target; zero scenario-specific PowerShell scripts; BVP PowerShell governance/verification <=4 scripts and <=1500 logical LOC combined; zero scenario-specific production files. Tests are not subject to a LOC ceiling."
-
-  - id: DEC-320
-    status: locked
-    category: verification_execution
-    decision: "GitHub Actions are not used for BVP build/test/CI-like verification or evidence collection. Repository-controlled PowerShell scripts under dev/scripts/ perform required local verification, capture commands/results/exit codes/architecture metrics, and write canonical evidence to dev/_ca-output.md; each local workflow also provides a small paste-ready PowerShell bootstrap that delegates to the committed verifier."
-
-  - id: DEC-321
-    status: locked
-    category: project_authority
-    decision: "All active dev/** material whose purpose is the superseded internal validation harness is moved under dev/archive/legacy-validation-harness/** during the first environment-preparation session. Archived material is historical/non-authoritative and excluded from normal task discovery and implementation grounding unless a supervisor explicitly requests historical evidence."
-
-  - id: DEC-322
-    status: locked
-    category: validation_anti_drift
-    decision: "Architecture-boundary manifest, architecture guard, metrics script, and canonical BVP verifier are supervisor-owned frozen surfaces after establishment. Ordinary coding agents may not weaken or change them. Every implementation session runs guard/metrics, and after no more than two implementation sessions the supervisor must perform a repository-level architecture review before further dispatch. New runner/router/distributed-state/coordination/evidence/persistence architectures or complexity-budget increases require explicit architecture approval before implementation."
 
 superseded_decisions:
   - id: SUP-001
@@ -989,23 +919,6 @@ superseded_decisions:
     superseded_by:
       - DEC-299
 
-  - id: SUP-008
-    status: superseded
-    earlier: "DEC-301 through DEC-310: the Phase-6 internal plugin/runtime validation-harness architecture, including its scenario runner, modular harness decomposition, internal cross-device coordinator, harness-owned checkpoint/evidence orchestration, and production validation-mode surface."
-    superseded_by:
-      - DEC-311
-      - DEC-312
-      - DEC-313
-      - DEC-314
-      - DEC-315
-      - DEC-316
-      - DEC-317
-      - DEC-318
-      - DEC-319
-      - DEC-320
-      - DEC-321
-      - DEC-322
-
 deferred_engineering:
   - "Whether to fork Google Drive Mirror directly, substantially adapt it, or selectively transplant architecture/code."
   - "Exact direct-on-device OAuth callback and code-exchange mechanics within Obsidian/iOS, subject to current Google policy and the fixed same-device/callback-isolation contract."
@@ -1019,9 +932,5 @@ deferred_engineering:
   - "Exact hashing/cache algorithms and transfer chunking/buffering mechanics."
   - "Exact large-file safeguards, concurrency limits, retry limits, and reconciliation cadence defaults."
   - "Exact device-local secure-token storage mechanism available in Obsidian on each supported platform."
+  - "Exact harness coordination transport and persistence representation, subject to DEC-307 and the no-additional-scope/no-external-backend constraints."
   - "Exact validation-mode activation mechanism and concrete module/type/file layout, subject to DEC-301 through DEC-310 and repository grounding."
-  - "Exact typed declarative scenario DSL syntax and private step-handler decomposition within DEC-314 and the fixed complexity budgets."
-  - "Exact stateful in-memory adapter data structures and deterministic time/fault primitives within DEC-313."
-  - "Exact validation-only build/entrypoint composition mechanism that preserves DEC-312 shipping separation."
-  - "Exact minimal cross-device command-mailbox/desktop-relay representation within DEC-316."
-  - "Exact canonical scenario evidence serialization within DEC-317, subject to existing privacy/secret constraints."

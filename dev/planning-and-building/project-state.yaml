@@ -1,30 +1,30 @@
-schema_version: 2
+schema_version: 3
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-09-15"
+  as_of: "2026-09-23"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
-  purpose: "Canonical current execution/progress state for supervisor re-entry. Product authority remains in target-system-specification.md and decision-register.yaml; construction decomposition remains in build-decomposition.md; Phase 6 architecture/contracts, actual repository state, accepted evidence, and later explicit user decisions remain controlling for their respective scopes."
+  purpose: "Canonical current execution/progress state for supervisor re-entry. Product authority remains in target-system-specification.md and decision-register.yaml. The BRAIN Verification Platform (BVP) planning artifacts define the active Phase-6 testing-platform architecture."
 
 repository_conventions:
-  durable_planning_state_specs_decisions:
+  durable_product_authority:
     - "dev/planning-and-building/target-system-specification.md"
     - "dev/planning-and-building/decision-register.yaml"
     - "dev/planning-and-building/build-decomposition.md"
     - "dev/planning-and-building/project-state.yaml"
     - "dev/planning-and-building/phase6-sync-architecture-foundation.md"
     - "dev/planning-and-building/phase6-sync-contract-freeze.md"
-    - "dev/planning-and-building/phase6-live-validation-harness-plan.md"
+  active_bvp_authority:
+    - "dev/planning-and-building/testing-platform-target-system-specification.md"
+    - "dev/planning-and-building/testing-platform-build-decomposition.md"
+    - "dev/planning-and-building/testing-platform-requirement-coverage.md"
+    - "dev/planning-and-building/testing-platform-build-session-specifications.md"
+    - "dev/governance/testing-platform-boundary.yaml"
   coding_agent_task_prompts: "dev/agents/"
-  evidence: "dev/evidence/"
-  build_decomposition_location: "dev/planning-and-building/build-decomposition.md"
-  build_decomposition_location_authority: "The user restored the authoritative Stage 1 build decomposition to dev/planning-and-building/. Do not move it elsewhere without explicit user authorization."
-
-current_design_goal:
-  status: aligned
-  target: "Complete the specified private/local-first BRAIN Obsidian Google Drive synchronization plugin for Windows and iPhone/iOS, with correctness, recoverability, conflict safety, destructive-operation safety, same-device user-owned Google authentication, and sufficient objective Phase 6 evidence for independent Stage 3 validation."
-  no_product_goal_change_required: true
+  evidence: "dev/evidence/ and dev/_ca-output.md"
+  scripts: "dev/scripts/"
+  archive_policy: "dev/archive/** is historical and non-authoritative. Do not use it for normal task discovery, implementation grounding, or architecture derivation unless a supervisor explicitly requests a bounded historical lookup."
 
 stage_state:
   stage_0: complete
@@ -36,119 +36,52 @@ stage_state:
   stage_3_authorized_now: false
 
 stage_2a_phases:
-  phase_1:
-    name: "Repository Foundation and Frozen Shared Contracts"
-    status: complete_supervisor_approved
-  phase_2:
-    name: "Core Synchronization Semantics and Durable State"
-    status: complete_supervisor_approved
-  phase_3:
-    name: "Google Drive and OAuth Boundary"
-    status: complete_supervisor_approved
-  phase_4:
-    name: "Obsidian Local, Platform, and Configuration Boundary"
-    status: complete_supervisor_approved
-  phase_5:
-    name: "Integrated Synchronization Product and User Workflows"
-    status: complete_supervisor_approved
+  phase_1: { name: "Repository Foundation and Frozen Shared Contracts", status: complete_supervisor_approved }
+  phase_2: { name: "Core Synchronization Semantics and Durable State", status: complete_supervisor_approved }
+  phase_3: { name: "Google Drive and OAuth Boundary", status: complete_supervisor_approved }
+  phase_4: { name: "Obsidian Local, Platform, and Configuration Boundary", status: complete_supervisor_approved }
+  phase_5: { name: "Integrated Synchronization Product and User Workflows", status: complete_supervisor_approved }
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_live_validation_and_validation_harness_planning
+    status: active_bvp_transition
     integration_branch: "phase6-integration"
     completion_gate: not_yet_satisfied
 
-current_repository_state:
-  code_repository: "woodpk/gdrive-sync-obsidian-plugin"
-  phase6_integration_snapshot_at_harness_planning_branch_creation: "a2966032e2ebd605ea75b33ed5234fb115f8c7a3"
-  harness_planning_branch: "phase6-live-validation-harness-planning"
-  validation_build:
-    plugin_version: "0.1.18"
-    manifest_isDesktopOnly: false
-    status: "current real-device validation build"
-  latency_workstream:
-    status: complete_and_integrated_before_current_live_validation
-    note: "LAT-01 through LAT-07 completed the bounded synchronization latency/efficiency refactor while retaining the frozen safety/authority contracts. Real-device timing evidence is being collected under 0.1.18."
+bvp_transition:
+  bvp_s01_start_sha: "efb9a0bb88084d706dc535f2826e4df956cfd57d"
+  branch: "phase6-integration"
+  status: persisted_pending_local_verification
+  legacy_architecture: superseded
+  legacy_dev_material: "moved to dev/archive/legacy-validation-harness/**"
+  next_session_after_s01_acceptance: "BVP-S02 — remove legacy executable harness and production coupling"
+  hard_rule: "No replacement BVP implementation begins until BVP-S01 local archive/authority verification passes."
 
-live_validation:
-  status: active
-  protocol_directory: "dev/agents/st2a/ph6/04-lv/01-test/"
-  shared_protocol: "dev/agents/st2a/ph6/04-lv/01-test/00-live-validation-protocol.md"
-  completed_before_current_point:
-    - "C01/C02 predecessor mobile setup/create validation has sufficient accepted history to permit C03 work under current supervisor state."
-  canonical_current_scenario:
-    id: C03
-    file: "dev/agents/st2a/ph6/04-lv/01-test/C03-ios-update-windows-download.md"
-    title: "iOS Edit -> Windows Download/Update"
-    status: in_progress_not_yet_passed
-    note: "A separate controlled desktop-to-iPad download/create exercise passed under 0.1.18, but it is not the canonical C03 and does not satisfy C03."
-  recent_real_device_observations:
-    - "Mobile warm preview with 18 no-ops was measured at approximately 2.547 seconds in diagnostics."
-    - "Controlled one-file mobile download/create preview appeared in 2.798 seconds and execution completed in approximately 9.055 seconds with verified file contents."
-    - "A desktop execution involving the controlled remote-download fixture was observed by the operator at approximately 30 seconds with no error and final status idle-ready."
-  mobile_device_policy:
-    status: user_authorized
-    rule: "iPhone and iPad may be used interchangeably as the mobile validation participant unless a scenario genuinely depends on a device-class-specific capability. Device identity/installation provenance must still be recorded and switching must occur only at a safe scenario boundary/checkpoint."
-
-phase_6_live_validation_harness:
-  status: planning_approved_implementation_not_yet_dispatched
-  planning_authority: "dev/planning-and-building/phase6-live-validation-harness-plan.md"
-  scope: "Automate every existing C03 through F03 live-validation package as an internal plugin/runtime validation harness, retaining bounded resumable human checkpoints only where the operating system/provider boundary cannot credibly be controlled from inside Obsidian."
-  external_ui_automation:
-    appium_required: false
-    policy: "Do not introduce Appium or another external mobile UI-automation platform for this work unless a later explicit decision finds a material validation requirement that the internal harness plus bounded human checkpoints cannot satisfy."
-  approved_modules:
-    - validation_scenario_runner
-    - validation_safety_sandbox
-    - fixture_manager
-    - production_path_driver
-    - plan_assertion_engine
-    - cross_device_coordinator
-    - deterministic_fault_injection_layer
-    - state_and_convergence_verifier
-    - evidence_recorder
-    - human_checkpoint_resume_controller
-  production_path_rule: "The harness must drive the same production planner/executor/state/local-vault/Google-Drive semantics used by real synchronization. It must not implement a second synchronization engine or a production bypass."
-  safety_rule: "Harness mutations are restricted to provably harness-owned disposable fixtures, disposable validation state/remotes explicitly required by a scenario, and non-secret validation coordination/evidence metadata."
-  suite_scope:
-    first: C03
-    last: F03
-    scenario_count: 23
-  human_checkpoint_scenarios:
-    D05: "real offline/reconnect action where platform control is unavailable"
-    D06: "actual stale-device condition; remain BLOCKED if it cannot be safely induced without forging production state"
-    E01: "real Obsidian termination/restart"
-    E06: "real authentication revocation/restoration where required by the live provider-bound subcase"
-    F03: "disable/uninstall/reinstall/device-unlink lifecycle actions"
-  build_decomposition:
-    H0: "repository grounding and harness contract foundation"
-    H1: "safety sandbox and fixture subsystem"
-    H2: "production driver and plan assertions"
-    H3: "state verifier and evidence recorder"
-    H4: "fault-injection adapters"
-    H5: "cross-device coordination and checkpoint/resume"
-    H6: "harness core integration"
-    H7: "C03-C09 scenario package"
-    H8: "D01-D06 scenario package"
-    H9: "E01-E07 scenario package"
-    H10: "F01-F03 scenario package"
-    H11: "integrated verification and real-device canary"
-
-remaining_phase_6_requirements:
-  - "Complete canonical C03 through F03 behavioral validation, preferably through the approved internal harness once built."
-  - "Retain real Windows and mobile runtime evidence where unit/integration fakes cannot prove platform behavior."
-  - "Retain fault/interruption, crash/recovery, destructive-safety, auth/security, path/filesystem, large-transfer/resource, lifecycle, and traceability evidence required by the target specification."
-  - "Reconcile Phase 6 completion evidence and material requirement traceability before Stage 3 handoff."
-  - "Do not begin Stage 3 while any material Phase 6 acceptance requirement remains unproven or a Critical/Major construction defect remains unresolved."
+anti_drift:
+  boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
+  enforcement_start: "BVP-S03 installs the architecture guard, metrics, and canonical verification foundation before substantive replacement-platform growth."
+  no_github_actions: true
+  local_verification: "Repository-controlled PowerShell under dev/scripts/; canonical evidence in dev/_ca-output.md."
+  frozen_after_establishment:
+    - architecture_boundary_manifest
+    - architecture_guard
+    - architecture_metrics
+    - canonical_bvp_verifier
+  approval_required_for:
+    - new_runner_or_router_architecture
+    - new_distributed_test_state_machine
+    - new_coordination_or_persistence_architecture
+    - complexity_budget_increase
+    - production_test_seam_expansion_beyond_manifest
 
 hard_boundaries:
-  - "Do not move dev/planning-and-building/build-decomposition.md without explicit user authorization."
-  - "Do not redefine the target system or frozen synchronization safety/authority contracts merely to make harness implementation easier."
-  - "Do not let harness fault injection or direct fixture setup become reachable from ordinary product execution."
-  - "Do not use primary BRAIN authoritative state for scenarios that explicitly require corrupting/truncating/manipulating disposable validation state."
-  - "Do not allow an unexpected live plan to execute automatically."
-  - "Do not claim synthetic fault injection proves a genuine OS/provider transition when the scenario explicitly requires a real external transition."
+  - "Do not redefine the BRAIN target system or frozen synchronization safety/authority contracts to simplify testing."
+  - "Production src/** must not import test-platform/**."
+  - "Ordinary production bundles must exclude BVP platform/scenario/live-agent code."
+  - "Archived legacy harness material is not current authority."
+  - "GitHub Actions must not be used for build/test/verification/evidence workflows."
+  - "Do not begin Stage 3 while material Phase 6 evidence remains incomplete."
 
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Review the persisted harness planning update; then generate repository-grounded H0 implementation tasking from the actual approved repository state. No H0 or downstream coding-agent task has yet been dispatched from this plan."
+  action: "Run the committed BVP-S01 local PowerShell verification/bootstrap. If it passes and evidence is committed to phase6-integration, expand and dispatch BVP-S02 against that exact verified repository state."

@@ -1,0 +1,86 @@
+schema_version: 1
+status: authoritative_frozen_after_bvp_s01_persistence
+name: BRAIN Verification Platform architecture boundary
+
+roots:
+  production:
+    - src/
+  test_platform: test-platform/
+  active_dev: dev/
+  archive: dev/archive/
+
+import_rules:
+  production_must_not_import:
+    - test-platform/
+  test_platform_may_import_production_only_through_allowlist: true
+  scenario_specific_production_code_allowed: false
+
+shipping_rules:
+  production_bundle_must_exclude:
+    - test-platform/
+  production_validation_ui_allowed: false
+  validation_device_agent_must_be_separate_artifact_or_entrypoint: true
+
+production_seam:
+  allowlist_required: true
+  max_logical_loc: 350
+  max_files: 4
+  may_expose:
+    - read-only production run/result receipt
+    - bounded invocation of already-authorized production actions for validation build composition
+  must_not_expose:
+    - scenario orchestration
+    - test persistence
+    - cross-device coordination
+    - evidence aggregation
+    - alternate synchronization policy
+    - test-only production mutation bypass
+
+complexity_budgets:
+  test_platform_framework_core_logical_ts_loc_max: 4000
+  live_device_agent_logical_ts_loc_max: 750
+  ordinary_scenario_logical_loc_target: 120
+  ordinary_scenario_logical_loc_hard_max: 200
+  scenario_specific_powershell_scripts_max: 0
+  bvp_powershell_scripts_max: 4
+  bvp_powershell_combined_logical_loc_max: 1500
+  scenario_specific_production_files_max: 0
+  tests_loc_budget: null
+
+forbidden_without_explicit_architecture_approval:
+  - second_general_scenario_runner
+  - durable_distributed_scenario_state_machine
+  - platform_module_router_or_plugin_system
+  - second_cross_device_coordination_protocol
+  - second_evidence_schema_family
+  - general_test_persistence_subsystem
+  - alternate_synchronization_engine
+  - new_production_testing_bypass
+  - complexity_budget_increase
+  - architecture_guard_weakening
+
+normal_scenario_change_surface:
+  allowed:
+    - test-platform/scenarios/**
+    - test-platform/fixtures/**
+    - test-platform/test/**
+  core_change_requires_supervisor_architecture_review: true
+
+supervisor_owned_frozen_surfaces:
+  - dev/governance/testing-platform-boundary.yaml
+  - dev/scripts/Test-TestingArchitectureGuard.ps1
+  - dev/scripts/Get-TestingArchitectureMetrics.ps1
+  - dev/scripts/Invoke-TestingPlatformVerification.ps1
+
+archive_policy:
+  archive_is_non_authoritative: true
+  exclude_from_normal_grounding: true
+  active_docs_must_not_depend_on_archived_prompts: true
+
+verification:
+  github_actions_allowed: false
+  required_script_root: dev/scripts/
+  canonical_evidence: dev/_ca-output.md
+  architecture_guard_required_every_session: true
+  metrics_required_every_session: true
+  supervisor_architecture_review_after_max_implementation_sessions: 2
