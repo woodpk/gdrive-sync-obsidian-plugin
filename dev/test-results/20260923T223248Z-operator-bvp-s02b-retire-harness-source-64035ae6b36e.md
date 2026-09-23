@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s02b-retire-harness-source
+- Source build HEAD requested: 64035ae6b36ef1b6372e3153a815dbe8be72668a
+- Verification checkout HEAD: 64035ae6b36ef1b6372e3153a815dbe8be72668a
+- Evidence publication target: origin/bvp-s02b-retire-harness-source
