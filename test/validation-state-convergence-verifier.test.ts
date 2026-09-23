@@ -156,10 +156,10 @@ function diagnostics(): readonly DiagnosticEvent[] {
       sequence: 2,
       level: "info",
       component: "sync.controller",
-      event: "synchronization-run-complete",
+      event: "sync-run-complete",
       runId: 7,
       platform: "desktop",
-      fields: { result: "completed", convergenceStatus: "converged" },
+      fields: { stage: "terminal", result: "complete" },
     },
   ];
 }
@@ -229,14 +229,14 @@ function completeRequest(): ValidationStateConvergenceRequest {
       { kind: "change-cursor-or-completeness", assertion: stateAssertion("s-cursor", "change-cursor-or-completeness"), deviceId: desktopId, expectedCursor: cursor, requireRemoteComplete: true, requireNoLearnedRemoteBatches: true },
       { kind: "conflict-provenance", assertion: stateAssertion("s-conflict", "conflict-provenance"), diagnostic: { deviceId: desktopId, component: "sync.execute", event: "conflict-resolution-complete", diagnosticRunId: 7, expectedFields: { result: "resolved" } } },
       { kind: "unrelated-mutation-absence", assertion: stateAssertion("s-unrelated", "unrelated-mutation-absence"), local: [{ deviceId: desktopId, path: sentinelPath, state: "file", content: { hash: sentinelHash, sizeBytes: sentinelBytes.byteLength } }, { deviceId: mobileId, path: sentinelPath, state: "file", content: { hash: sentinelHash, sizeBytes: sentinelBytes.byteLength } }], remote: [{ path: sentinelPath, state: "live", remoteObjectId: sentinelRemoteId, content: { hash: sentinelHash, sizeBytes: sentinelBytes.byteLength }, revision: "drive-rev-s" }] },
-      { kind: "terminal-product-result", assertion: stateAssertion("s-terminal", "terminal-product-result"), diagnostic: { deviceId: desktopId, component: "sync.controller", event: "synchronization-run-complete", diagnosticRunId: 7, expectedFields: { result: "completed", convergenceStatus: "converged" } } },
+      { kind: "terminal-product-result", assertion: stateAssertion("s-terminal", "terminal-product-result"), diagnostic: { deviceId: desktopId, component: "sync.controller", event: "sync-run-complete", diagnosticRunId: 7, expectedFields: { result: "complete", stage: "terminal" } } },
     ],
     convergence: [
       { kind: "cross-device-content", assertion: convergenceAssertion("c-content", "cross-device-content"), deviceIds: [desktopId, mobileId], path: notePath, content: { hash: noteHash, sizeBytes: noteBytes.byteLength } },
       { kind: "cross-device-path", assertion: convergenceAssertion("c-path", "cross-device-path"), deviceIds: [desktopId, mobileId], path: notePath, expected: "file" },
       { kind: "cross-device-authority", assertion: convergenceAssertion("c-authority", "cross-device-authority"), deviceIds: [desktopId, mobileId], path: notePath, expectedFingerprint: String(fingerprint), expectedRemoteObjectId: noteRemoteId, expectedTombstone: false },
       { kind: "cross-device-conflict-resolution", assertion: convergenceAssertion("c-conflict", "cross-device-conflict-resolution"), deviceIds: [desktopId, mobileId], path: notePath, content: { hash: noteHash, sizeBytes: noteBytes.byteLength }, remoteObjectId: noteRemoteId },
-      { kind: "final-reconciliation-stable", assertion: convergenceAssertion("c-final", "final-reconciliation-stable"), deviceIds: [desktopId, mobileId], terminalDiagnostic: { deviceId: desktopId, component: "sync.controller", event: "synchronization-run-complete", diagnosticRunId: 7, expectedFields: { result: "completed", convergenceStatus: "converged" } }, requireRemoteComplete: true, requireNoOutstandingIntents: true, requireNoLearnedRemoteBatches: true, requireAllRecordedPathsConverged: true },
+      { kind: "final-reconciliation-stable", assertion: convergenceAssertion("c-final", "final-reconciliation-stable"), deviceIds: [desktopId, mobileId], terminalDiagnostic: { deviceId: desktopId, component: "sync.controller", event: "sync-run-complete", diagnosticRunId: 7, expectedFields: { result: "complete", stage: "terminal" } }, requireRemoteComplete: true, requireNoOutstandingIntents: true, requireNoLearnedRemoteBatches: true, requireAllRecordedPathsConverged: true },
     ],
   };
 }
@@ -264,7 +264,7 @@ test("missing completeness/terminal proof is BLOCKED, never PASS", async () => {
   const request: ValidationStateConvergenceRequest = {
     run,
     state: [{ kind: "live-trash-absence-state", assertion: stateAssertion("blocked-absence", "live-trash-absence-state"), path: missingPath, expectedState: "absent" }],
-    convergence: [{ kind: "final-reconciliation-stable", assertion: convergenceAssertion("blocked-final", "final-reconciliation-stable"), deviceIds: [desktopId], terminalDiagnostic: { deviceId: desktopId, component: "sync.controller", event: "synchronization-run-complete", diagnosticRunId: 7, expectedFields: { result: "completed" } }, requireRemoteComplete: true, requireNoOutstandingIntents: true }],
+    convergence: [{ kind: "final-reconciliation-stable", assertion: convergenceAssertion("blocked-final", "final-reconciliation-stable"), deviceIds: [desktopId], terminalDiagnostic: { deviceId: desktopId, component: "sync.controller", event: "sync-run-complete", diagnosticRunId: 7, expectedFields: { result: "complete", stage: "terminal" } }, requireRemoteComplete: true, requireNoOutstandingIntents: true }],
   };
   const report = await verifier.verify(request);
   assert.equal(report.result.verdict, "blocked");
