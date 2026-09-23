@@ -1,367 +1,61 @@
-STATUS: COMPLETE
+STATUS: BLOCKED
 
-# BVP-S01 Authority / Archive Verification Evidence
+# BVP-S02 — Exact Legacy Executable Harness Retirement Evidence
 
-- Timestamp: 2026-09-23T12:59:33.6150600-04:00
+- Agent: agt-brain-bvp-s02-remove-legacy-harness-01
 - Repository: woodpk/gdrive-sync-obsidian-plugin
-- Authority branch: phase6-integration
-- Verified HEAD: eb982c78ff94274974dfdbe916904e08ba338684
-- Verified remote authority: eb982c78ff94274974dfdbe916904e08ba338684
+- Branch: bvp-s02-remove-legacy-harness
+- S02_INPUT_SHA: 6da8794b947c51b6e5cc4a15a467215d2fe37831
+- Implementation SHA: 3155f9a94be33d4fd84cb8db1d6cf2b4559b2cd3
+- Verifier: dev/scripts/Invoke-BvpS02LegacyHarnessRetirementVerification.ps1
 - GitHub Actions used: NO
 
-## Checks
+## Drift Gate
 
-- PASS - resolve HEAD: HEAD=eb982c78ff94274974dfdbe916904e08ba338684 exit=0
-- PASS - resolve integration authority: origin/phase6-integration=eb982c78ff94274974dfdbe916904e08ba338684 exit=0
-- PASS - exact integration authority commit: HEAD=eb982c78ff94274974dfdbe916904e08ba338684 remote=eb982c78ff94274974dfdbe916904e08ba338684
-- PASS - required path dev/planning-and-building/testing-platform-target-system-specification.md: must exist
-- PASS - required path dev/planning-and-building/testing-platform-authority-transition-and-legacy-archive.md: must exist
-- PASS - required path dev/planning-and-building/testing-platform-build-decomposition.md: must exist
-- PASS - required path dev/planning-and-building/testing-platform-requirement-coverage.md: must exist
-- PASS - required path dev/planning-and-building/testing-platform-build-session-specifications.md: must exist
-- PASS - required path dev/governance/testing-platform-boundary.yaml: must exist
-- PASS - required path dev/archive/legacy-validation-harness/README.md: must exist
-- PASS - required path dev/archive/legacy-validation-harness/ARCHIVE-MANIFEST.md: must exist
-- PASS - legacy active path absent dev/planning-and-building/phase6-live-validation-harness-plan.md: must be archived
-- PASS - legacy active path absent dev/agents/st2a/ph6/04-lv/01-test: must be archived
-- PASS - legacy active path absent dev/agents/st2a/ph6/h6c/archive: must be archived
-- PASS - legacy active path absent dev/scripts/verify-h6c-production-diagnostic-correlation.ps1: must be archived
-- PASS - DEC-301 superseded: must be superseded by DEC-311
-- PASS - DEC-302 superseded: must be superseded by DEC-311
-- PASS - DEC-303 superseded: must be superseded by DEC-311
-- PASS - DEC-304 superseded: must be superseded by DEC-311
-- PASS - DEC-305 superseded: must be superseded by DEC-311
-- PASS - DEC-306 superseded: must be superseded by DEC-311
-- PASS - DEC-307 superseded: must be superseded by DEC-311
-- PASS - DEC-308 superseded: must be superseded by DEC-311
-- PASS - DEC-309 superseded: must be superseded by DEC-311
-- PASS - DEC-310 superseded: must be superseded by DEC-311
-- PASS - DEC-311 locked: replacement decision must be active
-- PASS - DEC-312 locked: replacement decision must be active
-- PASS - DEC-313 locked: replacement decision must be active
-- PASS - DEC-314 locked: replacement decision must be active
-- PASS - DEC-315 locked: replacement decision must be active
-- PASS - DEC-316 locked: replacement decision must be active
-- PASS - DEC-317 locked: replacement decision must be active
-- PASS - DEC-318 locked: replacement decision must be active
-- PASS - DEC-319 locked: replacement decision must be active
-- PASS - DEC-320 locked: replacement decision must be active
-- PASS - DEC-321 locked: replacement decision must be active
-- PASS - DEC-322 locked: replacement decision must be active
-- PASS - project state names BVP authority: required
-- PASS - archive is inert: required
-- PASS - S01 gate blocks S02: required
-- PASS - archive destination dev/archive/legacy-validation-harness/_ca-output.json: source=dev/_ca-output.json
-- PASS - archived source absent dev/_ca-output.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/_ca-output.md: source=dev/_ca-output.md
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/agent-to-agent-communication.md: source=dev/agents/agent-to-agent-communication.md
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01-continuation.md: source=dev/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01-continuation.md
-- PASS - archived source absent dev/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01-continuation.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01.md: source=dev/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/00-sup/phase6-branch-consolidation-cleanup-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-agt-ca-p6-h6c-production-diagnostic-correlation-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-agt-ca-p6-h6c-production-diagnostic-correlation-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-agt-ca-p6-h6c-production-diagnostic-correlation-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-live-validation-protocol.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-live-validation-protocol.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-live-validation-protocol.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh01-h0a-run-sandbox-checkpoint-contracts.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh01-h0a-run-sandbox-checkpoint-contracts.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh01-h0a-run-sandbox-checkpoint-contracts.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh02-h0b-driver-plan-fault-verifier-contracts.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh02-h0b-driver-plan-fault-verifier-contracts.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh02-h0b-driver-plan-fault-verifier-contracts.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh03-h0c-coordination-evidence-freeze.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh03-h0c-coordination-evidence-freeze.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh03-h0c-coordination-evidence-freeze.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh04-h1a-safety-sandbox.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh04-h1a-safety-sandbox.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh04-h1a-safety-sandbox.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh05-h1b-fixture-manager.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh05-h1b-fixture-manager.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh05-h1b-fixture-manager.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh06-h2a-production-path-driver.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh06-h2a-production-path-driver.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh06-h2a-production-path-driver.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh07-h2b-plan-assertion-engine.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh07-h2b-plan-assertion-engine.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh07-h2b-plan-assertion-engine.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh08-h3a-state-convergence-verifier.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh08-h3a-state-convergence-verifier.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh08-h3a-state-convergence-verifier.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh09-h3b-evidence-recorder.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh09-h3b-evidence-recorder.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh09-h3b-evidence-recorder.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh10-h4a-transport-coverage-faults.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh10-h4a-transport-coverage-faults.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh10-h4a-transport-coverage-faults.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh11-h4b-state-ambiguity-cancel-faults.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh11-h4b-state-ambiguity-cancel-faults.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh11-h4b-state-ambiguity-cancel-faults.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh12-h5a-cross-device-coordinator.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh12-h5a-cross-device-coordinator.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh12-h5a-cross-device-coordinator.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh13-h5b-human-checkpoint-resume.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh13-h5b-human-checkpoint-resume.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh13-h5b-human-checkpoint-resume.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh14-h6a-module-integration-runner.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh14-h6a-module-integration-runner.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh14-h6a-module-integration-runner.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh15-h6b-validation-mode-runtime-canary.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh15-h6b-validation-mode-runtime-canary.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh15-h6b-validation-mode-runtime-canary.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh16-c03-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh16-c03-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh16-c03-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh16-c03.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh16-c03.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh16-c03.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh17-c04-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh17-c04-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh17-c04-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh17-c04.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh17-c04.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh17-c04.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh18-c05-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh18-c05-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh18-c05-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh18-c05.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh18-c05.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh18-c05.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh19-c06-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh19-c06-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh19-c06-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh19-c06.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh19-c06.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh19-c06.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh20-c07-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh20-c07-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh20-c07-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh20-c07.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh20-c07.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh20-c07.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh21-c08-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh21-c08-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh21-c08-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh21-c08.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh21-c08.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh21-c08.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh22-c09-correction-01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh22-c09-correction-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh22-c09-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh22-c09.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh22-c09.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh22-c09.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh23-h7i-c-series-integration.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh23-h7i-c-series-integration.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh23-h7i-c-series-integration.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh24-d01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh24-d01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh24-d01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh25-d02.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh25-d02.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh25-d02.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh26-d03.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh26-d03.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh26-d03.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh27-d04.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh27-d04.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh27-d04.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh28-d05.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh28-d05.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh28-d05.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh29-d06.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh29-d06.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh29-d06.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh30-h8i-d-series-integration.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh30-h8i-d-series-integration.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh30-h8i-d-series-integration.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh31-e01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh31-e01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh31-e01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh32-e02.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh32-e02.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh32-e02.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh33-e03.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh33-e03.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh33-e03.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh34-e04.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh34-e04.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh34-e04.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh35-e05.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh35-e05.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh35-e05.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh36-e06.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh36-e06.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh36-e06.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh37-e07.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh37-e07.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh37-e07.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh38-h9i-e-series-integration.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh38-h9i-e-series-integration.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh38-h9i-e-series-integration.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh39-f01.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh39-f01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh39-f01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh40-f02.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh40-f02.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh40-f02.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh41-f03.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh41-f03.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh41-f03.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh42-h10i-f-series-integration.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh42-h10i-f-series-integration.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh42-h10i-f-series-integration.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh43-h11a-full-harness-integration.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh43-h11a-full-harness-integration.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh43-h11a-full-harness-integration.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/00-vh44-h11b-independent-automated-verification.md: source=dev/agents/st2a/ph6/04-lv/01-test/00-vh44-h11b-independent-automated-verification.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/00-vh44-h11b-independent-automated-verification.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/01-vh14i-final-integration-verify.md: source=dev/agents/st2a/ph6/04-lv/01-test/01-vh14i-final-integration-verify.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/01-vh14i-final-integration-verify.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/B02-windows-local-create.md: source=dev/agents/st2a/ph6/04-lv/01-test/B02-windows-local-create.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/B02-windows-local-create.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/B03-windows-local-move.md: source=dev/agents/st2a/ph6/04-lv/01-test/B03-windows-local-move.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/B03-windows-local-move.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/B04-windows-local-delete.md: source=dev/agents/st2a/ph6/04-lv/01-test/B04-windows-local-delete.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/B04-windows-local-delete.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/B05-verify-reconcile.md: source=dev/agents/st2a/ph6/04-lv/01-test/B05-verify-reconcile.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/B05-verify-reconcile.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C01-ios-install-auth-pair.md: source=dev/agents/st2a/ph6/04-lv/01-test/C01-ios-install-auth-pair.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C01-ios-install-auth-pair.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C02-ios-create-windows-download.md: source=dev/agents/st2a/ph6/04-lv/01-test/C02-ios-create-windows-download.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C02-ios-create-windows-download.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C03-ios-update-windows-download.md: source=dev/agents/st2a/ph6/04-lv/01-test/C03-ios-update-windows-download.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C03-ios-update-windows-download.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C04-ios-move-windows-move.md: source=dev/agents/st2a/ph6/04-lv/01-test/C04-ios-move-windows-move.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C04-ios-move-windows-move.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C05-ios-delete-windows-trash.md: source=dev/agents/st2a/ph6/04-lv/01-test/C05-ios-delete-windows-trash.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C05-ios-delete-windows-trash.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C06-windows-create-ios-download.md: source=dev/agents/st2a/ph6/04-lv/01-test/C06-windows-create-ios-download.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C06-windows-create-ios-download.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C07-windows-update-ios-download.md: source=dev/agents/st2a/ph6/04-lv/01-test/C07-windows-update-ios-download.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C07-windows-update-ios-download.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C08-windows-move-ios-move.md: source=dev/agents/st2a/ph6/04-lv/01-test/C08-windows-move-ios-move.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C08-windows-move-ios-move.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/C09-windows-delete-ios-trash.md: source=dev/agents/st2a/ph6/04-lv/01-test/C09-windows-delete-ios-trash.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/C09-windows-delete-ios-trash.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D01-clean-text-merge.md: source=dev/agents/st2a/ph6/04-lv/01-test/D01-clean-text-merge.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D01-clean-text-merge.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D02-true-text-conflict.md: source=dev/agents/st2a/ph6/04-lv/01-test/D02-true-text-conflict.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D02-true-text-conflict.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D03-binary-conflict.md: source=dev/agents/st2a/ph6/04-lv/01-test/D03-binary-conflict.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D03-binary-conflict.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D04-delete-vs-modify.md: source=dev/agents/st2a/ph6/04-lv/01-test/D04-delete-vs-modify.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D04-delete-vs-modify.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D05-offline-reconnect.md: source=dev/agents/st2a/ph6/04-lv/01-test/D05-offline-reconnect.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D05-offline-reconnect.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/D06-stale-device.md: source=dev/agents/st2a/ph6/04-lv/01-test/D06-stale-device.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/D06-stale-device.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E01-interruption-restart.md: source=dev/agents/st2a/ph6/04-lv/01-test/E01-interruption-restart.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E01-interruption-restart.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E02-ambiguous-network-outcome.md: source=dev/agents/st2a/ph6/04-lv/01-test/E02-ambiguous-network-outcome.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E02-ambiguous-network-outcome.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E03-state-and-cursor-recovery.md: source=dev/agents/st2a/ph6/04-lv/01-test/E03-state-and-cursor-recovery.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E03-state-and-cursor-recovery.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E04-remote-coverage-failures.md: source=dev/agents/st2a/ph6/04-lv/01-test/E04-remote-coverage-failures.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E04-remote-coverage-failures.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E05-destructive-circuit-breaker.md: source=dev/agents/st2a/ph6/04-lv/01-test/E05-destructive-circuit-breaker.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E05-destructive-circuit-breaker.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E06-auth-network-quota.md: source=dev/agents/st2a/ph6/04-lv/01-test/E06-auth-network-quota.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E06-auth-network-quota.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/E07-safe-cancellation.md: source=dev/agents/st2a/ph6/04-lv/01-test/E07-safe-cancellation.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/E07-safe-cancellation.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/F01-filesystem-scope-and-paths.md: source=dev/agents/st2a/ph6/04-lv/01-test/F01-filesystem-scope-and-paths.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/F01-filesystem-scope-and-paths.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/F02-large-transfer-resource.md: source=dev/agents/st2a/ph6/04-lv/01-test/F02-large-transfer-resource.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/F02-large-transfer-resource.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/01-test/F03-lifecycle-disable-unlink.md: source=dev/agents/st2a/ph6/04-lv/01-test/F03-lifecycle-disable-unlink.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/01-test/F03-lifecycle-disable-unlink.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/04-lv/02-rpr/vh22-c09-repository-suite-blocker-repair-01.md: source=dev/agents/st2a/ph6/04-lv/02-rpr/vh22-c09-repository-suite-blocker-repair-01.md
-- PASS - archived source absent dev/agents/st2a/ph6/04-lv/02-rpr/vh22-c09-repository-suite-blocker-repair-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/h6c/archive/manifest.md: source=dev/agents/st2a/ph6/h6c/archive/manifest.md
-- PASS - archived source absent dev/agents/st2a/ph6/h6c/archive/manifest.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot: source=dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot
-- PASS - archived source absent dev/agents/st2a/ph6/h6c/archive/product-controller-base.ts.pre-h6c-c6daa20.snapshot: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-01-test-phx-ci-prompt-migration-01.md: source=dev/evidence/_ca-output-agt-ca-p6-01-test-phx-ci-prompt-migration-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-01-test-phx-ci-prompt-migration-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-branch-consolidation-cleanup-01.md: source=dev/evidence/_ca-output-agt-ca-p6-branch-consolidation-cleanup-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-branch-consolidation-cleanup-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-h6b-conflict-resolution-driver-extension-01.md: source=dev/evidence/_ca-output-agt-ca-p6-h6b-conflict-resolution-driver-extension-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-h6b-conflict-resolution-driver-extension-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh01-run-sandbox-checkpoint-contracts-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh01-run-sandbox-checkpoint-contracts-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh01-run-sandbox-checkpoint-contracts-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh02-driver-plan-fault-verifier-contracts-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh02-driver-plan-fault-verifier-contracts-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh02-driver-plan-fault-verifier-contracts-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh03-coordination-evidence-freeze-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh04-safety-sandbox-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh04-safety-sandbox-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh04-safety-sandbox-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh05-fixture-manager-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh05-fixture-manager-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh05-fixture-manager-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh06-production-path-driver-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh06-production-path-driver-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh06-production-path-driver-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh07-plan-assertion-engine-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh07-plan-assertion-engine-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh07-plan-assertion-engine-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh08-state-convergence-verifier-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh08-state-convergence-verifier-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh08-state-convergence-verifier-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh09-evidence-recorder-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh09-evidence-recorder-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh09-evidence-recorder-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh10-transport-coverage-faults-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh10-transport-coverage-faults-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh10-transport-coverage-faults-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh11-state-ambiguity-cancel-faults-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh11-state-ambiguity-cancel-faults-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh11-state-ambiguity-cancel-faults-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh12-cross-device-coordinator-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh12-cross-device-coordinator-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh12-cross-device-coordinator-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh13-human-checkpoint-resume-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh13-human-checkpoint-resume-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh13-human-checkpoint-resume-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14-module-integration-runner-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14a-integration-substrate-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14b-runner-core-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14c-durable-resume-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14d-module-orchestration-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14e-canary-regressions-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh14i-integration-verify-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh14i-integration-verify-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh14i-integration-verify-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh15-r2-run-scoped-plan-handoff-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh15-r2-run-scoped-plan-handoff-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh15-r2-run-scoped-plan-handoff-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh15-validation-mode-runtime-canary-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh15-validation-mode-runtime-canary-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh15-validation-mode-runtime-canary-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh16-c03-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh16-c03-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh16-c03-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh17-c04-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh17-c04-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh17-c04-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh18-c05-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh18-c05-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh18-c05-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh19-c06-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh19-c06-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh19-c06-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh20-c07-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh20-c07-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh20-c07-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh21-c08-scenario-01-correction-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh21-c08-scenario-01-correction-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh21-c08-scenario-01-correction-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh22-c09-scenario-01-correction-02.md: source=dev/evidence/_ca-output-agt-ca-p6-vh22-c09-scenario-01-correction-02.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh22-c09-scenario-01-correction-02.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh22-repository-suite-blocker-repair-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh22-repository-suite-blocker-repair-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh22-repository-suite-blocker-repair-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/_ca-output-agt-ca-p6-vh23-c-series-integration-01.md: source=dev/evidence/_ca-output-agt-ca-p6-vh23-c-series-integration-01.md
-- PASS - archived source absent dev/evidence/_ca-output-agt-ca-p6-vh23-c-series-integration-01.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/evidence/vh14-orchestration-state.json: source=dev/evidence/vh14-orchestration-state.json
-- PASS - archived source absent dev/evidence/vh14-orchestration-state.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/planning-and-building/decision-register.yaml: source=dev/planning-and-building/decision-register.yaml
-- PASS - archive destination dev/archive/legacy-validation-harness/planning-and-building/phase6-live-validation-harness-plan.md: source=dev/planning-and-building/phase6-live-validation-harness-plan.md
-- PASS - archived source absent dev/planning-and-building/phase6-live-validation-harness-plan.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/planning-and-building/project-state.yaml: source=dev/planning-and-building/project-state.yaml
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/bootstrap-vh22-c09-correction-02.ps1: source=dev/scripts/bootstrap-vh22-c09-correction-02.ps1
-- PASS - archived source absent dev/scripts/bootstrap-vh22-c09-correction-02.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/branch-cleanup-01-delete.ps1: source=dev/scripts/branch-cleanup-01-delete.ps1
-- PASS - archived source absent dev/scripts/branch-cleanup-01-delete.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/branch-consolidate-and-cleanup-02.ps1: source=dev/scripts/branch-consolidate-and-cleanup-02.ps1
-- PASS - archived source absent dev/scripts/branch-consolidate-and-cleanup-02.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/cleanup-phase6-local-branches-01.ps1: source=dev/scripts/cleanup-phase6-local-branches-01.ps1
-- PASS - archived source absent dev/scripts/cleanup-phase6-local-branches-01.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/run-phase6-branch-cleanup-01.ps1: source=dev/scripts/run-phase6-branch-cleanup-01.ps1
-- PASS - archived source absent dev/scripts/run-phase6-branch-cleanup-01.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-h6b-conflict-resolution-driver-extension.ps1: source=dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1
-- PASS - archived source absent dev/scripts/verify-h6b-conflict-resolution-driver-extension.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-h6c-production-diagnostic-correlation.ps1: source=dev/scripts/verify-h6c-production-diagnostic-correlation.ps1
-- PASS - archived source absent dev/scripts/verify-h6c-production-diagnostic-correlation.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-phase6-01-test-phx-ci-migration.ps1: source=dev/scripts/verify-phase6-01-test-phx-ci-migration.ps1
-- PASS - archived source absent dev/scripts/verify-phase6-01-test-phx-ci-migration.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-vh22-c09-correction-02.ps1: source=dev/scripts/verify-vh22-c09-correction-02.ps1
-- PASS - archived source absent dev/scripts/verify-vh22-c09-correction-02.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-vh22-repository-suite-blocker-repair-01.ps1: source=dev/scripts/verify-vh22-repository-suite-blocker-repair-01.ps1
-- PASS - archived source absent dev/scripts/verify-vh22-repository-suite-blocker-repair-01.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/verify-vh23-c-series-integration.ps1: source=dev/scripts/verify-vh23-c-series-integration.ps1
-- PASS - archived source absent dev/scripts/verify-vh23-c-series-integration.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/scripts/vh15-r2-local-verification.ps1: source=dev/scripts/vh15-r2-local-verification.ps1
-- PASS - archived source absent dev/scripts/vh15-r2-local-verification.ps1: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.json: source=dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.json
-- PASS - archived source absent dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.log: source=dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.log
-- PASS - archived source absent dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.log: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.md: source=dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.md
-- PASS - archived source absent dev/test-results/20260919T211216Z-vh22-c09-correction-02-7b81ae8df30f.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.json: source=dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.json
-- PASS - archived source absent dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.log: source=dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.log
-- PASS - archived source absent dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.log: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.md: source=dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.md
-- PASS - archived source absent dev/test-results/20260919T232844Z-vh22-c09-correction-02-7b81ae8df30f.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.json: source=dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.json
-- PASS - archived source absent dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.log: source=dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.log
-- PASS - archived source absent dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.log: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.md: source=dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.md
-- PASS - archived source absent dev/test-results/20260920T010346Z-vh22-c09-correction-02-7b81ae8df30f.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json: source=dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json
-- PASS - archived source absent dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log: source=dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log
-- PASS - archived source absent dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md: source=dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md
-- PASS - archived source absent dev/test-results/20260920T030343Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json: source=dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json
-- PASS - archived source absent dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.json: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log: source=dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log
-- PASS - archived source absent dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.log: must no longer be active
-- PASS - archive destination dev/archive/legacy-validation-harness/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md: source=dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md
-- PASS - archived source absent dev/test-results/20260920T044300Z-vh22-repository-suite-blocker-repair-01-29f11394f9da.md: must no longer be active
-- PASS - archive manifest classified live set: rows=156 expected=156
-- PASS - git diff --check: exit=0
+- PASS — S02_INPUT_SHA is the merge base / ancestor of current phase6-integration.
+- PASS — the only paths changed after S02_INPUT_SHA on phase6-integration were:
+  - dev/agents/st2a/ph6/05-bvp/02-remove-legacy-executable-harness.md
+  - dev/planning-and-building/decision-register.yaml
+- PASS — zero post-S01 changes were present under src/**, test/**, scripts/**, package/build configuration, or other executable surfaces.
+- PASS — dev/_ca-output.md at S02_INPUT_SHA begins exactly STATUS: COMPLETE.
+- PASS — task branch was created from exactly S02_INPUT_SHA.
 
-## Gate Result
+## Exact Retirement Applied
 
-BVP-S01 archive/authority transition is locally verified. BVP-S02 may be expanded only after this evidence is committed and pushed to phase6-integration.
+- PASS — all 63 supervisor-required deletion paths existed at S02_INPUT_SHA and were removed.
+- PASS — implementation commit changes exactly 67 paths before canonical S02 evidence:
+  - 66 supervisor-authorized src/** and test/** paths;
+  - dev/scripts/Invoke-BvpS02LegacyHarnessRetirementVerification.ps1.
+- PASS — no other implementation path was changed.
+- PASS — src/main.ts final blob: dc5d6bb13e2bd389fdcd5357730a4144ad7d2eb7.
+- PASS — src/product/settings-tab.ts final blob: e6a56451a3a6723d223c09175cc901c46f527985.
+- PASS — src/product/product-controller-base.ts final blob: fee7c40e715d277cea2b5e26059a86753bb316a0.
+- PASS — src/diagnostics/production-diagnostic-correlation.ts removed.
+- PASS — verifier added at the exact required path.
+
+## Required Local Verification
+
+The mandated repository-controlled local verification could not be executed in this ChatGPT session.
+
+Observed environment limitation:
+- a local shell exists, but the repository is not mounted in it;
+- outbound Git/GitHub name resolution from that shell fails, so the private repository cannot be cloned/fetched into the shell;
+- GitHub Actions are prohibited by governing user authority and were not used.
+
+Therefore the following completion-critical checks remain unexecuted in this session and S02 cannot be represented as COMPLETE:
+- dev/scripts/Invoke-BvpS02LegacyHarnessRetirementVerification.ps1;
+- npm ci;
+- npm run typecheck;
+- complete npm test;
+- npm run build;
+- npm run check;
+- git diff --check;
+- exhaustive active src/** and test/** retired-identifier search;
+- shipping main.js retired-identifier inspection;
+- verifier post-build frozen-path and exact allowlist checks.
+
+No failure was repaired outside the frozen writable surface. No unlisted path was modified.
+
+## Blocker
+
+BLOCKER: completion requires the committed local verifier to run successfully in a local checkout/worktree with repository access. Until that execution produces STATUS: COMPLETE, BVP-S02 remains BLOCKED and must not be promoted to phase6-integration.
