@@ -731,6 +731,18 @@ export class ProductControllerBase implements ProductControlPort {
     const reviewedFirstSyncResolution = this.reviewedFirstSyncConflictOrigins.get(String(id)) === true;
     const operations = await this.resolutionOperations(id, assessment, resolution, reviewedFirstSyncResolution);
     if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
+    const previewDiagnosticRunId = current.diagnosticRunId;
+    if (
+      previewDiagnosticRunId !== undefined
+      && this.options.diagnostics?.currentSyncRunId() === previewDiagnosticRunId
+    ) {
+      this.syncInfo(previewDiagnosticRunId, "sync-run-cancelled", {
+        stage: "terminal",
+        result: "cancelled",
+        reason: "superseded-by-conflict-resolution",
+      });
+      this.endDiagnosticRun(previewDiagnosticRunId);
+    }
     const diagnosticRunId = this.options.diagnostics?.beginSyncRun("conflict-resolution");
     this.diagnosticCorrelation.begin(diagnosticRunId, "conflict-resolution");
     this.syncInfo(diagnosticRunId, "conflict-resolution-request-enter", { operation: "resolve-conflict", stage: "conflict-resolution" });
