@@ -55,7 +55,7 @@ Stop after the authority/archive acceptance gate passes. Do not begin source-cod
 
 ### Objective
 
-Remove the active legacy validation framework from executable code while preserving production synchronization behavior and reusable general diagnostics/contracts.
+Remove the exact supervisor-classified legacy validation framework, harness-only tests, and harness-only production coupling while preserving every non-authorized production/test surface unchanged.
 
 ### Repository Surfaces Known at Planning Time
 
@@ -65,22 +65,22 @@ The supplied repository snapshot contains:
 - `src/main.ts` imports/construction of `ValidationModeRuntime`;
 - `src/product/settings-tab.ts` production validation-harness controls;
 - numerous `test/validation-*.test.ts` tests whose subject is the legacy framework;
-- `src/testing/fakes.ts`, which is small and may contain reusable concepts but is currently inside production source.
+- the H6C-only production diagnostic-correlation seam later supervisor-classified for deletion.
 
-The dispatching supervisor must re-confirm these surfaces against the S01 result before issuing the executable prompt.
+The executable child prompts contain the supervisor-decided exact delete/retain boundaries. `src/testing/fakes.ts` and every unlisted path are frozen for S02 unless a later supervisor explicitly rebinds the task before dispatch.
 
 ### Required End State
 
 - `src/validation/**` legacy architecture is no longer part of active source;
 - shipping plugin has no validation-mode scenario UI/runtime;
 - obsolete framework-only tests are removed from active suite;
-- general production code/tests remain green;
-- reusable test-only fake concepts are either temporarily retained without shipping impact or moved later under the BVP boundary; no replacement framework is built yet;
-- ordinary production build behavior remains unchanged except removal of harness-only UI/runtime.
+- all non-authorized production/test paths remain unchanged;
+- no replacement framework is built yet;
+- ordinary production build behavior remains unchanged except the exact supervisor-defined harness retirement edits.
 
 ### Fixed Boundaries
 
-No synchronization redesign. No new runner. No new production test bypass. No test-platform implementation beyond minimal compile/test fallout required by removal.
+No synchronization redesign. No new runner. No new production test bypass. No test-platform implementation. No compile/test-fallout repair outside the exact child-session writable allowlist: any such need is BLOCKED and returns to the supervisor.
 
 ### Verification
 
@@ -92,7 +92,7 @@ Stop when the product builds/tests without the legacy harness.
 
 ---
 
-## BVP-S03 — Install Hard Architecture Boundary, Guard, Metrics, and Generic Verification
+## BVP-S03 — Install Hard Architecture Boundary, Guard, Metrics, and PHX-CI Enforcement
 
 ### Objective
 
@@ -115,11 +115,11 @@ Demonstrate guard failure for prohibited import direction, shipping inclusion, s
 
 ### Fixed Boundaries
 
-This is an authorized governance-construction session. Once accepted, the boundary/guard/metrics/verifier become frozen supervisor-owned surfaces for ordinary sessions.
+This is an authorized governance-construction stage. Once accepted, the boundary, guard, metrics, and PHX-CI consumer integration become frozen supervisor-owned surfaces for ordinary sessions.
 
 ### Verification
 
-Run the guard against both compliant baseline and controlled negative fixtures; run typecheck/tests/build; capture metrics and evidence.
+Run the guard against both compliant baseline and controlled negative fixtures, wire guard/metrics into the repository check exercised by PHX-CI, then pass authoritative PHX-CI branch/stage acceptance with metrics and evidence.
 
 ### Stop
 

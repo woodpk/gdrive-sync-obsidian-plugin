@@ -7,7 +7,7 @@
 **Workflow:** Workflow A / Stage 2A controlled session-based construction  
 **Date:** 2026-09-23  
 
-This decomposition follows the Agent-Led Software Product Construction Manual: phases exist only where dependency order, stable-boundary establishment, risk isolation, independent testability, or meaningful integration requires separation. Detailed coding prompts must be refreshed against the actual repository immediately before each session begins.
+This decomposition follows the Agent-Led Software Product Construction Manual: phases exist only where dependency order, stable-boundary establishment, risk isolation, independent testability, or meaningful integration requires separation. The nine BVP work packages are decomposed into bounded child sessions in `testing-platform-session-decomposition.md`; detailed executable child prompts must be refreshed against the actual repository immediately before each session begins.
 
 ## 2. Ordered Dependency Model
 
@@ -30,7 +30,7 @@ P4  Deterministic Requirement Coverage
 P5  Thin Live-Device Validation + Stage-3 Readiness
 ```
 
-No later phase may begin merely because predecessor code exists. The predecessor's acceptance gate, including architecture guard and metrics, must pass first.
+No later primary phase may begin merely because predecessor code exists. Every implementation child must pass PHX-CI before integration, and the predecessor primary phase's integrated PHX-CI acceptance gate—including architecture guard and metrics from S03 onward—must pass first.
 
 ## 3. Shared Contracts Frozen Before New Platform Construction
 

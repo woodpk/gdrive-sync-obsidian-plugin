@@ -264,7 +264,7 @@ Ordinary private helpers, adapters implementing frozen ports, assertions, fixtur
 
 ### 4.6 Frozen Governance Ownership
 
-**BVP-GOV-007.** The architecture-boundary manifest, complexity budgets, architecture guard, and verification entrypoint are supervisor-owned frozen surfaces. Normal coding-agent sessions MUST NOT modify them. An authorized governance-change session must be explicitly identified as such and must record the user/supervisor authority permitting the change.
+**BVP-GOV-007.** The architecture-boundary manifest, complexity budgets, architecture guard, architecture metrics, and PHX-CI consumer pin/integration are supervisor-owned frozen surfaces. Normal coding-agent sessions MUST NOT modify them. An authorized governance-change session must be explicitly identified as such and must record the user/supervisor authority permitting the change.
 
 ### 4.7 Recurring Architecture Gate
 
@@ -278,9 +278,9 @@ Ordinary private helpers, adapters implementing frozen ports, assertions, fixtur
 
 **BVP-GOV-010.** BVP-S01 through BVP-S09 are primary work packages and MUST be decomposed into child sessions small enough for one coding-agent execution/review cycle. At dispatch, the supervisor MUST split a child again when the expected work introduces more than one new platform-level contract family, more than six substantive non-test implementation files, or approximately 1000 net new non-test LOC, except for mechanical deletion/move sessions and declarative-scenario batches.
 
-### 4.8 Architecture Evidence
+### 4.10 Architecture Evidence
 
-**BVP-GOV-009.** Every local-verification evidence record for BVP work MUST include:
+**BVP-GOV-011.** Every authoritative PHX-CI acceptance evidence record for BVP work MUST include:
 
 - architecture guard result;
 - current architecture metrics;
@@ -340,7 +340,7 @@ Moves addressed run/sequence commands and results. It does not own synchronizati
 
 ### 6.7 Architecture Governance
 
-Owns the machine-readable boundary, architecture guard, metrics, and local PowerShell verification entrypoint. These surfaces are intentionally outside ordinary coding-agent ownership.
+Owns the machine-readable boundary, architecture guard, architecture metrics, and PHX-CI consumer integration. These surfaces are intentionally outside ordinary coding-agent ownership.
 
 ## 7. Data, State, and Authority
 
@@ -388,7 +388,7 @@ Evidence records what was observed. Evidence does not authorize product mutation
 
 **BVP-INV-011.** Adding an ordinary scenario does not require scenario-specific production code or PowerShell infrastructure.
 
-**BVP-INV-012.** All verification/CI-like execution for this subsystem is local repository-controlled PowerShell, not GitHub Actions.
+**BVP-INV-012.** All authoritative verification/CI-like acceptance for this subsystem is local PHX-CI deployed-runtime verification, not GitHub Actions; project-specific architecture guard/metrics remain repository-controlled PowerShell invoked through PHX-CI's repository check.
 
 ## 9. Failure and Validation Behavior
 
@@ -418,7 +418,7 @@ Evidence records what was observed. Evidence does not authorize product mutation
 - The external runner owns scenario sequencing/verdicts.
 - Live-device code is a thin validation-only command agent, not a general runner.
 - No developer-hosted automation backend and no expanded Google OAuth scope are introduced solely for validation.
-- GitHub Actions are not used; repository-controlled PowerShell under `dev/scripts/` owns local verification/evidence.
+- GitHub Actions are not used; the installed PHX-CI deployed runtime owns authoritative branch/stage verification and canonical evidence, while repository-controlled BVP guard/metrics scripts provide project-specific checks invoked by PHX-CI.
 - `dev/archive/**` is historical and non-authoritative.
 - Anti-drift guards, budgets, and recurring architecture reviews are mandatory acceptance gates.
 
@@ -490,8 +490,8 @@ The BVP is complete only when objective evidence proves all of the following.
 
 ### 13.4 Evidence and Verification
 
-- canonical local PowerShell verification completes successfully;
-- `dev/_ca-output.md` contains commands, outputs/results, exit codes, architecture metrics, and required verification evidence;
+- authoritative PHX-CI verification completes successfully for every accepted child branch and final integrated stage;
+- `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/` contain the configured PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
 - scenario evidence maps to the BRAIN target specification's §13 completion-evidence categories;
 - a Stage-3 validator can trace each material product requirement to implementation and validation evidence without relying on legacy harness claims.
 

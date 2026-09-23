@@ -89,6 +89,30 @@ After the worker pushes a task branch and stops at `READY FOR LOCAL PHX-CI VERIF
 
 Publication mode for acceptance is `push` so PHX-CI evidence is preserved on the verified task branch.
 
+### Concrete operator command shape
+
+At planning time the consumer is pinned to framework SHA:
+
+`f5123d21cc13511a5ee1185cfc4e1689785188ed`
+
+and the corresponding installed runtime is expected at:
+
+`C:\Users\woodpk\AppData\Local\PHX-CI\runtimes\f5123d21cc13511a5ee1185cfc4e1689785188ed\scripts\Invoke-PhxCi.ps1`
+
+The operator must still read the **target branch's actual** `phx-ci.json` before each run; if the pin changes, use that exact installed runtime instead.
+
+Normal task-branch acceptance command shape:
+
+```powershell
+pwsh -NoProfile -File "$env:LOCALAPPDATA\PHX-CI\runtimes\<framework.sha>\scripts\Invoke-PhxCi.ps1" `
+  -RepoRoot "<consumer-repository-root>" `
+  -Branch "<task-branch>" `
+  -BaseRef "origin/phase6-integration" `
+  -PublicationMode push
+```
+
+For a primary-stage integrated gate, run the same deployed-runtime front door against `phase6-integration` with the supervisor-bound appropriate base authority for that stage.
+
 Do not create a task-specific verifier script.
 
 ### Primary-stage acceptance

@@ -1027,6 +1027,10 @@ superseded_decisions:
       - DEC-320
       - DEC-321
       - DEC-322
+      - DEC-323
+      - DEC-324
+      - DEC-325
+      - DEC-326
 
 deferred_engineering:
   - "Whether to fork Google Drive Mirror directly, substantially adapt it, or selectively transplant architecture/code."

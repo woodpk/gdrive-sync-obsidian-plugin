@@ -20,9 +20,10 @@ repository_conventions:
     - "dev/planning-and-building/testing-platform-build-decomposition.md"
     - "dev/planning-and-building/testing-platform-requirement-coverage.md"
     - "dev/planning-and-building/testing-platform-build-session-specifications.md"
+    - "dev/planning-and-building/testing-platform-session-decomposition.md"
     - "dev/governance/testing-platform-boundary.yaml"
   coding_agent_task_prompts: "dev/agents/"
-  evidence: "dev/evidence/ and dev/_ca-output.md"
+  evidence: "PHX-CI canonical dev/_ca-output.md + dev/_ca-output.json and immutable dev/test-results/; supplemental project evidence may live under dev/evidence/"
   scripts: "dev/scripts/"
   archive_policy: "dev/archive/** is historical and non-authoritative. Do not use it for normal task discovery, implementation grounding, or architecture derivation unless a supervisor explicitly requests a bounded historical lookup."
 
@@ -58,14 +59,14 @@ bvp_transition:
 
 anti_drift:
   boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
-  enforcement_start: "BVP-S03 installs the architecture guard, metrics, and canonical verification foundation before substantive replacement-platform growth."
+  enforcement_start: "BVP-S03 installs the architecture guard/metrics and wires them into the repository check executed by PHX-CI before substantive replacement-platform growth."
   no_github_actions: true
   local_verification: "Installed PHX-CI deployed runtime selected by phx-ci.json exact pin; canonical evidence in dev/_ca-output.md, dev/_ca-output.json, and dev/test-results/."
   frozen_after_establishment:
     - architecture_boundary_manifest
     - architecture_guard
     - architecture_metrics
-    - canonical_bvp_verifier
+    - phx_ci_consumer_pin_and_integration
   approval_required_for:
     - new_runner_or_router_architecture
     - new_distributed_test_state_machine
