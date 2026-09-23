@@ -19,9 +19,11 @@ $Failed = $false
 if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) { throw "Verifier repository root does not exist: $RepoRoot" }
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "package.json") -PathType Leaf)) { throw "Verifier repository root is invalid: package.json not found under $RepoRoot" }
 Set-Location -LiteralPath $RepoRoot
-$resolvedRoot = (& git rev-parse --show-toplevel).Trim()
+$resolvedRootRaw = @(& git rev-parse --show-toplevel)
 $resolvedRootExit = $LASTEXITCODE
-if ($resolvedRootExit -ne 0 -or -not $resolvedRoot) { throw "Verifier could not resolve its own Git repository root." }
+if ($resolvedRootExit -ne 0) { throw ("Verifier could not resolve its own Git repository root; git rev-parse exited " + $resolvedRootExit) }
+$resolvedRoot = ([string]($resolvedRootRaw -join "`n")).Trim()
+if (-not $resolvedRoot) { throw "Verifier Git repository root was empty." }
 $resolvedRootFull = [System.IO.Path]::GetFullPath($resolvedRoot)
 if ($resolvedRootFull -ne $RepoRoot) { throw ("Verifier repository-root mismatch. Script root resolved to " + $RepoRoot + " but Git resolved " + $resolvedRootFull) }
 
@@ -77,14 +79,30 @@ Set-Content -Path $EvidencePath -Value @(
   ""
 )
 
-$head = (& git rev-parse HEAD).Trim()
+$headRaw = @(& git rev-parse HEAD)
 $headExit = $LASTEXITCODE
+if ($headExit -ne 0) {
+  Write-Evidence ("FAIL: could not resolve verification HEAD; git rev-parse exited " + $headExit)
+  $head = ""
+  $Failed = $true
+} else {
+  $head = ([string]($headRaw -join "`n")).Trim()
+  if (-not $head) {
+    Write-Evidence "FAIL: verification HEAD was empty."
+    $Failed = $true
+  }
+}
 Write-Evidence ("- Verification HEAD: " + $head)
-if ($headExit -ne 0) { $Failed = $true }
 
-$currentBranch = (& git branch --show-current).Trim()
+$currentBranchRaw = @(& git branch --show-current)
 $branchExit = $LASTEXITCODE
-if ($branchExit -ne 0) { $Failed = $true }
+if ($branchExit -ne 0) {
+  Write-Evidence ("FAIL: could not resolve current branch; git branch exited " + $branchExit)
+  $currentBranch = ""
+  $Failed = $true
+} else {
+  $currentBranch = ([string]($currentBranchRaw -join "`n")).Trim()
+}
 if ($currentBranch) {
   Write-Evidence ("- Current branch: " + $currentBranch)
   Assert-Equal "branch" $currentBranch $Branch
@@ -95,8 +113,13 @@ if ($currentBranch) {
   $Failed = $true
 }
 
-$remoteRequiredHead = (& git rev-parse ("origin/" + $Branch)).Trim()
+$remoteRequiredHeadRaw = @(& git rev-parse ("origin/" + $Branch))
 $remoteRequiredHeadExit = $LASTEXITCODE
+if ($remoteRequiredHeadExit -ne 0) {
+  $remoteRequiredHead = ""
+} else {
+  $remoteRequiredHead = ([string]($remoteRequiredHeadRaw -join "`n")).Trim()
+}
 if ($remoteRequiredHeadExit -ne 0 -or -not $remoteRequiredHead) {
   Write-Evidence "FAIL: could not resolve origin required-branch HEAD."
   $Failed = $true
@@ -104,9 +127,14 @@ if ($remoteRequiredHeadExit -ne 0 -or -not $remoteRequiredHead) {
   Assert-Equal "verification HEAD matches origin required branch" $head $remoteRequiredHead
 }
 
-$mergeBase = (& git merge-base $BaseSha HEAD).Trim()
+$mergeBaseRaw = @(& git merge-base $BaseSha HEAD)
 $mergeBaseExit = $LASTEXITCODE
 if ($mergeBaseExit -ne 0) {
+  $mergeBase = ""
+} else {
+  $mergeBase = ([string]($mergeBaseRaw -join "`n")).Trim()
+}
+if ($mergeBaseExit -ne 0 -or -not $mergeBase) {
   Write-Evidence "FAIL: could not resolve merge base."
   $Failed = $true
 } else {
@@ -146,13 +174,19 @@ if ($sourceDriftExit -eq 0) {
   $Failed = $true
 }
 
-$reviewedProductBlob = (& git rev-parse ($ExpectedImplementationHead + ":src/product/product-controller-base.ts")).Trim()
+$reviewedProductBlobRaw = @(& git rev-parse ($ExpectedImplementationHead + ":src/product/product-controller-base.ts"))
 $reviewedProductBlobExit = $LASTEXITCODE
-$currentCommittedProductBlob = (& git rev-parse ("HEAD:src/product/product-controller-base.ts")).Trim()
+if ($reviewedProductBlobExit -eq 0) { $reviewedProductBlob = ([string]($reviewedProductBlobRaw -join "`n")).Trim() } else { $reviewedProductBlob = "" }
+
+$currentCommittedProductBlobRaw = @(& git rev-parse ("HEAD:src/product/product-controller-base.ts"))
 $currentCommittedProductBlobExit = $LASTEXITCODE
-$currentWorkingProductBlob = (& git hash-object (Join-Path $RepoRoot "src/product/product-controller-base.ts")).Trim()
+if ($currentCommittedProductBlobExit -eq 0) { $currentCommittedProductBlob = ([string]($currentCommittedProductBlobRaw -join "`n")).Trim() } else { $currentCommittedProductBlob = "" }
+
+$currentWorkingProductBlobRaw = @(& git hash-object (Join-Path $RepoRoot "src/product/product-controller-base.ts"))
 $currentWorkingProductBlobExit = $LASTEXITCODE
-if ($reviewedProductBlobExit -ne 0 -or $currentCommittedProductBlobExit -ne 0 -or $currentWorkingProductBlobExit -ne 0) {
+if ($currentWorkingProductBlobExit -eq 0) { $currentWorkingProductBlob = ([string]($currentWorkingProductBlobRaw -join "`n")).Trim() } else { $currentWorkingProductBlob = "" }
+
+if ($reviewedProductBlobExit -ne 0 -or -not $reviewedProductBlob -or $currentCommittedProductBlobExit -ne 0 -or -not $currentCommittedProductBlob -or $currentWorkingProductBlobExit -ne 0 -or -not $currentWorkingProductBlob) {
   Write-Evidence "FAIL: could not resolve reviewed/current product-controller-base.ts blobs."
   $Failed = $true
 } else {
@@ -194,12 +228,21 @@ if ($Failed) {
 
 Write-Evidence ""
 Write-Evidence "## Archive gate"
-$baseBlob = (& git rev-parse ($BaseSha + ":src/product/product-controller-base.ts")).Trim()
+$baseBlobRaw = @(& git rev-parse ($BaseSha + ":src/product/product-controller-base.ts"))
 $baseBlobExit = $LASTEXITCODE
-if ($baseBlobExit -ne 0) { $Failed = $true }
-$archiveBlob = (& git hash-object $ArchivePath).Trim()
+if ($baseBlobExit -eq 0) { $baseBlob = ([string]($baseBlobRaw -join "`n")).Trim() } else { $baseBlob = "" }
+if ($baseBlobExit -ne 0 -or -not $baseBlob) {
+  Write-Evidence ("FAIL: could not resolve base product-controller blob; git rev-parse exited " + $baseBlobExit)
+  $Failed = $true
+}
+
+$archiveBlobRaw = @(& git hash-object $ArchivePath)
 $archiveBlobExit = $LASTEXITCODE
-if ($archiveBlobExit -ne 0) { $Failed = $true }
+if ($archiveBlobExit -eq 0) { $archiveBlob = ([string]($archiveBlobRaw -join "`n")).Trim() } else { $archiveBlob = "" }
+if ($archiveBlobExit -ne 0 -or -not $archiveBlob) {
+  Write-Evidence ("FAIL: could not hash archive file; git hash-object exited " + $archiveBlobExit)
+  $Failed = $true
+}
 $archiveSha256 = (Get-FileHash -Algorithm SHA256 -Path $ArchivePath).Hash.ToLowerInvariant()
 Assert-Equal "base Git blob" $baseBlob $ExpectedBlob
 Assert-Equal "archive Git blob" $archiveBlob $ExpectedBlob
@@ -303,6 +346,89 @@ Invoke-RecordedNative "Build" "npm" @("run", "build")
 Invoke-RecordedNative "Repository check" "npm" @("run", "check")
 
 Write-Evidence ""
+Write-Evidence "## Post-verification source-integrity gate"
+
+& git merge-base --is-ancestor $ExpectedImplementationHead HEAD
+$postImplementationAncestorExit = $LASTEXITCODE
+if ($postImplementationAncestorExit -eq 0) {
+  Write-Evidence ("PASS: reviewed implementation commit remains an ancestor after verification: " + $ExpectedImplementationHead)
+} elseif ($postImplementationAncestorExit -eq 1) {
+  Write-Evidence "FAIL: reviewed implementation commit is no longer an ancestor after verification."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: post-verification implementation ancestry check exited " + $postImplementationAncestorExit)
+  $Failed = $true
+}
+
+& git diff --quiet $ExpectedImplementationHead HEAD -- src
+$postCommittedSourceExit = $LASTEXITCODE
+if ($postCommittedSourceExit -eq 0) {
+  Write-Evidence "PASS: committed src/** still exactly matches the reviewed implementation."
+} elseif ($postCommittedSourceExit -eq 1) {
+  Write-Evidence "FAIL: committed src/** differs from the reviewed implementation after verification."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: post-verification committed-source git diff --quiet exited " + $postCommittedSourceExit)
+  $Failed = $true
+}
+
+& git diff --quiet -- src
+$postUnstagedSourceExit = $LASTEXITCODE
+if ($postUnstagedSourceExit -eq 0) {
+  Write-Evidence "PASS: no unstaged src/** changes after verification."
+} elseif ($postUnstagedSourceExit -eq 1) {
+  Write-Evidence "FAIL: verification left unstaged src/** changes."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: post-verification unstaged-source git diff --quiet exited " + $postUnstagedSourceExit)
+  $Failed = $true
+}
+
+& git diff --cached --quiet -- src
+$postStagedSourceExit = $LASTEXITCODE
+if ($postStagedSourceExit -eq 0) {
+  Write-Evidence "PASS: no staged src/** changes after verification."
+} elseif ($postStagedSourceExit -eq 1) {
+  Write-Evidence "FAIL: verification left staged src/** changes."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: post-verification staged-source git diff --cached --quiet exited " + $postStagedSourceExit)
+  $Failed = $true
+}
+
+$postSourceStatus = @(& git status --porcelain=v1 --untracked-files=all -- src)
+$postSourceStatusExit = $LASTEXITCODE
+if ($postSourceStatusExit -ne 0) {
+  Write-Evidence ("FAIL: post-verification src/** status check exited " + $postSourceStatusExit)
+  $Failed = $true
+} elseif ($postSourceStatus.Count -eq 0) {
+  Write-Evidence "PASS: src/** has no staged, unstaged, or untracked files after verification."
+} else {
+  foreach ($line in $postSourceStatus) { Write-Evidence ("FAIL: post-verification source status: " + [string]$line) }
+  $Failed = $true
+}
+
+$postCommittedProductBlobRaw = @(& git rev-parse ("HEAD:src/product/product-controller-base.ts"))
+$postCommittedProductBlobExit = $LASTEXITCODE
+if ($postCommittedProductBlobExit -eq 0) { $postCommittedProductBlob = ([string]($postCommittedProductBlobRaw -join "`n")).Trim() } else { $postCommittedProductBlob = "" }
+if ($postCommittedProductBlobExit -ne 0 -or -not $postCommittedProductBlob) {
+  Write-Evidence ("FAIL: could not resolve post-verification committed product-controller blob; git rev-parse exited " + $postCommittedProductBlobExit)
+  $Failed = $true
+} else {
+  Assert-Equal "post-verification committed product-controller-base.ts blob" $postCommittedProductBlob $ExpectedProductControllerBlob
+}
+
+$postWorkingProductBlobRaw = @(& git hash-object (Join-Path $RepoRoot "src/product/product-controller-base.ts"))
+$postWorkingProductBlobExit = $LASTEXITCODE
+if ($postWorkingProductBlobExit -eq 0) { $postWorkingProductBlob = ([string]($postWorkingProductBlobRaw -join "`n")).Trim() } else { $postWorkingProductBlob = "" }
+if ($postWorkingProductBlobExit -ne 0 -or -not $postWorkingProductBlob) {
+  Write-Evidence ("FAIL: could not hash post-verification working product-controller file; git hash-object exited " + $postWorkingProductBlobExit)
+  $Failed = $true
+} else {
+  Assert-Equal "post-verification working product-controller-base.ts blob" $postWorkingProductBlob $ExpectedProductControllerBlob
+}
+
+Write-Evidence ""
 Write-Evidence "## Breaking-change audit"
 Write-Evidence "Static scope assertions checked: persisted-state owners unchanged; settings persistence owners unchanged; Drive protocol/metadata owners unchanged; planner/executor/core/Drive/local/state source families unchanged."
 Write-Evidence "Semantic ID generation remains in the pre-H6C planner/controller code; H6C does not alter semanticPlanId or withSemanticOperationId."
@@ -345,9 +471,11 @@ if ($CommitAndPushEvidence) {
     & git commit -m "test(h6c): record local verification evidence" -- $EvidenceRelativePath
     $gitCommitExit = $LASTEXITCODE
     if ($gitCommitExit -ne 0) { throw ("git commit evidence failed: " + $gitCommitExit) }
-    $evidenceCommit = (& git rev-parse HEAD).Trim()
+    $evidenceCommitRaw = @(& git rev-parse HEAD)
     $evidenceCommitExit = $LASTEXITCODE
-    if ($evidenceCommitExit -ne 0 -or -not $evidenceCommit) { throw "could not resolve evidence commit HEAD after commit." }
+    if ($evidenceCommitExit -ne 0) { throw ("could not resolve evidence commit HEAD after commit; git rev-parse exited " + $evidenceCommitExit) }
+    $evidenceCommit = ([string]($evidenceCommitRaw -join "`n")).Trim()
+    if (-not $evidenceCommit) { throw "could not resolve evidence commit HEAD after commit: empty output." }
     Write-Host ("Evidence commit: " + $evidenceCommit)
     & git push origin ("HEAD:" + $Branch)
     $gitPushExit = $LASTEXITCODE
