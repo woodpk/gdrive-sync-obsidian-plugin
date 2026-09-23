@@ -261,6 +261,7 @@ function scriptedController(label: "mobile" | "windows", plans: readonly Synchro
       const observed = plans[previewIndex++];
       if (!observed) throw new Error(`${label} has no scripted plan for preview ${previewIndex}.`);
       previewedPlanIds.push(String(observed.planId));
+      productionDiagnostics.begin("manual", observed.planId);
       return observed;
     },
     previewVerifyReconcile: async () => undefined,
@@ -272,6 +273,7 @@ function scriptedController(label: "mobile" | "windows", plans: readonly Synchro
     requestPreviewAction: async (action, diagnosticRunId) => {
       actions.push(action);
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
     currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
