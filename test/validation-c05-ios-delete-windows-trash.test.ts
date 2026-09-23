@@ -181,7 +181,10 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push("preview-manual");
       const observed = plans[Math.min(previewIndex, plans.length - 1)];
       previewIndex += 1;
-      if (observed) previewedPlanIds.push(String(observed.planId));
+      if (observed) {
+        previewedPlanIds.push(String(observed.planId));
+        productionDiagnostics.begin("manual", observed.planId);
+      }
       return observed;
     },
     previewVerifyReconcile: async () => {
@@ -199,6 +202,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push(`preview-action:${action.kind}`);
       physicalExecutionRequests += 1;
       executedPlanIds.push(String(action.planId));
+      if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
     currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
