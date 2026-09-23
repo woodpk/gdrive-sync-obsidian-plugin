@@ -77,7 +77,7 @@ export type ValidationProductionDriverRequest =
     }
   | { readonly kind: "cancel-active-sync"; readonly run: ValidationRunIdentity; readonly stepId: ValidationStepId };
 
-/** Driver acknowledgement never claims that a production mutation succeeded. */
+/** Driver results establish a production outcome only from exact correlated terminal diagnostics; request acceptance alone remains non-authoritative. */
 export type ValidationProductionDriverResult =
   | {
       readonly status: "plan-observed";
