@@ -34,7 +34,8 @@ import { StateCommitCoordinator } from "../core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator, type ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { CoreRunCoordinator, type RunLeasePort } from "../core/run-coordinator";
 import { semanticPlanId, withSemanticOperationId } from "../core/semantic-identifiers";
-import type { DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
+import type { DiagnosticEvent, DiagnosticLogger, SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
+import { ProductionDiagnosticCorrelationTracker, type ProductionDiagnosticCorrelation } from "../diagnostics/production-diagnostic-correlation";
 import { createInitialTrustedState, PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { sha256Text } from "../util/sha256";
 import { BoundedAuditHistory } from "./audit-history";
@@ -286,6 +287,7 @@ export class ProductControllerBase implements ProductControlPort {
   private runEvidence?: ExecutorRunEvidence;
   private pendingAutomaticTrigger?: AutomaticTrigger;
   private automaticDrain?: Promise<void>;
+  private readonly diagnosticCorrelation = new ProductionDiagnosticCorrelationTracker();
 
   constructor(private readonly options: ProductControllerOptions) {
     this.runs = new CoreRunCoordinator(options.vaultIdentity, options.deviceIdentity, options.leasePort, options.holderId);
@@ -295,12 +297,19 @@ export class ProductControllerBase implements ProductControlPort {
   onSurface(listener: (surface: ProductSurfaceState) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   readAuditHistory(): Promise<readonly AuditRecord[]> { return this.options.audit.read(); }
   currentRunEvidence(): ExecutorRunEvidence { if (!this.runEvidence) throw new Error("no active synchronization run evidence"); return this.runEvidence; }
+  currentDiagnosticCorrelation(): ProductionDiagnosticCorrelation | undefined { return this.diagnosticCorrelation.current(); }
+  diagnosticSnapshot(): readonly DiagnosticEvent[] { return this.options.diagnostics?.snapshot() ?? []; }
   pendingDestructiveCheckpoint(): CheckpointId | undefined { return this.planned?.checkpointId; }
   async previewManual(runId = this.options.diagnostics?.beginSyncRun("controller")): Promise<SynchronizationPlan | undefined> {
+    this.diagnosticCorrelation.begin(runId, "manual");
     this.syncInfo(runId, "manual-sync-request-enter", { operation: "preview-manual", trigger: "manual" });
     return this.createPlan("manual", true, true, runId);
   }
-  async previewVerifyReconcile(): Promise<SynchronizationPlan | undefined> { return this.createPlan("verify-reconcile", true, true); }
+  async previewVerifyReconcile(runId = this.options.diagnostics?.beginSyncRun("verify-reconcile")): Promise<SynchronizationPlan | undefined> {
+    this.diagnosticCorrelation.begin(runId, "verify-reconcile");
+    this.syncInfo(runId, "verify-reconcile-request-enter", { operation: "preview-verify-reconcile", trigger: "verify-reconcile" });
+    return this.createPlan("verify-reconcile", true, true, runId);
+  }
   noteChangeDuringRun(): void { this.runs.noteLocalOrRemoteChangeDuringRun(); }
   recordPreviewPresented(planId: SynchronizationPlan["planId"], diagnosticRunId?: number): void {
     const planned = this.planned;
@@ -471,6 +480,7 @@ export class ProductControllerBase implements ProductControlPort {
       let attentionPersistenceFailed = false;
       if (!await this.recordAttentionEntries(attentionOperations(plan).map(operation => this.attentionFor(operation, plan, diagnosticRunId)))) attentionPersistenceFailed = true;
       this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId, attentionPersistenceFailed };
+      this.diagnosticCorrelation.bindPlan(diagnosticRunId, plan.planId);
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
       this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
 
@@ -721,6 +731,9 @@ export class ProductControllerBase implements ProductControlPort {
     const reviewedFirstSyncResolution = this.reviewedFirstSyncConflictOrigins.get(String(id)) === true;
     const operations = await this.resolutionOperations(id, assessment, resolution, reviewedFirstSyncResolution);
     if (!operations.length) return { status: "rejected", reason: "requested conflict resolution is not applicable to the current preserved versions" };
+    const diagnosticRunId = this.options.diagnostics?.beginSyncRun("conflict-resolution");
+    this.diagnosticCorrelation.begin(diagnosticRunId, "conflict-resolution");
+    this.syncInfo(diagnosticRunId, "conflict-resolution-request-enter", { operation: "resolve-conflict", stage: "conflict-resolution" });
     const executionDisposition = "requires-user-approval" as const;
     const recoveryCheckpointRequired = false;
     const resolutionPlan: SynchronizationPlan = {
@@ -728,7 +741,8 @@ export class ProductControllerBase implements ProductControlPort {
       trigger: "manual", operations, executionDisposition, recoveryCheckpointRequired, globalExecutionGate: "none",
     };
     const resolutionAssembly: AssembledPlanningInput = { ...current.assembly, nextCursor: undefined, reconstruction: false };
-    this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false, attentionPersistenceFailed: false };
+    this.planned = { plan: resolutionPlan, assembly: resolutionAssembly, reviewed: false, diagnosticRunId, attentionPersistenceFailed: false };
+    this.diagnosticCorrelation.bindPlan(diagnosticRunId, resolutionPlan.planId);
     if (await this.executePlanned(true) !== "complete") return { status: "rejected", reason: "conflict resolution did not complete authoritatively" };
     this.conflictRegistry.delete(String(id));
     this.reviewedFirstSyncConflictOrigins.delete(String(id));
