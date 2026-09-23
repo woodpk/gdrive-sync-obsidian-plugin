@@ -18,7 +18,8 @@ import type {
   ValidationFixtureSpec,
   ValidationTextVariant,
 } from "../src/validation/fixture-manager";
-import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";\nimport { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
+import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   validationDeviceIdentity,
   validationFixtureIdentity,
@@ -227,7 +228,8 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   let previewIndex = 0;
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };\n  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
+  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -255,7 +257,9 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
-    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
+    currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No direct run-evidence read is expected in C07 focused tests."); },
   };
