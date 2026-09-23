@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 — run BVP-S01 local authority/archive verification; only after passing evidence is committed may BVP-S02 be expanded from the exact verified repository state"
+    next_step: "Stage 2A / Phase 6 — execute BVP-S02B from accepted integration SHA ff87c49752844f1e52d884bcf4af94dea01c6eff using dev/agents/st2a/ph6/05-bvp/02-legacy-executable-retirement/02b-retire-harness-source-and-production-coupling.md; do not begin 02V or S03 until 02B passes PHX-CI and supervisor acceptance"
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"
