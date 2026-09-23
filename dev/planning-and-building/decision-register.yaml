@@ -1019,7 +1019,6 @@ deferred_engineering:
   - "Exact hashing/cache algorithms and transfer chunking/buffering mechanics."
   - "Exact large-file safeguards, concurrency limits, retry limits, and reconciliation cadence defaults."
   - "Exact device-local secure-token storage mechanism available in Obsidian on each supported platform."
-  - "Exact validation-mode activation mechanism and concrete module/type/file layout, subject to DEC-301 through DEC-310 and repository grounding."
   - "Exact typed declarative scenario DSL syntax and private step-handler decomposition within DEC-314 and the fixed complexity budgets."
   - "Exact stateful in-memory adapter data structures and deterministic time/fault primitives within DEC-313."
   - "Exact validation-only build/entrypoint composition mechanism that preserves DEC-312 shipping separation."
