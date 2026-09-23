@@ -146,14 +146,41 @@ if ($sourceDriftExit -eq 0) {
 
 $reviewedProductBlob = (& git rev-parse ($ExpectedImplementationHead + ":src/product/product-controller-base.ts")).Trim()
 $reviewedProductBlobExit = $LASTEXITCODE
-$currentProductBlob = (& git rev-parse ("HEAD:src/product/product-controller-base.ts")).Trim()
-$currentProductBlobExit = $LASTEXITCODE
-if ($reviewedProductBlobExit -ne 0 -or $currentProductBlobExit -ne 0) {
-  Write-Evidence "FAIL: could not resolve reviewed/current product-controller-base.ts blob."
+$currentCommittedProductBlob = (& git rev-parse ("HEAD:src/product/product-controller-base.ts")).Trim()
+$currentCommittedProductBlobExit = $LASTEXITCODE
+$currentWorkingProductBlob = (& git hash-object (Join-Path $RepoRoot "src/product/product-controller-base.ts")).Trim()
+$currentWorkingProductBlobExit = $LASTEXITCODE
+if ($reviewedProductBlobExit -ne 0 -or $currentCommittedProductBlobExit -ne 0 -or $currentWorkingProductBlobExit -ne 0) {
+  Write-Evidence "FAIL: could not resolve reviewed/current product-controller-base.ts blobs."
   $Failed = $true
 } else {
   Assert-Equal "reviewed product-controller-base.ts blob" $reviewedProductBlob $ExpectedProductControllerBlob
-  Assert-Equal "current product-controller-base.ts blob" $currentProductBlob $ExpectedProductControllerBlob
+  Assert-Equal "current committed product-controller-base.ts blob" $currentCommittedProductBlob $ExpectedProductControllerBlob
+  Assert-Equal "current working product-controller-base.ts blob" $currentWorkingProductBlob $ExpectedProductControllerBlob
+}
+
+& git diff --quiet -- src
+$workingSourceDiffExit = $LASTEXITCODE
+if ($workingSourceDiffExit -eq 0) {
+  Write-Evidence "PASS: no unstaged src/** working-tree drift."
+} elseif ($workingSourceDiffExit -eq 1) {
+  Write-Evidence "FAIL: unstaged src/** working-tree drift exists."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: unstaged source git diff --quiet exited " + $workingSourceDiffExit)
+  $Failed = $true
+}
+
+& git diff --cached --quiet -- src
+$stagedSourceDiffExit = $LASTEXITCODE
+if ($stagedSourceDiffExit -eq 0) {
+  Write-Evidence "PASS: no staged src/** working-tree drift."
+} elseif ($stagedSourceDiffExit -eq 1) {
+  Write-Evidence "FAIL: staged src/** working-tree drift exists."
+  $Failed = $true
+} else {
+  Write-Evidence ("FAIL: staged source git diff --cached --quiet exited " + $stagedSourceDiffExit)
+  $Failed = $true
 }
 
 if ($Failed) {
@@ -319,7 +346,7 @@ if ($CommitAndPushEvidence) {
     $evidenceCommit = (& git rev-parse HEAD).Trim()
     $evidenceCommitExit = $LASTEXITCODE
     if ($evidenceCommitExit -ne 0 -or -not $evidenceCommit) { throw "could not resolve evidence commit HEAD after commit." }
-    Write-Evidence ("Evidence commit: " + $evidenceCommit)
+    Write-Host ("Evidence commit: " + $evidenceCommit)
     & git push origin ("HEAD:" + $Branch)
     $gitPushExit = $LASTEXITCODE
     if ($gitPushExit -ne 0) { throw ("git push evidence failed: " + $gitPushExit) }
