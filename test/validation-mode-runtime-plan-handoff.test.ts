@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ProductSurfaceState, SynchronizationPlan } from "../src/contracts";
+import type { ConflictAssessment, ProductSurfaceState, SynchronizationPlan, UserAction, UserActionResult } from "../src/contracts";
 import { contractId } from "../src/contracts";
 import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verifier-contracts";
 import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
@@ -82,11 +82,19 @@ function plan(planId: string, trigger: SynchronizationPlan["trigger"] = "manual"
   };
 }
 
-function productionFixture(plans: readonly SynchronizationPlan[]) {
+function productionFixture(
+  plans: readonly SynchronizationPlan[],
+  conflicts: readonly ConflictAssessment[] = [],
+  actionResult: UserActionResult = { status: "accepted" },
+) {
   let previewIndex = 0;
   const calls: string[] = [];
   const executedPlanIds: string[] = [];
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const requestedActions: UserAction[] = [];
+  const surface: ProductSurfaceState = {
+    status: conflicts.length > 0 ? { kind: "conflict-present", conflictCount: conflicts.length } : { kind: "idle-ready" },
+    conflicts,
+  };
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
       calls.push("preview-manual");
@@ -103,7 +111,8 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
     runAutomatic: async trigger => { calls.push(`automatic:${trigger}`); },
     request: async action => {
       calls.push(`request:${action.kind}`);
-      return { status: "accepted" };
+      requestedActions.push(action);
+      return actionResult;
     },
     requestPreviewAction: async action => {
       calls.push(`preview-action:${action.kind}`);
@@ -117,7 +126,21 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   return {
     calls,
     executedPlanIds,
+    requestedActions,
     runtime: { productController: () => controller },
+  };
+}
+
+function unresolvedTextConflict(conflictId: string, pathValue: string): Extract<ConflictAssessment, { readonly kind: "unresolved-text" }> {
+  const path = contractId<"VaultPath">(pathValue);
+  return {
+    kind: "unresolved-text",
+    conflictId: contractId<"ConflictId">(conflictId),
+    path,
+    preserved: {
+      local: { source: "local", version: { path, entityKind: "file" } },
+      remote: { source: "remote", version: { path, entityKind: "file" } },
+    },
   };
 }
 
@@ -159,6 +182,19 @@ function assertPlan(
       assertionId: `assertion:${stepId}`,
       expectation: expectation(expectedTrigger),
     },
+  };
+}
+
+function resolveObservedConflict(
+  stepId: string,
+  input: Record<string, unknown>,
+) {
+  return {
+    stepId: validationStepId(stepId),
+    module: "production-path-driver" as const,
+    operation: "resolve-observed-conflict",
+    requiredCompletionProof: "operation-complete" as const,
+    input,
   };
 }
 
@@ -503,6 +539,122 @@ test("VH15-R2 T8 composition recreation drops handoff authority and resumed exec
   if (resumed.result.status === "BLOCKED") assert.match(resumed.result.reason.summary, /No observed production plan exists/);
   assert.equal(resumeCalls, 2);
   assert.deepEqual(production.executedPlanIds, []);
+});
+
+test("H6B runtime delegates resolve-observed-conflict through the fixed production path using observed identity", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:runtime", "Notes/runtime-conflict.md");
+  const production = productionFixture([plan("plan:h6b:runtime")], [conflict]);
+  const definition: ValidationRunnerScenarioDefinition = {
+    scenarioId: "D02",
+    prerequisiteIds: [],
+    steps: [
+      preview("h6b-runtime-preview", "h6b-runtime-cycle"),
+      resolveObservedConflict("h6b-runtime-resolve", {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "keep-both" },
+      }),
+      ...proofSteps("h6b-runtime"),
+    ],
+  };
+  const { runtime } = runtimeFor({ production, definitions: [definition] });
+  runtime.setEnabled(true);
+
+  assertRunnerStatus(await runtime.startScenario("D02"), "PASS");
+  assert.deepEqual(production.requestedActions, [{
+    kind: "resolve-conflict",
+    conflictId: conflict.conflictId,
+    resolution: { kind: "keep-both" },
+  }]);
+  assert.deepEqual(production.calls, ["preview-manual", "request:resolve-conflict"]);
+});
+
+test("H6B runtime preserves production resolve-conflict rejection as BLOCKED", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:runtime-reject", "Notes/runtime-reject.md");
+  const production = productionFixture(
+    [plan("plan:h6b:runtime-reject")],
+    [conflict],
+    { status: "rejected", reason: "conflict is stale" },
+  );
+  const definition: ValidationRunnerScenarioDefinition = {
+    scenarioId: "D02",
+    prerequisiteIds: [],
+    steps: [
+      preview("h6b-runtime-reject-preview", "h6b-runtime-reject-cycle"),
+      resolveObservedConflict("h6b-runtime-reject-resolve", {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "keep-local" },
+      }),
+    ],
+  };
+  const { runtime } = runtimeFor({ production, definitions: [definition] });
+  runtime.setEnabled(true);
+
+  const result = assertRunnerStatus(await runtime.startScenario("D02"), "BLOCKED");
+  if (result.status === "BLOCKED") assert.match(result.reason.summary, /conflict is stale/);
+  assert.deepEqual(production.requestedActions, [{
+    kind: "resolve-conflict",
+    conflictId: conflict.conflictId,
+    resolution: { kind: "keep-local" },
+  }]);
+});
+
+test("H6B runtime rejects caller conflictId and malformed path, conflict kind, or resolution before production resolution", async () => {
+  const conflict = unresolvedTextConflict("conflict:h6b:runtime-guard", "Notes/runtime-guard.md");
+  const cases: readonly { readonly scenarioId: "D02" | "D03" | "D04" | "D05"; readonly input: Record<string, unknown> }[] = [
+    {
+      scenarioId: "D02",
+      input: {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "keep-local" },
+        conflictId: "conflict:caller-forged",
+      },
+    },
+    {
+      scenarioId: "D03",
+      input: {
+        expectedVaultPath: " Notes/runtime-guard.md ",
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "keep-local" },
+      },
+    },
+    {
+      scenarioId: "D04",
+      input: {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "opaque-binary",
+        resolution: { kind: "keep-local" },
+      },
+    },
+    {
+      scenarioId: "D05",
+      input: {
+        expectedVaultPath: String(conflict.path),
+        expectedConflictKind: "unresolved-text",
+        resolution: { kind: "manual", resolvedVersion: { path: String(conflict.path), entityKind: "file" } },
+      },
+    },
+  ];
+
+  for (const entry of cases) {
+    const production = productionFixture([plan("plan:h6b:guard:" + entry.scenarioId)], [conflict]);
+    const definition: ValidationRunnerScenarioDefinition = {
+      scenarioId: entry.scenarioId,
+      prerequisiteIds: [],
+      steps: [
+        preview("h6b-guard-preview-" + entry.scenarioId, "h6b-guard-cycle-" + entry.scenarioId),
+        resolveObservedConflict("h6b-guard-resolve-" + entry.scenarioId, entry.input),
+      ],
+    };
+    const { runtime } = runtimeFor({ production, definitions: [definition] });
+    runtime.setEnabled(true);
+
+    assertRunnerStatus(await runtime.startScenario(entry.scenarioId), "BLOCKED");
+    assert.deepEqual(production.requestedActions, []);
+    assert.deepEqual(production.calls, ["preview-manual"]);
+  }
 });
 
 test("VH15-R2 T9 production-path-driver remains non-overridable", async () => {

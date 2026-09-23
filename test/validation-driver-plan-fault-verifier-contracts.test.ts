@@ -4,6 +4,8 @@ import { contractId, type SynchronizationPlan } from "../src/contracts";
 import {
   VALIDATION_CONVERGENCE_ASSERTION_KINDS,
   VALIDATION_FAULT_KINDS,
+  VALIDATION_OBSERVED_CONFLICT_KINDS,
+  VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS,
   VALIDATION_PLAN_ASSERTION_FAILURE_KINDS,
   VALIDATION_PRODUCTION_DRIVER_REQUEST_KINDS,
   VALIDATION_STATE_ASSERTION_KINDS,
@@ -42,12 +44,25 @@ test("VH02 driver requests are bounded to production-path orchestration actions"
     "preview-verify-reconcile",
     "run-automatic",
     "execute-asserted-plan",
+    "resolve-observed-conflict",
     "cancel-active-sync",
   ]);
+  assert.deepEqual(VALIDATION_OBSERVED_CONFLICT_KINDS, ["unresolved-text"]);
+  assert.deepEqual(VALIDATION_OBSERVED_CONFLICT_RESOLUTION_KINDS, ["keep-local", "keep-remote", "keep-both"]);
   const matched = matchedValidationPlanAssertion({ assertionId: "assert-e02-plan", run, plan });
   const execute: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorization: matched.authorization };
   assert.equal(execute.authorization.executionAuthorized, true);
   assert.equal(execute.authorization.planId, plan.planId);
+
+  const resolve: ValidationProductionDriverRequest = {
+    kind: "resolve-observed-conflict",
+    run,
+    stepId,
+    expectedVaultPath: contractId<"VaultPath">("Notes/conflict.md"),
+    expectedConflictKind: "unresolved-text",
+    resolution: { kind: "keep-both" },
+  };
+  assert.deepEqual(resolve.resolution, { kind: "keep-both" });
 });
 
 test("plan expectations reject a kind that is simultaneously allowed background and forbidden", () => {
@@ -267,6 +282,29 @@ test("any failed state or convergence assertion dominates BLOCKED and yields FAI
 const matchedForTypes = matchedValidationPlanAssertion({ assertionId: "typecheck-plan", run, plan });
 const validExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, authorization: matchedForTypes.authorization };
 void validExecuteTypeCheck;
+const validResolveTypeCheck: ValidationProductionDriverRequest = {
+  kind: "resolve-observed-conflict",
+  run,
+  stepId,
+  expectedVaultPath: contractId<"VaultPath">("Notes/typecheck-conflict.md"),
+  expectedConflictKind: "unresolved-text",
+  resolution: { kind: "keep-local" },
+};
+void validResolveTypeCheck;
+const invalidResolveConflictIdTypeCheck: ValidationProductionDriverRequest = {
+  kind: "resolve-observed-conflict",
+  run,
+  stepId,
+  expectedVaultPath: contractId<"VaultPath">("Notes/typecheck-conflict.md"),
+  expectedConflictKind: "unresolved-text",
+  resolution: { kind: "keep-local" },
+  // @ts-expect-error conflict identity is production-observed and may not be supplied by a validation caller.
+  conflictId: contractId<"ConflictId">("conflict:forged"),
+};
+void invalidResolveConflictIdTypeCheck;
+// @ts-expect-error manual conflict-resolution payloads are outside the H6B validation production-path extension.
+const invalidManualResolveTypeCheck: ValidationProductionDriverRequest = { ...validResolveTypeCheck, resolution: { kind: "manual", resolvedVersion: { path: contractId<"VaultPath">("Notes/typecheck-conflict.md"), entityKind: "file" } } };
+void invalidManualResolveTypeCheck;
 // @ts-expect-error raw observed plans are not sufficient authority for execution; an assertion authorization is required.
 const invalidExecuteTypeCheck: ValidationProductionDriverRequest = { kind: "execute-asserted-plan", run, stepId, plan };
 void invalidExecuteTypeCheck;
