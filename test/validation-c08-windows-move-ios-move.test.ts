@@ -13,7 +13,8 @@ import {
   type UserAction,
   type VaultPath,
 } from "../src/contracts";
-import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";\nimport { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
+import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   ValidationFixtureManager,
 } from "../src/validation/fixture-manager";
@@ -254,7 +255,9 @@ class C08World {
       if (diagnosticRunId !== undefined) this.productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" as const };
     },
-    currentDiagnosticCorrelation: () => this.productionDiagnostics.current(),\n    diagnosticSnapshot: () => this.productionDiagnostics.snapshot(),\n    currentSurface: (): ProductSurfaceState => ({ status: { kind: "idle-ready" }, conflicts: [] }),
+    currentDiagnosticCorrelation: () => this.productionDiagnostics.current(),
+    diagnosticSnapshot: () => this.productionDiagnostics.snapshot(),
+    currentSurface: (): ProductSurfaceState => ({ status: { kind: "idle-ready" }, conflicts: [] }),
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("C08 focused runtime test does not require executor run evidence."); },
   };
