@@ -11,19 +11,12 @@ import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "
 import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
-import {
-  classifyValidationDevicePlatform,
-  ValidationModeRuntime,
-  type ValidationModeActionResult,
-} from "./validation/validation-mode-runtime";
-import { validationDeviceIdentity } from "./validation/run-sandbox-checkpoint-contracts";
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
   private dataRepository?: PluginDataRepository;
   private diagnostics?: DiagnosticLogger;
   private runtime?: ProductRuntime;
-  private validationRuntime?: ValidationModeRuntime;
   private statusEl?: HTMLElement;
   private unsubscribeStatus?: () => void;
   private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
@@ -50,13 +43,6 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       data: this.dataRepository,
       saveSettings: settings => this.replaceSettings(settings),
       notify: message => new Notice(message),
-    });
-    this.validationRuntime = new ValidationModeRuntime({
-      productionRuntime: this.runtime,
-      currentDevice: () => {
-        if (!this.currentSettings.deviceIdentity) return undefined;
-        return validationDeviceIdentity(this.currentSettings.deviceIdentity, this.validationDevicePlatform());
-      },
     });
     registerGoogleOAuthReturn(
       this,
@@ -86,11 +72,6 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       clearDiagnosticLog: () => this.clearDiagnosticLog(),
       testExternalBrowser: () => this.testExternalBrowser(),
       testDelayedExternalBrowser: () => this.testDelayedExternalBrowser(),
-      validationModeEnabled: () => this.validationRuntime?.enabled() ?? false,
-      setValidationModeEnabled: enabled => this.setValidationModeEnabled(enabled),
-      validationScenarioIds: () => this.validationRuntime?.scenarioIds() ?? [],
-      startValidationScenario: scenarioId => this.startValidationScenario(scenarioId),
-      resumeValidationScenario: () => this.resumeValidationScenario(),
     }));
 
     this.addCommand({ id: "sync-now", name: "Sync now", callback: () => void this.openManualPreview() });
@@ -126,58 +107,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   async onunload(): Promise<void> {
-    this.validationRuntime?.setEnabled(false);
     this.unsubscribeStatus?.(); this.unsubscribeStatus = undefined;
     await this.runtime?.disposeProduct();
     await this.diagnostics?.flush();
   }
 
-  private validationDevicePlatform(): "windows-desktop" | "iphone" | "ipad" {
-    const navigator = globalThis.navigator;
-
-    return classifyValidationDevicePlatform({
-      isDesktopApp: Platform.isDesktopApp,
-      userAgent: navigator?.userAgent ?? "",
-      maxTouchPoints: Number(navigator?.maxTouchPoints ?? 0),
-    });
-  }
-
-  private async setValidationModeEnabled(enabled: boolean): Promise<void> {
-    if (!this.validationRuntime) throw new Error("Validation runtime is unavailable.");
-    this.validationRuntime.setEnabled(enabled);
-    new Notice(enabled
-      ? "Validation mode enabled for this plugin session. Harness controls are now available."
-      : "Validation mode disabled. Ordinary synchronization remains unchanged.");
-  }
-
-  private async startValidationScenario(scenarioId: string): Promise<void> {
-    if (!this.validationRuntime) { new Notice("Validation runtime is unavailable."); return; }
-    try {
-      this.noticeValidationResult("start", await this.validationRuntime.startScenario(scenarioId));
-    } catch (error) {
-      this.noticeError("Validation scenario could not start", error);
-    }
-  }
-
-  private async resumeValidationScenario(): Promise<void> {
-    if (!this.validationRuntime) { new Notice("Validation runtime is unavailable."); return; }
-    try {
-      this.noticeValidationResult("resume", await this.validationRuntime.resumeCurrent());
-    } catch (error) {
-      this.noticeError("Validation scenario could not resume", error);
-    }
-  }
-
-  private noticeValidationResult(action: "start" | "resume", result: ValidationModeActionResult): void {
-    if (result.status !== "runner") {
-      new Notice(`Validation ${action} unavailable: ${result.reason}`);
-      return;
-    }
-    const reason = (result.result.status === "FAIL" || result.result.status === "BLOCKED")
-      ? `: ${result.result.reason.summary}`
-      : "";
-    new Notice(`Validation ${action}: ${result.result.status}${reason}`);
-  }
 
   private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
     const durable = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
