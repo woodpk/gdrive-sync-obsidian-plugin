@@ -4,10 +4,13 @@
 
 
 **Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`
-**Prompt maturity:** EXECUTABLE  
+**Prompt maturity:** COMPLETE  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact accepted predecessor / implementation input SHA:** `ff87c49752844f1e52d884bcf4af94dea01c6eff`  
-**Required branch:** `bvp-s02b-retire-harness-source`
+**Required branch:** `bvp-s02b-retire-harness-source`  
+**Accepted implementation SHA:** `64035ae6b36ef1b6372e3153a815dbe8be72668a`  
+**Accepted PHX-CI evidence SHA:** `9a04f3a20ef0448731b79d6f5f915a20107f37c1`  
+**Accepted integration SHA:** `dd8f5f7d65598a2ec175627a6749316119b521c0`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 

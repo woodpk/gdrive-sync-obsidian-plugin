@@ -12,8 +12,8 @@ The nine BVP S01-S09 items are primary work packages. They are deliberately deco
 | 01B | S01 — Authority / Archive Transition | COMPLETE | `01-authority-archive-transition/01b-archive-legacy-dev-harness-material.md` |
 | 01V | S01 — Authority / Archive Transition | COMPLETE | `01-authority-archive-transition/01v-authority-archive-acceptance.md` |
 | 02A | S02 — Legacy Executable Retirement | COMPLETE | `02-legacy-executable-retirement/02a-retire-harness-only-test-support-surface.md` |
-| 02B | S02 — Legacy Executable Retirement | EXECUTABLE NEXT | `02-legacy-executable-retirement/02b-retire-harness-source-and-production-coupling.md` |
-| 02V | S02 — Legacy Executable Retirement | PREPLANNED | `02-legacy-executable-retirement/02v-primary-stage-phx-ci-acceptance.md` |
+| 02B | S02 — Legacy Executable Retirement | COMPLETE | `02-legacy-executable-retirement/02b-retire-harness-source-and-production-coupling.md` |
+| 02V | S02 — Legacy Executable Retirement | EXECUTABLE NEXT | `02-legacy-executable-retirement/02v-primary-stage-phx-ci-acceptance.md` |
 | 03A | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03a-create-test-platform-root-and-shipping-isolation.md` |
 | 03B | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md` |
 | 03C | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03c-implement-architecture-metrics-and-budget-gates.md` |
