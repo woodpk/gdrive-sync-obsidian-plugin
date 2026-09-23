@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";\nimport assert from "node:assert/strict";
 import test from "node:test";
 import {
   contractId,
@@ -312,7 +312,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
   const surface: ProductSurfaceState = {
     status: { kind: "idle-ready" },
     conflicts: [],
-  };
+  };\n  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -333,7 +333,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       calls.push("request:" + action.kind);
       return { status: "accepted" };
     },
-    requestPreviewAction: async action => {
+    requestPreviewAction: async (action, diagnosticRunId) => {
       calls.push("preview-action:" + action.kind);
       if (action.kind !== "execute-plan") {
         return { status: "rejected", reason: "Focused C09 harness permits only fixed execute-plan dispatch." };
@@ -341,7 +341,7 @@ function productionFixture(plans: readonly SynchronizationPlan[]) {
       executedPlanIds.push(String(action.planId));
       return { status: "accepted" };
     },
-    currentSurface: () => surface,
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => {
       throw new Error("Focused C09 correction tests do not require production run evidence.");
