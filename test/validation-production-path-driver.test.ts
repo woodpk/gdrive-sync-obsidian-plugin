@@ -9,7 +9,7 @@ import type {
   UserActionResult,
 } from "../src/contracts";
 import { contractId } from "../src/contracts";
-import type { DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
+import { DiagnosticLogger, type DiagnosticEvent } from "../src/diagnostics/diagnostic-logger";
 import type { ProductionDiagnosticCorrelation } from "../src/diagnostics/production-diagnostic-correlation";
 import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "../src/product/production-executor";
@@ -470,6 +470,17 @@ test("VH06 delegates a reviewed manual plan through the real ProductController a
     remoteEnumeration: { status: "complete" as const },
     mode: "full" as const,
   };
+  const diagnostics = new DiagnosticLogger({
+    persistence: {
+      loadDiagnostics: async () => undefined,
+      saveDiagnostics: async () => undefined,
+    },
+    level: "trace",
+    retentionLimit: 2000,
+    consoleMirror: false,
+    platform: "desktop",
+  });
+  await diagnostics.initialize();
   let controller: ProductController;
   const executor = new ProductSynchronizationExecutor({} as never, {} as never, state, context, () => controller.currentRunEvidence());
   controller = new ProductController({
@@ -485,6 +496,7 @@ test("VH06 delegates a reviewed manual plan through the real ProductController a
     leasePort: { tryAcquire: async () => ({ release: async () => undefined }) } as never,
     audit: new BoundedAuditHistory(new MemoryAuditPersistence(), 20),
     holderId: "vh06-production-driver-test",
+    diagnostics,
   });
 
   const driver = new ValidationProductionPathDriver({ productController: () => controller });
