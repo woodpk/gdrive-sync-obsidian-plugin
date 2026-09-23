@@ -15,7 +15,8 @@ import { validationEvidenceRef } from "../src/validation/driver-plan-fault-verif
 import {
   ValidationFixtureManager,
 } from "../src/validation/fixture-manager";
-import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";\nimport { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
+import type { ValidationProductionControllerPort } from "../src/validation/production-path-driver";
+import { ValidationProductionDiagnosticFixture } from "./validation-production-diagnostic-fixture";
 import {
   C04_AUTHORITY_CYCLES,
   C04_NEW_RELATIVE_PATH,
@@ -254,7 +255,8 @@ function scriptedController(label: "mobile" | "windows", plans: readonly Synchro
   const previewedPlanIds: string[] = [];
   const executedPlanIds: string[] = [];
   const actions: UserAction[] = [];
-  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };\n  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
+  const surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
+  const productionDiagnostics = new ValidationProductionDiagnosticFixture();
 
   const controller: ValidationProductionControllerPort = {
     previewManual: async () => {
@@ -276,7 +278,9 @@ function scriptedController(label: "mobile" | "windows", plans: readonly Synchro
       if (diagnosticRunId !== undefined) productionDiagnostics.complete(diagnosticRunId);
       return { status: "accepted" };
     },
-    currentDiagnosticCorrelation: () => productionDiagnostics.current(),\n    diagnosticSnapshot: () => productionDiagnostics.snapshot(),\n    currentSurface: () => surface,
+    currentDiagnosticCorrelation: () => productionDiagnostics.current(),
+    diagnosticSnapshot: () => productionDiagnostics.snapshot(),
+    currentSurface: () => surface,
     onSurface: () => () => undefined,
     currentRunEvidence: () => { throw new Error("No active run evidence required by C04 focused tests."); },
   };
