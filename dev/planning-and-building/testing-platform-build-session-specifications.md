@@ -2,18 +2,22 @@
 
 ## 1. How to Use This Document
 
-These are **decomposed build-session specifications**, not permanently executable prompts. In accordance with the governing construction manual, immediately before each session the supervisor MUST inspect the actual repository produced by the prior accepted session, bind the exact predecessor SHA, confirm concrete file/type locations, and issue a refreshed coding-agent prompt preserving the objective/end state below.
+BVP-S01 through BVP-S09 are **primary Stage-2A work packages**, not assumptions that one coding agent can complete an entire primary stage in one execution turn. The authoritative child-session decomposition is `dev/planning-and-building/testing-platform-session-decomposition.md`, with task files under `dev/agents/st2a/ph6/05-bvp/**`.
 
-Every dispatched session MUST:
+Later child task files are pre-generated only as **PREPLANNED / NOT-YET-EXECUTABLE** scope contracts. In accordance with the governing construction manual, immediately before execution the supervisor MUST inspect the actual accepted repository, bind the exact predecessor SHA, confirm exact types/tests/current paths, set an exact writable-path allowlist, confirm the child still satisfies the session-size gate, and mark that child prompt EXECUTABLE.
+
+Every dispatched child session MUST:
 
 - use a dedicated task branch from the exact supervisor-approved predecessor;
-- not use GitHub Actions;
-- use repository-controlled `dev/scripts/*.ps1` for local build/test/verification/evidence;
-- write required evidence to `dev/_ca-output.md`;
-- provide the user a small paste-ready PowerShell bootstrap that fetches/updates the task branch, executes the committed verifier, and performs only authorized cleanup;
-- from BVP-S03 onward, run the architecture guard and metrics;
+- use no GitHub Actions;
+- receive no authority to expand its writable surface or classify extra files;
+- push its implementation branch and pass authoritative verification through the installed PHX-CI deployed-runtime operator front door before supervisor integration;
+- use PHX-CI canonical evidence in `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/`;
+- from BVP-S03 onward, pass architecture guard and metrics through the repository check executed by PHX-CI;
 - treat `dev/archive/**` as historical/non-authoritative;
-- stop rather than weakening architecture rules when a hard boundary or budget blocks implementation.
+- return BLOCKED rather than weakening boundaries, raising budgets, or editing unlisted paths.
+
+Each primary BVP stage also ends with a separate integrated PHX-CI acceptance task before the next primary stage begins.
 
 ## BVP-S01 — Authority Transition and Complete Legacy `dev/**` Archive
 
@@ -39,7 +43,7 @@ Do not alter product source or tests in this session. Do not reinterpret archive
 
 ### Verification
 
-Use a committed PowerShell script under `dev/scripts/` that inventories active `dev/**`, classifies legacy terms, verifies archive destinations, checks active-authority references, and records complete results in `dev/_ca-output.md`.
+Historical note: S01 was completed before DEC-323 and used its committed S01 verifier. Future child/stage acceptance uses PHX-CI.
 
 ### Stop
 
@@ -80,7 +84,7 @@ No synchronization redesign. No new runner. No new production test bypass. No te
 
 ### Verification
 
-Committed local PowerShell verifier runs typecheck, complete remaining automated suite, build/bundle verification, repository checks, and explicit searches proving the legacy runtime/UI is absent.
+Child-session and integrated S02 acceptance use PHX-CI. The S02 child prompts define the exact retirement surfaces; PHX-CI runs typecheck, full tests, build, repository checks, artifact verification, and evidence.
 
 ### Stop
 
@@ -100,7 +104,7 @@ Create the enforcement layer that makes future drift mechanically fail before su
 - machine-readable boundary is active;
 - architecture guard exists and is independently tested;
 - architecture metrics script exists and enforces hard budgets;
-- one generic BVP local verification script exists;
+- PHX-CI is wired as the canonical branch/stage verifier;
 - production build excludes `test-platform/**`;
 - normal work cannot modify frozen governance surfaces without explicit authorization;
 - no scenario-specific PowerShell verifier exists.

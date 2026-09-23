@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 status: authoritative_frozen_after_bvp_s01_persistence
 name: BRAIN Verification Platform architecture boundary
 
@@ -70,7 +70,23 @@ supervisor_owned_frozen_surfaces:
   - dev/governance/testing-platform-boundary.yaml
   - dev/scripts/Test-TestingArchitectureGuard.ps1
   - dev/scripts/Get-TestingArchitectureMetrics.ps1
-  - dev/scripts/Invoke-TestingPlatformVerification.ps1
+  - phx-ci.json
+  - Taskfile.phx-ci.yml
+  - bounded PHX-CI include block in Taskfile.yml
+
+dispatch_policy:
+  preplanned_prompt_executable_without_supervisor_rebind: false
+  exact_predecessor_sha_required: true
+  exact_writable_path_allowlist_required: true
+  worker_may_expand_scope: false
+  worker_may_reclassify_files: false
+  unexpected_out_of_scope_dependency_result: BLOCKED
+  new_platform_contract_families_per_child_session_max: 1
+  substantive_non_test_files_split_threshold: 6
+  net_new_non_test_loc_split_threshold: 1000
+  split_threshold_exemptions:
+    - mechanical deletion or move work
+    - declarative scenario batches
 
 archive_policy:
   archive_is_non_authoritative: true
@@ -79,8 +95,15 @@ archive_policy:
 
 verification:
   github_actions_allowed: false
-  required_script_root: dev/scripts/
+  canonical_system: PHX-CI
+  consumer_pin_file: phx-ci.json
+  deployed_runtime_root: "%LOCALAPPDATA%/PHX-CI/runtimes/<framework.sha>/"
+  operator_entrypoint: scripts/Invoke-PhxCi.ps1
+  task_branch_acceptance_publication_mode: push
   canonical_evidence: dev/_ca-output.md
-  architecture_guard_required_every_session: true
-  metrics_required_every_session: true
+  structured_evidence: dev/_ca-output.json
+  evidence_history: dev/test-results/
+  architecture_guard_required_every_session_after_bvp_s03: true
+  metrics_required_every_session_after_bvp_s03: true
+  primary_stage_phx_ci_gate_required: true
   supervisor_architecture_review_after_max_implementation_sessions: 2

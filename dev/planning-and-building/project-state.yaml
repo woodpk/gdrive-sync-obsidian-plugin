@@ -50,17 +50,17 @@ stage_2a_phases:
 bvp_transition:
   bvp_s01_start_sha: "efb9a0bb88084d706dc535f2826e4df956cfd57d"
   branch: "phase6-integration"
-  status: persisted_pending_local_verification
+  status: complete
   legacy_architecture: superseded
   legacy_dev_material: "moved to dev/archive/legacy-validation-harness/**"
-  next_session_after_s01_acceptance: "BVP-S02 — remove legacy executable harness and production coupling"
-  hard_rule: "No replacement BVP implementation begins until BVP-S01 local archive/authority verification passes."
+  next_session_after_s01_acceptance: "BVP-S02A — retire exact harness-only test/support surface"
+  hard_rule: "S01 is complete. S02A is the next implementation child; S02B cannot dispatch until S02A PHX-CI evidence is accepted."
 
 anti_drift:
   boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
   enforcement_start: "BVP-S03 installs the architecture guard, metrics, and canonical verification foundation before substantive replacement-platform growth."
   no_github_actions: true
-  local_verification: "Repository-controlled PowerShell under dev/scripts/; canonical evidence in dev/_ca-output.md."
+  local_verification: "Installed PHX-CI deployed runtime selected by phx-ci.json exact pin; canonical evidence in dev/_ca-output.md, dev/_ca-output.json, and dev/test-results/."
   frozen_after_establishment:
     - architecture_boundary_manifest
     - architecture_guard
@@ -84,4 +84,4 @@ hard_boundaries:
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  action: "Run the committed BVP-S01 local PowerShell verification/bootstrap. If it passes and evidence is committed to phase6-integration, expand and dispatch BVP-S02 against that exact verified repository state."
+  action: "Dispatch BVP-S02A from exact verified S01 evidence SHA 6da8794b947c51b6e5cc4a15a467215d2fe37831 using the pre-generated child prompt. After the task branch passes PHX-CI and supervisor review, integrate it before binding BVP-S02B."

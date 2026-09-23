@@ -76,8 +76,8 @@ These IDs are **historical traceability labels only**. The new platform may comb
 | per-scenario verification scripts proliferate | `.ps1` path/name guard | build prompt prohibits them |
 | archived legacy plan regains authority | archive-reference guard | active project-state precedence |
 | agent weakens guard to pass its work | governance files excluded from normal writable scope | supervisor-owned change only |
-| tests pass but architecture drifts | canonical verifier runs architecture first | functional pass cannot override architecture failure |
-| GitHub Actions becomes default verification | guard/search + required local verifier | every prompt requires local PowerShell evidence |
+| tests pass but architecture drifts | PHX-CI repository check runs architecture guard/metrics | functional pass cannot override architecture failure |
+| GitHub Actions becomes default verification | guard/search + required local verifier | every child/stage gate requires PHX-CI evidence |
 
 ## 6. Coverage Completion Gate
 

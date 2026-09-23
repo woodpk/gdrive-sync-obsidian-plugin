@@ -921,7 +921,8 @@ decisions:
     decision: "Initial hard complexity budgets are fixed until explicit user-approved architecture change: production BVP-only seam <=350 logical LOC across <=4 production files; BVP framework core <=4000 logical TypeScript LOC; live-device agent subset <=750 logical TypeScript LOC; ordinary declarative scenario hard maximum 200 logical LOC with <=120 target; zero scenario-specific PowerShell scripts; BVP PowerShell governance/verification <=4 scripts and <=1500 logical LOC combined; zero scenario-specific production files. Tests are not subject to a LOC ceiling."
 
   - id: DEC-320
-    status: locked
+    status: superseded
+    superseded_by: DEC-323
     category: verification_execution
     decision: "GitHub Actions are not used for BVP build/test/CI-like verification or evidence collection. Repository-controlled PowerShell scripts under dev/scripts/ perform required local verification, capture commands/results/exit codes/architecture metrics, and write canonical evidence to dev/_ca-output.md; each local workflow also provides a small paste-ready PowerShell bootstrap that delegates to the committed verifier."
 
@@ -931,9 +932,30 @@ decisions:
     decision: "All active dev/** material whose purpose is the superseded internal validation harness is moved under dev/archive/legacy-validation-harness/** during the first environment-preparation session. Archived material is historical/non-authoritative and excluded from normal task discovery and implementation grounding unless a supervisor explicitly requests historical evidence."
 
   - id: DEC-322
-    status: locked
+    status: superseded
+    superseded_by: DEC-324
     category: validation_anti_drift
     decision: "Architecture-boundary manifest, architecture guard, metrics script, and canonical BVP verifier are supervisor-owned frozen surfaces after establishment. Ordinary coding agents may not weaken or change them. Every implementation session runs guard/metrics, and after no more than two implementation sessions the supervisor must perform a repository-level architecture review before further dispatch. New runner/router/distributed-state/coordination/evidence/persistence architectures or complexity-budget increases require explicit architecture approval before implementation."
+
+  - id: DEC-323
+    status: locked
+    category: verification_execution
+    decision: "GitHub Actions are prohibited for BVP verification. The canonical local CI/acceptance system is the installed PHX-CI deployed runtime selected by the consumer branch's exact phx-ci.json framework SHA. Coding-agent task branches and primary-stage integration heads are authoritatively verified through the deployed-runtime scripts/Invoke-PhxCi.ps1 operator front door with evidence publication when authorized. PHX-CI owns exact target/base/change-set resolution, detached verification worktrees, full test/build/repository/artifact gates, race protection, and canonical dev/_ca-output.md / dev/test-results evidence. Project-specific BVP guard/metrics logic remains repository-controlled, but task-specific verifier scripts are prohibited."
+
+  - id: DEC-324
+    status: locked
+    category: validation_anti_drift
+    decision: "After BVP governance establishment, the architecture boundary, architecture guard, architecture metrics, PHX-CI consumer pin/integration, and complexity budgets are frozen for ordinary work. Every implementation child session must pass PHX-CI; every primary BVP stage must also pass an integrated PHX-CI acceptance gate. Architecture guard/metrics must execute inside the repository check used by PHX-CI. After no more than two implementation child sessions, the supervisor performs a repository-level architecture review before further dispatch. New runner/router/distributed-state/coordination/evidence/persistence architecture or any complexity-budget increase requires explicit architecture approval before implementation."
+
+  - id: DEC-325
+    status: locked
+    category: construction_session_control
+    decision: "BVP-S01 through BVP-S09 are primary Stage-2A work packages, not presumed one-turn coding sessions. Each is decomposed into bounded child sessions. A later child-session task file may be pre-generated only as PREPLANNED / NOT-YET-EXECUTABLE; immediately before execution the supervisor must inspect the actual accepted repository, bind the exact predecessor SHA, exact writable-path allowlist, exact relevant interfaces/tests, and PHX-CI branch-verification facts, and then mark the prompt EXECUTABLE. If the expected work spans more than one new platform-level contract family, more than six substantive non-test implementation files, or approximately 1000 net new non-test LOC, the supervisor must split it further before dispatch, except for mechanical deletion/move work and declarative-scenario batches."
+
+  - id: DEC-326
+    status: locked
+    category: validation_anti_drift
+    decision: "Coding agents do not receive authority to classify ambiguous repository surfaces when supervisor repository inspection can resolve them. Executable BVP prompts must state an exact writable-path allowlist and supervisor-decided retain/delete boundaries. If implementation appears to require an unlisted path, additional production seam, broader architecture, or reclassification, the agent must return BLOCKED to the supervisor rather than deciding, preserving, deleting, or expanding scope on its own."
 
 superseded_decisions:
   - id: SUP-001

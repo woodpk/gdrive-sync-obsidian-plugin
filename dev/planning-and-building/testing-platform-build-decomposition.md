@@ -44,7 +44,7 @@ No later phase may begin merely because predecessor code exists. The predecessor
 
 ### 3.2 Architecture Governance Contract
 
-The machine-readable boundary, architecture guard, metrics collector, and generic local-verification entrypoint are supervisor-owned frozen surfaces. Ordinary coding sessions cannot modify them.
+The machine-readable boundary, architecture guard, metrics collector, and PHX-CI consumer pin/integration are supervisor-owned frozen surfaces. Ordinary coding sessions cannot modify them. Authoritative acceptance uses the deployed PHX-CI operator front door, not a task-specific verifier.
 
 ### 3.3 Scenario Contract
 
@@ -95,7 +95,7 @@ Accepted BVP Stage-1 planning package.
 - active authority contains explicit supersession/adoption records;
 - production typecheck/build/test suite passes after legacy harness detachment, excluding tests whose only subject was the removed framework;
 - repository search proves production no longer constructs or exposes the legacy `ValidationModeRuntime`/scenario runner UI;
-- local evidence is captured through repository-controlled PowerShell, not GitHub Actions.
+- final P0 acceptance is captured through installed PHX-CI, not GitHub Actions.
 
 ### 4.6 Non-Goals
 
@@ -115,9 +115,9 @@ Make the simple replacement architecture mechanically enforceable before substan
 - active `dev/governance/testing-platform-boundary.yaml` is installed;
 - `dev/scripts/Test-TestingArchitectureGuard.ps1` enforces import/bundle/scenario/archive/frozen-surface rules;
 - `dev/scripts/Get-TestingArchitectureMetrics.ps1` measures required budgets and deltas;
-- `dev/scripts/Invoke-TestingPlatformVerification.ps1` is the generic verification entrypoint;
+- the installed PHX-CI deployed runtime is the canonical branch/stage verification entrypoint;
 - architecture guard and metrics are themselves tested with deterministic negative fixtures/cases;
-- canonical evidence output is `dev/_ca-output.md`;
+- PHX-CI canonical evidence output is `dev/_ca-output.md` / `dev/_ca-output.json` with immutable history under `dev/test-results/`;
 - no scenario-specific PowerShell verifier exists.
 
 ### 5.3 Principal Invariants
@@ -133,7 +133,7 @@ P0.
 
 ### 5.5 Acceptance Criteria
 
-The guard demonstrably fails for at least:
+PHX-CI repository checks must execute the guard/metrics. The guard demonstrably fails for at least:
 
 - a production import from `test-platform/**`;
 - a test-platform file entering production bundle inputs;

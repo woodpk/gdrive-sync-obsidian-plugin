@@ -160,13 +160,15 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-VER-001 — No GitHub Actions.** GitHub Actions MUST NOT be used for BVP build, test, CI-like verification, or evidence collection.
 
-**BVP-VER-002 — Repository-controlled PowerShell.** Required build/test/architecture/verification work MUST execute through repository-controlled PowerShell `.ps1` scripts under `dev/scripts/`.
+**BVP-VER-002 — PHX-CI is the canonical acceptance system.** Authoritative coding-agent branch and primary-stage verification MUST use the installed PHX-CI deployed runtime selected from the exact target branch's `phx-ci.json` framework pin and invoked through that runtime's `scripts/Invoke-PhxCi.ps1` operator front door. Production/operator verification MUST NOT depend on a mutable PHX-CI source checkout.
 
-**BVP-VER-003 — Canonical verification script.** One generic BVP verification entrypoint MUST perform architecture guards, complexity checks, type/build/test execution, relevant scenario checks, repository checks, and evidence collection. Scenario-specific PowerShell verifier scripts are prohibited.
+**BVP-VER-003 — Project-specific checks remain small and durable.** The repository MAY contain the generic BVP architecture guard and metrics scripts under `dev/scripts/`, but MUST NOT create one-off task/scenario verifier scripts. After BVP-S03, guard and metrics execution MUST be wired into the repository check that PHX-CI runs so every accepted implementation session is mechanically architecture-checked.
 
-**BVP-VER-004 — Evidence output.** Verification MUST capture complete relevant terminal output, commands/results, exit codes, architecture metrics, and verification evidence in `dev/_ca-output.md`; task-specific persistence MUST commit/push that evidence when the governing workflow requires it.
+**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured canonical `dev/_ca-output.md`, `dev/_ca-output.json`, and immutable `dev/test-results/` history. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
 
-**BVP-VER-005 — Bootstrap.** Every coding/verification work order that requires local execution MUST provide a small paste-ready PowerShell bootstrap that fetches/updates the correct branch, runs the committed verification script, and performs only authorized cleanup. The wrapper MUST delegate complexity to committed scripts.
+**BVP-VER-005 — Child-session and primary-stage gates.** Every implementation child session MUST pass authoritative PHX-CI remote-branch verification before supervisor integration. Every primary BVP stage MUST then pass a separate integrated PHX-CI acceptance gate before the next primary stage begins.
+
+**BVP-VER-006 — Routine developer checks are not acceptance.** `task ci` MAY be used during active development when a PHX-CI source checkout is intentionally available, but worker self-tests and source-mode checks do not replace the deployed-runtime operator acceptance gate.
 
 ### 3.9 Legacy-Harness Retirement and Archive
 
@@ -178,7 +180,7 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-MIG-004 — Archive inertness.** Normal supervisor/coding-agent repository grounding MUST exclude `dev/archive/**`. Active documents MUST NOT link to archived implementation prompts as current authority.
 
-**BVP-MIG-005 — Legacy code removal.** The legacy `src/validation/**` system, scenario-specific validation tests, and shipping-plugin validation UI/runtime integration MUST be removed from active production/test execution after any reusable general-purpose production semantics are safely separated. Archived source snapshots are optional because Git history already preserves source history; active legacy implementation must not coexist as a second available platform.
+**BVP-MIG-005 — Legacy code removal.** The legacy `src/validation/**` system, scenario-specific validation tests, shipping-plugin validation UI/runtime integration, and supervisor-classified harness-only production seams MUST be removed from active production/test execution. Any retain/delete classification needed for retirement MUST be resolved by the supervisor before worker dispatch; a coding agent may not decide that a listed deletion should be retained or that an unlisted surface is safe to remove. Archived source snapshots are optional because Git history already preserves source history; active legacy implementation must not coexist as a second available platform.
 
 ## 4. Anti-Drift Governance — Hard Requirements
 
@@ -266,7 +268,15 @@ Ordinary private helpers, adapters implementing frozen ports, assertions, fixtur
 
 ### 4.7 Recurring Architecture Gate
 
-**BVP-GOV-008.** Every implementation session runs the mechanical architecture guard. In addition, after no more than **two implementation sessions**, the supervisor MUST perform a repository-level architecture review comparing the actual dependency graph, metrics, boundaries, and build output with this specification before dispatching further work.
+**BVP-GOV-008.** Every implementation child session runs the mechanical architecture guard through the repository check exercised by PHX-CI. In addition, after no more than **two implementation child sessions**, the supervisor MUST perform a repository-level architecture review comparing the actual dependency graph, metrics, boundaries, and build output with this specification before dispatching further work.
+
+### 4.8 Supervisor-Bound Dispatch Surface
+
+**BVP-GOV-009.** Every executable child-session prompt MUST bind an exact predecessor SHA and exact writable-path allowlist after supervisor inspection of the then-current repository. Workers MUST NOT expand the allowlist, reclassify ambiguous files, weaken a frozen surface, or treat an unexpected dependency as implicit permission to edit. Any required out-of-allowlist change is BLOCKED and returns to the supervisor.
+
+### 4.9 Child-Session Size Gate
+
+**BVP-GOV-010.** BVP-S01 through BVP-S09 are primary work packages and MUST be decomposed into child sessions small enough for one coding-agent execution/review cycle. At dispatch, the supervisor MUST split a child again when the expected work introduces more than one new platform-level contract family, more than six substantive non-test implementation files, or approximately 1000 net new non-test LOC, except for mechanical deletion/move sessions and declarative-scenario batches.
 
 ### 4.8 Architecture Evidence
 
