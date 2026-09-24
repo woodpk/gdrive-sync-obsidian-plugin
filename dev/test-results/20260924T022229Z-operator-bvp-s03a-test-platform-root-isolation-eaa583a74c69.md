@@ -51,3 +51,10 @@ Failure classification: REPOSITORY-GATE FAILURE
 - Result: BLOCKED
 - Failure classification: RUNNER SAFETY FAILURE
 - Reason: Verification commands changed non-evidence working-tree paths: .test-platform-build/src/platform-root.js, .test-platform-build/test/platform-root.test.js
+
+## Core-runner provenance
+
+- Source branch: bvp-s03a-test-platform-root-isolation
+- Source build HEAD requested: eaa583a74c695ab7ce1726a636a469efb90a708f
+- Verification checkout HEAD: eaa583a74c695ab7ce1726a636a469efb90a708f
+- Evidence publication target: origin/bvp-s03a-test-platform-root-isolation
