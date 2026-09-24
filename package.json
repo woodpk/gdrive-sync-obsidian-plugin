@@ -7,6 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js",
+    "test:bvp-root": "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test/*.test.js",
     "build": "node scripts/build.mjs && node scripts/verify-build.mjs",
     "verify:build": "node scripts/verify-build.mjs",
     "check": "npm run typecheck && npm test && npm run build"
