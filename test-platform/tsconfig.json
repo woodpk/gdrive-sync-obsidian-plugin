@@ -4,7 +4,7 @@
     "noEmit": false,
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "outDir": "../.test-platform-build",
+    "outDir": "../.test-build/bvp",
     "rootDir": ".",
     "sourceMap": false,
     "declaration": false
