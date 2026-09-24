@@ -150,6 +150,7 @@ The operator then runs the installed deployed PHX-CI runtime selected by the tas
 
 - branch: `bvp-s03a-test-platform-root-isolation`;
 - base authority: `origin/phase6-integration`;
+- focused/change-set command: `npm run test:bvp-root` supplied through PHX-CI's public `-FocusedTestCommand` run input;
 - publication mode: `push`.
 
 At dispatch time the exact pin is:
@@ -157,7 +158,7 @@ At dispatch time the exact pin is:
 - PHX-CI version: `0.2.0-dev.2`;
 - framework SHA: `f5123d21cc13511a5ee1185cfc4e1689785188ed`.
 
-The supervisor must independently review the PHX-CI evidence before acceptance/promotion.
+Do not create or run any parallel/ad-hoc verifier for this child. The new BVP smoke test is authoritative only when executed as PHX-CI's focused-test stage through `-FocusedTestCommand 'npm run test:bvp-root'`. The supervisor must independently review the PHX-CI evidence before acceptance/promotion.
 
 The short `C:\phx-tmp` TEMP/TMP workaround remains permitted if needed for the known PHX-CI Windows long-path defect; it changes only disposable verification location, not semantics.
 
