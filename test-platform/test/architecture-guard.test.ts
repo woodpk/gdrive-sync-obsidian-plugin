@@ -136,6 +136,10 @@ function assertFailsWithRule(result: GuardResult, rule: string): void {
   match(result.output, /ARCH_GUARD_RESULT=FAIL violations=\d+/);
 }
 
+test("architecture guard passes the actual BRAIN repository baseline", () => {
+  assertPass(runGuard(repositoryRoot));
+});
+
 test("architecture guard passes a compliant baseline fixture", () => {
   withFixture((root) => {
     assertPass(runGuard(root));
