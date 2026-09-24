@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 — execute bound BVP-S03A from exact accepted predecessor 376ab75477c863cceb63ff82475f352a8f4ec4cc using dev/agents/st2a/ph6/05-bvp/03-hard-boundary-guard-metrics-phx-ci-enforcement/03a-create-test-platform-root-and-shipping-isolation.md; do not begin 03B until 03A passes PHX-CI and supervisor acceptance."
+    next_step: "Stage 2A / Phase 6 — execute bound BVP-S03B from exact accepted predecessor fdc5f8a0f72f57492eea10590cecfa7e80aa1ee6 using dev/agents/st2a/ph6/05-bvp/03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md; do not begin 03C until 03B passes PHX-CI and supervisor acceptance."
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"

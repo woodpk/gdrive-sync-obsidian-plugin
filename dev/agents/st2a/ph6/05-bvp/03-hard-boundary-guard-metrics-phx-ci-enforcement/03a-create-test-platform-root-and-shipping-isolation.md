@@ -3,10 +3,13 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s03-boundary-governance-01`  
-**Prompt maturity:** EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement  
 **Exact accepted predecessor / implementation input SHA:** `376ab75477c863cceb63ff82475f352a8f4ec4cc`  
-**Required branch:** `bvp-s03a-test-platform-root-isolation`
+**Required branch:** `bvp-s03a-test-platform-root-isolation`  
+**Accepted implementation SHA:** `a406c5a376fa7db04741b8cf1f38757ca26866eb`  
+**Accepted PHX-CI evidence commit:** `28462b854f4cefbae6f385e67835f8e5f0539918`  
+**Accepted integration head after promotion:** `fdc5f8a0f72f57492eea10590cecfa7e80aa1ee6`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
