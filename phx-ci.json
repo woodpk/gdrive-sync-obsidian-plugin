@@ -4,7 +4,7 @@
   "adapter": "node-typescript",
   "framework": {
     "version": "0.2.0-dev.2",
-    "sha": "f5123d21cc13511a5ee1185cfc4e1689785188ed",
+    "sha": "56a2b1be50cd1f4338974d21ebdeb9487e737598",
     "pinPolicy": "exact"
   },
   "expectedArtifacts": [
