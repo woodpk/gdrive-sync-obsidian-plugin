@@ -53,6 +53,13 @@ The semantic contract above and below is prewritten and fixed. The supervisor bi
 - exact PHX-CI base authority;
 - any branch-state evidence commits created after implementation.
 
+Current S03B task-branch verification binding known at this rewrite:
+
+- PHX-CI framework SHA: `3340380e11bac2a7d01a1207b12cc4da676001d7`;
+- base authority: `origin/phase6-integration`.
+
+The target branch's actual `phx-ci.json` remains runtime authority; if it changes through an explicitly accepted repin, verification follows the newly bound exact pin rather than stale prose.
+
 No runtime rebind may change the behavior, invariants, edge cases, acceptance criteria, or non-goals in this prompt.
 
 ## 4. Governing Contracts
@@ -65,6 +72,10 @@ This child implements the S03 portion of:
 - BVP-INV-001, BVP-INV-002, BVP-INV-008, BVP-INV-010, BVP-INV-011, and BVP-INV-012.
 
 The current machine-readable authority is `dev/governance/testing-platform-boundary.yaml`. The guard must honor its relevant root, approved-seam, forbidden-direction, frozen-surface, archive, and scenario-surface policy rather than silently defining a contradictory second policy.
+
+## Dependencies
+
+S03B depends on the accepted S03A physical `test-platform/**` root/shipping-isolation contract and the active machine-readable boundary manifest. It also depends on the existing production/build source class being the repository content the guard is designed to classify; if that source class changes materially before execution, hard repository coordinates may be rebound but the guard semantics in this contract remain fixed.
 
 ## 5. Required Guard Inputs and Result Semantics
 
