@@ -25,14 +25,59 @@ function writeText(root: string, relativePath: string, content: string): void {
   writeFileSync(fullPath, content, "utf8");
 }
 
+function boundaryManifest(): string {
+  return [
+    "schema_version: 2",
+    "status: authoritative_frozen_after_bvp_s01_persistence",
+    "name: BRAIN Verification Platform architecture boundary",
+    "",
+    "roots:",
+    "  production:",
+    "    - src/",
+    "  test_platform: test-platform/",
+    "  active_dev: dev/",
+    "  archive: dev/archive/",
+    "",
+    "import_rules:",
+    "  production_must_not_import:",
+    "    - test-platform/",
+    "  test_platform_may_import_production_only_through_allowlist: true",
+    "  scenario_specific_production_code_allowed: false",
+    "",
+    "shipping_rules:",
+    "  production_bundle_must_exclude:",
+    "    - test-platform/",
+    "  production_validation_ui_allowed: false",
+    "  validation_device_agent_must_be_separate_artifact_or_entrypoint: true",
+    "",
+    "production_seam:",
+    "  allowlist_required: true",
+    "  max_logical_loc: 350",
+    "  max_files: 4",
+    "",
+    "complexity_budgets:",
+    "  scenario_specific_powershell_scripts_max: 0",
+    "",
+    "supervisor_owned_frozen_surfaces:",
+    "  - dev/governance/testing-platform-boundary.yaml",
+    "  - dev/scripts/Test-TestingArchitectureGuard.ps1",
+    "  - dev/scripts/Get-TestingArchitectureMetrics.ps1",
+    "  - phx-ci.json",
+    "  - Taskfile.phx-ci.yml",
+    "  - bounded PHX-CI include block in Taskfile.yml",
+    "",
+    "archive_policy:",
+    "  archive_is_non_authoritative: true",
+    "  exclude_from_normal_grounding: true",
+    "  active_docs_must_not_depend_on_archived_prompts: true",
+    "",
+  ].join("\n");
+}
+
 function createBaselineFixture(): string {
   const root = mkdtempSync(join(tmpdir(), "brain-bvp-architecture-guard-"));
 
-  writeText(
-    root,
-    "src/main.ts",
-    'export const productionValue = "production";\n',
-  );
+  writeText(root, "src/main.ts", 'export const productionValue = "production";\n');
   writeText(
     root,
     "test-platform/src/platform-root.ts",
@@ -46,7 +91,28 @@ function createBaselineFixture(): string {
   writeText(
     root,
     "scripts/build.mjs",
-    'export const entryPoints = ["src/main.ts"];\n',
+    [
+      'import { build } from "esbuild";',
+      'await build({ entryPoints: ["src/main.ts"], outfile: "main.js" });',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    root,
+    "scripts/verify-build.mjs",
+    'export const artifact = "main.js";\n',
+  );
+  writeText(
+    root,
+    "tsconfig.json",
+    JSON.stringify(
+      {
+        compilerOptions: { target: "ES2022" },
+        include: ["src/**/*.ts"],
+      },
+      null,
+      2,
+    ) + "\n",
   );
   writeText(
     root,
@@ -57,7 +123,7 @@ function createBaselineFixture(): string {
         private: true,
         main: "main.js",
         scripts: {
-          build: "node scripts/build.mjs",
+          build: "node scripts/build.mjs && node scripts/verify-build.mjs",
           "test:bvp-root": "tsc -p test-platform/tsconfig.json",
         },
       },
@@ -68,17 +134,7 @@ function createBaselineFixture(): string {
   writeText(
     root,
     "dev/governance/testing-platform-boundary.yaml",
-    [
-      "schema_version: 2",
-      "supervisor_owned_frozen_surfaces:",
-      "  - dev/governance/testing-platform-boundary.yaml",
-      "  - dev/scripts/Test-TestingArchitectureGuard.ps1",
-      "  - dev/scripts/Get-TestingArchitectureMetrics.ps1",
-      "  - phx-ci.json",
-      "  - Taskfile.phx-ci.yml",
-      "  - bounded PHX-CI include block in Taskfile.yml",
-      "",
-    ].join("\n"),
+    boundaryManifest(),
   );
   writeText(
     root,
@@ -146,6 +202,32 @@ test("architecture guard passes a compliant baseline fixture", () => {
   });
 });
 
+test("architecture guard fails closed when the boundary manifest is missing", () => {
+  withFixture((root) => {
+    rmSync(join(root, "dev", "governance", "testing-platform-boundary.yaml"));
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_MISSING");
+  });
+});
+
+test("architecture guard fails closed when required manifest authority is incomplete", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      [
+        "schema_version: 2",
+        "status: authoritative",
+        "roots:",
+        "  production:",
+        "    - src/",
+        "  test_platform: test-platform/",
+        "",
+      ].join("\n"),
+    );
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_INVALID");
+  });
+});
+
 test("architecture guard rejects production imports from test-platform", () => {
   withFixture((root) => {
     writeText(
@@ -157,12 +239,16 @@ test("architecture guard rejects production imports from test-platform", () => {
   });
 });
 
-test("architecture guard rejects production build references to test-platform", () => {
+test("architecture guard rejects actual production build inclusion of test-platform", () => {
   withFixture((root) => {
     writeText(
       root,
       "scripts/build.mjs",
-      'export const entryPoints = ["test-platform/src/platform-root.ts"];\n',
+      [
+        'import { build } from "esbuild";',
+        'await build({ entryPoints: ["test-platform/src/platform-root.ts"], outfile: "main.js" });',
+        "",
+      ].join("\n"),
     );
     assertFailsWithRule(
       runGuard(root),
@@ -171,7 +257,25 @@ test("architecture guard rejects production build references to test-platform", 
   });
 });
 
-test("architecture guard rejects a shipping bundle containing the test-platform sentinel", () => {
+test("architecture guard ignores inert test-platform text in build source", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "scripts/build.mjs",
+      [
+        'import { build } from "esbuild";',
+        '// entryPoints: ["test-platform/src/platform-root.ts"]',
+        'const note = "test-platform/src/platform-root.ts is not a build input";',
+        'await build({ entryPoints: ["src/main.ts"], outfile: "main.js" });',
+        "void note;",
+        "",
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard rejects shipping sentinel in main.js", () => {
   withFixture((root) => {
     writeText(
       root,
@@ -185,55 +289,128 @@ test("architecture guard rejects a shipping bundle containing the test-platform 
   });
 });
 
-test("architecture guard rejects scenario identifiers or controls in production", () => {
+test("architecture guard rejects actual production scenario control", () => {
   withFixture((root) => {
     writeText(
       root,
-      "src/bad-scenario.ts",
+      "src/scenario-control.ts",
       'export const scenarioId = "BVP-C03";\n',
     );
     assertFailsWithRule(runGuard(root), "PRODUCTION_SCENARIO_CONTROL");
   });
 });
 
-test("architecture guard recognizes each supported actual module dependency form", () => {
-  const cases = [
-    [
-      "static import",
-      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
-    ],
-    [
-      "re-export",
-      'export { productionValue } from "../../src/main";\n',
-    ],
-    [
-      "require",
-      'const production = require("../../src/main");\nvoid production;\n',
-    ],
-    [
-      "dynamic import",
-      'void import("../../src/main");\n',
-    ],
-    [
-      "dynamic import in template interpolation",
-      'const value = `prefix ${await import("../../src/main")} suffix`;\nvoid value;\n',
-    ],
-    [
-      "require in template interpolation",
-      'const value = `prefix ${require("../../src/main")} suffix`;\nvoid value;\n',
-    ],
-    [
-      "dynamic import in nested template interpolation",
-      'const value = `outer ${`inner ${await import("../../src/main")}`}`;\nvoid value;\n',
-    ],
-  ] as const;
+test("architecture guard ignores scenario-looking comments strings and unrelated terminology", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "src/scenario-prose.ts",
+      [
+        '// const scenarioId = "BVP-C03";',
+        'const note = "scenarioId BVP-C03 validationMode runScenario";',
+        'const businessScenarioDescription = "ordinary product scenario";',
+        "void note;",
+        "void businessScenarioDescription;",
+        "",
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
 
-  for (const [name, source] of cases) {
+test("architecture guard recognizes the complete supported dependency matrix", () => {
+  const tick = String.fromCharCode(96);
+  const cases: ReadonlyArray<{
+    readonly name: string;
+    readonly source: string;
+    readonly relativePath?: string;
+  }> = [
+    {
+      name: "static-import",
+      source:
+        'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    },
+    {
+      name: "type-only-import",
+      source:
+        'import type { ProductionType } from "../../src/main";\ntype Local = ProductionType;\nvoid (0 as unknown as Local);\n',
+    },
+    {
+      name: "re-export",
+      source: 'export { productionValue } from "../../src/main";\n',
+    },
+    {
+      name: "type-re-export",
+      source: 'export type { ProductionType } from "../../src/main";\n',
+    },
+    {
+      name: "require",
+      source:
+        'const production = require("../../src/main");\nvoid production;\n',
+    },
+    {
+      name: "dynamic-import",
+      source: 'void import("../../src/main");\n',
+    },
+    {
+      name: "template-interpolation-import",
+      source:
+        "const value = " +
+        tick +
+        "prefix $" +
+        '{await import("../../src/main")} suffix' +
+        tick +
+        ";\nvoid value;\n",
+    },
+    {
+      name: "nested-template-interpolation",
+      source:
+        "const value = " +
+        tick +
+        "outer $" +
+        "{" +
+        tick +
+        "inner $" +
+        '{await import("../../src/main")}' +
+        tick +
+        "}" +
+        tick +
+        ";\nvoid value;\n",
+    },
+    {
+      name: "normalized-relative-traversal",
+      source: 'void import("../../../src/../src/main");\n',
+      relativePath: "test-platform/test/nested/dependency.test.ts",
+    },
+    {
+      name: "dependency-after-division",
+      source:
+        'const value = total / require("../../src/main");\nvoid value;\n',
+    },
+    {
+      name: "dependency-after-control-block",
+      source:
+        'if (condition) { void condition; }\nvoid import("../../src/main");\n',
+    },
+    {
+      name: "dependency-after-class-declaration",
+      source:
+        'class Example {}\nvoid import("../../src/main");\nvoid Example;\n',
+    },
+    {
+      name: "dependency-after-function-declaration",
+      source:
+        'function example() {}\nrequire("../../src/main");\nvoid example;\n',
+    },
+  ];
+
+  for (const entry of cases) {
     withFixture((root) => {
       writeText(
         root,
-        `test-platform/test/actual-${name.replace(/\\s+/g, "-")}.test.ts`,
-        source,
+        entry.relativePath ??
+          "test-platform/test/dependency-" + entry.name + ".test.ts",
+        entry.source,
       );
       const result = runGuard(root);
       try {
@@ -242,227 +419,99 @@ test("architecture guard recognizes each supported actual module dependency form
           "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
         );
       } catch (error) {
-        throw new Error(`${name}: ${String(error)}\n${result.output}`);
+        throw new Error(
+          entry.name + ": " + String(error) + "\n" + result.output,
+        );
       }
     });
   }
 });
 
-test("architecture guard ignores import-looking text inside string literals", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/import-looking-strings.test.ts",
+test("architecture guard ignores dependency-shaped non-dependencies", () => {
+  const tick = String.fromCharCode(96);
+  const cases: ReadonlyArray<readonly [string, string]> = [
+    [
+      "quoted-strings",
       [
-        'const examples = [',
-        '  \'import { productionValue } from "../../src/main";\',',
-        '  \'export { productionValue } from "../../src/main";\',',
+        'const values = [',
+        '  \'import { x } from "../../src/main";\',',
         '  \'require("../../src/main")\',',
         '  \'import("../../src/main")\',',
-        '];',
-        'void examples;',
-        '',
-      ].join("\n"),
-    );
-    assertPass(runGuard(root));
-  });
-});
-
-test("architecture guard ignores import-looking text in plain template text", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/import-looking-template-text.test.ts",
-      [
-        'const template = `',
-        'import { productionValue } from "../../src/main";',
-        'export { productionValue } from "../../src/main";',
-        'require("../../src/main");',
-        'import("../../src/main");',
-        '`;',
-        'void template;',
-        '',
-      ].join("\n"),
-    );
-    assertPass(runGuard(root));
-  });
-});
-
-test("architecture guard ignores require and import text inside regex literals", () => {
-  const cases = [
-    [
-      "assigned after equals",
-      [
-        'const requireText = /require("..\\/..\\/src\\/main")/g;',
-        'const importText = /import("..\\/..\\/src\\/main")/g;',
-        'void requireText;',
-        'void importText;',
-        '',
+        "];",
+        "void values;",
+        "",
       ].join("\n"),
     ],
     [
-      "direct if statement body",
+      "comments",
       [
-        'if (condition) /require("..\\/..\\/src\\/main")/.test(text);',
-        'if (condition) /import("..\\/..\\/src\\/main")/.test(text);',
-        '',
+        '// import { x } from "../../src/main";',
+        '/* require("../../src/main"); import("../../src/main"); */',
+        "export const harmless = true;",
+        "",
       ].join("\n"),
     ],
     [
-      "new statement after completed block",
-      [
-        'if (condition) {',
-        '  void text;',
-        '}',
-        '/require("..\\/..\\/src\\/main")/.test(text);',
-        '/import("..\\/..\\/src\\/main")/.test(text);',
-        '',
-      ].join("\n"),
+      "plain-template-text",
+      "const value = " +
+        tick +
+        'require("../../src/main") import("../../src/main")' +
+        tick +
+        ";\nvoid value;\n",
     ],
     [
-      "after class declaration",
-      [
-        'class Example {}',
-        '/require("..\\/..\\/src\\/main")/.test(text);',
-        '/import("..\\/..\\/src\\/main")/.test(text);',
-        '',
-      ].join("\n"),
+      "regex-assignment",
+      'const value = /require("..\\/..\\/src\\/main")|import("..\\/..\\/src\\/main")/g;\nvoid value;\n',
     ],
     [
-      "after function declaration",
-      [
-        'function example() {}',
-        '/require("..\\/..\\/src\\/main")/.test(text);',
-        '/import("..\\/..\\/src\\/main")/.test(text);',
-        '',
-      ].join("\n"),
+      "regex-after-if",
+      'if (condition) /require("..\\/..\\/src\\/main")/.test(text);\n',
     ],
-  ] as const;
+    [
+      "regex-after-block",
+      'if (condition) { void condition; }\n/require("..\\/..\\/src\\/main")/.test(text);\n',
+    ],
+    [
+      "regex-after-class",
+      'class Example {}\n/require("..\\/..\\/src\\/main")/.test(text);\nvoid Example;\n',
+    ],
+    [
+      "regex-after-function",
+      'function example() {}\n/import("..\\/..\\/src\\/main")/.test(text);\nvoid example;\n',
+    ],
+    [
+      "ordinary-division",
+      'const ratio = total / count / scale;\nvoid ratio;\n',
+    ],
+    [
+      "object-literal",
+      'const value = { text: \'require("../../src/main")\' };\nconst ratio = value.count / total;\nvoid ratio;\n',
+    ],
+    [
+      "property-access-lookalikes",
+      'loader.require("../../src/main");\nloader.import("../../src/main");\n',
+    ],
+    [
+      "shadowed-require",
+      'function local(require: (name: string) => unknown) { return require("../../src/main"); }\nvoid local;\n',
+    ],
+  ];
 
   for (const [name, source] of cases) {
     withFixture((root) => {
       writeText(
         root,
-        `test-platform/test/regex-${name.replace(/\\s+/g, "-")}.test.ts`,
+        "test-platform/test/non-dependency-" + name + ".test.ts",
         source,
       );
       const result = runGuard(root);
       try {
         assertPass(result);
       } catch (error) {
-        throw new Error(`${name}: ${String(error)}\n${result.output}`);
+        throw new Error(name + ": " + String(error) + "\n" + result.output);
       }
     });
   }
-});
-
-test("architecture guard preserves ordinary division expressions", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/division.test.ts",
-      [
-        'const ratio = total / count;',
-        'const adjusted = (ratio + 1) / 2;',
-        'const chained = total / count / scale;',
-        'void adjusted;',
-        'void chained;',
-        '',
-      ].join("\n"),
-    );
-    assertPass(runGuard(root));
-  });
-});
-
-test("architecture guard keeps object literals in expression context", () => {
-  const cases = [
-    'const value = {} / require("../../src/main");\nvoid value;\n',
-    'const value = {} / import("../../src/main");\nvoid value;\n',
-  ] as const;
-
-  for (const source of cases) {
-    withFixture((root) => {
-      writeText(root, "test-platform/test/object-literal-division.test.ts", source);
-      assertFailsWithRule(
-        runGuard(root),
-        "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
-      );
-    });
-  }
-});
-
-test("architecture guard detects actual module calls adjacent to division", () => {
-  const cases = [
-    [
-      "require after division operator",
-      'const value = total / require("../../src/main");\nvoid value;\n',
-    ],
-    [
-      "dynamic import after division operator",
-      'const value = total / import("../../src/main");\nvoid value;\n',
-    ],
-    [
-      "actual require after completed division expression",
-      'const ratio = total / count;\nconst value = require("../../src/main");\nvoid ratio;\nvoid value;\n',
-    ],
-    [
-      "actual dynamic import after completed division expression",
-      'const ratio = total / count;\nvoid import("../../src/main");\nvoid ratio;\n',
-    ],
-  ] as const;
-
-  for (const [name, source] of cases) {
-    withFixture((root) => {
-      writeText(
-        root,
-        `test-platform/test/division-${name.replace(/\\s+/g, "-")}.test.ts`,
-        source,
-      );
-      const result = runGuard(root);
-      try {
-        assertFailsWithRule(
-          result,
-          "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
-        );
-      } catch (error) {
-        throw new Error(`${name}: ${String(error)}\n${result.output}`);
-      }
-    });
-  }
-});
-
-test("architecture guard ignores import-looking text inside comments", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/import-looking-comments.test.ts",
-      [
-        '// import { productionValue } from "../../src/main";',
-        '/*',
-        'export { productionValue } from "../../src/main";',
-        'require("../../src/main");',
-        'import("../../src/main");',
-        '*/',
-        'export const harmless = true;',
-        '',
-      ].join("\n"),
-    );
-    assertPass(runGuard(root));
-  });
-});
-
-test("architecture guard rejects unapproved test-platform imports from production src", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/bad-import.test.ts",
-      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
-    );
-    assertFailsWithRule(
-      runGuard(root),
-      "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
-    );
-  });
 });
 
 test("architecture guard rejects PowerShell beneath test-platform", () => {
@@ -472,26 +521,14 @@ test("architecture guard rejects PowerShell beneath test-platform", () => {
   });
 });
 
-test("architecture guard rejects active task links that restore archive authority", () => {
+test("architecture guard rejects active archive-as-authority linkage", () => {
   withFixture((root) => {
     writeText(
       root,
       "dev/agents/st2a/ph6/05-bvp/current-task.md",
-      "Execute [the current task](dev/archive/legacy-validation-harness/task.md) as the governing task authority.\n",
+      "Execute dev/archive/legacy-validation-harness/task.md as the governing task authority.\n",
     );
     assertFailsWithRule(runGuard(root), "ARCHIVE_USED_AS_CURRENT_AUTHORITY");
-  });
-});
-
-test("architecture guard rejects supplied normal changed paths that touch frozen governance", () => {
-  withFixture((root) => {
-    assertFailsWithRule(
-      runGuard(root, [
-        "-ChangedPath",
-        "dev/governance/testing-platform-boundary.yaml",
-      ]),
-      "FROZEN_SURFACE_CHANGED",
-    );
   });
 });
 
@@ -505,3 +542,44 @@ test("architecture guard allows historical non-authoritative archive prose", () 
     assertPass(runGuard(root));
   });
 });
+
+test("architecture guard rejects ordinary changes to frozen governance", () => {
+  withFixture((root) => {
+    assertFailsWithRule(
+      runGuard(root, [
+        "-ChangedPath",
+        "dev/governance/testing-platform-boundary.yaml",
+      ]),
+      "FROZEN_SURFACE_CHANGED",
+    );
+  });
+});
+
+test("architecture guard accepts explicitly authorized governance change class for frozen surface", () => {
+  withFixture((root) => {
+    assertPass(
+      runGuard(root, [
+        "-ChangeClass",
+        "authorized-governance",
+        "-ChangedPath",
+        "dev/governance/testing-platform-boundary.yaml",
+      ]),
+    );
+  });
+});
+
+test("authorized governance change class exempts only frozen-surface enforcement", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/C03.ps1", 'Write-Output "bad"\n');
+    assertFailsWithRule(
+      runGuard(root, [
+        "-ChangeClass",
+        "authorized-governance",
+        "-ChangedPath",
+        "dev/governance/testing-platform-boundary.yaml",
+      ]),
+      "TEST_PLATFORM_POWERSHELL_PROHIBITED",
+    );
+  });
+});
+
