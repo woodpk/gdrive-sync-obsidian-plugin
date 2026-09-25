@@ -420,6 +420,43 @@ test("architecture guard consumes the manifest-approved production seam", () => 
   });
 });
 
+test("architecture guard treats absent approved imports as a valid empty allowlist", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/unapproved-seam-absent.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+    );
+  });
+});
+
+test("architecture guard treats inline empty approved imports as a valid empty allowlist", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest().replace(
+      "  allowlist_required: true\n  max_logical_loc: 350",
+      "  allowlist_required: true\n  approved_imports: []\n  max_logical_loc: 350",
+    );
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "test-platform/test/unapproved-seam-empty.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+    );
+  });
+});
+
 test("architecture guard rejects actual production build inclusion of test-platform", () => {
   withFixture((root) => {
     writeText(
