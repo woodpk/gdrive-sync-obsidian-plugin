@@ -120,7 +120,7 @@ function ConvertFrom-ManifestScalar {
 
 function Get-ManifestTopLevelScalar {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory = $true)][string]$Key
     )
 
@@ -135,7 +135,7 @@ function Get-ManifestTopLevelScalar {
 
 function Get-ManifestSectionBounds {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory = $true)][string]$Section
     )
 
@@ -168,7 +168,7 @@ function Get-ManifestSectionBounds {
 
 function Get-ManifestNestedScalar {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory = $true)][string]$Section,
         [Parameter(Mandatory = $true)][string]$Key
     )
@@ -189,7 +189,7 @@ function Get-ManifestNestedScalar {
 
 function Get-ManifestNestedList {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory = $true)][string]$Section,
         [Parameter(Mandatory = $true)][string]$Key,
         [bool]$Required = $true
@@ -236,7 +236,7 @@ function Get-ManifestNestedList {
 
 function Get-ManifestTopLevelList {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory = $true)][string]$Key
     )
 
@@ -459,7 +459,7 @@ function Resolve-RepositoryReference {
 function Test-ApprovedProductionImport {
     param(
         [Parameter(Mandatory = $true)][string]$Target,
-        [Parameter(Mandatory = $true)][string[]]$Allowlist
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Allowlist
     )
 
     foreach ($rawEntry in $Allowlist) {
@@ -535,7 +535,7 @@ function Get-ObjectStringValues {
 }
 
 function Invoke-TypeScriptArchitectureAnalysis {
-    param([Parameter(Mandatory = $true)][object[]]$Requests)
+    param([Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$Requests)
 
     if ($Requests.Count -eq 0) {
         return @()
