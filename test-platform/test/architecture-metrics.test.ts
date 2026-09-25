@@ -549,3 +549,107 @@ test("dependency analysis sees nested executable template imports but ignores in
   });
 });
 
+test("TypeScript comment delimiters inside ordinary strings cannot suppress executable logical LOC", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/src/platform-root.ts",
+      [
+        'export const open = "/*";',
+        "export const afterOpen = 1;",
+        'export const close = "*/";',
+        "export const afterClose = 2;",
+        "/* true block comment",
+        "still a true block comment */",
+        "",
+        "// comment only",
+        "export const afterComment = 3; // inline comment",
+        "",
+      ].join("\n"),
+    );
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.frameworkCoreLogicalTsLoc, 5);
+  });
+});
+
+test("PowerShell comment delimiters inside ordinary strings cannot suppress executable logical LOC", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/scripts/NeutralGovernance.ps1",
+      [
+        'Write-Output "test-platform <#"',
+        "Write-Output 2",
+        'Write-Output "#>"',
+        "<# true block comment",
+        "still a true block comment #>",
+        "",
+        "# comment only",
+        "Write-Output 3 # inline comment",
+        "",
+      ].join("\n"),
+    );
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.bvpPowerShellScriptCount, 1);
+    strictEqual(value.current.bvpPowerShellLogicalLoc, 4);
+  });
+});
+
+test("duplicate S03C hard-budget authority fails closed", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest().replace(
+        "  bvp_powershell_scripts_max: 4",
+        "  bvp_powershell_scripts_max: 4\n  bvp_powershell_scripts_max: 400",
+      ),
+    );
+    const result = runMetrics(root);
+    notStrictEqual(result.status, 0, result.output);
+    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: duplicate authority 'complexity_budgets\.bvp_powershell_scripts_max'/);
+  });
+});
+
+test("duplicate S03C root authority fails closed", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest().replace(
+        "  test_platform: test-platform/",
+        "  test_platform: test-platform/\n  test_platform: permissive-platform/",
+      ),
+    );
+    const result = runMetrics(root);
+    notStrictEqual(result.status, 0, result.output);
+    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: duplicate authority 'roots\.test_platform'/);
+  });
+});
+
+test("scenario-specific BVP PowerShell cannot evade the zero budget without scenarioId or scenarioName variables", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/scripts/NeutralControl.ps1",
+      [
+        "function Invoke-C01ScenarioControl {",
+        "    Write-Output 'test-platform C01 control'",
+        "}",
+        "Invoke-C01ScenarioControl",
+        "",
+      ].join("\n"),
+    );
+    assertBudgetFailure(runMetrics(root), "SCENARIO_SPECIFIC_POWERSHELL");
+  });
+});
+
+test("generic neutral BVP governance PowerShell is not falsely scenario-specific", () => {
+  withFixture((root) => {
+    writeText(root, "dev/scripts/NeutralGovernance.ps1", "Write-Output 'test-platform repository governance'\n");
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.bvpPowerShellScriptCount, 1);
+    strictEqual(value.current.scenarioSpecificPowerShellCount, 0);
+  });
+});
+
