@@ -1,76 +1,124 @@
-# 06C — Deletion, stale-device, clock-skew and unreadable-path scenarios
+# BVP-S06C — Deletion, Stale-Device, Clock-Skew, and Unreadable-Path Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor child:** 06B
+**Predecessor:** accepted S06B
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add ordinary deletion/both-deleted/no-base absence/unreadable/clock-skew/stale-device semantic coverage.
+Add declarative deterministic coverage for deletion authority, stale-device safety, clock-skew non-authority, and unreadable/local-observation uncertainty.
 
-Required end state:
+## 2. Required End State
 
-> Safety/authority scenarios pass with scenario-only changes.
+Executable scenarios cover:
 
-## 2. Dispatch Binding
+- ordinary local deletion from an established synchronized base;
+- ordinary remote deletion from an established synchronized base;
+- both sides deleted;
+- absence with no trustworthy base where deletion must not be inferred unsafely;
+- unreadable/inaccessible local path;
+- wall-clock skew that must not override stronger identity/state authority;
+- stale device returning after newer shared state exists, proving no resurrection or destructive overwrite contrary to target policy.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S06B predecessor SHA;
+- task branch;
+- current product requirement IDs/target clauses for deletion/staleness/clock authority/unreadable paths;
+- exact scenario/fixture/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No core change is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Established-base deletions
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Where authoritative state proves one side deleted a previously synchronized object, scenarios must prove production applies the target-required corresponding deletion/trash behavior without harming unrelated data.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 Both deleted
 
-## 5. Verification and Acceptance
+Both-deleted state converges without recreation.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.3 No-base absence safety
 
-Then stop at:
+Absence on one side without sufficient trusted base/coverage cannot be treated as authoritative deletion merely for convenience.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.4 Unreadable local path
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Unreadable/inaccessible is not equivalent to absent.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+The scenario must prove the product blocks/defers or otherwise follows the target-safe behavior rather than propagating destructive deletion from uncertainty.
 
-Do not create a child-specific PowerShell verifier.
+### 4.5 Clock skew
 
-## 6. Handoff
+Large local/remote clock differences must not become primary authority where product rules say timestamps are advisory only.
 
-Report:
+### 4.6 Stale device
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+A device returning with stale local/state information must not resurrect content that authoritative shared/newer state says was deleted, nor destroy newer valid content because its timestamps/state are stale.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+Exact outcomes follow the product target specification and production authority model.
+
+## 5. Invariants
+
+- Absence, unreadable, and incomplete observation remain distinct.
+- Timestamps do not replace authoritative identity/state/base semantics.
+- Stale-device scenarios preserve newer authoritative user data.
+- Scenario-only change surface remains default.
+- No production synchronization changes are made to make tests pass.
+
+## 6. Material Edge / Failure Cases
+
+Scenarios must prove:
+
+- local deletion propagation;
+- remote deletion propagation;
+- both-deleted no recreation;
+- no-base absence does not cause unsafe deletion;
+- unreadable path does not masquerade as deletion;
+- extreme clock skew does not flip authority improperly;
+- stale returning device cannot resurrect/degrade authoritative newer state;
+- wrong expected destructive/non-destructive outcome fails.
+
+If a required observation cannot be expressed by the frozen core, return `BLOCKED`.
+
+## 7. Engineering Discretion
+
+The agent may choose clock values, stale-state fixture chronology, and file contents while preserving the authoritative distinctions above.
+
+## 8. Dependencies
+
+Consumes accepted S06A/B and frozen S04/S05 platform.
+
+## 9. Acceptance Criteria
+
+All required scenarios execute deterministically through real production logic, target safety/authority semantics are asserted, wrong expectations fail, no core/production changes occur, scenario budgets and architecture metrics pass, and authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not cover:
+
+- move/path collisions (06D);
+- exclusions/unknown/empty folders (06E);
+- corrupt state/cursor/root recovery (S07B);
+- actual physical offline duration or clock APIs.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, scenario results, per-scenario LOC, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 06D.

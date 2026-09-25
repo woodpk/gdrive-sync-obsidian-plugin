@@ -1,76 +1,109 @@
-# 06E — Exclusions, unknown files and empty-folder scenarios
+# BVP-S06E — Exclusions, Unknown Files, and Empty-Folder Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor child:** 06D
+**Predecessor:** accepted S06D
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add scope/exclusion/unknown-file/empty-folder deterministic coverage.
+Complete the non-fault reconciliation-coverage stage with declarative deterministic scenarios for configured scope/exclusions, unmanaged/unknown files, and empty-folder semantics.
 
-Required end state:
+## 2. Required End State
 
-> Remaining non-fault reconciliation scope scenarios mapped and passing.
+Executable scenarios cover current product requirements for:
 
-## 2. Dispatch Binding
+- excluded local paths/files;
+- excluded remote/managed-scope observations where applicable;
+- device-specific/nonportable workspace/cache/token exclusions where current product scope defines them;
+- unknown/unmanaged remote files that must not become managed synchronization authority accidentally;
+- unknown local files outside managed scope;
+- empty folders where the product's representation/platform rules define behavior;
+- changes in scope/exclusion configuration where deterministic policy can be proven without physical runtime evidence.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S06D predecessor SHA;
+- task branch;
+- current scope/exclusion/unknown-file/empty-folder requirement IDs and target clauses;
+- exact scenario/fixture/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No core change is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Exclusions are policy inputs
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Excluded content must remain outside managed synchronization according to the product target specification.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Tests must distinguish “excluded by configuration/policy” from “missing/unreadable/deleted.”
 
-## 5. Verification and Acceptance
+### 4.2 Unknown/unmanaged remote content
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Remote content not owned/recognized by the managed synchronization authority must not be deleted, adopted, or mutated merely because it appears in the shared Drive area unless target rules explicitly define adoption.
 
-Then stop at:
+### 4.3 Unknown local content
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Local content outside managed scope/exclusions remains untouched by synchronization.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.4 Empty folders
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Where the product does not represent empty folders remotely, scenarios must prove no false file/deletion semantics are inferred. Where explicit folder behavior exists, assert the current target policy exactly.
 
-Do not create a child-specific PowerShell verifier.
+### 4.5 Configuration/scope change
 
-## 6. Handoff
+If product requirements define transitions when exclusions/scope change, scenarios may prove those semantics provided they use existing generic configuration fixture controls and do not require a new core concept.
 
-Report:
+## 5. Invariants
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+- Excluded/unknown content is not treated as deletion evidence.
+- Unmanaged data is not destroyed.
+- Scenario-only default remains intact.
+- No new scope engine or production bypass exists.
+- No scenario-specific PowerShell.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## 6. Material Edge / Failure Cases
+
+Tests/scenarios must include representative:
+
+- excluded local file remains unsynchronized;
+- excluded existing managed candidate does not trigger unsafe deletion/adoption;
+- unknown remote object remains untouched;
+- unknown local file remains untouched;
+- empty-folder behavior matches target policy;
+- wrong expectation about excluded/unknown mutation fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative exclusion patterns and fixtures based on the current product target/config contract.
+
+## 8. Dependencies
+
+Consumes accepted S06A–D and frozen S04/S05 platform.
+
+## 9. Acceptance Criteria
+
+All required remaining non-fault reconciliation scenarios are mapped and passing; excluded/unknown data safety is proven; no platform-core/production change occurs; scenarios remain within budget; architecture metrics show coverage growth primarily in scenario/test surfaces; authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not cover S07 crash/fault/resource/recovery families or physical platform path/resource evidence.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, scenario results, per-scenario LOC, architecture/core delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 06V or S07.
