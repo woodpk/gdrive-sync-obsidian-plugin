@@ -1,48 +1,124 @@
-# 09V — Final PHX-CI, architecture closure and Stage-3 handoff
+# BVP-S09V — Final PHX-CI, Architecture Closure, and Stage-3 Handoff
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
+**Task type:** FINAL PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness
 
-> Do not execute until all implementation children in this primary stage have individually passed PHX-CI, been supervisor-reviewed, and been integrated.
+This is a complete prewritten final verification contract. It has no product-code repair authority and does not perform Stage 3.
 
 ## 1. Objective
 
-Run final integrated PHX-CI and architecture/budget/archive checks and produce Stage-3 handoff.
+Run the final integrated Phase-6 acceptance: authoritative PHX-CI, architecture/budget/archive checks, physical-evidence reconciliation, and requirement traceability closure, then produce the exact handoff state for independent Stage 3.
 
-Required end state:
+## 2. Required Final End State
 
-> PHX-CI complete; all budgets/boundaries pass; Phase 6 evidence complete; Stage 3 ready but not started.
+Phase 6 may close only if:
 
-## 2. Dispatch Binding Required
+- every accepted implementation child/stage is integrated;
+- final integrated repository passes authoritative PHX-CI;
+- architecture guard passes;
+- all hard complexity budgets pass;
+- production ordinary bundle excludes validation-only BVP implementation;
+- production BVP seam remains within ≤350 LOC / ≤4 files;
+- BVP core remains ≤4,000 logical TypeScript LOC;
+- live-agent/relay subset remains ≤750 logical TypeScript LOC;
+- BVP PowerShell remains within ≤4 scripts / ≤1,500 logical LOC;
+- scenario-specific PowerShell = 0;
+- scenario-specific production source = 0;
+- active legacy harness authority remains absent outside inert archive history;
+- deterministic requirement evidence is complete for its assigned semantics;
+- required Windows/iOS/provider physical evidence is accepted;
+- S09F traceability has no silent material gap;
+- Stage-3 handoff identifies exact repository/evidence state and explicitly does not claim Stage-3 validation has occurred.
 
-The supervisor must bind:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact current `phase6-integration` SHA containing only accepted children;
-- exact stage completion criteria from current target/decomposition;
-- current PHX-CI pin/runtime;
-- current architecture metrics baseline/delta where applicable;
-- any stage-specific repository searches or physical evidence inputs.
+Before execution the supervisor binds:
 
-This verification task has **no production-code repair authority**.
+- exact final `phase6-integration` SHA containing all accepted Phase-6 work/evidence;
+- exact verification base;
+- exact current PHX-CI framework pin/runtime;
+- exact accepted S09A–F evidence commits/locations;
+- exact final architecture metrics expected for review;
+- exact current target/decision/specification revisions;
+- exact Stage-3 handoff artifact paths.
 
-## 3. Verification Procedure
+## 4. Final Verification Procedure
 
-1. independently inspect the integrated changed paths and accepted child evidence;
-2. run authoritative deployed-runtime PHX-CI against `phase6-integration` with publication mode `push`;
-3. review fresh `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/`;
-4. from S03 onward, independently confirm architecture guard and metrics passed;
-5. check the primary-stage end state against the governing BVP specification/decomposition;
-6. perform the recurring architecture review whenever required by DEC-324.
+Independently:
 
-If verification exposes a defect, do not repair it in this task. Return a bounded corrective work order to the responsible implementation surface.
+1. inspect final integrated change history against accepted child/stage evidence;
+2. run authoritative deployed-runtime PHX-CI on final `phase6-integration` with canonical evidence publication;
+3. inspect fresh `dev/_ca-output.md`, `dev/_ca-output.json`, and immutable `dev/test-results/**`;
+4. confirm architecture guard/metrics/budgets;
+5. confirm ordinary production artifact excludes validation-only code;
+6. confirm frozen governance surfaces changed only in explicitly authorized sessions;
+7. search active repository authority/tasking for prohibited resurrection of legacy harness/archive-as-current-authority;
+8. reconcile S09F traceability against actual final accepted evidence;
+9. verify required physical evidence is tied to exact builds/devices/runs and not replaced by simulation;
+10. verify no secrets/unrelated user data entered canonical evidence;
+11. perform final BVP architecture review;
+12. record the Stage-3 handoff coordinates.
 
-## 4. Completion
+## 5. Final Acceptance Criteria
 
-Only after PHX-CI and independent review pass may the supervisor mark BVP-S09 accepted and bind the first child of the next primary stage.
+Phase 6 is accepted only when:
 
-Do not begin the next stage in this task.
+- PHX-CI change-set verification PASS;
+- PHX-CI repository verification PASS;
+- overall PASS / compatibility COMPLETE / task exit 0;
+- canonical evidence publication succeeds;
+- all BVP hard budgets PASS;
+- shipping exclusion PASS;
+- no forbidden architecture appears;
+- no active legacy harness authority remains;
+- every material target requirement has appropriate accepted evidence or, if any remains blocked, Phase 6 is not marked complete;
+- required physical Windows/iOS/provider evidence is accepted;
+- final traceability references exact evidence/build state;
+- final architecture review finds Stage 3 ready.
+
+## 6. Failure / Correction Semantics
+
+This task does not repair defects.
+
+If any criterion fails:
+
+- identify the causal requirement/child/architecture owner;
+- return Phase 6 as not complete;
+- issue a bounded corrective work order against the complete governing contract;
+- rerun final acceptance after the correction is independently accepted.
+
+A green PHX-CI run cannot override missing physical evidence, traceability gaps, or architecture-budget failure.
+
+## 7. Stage-3 Handoff Content
+
+The handoff must identify at least:
+
+- exact final integration SHA;
+- exact PHX-CI evidence commit/result;
+- exact architecture metrics;
+- active target/decision specifications;
+- deterministic evidence index;
+- physical evidence index;
+- final requirement traceability artifact;
+- known limitations explicitly accepted by product authority, if any;
+- statement that Stage 3 has not yet been performed.
+
+## 8. Non-Goals
+
+Do not:
+
+- perform Stage-3 validation;
+- add product/test architecture;
+- repair code;
+- change requirements to make closure pass;
+- reopen completed design choices absent an actual blocking contradiction.
+
+## 9. Completion / Stop
+
+Only after every final criterion passes may the supervisor mark BVP Phase 6 construction complete and hand the exact final repository/evidence state to independent Stage 3.
+
+Stop. Do not begin Stage 3 in this task.
