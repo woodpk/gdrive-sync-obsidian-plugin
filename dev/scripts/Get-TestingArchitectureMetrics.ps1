@@ -300,7 +300,7 @@ function Measure-Snapshot([string]$Sha, $Policy) {
         $isBvp = $isKnownGeneric -or $code -match '(?i)\b(?:BVP|test-platform|testing-platform)\b'
         if (-not $isBvp) { $classificationErrors.Add("Unclassifiable active dev/scripts PowerShell: $path"); continue }
         $scriptPaths.Add($path)
-        if (-not $isKnownGeneric -and $code -match '(?i)(?:test-platform/scenarios/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b)') { $scenarioPs.Add($path) }
+        if (-not $isKnownGeneric -and $code -match '(?i)(?:test-platform/scenarios/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["''][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["''])') { $scenarioPs.Add($path) }
     }
     foreach ($path in @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match '(?i)\.ps1$' })) {
         if (-not $scenarioPs.Contains($path)) { $scenarioPs.Add($path) }
