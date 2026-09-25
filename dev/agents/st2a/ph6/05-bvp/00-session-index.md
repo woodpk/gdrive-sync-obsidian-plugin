@@ -4,7 +4,17 @@
 **Primary work packages:** BVP-S01 through BVP-S09  
 **Shared execution contract:** `00-execution-contract.md`
 
-The nine BVP S01-S09 items are primary work packages. They are deliberately decomposed below into bounded child sessions plus a primary-stage verification gate.
+## 1. Prompt Model
+
+Every task file in this tree is prewritten as a stable semantic contract.
+
+- **COMPLETE / NON-EXECUTABLE** files are historical execution/acceptance records and authorize no new work.
+- **EXECUTABLE** means the stable contract has been repository-grounded and all required runtime-binding facts have been filled.
+- **PREPLANNED / NOT-YET-EXECUTABLE** means the stable behavior/semantics/invariants/dependencies/acceptance/non-goals are already fixed, but execution-time repository coordinates required by `00-execution-contract.md` remain unbound.
+
+A PREPLANNED task is not a placeholder for later design. Dispatch binding supplies hard repository facts only and may not redefine the task's substantive contract.
+
+## 2. Session Index
 
 | Child | Primary stage | Status | Task |
 |---|---|---|---|
@@ -59,4 +69,12 @@ The nine BVP S01-S09 items are primary work packages. They are deliberately deco
 | 09F | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09f-requirement-evidence-traceability-closure.md` |
 | 09V | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09v-final-phx-ci-architecture-closure-and-stage-3-handoff.md` |
 
-No PREPLANNED task may be executed until supervisor repository-grounding converts it to EXECUTABLE under the shared execution contract.
+## 3. Sequencing Rule
+
+Default execution is serial through `phase6-integration`:
+
+accepted child → PHX-CI evidence → supervisor review/promotion → bind hard execution facts for next child.
+
+Scenario-only children in S06/S07 may be parallelized only where the supervisor proves non-overlapping writable surfaces and frozen shared contracts before dispatch.
+
+No PREPLANNED task may execute until its required hard execution facts are bound, but its semantic contract is already authoritative and must not be redesigned at dispatch.
