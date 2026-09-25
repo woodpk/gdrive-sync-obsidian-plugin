@@ -41,6 +41,10 @@ Before execution the supervisor fills:
 
 Binding may adapt to the actual PHX-CI consumer integration shape but may not create a different acceptance architecture.
 
+## Dependencies
+
+S03D depends on the accepted S03B guard and S03C metrics/budget evaluator as already-complete project checks, plus the existing PHX-CI consumer repository-check integration surface. It may wire those accepted checks into that surface but may not redesign their semantics or create a substitute verifier.
+
 ## 4. Required Behavior and Semantics
 
 ### 4.1 Mandatory invocation
