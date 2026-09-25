@@ -354,7 +354,23 @@ function Get-BoundaryPolicy {
         }
 
         foreach ($root in @($productionRoots + @($testPlatformRoot, $activeDevRoot, $archiveRoot) + $productionForbiddenRoots + $shippingForbiddenRoots)) {
-            if ($root -notmatch '^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*
+            if ($root -notmatch '^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$' -or $root -match '(^|/)\.\.($|/)') {
+                throw "Manifest root '$root' is not a safe repository-relative root."
+            }
+        }
+
+        foreach ($productionRoot in $productionRoots) {
+            if ((Test-RepoPathWithinRoot -RelativePath $productionRoot -Root $testPlatformRoot) -or
+                (Test-RepoPathWithinRoot -RelativePath $testPlatformRoot -Root $productionRoot)) {
+                throw "Production root '$productionRoot' overlaps test-platform root '$testPlatformRoot'."
+            }
+        }
+
+        if (-not (Test-RepoPathWithinRoot -RelativePath $archiveRoot -Root $activeDevRoot)) {
+            throw "Archive root '$archiveRoot' must be contained by active_dev root '$activeDevRoot'."
+        }
+
+        if (-not ($productionForbiddenRoots -contains $testPlatformRoot)) {
             throw 'import_rules.production_must_not_import does not prohibit the authoritative test-platform root.'
         }
         if (-not ($shippingForbiddenRoots -contains $testPlatformRoot)) {
@@ -459,7 +475,17 @@ function Test-ApprovedProductionImport {
             return $true
         }
 
-        $entryWithoutExtension = $entry -replace '(?i).(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)
+        $entryWithoutExtension = $entry -replace '(?i)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''
+        if ($entryWithoutExtension -ne $entry -and $Target -eq $entryWithoutExtension) {
+            return $true
+        }
+
+        if ($entry -match '(?i)/index\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$') {
+            $indexParent = $entry -replace '(?i)/index\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''
+            if ($Target -eq $indexParent) {
+                return $true
+            }
+        }
     }
     return $false
 }
