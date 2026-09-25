@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s03b-architecture-guard
+- Source build HEAD requested: 67959da9e3a52d5580fc790fe48a9c98b3eb322c
+- Verification checkout HEAD: 67959da9e3a52d5580fc790fe48a9c98b3eb322c
+- Evidence publication target: origin/bvp-s03b-architecture-guard
