@@ -1,76 +1,165 @@
-# 08A — Narrow production run-receipt seam
+# BVP-S08A — Narrow Production Run-Receipt Seam
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** See primary-stage predecessor in the session index.
+**Predecessor:** accepted BVP-S07 primary-stage gate and mandatory architecture review
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add only the supervisor-approved production-owned terminal run receipt/control seam required by live validation.
+Introduce only the minimum production-owned terminal run receipt/control observation required for later live validation to identify an actual production synchronization run and its authoritative terminal outcome without reconstructing success from test logs.
 
-Required end state:
+The seam must be generally safe production observability/control over existing authority. It MUST NOT introduce scenario/test authority into production.
 
-> Seam enumerated, <=350 LOC/4 files, no scenario/test authority in production; boundary re-frozen.
+## 2. Required End State
 
-## 2. Dispatch Binding
+When complete, production exposes a narrowly bounded receipt or equivalent terminal observation sufficient for the live validation layer to identify, as applicable:
 
-Before execution the supervisor MUST replace this section with:
+- production run identity;
+- trigger/plan identity needed to correlate the run;
+- terminal production classification;
+- whether required physical effects were committed/verified according to production authority;
+- failure/blocking/uncertainty classification necessary to avoid manufacturing PASS.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
+The seam is enumerated in the architecture boundary, remains within the production-seam budget, and contains no scenario IDs, scenario sequencing, test persistence, cross-device coordination, evidence aggregation, alternate synchronization policy, or test-only mutation behavior.
+
+## 3. Dispatch Binding — Hard Data Only
+
+Before execution the supervisor binds:
+
+- exact accepted S07 predecessor SHA;
+- exact task branch;
+- current production run/execution/result/diagnostic authority surfaces;
+- whether an existing production terminal observation already satisfies this contract in whole or part;
+- exact production files/members, if any, authorized as the seam;
+- exact test-platform/test/governance paths required to enumerate/test the seam;
 - exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current production-seam LOC/file baseline;
+- confirmation that the child remains within BVP-GOV-010.
 
-The worker may not perform this binding.
+If the existing product already exposes sufficient general terminal authority, prefer reusing it and minimize or eliminate production changes.
 
-## 3. Fixed Boundaries
+## 4. Required Semantics
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+### 4.1 Production ownership
 
-## 4. Implementation Contract
+The terminal receipt is produced from the real production execution authority. It is not assembled from BVP expectations or inferred solely from diagnostic strings.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.2 Terminal meaning
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+The receipt/equivalent must distinguish the terminal states required for safe validation, including success, failure/blocking, and unresolved/ambiguous conditions where production itself cannot yet assert success.
 
-## 5. Verification and Acceptance
+Do not collapse uncertainty into success for test convenience.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.3 Correlation
 
-Then stop at:
+The live executor must be able to associate a requested production run with its terminal receipt without confusing a stale/prior run.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Use existing run/plan/trigger identity where available; introduce only the minimum generic correlation required by production semantics.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.4 No alternate authority
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+The seam cannot:
 
-Do not create a child-specific PowerShell verifier.
+- force a synchronization plan/result;
+- alter production state to satisfy a test;
+- bypass authentication/safety/preconditions;
+- expose a BVP-only mutation path;
+- interpret scenario expectations.
 
-## 6. Handoff
+### 4.5 Safe ordinary production behavior
 
-Report:
+The seam must be safe even if present in an ordinary production build. Validation-only scenario/transport/agent code remains excluded from the shipping artifact.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Hard Architecture Budget
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+Production BVP-only seam remains:
+
+- maximum **350 logical source lines**;
+- maximum **4 production files**.
+
+The count includes all production code whose sole purpose is the BVP seam.
+
+Exceeding either budget is `BLOCKED`; the worker may not raise the budget.
+
+## 6. Invariants
+
+- Production remains synchronization authority.
+- Scenario authority remains external.
+- Diagnostics remain corroborative.
+- No scenario/test data enters production state.
+- No new OAuth scope/token export.
+- No test-only mutation semantics.
+- No live-device agent/transport code in production.
+- The seam is explicitly enumerated and re-frozen after acceptance.
+
+## 7. Material Edge / Failure Cases
+
+Tests must establish, as applicable:
+
+- receipt correlates to the intended run rather than a stale one;
+- successful run reports authoritative success;
+- failed/blocked run does not report success;
+- ambiguous/unverified terminal state remains non-success;
+- unrelated diagnostic text cannot fabricate a receipt;
+- repeated observation of a completed run is stable/idempotent;
+- seam cannot trigger unauthorized mutation;
+- budget/file-count limits are enforced.
+
+If current production architecture cannot expose the required terminal authority within the budget without a broader redesign, return `BLOCKED`.
+
+## 8. Engineering Discretion
+
+The agent may choose:
+
+- whether to reuse an existing production result type or add a small generic receipt type;
+- exact member/type names;
+- synchronous vs observable/pollable read shape consistent with current product architecture;
+- private implementation helpers within the authorized production files.
+
+Do not introduce a BVP-specific production service hierarchy or scenario API.
+
+## 9. Dependencies
+
+Consumes the existing production execution authority and S03 architecture governance. S08B–F depend on this general terminal observation for live validation.
+
+## 10. Acceptance Criteria
+
+Acceptance requires:
+
+- authoritative terminal observation available to later validation;
+- no log-only success inference;
+- no scenario/test authority in production;
+- seam explicitly enumerated;
+- ≤350 LOC / ≤4 production files;
+- production shipping behavior otherwise unchanged;
+- architecture guard/metrics PASS;
+- authoritative PHX-CI PASS.
+
+## 11. Non-Goals
+
+Do not implement:
+
+- validation-only Obsidian entrypoint (08B);
+- command agent (08C);
+- command mailbox/relay (08D);
+- live runner executor/checkpoints (08E);
+- physical canary (08F);
+- scenario catalog;
+- new product diagnostics unrelated to the required terminal authority.
+
+## 12. Handoff / Stop
+
+Report exact input SHA, implementation SHA, actual changed paths, exact enumerated seam members/files, production-seam LOC/file count, terminal-state tests, architecture delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 08B.

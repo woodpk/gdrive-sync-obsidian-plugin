@@ -1,76 +1,121 @@
-# 06B — Merge, conflict and delete-vs-modify scenarios
+# BVP-S06B — Merge, Conflict, and Delete-vs-Modify Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor child:** 06A
+**Predecessor:** accepted S06A
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add clean text merge, true text conflict, binary conflict, and delete-vs-modify coverage.
+Add declarative deterministic coverage for concurrent text merge/conflict, binary conflict, and delete-vs-modify preservation semantics using the frozen S04/S05 core.
 
-Required end state:
+## 2. Required End State
 
-> Conflict/merge preservation semantics mapped and passing.
+Executable scenarios cover:
 
-## 2. Dispatch Binding
+- clean concurrent text merge where edits are non-overlapping and product semantics permit automatic merge;
+- true overlapping text conflict that cannot be safely merged;
+- binary concurrent conflict where content cannot be line-merged;
+- local delete vs remote modify;
+- remote delete vs local modify.
 
-Before execution the supervisor MUST replace this section with:
+Each scenario proves the current product target requirement and preservation/safety invariant, including identities/conflict artifacts/state where relevant.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S06A predecessor SHA;
+- task branch;
+- current requirement IDs/target clauses for merge/conflict/delete-vs-modify;
+- exact scenario/fixture/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current architecture metrics baseline.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+No core change is authorized.
 
-## 4. Implementation Contract
+## 4. Required Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.1 Clean text merge
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+The scenario must start from a common synchronized base, apply independent non-overlapping edits, invoke production synchronization, and assert the target-required merged result plus authoritative state/identity effects.
 
-## 5. Verification and Acceptance
+The scenario must not implement merge logic itself.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.2 True text conflict
 
-Then stop at:
+Apply overlapping incompatible edits from a common base and prove the product preserves both user changes according to the target conflict policy rather than silently selecting one side.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Assertions must cover conflict classification and resulting preserved content/artifacts/state as required by the product contract.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.3 Binary conflict
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Concurrent incompatible binary changes must exercise the product's keep-both/preservation policy. No text-merge path may be assumed.
 
-Do not create a child-specific PowerShell verifier.
+### 4.4 Delete-vs-modify
 
-## 6. Handoff
+For both directions:
 
-Report:
+- deletion on one side plus modification on the other must preserve the modified content according to target policy;
+- the scenario must prove no unsafe destruction occurs merely because one side is absent;
+- authority must come from production state/base semantics, not timestamps.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Invariants
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- Merge/conflict policy remains production code.
+- Scenario data contains expected outcomes, not implementation logic.
+- No scenario-specific production helper/seam.
+- No custom merge engine in test-platform.
+- No platform-core change unless supervisor separately authorizes a generic missing primitive after BLOCKED.
+- Canonical evidence records conflict/preservation observations.
+
+## 6. Material Edge / Failure Cases
+
+Required proof includes:
+
+- clean merge succeeds and contains both non-overlapping edits;
+- deliberately changed expected merged content fails;
+- overlapping text conflict is not falsely classified as clean merge;
+- binary conflict preserves both versions as required;
+- local-delete/remote-modify preserves modified remote content;
+- remote-delete/local-modify preserves modified local content;
+- conflict results remain deterministic across repeated runs.
+
+## 7. Engineering Discretion
+
+The agent may choose representative fixture contents and exact scenario decomposition while preserving the semantic distinctions above.
+
+Do not add generic merge/conflict abstractions unless they already exist in the frozen core.
+
+## 8. Dependencies
+
+Consumes accepted S06A and frozen S04/S05 infrastructure.
+
+## 9. Acceptance Criteria
+
+All required scenarios pass against real production logic, wrong expectations fail, preservation/conflict semantics are objectively asserted, requirement traceability is complete, scenario budgets pass, core metrics remain stable, and authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not cover:
+
+- ordinary deletion/stale/clock-skew/unreadable cases (06C);
+- move/path collisions (06D);
+- exclusions/unknown/empty folders (06E);
+- crash/fault recovery (S07);
+- live physical conflict evidence.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, scenario/conflict results, wrong-expectation proof, per-scenario LOC, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 06C.

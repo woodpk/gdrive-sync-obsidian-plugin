@@ -1,48 +1,84 @@
-# 04V — Primary-stage PHX-CI acceptance
+# BVP-S04V — Primary-Stage PHX-CI Acceptance
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s04-virtual-world-01`
+**Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World
 
-> Do not execute until all implementation children in this primary stage have individually passed PHX-CI, been supervisor-reviewed, and been integrated.
+This is a complete prewritten verification contract. It has no implementation-repair authority.
 
 ## 1. Objective
 
-Verify integrated virtual-world foundation and architecture budgets.
+Independently verify that integrated S04 provides a deterministic multi-device external world capable of exercising real production synchronization logic without duplicating product policy.
 
-Required end state:
+## 2. Required Integrated End State
 
-> PHX-CI complete; S04 acceptance canaries pass; guard/metrics stable.
+S04 may close only if the integrated repository provides:
 
-## 2. Dispatch Binding Required
+- stateful local-vault simulation;
+- stateful managed-Drive core;
+- deterministic change-feed/completeness/ambiguity/fault controls;
+- independent per-device durable state/identity/cursors;
+- deterministic time/order controls;
+- true runtime reconstruction over retained state/reality;
+- small world composition over real production planner/executor/state logic;
+- required production-path canaries;
+- no scenario runner/DSL/evidence/live-device architecture yet;
+- architecture guard/metrics within S03 budgets.
 
-The supervisor must bind:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact current `phase6-integration` SHA containing only accepted children;
-- exact stage completion criteria from current target/decomposition;
+Before execution the supervisor binds:
+
+- exact integrated `phase6-integration` SHA containing accepted S04 children;
+- exact stage verification base;
 - current PHX-CI pin/runtime;
-- current architecture metrics baseline/delta where applicable;
-- any stage-specific repository searches or physical evidence inputs.
+- accepted S04 child implementation/evidence SHAs;
+- focused S04 canary command(s);
+- current architecture metrics baseline from S03 and expected current metrics.
 
-This verification task has **no production-code repair authority**.
+## 4. Verification Procedure
 
-## 3. Verification Procedure
+Independently:
 
-1. independently inspect the integrated changed paths and accepted child evidence;
-2. run authoritative deployed-runtime PHX-CI against `phase6-integration` with publication mode `push`;
-3. review fresh `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/`;
-4. from S03 onward, independently confirm architecture guard and metrics passed;
-5. check the primary-stage end state against the governing BVP specification/decomposition;
-6. perform the recurring architecture review whenever required by DEC-324.
+1. inspect all integrated S04 changed files;
+2. confirm adapters implement actual production ports/interfaces;
+3. verify no synchronization policy migrated into simulation;
+4. verify per-device local/state isolation and shared remote composition;
+5. verify ambiguity/completeness semantics;
+6. verify restart destroys/recreates runtime objects over retained state/reality;
+7. run authoritative PHX-CI on integrated `phase6-integration`;
+8. inspect canonical evidence and S04 focused/full test results;
+9. confirm architecture guard/metrics pass and remain within budgets.
 
-If verification exposes a defect, do not repair it in this task. Return a bounded corrective work order to the responsible implementation surface.
+## 5. Stage-Specific Acceptance Criteria
 
-## 4. Completion
+S04 passes only when:
 
-Only after PHX-CI and independent review pass may the supervisor mark BVP-S04 accepted and bind the first child of the next primary stage.
+- production-path upload/create and download/create canaries pass;
+- two-device independence/shared-remote canary passes;
+- stable remote-ID-preserving move passes;
+- partial-listing safety canary passes;
+- ambiguous-outcome canary preserves uncertainty;
+- cursor/state fault controls are demonstrably available;
+- restart/reconstruction canary proves fresh runtime over retained reality;
+- no duplicate planner/reconciler/conflict/safety engine exists;
+- no later-stage scenario/live architecture appears;
+- PHX-CI overall PASS / compatibility COMPLETE / canonical evidence published;
+- architecture guard and hard budgets PASS.
 
-Do not begin the next stage in this task.
+## 6. Failure / Correction Semantics
+
+If S04V finds a defect, assign it to the causal S04 child/contract owner. Do not redesign the integrated world inside this verification task and do not convert one integration defect into broad new platform requirements.
+
+## 7. Non-Goals
+
+Do not begin S05, add scenario abstractions, or modify production synchronization semantics.
+
+## 8. Completion / Stop
+
+Only after all criteria pass may the supervisor mark BVP-S04 accepted and bind S05A hard execution facts.
+
+Stop after S04 acceptance.

@@ -1,76 +1,135 @@
-# 09C — Physical offline/reconnect and interruption/resume
+# BVP-S09C — Physical Offline / Reconnect and Interruption / Resume
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
-**Predecessor child:** 09B
+**Predecessor:** accepted S09B
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten physical-evidence contract. Dispatch binding supplies exact device/run/checkpoint coordinates only.
 
 ## 1. Objective
 
-Execute real offline/reconnect plus actual app termination/suspension/restart/resume checkpoints.
+Prove real network/lifecycle behavior that deterministic simulation cannot substitute for: actual offline/reconnect and actual application suspension/termination/restart/resume on the relevant Windows/iOS runtimes.
 
-Required end state:
+## 2. Required End State
 
-> Physical lifecycle/network evidence complete.
+Physical evidence demonstrates:
 
-## 2. Dispatch Binding
+- at least one real offline condition during a bounded synchronization-related workflow;
+- production behavior while provider/network access is unavailable;
+- actual reconnect and safe continuation/reconciliation;
+- actual Obsidian/app interruption/termination at a meaningful checkpoint;
+- later app restart/foreground resume using bounded external checkpoint state;
+- no assumption of unsupported iOS background execution;
+- no duplicate/destructive effects caused by interruption/resume;
+- exact production/device results supporting the claimed behavior.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S09B build/device state;
+- exact device(s) on which offline and lifecycle transitions will be performed;
+- exact disposable fixture/run identities;
+- exact offline mechanism/operator action appropriate to the platform;
+- exact app suspension/termination/restart actions;
+- exact pre-transition stop conditions;
+- exact resume observations/commands;
+- exact evidence output paths/writable allowlist;
+- current PHX-CI repository verification baseline.
 
-## 3. Fixed Boundaries
+## 4. Required Physical Semantics
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+### 4.1 Actual offline transition
 
-## 4. Implementation Contract
+The network/provider unavailability must be physically real for the selected device/runtime. A simulated S04 network fault does not satisfy this physical-evidence requirement.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.2 Offline production behavior
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Production must classify/block/retry/defer according to current product semantics without asserting false success.
 
-## 5. Verification and Acceptance
+### 4.3 Actual reconnect
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+After physical connectivity returns, production must safely observe/reconcile and reach the target-required state without test infrastructure forcing product state.
 
-Then stop at:
+### 4.4 Actual interruption / termination
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+The app/runtime must actually be suspended/terminated/restarted where that lifecycle transition is the evidentiary point.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Do not substitute a method call that merely simulates restart.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.5 External resume authority
 
-Do not create a child-specific PowerShell verifier.
+The external runner/checkpoint records the next test action. The device does not preserve a distributed scenario engine in the background.
 
-## 6. Handoff
+### 4.6 Mobile reality
 
-Report:
+On iOS, foreground-only execution, suspension, termination, and later resumption are valid realities. The test must not require unsupported continuous background execution.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Invariants
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- Physical transitions remain physical.
+- External checkpoints remain test state only.
+- Ambiguous/failed effects remain non-success until reconciled.
+- No duplicate command/effect after resume.
+- Disposable fixtures only.
+- Deterministic S07 crash/recovery evidence remains complementary semantic proof.
+
+## 6. Material Edge / Failure Cases
+
+Evidence must detect:
+
+- false success while offline;
+- stale transport command replay after reconnect;
+- duplicate remote mutation after interruption;
+- app restart losing required production state improperly;
+- app restart depending on device-local scenario state;
+- inability to reconnect/reconcile;
+- required iOS action unavailable in the actual environment.
+
+Unavailable physical capability yields `BLOCKED`, not synthetic substitution.
+
+## 7. Evidence Requirements
+
+Record:
+
+- exact run/device/build identity;
+- pre-transition state/receipt;
+- operator offline/termination action;
+- observed offline/lifecycle state;
+- checkpoint representation;
+- resume/reconnect action;
+- post-resume production receipt/state;
+- content/identity effect;
+- duplicate/staleness safety result;
+- terminal verdict.
+
+## 8. Engineering / Operator Discretion
+
+The operator may choose the safest platform-supported method for toggling connectivity and terminating/restarting the app, while preserving the exact semantic transition required.
+
+## 9. Dependencies
+
+Consumes S08 external checkpoints/live executor and S07 deterministic recovery semantics.
+
+## 10. Acceptance Criteria
+
+Acceptance requires actual offline/reconnect and actual lifecycle interruption/resume evidence, fail-closed offline behavior, safe no-duplicate recovery, no iOS-background assumption, exact traceability, and supervisor review.
+
+Any repository evidence change must pass authoritative PHX-CI.
+
+## 11. Non-Goals
+
+Do not claim broad provider outage testing; do not perform path/resource/large transfer (09D) or auth/lifecycle revocation/uninstall (09E).
+
+## 12. Handoff / Stop
+
+Report exact transition actions, device/build/run identities, before/after receipts/state, checkpoint/resume evidence, duplicate-safety result, blockers, evidence paths, and any evidence commit.
+
+Stop at the supervisor-reviewed S09C physical evidence gate.
+
+Do not begin 09D.

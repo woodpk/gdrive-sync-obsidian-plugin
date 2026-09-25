@@ -1,76 +1,108 @@
-# 06D — Move/rename identity and path-collision scenarios
+# BVP-S06D — Move / Rename Identity and Path-Collision Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor child:** 06C
+**Predecessor:** accepted S06C
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add stable-ID move/rename, ambiguous move blocking, case/Unicode/path collision coverage.
+Add declarative deterministic coverage for stable-identity move/rename behavior, ambiguous move safety, and case/Unicode/path collision handling.
 
-Required end state:
+## 2. Required End State
 
-> Move identity/collision scenarios pass; no timestamp/path guessing policy introduced.
+Executable scenarios cover:
 
-## 2. Dispatch Binding
+- local move/rename of an established managed object;
+- remote move/rename preserving stable remote identity;
+- two-sided/competing move conditions where target semantics define resolution or safe blocking;
+- ambiguous move identity where path/timestamp evidence is insufficient;
+- destination collision;
+- case-only and Unicode-normalization-sensitive path conditions where product/platform policy requires deterministic handling;
+- incompatible/invalid path behavior where deterministic policy is product-defined.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S06C predecessor SHA;
+- task branch;
+- current move/path/identity requirement IDs and target clauses;
+- exact scenario/fixture/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No core change is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Stable identity
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+A move/rename must be proven using the strongest production identity available—especially stable remote object ID/state mapping—rather than treating every path change as unrelated delete/create.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 No path/timestamp guessing
 
-## 5. Verification and Acceptance
+When identity is ambiguous, the product must not invent a move solely from similar names, timestamps, or convenient path heuristics if the target specification requires blocking/preservation.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.3 Collisions
 
-Then stop at:
+When a destination path is already occupied or incompatible, the scenario must prove the target-required safe behavior: preserve data, block, conflict, or choose a deterministic compatible result as specified.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.4 Case / Unicode
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Scenarios must exercise the product's target semantics for platform-relevant case/Unicode path equivalence/collision without assuming all filesystems normalize identically.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+This deterministic proof covers policy/adapter semantics, not final physical platform validation.
 
-Do not create a child-specific PowerShell verifier.
+## 5. Invariants
 
-## 6. Handoff
+- Stable remote identity is not replaced by timestamps.
+- Ambiguity cannot be silently resolved into destructive movement.
+- No duplicate move algorithm exists in scenario/world code.
+- Scenario-only default remains intact.
+- No scenario-specific production path-handling code.
 
-Report:
+## 6. Material Edge / Failure Cases
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+Required proof includes:
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- local rename maps to same managed identity as required;
+- remote move retains remote ID and maps correctly;
+- collision does not overwrite unrelated content unsafely;
+- ambiguous move blocks/preserves as required;
+- case-only path condition behaves per target policy;
+- Unicode-equivalent/colliding path condition behaves per target policy;
+- wrong expected identity/path result fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative path strings/Unicode forms and scenario grouping, provided they exercise the actual current product requirements and remain portable in the deterministic test environment.
+
+## 8. Dependencies
+
+Consumes accepted S04 Drive stable-ID semantics and S06A–C coverage on the frozen S05 runner.
+
+## 9. Acceptance Criteria
+
+Required move/collision scenarios pass through real production logic, identity semantics are objectively asserted, ambiguity remains safe, requirement mapping is complete, no core/production changes occur, scenario/architecture budgets pass, and authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not claim deterministic simulation proves actual Windows/iOS filesystem behavior; physical representative cases belong to S09D.
+
+Do not cover exclusions/unknown/empty folders (06E) or crash/fault recovery (S07).
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, scenario results, per-scenario LOC, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 06E.

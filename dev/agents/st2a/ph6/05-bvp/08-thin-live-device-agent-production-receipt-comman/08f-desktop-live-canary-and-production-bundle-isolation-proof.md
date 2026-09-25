@@ -1,76 +1,126 @@
-# 08F — Desktop live canary and production-bundle isolation proof
+# BVP-S08F — Desktop Live Canary and Production-Bundle Isolation Proof
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** 08E
+**Predecessor:** accepted S08E
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository/device coordinates only.
 
 ## 1. Objective
 
-Prove the live path on Windows through a bounded canary while production bundle remains clean.
+Prove the complete S08 live path on Windows with one bounded disposable canary before S09 broad physical validation, while independently proving the ordinary production bundle remains free of validation-only agent/transport/scenario code.
 
-Required end state:
+## 2. Required End State
 
-> Desktop canary succeeds; duplicates/stale commands fail; production bundle exclusion proven.
+A Windows desktop validation artifact:
 
-## 2. Dispatch Binding
+- loads in the intended Obsidian runtime;
+- receives an addressed command through the selected transport/relay;
+- executes a bounded production-path synchronization canary;
+- returns a correctly correlated command result and authoritative production terminal receipt;
+- supports an objective post-run observation;
+- rejects stale/duplicate/wrong-run or wrong-device commands;
+- leaves disposable test state suitable for cleanup/reconciliation.
 
-Before execution the supervisor MUST replace this section with:
+Separately, the ordinary production build remains clean and loadable without validation-only code.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S08E predecessor SHA;
+- task branch/build SHA;
+- exact validation artifact/version;
+- Windows validation device/vault identity;
+- disposable fixture location/content identity;
+- selected command transport/relay coordinates;
+- exact bounded canary operation;
+- exact production and validation build commands/artifact expectations;
+- exact evidence locations;
+- PHX-CI base/pin/runtime;
+- current architecture metrics/budgets.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+No permanent user data may be used as the canary fixture.
 
-## 4. Implementation Contract
+## 4. Required Canary Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+The canary must:
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+1. establish a disposable bounded fixture;
+2. send an addressed command from the external live executor;
+3. execute through the installed production synchronization path;
+4. observe the production terminal receipt;
+5. verify the expected external/local effect objectively;
+6. record canonical scenario evidence;
+7. exercise stale/duplicate/mismatch rejection without repeating unsafe effects;
+8. restore/leave the test environment in an explicitly known safe state.
 
-## 5. Verification and Acceptance
+The exact create/update direction may be chosen at dispatch based on the simplest safe production-path proof.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+## 5. Shipping-Isolation Proof
 
-Then stop at:
+Independently prove the normal production artifact contains none of:
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+- validation-only device agent;
+- mailbox/relay implementation;
+- scenario runner/catalog;
+- validation-only fixture controls;
+- validation-only fault controls/UI.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+The approved S08A generic run-receipt seam is not a violation.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Use architecture guard plus artifact/source inspection sufficient to prove actual bundle exclusion.
 
-Do not create a child-specific PowerShell verifier.
+## 6. Failure / Safety Semantics
 
-## 6. Handoff
+- A transport acknowledgement without production receipt is not PASS.
+- A stale/duplicate command that causes repeated mutation is failure.
+- A failed/ambiguous production result must remain failed/ambiguous.
+- Unexpected non-disposable user content exposure/mutation is a hard stop.
+- If Windows/Obsidian environment cannot execute the required canary, record BLOCKED; do not substitute a deterministic simulation and call it live evidence.
 
-Report:
+## 7. Invariants
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+- Canary scope is disposable and bounded.
+- Production path is real.
+- Scenario authority remains external.
+- Production bundle remains validation-code-free.
+- No S09 coverage expansion in this child.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## 8. Engineering Discretion
+
+The agent/operator may choose the safest representative desktop canary action and fixture content consistent with the bound environment.
+
+## 9. Dependencies
+
+Consumes the complete accepted S08A–E stack.
+
+## 10. Acceptance Criteria
+
+Acceptance requires:
+
+- desktop validation artifact loads;
+- bounded live production-path canary succeeds with objective receipt/effect evidence;
+- stale/duplicate/mismatch protections are physically demonstrated where safely possible;
+- production bundle exclusion is proven;
+- live-agent/core/seam budgets pass;
+- architecture guard/metrics PASS;
+- authoritative PHX-CI PASS for repository state;
+- physical evidence is bound to exact build/device/run identities.
+
+## 11. Non-Goals
+
+Do not perform iOS coverage, broad cross-device scenario coverage, auth revocation, large mobile transfer, or lifecycle closure; those belong to S09.
+
+## 12. Handoff / Stop
+
+Report exact source/build SHA, validation artifact identity, Windows device/vault identity, canary steps/results, production receipt, command-safety results, production-bundle exclusion proof, architecture metrics, and any BLOCKED physical step.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION` for code changes and supervisor physical-evidence review.
+
+Do not begin S09.

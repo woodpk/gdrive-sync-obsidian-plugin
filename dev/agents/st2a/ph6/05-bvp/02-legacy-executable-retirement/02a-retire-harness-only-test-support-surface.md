@@ -1,10 +1,9 @@
-# BVP-S02A — Retire Exact Harness-Only Test/Support Surface
+# BVP-S02A — Retire Exact Harness-Only Test / Support Surface
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`
-**Prompt maturity:** COMPLETE  
+**Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact input SHA:** `6da8794b947c51b6e5cc4a15a467215d2fe37831`  
 **Required branch:** `bvp-s02a-retire-harness-tests`  
@@ -12,27 +11,25 @@
 **PHX-CI evidence SHA:** `3a5c4577179fcd5e57e336c97c7632c54be639f5`  
 **Accepted integration SHA:** `ff87c49752844f1e52d884bcf4af94dea01c6eff`
 
-Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+This file is a historical contract record. It authorizes no new work and MUST NOT be re-executed.
 
 ## 1. Objective
 
-Delete the supervisor-classified harness-only test/support surface **without changing any production source, build configuration, planning/governance file, or PHX-CI integration**.
+Remove only the supervisor-classified tests/support whose subject was the superseded internal validation harness, while proving that production code, ordinary product tests, build configuration, planning/governance, and PHX-CI integration were unchanged.
 
-This child exists specifically to reduce S02 to a one-turn mechanical deletion plus full CI proof.
+## 2. Required End State
 
-## 2. Drift Gate
+The accepted result required:
 
-The task prompt is stored on a later `phase6-integration` planning/tasking head. Before editing:
+- all 33 classified harness-only test/support paths to be absent;
+- no production source change;
+- no replacement BVP implementation;
+- no build/configuration or PHX-CI change;
+- the remaining repository to pass authoritative PHX-CI verification.
 
-1. fetch origin;
-2. verify the exact input SHA is an ancestor of current `origin/phase6-integration`;
-3. verify every path changed after the input SHA on `phase6-integration` is under `dev/**`;
-4. hard-stop if `src/**`, `test/**`, package/build configuration, Taskfiles, or `phx-ci.json` changed after the input SHA;
-5. create the task branch from the exact input SHA, not from the later tasking tip.
+## 3. Fixed Retirement Classification
 
-## 3. Exact Writable Surface
-
-Delete exactly these 33 paths and no others:
+The following 33 paths were the complete writable/deletion set for this child:
 
 - `test/phase6-h6c-production-diagnostic-correlation.test.ts`
 - `test/validation-c-series-composition.test.ts`
@@ -68,35 +65,56 @@ Delete exactly these 33 paths and no others:
 - `test/validation-state-convergence-verifier.test.ts`
 - `test/validation-transport-coverage-faults.test.ts`
 
-No file may be added or modified by the worker.
+No other worker change was authorized.
 
-PHX-CI evidence will later add its configured evidence files during local acceptance; that evidence mutation is owned by PHX-CI, not the worker implementation.
+## 4. Required Semantics and Invariants
 
-## 4. Frozen Surface
+- Retirement removed obsolete verification architecture, not product behavior.
+- A compile/test failure caused by deletion could not authorize opportunistic repair in another surface.
+- Unlisted tests were presumed product/repository assets and remained untouched.
+- Production source had to remain byte-for-byte unchanged by this child.
+- New BVP implementation was prohibited until legacy executable retirement completed.
 
-Everything not listed in §3 is frozen, including all `src/**`, all remaining `test/**`, `package*.json`, `tsconfig*.json`, build scripts, Taskfiles, `phx-ci.json`, planning/governance, and `dev/archive/**`.
+## 5. Dependencies
 
-If removal causes a compile/test/build failure that appears to require another repository edit: **BLOCKED. Do not repair it in this child.**
+This child depended on accepted S01 authority/archive closure and its exact input SHA.
 
-## 5. Worker Verification
+## 6. Engineering Discretion
 
-Confirm:
+Because the supervisor had already classified the complete deletion set, implementation discretion was intentionally limited to safe Git/file deletion mechanics and verification. The worker had no authority to reclassify, replace, refactor, or compensate outside the fixed surface.
 
-- all 33 listed paths are absent;
-- `git diff --name-status` contains exactly 33 deletions;
-- no production source changed;
-- repository-native tests available to the worker are run.
+## 7. Material Edge / Failure Cases
 
-Push the branch and stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+The child would have been BLOCKED if deletion exposed a dependency requiring any unlisted source/test/build change. It would also have failed if any listed path remained, any unlisted path changed, or production behavior was modified to accommodate the retirement.
 
-## 6. Authoritative Acceptance
+## 8. Acceptance Criteria
 
-The local operator verifies `bvp-s02a-retire-harness-tests` through installed PHX-CI deployed-runtime Path C with publication mode `push`.
+Acceptance required objective evidence of:
 
-PHX-CI must pass install, typecheck, focused/full tests, build, repository checks, artifact checks, Git gates, and evidence.
+- exactly 33 deletions and no other implementation changes;
+- all listed paths absent;
+- production source unchanged;
+- repository-native checks available to the worker;
+- authoritative PHX-CI install/typecheck/tests/build/repository/artifact verification passing;
+- canonical evidence publication and preserved control checkout.
 
-Do not create any verifier script.
+## 9. Non-Goals
 
-## 7. Stop
+This child did not:
 
-Do not begin S02B. Do not delete `src/validation/**` in this child. Do not merge/promote.
+- remove `src/validation/**`;
+- remove production runtime/UI coupling;
+- modify diagnostics or product code;
+- create `test-platform/**`;
+- create any replacement runner/simulator/evidence system;
+- begin S02B or later work.
+
+## 10. Historical Completion
+
+Accepted implementation: `cbc9b086432b9b521ab9246db4386f08b7533c55`  
+Accepted PHX-CI evidence: `3a5c4577179fcd5e57e336c97c7632c54be639f5`  
+Accepted integration: `ff87c49752844f1e52d884bcf4af94dea01c6eff`
+
+## 11. Stop
+
+No work is authorized by this file.

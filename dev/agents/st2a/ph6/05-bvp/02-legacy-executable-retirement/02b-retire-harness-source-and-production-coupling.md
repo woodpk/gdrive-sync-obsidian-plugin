@@ -1,10 +1,9 @@
-# BVP-S02B — Retire Exact Legacy Harness Source and Production Coupling
+# BVP-S02B — Retire Legacy Harness Source and Production Coupling
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`
-**Prompt maturity:** COMPLETE  
+**Agent name:** `agt-brain-bvp-s02-legacy-retirement-01`  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S02 — Legacy Executable Retirement  
 **Exact accepted predecessor / implementation input SHA:** `ff87c49752844f1e52d884bcf4af94dea01c6eff`  
 **Required branch:** `bvp-s02b-retire-harness-source`  
@@ -12,54 +11,30 @@
 **Accepted PHX-CI evidence SHA:** `9a04f3a20ef0448731b79d6f5f915a20107f37c1`  
 **Accepted integration SHA:** `dd8f5f7d65598a2ec175627a6749316119b521c0`
 
-Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
-
-BVP-S02A is accepted and integrated. Its accepted implementation was `cbc9b086432b9b521ab9246db4386f08b7533c55`, PHX-CI evidence was `3a5c4577179fcd5e57e336c97c7632c54be639f5`, and its exact 33 test/support deletions are present in this input SHA.
-
-The supervisor has completed the S02B classification. The worker has no authority to alter it.
+This file is a historical contract record. It authorizes no new work and MUST NOT be re-executed.
 
 ## 1. Objective
 
-Remove the exact supervisor-classified executable harness and H6C-only production correlation seam from the accepted post-S02A repository state.
+Remove the supervisor-classified executable legacy validation harness and its harness-only production correlation/runtime/UI coupling while preserving ordinary synchronization behavior, reusable production diagnostics/contracts, and all unclassified repository surfaces.
 
-Do not create any replacement BVP implementation in this child.
+No replacement BVP implementation belonged to this child.
 
-## 2. Exact Base / Drift Gate
+## 2. Required End State
 
-`S02B_INPUT_SHA = ff87c49752844f1e52d884bcf4af94dea01c6eff`
+The accepted result required:
 
-The task file is persisted on a later `phase6-integration` tasking head. Before editing:
+- `src/validation/**` absent;
+- the H6C-only `src/diagnostics/production-diagnostic-correlation.ts` seam absent;
+- legacy validation runtime/settings/controller coupling removed from the three approved production files;
+- no residual active production identifier/reference to the superseded harness;
+- all unlisted source/tests/build/governance surfaces unchanged;
+- ordinary production build and tests passing through PHX-CI.
 
-1. fetch/prune origin;
-2. verify `S02B_INPUT_SHA` is an ancestor of current `origin/phase6-integration`;
-3. verify every path changed after `S02B_INPUT_SHA` on `phase6-integration` is under `dev/**`;
-4. hard-stop if any post-input change exists under:
-   - `src/**`;
-   - `test/**`;
-   - `package.json`;
-   - `package-lock.json`;
-   - `tsconfig*.json`;
-   - Taskfiles;
-   - `phx-ci.json`;
-   - other executable/build surfaces;
-5. create `bvp-s02b-retire-harness-source` from exactly `S02B_INPUT_SHA`, not from the later tasking tip.
+## 3. Fixed Retirement Classification
 
-If any gate fails: **BLOCKED. Do not adapt.**
+### Required deletions
 
-## 3. Supervisor-Verified Current Source State
-
-At exact `S02B_INPUT_SHA`, the current blobs are:
-
-- `src/main.ts` = `42a3b10bc3bb5113cdb8abb360d2e29b76d88229`
-- `src/product/settings-tab.ts` = `04c4313c45895419e23ec7a42f68a8c2b79f7c68`
-- `src/product/product-controller-base.ts` = `876d30eec5eb36ca16fee375581c85f3c7a5fa16`
-- `src/diagnostics/production-diagnostic-correlation.ts` = `02b4e42bd479f1bed0d868a6898e4141cfe8cc3b`
-
-These have been reconfirmed after accepted S02A. The 33 S02A test/support deletions are already integrated and are not part of this child's writable surface.
-
-## 4. Exact Required Deletions
-
-Delete exactly these 29 files:
+Exactly these 29 `src/validation/**` files were classified for deletion:
 
 - `src/validation/c-series-composition.ts`
 - `src/validation/coordination-evidence-contracts.ts`
@@ -91,141 +66,74 @@ Delete exactly these 29 files:
 - `src/validation/transport-coverage-faults.ts`
 - `src/validation/validation-mode-runtime.ts`
 
-Also delete exactly:
+Also delete:
 
 - `src/diagnostics/production-diagnostic-correlation.ts`
 
-No exception is permitted.
+### Required production results
 
-## 5. Exact Required Production Results
+The completed production edits were fixed to these exact blobs:
 
-The following exact results are mandatory:
+- `src/main.ts` → `dc5d6bb13e2bd389fdcd5357730a4144ad7d2eb7`
+- `src/product/settings-tab.ts` → `e6a56451a3a6723d223c09175cc901c46f527985`
+- `src/product/product-controller-base.ts` → `fee7c40e715d277cea2b5e26059a86753bb316a0`
 
-- `src/main.ts` → Git blob `dc5d6bb13e2bd389fdcd5357730a4144ad7d2eb7`
-- `src/product/settings-tab.ts` → Git blob `e6a56451a3a6723d223c09175cc901c46f527985`
-- `src/product/product-controller-base.ts` → Git blob `fee7c40e715d277cea2b5e26059a86753bb316a0`
+The controller target was the historical known-good production blob `cb17f9686ea8a580f38de151e9049d94a7c2bd84:src/product/product-controller-base.ts`.
 
-For `src/product/product-controller-base.ts`, the required result is exactly the historical production blob:
+These exact results were part of the retirement classification, not ordinary implementation discretion.
 
-`cb17f9686ea8a580f38de151e9049d94a7c2bd84:src/product/product-controller-base.ts`
+## 4. Required Semantics and Invariants
 
-Do not produce an equivalent hand-edited variant; the blob must match exactly.
+- Removing the harness could not alter synchronization policy or runtime semantics unrelated to the harness.
+- General production diagnostics and reusable product contracts remained product assets unless explicitly classified otherwise.
+- No old harness runtime/UI/control/evidence/orchestration identifier could remain reachable in active production source.
+- No new validation mode, replacement scenario runner, testing bypass, coordinator, persistence system, or BVP implementation could be introduced.
+- Any unexpected dependency outside the fixed surface was a supervisor blocker, not worker authority to broaden scope.
 
-For `src/main.ts` and `src/product/settings-tab.ts`, the exact target hashes above are authoritative. Do not make any additional cleanup/refactoring changes.
+## 5. Dependencies
 
-## 6. Exact Writable Surface
+This child depended on accepted/integrated S02A and its exact predecessor state.
 
-Only these paths are writable:
+## 6. Engineering Discretion
 
-### Deletions
+The supervisor had already resolved the retain/delete classification and fixed the three production target blobs. Worker discretion was limited to safe execution/verification mechanics. There was no authority to substitute equivalent hand-edited production variants, retain a listed legacy file, or remove an unlisted reusable surface.
 
-- the exact 29 `src/validation/**` paths in §4;
-- `src/diagnostics/production-diagnostic-correlation.ts`.
+## 7. Material Edge / Failure Cases
 
-### Modifications
+The child would have been BLOCKED if:
 
-- `src/main.ts`;
-- `src/product/settings-tab.ts`;
-- `src/product/product-controller-base.ts`.
+- an unlisted source/test/build edit was required to restore compilation;
+- a listed legacy surface proved to contain product authority not captured by the fixed classification;
+- removal exposed an unresolved shared contract requiring redesign;
+- the three target production blobs could not be produced from the accepted predecessor without additional changes.
 
-No other repository path may be added, modified, or deleted by the worker.
+## 8. Acceptance Criteria
 
-In particular, frozen in this child:
+Acceptance required:
 
-- all remaining `src/**`;
-- all `test/**`;
-- `src/testing/fakes.ts`;
-- all remaining `src/diagnostics/**`;
-- `src/contracts/**`;
-- `src/core/**`;
-- `src/state/**`;
-- package/build configuration;
-- Taskfiles;
-- `phx-ci.json`;
-- planning/governance;
-- `dev/archive/**`;
-- `dev/_ca-output.md`;
-- all `dev/scripts/**`.
+- exactly 30 deletions + 3 production modifications;
+- `src/validation/**` absent;
+- exact three production blob hashes;
+- zero residual active-source occurrences of the legacy runtime/control/orchestration identifiers covered by the task;
+- no changes outside the fixed surface;
+- authoritative PHX-CI install/typecheck/full tests/build/repository/artifact checks passing;
+- canonical evidence publication.
 
-If an unexpected dependency, compile failure, test failure, or build failure appears to require any frozen-path edit: **BLOCKED. Do not repair it in this child.**
+## 9. Non-Goals
 
-## 7. Worker Verification
+This child did not:
 
-Before push, verify:
+- implement `test-platform/**`;
+- build the BVP simulator, runner, DSL, evidence engine, live agent, transport, or scenario catalog;
+- perform live Drive/device validation;
+- begin S03 or Stage 3.
 
-1. all 30 required deletion paths are absent;
-2. `src/validation/**` no longer exists;
-3. the three modified production files have exactly the required target blob hashes;
-4. `git diff --name-status S02B_INPUT_SHA...HEAD` contains exactly:
-   - 30 deletions;
-   - 3 modifications;
-   - zero additions;
-5. no other path changed;
-6. active `src/**` contains zero occurrences of:
-   - `ValidationModeRuntime`
-   - `validationRuntime`
-   - `validationModeEnabled`
-   - `setValidationModeEnabled`
-   - `validationScenarioIds`
-   - `startValidationScenario`
-   - `resumeValidationScenario`
-   - `currentDiagnosticCorrelation`
-   - `ProductionDiagnosticCorrelation`
-   - `scenario-runner`
-   - `cross-device-coordinator`
-   - `scenario-evidence-recorder`
-7. run repository-native tests/build checks available to the worker.
+## 10. Historical Completion
 
-Do not create a task-specific verifier script.
+Accepted implementation: `64035ae6b36ef1b6372e3153a815dbe8be72668a`  
+Accepted PHX-CI evidence: `9a04f3a20ef0448731b79d6f5f915a20107f37c1`  
+Accepted integration: `dd8f5f7d65598a2ec175627a6749316119b521c0`
 
-If local build/test tooling is unavailable, report the unavailable checks honestly and still stop at `READY FOR LOCAL PHX-CI VERIFICATION` provided the static frozen-surface checks pass. PHX-CI owns authoritative acceptance.
+## 11. Stop
 
-## 8. Required Worker Stop State
-
-Push `bvp-s02b-retire-harness-source`.
-
-Final response must report:
-
-- exact `S02B_INPUT_SHA`;
-- implementation SHA;
-- branch;
-- confirmation of exactly 30 deletions + 3 modifications;
-- the three final Git blob hashes;
-- complete changed-path list;
-- retired-identifier search result;
-- verification actually performed;
-- unavailable checks marked `NOT AVAILABLE IN THIS SESSION`;
-- confirmation that no task-specific verifier or evidence file was created/modified;
-- final state:
-
-`READY FOR LOCAL PHX-CI VERIFICATION`
-
-Do not claim acceptance.
-
-## 9. Hard Prohibitions
-
-Do not:
-
-- touch any path outside §6;
-- reclassify any listed file;
-- preserve any listed deletion;
-- delete any unlisted file;
-- repair fallout outside §6;
-- create `test-platform/**`;
-- build the simulator, scenario DSL, runner, live-device agent, mailbox, or replacement evidence system;
-- introduce replacement validation runtime/UI;
-- create scenario-specific production hooks;
-- create a new runner/router/state machine/coordinator/persistence subsystem;
-- use GitHub Actions;
-- perform live Drive mutation;
-- perform physical-device validation;
-- begin BVP-S03;
-- begin Stage 3.
-
-## 10. Acceptance After Worker Stop
-
-After the worker pushes and reports `READY FOR LOCAL PHX-CI VERIFICATION`, the operator runs the installed PHX-CI deployed runtime against `bvp-s02b-retire-harness-source` with the current `origin/phase6-integration` as the base authority and publication mode `push`.
-
-Only PHX-CI evidence plus supervisor review may accept and integrate 02B.
-
-Then and only then may 02V be rebound and executed.
+No work is authorized by this file.

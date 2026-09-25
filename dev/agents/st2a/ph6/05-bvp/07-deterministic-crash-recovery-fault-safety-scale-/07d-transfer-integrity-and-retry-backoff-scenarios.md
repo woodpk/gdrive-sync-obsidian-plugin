@@ -1,76 +1,117 @@
-# 07D — Transfer integrity and retry/backoff scenarios
+# BVP-S07D — Transfer Integrity and Retry / Backoff Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** 07C
+**Predecessor:** accepted S07C
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add file-changing-during-transfer, integrity, retry/backoff, and rate-limit classification coverage.
+Add declarative deterministic coverage for transfer integrity, files changing during transfer, provider/network retry classification, backoff, and rate-limit behavior.
 
-Required end state:
+## 2. Required End State
 
-> Transfer/retry scenarios pass deterministically.
+Executable scenarios cover:
 
-## 2. Dispatch Binding
+- upload/download content integrity;
+- local file changing while upload/read-transfer evidence is being established;
+- remote content/revision changing during download where product contracts require detection;
+- transient retryable provider/network failure;
+- non-retryable/permanent failure;
+- rate-limit/throttle classification;
+- deterministic backoff/retry scheduling without wall-clock sleeps;
+- retry bound/exhaustion semantics required by the product target.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S07C predecessor SHA;
+- task branch;
+- current transfer/retry/backoff requirement IDs and production classifications;
+- accepted S04 deterministic time/fault controls;
+- exact scenario/fixture/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No new retry/fault framework is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Integrity
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+A successful transfer claim must be backed by the product's required content/hash/revision verification.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Tests must detect wrong/truncated/corrupted content rather than relying only on request success.
 
-## 5. Verification and Acceptance
+### 4.2 File changes during transfer
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+If a local/remote source changes between observation and committed transfer result, production must follow its target stability/precondition/retry/conflict semantics rather than silently accepting stale bytes.
 
-Then stop at:
+### 4.3 Retry classification
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Retryable and non-retryable failures must be distinguished according to production classification.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+The simulator supplies external failure class; production chooses retry behavior.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.4 Backoff
 
-Do not create a child-specific PowerShell verifier.
+Backoff timing/count is tested through deterministic time controls. No real sleeps are necessary.
 
-## 6. Handoff
+### 4.5 Rate limits
 
-Report:
+Rate-limit behavior must preserve provider classifications/retry hints where product contracts use them and must not become a generic success after arbitrary retries.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Invariants
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- Integrity is objectively verified.
+- Retry policy remains production code.
+- Fault injector does not call retry itself.
+- Backoff uses deterministic time.
+- Bounded retry cannot become infinite test execution.
+- Scenario-only default remains intact.
+
+## 6. Material Edge / Failure Cases
+
+Required proof includes:
+
+- correct transfer integrity passes;
+- corrupted/truncated expected content fails;
+- source mutation during transfer is detected/handled safely;
+- retryable failure retries according to policy;
+- non-retryable failure does not retry improperly;
+- rate-limit classification follows target semantics;
+- backoff progression is deterministic;
+- retry exhaustion yields required terminal classification;
+- wrong retry expectation fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative payload sizes/content and failure sequences using accepted generic fault/time controls.
+
+## 8. Dependencies
+
+Consumes S04 Drive/local/time/fault capabilities and current production transfer/retry contracts.
+
+## 9. Acceptance Criteria
+
+Required transfer/retry scenarios pass through real production logic; integrity corruption is detectable; retry/backoff classifications are deterministic; no new framework/core/production change occurs; budgets and authoritative PHX-CI pass.
+
+## 10. Non-Goals
+
+Do not cover physical mobile resource constraints/actual provider timing, which belong to S09D; do not cover quota/local-disk/destructive/config/lifecycle (07E) or scale measurement (07F).
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, integrity/retry/backoff results, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07E.

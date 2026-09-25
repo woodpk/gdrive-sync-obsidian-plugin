@@ -729,4 +729,3 @@ test("authorized governance change class exempts only frozen-surface enforcement
     );
   });
 });
-

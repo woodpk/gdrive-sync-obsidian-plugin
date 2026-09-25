@@ -1,76 +1,168 @@
-# 09F — Requirement/evidence traceability closure
+# BVP-S09F — Requirement / Evidence Traceability Closure
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
-**Predecessor child:** 09E
+**Predecessor:** accepted S09E
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten closure contract. Dispatch binding supplies exact current evidence/repository coordinates only.
 
 ## 1. Objective
 
-Reconcile deterministic and physical evidence to every material target requirement without adding new product behavior.
+Reconcile all accepted deterministic and physical Phase-6 evidence to every material current BRAIN product target requirement and BVP completion obligation, identify any real gap explicitly, and prepare a traceable Stage-3 handoff without adding new product behavior.
 
-Required end state:
+## 2. Required End State
 
-> Traceability has no material gaps; blockers surfaced; Stage-3 package prepared.
+A Stage-3-ready traceability package establishes, for every material current product requirement:
 
-## 2. Dispatch Binding
+- implementation location/authority;
+- validation mode classification: deterministic, physical, or mixed;
+- exact accepted scenario/test/evidence identity;
+- exact build/commit identity where relevant;
+- latest accepted verdict/evidence reference;
+- any residual limitation or explicit blocker.
 
-Before execution the supervisor MUST replace this section with:
+It also reconciles all BVP architecture/governance completion requirements and historical C03–F03 semantic obligations without treating historical scenario IDs as current authority.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+There are no silently unassigned material requirements.
 
-The worker may not perform this binding.
+## 3. Dispatch Binding — Hard Data Only
 
-## 3. Fixed Boundaries
+Before execution the supervisor binds:
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+- exact accepted S09E integration/evidence state;
+- exact current BRAIN target-system specification revision;
+- exact BVP target/build/coverage specification revisions;
+- exact accepted deterministic child/stage evidence locations;
+- exact accepted S09A–E physical evidence locations;
+- exact current architecture metrics/baseline;
+- exact traceability/handoff files and writable allowlist;
+- current PHX-CI pin/runtime and verification base.
 
-## 4. Implementation Contract
+Binding may update coordinates but may not redefine requirements to erase evidence gaps.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+## 4. Traceability Semantics
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.1 Current requirement authority
 
-## 5. Verification and Acceptance
+Traceability keys off the current product target specification and active decisions.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Historical C03–F03 labels are migration aids only.
 
-Then stop at:
+### 4.2 Evidence classification
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+For each requirement, identify whether appropriate proof is:
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+- deterministic primary;
+- physical primary;
+- mixed.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Do not require physical repetition where deterministic semantics are the proper proof, and do not claim deterministic simulation proves a physical OS/provider transition.
 
-Do not create a child-specific PowerShell verifier.
+### 4.3 Exact evidence references
 
-## 6. Handoff
+A vague statement such as “tests pass” is insufficient.
 
-Report:
+Reference the exact accepted test/scenario/result/evidence record and exact source/build identity where material.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+### 4.4 Gaps fail closed
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+If a material requirement lacks adequate evidence:
+
+- mark it explicitly unproven/BLOCKED;
+- identify the missing evidence type;
+- do not infer PASS from adjacent requirements;
+- do not add new product behavior inside this closure task.
+
+### 4.5 BVP completion traceability
+
+Also confirm:
+
+- legacy active harness authority retired;
+- production shipping exclusion;
+- architecture guard/metrics/budgets;
+- deterministic world/runner/evidence capability;
+- live validation capability;
+- child/stage PHX-CI acceptance evidence;
+- final archive/governance invariants.
+
+## 5. Required Coverage Reconciliation
+
+At minimum reconcile the product target evidence families:
+
+- §13.1 build/platform;
+- §13.2 reconciliation semantics;
+- §13.3 state/crash safety;
+- §13.4 transfer/large vault;
+- §13.5 destructive safety;
+- §13.6 auth/security;
+- §13.7 config/lifecycle/asset boundary;
+- §13.8 Stage-3 traceability.
+
+Use the current specification headings/IDs if they have changed at dispatch; preserve semantic authority.
+
+## 6. Invariants
+
+- Evidence records observations; it does not create authority.
+- No requirement is marked PASS without suitable accepted evidence.
+- Historical harness claims do not substitute for BVP evidence.
+- No new testing architecture is introduced.
+- No product code is modified in this closure child.
+- Secrets/PHI/unrelated user data are excluded.
+
+## 7. Material Edge / Failure Cases
+
+The closure process must catch:
+
+- requirement with implementation but no validation evidence;
+- evidence tied to stale/unaccepted commit/build;
+- physical requirement backed only by deterministic simulation;
+- deterministic semantic requirement backed only by one narrow physical anecdote;
+- historical scenario ID with no current requirement mapping;
+- duplicate/conflicting evidence verdicts;
+- architecture budget failure despite green functional tests;
+- evidence file missing/corrupt/untraceable.
+
+## 8. Engineering Discretion
+
+The agent may choose the concise traceability table/serialization format consistent with current repository conventions.
+
+Do not create a new evidence database or generalized reporting system.
+
+## 9. Dependencies
+
+Consumes all accepted S01–S09E implementation and evidence.
+
+## 10. Acceptance Criteria
+
+S09F is complete only when:
+
+- every material current requirement has an explicit evidence status;
+- no silent gaps remain;
+- deterministic/physical classification is appropriate;
+- every PASS points to accepted exact evidence;
+- unresolved items are explicit blockers;
+- BVP completion requirements are reconciled;
+- Stage-3 handoff package is complete but Stage 3 is not performed;
+- any repository changes pass authoritative PHX-CI.
+
+## 11. Non-Goals
+
+Do not:
+
+- repair product defects;
+- create missing evidence by assertion;
+- perform new broad physical testing without a separately bound corrective evidence task;
+- begin Stage 3.
+
+## 12. Handoff / Stop
+
+Report exact traceability artifact commit, requirement counts by PASS/BLOCKED/unproven classification, any gaps, evidence references, architecture status, and Stage-3 handoff locations.
+
+Stop at `READY FOR FINAL S09V ACCEPTANCE`.
+
+Do not begin Stage 3.

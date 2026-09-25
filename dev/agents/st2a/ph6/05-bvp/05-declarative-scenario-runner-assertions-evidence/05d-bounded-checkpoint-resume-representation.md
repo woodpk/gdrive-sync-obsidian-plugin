@@ -1,76 +1,142 @@
-# 05D — Bounded checkpoint/resume representation
+# BVP-S05D — Bounded Checkpoint / Resume Representation
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
-**Predecessor child:** 05C
+**Predecessor:** accepted S05C
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add the minimal external checkpoint representation needed for later physical runs without a workflow engine.
+Define and implement the minimum external test-controller checkpoint state needed to pause and resume later physical scenario execution without creating a durable distributed workflow engine.
 
-Required end state:
+## 2. Required End State
 
-> Checkpoint state is bounded/non-secret/external and cannot become product authority.
+A bounded checkpoint can record only the non-secret controller state necessary to resume an interrupted scenario, including as applicable:
 
-## 2. Dispatch Binding
+- checkpoint/schema version;
+- scenario identity;
+- run identity;
+- execution mode;
+- next/current step position;
+- references or bounded summaries of prior step results needed for continuation;
+- target device identity/sequence state when live execution later requires it;
+- explicit waiting/checkpoint condition and required resume evidence.
 
-Before execution the supervisor MUST replace this section with:
+It remains external test-runner state and never becomes product synchronization authority.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S05C predecessor SHA;
+- task branch;
+- actual runner/scenario/result types to checkpoint;
+- exact checkpoint storage/codec/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- size-gate confirmation.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+No binding may turn the checkpoint into general workflow persistence.
 
-## 4. Implementation Contract
+## 4. Required Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.1 Bounded state
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Persist only what is required to resume the test sequence. Do not serialize entire runtime object graphs, production state stores, OAuth credentials, or arbitrary external reality.
 
-## 5. Verification and Acceptance
+### 4.2 External authority only
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+A checkpoint may tell the **test runner** what step to attempt next. It cannot tell production synchronization what state should exist or force a product result.
 
-Then stop at:
+### 4.3 Resume validation
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Resume must validate that the checkpoint belongs to the intended:
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+- scenario;
+- run;
+- compatible checkpoint schema/version;
+- execution context/device identity where applicable.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Stale/mismatched checkpoints fail closed.
 
-Do not create a child-specific PowerShell verifier.
+### 4.4 No implicit replay ambiguity
 
-## 6. Handoff
+The representation must make it possible for later live execution to distinguish whether the next action is:
 
-Report:
+- not yet issued;
+- awaiting a human/external resume condition;
+- safe to re-observe/reconcile;
+- already completed and recorded.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+Do not invent exactly-once distributed execution; instead preserve enough run/sequence/result identity for later executor semantics.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+### 4.5 Privacy
+
+Checkpoint state contains no OAuth secrets/tokens or unrelated note content.
+
+## 5. Invariants
+
+- Checkpoint storage is not per-device synchronization state.
+- Devices do not own the global scenario machine.
+- Production code does not read BVP checkpoints.
+- Evidence and checkpoint state remain conceptually distinct.
+- Checkpoint persistence stays small and bounded.
+
+## 6. Material Edge / Failure Cases
+
+Tests must cover:
+
+- serialize/restore a valid checkpoint;
+- scenario mismatch rejected;
+- run mismatch rejected;
+- unsupported/incompatible version rejected;
+- malformed/truncated checkpoint rejected;
+- secret/token-like fields are not part of the schema;
+- next-step position/result references survive round trip;
+- restored checkpoint cannot mutate product state by itself.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- JSON or equivalent simple serialization;
+- exact versioning representation;
+- local file/in-memory test storage abstraction;
+- validation helpers.
+
+Do not introduce a database, distributed state service, generic workflow engine, or per-device durable scenario state.
+
+## 8. Dependencies
+
+Consumes S05A scenario identity, S05B runner position/result semantics, and S05C canonical result references.
+
+P5 live execution will later use this representation for bounded interruption/human checkpoints.
+
+## 9. Acceptance Criteria
+
+Acceptance requires bounded/versioned/non-secret checkpoint state, fail-closed mismatch/corruption handling, external-only authority, deterministic round-trip tests, no workflow-engine architecture, architecture-budget compliance, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- live command transport;
+- device agent;
+- background iOS workflow;
+- distributed locks/leases;
+- generalized retry scheduler;
+- synchronization-state persistence.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, checkpoint schema semantics, negative tests, architecture metrics delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 05E.

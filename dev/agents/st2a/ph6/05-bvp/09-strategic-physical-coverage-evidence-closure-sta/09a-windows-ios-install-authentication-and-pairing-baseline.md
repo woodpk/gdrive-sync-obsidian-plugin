@@ -1,76 +1,149 @@
-# 09A — Windows/iOS install, authentication and pairing baseline
+# BVP-S09A — Windows / iOS Install, Authentication, and Pairing Baseline
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
-**Predecessor child:** See primary-stage predecessor in the session index.
+**Predecessor:** accepted BVP-S08 primary-stage gate
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten physical-evidence contract. Dispatch binding supplies exact build/device/run coordinates only.
 
 ## 1. Objective
 
-Execute operator-assisted physical baseline evidence for plugin loading plus same-device auth/pairing.
+Establish the physical Windows and iPhone/iOS validation baseline: exact validation artifacts load in real Obsidian runtimes, each device authenticates using its own permitted Google authority, and both participants are correctly bound to the intended managed synchronization root/device identities without token export or cross-device credential transfer.
 
-Required end state:
+## 2. Required End State
 
-> Bound device/build identities recorded; Windows+iOS baseline evidence complete.
+Physical evidence proves:
 
-## 2. Dispatch Binding
+- the exact Windows validation build loads in the intended desktop Obsidian runtime;
+- the exact iOS validation build loads in the intended iPhone/iOS Obsidian runtime;
+- both builds are traceable to the exact accepted repository/build identity;
+- each device authenticates independently under the product's same-device OAuth model;
+- no desktop token is copied to iOS and no device token is exported to the external controller;
+- both devices identify the intended managed remote/pairing relationship according to production authority;
+- device identities are distinct where the product requires distinct identities;
+- authentication/pairing state is sufficient for later S09 physical synchronization runs;
+- canonical evidence records build/device/run identities and operator checkpoints without secrets.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S08 integration SHA;
+- exact production and validation artifact versions/hashes;
+- exact Windows Obsidian version/device identity;
+- exact iPhone/iOS/Obsidian version/device identity;
+- exact disposable physical validation vault/root identities;
+- exact Google account/managed Drive folder identity in non-secret terms;
+- exact run identity;
+- exact transport/mailbox coordinates needed by S08 live execution;
+- exact human checkpoint sequence for platform-mediated authentication steps;
+- exact evidence output paths/writable allowlist;
+- current PHX-CI pin/runtime and repository verification baseline.
 
-## 3. Fixed Boundaries
+Do not record credentials, tokens, authorization codes, or other secrets in the prompt/evidence.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Physical Semantics
 
-## 4. Implementation Contract
+### 4.1 Real installed-runtime proof
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+A build/test process alone is insufficient. Both artifacts must actually load in the real supported Obsidian runtime on their target platforms.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 Same-device authentication
 
-## 5. Verification and Acceptance
+Authentication must occur through the actual product-supported same-device flow.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+A synthetic token injection, copied desktop token, exported refresh token, or test-only auth bypass does not satisfy this requirement.
 
-Then stop at:
+### 4.3 Pairing / managed-root authority
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+The evidence must prove that each authenticated device is bound to the intended managed remote root according to production product state/authority—not merely that it can access Google Drive generally.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.4 Distinct device identity
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Where product safety depends on independent device identity/state, record and verify that Windows and iOS participants are distinct logical devices.
 
-Do not create a child-specific PowerShell verifier.
+### 4.5 Human checkpoints
 
-## 6. Handoff
+OS/browser/provider-mediated actions may be explicit operator checkpoints. Each checkpoint must state:
 
-Report:
+- exact device;
+- exact action;
+- expected visible/production state afterward;
+- objective observation required before resume.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+Do not claim automation where the action was performed manually.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## Invariants
+
+- Windows and iOS evidence comes from real installed runtimes, not simulation.
+- Each device authenticates independently through the supported same-device product flow.
+- OAuth credentials/tokens are never transferred between devices or exported to the external controller.
+- Managed-root pairing and device identity come from production authority, not test expectations.
+- Physical evidence is bound to exact source/build/device/run identities.
+- Human checkpoints may perform platform/provider actions but cannot fabricate production success.
+
+## 5. Evidence Requirements
+
+Canonical evidence must include, without secrets:
+
+- source/integration SHA;
+- validation artifact identity/hash/version;
+- production artifact identity where relevant;
+- Windows device/runtime identity;
+- iOS device/runtime identity;
+- run identity;
+- authentication result/classification per device;
+- managed-root/pairing identity/classification;
+- device identity observations;
+- human checkpoint actions and completion evidence;
+- terminal PASS/FAIL/BLOCKED reason.
+
+Screenshots/manual observations may supplement but not replace production/device result evidence where the product can expose it.
+
+## 6. Failure / Safety Semantics
+
+- Failed/partial authentication is not PASS.
+- Wrong managed root/account/device pairing is not PASS.
+- Missing iOS load evidence cannot be replaced by Windows evidence.
+- A deterministic simulator cannot substitute for physical platform/auth proof.
+- Unexpected credential exposure is a hard stop and must not be committed to evidence.
+- Unexpected access to unrelated user data is a hard stop.
+
+## 7. Engineering / Operator Discretion
+
+The operator may choose safe fixture names and the exact order of platform-mediated auth steps consistent with current product UX.
+
+No discretion exists to bypass same-device auth, export tokens, or substitute synthetic evidence.
+
+## 8. Dependencies
+
+Consumes the accepted S08 validation build, command agent, transport, live executor, and production receipt architecture.
+
+## 9. Acceptance Criteria
+
+Acceptance requires complete physical Windows+iOS load/auth/pairing evidence, exact build/device/run traceability, no secret/token export, correct managed-root authority, and supervisor review of the evidence.
+
+Any repository change/evidence publication required by this child must also pass authoritative PHX-CI before integration.
+
+## 10. Non-Goals
+
+Do not yet prove:
+
+- bidirectional synchronization/conflict (09B);
+- offline/interruption (09C);
+- path/resource/large transfer (09D);
+- auth revocation/uninstall lifecycle (09E);
+- final requirement closure (09F).
+
+## 11. Handoff / Stop
+
+Report exact build/source identities, device/runtime identities, run identity, authentication/pairing outcomes, human checkpoints, evidence locations, any BLOCKED platform step, and any repository evidence commit.
+
+Stop at the supervisor-reviewed S09A physical evidence gate.
+
+Do not begin 09B.

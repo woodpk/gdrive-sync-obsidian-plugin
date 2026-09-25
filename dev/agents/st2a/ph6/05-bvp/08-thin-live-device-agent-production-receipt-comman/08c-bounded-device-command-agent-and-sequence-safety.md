@@ -1,76 +1,163 @@
-# 08C — Bounded device command agent and sequence safety
+# BVP-S08C — Bounded Device Command Agent and Sequence Safety
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** 08B
+**Predecessor:** accepted S08B
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Implement bounded command execution with run/device/sequence duplicate/staleness protection.
+Implement the validation-only device agent that executes one bounded addressed command at a time inside Obsidian and returns one typed bounded result/observation, while rejecting stale, duplicate, misaddressed, or invalid commands.
 
-Required end state:
+The device agent is not a scenario runner.
 
-> Agent executes single commands only; no scenario state machine; <=750 LOC subset budget tracked.
+## 2. Required End State
 
-## 2. Dispatch Binding
+The validation-only agent supports the minimum generic command families required by later live execution, such as:
 
-Before execution the supervisor MUST replace this section with:
+- bounded fixture mutation within the authorized validation fixture scope;
+- production preview;
+- production execute/sync;
+- production reconcile/verify;
+- objective observation of bounded local/product state;
+- lifecycle/checkpoint acknowledgement where the device can observe it;
+- named generic validation fault activation only where already authorized and validation-only.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Every command/result binds to:
 
-The worker may not perform this binding.
+- run identity;
+- target device identity;
+- monotonically controlled command/sequence identity;
+- command kind and bounded arguments;
+- terminal result/classification;
+- production run receipt/correlation when a production synchronization command is invoked.
 
-## 3. Fixed Boundaries
+## 3. Dispatch Binding — Hard Data Only
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+Before execution the supervisor binds:
 
-## 4. Implementation Contract
+- exact accepted S08B predecessor SHA;
+- task branch;
+- accepted validation-only entrypoint/composition;
+- actual production operations/receipt surfaces callable inside Obsidian;
+- exact bounded command vocabulary needed by S09 obligations;
+- exact agent/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- live-agent LOC baseline/budget;
+- size-gate confirmation.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Binding may enumerate concrete command names but may not turn the agent into a scenario engine.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+## 4. Required Semantics
 
-## 5. Verification and Acceptance
+### 4.1 Addressed single-command execution
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+The agent evaluates one command independently against run/device/sequence validity, executes it if valid, and returns a bounded result.
 
-Then stop at:
+It does not decide the next scenario step.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.2 Run/device identity
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Commands for another run/device are rejected/ignored with an explicit mismatch result and produce no product/fixture mutation.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.3 Sequence safety
 
-Do not create a child-specific PowerShell verifier.
+The agent must prevent stale or duplicate commands from causing repeated unsafe effects.
 
-## 6. Handoff
+At minimum:
 
-Report:
+- lower/previous completed sequence IDs do not re-execute;
+- exact duplicate command delivery is idempotently rejected or returns the prior bounded result without repeating the effect;
+- an invalid sequence transition does not silently execute.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+The exact monotonic policy may follow the simplest design compatible with later transport semantics.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+### 4.4 Production commands
+
+Commands claiming synchronization behavior invoke the installed production path and return the S08A production terminal receipt/equivalent plus bounded observations.
+
+The agent cannot manufacture a PASS classification.
+
+### 4.5 Fixture mutation boundary
+
+Validation fixture mutation is strictly bounded to disposable test-controlled fixture content and cannot mutate arbitrary unrelated user vault data.
+
+### 4.6 No scenario state machine
+
+The agent cannot store whole scenario definitions, branch based on scenario ID, choose future commands, aggregate final scenario verdict, or persist distributed suite state.
+
+## 5. Hard Budget
+
+The live-device agent/relay subset across S08 remains maximum **750 logical TypeScript LOC**.
+
+This child must report its contribution to that subset.
+
+## 6. Invariants
+
+- External runner owns global sequence/verdict.
+- Agent owns only command validity/execution/result.
+- Production owns synchronization behavior.
+- Command metadata is not synchronization authority.
+- No token export/new OAuth scope.
+- Validation-only agent excluded from shipping production artifact.
+
+## 7. Material Edge / Failure Cases
+
+Tests must cover:
+
+- correctly addressed next command executes once;
+- wrong run rejected;
+- wrong device rejected;
+- stale sequence rejected;
+- duplicate sequence does not repeat effect;
+- malformed/unsupported command fails closed;
+- production operation failure/ambiguity propagates accurately;
+- fixture command cannot escape authorized fixture scope;
+- agent restart retains only the minimal sequence safety required by the frozen command protocol, without becoming scenario persistence.
+
+## 8. Engineering Discretion
+
+The agent may choose:
+
+- command/result discriminated unions;
+- local sequence-state representation;
+- exact duplicate-result handling;
+- private handlers;
+- validation-only storage necessary for bounded sequence safety.
+
+Do not add a generic RPC framework or distributed workflow engine.
+
+## 9. Dependencies
+
+Consumes S08A production receipt and S08B validation-only entrypoint.
+
+S08D supplies transport; S08E supplies external scenario authority.
+
+## 10. Acceptance Criteria
+
+Acceptance requires bounded command vocabulary, run/device/sequence safety, single-command execution, production-path fidelity, fixture containment, no scenario engine, live-agent budget compliance, shipping exclusion, architecture guard/metrics PASS, and authoritative PHX-CI PASS.
+
+## 11. Non-Goals
+
+Do not implement:
+
+- Drive-backed mailbox/Windows relay;
+- external live scenario executor;
+- human checkpoint orchestration;
+- full physical scenario catalog;
+- production scenario UI.
+
+## 12. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, command vocabulary, run/device/sequence tests, fixture-boundary proof, live-agent LOC contribution, architecture delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 08D.

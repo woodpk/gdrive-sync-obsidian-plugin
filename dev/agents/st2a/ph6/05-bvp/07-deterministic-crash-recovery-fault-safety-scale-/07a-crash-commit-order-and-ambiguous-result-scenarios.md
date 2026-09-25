@@ -1,76 +1,123 @@
-# 07A — Crash, commit-order and ambiguous-result scenarios
+# BVP-S07A — Crash, Commit-Order, and Ambiguous-Result Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** See primary-stage predecessor in the session index.
+**Predecessor:** accepted BVP-S06 primary-stage gate
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add crash before/during/after mutation/state commit and ambiguous remote outcome coverage.
+Add declarative deterministic coverage for interruption at critical effect/state boundaries and for remote outcomes whose physical result is genuinely uncertain.
 
-Required end state:
+The scenarios must prove production recovery semantics; they must not create a new crash/fault framework or encode recovery policy in test infrastructure.
 
-> Recovery/uncertainty scenarios pass without new fault framework.
+## 2. Required End State
 
-## 2. Dispatch Binding
+Executable scenarios cover, at minimum:
 
-Before execution the supervisor MUST replace this section with:
+- interruption before a physical mutation is authorized/applied;
+- interruption after durable intent/state records exist but before physical mutation;
+- interruption after physical mutation but before canonical product state commit/finalization;
+- interruption during/after state commit where the target specification requires restart proof;
+- remote mutation returning an ambiguous outcome where effect may have occurred;
+- restart/reconciliation after each relevant interruption using fresh runtime objects over retained simulated reality/state.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S06 predecessor SHA;
+- exact task branch;
+- current product requirement IDs and production execution/state commit boundaries relevant to this coverage;
+- accepted S04 fault/restart controls and S05 scenario vocabulary;
+- exact scenario/fixture/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current architecture metrics baseline.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+No new generic fault framework is authorized.
 
-## 4. Implementation Contract
+## 4. Required Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.1 Boundary fidelity
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Faults/interruption must occur at real or faithfully represented production external/commit boundaries.
 
-## 5. Verification and Acceptance
+Do not simulate a crash by merely changing the expected return value when the evidentiary purpose is retained physical/state reality across restart.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.2 Before-effect interruption
 
-Then stop at:
+If interruption occurs before physical effect authorization/application, later recovery must observe that the effect did not occur and act according to production state/intent semantics.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.3 After-effect / before-finalization interruption
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+If the physical effect occurred but canonical state was not finalized, later recovery must reconcile against observed external reality rather than blindly replaying or assuming failure.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.4 Ambiguous outcome
 
-Do not create a child-specific PowerShell verifier.
+The test infrastructure must preserve uncertainty:
 
-## 6. Handoff
+- one variant where the physical effect occurred;
+- one variant where it did not;
+- the immediate caller cannot know which solely from the ambiguous response;
+- later production observation/recovery resolves the state safely.
 
-Report:
+The injector cannot relabel ambiguity into success/failure for test convenience.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+### 4.5 Fresh-runtime recovery
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+Recovery proof requires destruction/reconstruction of runtime objects over retained state and external reality.
+
+## 5. Invariants
+
+- Product recovery logic decides what to do.
+- Fault injection cannot bypass product safety/authorization.
+- Ambiguity remains ambiguity until observation proves reality.
+- Test scenarios do not directly commit product state.
+- No scenario-specific core or production source is added.
+- Scenario-only default remains in force.
+
+## 6. Material Edge / Failure Cases
+
+Scenarios must prove representative cases for:
+
+- no effect before mutation;
+- durable intent without physical effect;
+- physical effect without final canonical state;
+- ambiguous effect-applied;
+- ambiguous effect-not-applied;
+- repeated restart/recovery is idempotent/safe where required;
+- recovery does not duplicate destructive/remote effects;
+- wrong expected recovery state fails deterministically.
+
+If the frozen platform lacks a required generic boundary hook, return `BLOCKED` with the exact missing primitive.
+
+## 7. Engineering Discretion
+
+The agent may choose representative production operations/boundaries and fixture data based on current target requirements, while using the already-accepted generic fault controls.
+
+## 8. Dependencies
+
+Consumes S04 restart/fault/ambiguity capabilities, S05 runner/evidence, and accepted S06 core freeze.
+
+## 9. Acceptance Criteria
+
+Required crash/commit-order/ambiguity scenarios pass against real production logic; restart is genuine; uncertainty is preserved; duplicate effects are prevented as required; wrong expectations fail; scenario/core budgets pass; authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not cover corrupt state/cursor/root recovery (07B), device authority/cancellation (07C), transfer/retry (07D), quota/disk/destructive/config/lifecycle (07E), or scale/resource measurement (07F).
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, mapped requirements, interruption boundaries exercised, scenario results, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07B.

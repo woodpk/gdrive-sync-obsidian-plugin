@@ -1,76 +1,113 @@
-# 07B — State/cursor/listing/root recovery scenarios
+# BVP-S07B — State, Cursor, Listing, and Remote-Root Recovery Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** 07A
+**Predecessor:** accepted S07A
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add corrupt/truncated/incompatible state, lost cursor, partial listing, and remote-root-loss coverage.
+Add declarative deterministic coverage for fail-closed recovery from corrupt/incompatible durable state, lost/invalid change cursors, incomplete remote coverage, and loss/replacement of the managed remote root.
 
-Required end state:
+## 2. Required End State
 
-> State/recovery fail-closed semantics mapped and passing.
+Executable scenarios cover:
 
-## 2. Dispatch Binding
+- corrupt durable synchronization state;
+- truncated durable state;
+- incompatible/unsupported state version;
+- lost/invalid remote change cursor;
+- incomplete/partial listing/change coverage;
+- managed remote root missing/unavailable;
+- managed remote root identity changed/replaced where the product contract distinguishes it;
+- safe recovery/reconciliation signaling without destructive inference.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S07A predecessor SHA;
+- task branch;
+- current state/cursor/root recovery requirements and production classifications;
+- accepted S04 state/change-feed/root simulation controls;
+- exact scenario/fixture/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No new recovery subsystem is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Corrupt/truncated/incompatible state
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Unreadable or incompatible authoritative state cannot be treated as valid empty state.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+The scenario must prove the product's target-required fail-closed/recovery behavior without discarding user data or fabricating a clean baseline.
 
-## 5. Verification and Acceptance
+### 4.2 Cursor loss
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+A lost/invalid cursor must cause the production-defined reconcile/full-observation path or blocking behavior. The test must not manually advance/repair product state as a shortcut.
 
-Then stop at:
+### 4.3 Incomplete remote coverage
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Partial listing/change coverage is not authoritative absence and must not drive unsafe deletion.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.4 Remote-root loss
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Missing/unavailable root must be distinguished from an empty valid managed root.
 
-Do not create a child-specific PowerShell verifier.
+If root identity changes/replacement is material, the product must follow target authority/pairing/recovery rules rather than silently treating a different root as continuous authority.
 
-## 6. Handoff
+## 5. Invariants
 
-Report:
+- Corruption does not become an empty valid state.
+- Incomplete listing does not prove deletion.
+- Root loss does not masquerade as an empty remote.
+- Recovery decisions remain production code.
+- Primary simulated user content is not mutated merely to create state faults.
+- No new recovery engine or scenario-specific core.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 6. Material Edge / Failure Cases
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+Required proof includes:
+
+- malformed state fails closed;
+- truncated state fails closed;
+- unsupported version is classified safely;
+- lost cursor triggers target-required recovery path;
+- partial listing cannot cause destructive inference;
+- missing root is distinguished from valid empty root;
+- replacement/root-ID mismatch is handled per target authority;
+- recovery preserves valid user content;
+- wrong optimistic expectation fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative corruption bytes/structures and root/cursor fixture values within current production formats.
+
+## 8. Dependencies
+
+Consumes accepted S04 state/change/root controls and S07A restart infrastructure.
+
+## 9. Acceptance Criteria
+
+All required recovery scenarios map to current requirements and pass against production recovery logic; fail-closed distinctions are asserted; no platform-core/production changes occur; scenario/architecture budgets pass; authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not cover device clone/restore authority or cancellation (07C), transfer/retry (07D), resource/safety/config (07E), scale (07F), or physical provider outages.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, recovery classifications/results, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07C.

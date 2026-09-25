@@ -1,76 +1,132 @@
-# 05E — Declarative canaries and scenario-cost proof
+# BVP-S05E — Declarative Canaries and Scenario-Cost Proof
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
-**Predecessor child:** 05D
+**Predecessor:** accepted S05D
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Express representative clean-merge/conflict canaries as data and prove a second ordinary scenario needs no core change.
+Prove that the S04/S05 platform can express and execute ordinary multi-device synchronization tests as declarative data, and prove that adding a second ordinary scenario does not require a platform-core change.
 
-Required end state:
+## 2. Required End State
 
-> Two canaries run; second scenario is scenario-only; LOC/change-surface tripwire proven.
+At least two representative deterministic canaries exist and pass through the common scenario model/runner/assertion/evidence path.
 
-## 2. Dispatch Binding
+The canary set must include:
 
-Before execution the supervisor MUST replace this section with:
+- at least one multi-device merge/conflict-style scenario exercising real production synchronization semantics;
+- a second ordinary scenario that uses the already-frozen vocabulary/core and is implemented by scenario/fixture/test data only.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+A deliberately wrong expectation for a canary must fail deterministically.
 
-The worker may not perform this binding.
+## 3. Dispatch Binding — Hard Data Only
 
-## 3. Fixed Boundaries
+Before execution the supervisor binds:
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+- exact accepted S05D predecessor SHA;
+- task branch;
+- actual scenario/fixture catalog locations;
+- actual focused runner command;
+- exact scenario/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- current architecture metrics baseline;
+- size-gate confirmation.
 
-## 4. Implementation Contract
+The platform core is treated as frozen for the second-scenario proof unless a genuinely missing generic capability causes a BLOCKED return.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+## 4. Canary Semantics
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.1 First canary
 
-## 5. Verification and Acceptance
+Use the existing generic vocabulary to exercise a meaningful multi-device production-path merge/conflict behavior.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+The canary must assert objective results such as final content/identity/conflict classification/state rather than only successful command completion.
 
-Then stop at:
+### 4.2 Second ordinary canary
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Add another ordinary scenario after the common core is already sufficient.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Its implementation must require no change to:
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+- runner core;
+- scenario vocabulary;
+- generic assertion/evidence engine;
+- virtual-world core;
+- production source;
+- transport/persistence architecture.
 
-Do not create a child-specific PowerShell verifier.
+Scenario-specific fixture data/helpers are permitted only inside the scenario/fixture layer.
 
-## 6. Handoff
+### 4.3 Cost tripwire
 
-Report:
+Each ordinary scenario:
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+- targets ≤120 logical lines;
+- hard-fails architecture acceptance above 200 logical lines;
+- introduces zero scenario-specific PowerShell;
+- introduces zero scenario-specific production source.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+If an ordinary scenario requires a new platform abstraction/core capability, STOP and report the missing generic capability rather than silently changing core.
+
+## 5. Invariants
+
+- Scenarios remain data.
+- No scenario ID branches appear in core runner/world/production.
+- Production semantics are executed by real production logic.
+- Evidence uses the canonical S05C model.
+- Checkpoint representation is not required unless the canary semantically needs a generic checkpoint.
+- Architecture metrics distinguish scenario growth from core growth.
+
+## 6. Material Edge / Failure Cases
+
+Tests/evidence must prove:
+
+- first canary passes with correct expectations;
+- an inverted/wrong expectation fails;
+- second canary passes;
+- second canary's change surface is scenario/fixture/test only;
+- no core files need modification for the second canary;
+- each scenario remains below hard LOC limit;
+- scenario-specific PowerShell count remains zero;
+- production scenario-specific source remains zero.
+
+## 7. Engineering Discretion
+
+The agent may choose the exact representative canary subjects provided they satisfy the required merge/conflict and second-ordinary-scenario proof and map to real BRAIN requirements.
+
+Scenario data syntax follows accepted S05A; do not redesign it for stylistic preference.
+
+## 8. Dependencies
+
+Consumes all accepted S04 and S05A–S05D capabilities.
+
+Successful completion freezes the P3 common core for scenario-dominant S06/S07 coverage.
+
+## 9. Acceptance Criteria
+
+Acceptance requires two declarative canaries, wrong-expectation detection, scenario-only second addition, scenario-cost compliance, no core/production/PowerShell growth for the second ordinary scenario, requirement traceability, architecture guard/metrics PASS, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not:
+
+- migrate full reconciliation coverage;
+- add S06/S07 scenario batches;
+- expand the vocabulary merely for convenience;
+- add live execution;
+- modify production source.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, canary requirement mappings/results, wrong-expectation result, second-scenario change-surface proof, per-scenario LOC, core metrics delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin S06.

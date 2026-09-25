@@ -1,48 +1,95 @@
-# 07V — Primary-stage PHX-CI acceptance and mandatory architecture review
+# BVP-S07V — Primary-Stage PHX-CI Acceptance and Mandatory Architecture Review
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
 
-> Do not execute until all implementation children in this primary stage have individually passed PHX-CI, been supervisor-reviewed, and been integrated.
+This is a complete prewritten verification contract. It has no implementation-repair authority.
 
 ## 1. Objective
 
-Verify integrated deterministic Phase-6 coverage and perform the mandatory pre-live architecture review.
+Independently verify completion of the deterministic Phase-6 evidence families assigned to S07 and perform the mandatory architecture review before any live-device architecture is allowed to begin.
 
-Required end state:
+## 2. Required Integrated End State
 
-> PHX-CI complete; deterministic mappings reconciled; architecture review authorizes or blocks S08.
+S07 may close only if deterministic executable evidence covers, where applicable to current product requirements:
 
-## 2. Dispatch Binding Required
+- crash/interruption around physical effect and state commit;
+- ambiguous remote outcomes;
+- corrupt/truncated/incompatible state;
+- lost/invalid cursor;
+- partial/incomplete remote coverage;
+- managed-root loss/replacement;
+- clone/restore/stale device authority;
+- safe cancellation;
+- transfer integrity and changing-during-transfer;
+- retry/backoff/rate-limit classification;
+- quota/local-disk failures;
+- destructive circuit breaker/recovery checkpoint;
+- deterministic configuration/lifecycle invariants;
+- bounded large-file/large-vault scale/resource measurements.
 
-The supervisor must bind:
+The common platform core must remain frozen/bounded; coverage growth should be dominated by scenario/fixture/test content.
 
-- exact current `phase6-integration` SHA containing only accepted children;
-- exact stage completion criteria from current target/decomposition;
+## 3. Dispatch Binding — Hard Data Only
+
+Before execution the supervisor binds:
+
+- exact integrated `phase6-integration` SHA containing accepted S07 children;
+- stage verification base;
 - current PHX-CI pin/runtime;
-- current architecture metrics baseline/delta where applicable;
-- any stage-specific repository searches or physical evidence inputs.
+- accepted S07 child implementation/evidence SHAs;
+- complete current product requirement list assigned to deterministic S07 coverage;
+- focused catalog/scale commands;
+- S05/S06 architecture baseline and current metrics.
 
-This verification task has **no production-code repair authority**.
+## 4. Verification Procedure
 
-## 3. Verification Procedure
+Independently:
 
-1. independently inspect the integrated changed paths and accepted child evidence;
-2. run authoritative deployed-runtime PHX-CI against `phase6-integration` with publication mode `push`;
-3. review fresh `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/`;
-4. from S03 onward, independently confirm architecture guard and metrics passed;
-5. check the primary-stage end state against the governing BVP specification/decomposition;
-6. perform the recurring architecture review whenever required by DEC-324.
+1. reconcile every assigned deterministic requirement/evidence category to executable scenarios/evidence;
+2. inspect S07 changes for scenario-only/default surface compliance;
+3. verify fault injection remains boundary-based and does not encode product policy;
+4. verify ambiguity, incomplete coverage, and corruption remain fail-closed;
+5. verify restart tests use fresh runtime reconstruction;
+6. verify safety thresholds were not weakened;
+7. verify scale evidence does not invent performance requirements;
+8. run authoritative integrated PHX-CI;
+9. inspect canonical evidence and architecture metrics;
+10. perform the mandatory pre-S08 BVP-GOV-008 architecture review.
 
-If verification exposes a defect, do not repair it in this task. Return a bounded corrective work order to the responsible implementation surface.
+## 5. Stage-Specific Acceptance Criteria
 
-## 4. Completion
+S07 passes only when:
 
-Only after PHX-CI and independent review pass may the supervisor mark BVP-S07 accepted and bind the first child of the next primary stage.
+- no material deterministic target requirement assigned through §13.2–§13.5 and applicable deterministic portions of §13.4/§13.7 remains unassigned;
+- required scenario evidence passes;
+- representative wrong expectations/failure cases prove tests are discriminating;
+- no new runner/router/state-machine/persistence/evidence/transport architecture exists;
+- scenario-specific production source = 0;
+- scenario-specific PowerShell = 0;
+- framework/core budgets pass;
+- S05 common-core growth is justified and within authorized boundaries;
+- PHX-CI overall PASS / compatibility COMPLETE / canonical evidence published;
+- architecture review explicitly finds S08 may proceed, or blocks with the smallest required architecture decision.
 
-Do not begin the next stage in this task.
+## 6. Failure / Correction Semantics
+
+Product defects discovered by deterministic evidence are product defects; do not change expected results to green them.
+
+Architecture drift discovered here blocks S08 even when functional tests pass.
+
+Corrective work must be routed to the causal owner; this verification task performs no implementation repair.
+
+## 7. Non-Goals
+
+Do not begin live-device agent, production receipt seam, command transport, or S09 physical coverage.
+
+## 8. Completion / Stop
+
+Only after all criteria pass and the architecture review authorizes continuation may the supervisor mark BVP-S07 accepted and bind S08A hard execution facts.
+
+Stop after S07 acceptance.

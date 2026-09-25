@@ -1,76 +1,151 @@
-# 08D — Minimal command mailbox and Windows relay
+# BVP-S08D — Minimal Command Mailbox and Windows Relay
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** 08C
+**Predecessor:** accepted S08C
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Implement the selected no-backend command transport/relay using existing user-owned authority.
+Implement the simplest no-backend transport that can move bounded S08C commands/results between the external controller and live validation participants, using only already-permitted user-owned authority and an optional thin Windows relay where host credential access requires it.
 
-Required end state:
+Transport is test-control metadata only.
 
-> Transport is run-scoped control metadata, no new OAuth scope/token export/product authority.
+## 2. Required End State
 
-## 2. Dispatch Binding
+The transport can:
 
-Before execution the supervisor MUST replace this section with:
+- publish/address one bounded command to a run + device + sequence;
+- let the intended validation participant receive it;
+- publish one bounded typed result for that command;
+- reject/ignore stale, duplicate, or misaddressed records in coordination with S08C sequence safety;
+- retain enough run-scoped records for interruption/resume and evidence correlation;
+- operate without developer-hosted backend;
+- operate without adding Google OAuth scope;
+- avoid exporting device Google tokens/credentials to the external host.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+A Windows relay, if required by actual credential boundaries, moves bounded records only and remains stateless regarding scenario meaning.
 
-The worker may not perform this binding.
+## 3. Dispatch Binding — Hard Data Only
 
-## 3. Fixed Boundaries
+Before execution the supervisor binds:
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+- exact accepted S08C predecessor SHA;
+- task branch;
+- selected already-permitted transport authority/mechanism based on current product/user credentials;
+- exact existing Drive/app-data APIs available to the validation artifact/Windows host;
+- whether a Windows relay is necessary;
+- exact mailbox/relay/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- current live-agent/relay LOC budget.
 
-## 4. Implementation Contract
+Binding chooses among already-authorized simple mechanisms; it may not introduce a hosted service or new OAuth scope.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+## 4. Required Semantics
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.1 Run-scoped metadata
 
-## 5. Verification and Acceptance
+Transport records contain only bounded test-control fields and bounded results. They are not vault content and not synchronization state.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.2 Addressing
 
-Then stop at:
+Each command/result includes sufficient run/device/sequence identity to prevent another device/run from treating it as current work.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.3 Duplicate/stale delivery
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Transport may be at-least-once. Safety comes from S08C run/sequence validation.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+The transport must not assume exactly-once delivery if the underlying mechanism cannot guarantee it.
 
-Do not create a child-specific PowerShell verifier.
+### 4.4 No synchronization authority
 
-## 6. Handoff
+Mailbox presence, ordering, or contents cannot override production planner/state authority.
 
-Report:
+### 4.5 Credential boundary
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+No device access/refresh token is exported to the external runner merely to access the mailbox.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+If the host lacks safe direct credential access, the Windows relay may use already-owned local authority to copy addressed command/result records.
+
+### 4.6 Relay minimality
+
+The relay does not:
+
+- interpret whole scenarios;
+- choose next steps;
+- aggregate verdicts;
+- mutate production synchronization state;
+- implement a second queue/workflow platform.
+
+## Invariants
+
+- Transport carries bounded run-scoped test-control metadata only.
+- Transport ordering/delivery never becomes synchronization authority.
+- Run/device/sequence safety remains enforced even with duplicate or reordered delivery.
+- No developer-hosted backend, new OAuth scope, or token export is introduced.
+- Any Windows relay remains stateless with respect to scenario meaning and final verdict.
+- Mailbox/relay code remains validation-only and excluded from the ordinary production bundle.
+
+## 5. Privacy / Safety
+
+Mailbox records must exclude:
+
+- OAuth secrets;
+- authorization codes;
+- access/refresh tokens;
+- unrelated user note content.
+
+Fixture/result payloads remain bounded to test-safe metadata/content needed by the command contract.
+
+## 6. Material Edge / Failure Cases
+
+Tests must cover:
+
+- correct command/result round trip;
+- wrong-device record ignored/rejected;
+- wrong-run record ignored/rejected;
+- stale/duplicate record does not repeat effect;
+- result correlates to exact command;
+- transport reordering does not bypass sequence safety;
+- unavailable transport produces BLOCKED/unavailable, not optimistic success;
+- relay restart does not require scenario-state reconstruction;
+- mailbox metadata cannot be mistaken for managed vault synchronization content.
+
+## 7. Engineering Discretion
+
+The agent may choose the simplest record naming/serialization/polling mechanism consistent with the selected existing authority and bounded live-validation needs.
+
+Do not add a generalized message broker, backend, durable workflow service, or broad transport abstraction family.
+
+## 8. Dependencies
+
+Consumes S08C command/result protocol. S08E consumes this transport through a narrow executor-facing interface.
+
+## 9. Acceptance Criteria
+
+Acceptance requires command/result delivery with run/device/sequence safety, no hosted backend, no new OAuth scope/token export, stateless scenario-meaning relay, privacy constraints, live-agent/relay budget compliance, shipping exclusion, architecture guard/metrics PASS, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- scenario sequencing/verdict;
+- production synchronization transport;
+- arbitrary file sync over the mailbox;
+- human checkpoint policy;
+- S09 physical scenario catalog.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, selected transport authority, relay necessity, round-trip/stale/duplicate results, live-agent/relay LOC, architecture delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 08E.

@@ -1,76 +1,109 @@
-# 07C — Device authority and cancellation scenarios
+# BVP-S07C — Device Authority and Cancellation Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** 07B
+**Predecessor:** accepted S07B
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add clone/restore/stale-device authority and safe cancellation coverage.
+Add declarative deterministic coverage for device identity/authority hazards and safe cancellation of in-progress synchronization behavior.
 
-Required end state:
+## 2. Required End State
 
-> Authority/cancellation scenarios pass with frozen core.
+Executable scenarios cover current product requirements for:
 
-## 2. Dispatch Binding
+- cloned/copied local vault or state presented as another device;
+- restored stale device/state returning after authoritative newer activity;
+- device identity mismatch/duplication where production contracts detect it;
+- stale-device authority protections not already fully covered in S06C;
+- cancellation before a physical effect;
+- cancellation during bounded work;
+- cancellation after an uncertain/physical effect where production must preserve/reconcile reality rather than pretending rollback.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S07B predecessor SHA;
+- task branch;
+- current device identity/authority/cancellation requirement IDs and production APIs;
+- exact scenario/fixture/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No new device-authority or cancellation subsystem is authorized.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Device authority
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Device-local identity/state must not gain authority merely because files/state were copied.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Scenarios must prove production uses the target device/state authority model to prevent stale/cloned state from causing unsafe resurrection, overwrite, or identity collision.
 
-## 5. Verification and Acceptance
+### 4.2 Restore/stale return
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Restored old device state must reconcile against current authoritative reality rather than assuming its snapshot is current.
 
-Then stop at:
+### 4.3 Cancellation before effect
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+When cancellation occurs before physical mutation, no prohibited physical effect should occur.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.4 Cancellation after effect begins
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Cancellation cannot claim rollback of an external effect that may already have occurred. The resulting state/uncertainty must remain recoverable and observable according to production semantics.
 
-Do not create a child-specific PowerShell verifier.
+### 4.5 No test-forced authority
 
-## 6. Handoff
+The scenario cannot directly rewrite product device identity/state to manufacture the expected safe result except as an explicit external fixture condition before production execution.
 
-Report:
+## 5. Invariants
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+- Device authority remains production-owned.
+- Clone/restore conditions are external state facts, not alternate authority rules.
+- Cancellation never creates stronger certainty than physical reality.
+- No scenario-specific core/production changes.
+- Scenario-only default remains intact.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## 6. Material Edge / Failure Cases
+
+Required proof includes representative:
+
+- cloned identity/state condition safely detected/handled;
+- stale restored device cannot overwrite newer authoritative content;
+- cancellation before effect prevents effect;
+- cancellation after ambiguous/applied effect preserves uncertainty/recovery requirements;
+- repeated cancellation is deterministic/idempotent where applicable;
+- wrong authority/cancellation expectation fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative clone/restore chronology and cancellation boundaries supported by current production abstractions.
+
+## 8. Dependencies
+
+Consumes S04 per-device state/restart controls, S07A ambiguity boundaries, and current product authority/cancellation contracts.
+
+## 9. Acceptance Criteria
+
+All required scenarios pass against production authority/cancellation behavior; no destructive stale-device result occurs; cancellation semantics preserve real effect state; wrong expectations fail; no core/production changes occur; budgets and authoritative PHX-CI pass.
+
+## 10. Non-Goals
+
+Do not cover transfer integrity/retry (07D), quota/disk/destructive/config/lifecycle (07E), or scale (07F).
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, mapped requirements, authority/cancellation cases/results, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07D.

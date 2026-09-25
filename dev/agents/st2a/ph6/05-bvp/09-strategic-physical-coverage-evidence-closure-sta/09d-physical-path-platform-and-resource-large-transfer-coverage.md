@@ -1,76 +1,133 @@
-# 09D — Physical path/platform and resource/large-transfer coverage
+# BVP-S09D — Physical Path / Platform and Resource / Large-Transfer Coverage
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s09-physical-validation-01`
+**Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
-**Predecessor child:** 09C
+**Predecessor:** accepted S09C
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten physical-evidence contract. Dispatch binding supplies exact platform/resource/run coordinates only.
 
 ## 1. Objective
 
-Execute representative Windows/iOS path/platform differences and constrained/mobile large-transfer/resource evidence.
+Prove representative real Windows/iOS path/platform behavior and constrained/mobile large-transfer/resource behavior that deterministic host tests cannot establish physically.
 
-Required end state:
+## 2. Required End State
 
-> Platform/resource evidence complete without inventing automation architecture.
+Physical evidence covers the current product target's real-platform obligations for:
 
-## 2. Dispatch Binding
+- representative Windows path behavior;
+- representative iOS path/storage behavior;
+- any material case/Unicode/path compatibility difference requiring real platform evidence;
+- representative large transfer on the constrained/mobile runtime;
+- representative resource pressure/constraint behavior that can safely be observed physically;
+- content integrity and production terminal state after the physical transfer;
+- safe handling of platform/resource limits without destructive behavior.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S09C build/device state;
+- exact current product physical path/platform/resource requirements;
+- exact representative path cases selected;
+- exact file sizes/counts required for physical proof;
+- exact disposable fixture namespace/storage location;
+- exact Windows/iOS device capacity/resource preconditions;
+- exact run identities/checkpoints;
+- exact evidence output paths/writable allowlist;
+- current PHX-CI repository verification baseline.
 
-## 3. Fixed Boundaries
+Do not invent a larger performance/resource SLA than the product target actually requires.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Physical Semantics
 
-## 4. Implementation Contract
+### 4.1 Platform path reality
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Use actual platform filesystems/APIs. Deterministic path-policy tests from S06 remain semantic proof; this child proves representative real-platform behavior.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 Large transfer
 
-## 5. Verification and Acceptance
+Execute a representative physically meaningful large transfer through the real production path on the required constrained/mobile platform.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Prove:
 
-Then stop at:
+- exact source/target identity;
+- content integrity;
+- terminal production receipt;
+- no partial/corrupt success classification.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.3 Resource evidence
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Record bounded resource observations available safely in the environment.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+If the product target defines a threshold, evaluate it. If it does not, do not invent a pass/fail benchmark; record observed behavior and required correctness/safety outcome.
 
-Do not create a child-specific PowerShell verifier.
+### 4.4 Constraint safety
 
-## 6. Handoff
+Low resource/capacity conditions must not cause silent data corruption or unsafe destructive fallback.
 
-Report:
+Only perform safe, bounded resource manipulation approved at dispatch.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Invariants
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- Physical platform claims come from physical execution.
+- Content integrity remains mandatory.
+- No benchmark framework is introduced.
+- No artificial SLA is invented.
+- Disposable fixtures only.
+- Deterministic S07 scale evidence remains complementary and broader than the physical sample.
+
+## 6. Material Edge / Failure Cases
+
+Evidence must detect:
+
+- incompatible/path-normalization behavior inconsistent with target semantics;
+- transfer truncation/corruption;
+- false success under resource failure;
+- insufficient device capacity to safely run the case;
+- physical environment incapable of producing the required evidence.
+
+Unsafe or unavailable resource manipulation yields `BLOCKED`.
+
+## 7. Evidence Requirements
+
+Record:
+
+- device/build/run identity;
+- representative path strings/normalization class in non-sensitive form;
+- source/target file identity and size;
+- pre/post content hash;
+- production run receipt;
+- resource measurements/constraints available;
+- terminal result;
+- any operator checkpoint.
+
+## 8. Engineering / Operator Discretion
+
+The operator may choose representative path names/content and safe physical size within the target requirement, plus simple available resource observations.
+
+## 9. Dependencies
+
+Consumes deterministic path/scale coverage from S06D/S07F and accepted S09 physical baseline.
+
+## 10. Acceptance Criteria
+
+Acceptance requires representative physical platform/path and mobile large-transfer/resource evidence, verified integrity, no invented SLA, safe failure behavior, exact traceability, and supervisor review.
+
+Any repository evidence change must pass authoritative PHX-CI.
+
+## 11. Non-Goals
+
+Do not build generalized performance/load infrastructure. Do not perform auth revocation/lifecycle closure (09E) or final traceability closure (09F).
+
+## 12. Handoff / Stop
+
+Report exact device/build/run identity, selected physical cases, sizes/hashes, receipts, resource observations, blockers, evidence paths, and any evidence commit.
+
+Stop at the supervisor-reviewed S09D physical evidence gate.
+
+Do not begin 09E.

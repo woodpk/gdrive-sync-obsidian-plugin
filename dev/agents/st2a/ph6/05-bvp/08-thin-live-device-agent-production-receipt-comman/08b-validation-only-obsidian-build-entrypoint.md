@@ -1,76 +1,125 @@
-# 08B — Validation-only Obsidian build/entrypoint
+# BVP-S08B — Validation-Only Obsidian Build / Entrypoint
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** 08A
+**Predecessor:** accepted S08A
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Create a separate validation artifact/entrypoint under test-platform without changing ordinary shipping bundle.
+Create a physically separate validation-only Obsidian artifact/entrypoint under `test-platform/**` that can compose later live validation code with the real production plugin path without changing the ordinary shipping bundle.
 
-Required end state:
+## 2. Required End State
 
-> Validation build loads separately; production main.js excludes agent/transport/scenarios.
+The repository can build:
 
-## 2. Dispatch Binding
+1. the ordinary production plugin artifact exactly through its normal production entrypoint; and
+2. a distinct validation-only artifact/entrypoint that may include test-platform live-validation composition.
 
-Before execution the supervisor MUST replace this section with:
+The validation artifact can load in the supported Obsidian runtime needed by later S08/S09 work, while ordinary `main.js` contains none of the validation-only agent, transport, scenario catalog, test faults, or validation UI.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
+## 3. Dispatch Binding — Hard Data Only
+
+Before execution the supervisor binds:
+
+- exact accepted S08A predecessor SHA;
+- task branch;
+- current production Obsidian entrypoint/build mechanism;
+- actual test-platform root/build configuration;
+- exact validation entrypoint/build/test paths;
 - exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- accepted production artifact hash/baseline where deterministic;
+- size-gate confirmation.
 
-The worker may not perform this binding.
+Binding may not make validation-only code part of the normal production entrypoint.
 
-## 3. Fixed Boundaries
+## 4. Required Semantics
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+### 4.1 Separate composition root
 
-## 4. Implementation Contract
+Validation-only composition originates under `test-platform/**` and may depend on approved production surfaces.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Production `src/**` must not import the validation entrypoint or test-platform implementation.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 Production-path fidelity
 
-## 5. Verification and Acceptance
+The validation artifact must execute actual production synchronization code for synchronization claims. It may wrap/compose production entrypoints but cannot substitute a duplicate implementation.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.3 Ordinary shipping exclusion
 
-Then stop at:
+Normal build output must exclude:
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+- validation device agent;
+- command mailbox/relay;
+- scenario runner/catalog;
+- validation-only controls/UI;
+- fault controls;
+- test fixtures.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+The S08A general production run-receipt seam may remain in production because it is explicitly production-owned and budgeted.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.4 Build identity
 
-Do not create a child-specific PowerShell verifier.
+Validation evidence must be able to identify the exact production/source commit and validation artifact build used so later physical results are traceable.
 
-## 6. Handoff
+### 4.5 No hidden mode switch
 
-Report:
+Do not restore a production “validation mode” setting that turns the shipping plugin into the validation harness.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+The separate artifact/entrypoint is the isolation mechanism.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## 5. Invariants
+
+- Validation-only code lives outside production source.
+- Normal production build remains independently buildable.
+- No scenario state machine enters production.
+- No additional OAuth scope/token path is introduced.
+- Validation build is test infrastructure, not a second product implementation.
+
+## 6. Material Edge / Failure Cases
+
+Tests/proofs must establish:
+
+- normal production build succeeds independently;
+- validation build succeeds independently;
+- normal production `main.js` lacks validation-only sentinel/import/code signatures;
+- validation artifact includes/loads its intended validation composition;
+- production artifact remains functional without validation build output present;
+- deleting disposable validation build output does not affect production build;
+- no production config/entrypoint accidentally points to validation root.
+
+## 7. Engineering Discretion
+
+The agent may choose the smallest build mechanism compatible with the current repository—separate bundler entrypoint, configuration, or equivalent—provided the dependency direction and shipping exclusion contracts hold.
+
+Do not add a generalized multi-product build framework.
+
+## 8. Dependencies
+
+Consumes accepted S08A production receipt and S03 shipping-boundary governance.
+
+S08C/D will populate the validation-only composition with bounded agent/transport capabilities.
+
+## 9. Acceptance Criteria
+
+Acceptance requires distinct production/validation artifacts, production-path fidelity in validation composition, objective shipping-exclusion proof, exact build traceability, no production validation-mode restoration, architecture-budget compliance, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not implement the command agent, command transport, live executor, physical scenarios, or validation UI beyond the minimum entrypoint/load proof.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, production/validation build commands, artifact identities/hashes where stable, exclusion proof, architecture delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 08C.
