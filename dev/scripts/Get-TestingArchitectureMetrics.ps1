@@ -256,12 +256,12 @@ function Measure-Snapshot([string]$Sha, $Policy) {
         productionSourceLogicalLoc = $productionLoc
         productionSeamLogicalLoc = $seamLoc
         productionSeamFileCount = $seamFiles.Count
-        productionSeamFiles = @($seamFiles)
+        productionSeamFiles = @($seamFiles | Sort-Object)
         frameworkCoreLogicalTsLoc = $coreLoc
         platformCoreRuntimeModuleCount = $coreFiles.Count
-        frameworkCoreFiles = @($coreFiles)
+        frameworkCoreFiles = @($coreFiles | Sort-Object)
         liveDeviceAgentRelayLogicalTsLoc = $liveLoc
-        liveDeviceAgentRelayFiles = @($liveFiles)
+        liveDeviceAgentRelayFiles = @($liveFiles | Sort-Object)
         scenarioDefinitionLogicalLocTotal = [int]$scenarioLocTotal
         scenarioCount = $scenarios.Count
         scenarios = @($scenarios | Sort-Object path)
@@ -274,7 +274,7 @@ function Measure-Snapshot([string]$Sha, $Policy) {
         scenarioSpecificPowerShellFiles = @($scenarioPs | Sort-Object)
         scenarioSpecificProductionFileCount = $scenarioProd.Count
         scenarioSpecificProductionFiles = @($scenarioProd | Sort-Object)
-        classificationErrors = @($classificationErrors)
+        classificationErrors = @($classificationErrors | Sort-Object)
     }
 }
 
