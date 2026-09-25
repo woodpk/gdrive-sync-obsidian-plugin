@@ -27,19 +27,23 @@ function Get-ManifestPolicy {
     $production = [System.Collections.Generic.List[string]]::new()
     $approved = [System.Collections.Generic.List[string]]::new()
     $values = @{}
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($raw in $lines) {
         $line = $raw -replace '\s+#.*$', ''
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         if ($line -match '^([A-Za-z0-9_]+):\s*(.*)$') {
             $top = $Matches[1]
             $sub = ''
+            if ($top -in @('schema_version','status','roots','production_seam','complexity_budgets') -and -not $seen.Add($top)) { throw "BOUNDARY_MANIFEST_INVALID: duplicate authority '$top'." }
             if (-not [string]::IsNullOrWhiteSpace($Matches[2])) { $values[$top] = $Matches[2].Trim() }
             continue
         }
         if ($line -match '^  ([A-Za-z0-9_]+):\s*(.*)$') {
             $sub = $Matches[1]
+            $authority = "$top.$sub"
+            if ($top -in @('roots','production_seam','complexity_budgets') -and -not $seen.Add($authority)) { throw "BOUNDARY_MANIFEST_INVALID: duplicate authority '$authority'." }
             $value = $Matches[2].Trim()
-            if ($value) { $values["$top.$sub"] = $value }
+            if ($value) { $values[$authority] = $value }
             continue
         }
         if ($line -match '^    -\s+(.+)$') {
@@ -49,7 +53,9 @@ function Get-ManifestPolicy {
             continue
         }
         if ($line -match '^    ([A-Za-z0-9_]+):\s*(.+)$') {
-            $values["$top.$($Matches[1])"] = $Matches[2].Trim()
+            $authority = "$top.$($Matches[1])"
+            if ($top -in @('roots','production_seam','complexity_budgets') -and -not $seen.Add($authority)) { throw "BOUNDARY_MANIFEST_INVALID: duplicate authority '$authority'." }
+            $values[$authority] = $Matches[2].Trim()
         }
     }
     if (([string]$values['schema_version']) -ne '2') { throw "BOUNDARY_MANIFEST_INVALID: unsupported schema_version '$($values['schema_version'])'." }
@@ -117,31 +123,45 @@ function Read-SnapshotText([string]$Path, [string]$Sha) {
 function Get-LogicalLines([string]$Text, [string]$Kind) {
     $result = [System.Collections.Generic.List[string]]::new()
     $inBlock = $false
-    $start = if ($Kind -eq 'ps') { '<#' } else { '/*' }
-    $end = if ($Kind -eq 'ps') { '#>' } else { '*/' }
-    foreach ($raw in ($Text -split "`r?`n")) {
-        $line = $raw
-        while ($true) {
-            if ($inBlock) {
-                $close = $line.IndexOf($end, [System.StringComparison]::Ordinal)
-                if ($close -lt 0) { $line = ''; break }
-                $line = $line.Substring($close + 2)
-                $inBlock = $false
-                continue
-            }
-            $open = $line.IndexOf($start, [System.StringComparison]::Ordinal)
-            if ($open -lt 0) { break }
-            $close = $line.IndexOf($end, $open + 2, [System.StringComparison]::Ordinal)
-            if ($close -ge 0) { $line = $line.Remove($open, ($close + 2) - $open); continue }
-            $line = $line.Substring(0, $open)
-            $inBlock = $true
-            break
+    $quote = [char]0
+    $here = [char]0
+    foreach ($raw in ($Text -split '\r?\n')) {
+        $trimRaw = $raw.Trim()
+        if ($Kind -eq 'ps' -and $here -ne [char]0) {
+            if ($trimRaw) { $result.Add($raw) }
+            if ($trimRaw -eq "$here@") { $here = [char]0 }
+            continue
         }
-        $trim = $line.Trim()
-        if (-not $trim) { continue }
-        if ($Kind -eq 'ps' -and $trim.StartsWith('#')) { continue }
-        if ($Kind -ne 'ps' -and $trim.StartsWith('//')) { continue }
-        $result.Add($line)
+        $visible = [System.Text.StringBuilder]::new()
+        $i = 0
+        while ($i -lt $raw.Length) {
+            if ($inBlock) {
+                $end = if ($Kind -eq 'ps') { '#>' } else { '*/' }
+                $close = $raw.IndexOf($end, $i, [System.StringComparison]::Ordinal)
+                if ($close -lt 0) { $i = $raw.Length; continue }
+                $inBlock = $false; $i = $close + 2; continue
+            }
+            $ch = $raw[$i]
+            if ($quote -ne [char]0) {
+                [void]$visible.Append($ch)
+                $escape = if ($Kind -eq 'ps') { [char]96 } else { [char]92 }
+                if ($ch -eq $escape -and $i + 1 -lt $raw.Length) { [void]$visible.Append($raw[$i + 1]); $i += 2; continue }
+                if ($ch -eq $quote) {
+                    if ($Kind -eq 'ps' -and $quote -eq [char]39 -and $i + 1 -lt $raw.Length -and $raw[$i + 1] -eq [char]39) { [void]$visible.Append($raw[$i + 1]); $i += 2; continue }
+                    $quote = [char]0
+                }
+                $i++; continue
+            }
+            if ($Kind -eq 'ps' -and $ch -eq '@' -and $i + 1 -lt $raw.Length -and $raw[$i + 1] -in @([char]39,[char]34)) { $here = $raw[$i + 1]; [void]$visible.Append($raw.Substring($i)); $i = $raw.Length; continue }
+            $blockStart = if ($Kind -eq 'ps') { '<#' } else { '/*' }
+            $lineStart = if ($Kind -eq 'ps') { '#' } else { '//' }
+            if ($i + 1 -lt $raw.Length -and $raw.Substring($i, 2) -eq $blockStart) { $inBlock = $true; $i += 2; continue }
+            if ($i + $lineStart.Length -le $raw.Length -and $raw.Substring($i, $lineStart.Length) -eq $lineStart) { break }
+            if (($Kind -eq 'ps' -and $ch -in @([char]39,[char]34)) -or ($Kind -ne 'ps' -and $ch -in @([char]39,[char]34,[char]96))) { $quote = $ch }
+            [void]$visible.Append($ch); $i++
+        }
+        if ($Kind -eq 'ps' -or $quote -ne [char]96) { $quote = [char]0 }
+        if ($visible.ToString().Trim()) { $result.Add($visible.ToString()) }
     }
     return @($result)
 }
@@ -276,10 +296,11 @@ function Measure-Snapshot([string]$Sha, $Policy) {
     foreach ($path in @($paths | Where-Object { $_ -match '(?i)^dev/scripts/.*\.ps1$' })) {
         if ($knownNonBvp -contains $path) { continue }
         $code = @(Get-LogicalLines (Read-SnapshotText $path $Sha) 'ps') -join "`n"
-        $isBvp = ($knownBvp -contains $path) -or $code -match '(?i)\b(?:BVP|test-platform|testing-platform)\b'
+        $isKnownGeneric = $knownBvp -contains $path
+        $isBvp = $isKnownGeneric -or $code -match '(?i)\b(?:BVP|test-platform|testing-platform)\b'
         if (-not $isBvp) { $classificationErrors.Add("Unclassifiable active dev/scripts PowerShell: $path"); continue }
         $scriptPaths.Add($path)
-        if ($code -match '(?i)\bscenario(?:Id|Name)\s*=\s*["''][^"'']+["'']') { $scenarioPs.Add($path) }
+        if (-not $isKnownGeneric -and $code -match '(?i)(?:test-platform/scenarios/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b)') { $scenarioPs.Add($path) }
     }
     foreach ($path in @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match '(?i)\.ps1$' })) {
         if (-not $scenarioPs.Contains($path)) { $scenarioPs.Add($path) }
