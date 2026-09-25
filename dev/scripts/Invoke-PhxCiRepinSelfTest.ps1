@@ -241,14 +241,20 @@ function Invoke-RepinCase {
 }
 
 $operatorPath = Join-Path $RepositoryRoot 'dev/scripts/Invoke-PhxCiRepin.ps1'
+$selfTestPath = Join-Path $RepositoryRoot 'dev/scripts/Invoke-PhxCiRepinSelfTest.ps1'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("phx-ci-repin-self-test-{0}" -f [guid]::NewGuid().ToString('N'))
 
 try {
-    $tokens = $null
-    $parseErrors = $null
-    [Management.Automation.Language.Parser]::ParseFile($operatorPath, [ref]$tokens, [ref]$parseErrors) | Out-Null
-    Assert-Test (@($parseErrors).Count -eq 0) ("operator script parser errors: {0}" -f ((@($parseErrors) | ForEach-Object { $_.Message }) -join ' | '))
-    Write-Output 'PASS repin operator PowerShell parser validation'
+    foreach ($parserTarget in @(
+        [pscustomobject]@{ Name = 'operator script'; Path = $operatorPath },
+        [pscustomobject]@{ Name = 'self-test script'; Path = $selfTestPath }
+    )) {
+        $tokens = $null
+        $parseErrors = $null
+        [Management.Automation.Language.Parser]::ParseFile($parserTarget.Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+        Assert-Test (@($parseErrors).Count -eq 0) ("{0} parser errors: {1}" -f $parserTarget.Name, ((@($parseErrors) | ForEach-Object { $_.Message }) -join ' | '))
+        Write-Output ("PASS {0} PowerShell parser validation" -f $parserTarget.Name)
+    }
 
     New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
     $phx = New-PhxFixture -Root (Join-Path $tempRoot 'phx')
