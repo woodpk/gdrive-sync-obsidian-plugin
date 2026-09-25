@@ -126,7 +126,7 @@ function Get-FrameworkShaAtCommit {
         [Parameter(Mandatory)][string]$Commit
     )
 
-    $show = Invoke-Git -WorkingTree $RepositoryRoot -Args @('show', "$Commit\`:phx-ci.json") -AllowFailure
+    $show = Invoke-Git -WorkingTree $RepositoryRoot -Args @('show', "$Commit`:phx-ci.json") -AllowFailure
     if ($show.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($show.Text)) {
         throw "target branch does not contain a readable phx-ci.json at $Commit."
     }
