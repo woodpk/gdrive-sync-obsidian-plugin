@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s03b-architecture-guard
+- Source build HEAD requested: 8ef352b3678963d56180c2ecf518406659e204b9
+- Verification checkout HEAD: 8ef352b3678963d56180c2ecf518406659e204b9
+- Evidence publication target: origin/bvp-s03b-architecture-guard
