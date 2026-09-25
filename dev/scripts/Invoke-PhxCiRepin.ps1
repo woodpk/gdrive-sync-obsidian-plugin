@@ -246,11 +246,6 @@ function Invoke-RepinMain {
             throw ("bootstrap changed unexpected consumer path(s): {0}" -f ($unexpected -join ', '))
         }
 
-        if ($changedPaths.Count -eq 0) {
-            Write-RepinSkipped -Reason ("bootstrap produced no managed-file change; requested PHX-CI state {0} is already satisfied" -f $PhxCiSha.ToLowerInvariant())
-            return 0
-        }
-
         $configPath = Join-Path $consumerWorktree 'phx-ci.json'
         if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
             throw 'bootstrap did not leave phx-ci.json present.'
@@ -264,6 +259,11 @@ function Invoke-RepinMain {
         $resultingSha = [string]$config.framework.sha
         if ($resultingSha.ToLowerInvariant() -cne $PhxCiSha.ToLowerInvariant()) {
             throw "resulting phx-ci.json framework.sha '$resultingSha' does not equal requested SHA '$PhxCiSha'."
+        }
+
+        if ($changedPaths.Count -eq 0) {
+            Write-RepinSkipped -Reason ("bootstrap produced no managed-file change; requested PHX-CI state {0} is already satisfied" -f $PhxCiSha.ToLowerInvariant())
+            return 0
         }
 
         & $script:GitPath -C $consumerWorktree add -- @($script:AllowedPaths)
