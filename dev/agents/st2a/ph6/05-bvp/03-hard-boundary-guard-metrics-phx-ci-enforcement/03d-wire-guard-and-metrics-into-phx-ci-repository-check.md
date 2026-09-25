@@ -90,6 +90,15 @@ After integration, ordinary work must treat the boundary manifest, guard, metric
 
 This child may make the wiring changes explicitly necessary to establish that state; it may not change the substantive guard rules or hard budget values accepted in 03B/03C.
 
+## Invariants
+
+- Guard and metrics remain the accepted S03B/S03C contracts; wiring cannot weaken or reinterpret them.
+- PHX-CI remains the single canonical acceptance orchestrator.
+- Repository-check integration consumes PHX-CI's verified repository/base/change-set authority rather than creating a competing Git authority.
+- Architecture failure remains acceptance-blocking regardless of functional-test success.
+- Canonical PHX-CI evidence remains the evidence publication mechanism.
+- No task-specific BVP verifier or second CI path is introduced.
+
 ## 5. Required Integration Tests
 
 Tests must establish at least:
