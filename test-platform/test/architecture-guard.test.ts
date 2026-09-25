@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -191,6 +192,32 @@ function assertFailsWithRule(result: GuardResult, rule: string): void {
   match(result.output, new RegExp(`rule=${rule}\\b`));
   match(result.output, /ARCH_GUARD_RESULT=FAIL violations=\d+/);
 }
+
+test("architecture guard source has one coherent terminal implementation", () => {
+  const source = readFileSync(guardPath, "utf8").replace(/\r\n/g, "\n");
+  const exitMatches = source.match(/^\s*exit 0\s*$/gm) ?? [];
+  const passMatches =
+    source.match(/ARCH_GUARD_RESULT=PASS violations=0/g) ?? [];
+  const functionNames = [
+    ...source.matchAll(/^function\s+([A-Za-z0-9_-]+)\s*\{/gm),
+  ].map((match) => match[1]);
+
+  strictEqual(exitMatches.length, 1, "guard must contain exactly one exit 0");
+  strictEqual(
+    passMatches.length,
+    1,
+    "guard must contain exactly one terminal PASS result",
+  );
+  strictEqual(
+    new Set(functionNames).size,
+    functionNames.length,
+    "guard must not contain duplicated function definitions",
+  );
+  match(
+    source.trimEnd(),
+    /Write-Output 'ARCH_GUARD_RESULT=PASS violations=0'\nexit 0$/,
+  );
+});
 
 test("architecture guard passes the actual BRAIN repository baseline", () => {
   assertPass(runGuard(repositoryRoot));
