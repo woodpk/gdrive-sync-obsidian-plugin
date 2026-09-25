@@ -1,76 +1,164 @@
-# 05A — Typed scenario contract and small step vocabulary
+# BVP-S05A — Typed Scenario Contract and Small Step Vocabulary
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
-**Predecessor child:** See primary-stage predecessor in the session index.
+**Predecessor:** accepted BVP-S04 primary-stage gate
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Define the typed declarative scenario data model and small capability-oriented step vocabulary.
+Define the small typed declarative scenario data model that later BVP execution will interpret.
 
-Required end state:
+Scenarios are source-controlled **data describing test intent**, not custom orchestration programs, executable scenario classes, or alternate synchronization logic.
 
-> Scenario contracts exist as data definitions; no runner/router/persistence.
+## 2. Required End State
 
-## 2. Dispatch Binding
+The accepted scenario contract can express, without implementing a runner yet:
 
-Before execution the supervisor MUST replace this section with:
+- scenario identity and human description;
+- product requirement/invariant/completion-evidence traceability;
+- execution-mode applicability where needed;
+- ordered declarative steps;
+- typed step-specific inputs;
+- fixture setup/change operations;
+- production preview/sync/execute/reconcile invocation intent;
+- external-reality/fault transitions;
+- checkpoint/restart intent;
+- observation requests;
+- assertion intent;
+- explicit expected blocking/failure conditions where appropriate.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+The initial step vocabulary remains intentionally small and capability-oriented.
 
-The worker may not perform this binding.
+## 3. Dispatch Binding — Hard Data Only
 
-## 3. Fixed Boundaries
+Before execution the supervisor binds:
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+- exact accepted S04 predecessor SHA;
+- exact task branch;
+- actual S04 world/public test API and production operation entrypoints available for later execution;
+- exact scenario-contract/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- size-gate confirmation.
 
-## 4. Implementation Contract
+Binding may not turn repository-specific implementation details into scenario-specific orchestration concepts.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+## 4. Required Scenario Semantics
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.1 Scenarios are data
 
-## 5. Verification and Acceptance
+A scenario definition must be serializable/inspectable structured data whose meaning comes from the common vocabulary.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Do not encode sequence logic in callbacks, per-scenario classes, arbitrary functions, or scenario-specific runner code.
 
-Then stop at:
+### 4.2 Small capability vocabulary
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+The initial vocabulary must cover only generic capability families needed by the BVP target specification:
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+1. establish/mutate deterministic fixture reality;
+2. invoke a production synchronization capability;
+3. change modeled external/fault/lifecycle state;
+4. checkpoint/restart runtime when required;
+5. observe objective state/result;
+6. assert expected behavior.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+The exact type names and syntax are engineering discretion.
 
-Do not create a child-specific PowerShell verifier.
+### 4.3 Strong typing / invalid-state reduction
 
-## 6. Handoff
+Step variants must make their required inputs explicit and prevent unrelated fields from being freely combined.
 
-Report:
+Unknown/unsupported step kinds must not be representable as silently valid executable scenarios.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+### 4.4 Traceability
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+Every scenario must carry one or more target requirement/invariant/evidence identifiers sufficient for later aggregation.
+
+Historical C03–F03 IDs may appear only as optional migration traceability labels; they do not define architecture or scenario identity authority.
+
+### 4.5 Executor neutrality
+
+The scenario contract must not embed deterministic-world implementation objects or live-device transport objects.
+
+Where the same semantic action may later execute through deterministic or live executors, the scenario represents the capability intent rather than one executor's mechanics.
+
+## 5. Invariants
+
+- No runner lifecycle is implemented here.
+- No persistence/checkpoint storage implementation is introduced.
+- No evidence aggregation implementation is introduced.
+- No scenario-specific production seam is created.
+- No scenario-specific PowerShell exists.
+- No plugin/router/module framework is introduced.
+- Scenario definitions cannot authorize product mutations outside normal production operations.
+
+## 6. Material Edge / Failure Cases
+
+Contract tests must establish at least:
+
+- valid representative scenario can be constructed;
+- traceability metadata is required where the contract requires it;
+- each step family requires its own essential fields;
+- unsupported/unknown step types fail validation/type exhaustiveness rather than defaulting to no-op;
+- deterministic/live applicability metadata cannot silently cause required steps to disappear;
+- scenario ordering is explicit;
+- a scenario cannot embed arbitrary executable callbacks as its orchestration mechanism.
+
+Where compile-time typing is the primary guarantee, use compile-time/type-level tests or deterministic construction validation appropriate to the repository.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- discriminated-union/type syntax;
+- exact names for scenario/step records;
+- whether limited runtime schema validation is necessary;
+- file/module decomposition;
+- helper constructors that preserve declarative data semantics.
+
+Do not introduce dependencies or a general schema/plugin framework unless already available and justified by the fixed contract.
+
+## 8. Dependencies
+
+Consumes the semantic capabilities proven by S04 but does not execute them yet.
+
+05B will interpret these types; therefore public step semantics must be stable enough that the runner does not need scenario-specific branching outside the frozen vocabulary.
+
+## 9. Acceptance Criteria
+
+Acceptance requires:
+
+- typed declarative scenario model exists;
+- initial vocabulary covers all six generic capability families above;
+- traceability metadata is represented;
+- invalid/unsupported step semantics fail closed;
+- no runner/persistence/evidence/live architecture is introduced;
+- architecture guard/metrics pass;
+- authoritative PHX-CI passes focused/full verification.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- deterministic runner;
+- observations/assertion execution;
+- evidence serialization;
+- checkpoint storage/resume;
+- canary scenario catalog beyond minimal type fixtures/tests;
+- S06/S07 requirement coverage;
+- live-device executor.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, frozen step vocabulary, tests/results, architecture metrics delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 05B.
