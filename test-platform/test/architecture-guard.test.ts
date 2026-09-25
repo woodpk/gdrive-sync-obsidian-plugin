@@ -217,6 +217,80 @@ test("architecture guard source has one coherent terminal implementation", () =>
     source.trimEnd(),
     /Write-Output 'ARCH_GUARD_RESULT=PASS violations=0'\nexit 0$/,
   );
+
+  const requiredSourceFragments = [
+    "if ($root -notmatch '^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$' -or $root -match '(^|/)\\.\\.($|/)') {",
+    "Production root '$productionRoot' overlaps test-platform root '$testPlatformRoot'.",
+    "Archive root '$archiveRoot' must be contained by active_dev root '$activeDevRoot'.",
+    "if (-not ($productionForbiddenRoots -contains $testPlatformRoot)) {",
+    "if (-not ($shippingForbiddenRoots -contains $testPlatformRoot)) {",
+    "$entryWithoutExtension = $entry -replace '(?i)\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''",
+    "if ($entryWithoutExtension -ne $entry -and $Target -eq $entryWithoutExtension) {",
+    "if ($entry -match '(?i)/index\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$') {",
+    "$indexParent = $entry -replace '(?i)/index\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''",
+  ];
+
+  for (const fragment of requiredSourceFragments) {
+    strictEqual(
+      source.includes(fragment),
+      true,
+      "guard source is missing required integrity fragment: " + fragment,
+    );
+  }
+
+  let insideSingleQuotedHereString = false;
+  for (const [index, rawLine] of source.split("\n").entries()) {
+    const line = rawLine.trimEnd();
+
+    if (insideSingleQuotedHereString) {
+      if (line.trim() === "'@") {
+        insideSingleQuotedHereString = false;
+      }
+      continue;
+    }
+
+    if (line.trim().endsWith("@'")) {
+      insideSingleQuotedHereString = true;
+      continue;
+    }
+
+    let singleQuoted = false;
+    let doubleQuoted = false;
+    for (let cursor = 0; cursor < line.length; cursor += 1) {
+      const character = line[cursor];
+      const next = line[cursor + 1];
+
+      if (!singleQuoted && !doubleQuoted && character === "#") {
+        break;
+      }
+      if (doubleQuoted && character === "\`" && next !== undefined) {
+        cursor += 1;
+        continue;
+      }
+      if (!doubleQuoted && character === "'") {
+        if (singleQuoted && next === "'") {
+          cursor += 1;
+          continue;
+        }
+        singleQuoted = !singleQuoted;
+        continue;
+      }
+      if (!singleQuoted && character === '"') {
+        doubleQuoted = !doubleQuoted;
+      }
+    }
+
+    strictEqual(
+      singleQuoted,
+      false,
+      "unterminated single-quoted PowerShell literal at line " + (index + 1),
+    );
+  }
+  strictEqual(
+    insideSingleQuotedHereString,
+    false,
+    "unterminated embedded TypeScript here-string",
+  );
 });
 
 test("architecture guard passes the actual BRAIN repository baseline", () => {
