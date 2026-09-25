@@ -276,13 +276,13 @@ try {
 
     $noop = New-ConsumerFixture -Root (Join-Path $tempRoot 'noop') -InitialPin $oldPin
     $noopResult = Invoke-RepinCase -OperatorPath $operatorPath -ConsumerRoot $noop.Root -PhxRoot $phx.Root -PhxSha $phx.Sha -Mode 'noop'
-    Assert-Test ($noopResult.ExitCode -eq 0) "bootstrap no-op returned $($noopResult.ExitCode)"
-    Assert-Test ($noopResult.Text -match 'REPIN SKIPPED') 'bootstrap no-op did not report REPIN SKIPPED'
-    Assert-Test ($noopResult.Text -match 'no managed-file change') 'bootstrap no-op reason missing'
-    Assert-NoRawFrames -Text $noopResult.Text -Context 'bootstrap no-op'
-    Assert-Test ((Invoke-Git -Root $noop.Root -GitArguments @('rev-parse', 'origin/target')) -ceq $noop.TargetHead) 'bootstrap no-op changed target branch'
-    Assert-ControlState -Before $noop.Control -After (Get-ControlState -Root $noop.Root) -Context 'bootstrap no-op'
-    Write-Output 'PASS bootstrap no-change state is a clean REPIN SKIPPED result with exit 0'
+    Assert-Test ($noopResult.ExitCode -ne 0) 'bootstrap no-op with an unsatisfied requested pin returned success'
+    Assert-Test ($noopResult.Text -match 'REPIN FAILED') 'bootstrap no-op with unsatisfied state did not fail cleanly'
+    Assert-Test ($noopResult.Text -match 'does not equal requested SHA') 'bootstrap no-op state-validation reason missing'
+    Assert-NoRawFrames -Text $noopResult.Text -Context 'bootstrap no-op with unsatisfied state'
+    Assert-Test ((Invoke-Git -Root $noop.Root -GitArguments @('rev-parse', 'origin/target')) -ceq $noop.TargetHead) 'bootstrap no-op with unsatisfied state changed target branch'
+    Assert-ControlState -Before $noop.Control -After (Get-ControlState -Root $noop.Root) -Context 'bootstrap no-op with unsatisfied state'
+    Write-Output 'PASS bootstrap no-change cannot silently pass unless the requested pin is actually satisfied'
 
     $success = New-ConsumerFixture -Root (Join-Path $tempRoot 'success') -InitialPin $oldPin
     Assert-Test ($success.Control.Branch -ceq 'operator-control') 'success fixture active checkout is not deliberately on a different branch'
