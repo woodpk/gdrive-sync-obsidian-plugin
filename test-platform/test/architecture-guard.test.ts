@@ -293,6 +293,42 @@ test("architecture guard source has one coherent terminal implementation", () =>
   );
 });
 
+test("architecture guard parses with the real PowerShell parser", () => {
+  const parserCommand = [
+    "$tokens = $null",
+    "$errors = $null",
+    "[System.Management.Automation.Language.Parser]::ParseFile(" +
+      "$env:BVP_ARCHITECTURE_GUARD_PATH, [ref]$tokens, [ref]$errors) | Out-Null",
+    "if ($errors.Count -gt 0) {",
+    "  foreach ($error in $errors) {",
+    "    [Console]::Error.WriteLine($error.ToString())",
+    "  }",
+    "  exit 1",
+    "}",
+  ].join("; ");
+
+  const result = spawnSync(
+    powerShell,
+    ["-NoProfile", "-Command", parserCommand],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        BVP_ARCHITECTURE_GUARD_PATH: guardPath,
+      },
+    },
+  );
+
+  if (result.error) {
+    throw result.error;
+  }
+  strictEqual(
+    result.status,
+    0,
+    (result.stdout ?? "") + (result.stderr ?? ""),
+  );
+});
+
 test("architecture guard passes the actual BRAIN repository baseline", () => {
   assertPass(runGuard(repositoryRoot));
 });
