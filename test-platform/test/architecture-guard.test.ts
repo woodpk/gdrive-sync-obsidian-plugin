@@ -196,6 +196,88 @@ test("architecture guard rejects scenario identifiers or controls in production"
   });
 });
 
+test("architecture guard recognizes each supported actual module dependency form", () => {
+  const cases = [
+    [
+      "static import",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    ],
+    [
+      "re-export",
+      'export { productionValue } from "../../src/main";\n',
+    ],
+    [
+      "require",
+      'const production = require("../../src/main");\nvoid production;\n',
+    ],
+    [
+      "dynamic import",
+      'void import("../../src/main");\n',
+    ],
+  ] as const;
+
+  for (const [name, source] of cases) {
+    withFixture((root) => {
+      writeText(
+        root,
+        `test-platform/test/actual-${name.replace(/\\s+/g, "-")}.test.ts`,
+        source,
+      );
+      const result = runGuard(root);
+      try {
+        assertFailsWithRule(
+          result,
+          "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+        );
+      } catch (error) {
+        throw new Error(`${name}: ${String(error)}\n${result.output}`);
+      }
+    });
+  }
+});
+
+test("architecture guard ignores import-looking text inside string literals", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/import-looking-strings.test.ts",
+      [
+        'const examples = [',
+        '  \'import { productionValue } from "../../src/main";\',',
+        '  \'export { productionValue } from "../../src/main";\',',
+        '  \'require("../../src/main")\',',
+        '  \'import("../../src/main")\',',
+        '];',
+        'const template = `import("../../src/main")`;',
+        'void examples;',
+        'void template;',
+        '',
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard ignores import-looking text inside comments", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/import-looking-comments.test.ts",
+      [
+        '// import { productionValue } from "../../src/main";',
+        '/*',
+        'export { productionValue } from "../../src/main";',
+        'require("../../src/main");',
+        'import("../../src/main");',
+        '*/',
+        'export const harmless = true;',
+        '',
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
 test("architecture guard rejects unapproved test-platform imports from production src", () => {
   withFixture((root) => {
     writeText(

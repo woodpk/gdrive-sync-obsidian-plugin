@@ -67,20 +67,174 @@ function Get-SourceFiles {
     })
 }
 
+function Test-JavaScriptIdentifierStart {
+    param([char]$Character)
+
+    return [char]::IsLetter($Character) -or $Character -eq '_' -or $Character -eq '$'
+}
+
+function Test-JavaScriptIdentifierPart {
+    param([char]$Character)
+
+    return [char]::IsLetterOrDigit($Character) -or $Character -eq '_' -or $Character -eq '$'
+}
+
+function Get-JavaScriptTokens {
+    param([Parameter(Mandatory = $true)][string]$Content)
+
+    $tokens = [System.Collections.Generic.List[object]]::new()
+    $index = 0
+    while ($index -lt $Content.Length) {
+        $character = $Content[$index]
+
+        if ([char]::IsWhiteSpace($character)) {
+            $index++
+            continue
+        }
+
+        if ($character -eq [char]47 -and ($index + 1) -lt $Content.Length) {
+            $nextCharacter = $Content[$index + 1]
+            if ($nextCharacter -eq [char]47) {
+                $index += 2
+                while ($index -lt $Content.Length -and $Content[$index] -ne [char]10 -and $Content[$index] -ne [char]13) {
+                    $index++
+                }
+                continue
+            }
+            if ($nextCharacter -eq [char]42) {
+                $index += 2
+                while (($index + 1) -lt $Content.Length) {
+                    if ($Content[$index] -eq [char]42 -and $Content[$index + 1] -eq [char]47) {
+                        $index += 2
+                        break
+                    }
+                    $index++
+                }
+                continue
+            }
+        }
+
+        if ($character -eq [char]39 -or $character -eq [char]34) {
+            $quote = $character
+            $builder = [System.Text.StringBuilder]::new()
+            $index++
+            while ($index -lt $Content.Length) {
+                $stringCharacter = $Content[$index]
+                if ($stringCharacter -eq [char]92 -and ($index + 1) -lt $Content.Length) {
+                    $escapedCharacter = $Content[$index + 1]
+                    if ($escapedCharacter -ne [char]10 -and $escapedCharacter -ne [char]13) {
+                        $builder.Append($escapedCharacter) | Out-Null
+                    }
+                    $index += 2
+                    continue
+                }
+                if ($stringCharacter -eq $quote) {
+                    $index++
+                    break
+                }
+                $builder.Append($stringCharacter) | Out-Null
+                $index++
+            }
+            $tokens.Add([pscustomobject]@{
+                Kind = 'string'
+                Value = $builder.ToString()
+            }) | Out-Null
+            continue
+        }
+
+        if ($character -eq [char]96) {
+            $index++
+            while ($index -lt $Content.Length) {
+                $templateCharacter = $Content[$index]
+                if ($templateCharacter -eq [char]92 -and ($index + 1) -lt $Content.Length) {
+                    $index += 2
+                    continue
+                }
+                if ($templateCharacter -eq [char]96) {
+                    $index++
+                    break
+                }
+                $index++
+            }
+            continue
+        }
+
+        if (Test-JavaScriptIdentifierStart $character) {
+            $start = $index
+            $index++
+            while ($index -lt $Content.Length -and (Test-JavaScriptIdentifierPart $Content[$index])) {
+                $index++
+            }
+            $tokens.Add([pscustomobject]@{
+                Kind = 'identifier'
+                Value = $Content.Substring($start, $index - $start)
+            }) | Out-Null
+            continue
+        }
+
+        $tokens.Add([pscustomobject]@{
+            Kind = 'punctuation'
+            Value = [string]$character
+        }) | Out-Null
+        $index++
+    }
+
+    return @($tokens)
+}
+
 function Get-ModuleSpecifiers {
     param([Parameter(Mandatory = $true)][string]$Content)
 
-    $patterns = @(
-        '(?ms)\b(?:import|export)\s+(?:[^''\"]*?\s+from\s+)?[''\"](?<spec>[^''\"]+)[''\"]',
-        '(?ms)\b(?:require|import)\s*\(\s*[''\"](?<spec>[^''\"]+)[''\"]\s*\)'
-    )
-
+    $tokens = @(Get-JavaScriptTokens $Content)
     $specifiers = [System.Collections.Generic.List[string]]::new()
-    foreach ($pattern in $patterns) {
-        foreach ($match in [regex]::Matches($Content, $pattern)) {
-            $specifiers.Add($match.Groups['spec'].Value) | Out-Null
+
+    for ($index = 0; $index -lt $tokens.Count; $index++) {
+        $token = $tokens[$index]
+        if ($token.Kind -ne 'identifier') {
+            continue
+        }
+
+        if ($token.Value -eq 'require') {
+            $isPropertyAccess = $index -gt 0 -and $tokens[$index - 1].Kind -eq 'punctuation' -and $tokens[$index - 1].Value -eq '.'
+            if (-not $isPropertyAccess -and ($index + 2) -lt $tokens.Count -and
+                $tokens[$index + 1].Kind -eq 'punctuation' -and $tokens[$index + 1].Value -eq '(' -and
+                $tokens[$index + 2].Kind -eq 'string') {
+                $specifiers.Add($tokens[$index + 2].Value) | Out-Null
+            }
+            continue
+        }
+
+        if ($token.Value -eq 'import') {
+            if (($index + 2) -lt $tokens.Count -and
+                $tokens[$index + 1].Kind -eq 'punctuation' -and $tokens[$index + 1].Value -eq '(' -and
+                $tokens[$index + 2].Kind -eq 'string') {
+                $specifiers.Add($tokens[$index + 2].Value) | Out-Null
+                continue
+            }
+
+            if (($index + 1) -lt $tokens.Count -and $tokens[$index + 1].Kind -eq 'string') {
+                $specifiers.Add($tokens[$index + 1].Value) | Out-Null
+                continue
+            }
+        }
+
+        if ($token.Value -ne 'import' -and $token.Value -ne 'export') {
+            continue
+        }
+
+        for ($scan = $index + 1; $scan -lt $tokens.Count; $scan++) {
+            $candidate = $tokens[$scan]
+            if ($candidate.Kind -eq 'punctuation' -and $candidate.Value -eq ';') {
+                break
+            }
+            if ($candidate.Kind -eq 'identifier' -and $candidate.Value -eq 'from' -and
+                ($scan + 1) -lt $tokens.Count -and $tokens[$scan + 1].Kind -eq 'string') {
+                $specifiers.Add($tokens[$scan + 1].Value) | Out-Null
+                break
+            }
         }
     }
+
     return @($specifiers)
 }
 
