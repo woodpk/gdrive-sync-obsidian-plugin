@@ -794,7 +794,7 @@ process.stdout.write(JSON.stringify(results));
     $output = @($payload | & $nodeCommand.Source -e $analyzer 2>&1)
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
-        Add-Violation 'SOURCE_ANALYSIS_FAILED' '<typescript-analyzer>' ("TypeScript analyzer exited $exitCode: " + ($output -join ' '))
+        Add-Violation 'SOURCE_ANALYSIS_FAILED' '<typescript-analyzer>' ("TypeScript analyzer exited ${exitCode}: " + ($output -join ' '))
         return @()
     }
 
