@@ -48,6 +48,10 @@ Before execution the supervisor fills:
 
 Binding may not change the metric families, budgets, failure semantics, or non-goals below.
 
+## Dependencies
+
+S03C depends on the accepted S03B architecture guard, the active boundary manifest, and the hard BVP-GOV-003/BVP-GOV-004 metric and budget contracts. It does not depend on 03D PHX-CI wiring, which is intentionally later.
+
 ## 4. Required Metrics
 
 At minimum calculate and expose:
