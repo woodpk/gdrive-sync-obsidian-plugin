@@ -522,3 +522,30 @@ test("repeated architecture metrics output is deterministic", () => {
   });
 });
 
+test("dependency analysis sees nested executable template imports but ignores inert comments strings regex and template text", () => {
+  withFixture((root) => {
+    writeText(root, "src/nested.ts", "export const x = 1;\n");
+    writeText(root, "src/fake.ts", "export const x = 1;\n");
+    const tick = String.fromCharCode(96);
+    const interpolation = "$" + "{await import(\\"../../src/nested\\")}";
+    writeText(
+      root,
+      "test-platform/src/platform-root.ts",
+      [
+        "async function nested() { return " + tick + "prefix " + interpolation + " suffix" + tick + "; }",
+        "const inert = " + tick + 'import("../../src/fake") require("../../src/fake")' + tick + ";",
+        'const ordinary = "import(\\\"../../src/fake\\\")";',
+        'const regex = /require\\(\"..\\/..\\/src\\/fake\"\\)/;',
+        '// import { x } from "../../src/fake";',
+        '/* require("../../src/fake"); */',
+        'function local(require: (name: string) => unknown) { return require("../../src/fake"); }',
+        "void nested; void inert; void ordinary; void regex; void local;",
+        "",
+      ].join("\n"),
+    );
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.productionModulesImportedCount, 1);
+    strictEqual(value.current.productionModulesImported[0], "src/nested.ts");
+  });
+});
+
