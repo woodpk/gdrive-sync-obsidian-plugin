@@ -1,76 +1,112 @@
-# 07E — Quota/disk, destructive safety, config and lifecycle deterministic scenarios
+# BVP-S07E — Quota / Disk, Destructive Safety, Configuration, and Lifecycle Deterministic Scenarios
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** 07D
+**Predecessor:** accepted S07D
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add modeled quota/disk failures, circuit breaker/recovery checkpoint, and non-physical config/lifecycle invariants.
+Add declarative deterministic coverage for modeled resource failures, destructive-safety/circuit-breaker behavior, recovery checkpoints, and configuration/lifecycle invariants that do not intrinsically require a real installed Windows/iOS runtime.
 
-Required end state:
+## 2. Required End State
 
-> Safety/resource/config scenarios mapped and passing.
+Executable scenarios cover current deterministic requirements for:
 
-## 2. Dispatch Binding
+- remote quota/capacity failure;
+- local disk/capacity write failure;
+- destructive-operation threshold/circuit-breaker activation;
+- blocked destructive plan/preview behavior;
+- explicit recovery/reconcile checkpoint after a destructive-safety stop;
+- configuration/scope option semantics suitable for deterministic proof;
+- lifecycle invariants that are about persisted product state rather than physical OS/app behavior.
 
-Before execution the supervisor MUST replace this section with:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Before execution the supervisor binds:
 
-The worker may not perform this binding.
+- exact accepted S07D predecessor SHA;
+- task branch;
+- current quota/disk/destructive/config/lifecycle requirement IDs and production thresholds/contracts;
+- accepted S04 fault/config controls;
+- exact scenario/fixture/test writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline.
 
-## 3. Fixed Boundaries
+No production threshold or safety policy may be changed by binding.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+## 4. Required Semantics
 
-## 4. Implementation Contract
+### 4.1 Resource failures
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+Quota/disk failures are modeled as external boundary failures with production-facing classifications. The test does not bypass normal product retry/safety/error handling.
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.2 Destructive circuit breaker
 
-## 5. Verification and Acceptance
+Construct a deterministic state that would exceed the product's allowed destructive threshold and prove that production blocks/halts according to target policy before unauthorized destructive effects occur.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.3 Recovery checkpoint
 
-Then stop at:
+After a destructive safety stop, prove the target-required reconcile/verify/human-confirmation/recovery pathway can resume safely. The scenario must not reset safety state merely to continue.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+### 4.4 Configuration semantics
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+Exercise deterministic configuration/scope behaviors whose subject is product logic rather than real platform UI/storage APIs.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.5 Lifecycle invariants
 
-Do not create a child-specific PowerShell verifier.
+Prove state invariants for disable/unlink/re-enable/reconstruction only where those invariants can be tested without claiming actual installed-runtime lifecycle evidence.
 
-## 6. Handoff
+Physical uninstall/reinstall/device unlink behavior remains S09E.
 
-Report:
+## 5. Invariants
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+- Safety thresholds remain production authority.
+- Test infrastructure cannot lower/disable circuit breakers.
+- Resource failure does not authorize data loss.
+- Deterministic lifecycle tests do not claim physical OS evidence.
+- No new safety/config engine or scenario-specific core.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+## 6. Material Edge / Failure Cases
+
+Required proof includes:
+
+- quota failure classified safely;
+- local disk write failure classified safely;
+- destructive threshold below limit permits normal behavior where appropriate;
+- threshold-exceeding plan is blocked before destructive effects;
+- recovery checkpoint requires target-approved conditions;
+- configuration change produces target semantics;
+- deterministic lifecycle state preserves user/remote data according to product invariants;
+- wrong unsafe expectation fails.
+
+## 7. Engineering Discretion
+
+The agent may choose representative resource limits and destructive-count fixtures consistent with current production thresholds/contracts.
+
+## 8. Dependencies
+
+Consumes S04 faults/config controls, S05 runner/evidence, and current production safety/config/lifecycle rules.
+
+## 9. Acceptance Criteria
+
+All deterministic safety/resource/config/lifecycle scenarios map to current requirements and pass; circuit-breaker proof demonstrates actual prevention; no safety weakening/core/production changes occur; budgets and authoritative PHX-CI pass.
+
+## 10. Non-Goals
+
+Do not claim physical install/uninstall/auth/mobile resource behavior; those belong to S09. Do not implement scale measurement (07F).
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, requirement mappings, safety/resource/config results, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07F.

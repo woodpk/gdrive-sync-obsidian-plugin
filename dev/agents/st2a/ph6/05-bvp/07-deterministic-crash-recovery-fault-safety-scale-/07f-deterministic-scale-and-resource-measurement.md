@@ -1,76 +1,115 @@
-# 07F — Deterministic scale and resource measurement
+# BVP-S07F — Deterministic Scale and Resource Measurement
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor child:** 07E
+**Predecessor:** accepted S07E
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Add host-side large-file/large-vault deterministic scale coverage without converting tests into a benchmark framework.
+Add bounded host-side deterministic large-file/large-vault execution and resource measurements sufficient to prove required algorithmic/behavioral scale characteristics without turning the BVP into a benchmark framework.
 
-Required end state:
+## 2. Required End State
 
-> Required scale cases execute and record bounded measurements; architecture unchanged.
+Deterministic coverage executes representative scale cases required by the current product target, including as applicable:
 
-## 2. Dispatch Binding
+- large individual file transfer/content handling;
+- larger managed file counts/vault listings;
+- bounded multi-operation synchronization;
+- memory/time/resource measurements available in the host environment;
+- evidence that safety/identity/integrity semantics remain correct under scale.
 
-Before execution the supervisor MUST replace this section with:
+Measurements are recorded as evidence; they do not become unsupported universal performance guarantees.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S07E predecessor SHA;
+- task branch;
+- current scale/resource requirements and any explicit thresholds already defined by product authority;
+- exact scale scenario/test/evidence paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline;
+- machine/environment facts needed to interpret host-side measurements.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+Binding may not invent new performance SLAs.
 
-## 4. Implementation Contract
+## 4. Required Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.1 Correctness first
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+Scale cases must still assert content integrity, identity, state, and safety outcomes. A fast run with wrong synchronization semantics is failure.
 
-## 5. Verification and Acceptance
+### 4.2 Bounded measurement
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+Record only measurements that can be gathered deterministically/reproducibly enough for construction evidence, such as elapsed host time, peak/approximate memory where available, operation counts, and relevant file/vault sizes.
 
-Then stop at:
+### 4.3 Threshold authority
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+If the product target defines a hard threshold, enforce it.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+If no hard threshold exists, record the measurement without inventing a pass/fail SLA. Functional completion and absence of pathological/unbounded behavior may still be required where specified.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.4 No benchmark framework
 
-Do not create a child-specific PowerShell verifier.
+Do not create generalized benchmarking infrastructure, historical performance databases, dashboards, or statistical harnesses merely for this child.
 
-## 6. Handoff
+### 4.5 Physical-resource boundary
 
-Report:
+Host deterministic scale cannot prove actual iOS constrained-resource behavior. Representative physical mobile evidence remains S09D.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+## 5. Invariants
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+- Scenario/core architecture stays frozen.
+- Measurements do not redefine product requirements.
+- Correctness assertions remain mandatory.
+- No wall-clock sleeps are used as semantic control.
+- No production source changes for test instrumentation unless separately authorized by existing product diagnostics contracts.
+
+## 6. Material Edge / Failure Cases
+
+Required proof includes representative:
+
+- large file content remains intact;
+- larger file-count/vault scenario completes with correct state;
+- bounded measurements are emitted;
+- explicit existing product thresholds, if any, are enforced;
+- missing measurement capability is reported honestly rather than fabricated;
+- scale run does not require a new runner/benchmark subsystem.
+
+## 7. Engineering Discretion
+
+The agent may choose representative sizes/counts that satisfy current target requirements and remain practical for PHX-CI, plus simple host measurement APIs available in the existing toolchain.
+
+## 8. Dependencies
+
+Consumes frozen S04/S05 platform and deterministic coverage patterns from S06/S07A–E.
+
+## 9. Acceptance Criteria
+
+Required scale cases execute correctly, measurements are captured with environment context, no invented SLA is introduced, architecture remains unchanged, metrics/budgets pass, and authoritative PHX-CI passes.
+
+## 10. Non-Goals
+
+Do not:
+
+- build a performance benchmark product;
+- claim mobile physical-resource proof;
+- add new platform abstractions;
+- optimize production code merely because a measurement is aesthetically undesirable unless an actual requirement fails.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, scale cases/sizes, correctness results, measurements/environment, explicit threshold results if applicable, architecture delta, unavailable checks, and no core/out-of-allowlist changes.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 07V or S08.
