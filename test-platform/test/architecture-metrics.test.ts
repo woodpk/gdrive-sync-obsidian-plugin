@@ -328,3 +328,197 @@ test("metric source stays within the frozen PowerShell budget headroom", () => {
     .filter((line) => line.trim().length > 0 && !line.trimStart().startsWith("#")).length;
   strictEqual(logical <= 389, true, `metrics script uses ${logical} simple logical lines; S03C headroom is 389`);
 });
+
+test("semantic production dependency measurement covers accepted forms, multiline syntax, and TS-family/index resolution", () => {
+  withFixture((root) => {
+    const production = [
+      "static.ts",
+      "type-only.tsx",
+      "reexport.mts",
+      "retype.cts",
+      "required.ts",
+      "dynamic/index.ts",
+      "nested/index.mts",
+      "js-mapped.ts",
+    ];
+    for (const relativePath of production) {
+      writeText(root, "src/" + relativePath, "export type T = string; export const x = 1;\n");
+    }
+    writeText(root, "src/fake.ts", "export const x = 1;\n");
+    writeText(root, "src/shadowed.ts", "export const x = 1;\n");
+    writeText(
+      root,
+      "test-platform/src/platform-root.ts",
+      [
+        "import {",
+        "  x as staticValue,",
+        '} from "../../src/static";',
+        "import type {",
+        "  T as ProductionType,",
+        '} from "../../src/type-only";',
+        "export {",
+        "  x as reexported,",
+        '} from "../../src/reexport";',
+        "export type {",
+        "  T as Retyped,",
+        '} from "../../src/retype";',
+        'const required = require("../../src/required");',
+        "async function loadDynamic() { return import(",
+        '  "../../src/dynamic"',
+        "); }",
+        'async function nested() { return "prefix " + String(await import("../../src/nested")) + " suffix"; }',
+        'void import("../../src/js-mapped.js");',
+        'const ordinaryString = "import(\\\"../../src/fake\\\")";',
+        'const regex = /require\\(\"..\\/..\\/src\\/fake\"\\)/;',
+        'const templateText = "require(\\\"../../src/fake\\\")";',
+        'function local(require: (name: string) => unknown) { return require("../../src/shadowed"); }',
+        "void staticValue; void required; void loadDynamic; void nested; void ordinaryString; void regex; void templateText; void local;",
+        "type Local = ProductionType; void (0 as unknown as Local);",
+        "",
+      ].join("\n"),
+    );
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.productionModulesImportedCount, 8);
+    strictEqual(
+      value.current.productionModulesImported.join("\n"),
+      [
+        "src/dynamic/index.ts",
+        "src/js-mapped.ts",
+        "src/nested/index.mts",
+        "src/required.ts",
+        "src/reexport.mts",
+        "src/retype.cts",
+        "src/static.ts",
+        "src/type-only.tsx",
+      ].join("\n"),
+    );
+  });
+});
+
+test("equivalent multiline dependency formatting preserves the measured dependency footprint", () => {
+  withFixture((root) => {
+    writeText(root, "src/dependency.ts", "export const x = 1;\n");
+    writeText(root, "test-platform/src/platform-root.ts", 'import { x } from "../../src/dependency";\nvoid x;\n');
+    const compact = assertPass(runMetrics(root));
+    writeText(
+      root,
+      "test-platform/src/platform-root.ts",
+      ["import {", "  x", "} from", '  "../../src/dependency";', "void x;", ""].join("\n"),
+    );
+    const multiline = assertPass(runMetrics(root));
+    strictEqual(multiline.current.productionModulesImportedCount, compact.current.productionModulesImportedCount);
+    strictEqual(multiline.current.productionModulesImported.join("\n"), compact.current.productionModulesImported.join("\n"));
+  });
+});
+
+test("declarative fixture data is excluded while executable TypeScript beneath fixtures counts as framework core", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/fixtures/data.json", "{\n  \"note\": \"declarative fixture data\"\n}\n");
+    writeText(root, "test-platform/fixtures/helper.ts", lines(3999));
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.frameworkCoreLogicalTsLoc, 4000);
+    writeText(root, "test-platform/fixtures/helper.ts", lines(4000));
+    assertBudgetFailure(runMetrics(root), "FRAMEWORK_CORE_LOC");
+  });
+});
+
+test("neutral-named BVP PowerShell cannot evade the script-count budget", () => {
+  withFixture((root) => {
+    for (let index = 0; index < 5; index += 1) {
+      writeText(root, "dev/scripts/Governance" + index + ".ps1", 'Write-Output "test-platform governance"\n');
+    }
+    assertBudgetFailure(runMetrics(root), "BVP_POWERSHELL_SCRIPT_COUNT");
+  });
+});
+
+test("unclassifiable dev PowerShell fails closed while the established non-BVP S07 verifier remains excluded", () => {
+  withFixture((root) => {
+    writeText(root, "dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1", "Write-Output 'legacy consumer verification'\n");
+    const allowed = assertPass(runMetrics(root));
+    strictEqual(allowed.current.bvpPowerShellScriptCount, 0);
+    writeText(root, "dev/scripts/Unclassified.ps1", "Write-Output 'unknown purpose'\n");
+    const result = runMetrics(root);
+    notStrictEqual(result.status, 0, result.output);
+    match(result.value?.current?.classificationErrors?.join("\n") ?? "", /Unclassifiable active dev\/scripts PowerShell/);
+  });
+});
+
+test("scenario-specific PowerShell with a neutral filename cannot evade the zero-script budget", () => {
+  withFixture((root) => {
+    writeText(root, "dev/scripts/GovernanceCheck.ps1", "$scenarioId = 'C01'\nWrite-Output \"test-platform $scenarioId\"\n");
+    assertBudgetFailure(runMetrics(root), "SCENARIO_SPECIFIC_POWERSHELL");
+  });
+});
+
+test("unsupported governance schema fails closed", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest().replace("schema_version: 2", "schema_version: 3"),
+    );
+    const result = runMetrics(root);
+    notStrictEqual(result.status, 0, result.output);
+    match(result.value?.error ?? "", /unsupported schema_version/);
+  });
+});
+
+test("non-authoritative governance status fails closed", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest().replace(
+        "status: authoritative_frozen_after_bvp_s01_persistence",
+        "status: draft",
+      ),
+    );
+    const result = runMetrics(root);
+    notStrictEqual(result.status, 0, result.output);
+    match(result.value?.error ?? "", /is not authoritative/);
+  });
+});
+
+test("production seam classification recognizes TS-family extension and index forms", () => {
+  withFixture(
+    (root) => {
+      writeText(root, "src/seam.tsx", "export const seam = 1;\n");
+      writeText(root, "src/other/index.mts", "export const seam = 2;\n");
+      const value = assertPass(runMetrics(root));
+      strictEqual(value.current.productionSeamFileCount, 2);
+    },
+    ["src/seam.tsx", "src/other/index.mts"],
+  );
+});
+
+test("base/current dependency deltas use identical semantic classification", () => {
+  withFixture((root) => {
+    runGit(root, ["init"]);
+    runGit(root, ["config", "user.email", "bvp@example.invalid"]);
+    runGit(root, ["config", "user.name", "BVP Fixture"]);
+    runGit(root, ["add", "."]);
+    runGit(root, ["commit", "-m", "baseline"]);
+    const base = runGit(root, ["rev-parse", "HEAD"]);
+    writeText(root, "src/main.ts", "export const productionValue = 1;\nexport const added = 2;\n");
+    writeText(root, "test-platform/src/platform-root.ts", 'import {\n  added\n} from "../../src/main";\nvoid added;\n');
+    const statusBefore = runGit(root, ["status", "--porcelain=v1"]);
+    const value = assertPass(runMetrics(root, ["-BaseSha", base]));
+    strictEqual(value.delta.productionModulesImportedCount.base, 0);
+    strictEqual(value.delta.productionModulesImportedCount.current, 1);
+    strictEqual(value.delta.productionModulesImportedCount.delta, 1);
+    strictEqual(runGit(root, ["status", "--porcelain=v1"]), statusBefore);
+  });
+});
+
+test("repeated architecture metrics output is deterministic", () => {
+  withFixture((root) => {
+    writeText(root, "dev/scripts/Zeta.ps1", "Write-Output 'test-platform zeta'\n");
+    writeText(root, "dev/scripts/Alpha.ps1", "Write-Output 'test-platform alpha'\n");
+    const first = runMetrics(root);
+    const second = runMetrics(root);
+    assertPass(first);
+    assertPass(second);
+    strictEqual(second.output, first.output);
+  });
+});
+
