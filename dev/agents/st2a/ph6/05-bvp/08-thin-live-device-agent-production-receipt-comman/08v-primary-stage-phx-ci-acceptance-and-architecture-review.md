@@ -1,48 +1,92 @@
-# 08V — Primary-stage PHX-CI acceptance and architecture review
+# BVP-S08V — Primary-Stage PHX-CI Acceptance and Architecture Review
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport
 
-> Do not execute until all implementation children in this primary stage have individually passed PHX-CI, been supervisor-reviewed, and been integrated.
+This is a complete prewritten verification contract. It has no implementation-repair authority.
 
 ## 1. Objective
 
-Verify integrated S08, budgets, seam, transport, and bundle separation before physical coverage.
+Independently verify the integrated live-validation architecture, budgets, production seam, transport, Windows canary, and shipping-bundle separation before strategic Windows/iOS physical coverage begins.
 
-Required end state:
+## 2. Required Integrated End State
 
-> PHX-CI complete; architecture review approves physical stage or blocks.
+S08 may close only if:
 
-## 2. Dispatch Binding Required
+- the production terminal run-receipt seam is minimal, authoritative, enumerated, and within budget;
+- separate validation-only Obsidian build/entrypoint exists;
+- bounded device command agent implements run/device/sequence safety;
+- no device-local scenario engine exists;
+- selected command transport/optional Windows relay requires no hosted backend/new OAuth scope/token export;
+- external live executor owns scenario sequence/verdict;
+- human checkpoints are explicit and resumable;
+- desktop live canary proves real production-path execution;
+- ordinary production artifact excludes validation-only agent/transport/scenario/fault code;
+- all architecture budgets pass.
 
-The supervisor must bind:
+## 3. Dispatch Binding — Hard Data Only
 
-- exact current `phase6-integration` SHA containing only accepted children;
-- exact stage completion criteria from current target/decomposition;
+Before execution the supervisor binds:
+
+- exact integrated `phase6-integration` SHA containing accepted S08 children;
+- stage verification base;
 - current PHX-CI pin/runtime;
-- current architecture metrics baseline/delta where applicable;
-- any stage-specific repository searches or physical evidence inputs.
+- accepted S08 child implementation/evidence SHAs;
+- exact production seam enumeration;
+- exact production/validation artifact identities;
+- Windows live-canary evidence/run identity;
+- S07 architecture baseline and current metrics.
 
-This verification task has **no production-code repair authority**.
+## 4. Verification Procedure
 
-## 3. Verification Procedure
+Independently:
 
-1. independently inspect the integrated changed paths and accepted child evidence;
-2. run authoritative deployed-runtime PHX-CI against `phase6-integration` with publication mode `push`;
-3. review fresh `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/`;
-4. from S03 onward, independently confirm architecture guard and metrics passed;
-5. check the primary-stage end state against the governing BVP specification/decomposition;
-6. perform the recurring architecture review whenever required by DEC-324.
+1. inspect all S08 production/test-platform/build/transport changes;
+2. verify production seam semantics and ≤350 LOC / ≤4 production files;
+3. verify live-agent/relay subset ≤750 logical TypeScript LOC;
+4. verify validation build is distinct from ordinary production build;
+5. verify production artifact exclusion;
+6. inspect command protocol for run/device/sequence duplicate/staleness safety;
+7. verify transport has no new OAuth scope/backend/token export;
+8. verify external runner—not devices—owns scenario state/verdict;
+9. inspect human checkpoint semantics for explicit action/resume evidence;
+10. review desktop canary physical evidence bound to exact build/device/run;
+11. run authoritative integrated PHX-CI and inspect canonical evidence;
+12. perform the required architecture review before S09.
 
-If verification exposes a defect, do not repair it in this task. Return a bounded corrective work order to the responsible implementation surface.
+## 5. Stage-Specific Acceptance Criteria
 
-## 4. Completion
+S08 passes only when:
 
-Only after PHX-CI and independent review pass may the supervisor mark BVP-S08 accepted and bind the first child of the next primary stage.
+- PHX-CI overall PASS / compatibility COMPLETE / canonical evidence published;
+- production seam budget passes;
+- live-agent/relay budget passes;
+- core total budget passes;
+- shipping-exclusion guard passes;
+- desktop live canary demonstrates actual production path;
+- stale/duplicate/mismatch safety is demonstrated;
+- no scenario engine/distributed workflow system appears on device;
+- no additional OAuth scope/token export/hosted backend appears;
+- architecture review authorizes S09 physical coverage.
 
-Do not begin the next stage in this task.
+## 6. Failure / Correction Semantics
+
+A failed physical canary is not repaired by weakening assertions or substituting deterministic evidence.
+
+Architecture drift blocks S09 even if the canary is green.
+
+Corrective work is routed to the causal S08 child; this verification task performs no implementation repair.
+
+## 7. Non-Goals
+
+Do not begin S09 physical coverage or Stage 3.
+
+## 8. Completion / Stop
+
+Only after all criteria pass may the supervisor mark BVP-S08 accepted and bind S09A physical execution facts.
+
+Stop after S08 acceptance.

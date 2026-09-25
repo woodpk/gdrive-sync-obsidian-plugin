@@ -1,76 +1,144 @@
-# 08E — External live executor and human checkpoints
+# BVP-S08E — External Live Executor and Human Checkpoints
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`
+**Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor child:** 08D
+**Predecessor:** accepted S08D
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Connect external runner live executor to bounded device commands and checkpoint/resume handling.
+Extend the external BVP runner with a live executor that maps the same declarative capability concepts to bounded device commands/results and uses explicit external checkpoints for OS/provider actions that cannot safely be automated.
 
-Required end state:
+Scenario authority remains external.
 
-> Scenario authority stays external; unavailable OS/provider actions become explicit checkpoints.
+## 2. Required End State
 
-## 2. Dispatch Binding
+The external runner can:
 
-Before execution the supervisor MUST replace this section with:
+- select live execution for scenarios/steps marked live-capable/required;
+- translate supported generic scenario capabilities into S08C commands;
+- send/receive through S08D transport;
+- validate run/device/sequence/result correlation;
+- use S08A production receipt for terminal production-run assertions;
+- pause at explicit human checkpoints;
+- persist only bounded S05D checkpoint state;
+- resume after required human/device evidence is supplied;
+- fail/block when a required device/result/action is unavailable.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+## 3. Dispatch Binding — Hard Data Only
 
-The worker may not perform this binding.
+Before execution the supervisor binds:
 
-## 3. Fixed Boundaries
+- exact accepted S08D predecessor SHA;
+- task branch;
+- actual S05 runner/executor abstraction;
+- accepted S08 command/transport contracts;
+- exact live-capable scenario capabilities needed for S09;
+- exact live-executor/checkpoint/test paths and writable allowlist;
+- PHX-CI base/pin/runtime;
+- focused command if established;
+- architecture metrics baseline.
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+Binding may map existing generic capabilities to commands; it may not create a second scenario vocabulary unnecessarily.
 
-## 4. Implementation Contract
+## 4. Required Semantics
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+### 4.1 Same scenario authority
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+The external runner remains the only owner of scenario step order and final verdict.
 
-## 5. Verification and Acceptance
+The device sees one command at a time.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+### 4.2 Live capability mapping
 
-Then stop at:
+Where a declarative scenario capability has deterministic and live implementations, both represent the same semantic intent even if mechanics differ.
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Unsupported live capability fails/blocks; it is not silently skipped.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+### 4.3 Production result authority
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+Synchronization assertions use the production run receipt plus objective observations. Transport acknowledgement alone is not synchronization success.
 
-Do not create a child-specific PowerShell verifier.
+### 4.4 Human checkpoints
 
-## 6. Handoff
+For actual OS/provider actions that cannot or should not be automated—such as user-mediated auth, iOS termination/suspension, network toggles, uninstall/reinstall, authorization revocation—the runner checkpoint must state:
 
-Report:
+- exact operator action required;
+- target device;
+- run/scenario identity;
+- stop condition before action;
+- evidence/observation required to resume;
+- next safe command/observation after resume.
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+A checkpoint is explicit test state, not a vague instruction to “continue later.”
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+### 4.5 Mobile lifecycle reality
+
+Do not assume true iOS background execution. Live sequencing must tolerate foreground-only operation, suspension, termination, and later resume.
+
+### 4.6 Fail closed
+
+Missing result, stale/mismatched result, unavailable device, unsupported action, or missing checkpoint evidence yields FAIL/BLOCKED rather than PASS.
+
+## 5. Invariants
+
+- No device-local scenario engine.
+- No distributed workflow state machine.
+- Checkpoints remain bounded/non-secret.
+- Transport remains test metadata, not product authority.
+- Production synchronization path is invoked for all synchronization claims.
+- Human checkpoints are allowed where physical reality requires them.
+
+## 6. Material Edge / Failure Cases
+
+Tests must cover:
+
+- deterministic mapping from scenario capability to live command;
+- correct result correlation;
+- stale/wrong-device result rejected;
+- missing result blocks;
+- production failure/ambiguity propagates;
+- checkpoint serialization/resume;
+- checkpoint run/scenario mismatch rejected;
+- unavailable human-required action produces explicit wait/block state;
+- executor does not continue past a required checkpoint without evidence;
+- iOS suspension/termination does not require background runner state on device.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- live executor interface shape;
+- command mapping helpers;
+- exact checkpoint rendering;
+- local controller persistence using accepted S05D representation.
+
+Do not create a second runner, workflow engine, or live-only scenario language.
+
+## 8. Dependencies
+
+Consumes S05 runner/checkpoints/evidence and S08A–D live contracts.
+
+S08F validates the complete desktop path before broader S09 physical coverage.
+
+## 9. Acceptance Criteria
+
+Acceptance requires external scenario authority, correct live command mapping/correlation, explicit human checkpoint semantics, no mobile-background assumption, fail-closed unavailable/missing evidence, architecture budgets PASS, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not execute broad physical S09 coverage here; do not automate unsafe/impossible OS actions merely to remove human checkpoints.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, live capability mappings, checkpoint semantics/tests, architecture delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 08F.
