@@ -633,10 +633,8 @@ test("scenario-specific BVP PowerShell cannot evade the zero budget without scen
       root,
       "dev/scripts/NeutralControl.ps1",
       [
-        "function Invoke-C01ScenarioControl {",
-        "    Write-Output 'test-platform C01 control'",
-        "}",
-        "Invoke-C01ScenarioControl",
+        "$target = 'C01'",
+        "Write-Output \"test-platform $target control\"",
         "",
       ].join("\n"),
     );
