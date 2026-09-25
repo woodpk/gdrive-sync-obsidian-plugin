@@ -143,6 +143,15 @@ The exact serialization may be human-readable, machine-readable, or both, provid
 
 Malformed/missing required governance data fails closed.
 
+## Invariants
+
+- Metric definitions and hard budget values come from BVP authority, not from the current implementation's convenience.
+- The same classification/counting semantics apply to baseline and delta measurement.
+- Unknown/unclassifiable active BVP code cannot be hidden in a permissive category.
+- Archive/generated/dependency content cannot inflate or mask active source metrics.
+- A hard-budget failure blocks acceptance even when functional tests pass.
+- The metrics evaluator is read-only and cannot change repository state to obtain a measurement.
+
 ## 10. Material Edge / Failure Cases
 
 Tests must cover at least:
