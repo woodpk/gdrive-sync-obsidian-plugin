@@ -289,10 +289,9 @@ test("architecture guard ignores import-looking text in plain template text", ()
 });
 
 test("architecture guard ignores require and import text inside regex literals", () => {
-  withFixture((root) => {
-    writeText(
-      root,
-      "test-platform/test/import-looking-regex.test.ts",
+  const cases = [
+    [
+      "assigned after equals",
       [
         'const requireText = /require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/g;',
         'const importText = /import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/g;',
@@ -300,9 +299,101 @@ test("architecture guard ignores require and import text inside regex literals",
         'void importText;',
         '',
       ].join("\n"),
+    ],
+    [
+      "direct if statement body",
+      [
+        'if (condition) /require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        'if (condition) /import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        '',
+      ].join("\n"),
+    ],
+    [
+      "new statement after completed block",
+      [
+        'if (condition) {',
+        '  void text;',
+        '}',
+        '/require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        '/import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        '',
+      ].join("\n"),
+    ],
+  ] as const;
+
+  for (const [name, source] of cases) {
+    withFixture((root) => {
+      writeText(
+        root,
+        `test-platform/test/regex-${name.replace(/\\s+/g, "-")}.test.ts`,
+        source,
+      );
+      const result = runGuard(root);
+      try {
+        assertPass(result);
+      } catch (error) {
+        throw new Error(`${name}: ${String(error)}\n${result.output}`);
+      }
+    });
+  }
+});
+
+test("architecture guard preserves ordinary division expressions", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/division.test.ts",
+      [
+        'const ratio = total / count;',
+        'const adjusted = (ratio + 1) / 2;',
+        'const chained = total / count / scale;',
+        'void adjusted;',
+        'void chained;',
+        '',
+      ].join("\n"),
     );
     assertPass(runGuard(root));
   });
+});
+
+test("architecture guard detects actual module calls adjacent to division", () => {
+  const cases = [
+    [
+      "require after division operator",
+      'const value = total / require("../../src/main");\nvoid value;\n',
+    ],
+    [
+      "dynamic import after division operator",
+      'const value = total / import("../../src/main");\nvoid value;\n',
+    ],
+    [
+      "actual require after completed division expression",
+      'const ratio = total / count;\nconst value = require("../../src/main");\nvoid ratio;\nvoid value;\n',
+    ],
+    [
+      "actual dynamic import after completed division expression",
+      'const ratio = total / count;\nvoid import("../../src/main");\nvoid ratio;\n',
+    ],
+  ] as const;
+
+  for (const [name, source] of cases) {
+    withFixture((root) => {
+      writeText(
+        root,
+        `test-platform/test/division-${name.replace(/\\s+/g, "-")}.test.ts`,
+        source,
+      );
+      const result = runGuard(root);
+      try {
+        assertFailsWithRule(
+          result,
+          "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+        );
+      } catch (error) {
+        throw new Error(`${name}: ${String(error)}\n${result.output}`);
+      }
+    });
+  }
 });
 
 test("architecture guard ignores import-looking text inside comments", () => {

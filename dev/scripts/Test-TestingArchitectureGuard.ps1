@@ -79,37 +79,38 @@ function Test-JavaScriptIdentifierPart {
     return [char]::IsLetterOrDigit($Character) -or $Character -eq '_' -or $Character -eq '$'
 }
 
-function Test-JavaScriptRegexCanStart {
-    param($PreviousToken)
+function Test-JavaScriptKeywordAllowsRegexAfter {
+    param([Parameter(Mandatory = $true)][string]$Keyword)
 
-    if ($null -eq $PreviousToken) {
-        return $true
-    }
+    return $Keyword -in @(
+        'await',
+        'case',
+        'delete',
+        'do',
+        'else',
+        'in',
+        'instanceof',
+        'new',
+        'of',
+        'return',
+        'throw',
+        'typeof',
+        'void',
+        'yield'
+    )
+}
 
-    if ($PreviousToken.Kind -eq 'identifier') {
-        return $PreviousToken.Value -in @(
-            'await',
-            'case',
-            'delete',
-            'do',
-            'else',
-            'in',
-            'instanceof',
-            'new',
-            'of',
-            'return',
-            'throw',
-            'typeof',
-            'void',
-            'yield'
-        )
-    }
+function Test-JavaScriptControlHeaderKeyword {
+    param([Parameter(Mandatory = $true)][string]$Keyword)
 
-    if ($PreviousToken.Kind -eq 'punctuation') {
-        return $PreviousToken.Value -notin @(')', ']', '}', '.')
-    }
-
-    return $false
+    return $Keyword -in @(
+        'catch',
+        'for',
+        'if',
+        'switch',
+        'while',
+        'with'
+    )
 }
 
 function Skip-JavaScriptRegexLiteral {
@@ -196,7 +197,11 @@ function Read-JavaScriptTokens {
     )
 
     $braceDepth = 0
+    $braceContexts = [System.Collections.Generic.Stack[string]]::new()
+    $parenContexts = [System.Collections.Generic.Stack[string]]::new()
     $previousToken = $null
+    $regexCanStart = $true
+    $statementBodyExpected = $false
 
     while ($Index.Value -lt $Content.Length) {
         $character = $Content[$Index.Value]
@@ -206,21 +211,9 @@ function Read-JavaScriptTokens {
             continue
         }
 
-        if ($StopAtTemplateExpressionEnd -and $character -eq [char]125) {
-            if ($braceDepth -eq 0) {
-                $Index.Value = $Index.Value + 1
-                return
-            }
-
-            $token = [pscustomobject]@{
-                Kind = 'punctuation'
-                Value = '}'
-            }
-            $Tokens.Add($token) | Out-Null
-            $previousToken = $token
-            $braceDepth--
+        if ($StopAtTemplateExpressionEnd -and $character -eq [char]125 -and $braceDepth -eq 0) {
             $Index.Value = $Index.Value + 1
-            continue
+            return
         }
 
         if ($character -eq [char]47 -and ($Index.Value + 1) -lt $Content.Length) {
@@ -246,7 +239,7 @@ function Read-JavaScriptTokens {
                 continue
             }
 
-            if (Test-JavaScriptRegexCanStart $previousToken) {
+            if ($regexCanStart) {
                 Skip-JavaScriptRegexLiteral -Content $Content -Index $Index
                 $token = [pscustomobject]@{
                     Kind = 'value'
@@ -254,8 +247,21 @@ function Read-JavaScriptTokens {
                 }
                 $Tokens.Add($token) | Out-Null
                 $previousToken = $token
+                $regexCanStart = $false
+                $statementBodyExpected = $false
                 continue
             }
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '/'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $true
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 1
+            continue
         }
 
         if ($character -eq [char]39 -or $character -eq [char]34) {
@@ -289,6 +295,8 @@ function Read-JavaScriptTokens {
             }
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
+            $regexCanStart = $false
+            $statementBodyExpected = $false
             continue
         }
 
@@ -300,6 +308,8 @@ function Read-JavaScriptTokens {
             }
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
+            $regexCanStart = $false
+            $statementBodyExpected = $false
             continue
         }
 
@@ -310,12 +320,15 @@ function Read-JavaScriptTokens {
                 $Index.Value = $Index.Value + 1
             }
 
+            $identifier = $Content.Substring($start, $Index.Value - $start)
             $token = [pscustomobject]@{
                 Kind = 'identifier'
-                Value = $Content.Substring($start, $Index.Value - $start)
+                Value = $identifier
             }
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
+            $regexCanStart = Test-JavaScriptKeywordAllowsRegexAfter $identifier
+            $statementBodyExpected = $identifier -in @('do', 'else')
             continue
         }
 
@@ -331,6 +344,142 @@ function Read-JavaScriptTokens {
             }
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
+            $regexCanStart = $false
+            $statementBodyExpected = $false
+            continue
+        }
+
+        if ($character -eq [char]40) {
+            $parenKind = 'expression'
+            if ($null -ne $previousToken -and
+                $previousToken.Kind -eq 'identifier' -and
+                (Test-JavaScriptControlHeaderKeyword $previousToken.Value)) {
+                $parenKind = 'statement-header'
+            }
+            $parenContexts.Push($parenKind)
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '('
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $true
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]41) {
+            $parenKind = 'expression'
+            if ($parenContexts.Count -gt 0) {
+                $parenKind = $parenContexts.Pop()
+            }
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = ')'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+
+            if ($parenKind -eq 'statement-header') {
+                $regexCanStart = $true
+                $statementBodyExpected = $true
+            }
+            else {
+                $regexCanStart = $false
+                $statementBodyExpected = $false
+            }
+
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]123) {
+            $braceKind = 'expression'
+            if ($statementBodyExpected -or
+                $null -eq $previousToken -or
+                ($previousToken.Kind -eq 'punctuation' -and $previousToken.Value -in @(')', '}', ';')) -or
+                ($previousToken.Kind -eq 'identifier' -and $previousToken.Value -in @('else', 'do', 'try', 'finally'))) {
+                $braceKind = 'block'
+            }
+            $braceContexts.Push($braceKind)
+            $braceDepth++
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '{'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $true
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]125) {
+            $braceKind = 'expression'
+            if ($braceContexts.Count -gt 0) {
+                $braceKind = $braceContexts.Pop()
+            }
+            if ($braceDepth -gt 0) {
+                $braceDepth--
+            }
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '}'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $braceKind -eq 'block'
+            $statementBodyExpected = $braceKind -eq 'block'
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]91) {
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '['
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $true
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]93) {
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = ']'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = $false
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if (($character -eq [char]43 -or $character -eq [char]45) -and
+            ($Index.Value + 1) -lt $Content.Length -and
+            $Content[$Index.Value + 1] -eq $character) {
+            $wasExpressionComplete = -not $regexCanStart
+            $operator = ([string]$character) + ([string]$character)
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = $operator
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $regexCanStart = -not $wasExpressionComplete
+            $statementBodyExpected = $false
+            $Index.Value = $Index.Value + 2
             continue
         }
 
@@ -341,9 +490,17 @@ function Read-JavaScriptTokens {
         }
         $Tokens.Add($token) | Out-Null
         $previousToken = $token
+        $statementBodyExpected = $false
 
-        if ($character -eq [char]123) {
-            $braceDepth++
+        if ($punctuation -eq '.' -or $punctuation -eq '?') {
+            $regexCanStart = $punctuation -eq '?'
+        }
+        elseif ($punctuation -eq ';' -or $punctuation -eq ',' -or $punctuation -eq ':' -or
+                $punctuation -in @('=', '+', '-', '*', '%', '&', '|', '^', '!', '~', '<', '>')) {
+            $regexCanStart = $true
+        }
+        else {
+            $regexCanStart = $true
         }
 
         $Index.Value = $Index.Value + 1
