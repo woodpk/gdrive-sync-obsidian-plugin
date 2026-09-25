@@ -1,76 +1,143 @@
-# 04B — Stateful in-memory Drive core
+# BVP-S04B — Stateful In-Memory Drive Core
 
 ## 0. Status
 
-
-**Agent name:** `agt-brain-bvp-s04-virtual-world-01`
+**Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
 **Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
-**Predecessor child:** 04A
+**Predecessor:** accepted S04A
 
-> **DO NOT EXECUTE THIS FILE AS-IS.** The supervisor must perform the dispatch binding in §2 against the actual accepted repository and change the maturity to EXECUTABLE.
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
 ## 1. Objective
 
-Implement managed Drive identity/content/revision/create/update/move/trash/download/listing behavior.
+Implement the stateful in-memory managed-Google-Drive boundary required for deterministic production-path synchronization tests.
 
-Required end state:
+The simulation models remote external reality. It MUST NOT implement reconciliation or synchronization policy.
 
-> Stable remote IDs/revisions and core mutation/read semantics proven.
+## 2. Required End State
 
-## 2. Dispatch Binding
+The Drive model must support the production-observable remote behaviors required by BVP-SIM-005:
 
-Before execution the supervisor MUST replace this section with:
+- stable managed remote object IDs;
+- create/upload;
+- update/content replacement;
+- download/read;
+- revision/content identity as required by production contracts;
+- move/rename while retaining stable remote identity;
+- trash/existence state;
+- listing of managed remote objects;
+- parent/path metadata required by production code;
+- deterministic state retention across multiple operations.
 
-- exact accepted predecessor SHA;
-- exact task branch name;
-- exact current relevant files/types/interfaces/tests;
-- exact writable-path allowlist;
-- exact frozen retain/delete classifications;
-- PHX-CI base authority and any existing focused-test command;
-- confirmation that the child still satisfies DEC-325's size gate.
+Change-feed, completeness controls, ambiguity, and fault injection beyond core mutation/read behavior belong to 04C.
 
-The worker may not perform this binding.
+## 3. Dispatch Binding — Hard Data Only
 
-## 3. Fixed Boundaries
+Before execution the supervisor binds:
 
-- Read and obey `../00-execution-contract.md` via the repository-relative shared contract `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md`.
-- No GitHub Actions.
-- No architecture/budget weakening.
-- No use of `dev/archive/**` as design authority.
-- No worker expansion of writable scope.
-- No speculative future-stage implementation.
-- If an unlisted edit appears necessary: BLOCKED, report, stop.
+- exact accepted S04A predecessor SHA;
+- exact task branch;
+- exact current production Drive port/interface(s) and relevant remote records;
+- exact current reusable test helpers/adapters;
+- exact implementation/test paths and writable allowlist;
+- exact PHX-CI base/pin/runtime;
+- focused test command if established;
+- size-gate confirmation.
 
-## 4. Implementation Contract
+No binding may redefine remote identity or production-port semantics.
 
-Implement only the capability described in §1 and the exact repository-grounded scope supplied in §2.
+## 4. Required Behavior and Semantics
 
-Ordinary private implementation mechanics are discretionary **only inside the dispatch-bound writable paths and frozen contracts**. This discretion never includes adding another runner/router/state machine/persistence/evidence/transport architecture or changing production synchronization semantics.
+### 4.1 Production-port fidelity
 
-## 5. Verification and Acceptance
+The model must implement the same production Drive boundary consumed by real synchronization logic.
 
-Before handoff, run relevant repository-native focused tests available in the execution environment and push the task branch.
+It cannot expose a BVP-only higher-level “sync” API that shortcuts production planner/executor decisions.
 
-Then stop at:
+### 4.2 Stable remote identity
 
-`READY FOR LOCAL PHX-CI VERIFICATION`
+Once created, a managed remote object's ID remains stable across content updates and moves/renames unless the actual production/provider contract says otherwise.
 
-The task is not accepted until the installed PHX-CI deployed-runtime operator path verifies the remote task branch with publication mode `push`, canonical evidence is present, and the supervisor independently reviews it.
+A move must not be modeled as an unrelated object replacement when product semantics depend on stable identity.
 
-From accepted BVP-S03 onward, PHX-CI repository checks must include BVP architecture guard and metrics.
+### 4.3 Revision / content identity
 
-Do not create a child-specific PowerShell verifier.
+Remote revision/content identity must evolve deterministically in response to content mutation and remain stable when no relevant mutation occurs.
 
-## 6. Handoff
+The exact representation may match the production contract's revision/etag/hash model.
 
-Report:
+### 4.4 Trash/existence
 
-- exact input SHA;
-- task branch and implementation SHA;
-- exact changed paths;
-- tests run by the worker;
-- any blocker/deviation;
-- explicit statement that no out-of-allowlist path was edited.
+Trash and existence state must be independently observable as required by production logic. A trashed object must not silently become a brand-new unrelated object if later restored/observed unless the production contract dictates that.
 
-Do not merge/promote. Stop for PHX-CI and supervisor review.
+### 4.5 Listing
+
+Listing returns the modeled remote reality faithfully. Ordinary core listing is complete in this child; explicit incomplete/partial listing behavior belongs to 04C.
+
+## 5. Invariants
+
+- Remote simulation never chooses local-vs-remote authority.
+- No conflict/merge decision occurs in Drive simulation.
+- Stable IDs/revisions are deterministic.
+- State persists until explicitly mutated or later world reconstruction rules say otherwise.
+- No live Google Drive API or credential is used.
+- No new OAuth scope or token handling is introduced.
+
+## 6. Material Edge / Failure Cases
+
+Tests must cover at least:
+
+- create then fetch/download;
+- update changes content/revision but preserves object ID;
+- move/rename preserves object ID;
+- trash changes observable state;
+- multiple objects with distinct IDs;
+- listing reflects current modeled state;
+- repeated read without mutation is stable;
+- invalid/missing ID produces the production-appropriate failure classification.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- internal object store;
+- ID/revision generators;
+- path/parent representation;
+- helper decomposition;
+- deterministic fixture builders.
+
+Do not infer future change-feed/fault architecture prematurely.
+
+## 8. Dependencies
+
+Requires accepted S04A and the production Drive boundary frozen by the product architecture.
+
+Later S04C extends this model; therefore keep core mutation/read semantics generic and separable from change-feed/fault controls.
+
+## 9. Acceptance Criteria
+
+Acceptance requires deterministic proof of stable remote identity, revision/content mutation semantics, move/trash/read/list behavior, production-port compatibility, no policy duplication, no live provider dependency, architecture-budget compliance, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- change cursors/feed;
+- partial listing;
+- ambiguous outcomes;
+- injected network/provider faults;
+- per-device state;
+- world orchestration;
+- scenario runner/DSL;
+- live-device transport.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, bound Drive port(s), changed paths, focused tests/results, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 04C.
