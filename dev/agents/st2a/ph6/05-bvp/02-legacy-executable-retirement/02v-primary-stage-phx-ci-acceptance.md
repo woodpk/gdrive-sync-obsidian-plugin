@@ -1,4 +1,4 @@
-# 02V — Primary-stage PHX-CI acceptance
+# BVP-S02V — Primary-Stage PHX-CI Acceptance
 
 ## 0. Status
 
@@ -12,106 +12,69 @@
 **Accepted PHX-CI evidence commit:** `798e4bfae8aaa167cf0462156a72da49b6440c1b`  
 **Accepted verification base:** `6da8794b947c51b6e5cc4a15a467215d2fe37831`
 
-Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
-
-Accepted children now integrated:
-
-- S02A accepted implementation: `cbc9b086432b9b521ab9246db4386f08b7533c55`
-- S02A PHX-CI evidence: `3a5c4577179fcd5e57e336c97c7632c54be639f5`
-- S02A accepted integration: `ff87c49752844f1e52d884bcf4af94dea01c6eff`
-- S02B accepted implementation: `64035ae6b36ef1b6372e3153a815dbe8be72668a`
-- S02B PHX-CI evidence: `9a04f3a20ef0448731b79d6f5f915a20107f37c1`
-- exact integrated S02 head to verify: `dd8f5f7d65598a2ec175627a6749316119b521c0`
+This file is a completed acceptance record and authorizes no further execution.
 
 ## 1. Objective
 
-Independently verify the integrated S02 result before S03.
+Independently verify the integrated S02 retirement result before any replacement-platform construction.
 
-Required end state:
+## 2. Required Integrated End State
 
-> Integrated `phase6-integration` passes authoritative PHX-CI; legacy validation harness runtime/UI/source/test surfaces are absent; no replacement BVP implementation has started; accepted S01 authority/archive state remains intact.
+S02 could close only if:
 
-## 2. Exact Gate
+- all S02A classified harness-only tests/support were absent;
+- `src/validation/**` and the H6C-only production diagnostic-correlation seam were absent;
+- the exact accepted production blob results were integrated;
+- no active legacy runtime/UI/control/orchestration identifiers remained in production;
+- no `test-platform/**` replacement implementation had started;
+- S01 authority/archive state remained intact;
+- the complete integrated repository passed authoritative PHX-CI.
 
-Before verification:
+## 3. Verification Semantics
 
-1. fetch/prune origin;
-2. verify `dd8f5f7d65598a2ec175627a6749316119b521c0` is an ancestor of current `origin/phase6-integration`;
-3. verify every path changed on `phase6-integration` after `dd8f5f7d65598a2ec175627a6749316119b521c0` is under `dev/**` only; if any later change touches `src/**`, `test/**`, package/build configuration, Taskfiles, `phx-ci.json`, or another executable/build surface, stop for supervisor rebind;
-4. treat `dd8f5f7d65598a2ec175627a6749316119b521c0` as the immutable S02 implementation-under-test SHA and the current later `phase6-integration` tip only as supervisor/tasking metadata;
-5. verify the target branch's `phx-ci.json` and use its exact installed deployed runtime;
-6. do not modify production/test/build/governance/tasking files in this verification task.
+This was an independent integrated-state gate, not a rerun of worker claims.
 
-This task has **no production-code repair authority**.
+Verification had to establish both:
 
-## 3. Stage-Specific Acceptance Checks
+1. **retirement completeness** — the superseded executable architecture and exact classified support surfaces were gone; and
+2. **preservation** — ordinary product behavior/build/test integrity remained valid and replacement architecture had not started prematurely.
 
-Independently confirm all of the following against the integrated head:
+The gate had no production-code repair authority. A defect required returning work to the owning implementation surface.
 
-1. `src/validation/**` has zero entries.
-2. `src/diagnostics/production-diagnostic-correlation.ts` is absent.
-3. The 33 S02A harness-only test/support paths are absent.
-4. Active `src/**` contains zero occurrences of:
-   - `ValidationModeRuntime`
-   - `validationRuntime`
-   - `validationModeEnabled`
-   - `setValidationModeEnabled`
-   - `validationScenarioIds`
-   - `startValidationScenario`
-   - `resumeValidationScenario`
-   - `currentDiagnosticCorrelation`
-   - `ProductionDiagnosticCorrelation`
-   - `scenario-runner`
-   - `cross-device-coordinator`
-   - `scenario-evidence-recorder`
-5. The integrated production blobs are:
-   - `src/main.ts` = `dc5d6bb13e2bd389fdcd5357730a4144ad7d2eb7`
-   - `src/product/settings-tab.ts` = `e6a56451a3a6723d223c09175cc901c46f527985`
-   - `src/product/product-controller-base.ts` = `fee7c40e715d277cea2b5e26059a86753bb316a0`
-6. No `test-platform/**` implementation exists yet.
-7. S01 authority/archive artifacts remain present and authoritative.
-8. No GitHub Actions are introduced or used.
+## 4. Acceptance Criteria
 
-## 4. PHX-CI Procedure
+The integrated gate required:
 
-Run authoritative deployed-runtime PHX-CI against `phase6-integration` with publication mode `push`.
+- `src/validation/**`: zero entries;
+- `src/diagnostics/production-diagnostic-correlation.ts`: absent;
+- all 33 S02A paths: absent;
+- legacy active-source identifier searches: zero;
+- exact production blobs:
+  - `src/main.ts` = `dc5d6bb13e2bd389fdcd5357730a4144ad7d2eb7`;
+  - `src/product/settings-tab.ts` = `e6a56451a3a6723d223c09175cc901c46f527985`;
+  - `src/product/product-controller-base.ts` = `fee7c40e715d277cea2b5e26059a86753bb316a0`;
+- no `test-platform/**` implementation;
+- S01 authority/archive artifacts intact;
+- no GitHub Actions;
+- PHX-CI change-set verification PASS;
+- PHX-CI repository verification PASS;
+- overall PASS / compatibility COMPLETE / task exit 0;
+- full tests and build/artifact verification PASS;
+- canonical evidence published and control checkout preserved.
 
-Use a short temporary root on Windows if necessary to avoid the already-observed PHX-CI long-path infrastructure defect. Changing only `TEMP`/`TMP` for the verification process is permitted and does not alter acceptance semantics.
+## 5. Non-Goals
 
-After the run, inspect fresh:
+The acceptance task did not repair defects, implement S03, or reinterpret S02's retirement classification.
 
-- `dev/_ca-output.md`
-- `dev/_ca-output.json`
-- `dev/test-results/**`
-
-Verify that PHX-CI reports:
-
-- change-set verification PASS;
-- repository verification PASS;
-- overall verification PASS;
-- compatibility COMPLETE;
-- task exit code 0;
-- evidence published;
-- control checkout preserved.
-
-## 5. Completion
+## 6. Historical Completion
 
 **S02 PRIMARY STAGE ACCEPTED**
 
-Accepted evidence:
+Accepted integrated verification target: `5f3d903967dadd2375c4f5273595368ccbeb0d05`  
+PHX-CI evidence commit: `798e4bfae8aaa167cf0462156a72da49b6440c1b`  
+Verification base: `6da8794b947c51b6e5cc4a15a467215d2fe37831`  
+Full test result: 822 passed / 0 failed.
 
-- integrated verification target: `5f3d903967dadd2375c4f5273595368ccbeb0d05`;
-- PHX-CI evidence commit: `798e4bfae8aaa167cf0462156a72da49b6440c1b`;
-- verification base: `6da8794b947c51b6e5cc4a15a467215d2fe37831`;
-- change-set verification: PASS;
-- repository verification: PASS;
-- overall verification: PASS;
-- compatibility status: COMPLETE;
-- task exit code: 0;
-- full test result: 822 passed / 0 failed;
-- build and artifact verification: PASS;
-- control checkout preservation: PASS.
+## 7. Stop
 
-This file is now a completed acceptance record and authorizes no further execution.
-
-Do not re-run 02V from this file. S03 remains subject to separate supervisor repository-grounding and prompt binding under `00-execution-contract.md`.
+No work is authorized by this file.
