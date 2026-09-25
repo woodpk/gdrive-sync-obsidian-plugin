@@ -135,7 +135,7 @@ function Get-FrameworkShaAtCommit {
         $config = $show.Text | ConvertFrom-Json -ErrorAction Stop
     }
     catch {
-        throw "target branch phx-ci.json is invalid JSON at $Commit: $($_.Exception.Message)"
+        throw "target branch phx-ci.json is invalid JSON at ${Commit}: $($_.Exception.Message)"
     }
 
     if ($null -eq $config.framework -or [string]::IsNullOrWhiteSpace([string]$config.framework.sha)) {
