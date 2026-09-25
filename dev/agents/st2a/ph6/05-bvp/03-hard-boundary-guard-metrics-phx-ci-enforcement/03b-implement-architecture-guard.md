@@ -182,6 +182,16 @@ At minimum cover:
 
 The goal is not to prescribe a custom lexer. The goal is to prove the chosen implementation distinguishes executable dependency syntax from non-executable text reliably for the repository's TypeScript/JavaScript source class.
 
+## Invariants
+
+- Production source never depends on `test-platform/**`.
+- The ordinary production bundle never contains validation-platform implementation.
+- Actual executable/type dependencies are distinguished from textual lookalikes.
+- Archive history cannot become current implementation authority.
+- Frozen supervisor-owned surfaces cannot change through ordinary work.
+- Guard execution is read-only and fail-closed when required policy cannot be evaluated safely.
+- The guard remains a repository architecture check, not a task verifier or second CI system.
+
 ## 8. Deterministic Test Contract
 
 `test-platform/test/architecture-guard.test.ts` must invoke the real PowerShell guard.
