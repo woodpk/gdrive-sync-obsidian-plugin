@@ -79,37 +79,181 @@ function Test-JavaScriptIdentifierPart {
     return [char]::IsLetterOrDigit($Character) -or $Character -eq '_' -or $Character -eq '$'
 }
 
-function Get-JavaScriptTokens {
-    param([Parameter(Mandatory = $true)][string]$Content)
+function Test-JavaScriptRegexCanStart {
+    param($PreviousToken)
 
-    $tokens = [System.Collections.Generic.List[object]]::new()
-    $index = 0
-    while ($index -lt $Content.Length) {
-        $character = $Content[$index]
+    if ($null -eq $PreviousToken) {
+        return $true
+    }
 
-        if ([char]::IsWhiteSpace($character)) {
-            $index++
+    if ($PreviousToken.Kind -eq 'identifier') {
+        return $PreviousToken.Value -in @(
+            'await',
+            'case',
+            'delete',
+            'do',
+            'else',
+            'in',
+            'instanceof',
+            'new',
+            'of',
+            'return',
+            'throw',
+            'typeof',
+            'void',
+            'yield'
+        )
+    }
+
+    if ($PreviousToken.Kind -eq 'punctuation') {
+        return $PreviousToken.Value -notin @(')', ']', '}', '.')
+    }
+
+    return $false
+}
+
+function Skip-JavaScriptRegexLiteral {
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][ref]$Index
+    )
+
+    $Index.Value = $Index.Value + 1
+    $inCharacterClass = $false
+    while ($Index.Value -lt $Content.Length) {
+        $character = $Content[$Index.Value]
+
+        if ($character -eq [char]92 -and ($Index.Value + 1) -lt $Content.Length) {
+            $Index.Value = $Index.Value + 2
             continue
         }
 
-        if ($character -eq [char]47 -and ($index + 1) -lt $Content.Length) {
-            $nextCharacter = $Content[$index + 1]
+        if ($character -eq [char]91) {
+            $inCharacterClass = $true
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]93 -and $inCharacterClass) {
+            $inCharacterClass = $false
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]47 -and -not $inCharacterClass) {
+            $Index.Value = $Index.Value + 1
+            while ($Index.Value -lt $Content.Length -and [char]::IsLetter($Content[$Index.Value])) {
+                $Index.Value = $Index.Value + 1
+            }
+            return
+        }
+
+        if ($character -eq [char]10 -or $character -eq [char]13) {
+            return
+        }
+
+        $Index.Value = $Index.Value + 1
+    }
+}
+
+function Read-JavaScriptTemplateLiteral {
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][ref]$Index,
+        [Parameter(Mandatory = $true)]$Tokens
+    )
+
+    $Index.Value = $Index.Value + 1
+    while ($Index.Value -lt $Content.Length) {
+        $character = $Content[$Index.Value]
+
+        if ($character -eq [char]92 -and ($Index.Value + 1) -lt $Content.Length) {
+            $Index.Value = $Index.Value + 2
+            continue
+        }
+
+        if ($character -eq [char]96) {
+            $Index.Value = $Index.Value + 1
+            return
+        }
+
+        if ($character -eq [char]36 -and ($Index.Value + 1) -lt $Content.Length -and $Content[$Index.Value + 1] -eq [char]123) {
+            $Index.Value = $Index.Value + 2
+            Read-JavaScriptTokens -Content $Content -Index $Index -Tokens $Tokens -StopAtTemplateExpressionEnd $true
+            continue
+        }
+
+        $Index.Value = $Index.Value + 1
+    }
+}
+
+function Read-JavaScriptTokens {
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][ref]$Index,
+        [Parameter(Mandatory = $true)]$Tokens,
+        [bool]$StopAtTemplateExpressionEnd = $false
+    )
+
+    $braceDepth = 0
+    $previousToken = $null
+
+    while ($Index.Value -lt $Content.Length) {
+        $character = $Content[$Index.Value]
+
+        if ([char]::IsWhiteSpace($character)) {
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($StopAtTemplateExpressionEnd -and $character -eq [char]125) {
+            if ($braceDepth -eq 0) {
+                $Index.Value = $Index.Value + 1
+                return
+            }
+
+            $token = [pscustomobject]@{
+                Kind = 'punctuation'
+                Value = '}'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            $braceDepth--
+            $Index.Value = $Index.Value + 1
+            continue
+        }
+
+        if ($character -eq [char]47 -and ($Index.Value + 1) -lt $Content.Length) {
+            $nextCharacter = $Content[$Index.Value + 1]
+
             if ($nextCharacter -eq [char]47) {
-                $index += 2
-                while ($index -lt $Content.Length -and $Content[$index] -ne [char]10 -and $Content[$index] -ne [char]13) {
-                    $index++
+                $Index.Value = $Index.Value + 2
+                while ($Index.Value -lt $Content.Length -and $Content[$Index.Value] -ne [char]10 -and $Content[$Index.Value] -ne [char]13) {
+                    $Index.Value = $Index.Value + 1
                 }
                 continue
             }
+
             if ($nextCharacter -eq [char]42) {
-                $index += 2
-                while (($index + 1) -lt $Content.Length) {
-                    if ($Content[$index] -eq [char]42 -and $Content[$index + 1] -eq [char]47) {
-                        $index += 2
+                $Index.Value = $Index.Value + 2
+                while (($Index.Value + 1) -lt $Content.Length) {
+                    if ($Content[$Index.Value] -eq [char]42 -and $Content[$Index.Value + 1] -eq [char]47) {
+                        $Index.Value = $Index.Value + 2
                         break
                     }
-                    $index++
+                    $Index.Value = $Index.Value + 1
                 }
+                continue
+            }
+
+            if (Test-JavaScriptRegexCanStart $previousToken) {
+                Skip-JavaScriptRegexLiteral -Content $Content -Index $Index
+                $token = [pscustomobject]@{
+                    Kind = 'value'
+                    Value = '<regex>'
+                }
+                $Tokens.Add($token) | Out-Null
+                $previousToken = $token
                 continue
             }
         }
@@ -117,68 +261,101 @@ function Get-JavaScriptTokens {
         if ($character -eq [char]39 -or $character -eq [char]34) {
             $quote = $character
             $builder = [System.Text.StringBuilder]::new()
-            $index++
-            while ($index -lt $Content.Length) {
-                $stringCharacter = $Content[$index]
-                if ($stringCharacter -eq [char]92 -and ($index + 1) -lt $Content.Length) {
-                    $escapedCharacter = $Content[$index + 1]
+            $Index.Value = $Index.Value + 1
+            while ($Index.Value -lt $Content.Length) {
+                $stringCharacter = $Content[$Index.Value]
+
+                if ($stringCharacter -eq [char]92 -and ($Index.Value + 1) -lt $Content.Length) {
+                    $escapedCharacter = $Content[$Index.Value + 1]
                     if ($escapedCharacter -ne [char]10 -and $escapedCharacter -ne [char]13) {
                         $builder.Append($escapedCharacter) | Out-Null
                     }
-                    $index += 2
+                    $Index.Value = $Index.Value + 2
                     continue
                 }
+
                 if ($stringCharacter -eq $quote) {
-                    $index++
+                    $Index.Value = $Index.Value + 1
                     break
                 }
+
                 $builder.Append($stringCharacter) | Out-Null
-                $index++
+                $Index.Value = $Index.Value + 1
             }
-            $tokens.Add([pscustomobject]@{
+
+            $token = [pscustomobject]@{
                 Kind = 'string'
                 Value = $builder.ToString()
-            }) | Out-Null
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
             continue
         }
 
         if ($character -eq [char]96) {
-            $index++
-            while ($index -lt $Content.Length) {
-                $templateCharacter = $Content[$index]
-                if ($templateCharacter -eq [char]92 -and ($index + 1) -lt $Content.Length) {
-                    $index += 2
-                    continue
-                }
-                if ($templateCharacter -eq [char]96) {
-                    $index++
-                    break
-                }
-                $index++
+            Read-JavaScriptTemplateLiteral -Content $Content -Index $Index -Tokens $Tokens
+            $token = [pscustomobject]@{
+                Kind = 'value'
+                Value = '<template>'
             }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
             continue
         }
 
         if (Test-JavaScriptIdentifierStart $character) {
-            $start = $index
-            $index++
-            while ($index -lt $Content.Length -and (Test-JavaScriptIdentifierPart $Content[$index])) {
-                $index++
+            $start = $Index.Value
+            $Index.Value = $Index.Value + 1
+            while ($Index.Value -lt $Content.Length -and (Test-JavaScriptIdentifierPart $Content[$Index.Value])) {
+                $Index.Value = $Index.Value + 1
             }
-            $tokens.Add([pscustomobject]@{
+
+            $token = [pscustomobject]@{
                 Kind = 'identifier'
-                Value = $Content.Substring($start, $index - $start)
-            }) | Out-Null
+                Value = $Content.Substring($start, $Index.Value - $start)
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
             continue
         }
 
-        $tokens.Add([pscustomobject]@{
-            Kind = 'punctuation'
-            Value = [string]$character
-        }) | Out-Null
-        $index++
-    }
+        if ([char]::IsDigit($character)) {
+            $Index.Value = $Index.Value + 1
+            while ($Index.Value -lt $Content.Length -and $Content[$Index.Value] -match '[A-Za-z0-9_.]') {
+                $Index.Value = $Index.Value + 1
+            }
 
+            $token = [pscustomobject]@{
+                Kind = 'value'
+                Value = '<number>'
+            }
+            $Tokens.Add($token) | Out-Null
+            $previousToken = $token
+            continue
+        }
+
+        $punctuation = [string]$character
+        $token = [pscustomobject]@{
+            Kind = 'punctuation'
+            Value = $punctuation
+        }
+        $Tokens.Add($token) | Out-Null
+        $previousToken = $token
+
+        if ($character -eq [char]123) {
+            $braceDepth++
+        }
+
+        $Index.Value = $Index.Value + 1
+    }
+}
+
+function Get-JavaScriptTokens {
+    param([Parameter(Mandatory = $true)][string]$Content)
+
+    $tokens = [System.Collections.Generic.List[object]]::new()
+    $index = 0
+    Read-JavaScriptTokens -Content $Content -Index ([ref]$index) -Tokens $tokens
     return @($tokens)
 }
 
@@ -205,6 +382,11 @@ function Get-ModuleSpecifiers {
         }
 
         if ($token.Value -eq 'import') {
+            $isPropertyAccess = $index -gt 0 -and $tokens[$index - 1].Kind -eq 'punctuation' -and $tokens[$index - 1].Value -eq '.'
+            if ($isPropertyAccess) {
+                continue
+            }
+
             if (($index + 2) -lt $tokens.Count -and
                 $tokens[$index + 1].Kind -eq 'punctuation' -and $tokens[$index + 1].Value -eq '(' -and
                 $tokens[$index + 2].Kind -eq 'string') {
@@ -227,6 +409,7 @@ function Get-ModuleSpecifiers {
             if ($candidate.Kind -eq 'punctuation' -and $candidate.Value -eq ';') {
                 break
             }
+
             if ($candidate.Kind -eq 'identifier' -and $candidate.Value -eq 'from' -and
                 ($scan + 1) -lt $tokens.Count -and $tokens[$scan + 1].Kind -eq 'string') {
                 $specifiers.Add($tokens[$scan + 1].Value) | Out-Null

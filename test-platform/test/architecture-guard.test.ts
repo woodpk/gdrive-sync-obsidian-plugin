@@ -214,6 +214,18 @@ test("architecture guard recognizes each supported actual module dependency form
       "dynamic import",
       'void import("../../src/main");\n',
     ],
+    [
+      "dynamic import in template interpolation",
+      'const value = `prefix ${await import("../../src/main")} suffix`;\nvoid value;\n',
+    ],
+    [
+      "require in template interpolation",
+      'const value = `prefix ${require("../../src/main")} suffix`;\nvoid value;\n',
+    ],
+    [
+      "dynamic import in nested template interpolation",
+      'const value = `outer ${`inner ${await import("../../src/main")}`}`;\nvoid value;\n',
+    ],
   ] as const;
 
   for (const [name, source] of cases) {
@@ -248,9 +260,44 @@ test("architecture guard ignores import-looking text inside string literals", ()
         '  \'require("../../src/main")\',',
         '  \'import("../../src/main")\',',
         '];',
-        'const template = `import("../../src/main")`;',
         'void examples;',
+        '',
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard ignores import-looking text in plain template text", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/import-looking-template-text.test.ts",
+      [
+        'const template = `',
+        'import { productionValue } from "../../src/main";',
+        'export { productionValue } from "../../src/main";',
+        'require("../../src/main");',
+        'import("../../src/main");',
+        '`;',
         'void template;',
+        '',
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard ignores require and import text inside regex literals", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/import-looking-regex.test.ts",
+      [
+        'const moduleText = /require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)|import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/g;',
+        'const staticText = /import\\s+.+\\s+from\\s+[\"\\']\\.\\.\\/\\.\\.\\/src\\/main[\"\\']/;',
+        'void moduleText;',
+        'void staticText;',
         '',
       ].join("\n"),
     );
