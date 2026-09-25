@@ -228,6 +228,30 @@ test("architecture guard fails closed when required manifest authority is incomp
   });
 });
 
+test("architecture guard consumes manifest-rebound architecture roots", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest()
+      .replace("  test_platform: test-platform/", "  test_platform: verification-platform/")
+      .replaceAll("    - test-platform/", "    - verification-platform/");
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "verification-platform/src/platform-root.ts",
+      'export const platformValue = "test-only";\n',
+    );
+    writeText(
+      root,
+      "src/manifest-root-violation.ts",
+      'import { platformValue } from "../verification-platform/src/platform-root";\nvoid platformValue;\n',
+    );
+    assertFailsWithRule(runGuard(root), "PRODUCTION_IMPORTS_TEST_PLATFORM");
+  });
+});
+
 test("architecture guard rejects production imports from test-platform", () => {
   withFixture((root) => {
     writeText(
@@ -236,6 +260,26 @@ test("architecture guard rejects production imports from test-platform", () => {
       'import { platformValue } from "../test-platform/src/platform-root";\nvoid platformValue;\n',
     );
     assertFailsWithRule(runGuard(root), "PRODUCTION_IMPORTS_TEST_PLATFORM");
+  });
+});
+
+test("architecture guard consumes the manifest-approved production seam", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest().replace(
+      "  allowlist_required: true\n  max_logical_loc: 350",
+      "  allowlist_required: true\n  approved_imports:\n    - src/main.ts\n  max_logical_loc: 350",
+    );
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "test-platform/test/approved-seam.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertPass(runGuard(root));
   });
 });
 
@@ -266,8 +310,10 @@ test("architecture guard ignores inert test-platform text in build source", () =
         'import { build } from "esbuild";',
         '// entryPoints: ["test-platform/src/platform-root.ts"]',
         'const note = "test-platform/src/platform-root.ts is not a build input";',
+        'const unrelated = { entryPoints: ["test-platform/src/platform-root.ts"] };',
         'await build({ entryPoints: ["src/main.ts"], outfile: "main.js" });',
         "void note;",
+        "void unrelated;",
         "",
       ].join("\n"),
     );
