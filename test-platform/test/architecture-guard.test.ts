@@ -305,7 +305,7 @@ test("architecture guard parses with the real PowerShell parser", () => {
     "  }",
     "  exit 1",
     "}",
-  ].join("; ");
+  ].join("\n");
 
   const result = spawnSync(
     powerShell,
