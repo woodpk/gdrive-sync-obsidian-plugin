@@ -84,6 +84,15 @@ The relay does not:
 - mutate production synchronization state;
 - implement a second queue/workflow platform.
 
+## Invariants
+
+- Transport carries bounded run-scoped test-control metadata only.
+- Transport ordering/delivery never becomes synchronization authority.
+- Run/device/sequence safety remains enforced even with duplicate or reordered delivery.
+- No developer-hosted backend, new OAuth scope, or token export is introduced.
+- Any Windows relay remains stateless with respect to scenario meaning and final verdict.
+- Mailbox/relay code remains validation-only and excluded from the ordinary production bundle.
+
 ## 5. Privacy / Safety
 
 Mailbox records must exclude:

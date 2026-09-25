@@ -91,6 +91,15 @@ The runner cannot directly mutate product synchronization state to manufacture e
 
 No wall-clock sleeps are needed for semantic correctness. The runner uses S04 deterministic controls.
 
+## Invariants
+
+- The external runner is the sole owner of scenario sequencing and verdict state.
+- Production code remains the sole authority for synchronization decisions and product results.
+- Dispatch is by frozen generic step semantics, never by scenario identity.
+- Unsupported or missing required capability/evidence cannot become PASS.
+- The runner carries no durable distributed/per-device scenario state.
+- Deterministic execution does not depend on wall-clock sleeps.
+
 ## 5. Result Semantics
 
 The core result must distinguish at least:

@@ -78,6 +78,15 @@ OS/browser/provider-mediated actions may be explicit operator checkpoints. Each 
 
 Do not claim automation where the action was performed manually.
 
+## Invariants
+
+- Windows and iOS evidence comes from real installed runtimes, not simulation.
+- Each device authenticates independently through the supported same-device product flow.
+- OAuth credentials/tokens are never transferred between devices or exported to the external controller.
+- Managed-root pairing and device identity come from production authority, not test expectations.
+- Physical evidence is bound to exact source/build/device/run identities.
+- Human checkpoints may perform platform/provider actions but cannot fabricate production success.
+
 ## 5. Evidence Requirements
 
 Canonical evidence must include, without secrets:

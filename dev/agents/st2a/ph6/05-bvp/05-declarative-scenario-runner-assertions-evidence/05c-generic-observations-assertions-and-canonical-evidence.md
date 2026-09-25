@@ -122,6 +122,15 @@ Fixtures may be identified by bounded test-safe identifiers/content hashes rathe
 
 Evidence retains the scenario's product requirement/invariant IDs so later aggregation can map requirement → scenario → result.
 
+## Invariants
+
+- Assertions consume observations; they cannot rewrite observations or product state.
+- Production/external authoritative observations outrank diagnostics and test expectations.
+- Missing required evidence cannot produce PASS.
+- Machine-readable canonical evidence is the source from which human evidence is rendered, not a competing verdict system.
+- Evidence never becomes synchronization authority.
+- Evidence excludes secrets and unrelated user data by construction.
+
 ## 7. Material Edge / Failure Cases
 
 Tests must cover:
