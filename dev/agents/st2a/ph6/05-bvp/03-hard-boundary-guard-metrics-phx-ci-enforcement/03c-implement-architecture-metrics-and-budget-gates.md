@@ -3,13 +3,13 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s03-boundary-governance-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement  
 **Predecessor child:** accepted S03B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
-This prompt is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+This prompt is the complete semantic contract for S03C with the current execution binding filled by the supervisor. Corrections to an implementation must restore this contract; they must not broaden or redesign it.
 
 ## 1. Objective
 
@@ -33,20 +33,80 @@ When complete:
 - the compliant accepted repository produces a stable baseline;
 - no PHX-CI repository-check wiring is added yet; 03D owns that integration.
 
-## 3. Dispatch Binding — Hard Data Only
+## 3. Execution-Time Binding
 
-Before execution the supervisor fills:
+The semantic contract above and below is prewritten and fixed. The supervisor binds only hard repository coordinates.
 
-- exact accepted S03B predecessor SHA;
-- exact task branch;
-- exact current boundary-manifest path and relevant current roots/classifications;
-- exact metrics-script/test/package-script paths that instantiate this contract;
-- exact writable-path allowlist;
-- exact PHX-CI base authority and current target-branch pin/runtime;
-- exact focused test command, if established;
-- confirmation that the child remains within BVP-GOV-010 size limits.
+### Bound for this execution
 
-Binding may not change the metric families, budgets, failure semantics, or non-goals below.
+Accepted S03B authority:
+
+- accepted S03B verified implementation SHA: `67959da9e3a52d5580fc790fe48a9c98b3eb322c`;
+- accepted S03B PHX-CI evidence / promoted integration predecessor SHA: `78f5f8f7f118e280ee25710f567288a68ba69278`;
+- the accepted predecessor for S03C is the **promoted evidence head `78f5f8f...`**, not the earlier implementation-only SHA `67959da...`.
+
+Task branch:
+
+- exact branch: `bvp-s03c-architecture-metrics-budget-gates`;
+- the supervisor creates this branch from the `phase6-integration` tasking head containing this bound prompt;
+- the worker MUST use that already-created exact branch and MUST NOT choose a different predecessor, recreate the branch from `67959da...`, rebase it, or substitute another branch tip.
+
+Current architecture authority:
+
+- boundary manifest: `dev/governance/testing-platform-boundary.yaml`;
+- production root: `src/`;
+- testing-platform root: `test-platform/`;
+- active development/governance root: `dev/`;
+- archive root: `dev/archive/`;
+- current concrete production seam allowlist: empty; S03C therefore measures the current production BVP-only seam as zero unless repository content/manifest authority on the bound task branch establishes an explicitly enumerated approved seam;
+- current live-device agent/relay subset: absent at S03C;
+- current ordinary declarative scenario catalog: absent at S03C;
+- current active test-platform source surface is `test-platform/src/platform-root.ts`; tests under `test-platform/test/**` are test code, not framework-core LOC.
+
+Concrete S03C implementation surfaces:
+
+- metrics evaluator: `dev/scripts/Get-TestingArchitectureMetrics.ps1`;
+- focused metrics test: `test-platform/test/architecture-metrics.test.ts`;
+- test compilation authority: existing `test-platform/tsconfig.json`, which already includes `test/**/*.ts` and is **not writable** in S03C;
+- package-script integration surface: `package.json`;
+- exact focused package script to add: `test:bvp-architecture-metrics`;
+- exact focused command: `npm run test:bvp-architecture-metrics`;
+- the package script must compile `test-platform/tsconfig.json` and run only the compiled `.test-build/bvp/test/architecture-metrics.test.js` focused test, following the established S03B focused-test shape.
+
+Exact writable-path allowlist:
+
+1. `dev/scripts/Get-TestingArchitectureMetrics.ps1`;
+2. `test-platform/test/architecture-metrics.test.ts`;
+3. `package.json`.
+
+Everything else is read-only for S03C, including:
+
+- `dev/governance/testing-platform-boundary.yaml`;
+- `dev/scripts/Test-TestingArchitectureGuard.ps1`;
+- `test-platform/tsconfig.json`;
+- `phx-ci.json`;
+- `Taskfile.phx-ci.yml`;
+- `Taskfile.yml`;
+- production `src/**`;
+- PHX-CI evidence files.
+
+PHX-CI authority:
+
+- base authority: `origin/phase6-integration`;
+- current framework pin inherited from the accepted integration branch: `56a2b1be50cd1f4338974d21ebdeb9487e737598`;
+- deployed runtime authority: `%LOCALAPPDATA%/PHX-CI/runtimes/56a2b1be50cd1f4338974d21ebdeb9487e737598`;
+- authoritative task-branch publication mode: `push`;
+- authoritative focused command: `npm run test:bvp-architecture-metrics`;
+- the target branch's actual `phx-ci.json` remains runtime authority if an explicitly accepted repin occurs before verification.
+
+Dispatch size-gate confirmation:
+
+- this child introduces one platform-level contract family only: architecture metrics/hard-budget evaluation;
+- bounded implementation surface is one new non-test implementation file plus one focused test file and one package-script edit;
+- no split is required under BVP-GOV-010 / the execution-contract child-session size gate;
+- accepted S03B audit recorded the active BVP PowerShell governance/verification surface at 3 scripts / 1,111 logical LOC. The new metrics evaluator becomes the fourth script and MUST keep the independently measured BVP PowerShell surface within the frozen maximum of 4 scripts / 1,500 logical LOC. That prior 1,111 value is dispatch sizing context, not an expected metric value to hard-code; S03C must calculate the baseline independently under its tested counting rule.
+
+Binding may not change the metric families, budgets, failure semantics, or non-goals below. If repository reality requires another writable path or a different architecture contract, return `BLOCKED` rather than expanding scope.
 
 ## Dependencies
 
