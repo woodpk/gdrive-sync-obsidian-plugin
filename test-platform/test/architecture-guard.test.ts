@@ -293,8 +293,8 @@ test("architecture guard ignores require and import text inside regex literals",
     [
       "assigned after equals",
       [
-        'const requireText = /require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/g;',
-        'const importText = /import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/g;',
+        'const requireText = /require("..\\/..\\/src\\/main")/g;',
+        'const importText = /import("..\\/..\\/src\\/main")/g;',
         'void requireText;',
         'void importText;',
         '',
@@ -303,8 +303,8 @@ test("architecture guard ignores require and import text inside regex literals",
     [
       "direct if statement body",
       [
-        'if (condition) /require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
-        'if (condition) /import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        'if (condition) /require("..\\/..\\/src\\/main")/.test(text);',
+        'if (condition) /import("..\\/..\\/src\\/main")/.test(text);',
         '',
       ].join("\n"),
     ],
@@ -314,8 +314,26 @@ test("architecture guard ignores require and import text inside regex literals",
         'if (condition) {',
         '  void text;',
         '}',
-        '/require\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
-        '/import\\(\"\\.\\.\\/\\.\\.\\/src\\/main\"\\)/.test(text);',
+        '/require("..\\/..\\/src\\/main")/.test(text);',
+        '/import("..\\/..\\/src\\/main")/.test(text);',
+        '',
+      ].join("\n"),
+    ],
+    [
+      "after class declaration",
+      [
+        'class Example {}',
+        '/require("..\\/..\\/src\\/main")/.test(text);',
+        '/import("..\\/..\\/src\\/main")/.test(text);',
+        '',
+      ].join("\n"),
+    ],
+    [
+      "after function declaration",
+      [
+        'function example() {}',
+        '/require("..\\/..\\/src\\/main")/.test(text);',
+        '/import("..\\/..\\/src\\/main")/.test(text);',
         '',
       ].join("\n"),
     ],
@@ -354,6 +372,23 @@ test("architecture guard preserves ordinary division expressions", () => {
     );
     assertPass(runGuard(root));
   });
+});
+
+test("architecture guard keeps object literals in expression context", () => {
+  const cases = [
+    'const value = {} / require("../../src/main");\nvoid value;\n',
+    'const value = {} / import("../../src/main");\nvoid value;\n',
+  ] as const;
+
+  for (const source of cases) {
+    withFixture((root) => {
+      writeText(root, "test-platform/test/object-literal-division.test.ts", source);
+      assertFailsWithRule(
+        runGuard(root),
+        "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+      );
+    });
+  }
 });
 
 test("architecture guard detects actual module calls adjacent to division", () => {

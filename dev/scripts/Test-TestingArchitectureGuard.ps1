@@ -201,7 +201,9 @@ function Read-JavaScriptTokens {
     $parenContexts = [System.Collections.Generic.Stack[string]]::new()
     $previousToken = $null
     $regexCanStart = $true
+    $statementCanStart = $true
     $statementBodyExpected = $false
+    $declarationBodyExpected = $null
 
     while ($Index.Value -lt $Content.Length) {
         $character = $Content[$Index.Value]
@@ -248,6 +250,7 @@ function Read-JavaScriptTokens {
                 $Tokens.Add($token) | Out-Null
                 $previousToken = $token
                 $regexCanStart = $false
+                $statementCanStart = $false
                 $statementBodyExpected = $false
                 continue
             }
@@ -259,6 +262,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $true
+            $statementCanStart = $false
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 1
             continue
@@ -296,6 +300,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $false
+            $statementCanStart = $false
             $statementBodyExpected = $false
             continue
         }
@@ -309,6 +314,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $false
+            $statementCanStart = $false
             $statementBodyExpected = $false
             continue
         }
@@ -321,6 +327,12 @@ function Read-JavaScriptTokens {
             }
 
             $identifier = $Content.Substring($start, $Index.Value - $start)
+            $wasStatementStart = $statementCanStart
+
+            if ($wasStatementStart -and $identifier -in @('class', 'function')) {
+                $declarationBodyExpected = $identifier
+            }
+
             $token = [pscustomobject]@{
                 Kind = 'identifier'
                 Value = $identifier
@@ -329,6 +341,16 @@ function Read-JavaScriptTokens {
             $previousToken = $token
             $regexCanStart = Test-JavaScriptKeywordAllowsRegexAfter $identifier
             $statementBodyExpected = $identifier -in @('do', 'else')
+
+            if ($wasStatementStart -and $identifier -in @('abstract', 'async', 'declare', 'default', 'export')) {
+                $statementCanStart = $true
+            }
+            elseif ($statementBodyExpected) {
+                $statementCanStart = $true
+            }
+            else {
+                $statementCanStart = $false
+            }
             continue
         }
 
@@ -345,13 +367,18 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $false
+            $statementCanStart = $false
             $statementBodyExpected = $false
             continue
         }
 
         if ($character -eq [char]40) {
             $parenKind = 'expression'
-            if ($null -ne $previousToken -and
+            if ($declarationBodyExpected -eq 'function') {
+                $parenKind = 'function-declaration-params'
+                $declarationBodyExpected = 'function-params'
+            }
+            elseif ($null -ne $previousToken -and
                 $previousToken.Kind -eq 'identifier' -and
                 (Test-JavaScriptControlHeaderKeyword $previousToken.Value)) {
                 $parenKind = 'statement-header'
@@ -365,6 +392,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $true
+            $statementCanStart = $false
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 1
             continue
@@ -385,10 +413,18 @@ function Read-JavaScriptTokens {
 
             if ($parenKind -eq 'statement-header') {
                 $regexCanStart = $true
+                $statementCanStart = $true
                 $statementBodyExpected = $true
+            }
+            elseif ($parenKind -eq 'function-declaration-params') {
+                $regexCanStart = $false
+                $statementCanStart = $false
+                $statementBodyExpected = $false
+                $declarationBodyExpected = 'function-body-ready'
             }
             else {
                 $regexCanStart = $false
+                $statementCanStart = $false
                 $statementBodyExpected = $false
             }
 
@@ -398,12 +434,19 @@ function Read-JavaScriptTokens {
 
         if ($character -eq [char]123) {
             $braceKind = 'expression'
-            if ($statementBodyExpected -or
+
+            if ($declarationBodyExpected -eq 'function-body-ready' -or
+                ($declarationBodyExpected -eq 'class' -and $parenContexts.Count -eq 0)) {
+                $braceKind = 'declaration-block'
+                $declarationBodyExpected = $null
+            }
+            elseif ($statementBodyExpected -or
                 $null -eq $previousToken -or
                 ($previousToken.Kind -eq 'punctuation' -and $previousToken.Value -in @(')', '}', ';')) -or
                 ($previousToken.Kind -eq 'identifier' -and $previousToken.Value -in @('else', 'do', 'try', 'finally'))) {
                 $braceKind = 'block'
             }
+
             $braceContexts.Push($braceKind)
             $braceDepth++
 
@@ -414,6 +457,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $true
+            $statementCanStart = $braceKind -ne 'expression'
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 1
             continue
@@ -434,8 +478,10 @@ function Read-JavaScriptTokens {
             }
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
-            $regexCanStart = $braceKind -eq 'block'
-            $statementBodyExpected = $braceKind -eq 'block'
+            $completedStatementBlock = $braceKind -in @('block', 'declaration-block')
+            $regexCanStart = $completedStatementBlock
+            $statementCanStart = $completedStatementBlock
+            $statementBodyExpected = $completedStatementBlock
             $Index.Value = $Index.Value + 1
             continue
         }
@@ -448,6 +494,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $true
+            $statementCanStart = $false
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 1
             continue
@@ -461,6 +508,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = $false
+            $statementCanStart = $false
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 1
             continue
@@ -478,6 +526,7 @@ function Read-JavaScriptTokens {
             $Tokens.Add($token) | Out-Null
             $previousToken = $token
             $regexCanStart = -not $wasExpressionComplete
+            $statementCanStart = $false
             $statementBodyExpected = $false
             $Index.Value = $Index.Value + 2
             continue
@@ -491,6 +540,7 @@ function Read-JavaScriptTokens {
         $Tokens.Add($token) | Out-Null
         $previousToken = $token
         $statementBodyExpected = $false
+        $statementCanStart = $punctuation -eq ';'
 
         if ($punctuation -eq '.' -or $punctuation -eq '?') {
             $regexCanStart = $punctuation -eq '?'
