@@ -94,12 +94,12 @@ $configPath = Join-Path $RepoRoot 'phx-ci.json'
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $config.framework.sha = $sha
 $config.framework.version = $version
-($config | ConvertTo-Json -Depth 10) + [Environment]::NewLine |
+($config | ConvertTo-Json -Depth 10) |
     Set-Content -LiteralPath $configPath -Encoding utf8NoBOM
 
-("managed framework " + $sha + [Environment]::NewLine) |
+("managed framework " + $sha) |
     Set-Content -LiteralPath (Join-Path $RepoRoot 'Taskfile.phx-ci.yml') -Encoding utf8NoBOM
-("root integration " + $sha + [Environment]::NewLine) |
+("root integration " + $sha) |
     Set-Content -LiteralPath (Join-Path $RepoRoot 'Taskfile.yml') -Encoding utf8NoBOM
 
 if ($env:PHX_REPIN_TEST_UNEXPECTED_PATH -eq '1') {
@@ -158,7 +158,7 @@ function New-ConsumerFixture {
             prohibitedChangedPaths = @()
         }
     }
-    ($config | ConvertTo-Json -Depth 10) + [Environment]::NewLine |
+    ($config | ConvertTo-Json -Depth 10) |
         Set-Content -LiteralPath (Join-Path $work 'phx-ci.json') -Encoding utf8NoBOM
     'old managed taskfile' | Set-Content -LiteralPath (Join-Path $work 'Taskfile.phx-ci.yml') -Encoding utf8NoBOM
     'old root taskfile' | Set-Content -LiteralPath (Join-Path $work 'Taskfile.yml') -Encoding utf8NoBOM
@@ -305,6 +305,8 @@ try {
     $changed = @((Invoke-Git -Root $success.Root -GitArguments @('diff', '--name-only', "$($success.TargetHead)..$successHead")) -split '\r?\n' | Where-Object { $_ })
     $allowed = @('phx-ci.json', 'Taskfile.phx-ci.yml', 'Taskfile.yml')
     Assert-Test (@($changed | Where-Object { $_ -notin $allowed }).Count -eq 0) ("successful repin changed unexpected path(s): {0}" -f ($changed -join ', '))
+    Invoke-Git -Root $success.Root -GitArguments @('diff', '--check', "$($success.TargetHead)..$successHead") | Out-Null
+    Write-Output 'PASS successful repin committed managed files pass git diff --check'
     Assert-ControlState -Before $success.Control -After (Get-ControlState -Root $success.Root) -Context 'successful repin'
     Write-Output 'PASS active checkout on a different branch does not matter'
     Write-Output 'PASS successful repin updates only managed PHX-CI consumer files and preserves active checkout'
