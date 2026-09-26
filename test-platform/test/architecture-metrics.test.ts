@@ -171,7 +171,7 @@ test("logical LOC excludes blank and comment-only lines while retaining inline-c
       root,
       "dev/scripts/Invoke-BvpFixture.ps1",
       [
-        "Write-Output 1",
+        'Write-Output "test-platform governance"',
         "# comment only",
         "<# block comment",
         "still a block comment #>",
@@ -245,7 +245,7 @@ test("scenario-specific PowerShell is prohibited", () => {
 test("BVP PowerShell script count over four fails", () => {
   withFixture((root) => {
     for (let index = 0; index < 5; index += 1) {
-      writeText(root, `dev/scripts/Invoke-BvpFixture${index}.ps1`, `Write-Output ${index}\n`);
+      writeText(root, `dev/scripts/Invoke-BvpFixture${index}.ps1`, `Write-Output "test-platform governance ${index}"\n`);
     }
     assertBudgetFailure(runMetrics(root), "BVP_POWERSHELL_SCRIPT_COUNT");
   });
@@ -253,7 +253,11 @@ test("BVP PowerShell script count over four fails", () => {
 
 test("BVP PowerShell logical LOC over 1500 fails", () => {
   withFixture((root) => {
-    writeText(root, "dev/scripts/Invoke-BvpFixture.ps1", lines(1501, "Write-Output "));
+    writeText(
+      root,
+      "dev/scripts/Invoke-BvpFixture.ps1",
+      Array.from({ length: 1501 }, (_, index) => `Write-Output "test-platform governance ${index}"`).join("\n") + "\n",
+    );
     assertBudgetFailure(runMetrics(root), "BVP_POWERSHELL_LOC");
   });
 });
@@ -390,8 +394,8 @@ test("semantic production dependency measurement covers accepted forms, multilin
         "src/dynamic/index.ts",
         "src/js-mapped.ts",
         "src/nested/index.mts",
-        "src/required.ts",
         "src/reexport.mts",
+        "src/required.ts",
         "src/retype.cts",
         "src/static.ts",
         "src/type-only.tsx",
