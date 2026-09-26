@@ -313,8 +313,8 @@ function Measure-Snapshot([string]$Sha, $Policy) {
         $code = @(Get-LogicalLines $text 'ts') -join "`n"
         if ($path -match '(?i)scenario' -or $code -match '(?im)^\s*(?:export\s+)?(?:class|interface|type)\s+[A-Za-z0-9_]*Scenario[A-Za-z0-9_]*\b') { $scenarioProd.Add($path) }
     }
-    $scenarioLocTotal = ($scenarios | Measure-Object -Property logicalLoc -Sum).Sum
-    if ($null -eq $scenarioLocTotal) { $scenarioLocTotal = 0 }
+    $scenarioLocTotal = 0
+    foreach ($scenario in $scenarios) { $scenarioLocTotal += [int]$scenario.logicalLoc }
     return [pscustomobject]@{
         productionSourceLogicalLoc = $productionLoc
         productionSeamLogicalLoc = $seamLoc
