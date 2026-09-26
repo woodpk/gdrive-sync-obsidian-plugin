@@ -131,6 +131,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.productionSeamFileCount, 0);
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
   strictEqual(value.current.scenarioCount, 0);
+  strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 0);
   strictEqual(value.current.platformCoreRuntimeModuleCount, 1);
   strictEqual(value.current.bvpPowerShellScriptCount, 4);
 });
@@ -189,8 +190,12 @@ test("scenario target overage is observable but not a hard failure until 200 lin
     writeText(root, "test-platform/scenarios/C01.ts", lines(121));
     const value = assertPass(runMetrics(root));
     strictEqual(value.current.scenarios[0].logicalLoc, 121);
+    strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 121);
     strictEqual(value.current.scenarios[0].targetExceeded, true);
     strictEqual(value.current.scenarios[0].hardMaxExceeded, false);
+    writeText(root, "test-platform/scenarios/C02.ts", lines(3));
+    const combined = assertPass(runMetrics(root));
+    strictEqual(combined.current.scenarioDefinitionLogicalLocTotal, 124);
   });
 });
 
