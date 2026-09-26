@@ -114,8 +114,13 @@ function assertBudgetFailure(result: MetricsRun, id: string): any {
   if (result.error) throw result.error;
   notStrictEqual(result.status, 0, result.output);
   strictEqual(result.value?.overall, "FAIL", result.output);
-  const budget = result.value?.budgets?.find((entry: any) => entry.id === id);
-  strictEqual(budget?.state, "FAIL", result.output);
+  const failedBudgets =
+    result.value?.budgets
+      ?.filter((entry: any) => entry.state === "FAIL")
+      .map((entry: any) => entry.id)
+      .sort() ?? [];
+  strictEqual(failedBudgets.join("\n"), id, result.output);
+  strictEqual(result.value?.current?.classificationErrors?.length ?? 0, 0, result.output);
   return result.value;
 }
 
