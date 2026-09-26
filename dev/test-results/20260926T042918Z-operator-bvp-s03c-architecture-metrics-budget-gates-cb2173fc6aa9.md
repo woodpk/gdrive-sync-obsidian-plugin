@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s03c-architecture-metrics-budget-gates
+- Source build HEAD requested: cb2173fc6aa9a1c42d12fa7f79b1818235825c54
+- Verification checkout HEAD: cb2173fc6aa9a1c42d12fa7f79b1818235825c54
+- Evidence publication target: origin/bvp-s03c-architecture-metrics-budget-gates
