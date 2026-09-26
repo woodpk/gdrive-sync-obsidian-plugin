@@ -527,7 +527,7 @@ test("dependency analysis sees nested executable template imports but ignores in
     writeText(root, "src/nested.ts", "export const x = 1;\n");
     writeText(root, "src/fake.ts", "export const x = 1;\n");
     const tick = String.fromCharCode(96);
-    const interpolation = "$" + "{await import(\\"../../src/nested\\")}";
+    const interpolation = '${await import("../../src/nested")}';
     writeText(
       root,
       "test-platform/src/platform-root.ts",
