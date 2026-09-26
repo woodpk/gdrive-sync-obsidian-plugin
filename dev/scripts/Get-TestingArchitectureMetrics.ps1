@@ -201,7 +201,7 @@ function Resolve-ProductionModule([string]$Origin, [string]$Specifier, $Producti
 }
 
 function Invoke-TypeScriptDependencyAnalysis([object[]]$Files) {
-    if ($Files.Count -eq 0) { return @() }
+    if (@($Files).Count -eq 0) { return @() }
     $typescript = Join-Path $ScriptRepositoryRoot 'node_modules/typescript/lib/typescript.js'
     if (-not (Test-Path -LiteralPath $typescript -PathType Leaf)) { throw 'SOURCE_ANALYZER_UNAVAILABLE: installed TypeScript parser is required.' }
     $node = Get-Command node -ErrorAction SilentlyContinue
@@ -228,7 +228,7 @@ const result=[...map.keys()].sort().map(path=>{const sf=program.getSourceFile(pa
 function Measure-Snapshot([string]$Sha, $Policy) {
     $paths = @(Get-SnapshotPaths $Sha $Policy)
     $tsExt = '(?i)\.(?:ts|tsx|mts|cts)$'
-    $productionFiles = @($paths | Where-Object { $p = $_; ($Policy.ProductionRoots | Where-Object { Test-Under $p $_ }).Count -gt 0 -and $p -match $tsExt })
+    $productionFiles = @($paths | Where-Object { $p = $_; @($Policy.ProductionRoots | Where-Object { Test-Under $p $_ }).Count -gt 0 -and $p -match $tsExt })
     $testFiles = @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match $tsExt })
     $classificationErrors = [System.Collections.Generic.List[string]]::new()
     foreach ($path in @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match '(?i)\.(?:js|jsx|mjs|cjs|py|sh)$' })) {
@@ -369,8 +369,8 @@ try {
             $delta[$name] = [pscustomobject]@{ base = [int]$base.$name; current = [int]$current.$name; delta = ([int]$current.$name - [int]$base.$name) }
         }
     }
-    $failed = @($budgets | Where-Object state -eq 'FAIL').Count -gt 0 -or $current.classificationErrors.Count -gt 0
-    if ($null -ne $base -and $base.classificationErrors.Count -gt 0) { $failed = $true }
+    $failed = @($budgets | Where-Object state -eq 'FAIL').Count -gt 0 -or @($current.classificationErrors).Count -gt 0
+    if ($null -ne $base -and @($base.classificationErrors).Count -gt 0) { $failed = $true }
     $baseLabel = if ($BaseSha) { $BaseSha } else { $null }
     $overall = if ($failed) { 'FAIL' } else { 'PASS' }
     $result = [ordered]@{ schemaVersion = 1; baseSha = $baseLabel; current = $current; base = $base; delta = $delta; budgets = @($budgets); overall = $overall }
