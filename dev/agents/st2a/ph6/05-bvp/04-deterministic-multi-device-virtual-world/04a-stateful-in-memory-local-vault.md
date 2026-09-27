@@ -3,13 +3,33 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted BVP-S03 primary-stage gate
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S04A is complete and accepted.
+
+- authoritative task base / prerequisite evidence: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- accepted implementation SHA: `18e23b35123deb56e2ba93b1aae94b47b5fb426c`;
+- authoritative PHX-CI evidence / promoted integration SHA: `cfe38db334d3d35d5787837f7c07331e72cc3366`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused BVP verification: PASS, 87/87;
+- full repository tests: PASS, 822/822;
+- architecture guard: PASS, 0 violations;
+- production seam: 1 file / 25 logical LOC;
+- framework core: 718 logical TS LOC / 3 runtime modules, within the 4000-LOC budget;
+- live-device/scenario-specific production surfaces: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The initial green S04A run at evidence `6cae030f1be5fa8c2485e5009c84c2a8eaafd57a` was not accepted after supervisory review identified two in-scope local-port fidelity defects. Those defects were repaired before the authoritative acceptance above: absent-target `replaceFile` parity and idempotent existing-target `createFolder` parity.
+
+This file is now a historical completion record and authorizes no further S04A work.
 
 ## 1. Objective
 
