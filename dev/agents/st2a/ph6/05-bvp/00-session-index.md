@@ -28,7 +28,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 03B | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md` |
 | 03C | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03c-implement-architecture-metrics-and-budget-gates.md` |
 | 03D | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03d-wire-guard-and-metrics-into-phx-ci-repository-check.md` |
-| 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | EXECUTABLE / ACTIVE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
+| 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
 | 04A | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04a-stateful-in-memory-local-vault.md` |
 | 04B | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04b-stateful-in-memory-drive-core.md` |
 | 04C | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04c-drive-change-feed-completeness-ambiguity-and-faults.md` |
@@ -72,11 +72,11 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 
 ## 3. Current Execution State
 
-S03A, S03B, S03C, and S03D are complete and accepted.
+S03A, S03B, S03C, S03D, and S03V are complete and accepted. BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement is closed.
 
-S03D implementation `4fb2564b62d239f1a442175f733e247e4b68b43f` passed authoritative PHX-CI verification and its evidence commit `54f7a7df8e4f81c5ef973eb05251e30d3e0d4641` has been fast-forward promoted to `phase6-integration`.
+Authoritative S03V evidence `aec79fb0c5a9e0c0e48a81614a59b071e343e8f4` is promoted to `phase6-integration`. The accepted S03 architecture baseline is recorded in the S03V completion record.
 
-S03V is now the active verification child. Its hard execution facts are bound against the accepted integrated S03 state, the pre-S03 stage base `376ab75477c863cceb63ff82475f352a8f4ec4cc`, and PHX-CI runtime `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`.
+S04A is the next child but remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the accepted post-S03 repository state. S04 implementation has not begun.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 
