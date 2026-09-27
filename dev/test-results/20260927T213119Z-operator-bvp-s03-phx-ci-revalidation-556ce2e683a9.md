@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s03-phx-ci-revalidation
+- Source build HEAD requested: 556ce2e683a9c60131f108677f2993a15a03de5d
+- Verification checkout HEAD: 556ce2e683a9c60131f108677f2993a15a03de5d
+- Evidence publication target: origin/bvp-s03-phx-ci-revalidation
