@@ -63,14 +63,22 @@ test("stateful create, read, replace, and repeated observation preserve exact by
   deepStrictEqual(changes, ["created", "modified"]);
 });
 
-test("confirmed absence stays distinct from missing-file operation failures and stale preconditions", async () => {
+test("confirmed absence stays distinct from missing-file reads and stale replace preconditions", async () => {
   const vault = new InMemoryLocalVault();
   const missing = virtualVaultPath("missing.md");
 
   const absent = await vault.observe(missing);
   strictEqual(absent.status, "absent");
   await rejects(() => vault.readFile(missing), /does not exist/i);
-  await rejects(() => vault.replaceFile(missing, source([1])), /does not exist/i);
+  await rejects(
+    () =>
+      vault.replaceFile(
+        missing,
+        source([1]),
+        "missing-observation-token" as never,
+      ),
+    InMemoryLocalVaultStaleObservationError,
+  );
 
   const path = virtualVaultPath("present.md");
   const created = await vault.createFile(path, source([1]));
@@ -78,6 +86,47 @@ test("confirmed absence stays distinct from missing-file operation failures and 
   await rejects(
     () => vault.replaceFile(path, source([3]), created.observationToken),
     InMemoryLocalVaultStaleObservationError,
+  );
+});
+
+test("replace without an expected token materializes an absent production target", async () => {
+  const vault = new InMemoryLocalVault();
+  const changes: string[] = [];
+  vault.onChange((change) => changes.push(change.kind));
+
+  const receipt = await vault.replaceFile(
+    virtualVaultPath("materialized.bin"),
+    source([4, 5, 6]),
+  );
+
+  strictEqual(String(receipt.path), "materialized.bin");
+  deepStrictEqual(
+    await readAll(
+      await vault.readFile(
+        virtualVaultPath("materialized.bin"),
+        receipt.observationToken,
+      ),
+    ),
+    [4, 5, 6],
+  );
+  deepStrictEqual(changes, ["created"]);
+});
+
+test("createFolder is idempotent for an existing folder and rejects an existing file", async () => {
+  const vault = new InMemoryLocalVault();
+  const changes: string[] = [];
+  vault.onChange((change) => changes.push(change.kind));
+
+  const first = await vault.createFolder(virtualVaultPath("existing-folder"));
+  const second = await vault.createFolder(virtualVaultPath("existing-folder"));
+
+  strictEqual(second.observationToken, first.observationToken);
+  deepStrictEqual(changes, ["created"]);
+
+  vault.seedFile("existing-file", "x");
+  await rejects(
+    () => vault.createFolder(virtualVaultPath("existing-file")),
+    /existing file/i,
   );
 });
 
