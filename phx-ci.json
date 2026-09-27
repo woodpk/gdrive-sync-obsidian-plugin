@@ -17,5 +17,8 @@
   "repositoryPolicy": {
     "requiredPaths": [],
     "prohibitedChangedPaths": []
+  },
+  "commands": {
+    "repositoryCheck": "node scripts/repository-check.mjs"
   }
 }
