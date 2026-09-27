@@ -282,30 +282,66 @@ export class InMemoryLocalVault implements LocalVaultPort {
     expectedToken?: ObservationToken,
   ): Promise<LocalMutationReceipt> {
     const normalized = normalizeVaultPath(String(path));
-    const entry = this.requiredEntry(normalized);
-    if (entry.kind !== "file") {
+    const existing = this.entries.get(normalized);
+
+    if (!existing) {
+      if (expectedToken !== undefined) {
+        throw new InMemoryLocalVaultStaleObservationError(
+          virtualVaultPath(normalized),
+        );
+      }
+      const validation = validateCrossPlatformPath(
+        path,
+        [...this.entries.keys()],
+      );
+      if (validation.status === "blocked") {
+        throw new InMemoryLocalVaultError(
+          `Local path is incompatible (${validation.reason}): ${String(path)}`,
+        );
+      }
+      const bytes = await collectContent(content);
+      const created = this.newEntry("file", bytes);
+      this.entries.set(normalized, created);
+      const vaultPath = virtualVaultPath(normalized);
+      this.emitChange({ kind: "created", path: vaultPath });
+      return this.receiptFor(normalized, created);
+    }
+
+    if (existing.kind !== "file") {
       throw new InMemoryLocalVaultError(
         `Cannot replace folder as file: ${normalized}`,
       );
     }
-    this.assertReadable(normalized, entry);
-    this.assertExpectedToken(normalized, entry, expectedToken);
+    this.assertReadable(normalized, existing);
+    this.assertExpectedToken(normalized, existing, expectedToken);
     const bytes = await collectContent(content);
-    entry.bytes = bytes;
-    entry.revision += 1;
-    entry.stability = "stable";
+    existing.bytes = bytes;
+    existing.revision += 1;
+    existing.stability = "stable";
     const vaultPath = virtualVaultPath(normalized);
     this.emitChange({ kind: "modified", path: vaultPath });
-    return this.receiptFor(normalized, entry);
+    return this.receiptFor(normalized, existing);
   }
 
   async createFolder(path: VaultPath): Promise<LocalMutationReceipt> {
-    const normalized = this.assertCreateTarget(path);
+    const normalized = normalizeVaultPath(String(path));
+    const existing = this.entries.get(normalized);
+    if (existing) {
+      if (existing.kind !== "folder") {
+        throw new InMemoryLocalVaultError(
+          `Cannot create folder over existing file: ${normalized}`,
+        );
+      }
+      this.assertReadable(normalized, existing);
+      return this.receiptFor(normalized, existing);
+    }
+
+    const target = this.assertCreateTarget(path);
     const entry = this.newEntry("folder");
-    this.entries.set(normalized, entry);
-    const vaultPath = virtualVaultPath(normalized);
+    this.entries.set(target, entry);
+    const vaultPath = virtualVaultPath(target);
     this.emitChange({ kind: "created", path: vaultPath });
-    return this.receiptFor(normalized, entry);
+    return this.receiptFor(target, entry);
   }
 
   async move(
