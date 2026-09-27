@@ -41,8 +41,8 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
 
 - exact accepted S03 predecessor / integration SHA: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
 - exact task branch: `bvp-s04a-stateful-in-memory-local-vault`;
-- production local-vault contract: `LocalVaultPort`, exported through `src/contracts/index.ts` and semantically defined in `src/contracts/local-vault.ts`;
-- required shared value/observation types are the existing exports reachable through `src/contracts/index.ts`, including `VaultPath`, `ObservationToken`, `BinaryContentSource`, `ContentEvidence`, `LocalObservation`, `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, and `LocalLifecycleEvent`;
+- production local-vault contract: `LocalVaultPort`, semantically defined in `src/contracts/local-vault.ts` and exposed to the BVP through supervisor-owned non-shipping seam `src/product/local-vault-boundary-seam.ts`;
+- required shared value/observation types are existing production types re-exported through that narrow seam, including `VaultPath`, `ObservationToken`, `BinaryContentSource`, `ContentEvidence`, `LocalObservation`, `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, and `LocalLifecycleEvent`;
 - accepted production policy helpers to reuse rather than duplicate:
   - `src/local/path-policy.ts` — normalization/case/Unicode/cross-platform validation;
   - `src/local/config-policy.ts` — selective configuration classification;
@@ -59,18 +59,15 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
   - `test-platform/test/in-memory-local-vault.test.ts`;
 - supervisor-owned compile-layout support for approved production seam imports is bound in `test-platform/tsconfig.json` with repository-root `rootDir`; BVP emitted paths are correspondingly under `.test-build/bvp/test-platform/**`;
 - supervisor-owned production seam authority explicitly permits frozen production boundary contracts and pure deterministic policy helpers when individually enumerated for virtual-world adapter fidelity;
-- supervisor-owned production seam allowlist is pre-approved for exactly:
-  - `src/contracts/index.ts`;
-  - `src/local/path-policy.ts`;
-  - `src/local/config-policy.ts`;
-  - `src/local/exclusions.ts`;
-- this approved seam is 4 files and approximately 209 current logical LOC, within the frozen BVP-GOV-004 limits of 4 files / 350 LOC;
+- supervisor-owned production seam allowlist is pre-approved for exactly one entry: `src/product/local-vault-boundary-seam.ts`;
+- that seam re-exports only the existing local-vault contract/types plus `normalizeVaultPath`, `validateCrossPlatformPath`, `SelectiveConfigurationPolicy`, and `LocalExclusionPolicy`; it contains no synchronization policy and is not imported by the shipping product entrypoint;
+- the seam occupies 1 of the frozen maximum 4 production-seam files and remains well below the 350 logical-LOC cap;
 - `LocalIntegrityReconciliationPort` is not a separate S04A implementation requirement: production already obtains that seam through `CanonicalEvidenceLocalVault`; S04A must not invent an alternate integrity or synchronization API;
 - PHX-CI base authority for this task branch: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
 - target-branch PHX-CI framework/runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
 - focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-local-vault.test.js`;
 - authoritative full BVP focused command remains `npm run test:bvp-root`;
-- BVP-GOV-010 size gate: **PASS** — one platform contract family, one substantive non-test implementation file, two writable files total, and no planned production implementation file.
+- BVP-GOV-010 size gate: **PASS** — one platform contract family, one substantive BVP runtime implementation file plus one small supervisor-owned non-shipping production seam, and no more than the two implementation-writable `test-platform/**` files.
 
 The supervisor-owned seam approval above is execution binding, not authority for the implementation child to modify governance or production files. The implementation itself may write only the two bound `test-platform/**` paths.
 
