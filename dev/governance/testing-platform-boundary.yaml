@@ -31,6 +31,7 @@ production_seam:
   max_logical_loc: 350
   max_files: 4
   may_expose:
+    - frozen production boundary contracts and pure deterministic policy helpers explicitly enumerated in approved_imports for virtual-world adapter fidelity
     - read-only production run/result receipt
     - bounded invocation of already-authorized production actions for validation build composition
   must_not_expose:

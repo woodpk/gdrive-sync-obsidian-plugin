@@ -57,6 +57,7 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
 - exact writable-path allowlist for S04A implementation:
   - `test-platform/src/virtual-world/in-memory-local-vault.ts`;
   - `test-platform/test/in-memory-local-vault.test.ts`;
+- supervisor-owned production seam authority explicitly permits frozen production boundary contracts and pure deterministic policy helpers when individually enumerated for virtual-world adapter fidelity;
 - supervisor-owned production seam allowlist is pre-approved for exactly:
   - `src/contracts/index.ts`;
   - `src/local/path-policy.ts`;
