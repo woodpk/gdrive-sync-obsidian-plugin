@@ -138,6 +138,37 @@ function withFixture(run: (root: string) => void): void {
   }
 }
 
+test("PHX consumer configuration selects the frozen BVP repository-check command", () => {
+  const projectConfig = JSON.parse(
+    readFileSync(join(repositoryRoot, "phx-ci.json"), "utf8"),
+  );
+  const taskIntegration = readFileSync(
+    join(repositoryRoot, "Taskfile.phx-ci.yml"),
+    "utf8",
+  );
+  const packageModel = JSON.parse(
+    readFileSync(join(repositoryRoot, "package.json"), "utf8"),
+  );
+
+  const expectedCommand =
+    "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js";
+
+  strictEqual(projectConfig.commands?.repositoryCheck, expectedCommand);
+  match(
+    taskIntegration,
+    /PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules\/typescript\/bin\/tsc -p test-platform\/tsconfig\.json && node \.test-build\/bvp\/src\/repository-check\.js'/,
+  );
+  strictEqual(
+    packageModel.scripts?.check,
+    "npm run typecheck && npm test && npm run build",
+    "ordinary production check command must remain unchanged",
+  );
+  strictEqual(
+    packageModel.scripts?.["test:bvp-repository-check"],
+    "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test/repository-check-integration.test.js",
+  );
+});
+
 test("repository-check source consumes PHX context without independent Git resolution", () => {
   const source = readFileSync(repositoryCheckSourcePath, "utf8");
   match(source, /PHX_VERIFICATION_CONTEXT_PATH/);
@@ -274,6 +305,30 @@ test("routine local mode runs both checks without fabricated base or changed pat
     match(
       result.output,
       /BVP_REPOSITORY_CHECK_RESULT=PASS guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
+    );
+  });
+});
+
+test("missing required guard script fails instead of skipping while metrics still runs", () => {
+  withFixture((root) => {
+    unlinkSync(
+      join(root, "dev", "scripts", "Test-TestingArchitectureGuard.ps1"),
+    );
+    const contextPath = writeContext(root);
+    const result = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+    });
+
+    if (result.error) throw result.error;
+    notStrictEqual(result.status, 0, result.output);
+    match(
+      result.output,
+      /BVP_REPOSITORY_CHECK_ERROR stage=architecture-guard detail=required script is missing/,
+    );
+    match(result.output, /STUB_METRICS_BASE=2{40}/);
+    match(
+      result.output,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL guardExit=2 metricsExit=0/,
     );
   });
 });
