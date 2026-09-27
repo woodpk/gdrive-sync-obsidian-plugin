@@ -251,6 +251,95 @@ test("move preserves object identity while updating path revision and parent met
   }
 });
 
+test("moving a folder remaps descendant logical paths without changing descendant IDs or revisions", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+
+  const folder = await drive.create(root.rootId, {
+    path: virtualDrivePath("folder"),
+    entityKind: "folder",
+  });
+  const child = await drive.create(root.rootId, {
+    path: virtualDrivePath("folder/child.bin"),
+    entityKind: "file",
+    content: source([1, 2]),
+  });
+  if (!folder.ok || !child.ok) throw new Error("create failed");
+
+  const childBefore = drive.inspectObject(child.value.remoteObjectId);
+  strictEqual(childBefore?.revision, "1");
+
+  const moved = await drive.move(
+    folder.value.remoteObjectId,
+    virtualDrivePath("folder"),
+    virtualDrivePath("moved/folder"),
+  );
+  strictEqual(moved.ok, true);
+
+  const childAfter = drive.inspectObject(child.value.remoteObjectId);
+  strictEqual(childAfter?.remoteObjectId, child.value.remoteObjectId);
+  strictEqual(String(childAfter?.path), "moved/folder/child.bin");
+  strictEqual(childAfter?.revision, "1");
+
+  const oldChild = await drive.observe(
+    root.rootId,
+    virtualDrivePath("folder/child.bin"),
+  );
+  strictEqual(oldChild.ok, true);
+  if (oldChild.ok) strictEqual(oldChild.value.status, "absent");
+
+  const newChild = await drive.observe(
+    root.rootId,
+    virtualDrivePath("moved/folder/child.bin"),
+  );
+  strictEqual(newChild.ok, true);
+  if (newChild.ok && newChild.value.status === "present") {
+    strictEqual(newChild.value.remoteObjectId, child.value.remoteObjectId);
+  }
+});
+
+test("trashing a folder hides its subtree while retaining descendant object identity and revisions", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+
+  const folder = await drive.create(root.rootId, {
+    path: virtualDrivePath("container"),
+    entityKind: "folder",
+  });
+  const child = await drive.create(root.rootId, {
+    path: virtualDrivePath("container/child.txt"),
+    entityKind: "file",
+    content: source([5]),
+  });
+  if (!folder.ok || !child.ok) throw new Error("create failed");
+
+  const childBefore = drive.inspectObject(child.value.remoteObjectId);
+  await drive.trash(folder.value.remoteObjectId);
+
+  const childRetained = drive.inspectObject(child.value.remoteObjectId);
+  strictEqual(childRetained?.remoteObjectId, child.value.remoteObjectId);
+  strictEqual(childRetained?.revision, childBefore?.revision);
+  strictEqual(childRetained?.trashed, false);
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("container/child.txt"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok) strictEqual(observed.value.status, "absent");
+
+  const listing = await drive.listForReconciliation(root.rootId);
+  strictEqual(listing.ok, true);
+  if (listing.ok) {
+    strictEqual(
+      listing.value.entries.some(
+        (entry) => entry.remoteObjectId === child.value.remoteObjectId,
+      ),
+      false,
+    );
+  }
+});
+
 test("trash hides the path from ordinary observation/listing while retaining the same object identity", async () => {
   const drive = new InMemoryGoogleDriveCore();
   const root = await managedRoot(drive);
