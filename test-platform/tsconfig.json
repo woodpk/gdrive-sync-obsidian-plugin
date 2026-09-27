@@ -5,7 +5,7 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "outDir": "../.test-build/bvp",
-    "rootDir": ".",
+    "rootDir": "..",
     "sourceMap": false,
     "declaration": false
   },
