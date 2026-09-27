@@ -39,7 +39,8 @@ The implementation is stateful across multiple production operations within one 
 
 The S04A contract is bound to the accepted post-S03 repository state as follows:
 
-- exact accepted S03 predecessor / integration SHA: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- accepted S04 local-vault seam prerequisite evidence / authoritative task base: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- underlying accepted S03 predecessor: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
 - exact task branch: `bvp-s04a-stateful-in-memory-local-vault`;
 - production local-vault contract: `LocalVaultPort`, semantically defined in `src/contracts/local-vault.ts` and exposed to the BVP through supervisor-owned non-shipping seam `src/product/local-vault-boundary-seam.ts`;
 - required shared value/observation types are existing production types re-exported through that narrow seam, including `VaultPath`, `ObservationToken`, `BinaryContentSource`, `ContentEvidence`, `LocalObservation`, `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, and `LocalLifecycleEvent`;
@@ -63,7 +64,7 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
 - that seam re-exports only the existing local-vault contract/types plus `normalizeVaultPath`, `validateCrossPlatformPath`, `SelectiveConfigurationPolicy`, and `LocalExclusionPolicy`; it contains no synchronization policy and is not imported by the shipping product entrypoint;
 - the seam occupies 1 of the frozen maximum 4 production-seam files and remains well below the 350 logical-LOC cap;
 - `LocalIntegrityReconciliationPort` is not a separate S04A implementation requirement: production already obtains that seam through `CanonicalEvidenceLocalVault`; S04A must not invent an alternate integrity or synchronization API;
-- PHX-CI base authority for this task branch: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- PHX-CI base authority for this task branch: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
 - target-branch PHX-CI framework/runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
 - focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-local-vault.test.js`;
 - authoritative full BVP focused command remains `npm run test:bvp-root`;
