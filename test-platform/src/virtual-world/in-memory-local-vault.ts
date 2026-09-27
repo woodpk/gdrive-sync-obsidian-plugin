@@ -1,5 +1,9 @@
 import {
   contractId,
+  LocalExclusionPolicy,
+  normalizeVaultPath,
+  SelectiveConfigurationPolicy,
+  validateCrossPlatformPath,
   type BinaryContentSource,
   type ConfigurationClassification,
   type ContentEvidence,
@@ -14,13 +18,7 @@ import {
   type PathValidationResult,
   type Unsubscribe,
   type VaultPath,
-} from "../../../src/contracts/index";
-import { SelectiveConfigurationPolicy } from "../../../src/local/config-policy";
-import { LocalExclusionPolicy } from "../../../src/local/exclusions";
-import {
-  normalizeVaultPath,
-  validateCrossPlatformPath,
-} from "../../../src/local/path-policy";
+} from "../../../src/product/local-vault-boundary-seam";
 
 type EntryKind = "file" | "folder";
 type EntryAccess = "readable" | "unreadable" | "inaccessible";
