@@ -132,7 +132,7 @@ function runGit(root: string, args: readonly string[]): string {
 
 test("architecture metrics pass the actual BRAIN repository baseline", () => {
   const value = assertPass(runMetrics(repositoryRoot));
-  strictEqual(value.current.productionSeamFileCount, 4);
+  strictEqual(value.current.productionSeamFileCount, 1);
   strictEqual(value.current.productionSeamLogicalLoc > 0, true);
   strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
