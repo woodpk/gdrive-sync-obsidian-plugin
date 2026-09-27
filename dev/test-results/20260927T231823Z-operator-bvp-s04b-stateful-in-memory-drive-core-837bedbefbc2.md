@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04b-stateful-in-memory-drive-core
+- Source build HEAD requested: 837bedbefbc29c74139e156f7dac418bf2d0cf4a
+- Verification checkout HEAD: 837bedbefbc29c74139e156f7dac418bf2d0cf4a
+- Evidence publication target: origin/bvp-s04b-stateful-in-memory-drive-core
