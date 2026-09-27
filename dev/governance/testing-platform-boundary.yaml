@@ -24,10 +24,7 @@ shipping_rules:
 production_seam:
   allowlist_required: true
   approved_imports:
-    - src/contracts/index.ts
-    - src/local/path-policy.ts
-    - src/local/config-policy.ts
-    - src/local/exclusions.ts
+    - src/product/local-vault-boundary-seam.ts
   max_logical_loc: 350
   max_files: 4
   may_expose:
@@ -79,6 +76,7 @@ supervisor_owned_frozen_surfaces:
   - phx-ci.json
   - Taskfile.phx-ci.yml
   - test-platform/src/repository-check.ts
+  - src/product/local-vault-boundary-seam.ts
   - bounded PHX-CI include block in Taskfile.yml
 
 dispatch_policy:
