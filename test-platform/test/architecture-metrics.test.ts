@@ -137,7 +137,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
   strictEqual(value.current.scenarioCount, 0);
   strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 0);
-  strictEqual(value.current.platformCoreRuntimeModuleCount, 1);
+  strictEqual(value.current.platformCoreRuntimeModuleCount, 2);
   strictEqual(value.current.bvpPowerShellScriptCount, 4);
 });
 
