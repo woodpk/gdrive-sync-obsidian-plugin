@@ -27,8 +27,8 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 03A | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03a-create-test-platform-root-and-shipping-isolation.md` |
 | 03B | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md` |
 | 03C | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03c-implement-architecture-metrics-and-budget-gates.md` |
-| 03D | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | EXECUTABLE / ACTIVE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03d-wire-guard-and-metrics-into-phx-ci-repository-check.md` |
-| 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
+| 03D | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03d-wire-guard-and-metrics-into-phx-ci-repository-check.md` |
+| 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | EXECUTABLE / ACTIVE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
 | 04A | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04a-stateful-in-memory-local-vault.md` |
 | 04B | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04b-stateful-in-memory-drive-core.md` |
 | 04C | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04c-drive-change-feed-completeness-ambiguity-and-faults.md` |
@@ -72,9 +72,11 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 
 ## 3. Current Execution State
 
-S03A, S03B, and S03C are complete and accepted.
+S03A, S03B, S03C, and S03D are complete and accepted.
 
-S03D is the active child on branch `bvp-s03d-phx-ci-repository-check`. Its hard execution facts are bound against the accepted repository state and PHX-CI runtime `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`.
+S03D implementation `4fb2564b62d239f1a442175f733e247e4b68b43f` passed authoritative PHX-CI verification and its evidence commit `54f7a7df8e4f81c5ef973eb05251e30d3e0d4641` has been fast-forward promoted to `phase6-integration`.
+
+S03V is now the active verification child. Its hard execution facts are bound against the accepted integrated S03 state, the pre-S03 stage base `376ab75477c863cceb63ff82475f352a8f4ec4cc`, and PHX-CI runtime `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 

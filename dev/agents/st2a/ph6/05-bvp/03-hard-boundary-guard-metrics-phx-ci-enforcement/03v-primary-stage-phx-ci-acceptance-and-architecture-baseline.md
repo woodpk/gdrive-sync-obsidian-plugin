@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s03-boundary-governance-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement
 
@@ -29,14 +29,35 @@ S03 may close only if the integrated repository establishes all of the following
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor fills:
+The S03V verification contract is bound to the accepted integrated repository state as follows:
 
-- exact current `phase6-integration` SHA containing only accepted S03 children;
-- exact stage verification base;
-- exact current target-branch PHX-CI pin/runtime;
-- accepted guard/metrics focused test commands and repository-check entrypoint;
-- current expected baseline metric categories and any prior baseline needed for delta comparison;
-- exact integrated child evidence SHAs.
+- current `phase6-integration` accepted S03D evidence head: `54f7a7df8e4f81c5ef973eb05251e30d3e0d4641`;
+- exact S03 stage verification base (pre-S03 accepted predecessor): `376ab75477c863cceb63ff82475f352a8f4ec4cc`;
+- target branch for integrated verification: `phase6-integration`;
+- exact PHX-CI framework/runtime SHA: `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`;
+- accepted architecture-guard focused command: `npm run test:bvp-architecture-guard`;
+- accepted architecture-metrics focused command: `npm run test:bvp-architecture-metrics`;
+- accepted integrated BVP focused command: `npm run test:bvp-root`;
+- accepted repository-check focused command: `npm run test:bvp-repository-check`;
+- canonical repository-check entrypoint: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js`;
+- S03A evidence SHA: `28462b854f4cefbae6f385e67835f8e5f0539918`;
+- S03B evidence / promoted predecessor SHA: `78f5f8f7f118e280ee25710f567288a68ba69278`;
+- S03C evidence / promoted predecessor SHA: `f76e65db6640df20d80e470f7773489d2f3d8cc4`;
+- S03D evidence / promoted integration SHA: `54f7a7df8e4f81c5ef973eb05251e30d3e0d4641`.
+
+Reference metrics from the accepted S03D authoritative repository-check evidence are:
+
+- production source logical LOC: 16,421;
+- production seam: 0 LOC / 0 files;
+- framework core: 210 logical TypeScript LOC / 2 runtime modules;
+- live-device agent/relay: 0 LOC;
+- scenario definitions: 0 LOC / 0 scenarios;
+- production modules imported by BVP: 0;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific PowerShell: 0;
+- scenario-specific production files: 0.
+
+These values are reference evidence, not hard-coded acceptance substitutes. S03V must independently reproduce the integrated metrics under the accepted evaluator and record the fresh baseline.
 
 No binding may alter S03 acceptance semantics.
 
