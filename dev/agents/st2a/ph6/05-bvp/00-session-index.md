@@ -25,8 +25,8 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 02B | S02 — Legacy Executable Retirement | COMPLETE | `02-legacy-executable-retirement/02b-retire-harness-source-and-production-coupling.md` |
 | 02V | S02 — Legacy Executable Retirement | COMPLETE | `02-legacy-executable-retirement/02v-primary-stage-phx-ci-acceptance.md` |
 | 03A | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03a-create-test-platform-root-and-shipping-isolation.md` |
-| 03B | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | EXECUTABLE NEXT | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md` |
-| 03C | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03c-implement-architecture-metrics-and-budget-gates.md` |
+| 03B | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md` |
+| 03C | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03c-implement-architecture-metrics-and-budget-gates.md` |
 | 03D | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03d-wire-guard-and-metrics-into-phx-ci-repository-check.md` |
 | 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | PREPLANNED | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
 | 04A | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04a-stateful-in-memory-local-vault.md` |
@@ -69,7 +69,16 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 09F | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09f-requirement-evidence-traceability-closure.md` |
 | 09V | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09v-final-phx-ci-architecture-closure-and-stage-3-handoff.md` |
 
-## 3. Sequencing Rule
+
+## 3. Current Execution State
+
+S03A, S03B, and S03C are complete and accepted.
+
+S03D is the next child. It remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the actual accepted repository state and current PHX-CI runtime contract.
+
+Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage.
+
+## 4. Sequencing Rule
 
 Default execution is serial through `phase6-integration`:
 

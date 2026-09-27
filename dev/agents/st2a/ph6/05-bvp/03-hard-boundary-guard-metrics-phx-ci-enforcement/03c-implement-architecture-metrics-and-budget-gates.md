@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s03-boundary-governance-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement  
 **Predecessor child:** accepted S03B
 
