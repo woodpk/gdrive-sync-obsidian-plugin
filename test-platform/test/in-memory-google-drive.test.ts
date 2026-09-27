@@ -496,6 +496,35 @@ test("missing remote IDs use the production not-found classification", async () 
   strictEqual(stillValid.ok, true);
 });
 
+test("folder create ignores file integrity evidence exactly like the production raw Drive primitive", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("folder-with-evidence"),
+    entityKind: "folder",
+    expectedEvidence: {
+      sizeBytes: 999,
+      hash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" as never,
+    },
+  });
+
+  strictEqual(created.ok, true);
+  if (!created.ok) return;
+  strictEqual(String(created.value.path), "folder-with-evidence");
+  strictEqual(created.value.evidence, undefined);
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("folder-with-evidence"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok && observed.value.status === "present") {
+    strictEqual(observed.value.entityKind, "folder");
+    strictEqual(observed.value.remoteObjectId, created.value.remoteObjectId);
+  }
+});
+
 test("folder download and content update fail with production conflict classification", async () => {
   const drive = new InMemoryGoogleDriveCore();
   const root = await managedRoot(drive);
