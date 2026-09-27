@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: phase6-integration
+- Source build HEAD requested: 51b762dba0717fc180fb88fee103f415139da461
+- Verification checkout HEAD: 51b762dba0717fc180fb88fee103f415139da461
+- Evidence publication target: origin/phase6-integration
