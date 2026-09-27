@@ -166,7 +166,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
 
   async enumerate(): Promise<LocalVaultListing> {
     const orderedPaths = [...this.entries.keys()].sort((left, right) =>
-      left.localeCompare(right, "en-US"),
+      left < right ? -1 : left > right ? 1 : 0,
     );
     const blockedFolders = orderedPaths.filter((path) => {
       const entry = this.entries.get(path)!;
