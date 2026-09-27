@@ -74,7 +74,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 
 S03A, S03B, S03C, S03D, and S03V are complete and accepted. BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement is closed.
 
-Authoritative S03V evidence `aec79fb0c5a9e0c0e48a81614a59b071e343e8f4` is promoted to `phase6-integration`. The accepted S03 architecture baseline is recorded in the S03V completion record.
+Authoritative fixed-runtime S03V evidence `07f8ee895d0575fc2c49d325a5a7822d419b372c` is promoted to `phase6-integration`, using PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`. The earlier S03V evidence produced under runtime `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a` is superseded for acceptance purposes because that runtime was later found defective. The accepted S03 architecture baseline is unchanged and is recorded in the S03V completion record.
 
 S04A is the next child but remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the accepted post-S03 repository state. S04 implementation has not begun.
 

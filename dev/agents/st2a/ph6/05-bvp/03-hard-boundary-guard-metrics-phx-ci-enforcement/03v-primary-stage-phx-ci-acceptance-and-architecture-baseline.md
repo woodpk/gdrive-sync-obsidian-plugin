@@ -131,10 +131,15 @@ BVP-S03 is accepted and S03V is complete / non-executable.
 
 ### Authoritative acceptance
 
+The original S03V acceptance was later invalidated as authoritative evidence because the PHX-CI runtime used for that run contained a significant defect. S03 was therefore revalidated from the same pre-S03 stage base using the corrected PHX-CI runtime. The fixed-runtime revalidation below supersedes the prior runtime/evidence coordinates while preserving the same accepted S03 implementation semantics and architecture baseline.
+
 - accepted S03V implementation/repair SHA: `35a0ab82c4a0f63db197100618b926b43da2e5f5`;
-- authoritative S03V PHX-CI evidence / promoted integration SHA: `aec79fb0c5a9e0c0e48a81614a59b071e343e8f4`;
+- PHX-CI repin / fixed-runtime revalidation input SHA: `556ce2e683a9c60131f108677f2993a15a03de5d`;
+- authoritative fixed-runtime S03V PHX-CI evidence / promoted integration SHA: `07f8ee895d0575fc2c49d325a5a7822d419b372c`;
 - stage verification base: `376ab75477c863cceb63ff82475f352a8f4ec4cc`;
-- PHX-CI runtime: `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`;
+- authoritative PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- superseded PHX-CI runtime: `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`;
+- superseded S03V evidence: `aec79fb0c5a9e0c0e48a81614a59b071e343e8f4`;
 - change-set verification: PASS;
 - repository verification: PASS;
 - overall verification: PASS / compatibility COMPLETE / task exit 0;
