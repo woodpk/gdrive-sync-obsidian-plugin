@@ -327,12 +327,6 @@ export class InMemoryLocalVault implements LocalVaultPort {
     const normalized = normalizeVaultPath(String(path));
     const existing = this.entries.get(normalized);
     if (existing) {
-      if (existing.kind !== "folder") {
-        throw new InMemoryLocalVaultError(
-          `Cannot create folder over existing file: ${normalized}`,
-        );
-      }
-      this.assertReadable(normalized, existing);
       return this.receiptFor(normalized, existing);
     }
 
