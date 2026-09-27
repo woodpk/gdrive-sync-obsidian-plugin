@@ -334,24 +334,22 @@ export class InMemoryLocalVault implements LocalVaultPort {
       (path) => !movingSet.has(path),
     );
 
-    const validation = validateCrossPlatformPath(toPath, unaffectedPaths);
-    if (validation.status === "blocked") {
-      throw new InMemoryLocalVaultError(
-        `Move destination is incompatible (${validation.reason}): ${to}`,
-      );
-    }
-    if (this.entries.has(to) && !movingSet.has(to)) {
-      throw new InMemoryLocalVaultError(`Move destination already exists: ${to}`);
-    }
-
+    const occupiedTargets = [...unaffectedPaths];
     const remapped = movingPaths.map((oldPath) => {
       const suffix = oldPath === from ? "" : oldPath.slice(from.length);
       const newPath = `${to}${suffix}`;
-      if (unaffectedPaths.includes(newPath)) {
+      const validation = validateCrossPlatformPath(newPath, occupiedTargets);
+      if (validation.status === "blocked") {
+        throw new InMemoryLocalVaultError(
+          `Move destination is incompatible (${validation.reason}): ${newPath}`,
+        );
+      }
+      if (occupiedTargets.includes(newPath)) {
         throw new InMemoryLocalVaultError(
           `Move destination collides with existing path: ${newPath}`,
         );
       }
+      occupiedTargets.push(newPath);
       return { oldPath, newPath, entry: this.entries.get(oldPath)! };
     });
 
