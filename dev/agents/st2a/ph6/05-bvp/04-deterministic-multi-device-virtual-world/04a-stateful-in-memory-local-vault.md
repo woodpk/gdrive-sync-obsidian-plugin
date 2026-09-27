@@ -57,6 +57,7 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
 - exact writable-path allowlist for S04A implementation:
   - `test-platform/src/virtual-world/in-memory-local-vault.ts`;
   - `test-platform/test/in-memory-local-vault.test.ts`;
+- supervisor-owned compile-layout support for approved production seam imports is bound in `test-platform/tsconfig.json` with repository-root `rootDir`; BVP emitted paths are correspondingly under `.test-build/bvp/test-platform/**`;
 - supervisor-owned production seam authority explicitly permits frozen production boundary contracts and pure deterministic policy helpers when individually enumerated for virtual-world adapter fidelity;
 - supervisor-owned production seam allowlist is pre-approved for exactly:
   - `src/contracts/index.ts`;
@@ -67,7 +68,7 @@ The S04A contract is bound to the accepted post-S03 repository state as follows:
 - `LocalIntegrityReconciliationPort` is not a separate S04A implementation requirement: production already obtains that seam through `CanonicalEvidenceLocalVault`; S04A must not invent an alternate integrity or synchronization API;
 - PHX-CI base authority for this task branch: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
 - target-branch PHX-CI framework/runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
-- focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test/in-memory-local-vault.test.js`;
+- focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-local-vault.test.js`;
 - authoritative full BVP focused command remains `npm run test:bvp-root`;
 - BVP-GOV-010 size gate: **PASS** — one platform contract family, one substantive non-test implementation file, two writable files total, and no planned production implementation file.
 
