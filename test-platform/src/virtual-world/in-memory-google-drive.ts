@@ -392,16 +392,18 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     const evidence =
       object.entityKind === "file" ? fileEvidence(object) : undefined;
 
-    const createMismatch = evidenceMismatch(
-      evidence ?? {},
-      request.expectedEvidence,
-    );
-    if (createMismatch) {
-      return recoveryRequired(
-        createMismatch === "size"
-          ? "uploaded-size-integrity-mismatch"
-          : "uploaded-hash-integrity-mismatch",
+    if (object.entityKind === "file") {
+      const createMismatch = evidenceMismatch(
+        evidence ?? {},
+        request.expectedEvidence,
       );
+      if (createMismatch) {
+        return recoveryRequired(
+          createMismatch === "size"
+            ? "uploaded-size-integrity-mismatch"
+            : "uploaded-hash-integrity-mismatch",
+        );
+      }
     }
 
     return {
