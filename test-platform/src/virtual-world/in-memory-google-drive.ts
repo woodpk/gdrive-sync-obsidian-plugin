@@ -102,6 +102,12 @@ function comparisonKey(value: VaultPath | string): string {
     .toLocaleLowerCase("en-US");
 }
 
+function isDescendantPath(path: VaultPath | string, parent: VaultPath | string): boolean {
+  const candidate = normalizePath(String(path));
+  const root = normalizePath(String(parent));
+  return root.length > 0 && candidate.startsWith(`${root}/`);
+}
+
 function copyBytes(bytes: Uint8Array): Uint8Array {
   return Uint8Array.from(bytes);
 }
@@ -264,7 +270,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     if (!root) return notFound(rootId);
 
     const entries = [...root.objects.values()]
-      .filter((object) => !object.trashed)
+      .filter((object) => this.isVisible(root, object))
       .sort((left, right) => {
         const byPath =
           String(left.path) < String(right.path)
@@ -310,7 +316,8 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     const normalized = virtualDrivePath(String(path));
     const candidates = [...root.objects.values()].filter(
       (object) =>
-        !object.trashed && String(object.path) === String(normalized),
+        this.isVisible(root, object) &&
+        String(object.path) === String(normalized),
     );
 
     if (candidates.length === 0) {
@@ -461,8 +468,28 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     }
 
     const target = virtualDrivePath(String(toPath));
+    if (
+      object.entityKind === "folder" &&
+      isDescendantPath(target, object.path)
+    ) {
+      return conflict("cannot-move-folder-into-own-subtree");
+    }
+
     const parentResult = this.ensureParentFolders(root, target);
     if (!parentResult.ok) return parentResult;
+
+    const previousPath = object.path;
+    if (object.entityKind === "folder") {
+      const descendants = [...root.objects.values()].filter(
+        (candidate) =>
+          candidate.remoteObjectId !== object.remoteObjectId &&
+          isDescendantPath(candidate.path, previousPath),
+      );
+      for (const descendant of descendants) {
+        const suffix = String(descendant.path).slice(String(previousPath).length);
+        descendant.path = virtualDrivePath(`${String(target)}${suffix}`);
+      }
+    }
 
     object.path = target;
     object.revision += 1;
@@ -507,6 +534,20 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
         ? { evidence: fileEvidence(object) }
         : {}),
     };
+  }
+
+  private isVisible(
+    root: ManagedRootState,
+    object: InMemoryRemoteObject,
+  ): boolean {
+    if (object.trashed) return false;
+    const ancestors = [...root.objects.values()].filter(
+      (candidate) =>
+        candidate.entityKind === "folder" &&
+        candidate.trashed &&
+        isDescendantPath(object.path, candidate.path),
+    );
+    return ancestors.length === 0;
   }
 
   private validateByExpected(
