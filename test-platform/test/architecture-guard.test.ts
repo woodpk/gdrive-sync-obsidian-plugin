@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 
-const repositoryRoot = resolve(__dirname, "../../..");
+const repositoryRoot = resolve(__dirname, "../../../..");
 const guardPath = join(
   repositoryRoot,
   "dev",
