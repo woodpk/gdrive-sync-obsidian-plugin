@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 
-const repositoryRoot = resolve(__dirname, "../../..");
+const repositoryRoot = resolve(__dirname, "../../../..");
 const metricsPath = join(
   repositoryRoot,
   "dev",
@@ -137,7 +137,18 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
   strictEqual(value.current.scenarioCount, 0);
   strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 0);
-  strictEqual(value.current.platformCoreRuntimeModuleCount, 2);
+  strictEqual(
+    value.current.platformCoreRuntimeModuleCount,
+    value.current.frameworkCoreFiles.length,
+  );
+  strictEqual(
+    value.current.frameworkCoreFiles.includes("test-platform/src/platform-root.ts"),
+    true,
+  );
+  strictEqual(
+    value.current.frameworkCoreFiles.includes("test-platform/src/repository-check.ts"),
+    true,
+  );
   strictEqual(value.current.bvpPowerShellScriptCount, 4);
 });
 
