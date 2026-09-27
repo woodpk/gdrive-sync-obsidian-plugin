@@ -2,6 +2,13 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
+interface VerificationContext {
+  readonly schemaVersion: 1;
+  readonly targetHead: string;
+  readonly baseSha: string;
+  readonly changedPaths: readonly string[];
+}
+
 const shaPattern = /^[0-9a-f]{40}$/i;
 const repositoryRoot = resolve(process.cwd());
 const guardScript = join(
@@ -19,12 +26,12 @@ const metricsScript = join(
 const powerShell = process.env.PWSH?.trim() || "pwsh";
 const changeClass = process.env.BVP_CHANGE_CLASS?.trim() || "ordinary";
 
-function fail(message, exitCode = 2) {
+function fail(message: string, exitCode = 2): never {
   console.error("BVP_REPOSITORY_CHECK_ERROR " + message);
   process.exit(exitCode);
 }
 
-function readAuthoritativeContext() {
+function readAuthoritativeContext(): VerificationContext | null {
   const contextPath = process.env.PHX_VERIFICATION_CONTEXT_PATH?.trim() || "";
   if (contextPath.length === 0) {
     return null;
@@ -36,7 +43,7 @@ function readAuthoritativeContext() {
     fail("context file is missing: " + contextPath);
   }
 
-  let context;
+  let context: any;
   try {
     context = JSON.parse(readFileSync(contextPath, "utf8"));
   } catch (error) {
@@ -52,17 +59,23 @@ function readAuthoritativeContext() {
         String(context?.schemaVersion),
     );
   }
-  if (typeof context.targetHead !== "string" || !shaPattern.test(context.targetHead)) {
+  if (
+    typeof context.targetHead !== "string" ||
+    !shaPattern.test(context.targetHead)
+  ) {
     fail("context targetHead is not a full Git SHA");
   }
-  if (typeof context.baseSha !== "string" || !shaPattern.test(context.baseSha)) {
+  if (
+    typeof context.baseSha !== "string" ||
+    !shaPattern.test(context.baseSha)
+  ) {
     fail("context baseSha is not a full Git SHA");
   }
   if (!Array.isArray(context.changedPaths)) {
     fail("context changedPaths is not an array");
   }
 
-  const changedPaths = [];
+  const changedPaths: string[] = [];
   for (const path of context.changedPaths) {
     if (typeof path !== "string" || path.trim().length === 0) {
       fail("context changedPaths contains a non-string or empty path");
@@ -78,7 +91,12 @@ function readAuthoritativeContext() {
   };
 }
 
-function runPowerShellStage(name, scriptPath, command, extraEnvironment) {
+function runPowerShellStage(
+  name: string,
+  scriptPath: string,
+  command: string,
+  extraEnvironment: NodeJS.ProcessEnv,
+): number {
   if (!existsSync(scriptPath)) {
     console.error(
       "BVP_REPOSITORY_CHECK_ERROR stage=" +
@@ -150,7 +168,7 @@ if (context) {
   console.log("BVP_REPOSITORY_CHECK_CONTEXT unavailable mode=local");
 }
 
-const commonEnvironment = {
+const commonEnvironment: NodeJS.ProcessEnv = {
   BVP_REPO_ROOT: repositoryRoot,
   BVP_CHANGE_CLASS: changeClass,
 };

@@ -47,7 +47,7 @@ The exact PHX-CI runtime at the bound SHA uses `PHX_REPOSITORY_CHECK_COMMAND` fo
 
 S03D will use the explicit durable override:
 
-`node test-platform/repository-check.mjs`
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js`
 
 The consumer integration remains owned by PHX-CI; S03D changes only the consumer configuration required to select the BRAIN repository-check command.
 
@@ -85,7 +85,7 @@ The explicit BVP change class is supplied through `BVP_CHANGE_CLASS`, defaulting
 
 S03D implementation is bounded to:
 
-1. `test-platform/repository-check.mjs` — generic BRAIN repository-check orchestration;
+1. `test-platform/src/repository-check.ts` — generic BRAIN repository-check orchestration;
 2. `test-platform/test/repository-check-integration.test.ts` — deterministic integration/failure/context tests;
 3. `phx-ci.json` — durable repository-check command override only;
 4. `Taskfile.phx-ci.yml` — generated consumer variable corresponding to that override only;

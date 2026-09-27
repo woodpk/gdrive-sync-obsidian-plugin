@@ -19,6 +19,6 @@
     "prohibitedChangedPaths": []
   },
   "commands": {
-    "repositoryCheck": "node test-platform/repository-check.mjs"
+    "repositoryCheck": "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js"
   }
 }

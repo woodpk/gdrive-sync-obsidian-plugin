@@ -13,10 +13,18 @@ import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 
 const repositoryRoot = resolve(__dirname, "../../..");
-const repositoryCheckPath = join(
+const repositoryCheckSourcePath = join(
   repositoryRoot,
   "test-platform",
-  "repository-check.mjs",
+  "src",
+  "repository-check.ts",
+);
+const repositoryCheckExecutablePath = join(
+  repositoryRoot,
+  ".test-build",
+  "bvp",
+  "src",
+  "repository-check.js",
 );
 
 function writeText(root: string, relativePath: string, content: string): void {
@@ -108,7 +116,7 @@ function runRepositoryCheck(
 
   Object.assign(environment, extraEnvironment);
 
-  const result = spawnSync(process.execPath, [repositoryCheckPath], {
+  const result = spawnSync(process.execPath, [repositoryCheckExecutablePath], {
     cwd: root,
     env: environment,
     encoding: "utf8",
@@ -131,7 +139,7 @@ function withFixture(run: (root: string) => void): void {
 }
 
 test("repository-check source consumes PHX context without independent Git resolution", () => {
-  const source = readFileSync(repositoryCheckPath, "utf8");
+  const source = readFileSync(repositoryCheckSourcePath, "utf8");
   match(source, /PHX_VERIFICATION_CONTEXT_PATH/);
   match(source, /Test-TestingArchitectureGuard\.ps1/);
   match(source, /Get-TestingArchitectureMetrics\.ps1/);
