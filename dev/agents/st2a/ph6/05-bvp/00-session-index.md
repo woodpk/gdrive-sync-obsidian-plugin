@@ -76,13 +76,13 @@ S03A, S03B, and S03C are complete and accepted.
 
 S03D is the next child. It remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the actual accepted repository state and current PHX-CI runtime contract.
 
-Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage.
+Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 
 ## 4. Sequencing Rule
 
 Default execution is serial through `phase6-integration`:
 
-accepted child → PHX-CI evidence → supervisor review/promotion → bind hard execution facts for next child.
+implemented child → implementation verification → authoritative PHX-CI evidence → integrate/persist accepted state → bind hard execution facts for next child.
 
 Scenario-only children in S06/S07 may be parallelized only where the supervisor proves non-overlapping writable surfaces and frozen shared contracts before dispatch.
 
