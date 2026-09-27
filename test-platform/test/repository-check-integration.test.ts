@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 
-const repositoryRoot = resolve(__dirname, "../../..");
+const repositoryRoot = resolve(__dirname, "../../../..");
 const repositoryCheckSourcePath = join(
   repositoryRoot,
   "test-platform",
@@ -23,6 +23,7 @@ const repositoryCheckExecutablePath = join(
   repositoryRoot,
   ".test-build",
   "bvp",
+  "test-platform",
   "src",
   "repository-check.js",
 );
@@ -151,12 +152,12 @@ test("PHX consumer configuration selects the frozen BVP repository-check command
   );
 
   const expectedCommand =
-    "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js";
+    "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js";
 
   strictEqual(projectConfig.commands?.repositoryCheck, expectedCommand);
   match(
     taskIntegration,
-    /PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules\/typescript\/bin\/tsc -p test-platform\/tsconfig\.json && node \.test-build\/bvp\/src\/repository-check\.js'/,
+    /PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules\/typescript\/bin\/tsc -p test-platform\/tsconfig\.json && node \.test-build\/bvp\/test-platform\/src\/repository-check\.js'/,
   );
   strictEqual(
     packageModel.scripts?.check,
@@ -165,7 +166,7 @@ test("PHX consumer configuration selects the frozen BVP repository-check command
   );
   strictEqual(
     packageModel.scripts?.["test:bvp-repository-check"],
-    "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test/repository-check-integration.test.js",
+    "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/repository-check-integration.test.js",
   );
 });
 
