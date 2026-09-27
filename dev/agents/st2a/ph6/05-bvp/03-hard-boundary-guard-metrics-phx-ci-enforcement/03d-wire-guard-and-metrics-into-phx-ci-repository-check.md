@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s03-boundary-governance-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement  
 **Predecessor child:** accepted S03C
 
@@ -26,20 +26,84 @@ When complete:
 - supervisor-owned governance surfaces are established/frozen for later ordinary work;
 - no task-specific BVP verifier script or parallel CI framework is created.
 
-## 3. Dispatch Binding — Hard Data Only
+## 3. Execution-Time Binding
 
-Before execution the supervisor fills:
+The semantic contract above and below remains fixed. The current repository-grounded execution binding is:
 
-- exact accepted S03C predecessor SHA;
-- exact task branch;
-- exact current repository-check entrypoint(s) used by PHX-CI;
-- exact accepted guard and metrics script paths/interfaces;
-- exact mechanism PHX-CI already provides for repository root, target/base identity, and changed paths;
-- exact writable-path allowlist for the integration;
-- current target-branch `phx-ci.json` pin/runtime and base authority;
-- focused integration test command if an existing appropriate one exists.
+### 3.1 Accepted predecessor and task coordinates
 
-Binding may adapt to the actual PHX-CI consumer integration shape but may not create a different acceptance architecture.
+- accepted S03C implementation SHA: `85c2bc294f252a76e6e36170237f66967bc46617`;
+- accepted S03C PHX-CI evidence / promoted predecessor SHA: `f76e65db6640df20d80e470f7773489d2f3d8cc4`;
+- current tasking base / `phase6-integration` SHA at S03D branch creation: `f48c3812511dd63803f894c3895025c699f1ae1d`;
+- task branch: `bvp-s03d-phx-ci-repository-check`;
+- PHX-CI base authority: `origin/phase6-integration`;
+- current PHX-CI framework/runtime SHA: `2db2f3369ddb8e3ad6037861e116eaf83c8e2b1a`.
+
+The task branch was created from the exact tasking base above. Do not substitute another base or re-resolve an alternate predecessor.
+
+### 3.2 Canonical repository-check integration
+
+The exact PHX-CI runtime at the bound SHA uses `PHX_REPOSITORY_CHECK_COMMAND` for the repository-check stage. Its Node/TypeScript default is `npm run check`, and the managed consumer integration may persist an explicit repository-check override through `phx-ci.json.commands.repositoryCheck` and the generated `Taskfile.phx-ci.yml` include variable.
+
+S03D will use the explicit durable override:
+
+`node scripts/repository-check.mjs`
+
+The consumer integration remains owned by PHX-CI; S03D changes only the consumer configuration required to select the BRAIN repository-check command.
+
+### 3.3 Accepted architecture-check interfaces
+
+- architecture guard: `dev/scripts/Test-TestingArchitectureGuard.ps1`;
+  - repository root: `-RepoRoot <path>`;
+  - verified changed paths: `-ChangedPath <string[]>`;
+  - explicit change classification: `-ChangeClass ordinary|authorized-governance`;
+- architecture metrics/budget evaluator: `dev/scripts/Get-TestingArchitectureMetrics.ps1`;
+  - repository root: `-RepoRoot <path>`;
+  - authoritative comparison base when available: `-BaseSha <sha>`.
+
+The accepted guard/metrics implementation and substantive semantics are read-only in S03D.
+
+### 3.4 PHX-CI authoritative verification context
+
+During authoritative isolated repository-check execution the bound runtime exposes:
+
+`PHX_VERIFICATION_CONTEXT_PATH`
+
+The referenced schema-version-1 JSON contains the exact PHX-CI-owned:
+
+- `targetHead`;
+- `baseSha`;
+- `changedPaths`.
+
+S03D must consume those values directly. It must not invoke Git to fetch, resolve, merge-base, diff, or derive competing verification coordinates.
+
+Outside authoritative isolated verification, the variable may be absent. The repository check may run guard/metrics without base/change-set deltas in that local-development mode, but it must never fabricate authoritative coordinates.
+
+The explicit BVP change class is supplied through `BVP_CHANGE_CLASS`, defaulting to `ordinary`. `authorized-governance` is used only for an explicitly authorized governance-changing verification run such as this S03D work. The value is forwarded unchanged to the accepted guard.
+
+### 3.5 Concrete implementation and test surfaces
+
+S03D implementation is bounded to:
+
+1. `scripts/repository-check.mjs` — generic BRAIN repository-check orchestration;
+2. `test-platform/test/repository-check-integration.test.ts` — deterministic integration/failure/context tests;
+3. `phx-ci.json` — durable repository-check command override only;
+4. `Taskfile.phx-ci.yml` — generated consumer variable corresponding to that override only;
+5. `package.json` — focused S03D test command only;
+6. `dev/governance/testing-platform-boundary.yaml` — add the new persistent repository-check orchestration surface to `supervisor_owned_frozen_surfaces` only;
+7. this S03D task file and `00-session-index.md` for execution-state binding only.
+
+Do not modify `Taskfile.yml`, either accepted architecture PowerShell script, production `src/**`, PHX-CI source, or other planning/implementation surfaces.
+
+Focused integration command:
+
+`npm run test:bvp-repository-check`
+
+### 3.6 Size-gate confirmation
+
+S03D introduces one platform-level contract family only: canonical repository-check orchestration. It adds one substantive non-test implementation file and remains below the child-session split threshold. No additional PowerShell script is permitted; the accepted BVP PowerShell count/budget remains unchanged.
+
+Binding may not change guard semantics, metric definitions, hard budgets, evidence authority, or S03D non-goals.
 
 ## Dependencies
 
