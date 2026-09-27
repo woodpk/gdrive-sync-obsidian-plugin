@@ -153,8 +153,6 @@ if (context) {
 const commonEnvironment = {
   BVP_REPO_ROOT: repositoryRoot,
   BVP_CHANGE_CLASS: changeClass,
-  BVP_CHANGED_PATHS_JSON: context ? JSON.stringify(context.changedPaths) : "",
-  BVP_BASE_SHA: context?.baseSha || "",
 };
 
 console.log("=== BVP ARCHITECTURE GUARD ===");
@@ -164,7 +162,8 @@ const guardExit = runPowerShellStage(
   [
     "$ErrorActionPreference = 'Stop'",
     "$params = @{ RepoRoot = $env:BVP_REPO_ROOT; ChangeClass = $env:BVP_CHANGE_CLASS }",
-    "if (-not [string]::IsNullOrWhiteSpace($env:BVP_CHANGED_PATHS_JSON)) { $params.ChangedPath = @($env:BVP_CHANGED_PATHS_JSON | ConvertFrom-Json) }",
+    "$contextPath = $env:PHX_VERIFICATION_CONTEXT_PATH",
+    "if (-not [string]::IsNullOrWhiteSpace($contextPath)) { $context = Get-Content -LiteralPath $contextPath -Raw -Encoding utf8 | ConvertFrom-Json; $params.ChangedPath = @($context.changedPaths) }",
     "& $env:BVP_GUARD_SCRIPT @params",
     "exit $LASTEXITCODE",
   ].join("; "),
@@ -181,7 +180,8 @@ const metricsExit = runPowerShellStage(
   [
     "$ErrorActionPreference = 'Stop'",
     "$params = @{ RepoRoot = $env:BVP_REPO_ROOT }",
-    "if (-not [string]::IsNullOrWhiteSpace($env:BVP_BASE_SHA)) { $params.BaseSha = $env:BVP_BASE_SHA }",
+    "$contextPath = $env:PHX_VERIFICATION_CONTEXT_PATH",
+    "if (-not [string]::IsNullOrWhiteSpace($contextPath)) { $context = Get-Content -LiteralPath $contextPath -Raw -Encoding utf8 | ConvertFrom-Json; $params.BaseSha = [string]$context.baseSha }",
     "& $env:BVP_METRICS_SCRIPT @params",
     "exit $LASTEXITCODE",
   ].join("; "),

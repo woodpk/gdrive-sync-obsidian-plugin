@@ -15,7 +15,7 @@ import { test } from "node:test";
 const repositoryRoot = resolve(__dirname, "../../..");
 const repositoryCheckPath = join(
   repositoryRoot,
-  "scripts",
+  "test-platform",
   "repository-check.mjs",
 );
 

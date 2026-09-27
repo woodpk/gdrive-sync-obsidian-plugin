@@ -19,6 +19,6 @@
     "prohibitedChangedPaths": []
   },
   "commands": {
-    "repositoryCheck": "node scripts/repository-check.mjs"
+    "repositoryCheck": "node test-platform/repository-check.mjs"
   }
 }

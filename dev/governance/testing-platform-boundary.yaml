@@ -72,7 +72,7 @@ supervisor_owned_frozen_surfaces:
   - dev/scripts/Get-TestingArchitectureMetrics.ps1
   - phx-ci.json
   - Taskfile.phx-ci.yml
-  - scripts/repository-check.mjs
+  - test-platform/repository-check.mjs
   - bounded PHX-CI include block in Taskfile.yml
 
 dispatch_policy:
