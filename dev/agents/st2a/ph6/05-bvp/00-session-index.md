@@ -30,7 +30,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 03D | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03d-wire-guard-and-metrics-into-phx-ci-repository-check.md` |
 | 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
 | 04A | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04a-stateful-in-memory-local-vault.md` |
-| 04B | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04b-stateful-in-memory-drive-core.md` |
+| 04B | S04 — Deterministic Multi-Device Virtual World | EXECUTABLE / ACTIVE | `04-deterministic-multi-device-virtual-world/04b-stateful-in-memory-drive-core.md` |
 | 04C | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04c-drive-change-feed-completeness-ambiguity-and-faults.md` |
 | 04D | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04d-per-device-durable-state-deterministic-time-order-restart.md` |
 | 04E | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04e-virtual-world-composition-over-real-production-logic.md` |
@@ -78,7 +78,7 @@ Authoritative fixed-runtime S03V evidence `07f8ee895d0575fc2c49d325a5a7822d419b3
 
 S04A is **COMPLETE / ACCEPTED**. Accepted implementation `18e23b35123deb56e2ba93b1aae94b47b5fb426c` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence `cfe38db334d3d35d5787837f7c07331e72cc3366` is promoted to `phase6-integration`. The accepted local-vault adapter implements the production `LocalVaultPort` through one narrow non-shipping seam, with architecture guard/metrics PASS and unchanged production artifact. The earlier green evidence `6cae030f1be5fa8c2485e5009c84c2a8eaafd57a` is superseded for acceptance after supervisory review found and repaired two local-port fidelity defects.
 
-S04B is the next child and remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the accepted S04A state.
+S04B is **EXECUTABLE / ACTIVE** on branch `bvp-s04b-stateful-in-memory-drive-core`, bound to accepted S04A closure `0df712bdac7404cae38de4ad88eb68d5da00a5e2` and PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`. It owns the stateful managed-Drive core using exact production `GoogleDrivePort` core method signatures; S04C retains change feed, partial listing, ambiguity, and fault controls.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 

@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04A
 
@@ -36,16 +36,44 @@ Change-feed, completeness controls, ambiguity, and fault injection beyond core m
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S04B contract is bound to the accepted S04A repository state as follows:
 
-- exact accepted S04A predecessor SHA;
-- exact task branch;
-- exact current production Drive port/interface(s) and relevant remote records;
-- exact current reusable test helpers/adapters;
-- exact implementation/test paths and writable allowlist;
-- exact PHX-CI base/pin/runtime;
-- focused test command if established;
-- size-gate confirmation.
+- exact accepted S04A predecessor / integration SHA: `0df712bdac7404cae38de4ad88eb68d5da00a5e2`;
+- exact task branch: `bvp-s04b-stateful-in-memory-drive-core`;
+- production external-boundary contract: `GoogleDrivePort` from `src/contracts/google-drive.ts`;
+- S04B implements the exact production method signatures for the core provider surface:
+  - `authenticationState`;
+  - `createManagedRoot`;
+  - `pairManagedRoot`;
+  - `validateManagedRoot`;
+  - `protocolInfo`;
+  - `listForReconciliation`;
+  - `observe`;
+  - `download`;
+  - legacy/raw provider primitives `create`, `update`, `move`, and `trash`;
+- S04B deliberately does **not** implement `getStartCursor` or `readChanges`; those exact remaining `GoogleDrivePort` members are owned by S04C together with change-feed/completeness/ambiguity/fault controls;
+- the raw create/update/move/trash members are modeled only as external Google Drive reality. They are not synchronization authority; later virtual-world composition must continue to use the product's recovery-safe planner/executor semantics rather than treating these raw receipts as convergence authority;
+- relevant production records/types: `ManagedRemoteIdentity`, `ManagedRemoteValidation`, `RemoteProtocolInfo`, `DriveResult`, `DriveSignal`, `RemoteEntry`, `RemoteListing`, `RemoteDownload`, `RemoteCreateRequest`, `RemoteUpdateRequest`, `RemoteMutationReceipt`, `RemoteObservation`, `RemoteObjectId`, `VaultIdentity`, `ProtocolVersion`, `VaultPath`, `BinaryContentSource`, and `ContentEvidence`;
+- behavioral references are read-only:
+  - `src/drive/google-drive-port.ts`;
+  - `test/phase3-drive.test.ts`;
+  - `test/phase5-group-b-drive-domain.test.ts`;
+  - `test/workstreams/drive/phase6-remote-protocol.test.ts`;
+  - `test/workstreams/drive/phase6-remote-protocol-v1.3.test.ts`;
+- exact S04B implementation path: `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+- exact S04B test path: `test-platform/test/in-memory-google-drive.test.ts`;
+- exact implementation-writable allowlist:
+  - `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+  - `test-platform/test/in-memory-google-drive.test.ts`;
+- supervisor-owned seam expansion is authorized only in the already-approved/frozen `src/product/local-vault-boundary-seam.ts`; despite its historical filename, it is the existing single enumerated virtual-world production seam and may re-export the frozen Drive contract/types needed by S04B without adding runtime policy;
+- production seam count therefore remains 1 file and must remain below the existing 350 logical-LOC cap;
+- PHX-CI base authority: `0df712bdac7404cae38de4ad88eb68d5da00a5e2`;
+- target-branch PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04B command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-google-drive.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — one existing production contract family, one substantive BVP runtime implementation file, two implementation-writable files, and expected non-test implementation remains below the 1000-net-LOC split threshold.
+
+The implementation may not add a BVP-only synchronization API or modify production Drive behavior. S04C remains responsible for the intentionally excluded feed/fault surface.
 
 No binding may redefine remote identity or production-port semantics.
 

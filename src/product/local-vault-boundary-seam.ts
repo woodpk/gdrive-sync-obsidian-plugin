@@ -1,5 +1,5 @@
 /**
- * Narrow non-shipping production seam for the deterministic BVP local-vault adapter.
+ * Narrow non-shipping production seam for deterministic BVP virtual-world adapters.
  *
  * This module exposes existing production boundary contracts and pure local policy
  * helpers only. It contains no synchronization policy and is not imported by the
@@ -30,3 +30,25 @@ export {
 } from "../local/path-policy";
 export { SelectiveConfigurationPolicy } from "../local/config-policy";
 export { LocalExclusionPolicy } from "../local/exclusions";
+
+export type {
+  DriveAuthenticationState,
+  DriveResult,
+  DriveSignal,
+  GoogleDrivePort,
+  ManagedRemoteIdentity,
+  ManagedRemoteValidation,
+  RemoteCreateRequest,
+  RemoteDownload,
+  RemoteEntry,
+  RemoteListing,
+  RemoteMutationReceipt,
+  RemoteProtocolInfo,
+  RemoteUpdateRequest,
+} from "../contracts/google-drive";
+export type {
+  ProtocolVersion,
+  RemoteObjectId,
+  VaultIdentity,
+} from "../contracts/common";
+export type { RemoteObservation } from "../contracts/snapshot";
