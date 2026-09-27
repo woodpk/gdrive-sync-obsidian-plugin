@@ -1,7 +1,7 @@
 /**
  * Narrow non-shipping production seam for deterministic BVP virtual-world adapters.
  *
- * This module exposes existing production boundary contracts and pure local policy
+ * This module exposes existing production boundary contracts and pure boundary-policy
  * helpers only. It contains no synchronization policy and is not imported by the
  * shipping product entrypoint.
  */
