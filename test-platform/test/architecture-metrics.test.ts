@@ -132,8 +132,9 @@ function runGit(root: string, args: readonly string[]): string {
 
 test("architecture metrics pass the actual BRAIN repository baseline", () => {
   const value = assertPass(runMetrics(repositoryRoot));
-  strictEqual(value.current.productionSeamLogicalLoc, 0);
-  strictEqual(value.current.productionSeamFileCount, 0);
+  strictEqual(value.current.productionSeamFileCount, 4);
+  strictEqual(value.current.productionSeamLogicalLoc > 0, true);
+  strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
   strictEqual(value.current.scenarioCount, 0);
   strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 0);
@@ -147,6 +148,12 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   );
   strictEqual(
     value.current.frameworkCoreFiles.includes("test-platform/src/repository-check.ts"),
+    true,
+  );
+  strictEqual(
+    value.current.frameworkCoreFiles.includes(
+      "test-platform/src/virtual-world/in-memory-local-vault.ts",
+    ),
     true,
   );
   strictEqual(value.current.bvpPowerShellScriptCount, 4);
