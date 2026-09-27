@@ -11,7 +11,7 @@ includes:
       PHX_PROJECT_NAME: 'gdrive-sync-obsidian-plugin'
       PHX_EXPECTED_FRAMEWORK_VERSION: '0.2.0-dev.2'
       PHX_FOCUSED_TEST_COMMAND: '{{.PHX_FOCUSED_TEST_COMMAND | default ""}}'
-      PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/src/repository-check.js'
+      PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js'
       PHX_EXPECTED_ARTIFACTS: 'main.js'
       PHX_EXPECTED_REPOSITORY: '{{.ROOT_DIR}}'
       PHX_REQUIRED_FILES: ''
