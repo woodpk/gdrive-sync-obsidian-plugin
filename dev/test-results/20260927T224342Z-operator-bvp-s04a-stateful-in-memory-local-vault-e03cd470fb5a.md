@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04a-stateful-in-memory-local-vault
+- Source build HEAD requested: e03cd470fb5a6d9900b04c2b4a22b29c0ffbe89f
+- Verification checkout HEAD: e03cd470fb5a6d9900b04c2b4a22b29c0ffbe89f
+- Evidence publication target: origin/bvp-s04a-stateful-in-memory-local-vault
