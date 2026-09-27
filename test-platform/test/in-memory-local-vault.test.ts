@@ -70,13 +70,12 @@ test("confirmed absence stays distinct from missing-file reads and stale replace
   const absent = await vault.observe(missing);
   strictEqual(absent.status, "absent");
   await rejects(() => vault.readFile(missing), /does not exist/i);
+  const tokenSource = await vault.createFile(
+    virtualVaultPath("token-source.md"),
+    source([9]),
+  );
   await rejects(
-    () =>
-      vault.replaceFile(
-        missing,
-        source([1]),
-        "missing-observation-token" as never,
-      ),
+    () => vault.replaceFile(missing, source([1]), tokenSource.observationToken),
     InMemoryLocalVaultStaleObservationError,
   );
 
@@ -112,7 +111,7 @@ test("replace without an expected token materializes an absent production target
   deepStrictEqual(changes, ["created"]);
 });
 
-test("createFolder is idempotent for an existing folder and rejects an existing file", async () => {
+test("createFolder is idempotent for any already-existing production target", async () => {
   const vault = new InMemoryLocalVault();
   const changes: string[] = [];
   vault.onChange((change) => changes.push(change.kind));
@@ -121,13 +120,25 @@ test("createFolder is idempotent for an existing folder and rejects an existing 
   const second = await vault.createFolder(virtualVaultPath("existing-folder"));
 
   strictEqual(second.observationToken, first.observationToken);
-  deepStrictEqual(changes, ["created"]);
 
   vault.seedFile("existing-file", "x");
-  await rejects(
-    () => vault.createFolder(virtualVaultPath("existing-file")),
-    /existing file/i,
+  const existingFile = await vault.observe(virtualVaultPath("existing-file"));
+  strictEqual(existingFile.status, "present");
+  const fileReceipt = await vault.createFolder(
+    virtualVaultPath("existing-file"),
   );
+
+  strictEqual(
+    fileReceipt.observationToken,
+    existingFile.status === "present"
+      ? existingFile.observationToken
+      : undefined,
+  );
+  strictEqual(
+    (await vault.observe(virtualVaultPath("existing-file"))).status,
+    "present",
+  );
+  deepStrictEqual(changes, ["created"]);
 });
 
 test("folder move preserves one rename observation while moving retained subtree state", async () => {
