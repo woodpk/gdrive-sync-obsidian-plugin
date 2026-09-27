@@ -153,19 +153,21 @@ function fileEvidence(object: InMemoryRemoteObject): ContentEvidence {
   };
 }
 
-function evidenceMatches(
+function evidenceMismatch(
   actual: ContentEvidence,
   expected: ContentEvidence | undefined,
-): boolean {
-  if (!expected) return true;
-  if (expected.hash !== undefined && actual.hash !== expected.hash) return false;
+): "size" | "hash" | undefined {
+  if (!expected) return undefined;
   if (
     expected.sizeBytes !== undefined &&
     actual.sizeBytes !== expected.sizeBytes
   ) {
-    return false;
+    return "size";
   }
-  return true;
+  if (expected.hash !== undefined && actual.hash !== expected.hash) {
+    return "hash";
+  }
+  return undefined;
 }
 
 function notFound<T>(remoteObjectId?: RemoteObjectId): DriveResult<T> {
@@ -390,11 +392,15 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     const evidence =
       object.entityKind === "file" ? fileEvidence(object) : undefined;
 
-    if (!evidenceMatches(evidence ?? {}, request.expectedEvidence)) {
+    const createMismatch = evidenceMismatch(
+      evidence ?? {},
+      request.expectedEvidence,
+    );
+    if (createMismatch) {
       return recoveryRequired(
-        request.expectedEvidence?.hash !== undefined
-          ? "uploaded-hash-integrity-mismatch"
-          : "uploaded-size-integrity-mismatch",
+        createMismatch === "size"
+          ? "uploaded-size-integrity-mismatch"
+          : "uploaded-hash-integrity-mismatch",
       );
     }
 
@@ -436,11 +442,15 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     object.revision += 1;
     const evidence = fileEvidence(object);
 
-    if (!evidenceMatches(evidence, request.expectedEvidence)) {
+    const updateMismatch = evidenceMismatch(
+      evidence,
+      request.expectedEvidence,
+    );
+    if (updateMismatch) {
       return recoveryRequired(
-        request.expectedEvidence?.hash !== undefined
-          ? "uploaded-hash-integrity-mismatch"
-          : "uploaded-size-integrity-mismatch",
+        updateMismatch === "size"
+          ? "uploaded-size-integrity-mismatch"
+          : "uploaded-hash-integrity-mismatch",
       );
     }
 
