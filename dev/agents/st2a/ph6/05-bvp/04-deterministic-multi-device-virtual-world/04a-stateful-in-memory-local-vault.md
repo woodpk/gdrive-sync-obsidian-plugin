@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted BVP-S03 primary-stage gate
 
@@ -37,17 +37,40 @@ The implementation is stateful across multiple production operations within one 
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution, the supervisor binds:
+The S04A contract is bound to the accepted post-S03 repository state as follows:
 
-- exact accepted S03 predecessor SHA;
-- exact task branch;
-- exact current production local-vault port/interface(s);
-- exact current relevant production types/contracts and existing testing helpers;
-- exact intended S04 local-vault implementation/test paths;
-- exact writable-path allowlist;
-- exact PHX-CI base authority and target-branch framework pin/runtime;
-- exact focused test command if one already exists;
-- confirmation that the child remains within BVP-GOV-010.
+- exact accepted S03 predecessor / integration SHA: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- exact task branch: `bvp-s04a-stateful-in-memory-local-vault`;
+- production local-vault contract: `LocalVaultPort`, exported through `src/contracts/index.ts` and semantically defined in `src/contracts/local-vault.ts`;
+- required shared value/observation types are the existing exports reachable through `src/contracts/index.ts`, including `VaultPath`, `ObservationToken`, `BinaryContentSource`, `ContentEvidence`, `LocalObservation`, `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, and `LocalLifecycleEvent`;
+- accepted production policy helpers to reuse rather than duplicate:
+  - `src/local/path-policy.ts` — normalization/case/Unicode/cross-platform validation;
+  - `src/local/config-policy.ts` — selective configuration classification;
+  - `src/local/exclusions.ts` — existing vault-scope/exclusion policy;
+- existing read-only behavioral references:
+  - `src/local/obsidian-local-vault.ts`;
+  - `test/obsidian-local-vault.test.ts`;
+  - `test/local-failure-semantics.test.ts`;
+  - `src/testing/fakes.ts#createLocalVaultFake` is an existing handler-based/stateless test helper and is **not** the S04A stateful implementation and is not writable in this child;
+- exact S04A implementation path: `test-platform/src/virtual-world/in-memory-local-vault.ts`;
+- exact S04A test path: `test-platform/test/in-memory-local-vault.test.ts`;
+- exact writable-path allowlist for S04A implementation:
+  - `test-platform/src/virtual-world/in-memory-local-vault.ts`;
+  - `test-platform/test/in-memory-local-vault.test.ts`;
+- supervisor-owned production seam allowlist is pre-approved for exactly:
+  - `src/contracts/index.ts`;
+  - `src/local/path-policy.ts`;
+  - `src/local/config-policy.ts`;
+  - `src/local/exclusions.ts`;
+- this approved seam is 4 files and approximately 209 current logical LOC, within the frozen BVP-GOV-004 limits of 4 files / 350 LOC;
+- `LocalIntegrityReconciliationPort` is not a separate S04A implementation requirement: production already obtains that seam through `CanonicalEvidenceLocalVault`; S04A must not invent an alternate integrity or synchronization API;
+- PHX-CI base authority for this task branch: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- target-branch PHX-CI framework/runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test/in-memory-local-vault.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — one platform contract family, one substantive non-test implementation file, two writable files total, and no planned production implementation file.
+
+The supervisor-owned seam approval above is execution binding, not authority for the implementation child to modify governance or production files. The implementation itself may write only the two bound `test-platform/**` paths.
 
 Binding may not alter the required local-vault semantics below.
 

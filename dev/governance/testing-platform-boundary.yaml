@@ -23,6 +23,11 @@ shipping_rules:
 
 production_seam:
   allowlist_required: true
+  approved_imports:
+    - src/contracts/index.ts
+    - src/local/path-policy.ts
+    - src/local/config-policy.ts
+    - src/local/exclusions.ts
   max_logical_loc: 350
   max_files: 4
   may_expose:
