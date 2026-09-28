@@ -14,6 +14,70 @@ import {
 } from "../src/virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
 
+function source(bytes: Uint8Array) {
+  const retained = Uint8Array.from(bytes);
+  return {
+    sizeBytes: retained.byteLength,
+    async *openChunks(): AsyncIterable<Uint8Array> {
+      yield Uint8Array.from(retained);
+    },
+  };
+}
+
+async function createLocal(
+  world: VirtualSynchronizationWorld,
+  deviceName: string,
+  path: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  await world.deviceBacking(deviceName).local.createFile(
+    virtualVaultPath(path),
+    source(bytes),
+  );
+}
+
+async function createRemote(
+  world: VirtualSynchronizationWorld,
+  path: string,
+  bytes: Uint8Array,
+) {
+  const result = await world.drive.create(world.managedRemote.rootId, {
+    path: virtualDrivePath(path),
+    entityKind: "file",
+    content: source(bytes),
+  });
+  if (!result.ok) throw new Error(result.signal.kind);
+  return result.value.remoteObjectId;
+}
+
+async function readLocal(
+  world: VirtualSynchronizationWorld,
+  deviceName: string,
+  path: string,
+): Promise<Uint8Array | undefined> {
+  const local = world.deviceBacking(deviceName).local;
+  const vaultPath = virtualVaultPath(path);
+  const observed = await local.observe(vaultPath);
+  if (observed.status !== "present" || observed.entityKind !== "file") {
+    return undefined;
+  }
+  const read = await local.readFile(vaultPath);
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for await (const chunk of read.content.openChunks()) {
+    const copy = Uint8Array.from(chunk);
+    chunks.push(copy);
+    length += copy.byteLength;
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 async function preview(device: VirtualProductionDevice) {
   const plan = await device.controller.previewManual();
   if (!plan) throw new Error("production controller returned no manual plan");
@@ -45,7 +109,7 @@ async function remoteBytes(
 
 test("production canary: local create plans and executes a recovery-safe REMOTE upload/create", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile("device-a", "local-create.bin", new Uint8Array([1, 2, 3, 4]));
+  await createLocal(world, "device-a", "local-create.bin", new Uint8Array([1, 2, 3, 4]));
   const device = await world.reconstructDevice("device-a");
 
   const plan = await preview(device);
@@ -97,7 +161,7 @@ test("production canary: local create plans and executes a recovery-safe REMOTE 
 
 test("production canary: remote create plans and executes a crash-safe LOCAL download/create", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  const remoteId = await world.createRemoteFile(
+  const remoteId = await createRemote(world,
     "remote-create.bin",
     new Uint8Array([9, 8, 7]),
   );
@@ -113,7 +177,7 @@ test("production canary: remote create plans and executes a crash-safe LOCAL dow
   const result = await executeReviewed(device, plan);
   strictEqual(result.status, "accepted");
   deepStrictEqual(
-    [...(await world.readLocalFile("device-a", "remote-create.bin"))!],
+    [...(await readLocal(world, "device-a", "remote-create.bin"))!],
     [9, 8, 7],
   );
 
@@ -135,7 +199,7 @@ test("production canary: remote create plans and executes a crash-safe LOCAL dow
 
 test("production canary: two independent devices synchronize through one shared REMOTE reality", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile("device-a", "shared.bin", new Uint8Array([4, 5, 6]));
+  await createLocal(world, "device-a", "shared.bin", new Uint8Array([4, 5, 6]));
 
   const a = await world.reconstructDevice("device-a");
   const aPlan = await preview(a);
@@ -154,7 +218,7 @@ test("production canary: two independent devices synchronize through one shared 
   strictEqual((await executeReviewed(b, bPlan)).status, "accepted");
 
   deepStrictEqual(
-    [...(await world.readLocalFile("device-b", "shared.bin"))!],
+    [...(await readLocal(world, "device-b", "shared.bin"))!],
     [4, 5, 6],
   );
   notStrictEqual(
@@ -172,7 +236,7 @@ test("production canary: two independent devices synchronize through one shared 
 
 test("production canary: a proven LOCAL rename produces an identity-preserving REMOTE move", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile("device-a", "move-old.bin", new Uint8Array([7, 7, 1]));
+  await createLocal(world, "device-a", "move-old.bin", new Uint8Array([7, 7, 1]));
   const device = await world.reconstructDevice("device-a");
 
   const initial = await preview(device);
@@ -228,7 +292,7 @@ test("production canary: a proven LOCAL rename produces an identity-preserving R
 
 test("production canary: partial REMOTE listing cannot masquerade as authoritative deletion", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile("device-a", "partial.bin", new Uint8Array([2, 4, 6]));
+  await createLocal(world, "device-a", "partial.bin", new Uint8Array([2, 4, 6]));
   const device = await world.reconstructDevice("device-a");
 
   const baseline = await preview(device);
@@ -261,7 +325,7 @@ test("production canary: partial REMOTE listing cannot masquerade as authoritati
     false,
   );
 
-  const stillLocal = await world.readLocalFile("device-a", "partial.bin");
+  const stillLocal = await readLocal(world, "device-a", "partial.bin");
   deepStrictEqual([...(stillLocal ?? new Uint8Array())], [2, 4, 6]);
 
   await device.dispose();
@@ -339,7 +403,7 @@ test("production canary: ambiguous applied REMOTE create remains unresolved unti
 
 test("production canary: reconstructed runtime is fresh while durable LOCAL REMOTE and authority reality remain retained", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile("device-a", "restart.bin", new Uint8Array([8, 6, 7, 5]));
+  await createLocal(world, "device-a", "restart.bin", new Uint8Array([8, 6, 7, 5]));
   const first = await world.reconstructDevice("device-a");
 
   const baseline = await preview(first);
@@ -357,7 +421,7 @@ test("production canary: reconstructed runtime is fresh while durable LOCAL REMO
   notStrictEqual(second.runtime, first.runtime);
 
   deepStrictEqual(
-    [...(await world.readLocalFile("device-a", "restart.bin"))!],
+    [...(await readLocal(world, "device-a", "restart.bin"))!],
     [8, 6, 7, 5],
   );
   const remote = await world.drive.observe(
