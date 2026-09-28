@@ -562,6 +562,71 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     };
   }
 
+  reserveProviderObjectId(): RemoteObjectId {
+    return virtualRemoteObjectId(`remote-${this.nextObjectId++}`);
+  }
+
+  async createWithRemoteObjectId(
+    rootId: RemoteObjectId,
+    remoteObjectId: RemoteObjectId,
+    request: RemoteCreateRequest,
+  ): Promise<DriveResult<RemoteMutationReceipt>> {
+    const fault = this.takeBoundaryFault("create");
+    if (fault && fault.mutationEffect !== "applied-before-failure") {
+      return { ok: false, signal: fault.signal };
+    }
+
+    if (this.objectsById.has(String(remoteObjectId))) {
+      return conflict(`remote-object-id-already-exists:${String(remoteObjectId)}`);
+    }
+
+    const root = this.roots.get(String(rootId));
+    if (!root) return notFound(rootId);
+
+    const path = virtualDrivePath(String(request.path));
+    const parentResult = this.ensureParentFolders(root, path);
+    if (!parentResult.ok) return parentResult;
+
+    let bytes: Uint8Array | undefined;
+    if (request.entityKind === "file") {
+      if (!request.content) return conflict("file-create-content-required");
+      bytes = await collectContent(request.content);
+    }
+
+    const object = this.createObject(
+      root,
+      path,
+      request.entityKind,
+      bytes,
+      remoteObjectId,
+    );
+    const evidence =
+      object.entityKind === "file" ? fileEvidence(object) : undefined;
+
+    if (object.entityKind === "file") {
+      const mismatch = evidenceMismatch(evidence ?? {}, request.expectedEvidence);
+      if (mismatch) {
+        return recoveryRequired(
+          mismatch === "size"
+            ? "uploaded-size-integrity-mismatch"
+            : "uploaded-hash-integrity-mismatch",
+        );
+      }
+    }
+
+    const result: DriveResult<RemoteMutationReceipt> = {
+      ok: true,
+      value: {
+        remoteObjectId: object.remoteObjectId,
+        path,
+        ...(evidence ? { evidence } : {}),
+      },
+    };
+    return fault?.mutationEffect === "applied-before-failure"
+      ? { ok: false, signal: fault.signal }
+      : result;
+  }
+
   async create(
     rootId: RemoteObjectId,
     request: RemoteCreateRequest,
@@ -927,10 +992,10 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     path: VaultPath,
     entityKind: EntityKind,
     bytes?: Uint8Array,
+    exactRemoteObjectId?: RemoteObjectId,
   ): InMemoryRemoteObject {
-    const remoteObjectId = virtualRemoteObjectId(
-      `remote-${this.nextObjectId++}`,
-    );
+    const remoteObjectId =
+      exactRemoteObjectId ?? this.reserveProviderObjectId();
     const object: InMemoryRemoteObject = {
       remoteObjectId,
       rootId: root.identity.rootId,
