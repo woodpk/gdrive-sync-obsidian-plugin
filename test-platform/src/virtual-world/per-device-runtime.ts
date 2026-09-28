@@ -78,10 +78,10 @@ export class DeterministicClock {
   }
 }
 
-interface PendingOrderedAction<T = unknown> {
+interface PendingOrderedAction {
   readonly label: string;
-  readonly action: () => Promise<T> | T;
-  readonly resolve: (value: T) => void;
+  readonly action: () => Promise<unknown> | unknown;
+  readonly resolve: (value: unknown) => void;
   readonly reject: (reason: unknown) => void;
 }
 
@@ -97,7 +97,12 @@ export class DeterministicOrderGate {
       throw new Error(`deterministic order label must be unique: ${label}`);
     }
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(label, { label, action, resolve, reject });
+      this.pending.set(label, {
+        label,
+        action,
+        resolve: value => resolve(value as T),
+        reject,
+      });
     });
   }
 
