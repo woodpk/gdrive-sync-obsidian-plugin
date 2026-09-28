@@ -80,6 +80,22 @@ S04A is **COMPLETE / ACCEPTED**. Accepted implementation `18e23b35123deb56e2ba93
 
 S04B is **COMPLETE / ACCEPTED**. Accepted implementation `9b3976165259bf4efbded67a2f19ff83da1cc992` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence `b4144d3045300f999a00f7daf9c7c13ee85ed3ea` is promoted to `phase6-integration`. The accepted Drive core models managed-root identity, create/download/update, stable remote identity/revisions, move/rename, trash/existence, complete listing, parent topology, and production failure classifications without implementing synchronization policy. The earlier green evidence `a259d4680eb04939a28d357bd5addd9436109fd7` is superseded for acceptance after supervisory review found and repaired folder-create evidence-semantics drift.
 
+### Recurring Architecture Review — after S04A / S04B
+
+BVP-GOV-008 repository-level architecture review completed against accepted S04B closure `715d3693aa8f0b47376a1cef03fd4b3af6e0b132`: **PASS**.
+
+- dependency graph preserves one-way `test-platform/** -> approved production seam`; production imports no BVP/test-platform runtime;
+- the only production seam remains `src/product/local-vault-boundary-seam.ts`, at 46 logical LOC / 1 file versus limits of 350 LOC / 4 files;
+- framework core is 1305 logical TypeScript LOC / 4 runtime modules versus the 4000-LOC budget;
+- no scenario runner, general test persistence subsystem, cross-device coordination protocol, second evidence family, module/plugin router, or alternate synchronization engine exists;
+- live-device/scenario-specific production surfaces remain 0;
+- BVP PowerShell remains 4 scripts / 1477 logical LOC, within the frozen 4-script / 1500-LOC limits;
+- production build entrypoint remains `src/main.ts`; `test-platform/**` is excluded from the production bundle;
+- accepted S04B production artifact remains unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`;
+- architecture guard and metrics from authoritative S04B evidence `b4144d3045300f999a00f7daf9c7c13ee85ed3ea` both PASS.
+
+This review authorizes continued S04 dispatch under the existing frozen architecture and budgets; it authorizes no budget increase or new architecture family.
+
 S04C is the next child and remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the accepted S04B state.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
