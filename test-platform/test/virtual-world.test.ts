@@ -150,8 +150,11 @@ test("production canary: local create plans and executes a recovery-safe REMOTE 
   strictEqual(observed.ok, true);
   if (!observed.ok || observed.value.status !== "present") return;
   strictEqual(observed.value.entityKind, "file");
+  const remoteObjectId = observed.value.remoteObjectId;
+  strictEqual(remoteObjectId !== undefined, true);
+  if (!remoteObjectId) return;
   deepStrictEqual(
-    await remoteBytes(world, observed.value.remoteObjectId!),
+    await remoteBytes(world, remoteObjectId),
     [1, 2, 3, 4],
   );
 
@@ -162,7 +165,7 @@ test("production canary: local create plans and executes a recovery-safe REMOTE 
       state.state.remoteMappings.some(
         entry =>
           String(entry.path) === "local-create.bin" &&
-          entry.remoteObjectId === observed.value.remoteObjectId,
+          entry.remoteObjectId === remoteObjectId,
       ),
       true,
     );

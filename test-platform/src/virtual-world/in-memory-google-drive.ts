@@ -15,6 +15,7 @@ import {
   type ProtocolVersion,
   type RemoteChange,
   type RemoteChangePage,
+  type ReliableRemoteChangePort,
   type RemoteCreateRequest,
   type RemoteDownload,
   type RemoteEntry,
@@ -24,6 +25,7 @@ import {
   type RemoteObservation,
   type RemoteProtocolInfo,
   type RemoteUpdateRequest,
+  type SynchronizationCancellationSignal,
   type VaultIdentity,
   type VaultPath,
 } from "../../../src/product/local-vault-boundary-seam";
@@ -215,7 +217,7 @@ function recoveryRequired<T>(detail: string): DriveResult<T> {
   return { ok: false, signal: { kind: "recovery-required", detail } };
 }
 
-export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
+export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRemoteChangePort {
   private readonly roots = new Map<string, ManagedRootState>();
   private readonly objectsById = new Map<string, InMemoryRemoteObject>();
   private readonly boundaryFaults: InMemoryDriveBoundaryFault[] = [];
@@ -495,6 +497,52 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     };
   }
 
+  async readChangePage(
+    identity: ManagedRemoteIdentity,
+    requestedToken: ChangeCursor,
+    cancellation?: SynchronizationCancellationSignal,
+  ): ReturnType<ReliableRemoteChangePort["readChangePage"]> {
+    if (cancellation?.cancelled) {
+      return {
+        ok: false,
+        signal: {
+          kind: "transient-failure",
+          detail: "synchronization-cancelled",
+        },
+      };
+    }
+
+    const validated = await this.validateManagedRoot(identity);
+    if (!validated.ok) return validated;
+    if (validated.value.status !== "valid") {
+      return recoveryRequired(`managed-remote-${validated.value.status}`);
+    }
+
+    const page = await this.readChanges(identity.rootId, requestedToken);
+    if (!page.ok) return page;
+    if (page.value.completeness.status !== "complete") {
+      return recoveryRequired("drive-change-page-incomplete");
+    }
+    if (cancellation?.cancelled) {
+      return {
+        ok: false,
+        signal: {
+          kind: "transient-failure",
+          detail: "synchronization-cancelled",
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      value: {
+        kind: "terminal",
+        requestedToken,
+        changes: page.value.changes,
+        newStartPageToken: page.value.nextCursor,
+      },
+    };
+  }
   async observe(
     rootId: RemoteObjectId,
     path: VaultPath,

@@ -4,8 +4,10 @@ import {
   DeterministicSynchronizationPlanner,
   InMemoryRunLeasePort,
   MemoryAuditPersistence,
-  ObsidianLocalMutationTransactions,
   ProductController,
+  ProductPathScope,
+  ScopedLocalTransactionalMutationPort,
+  ScopedLocalVault,
   ProductSnapshotAssembler,
   ProductSynchronizationExecutor,
   ProductionSynchronizationPlanner,
@@ -746,7 +748,7 @@ function localAdapterFacade(local: InMemoryLocalVault) {
       const observed = await local.observe(path);
       let previous = new Uint8Array();
       if (observed.status === "present") {
-        previous = await collect((await local.readFile(path)).content);
+        previous = Uint8Array.from(await collect((await local.readFile(path)).content));
       } else if (observed.status !== "absent") {
         throw new Error(`cannot append local transaction path in state ${observed.status}`);
       }
@@ -847,12 +849,18 @@ export class VirtualSynchronizationWorld {
       this.drive,
       this.managedRemote,
     );
-    const localTransactions = new ObsidianLocalMutationTransactions(
+    const configurationDirectory = await backing.local.activeConfigurationDirectory();
+    const scope = new ProductPathScope(configurationDirectory, () => ({
+      userExclusionPatterns: [],
+    }));
+    const scopedLocal = new ScopedLocalVault(backing.local, scope);
+    const localTransactions = new ScopedLocalTransactionalMutationPort(
       localAdapterFacade(backing.local) as never,
       backing.local,
+      scope,
     );
     const canonicalLocal = new CanonicalEvidenceLocalVault(
-      backing.local,
+      scopedLocal,
       { staleRetryDelayMs: 0 },
       localTransactions,
     );
@@ -862,7 +870,7 @@ export class VirtualSynchronizationWorld {
       state,
       context,
       async () => this.managedRemote,
-      () => true,
+      path => scope.isManagedLogical(path),
       () => false,
       undefined,
       this.drive,

@@ -75,7 +75,11 @@ export {
   markKnownDeviceReconciled,
   registerKnownDevice,
 } from "../state/state-policy";
-export { SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
+export {
+  ScopedLocalTransactionalMutationPort,
+  SynchronizationStateAuthorityAdapter,
+} from "./synchronization-adapters";
+export { ProductPathScope, ScopedLocalVault } from "./path-scope";
 export type {
   DeviceIdentity,
   PersistenceRevision,
@@ -101,6 +105,7 @@ export type {
   LocalMutationTransaction,
   LocalTransactionResult,
   LocalTransactionalMutationPort,
+  ReliableRemoteChangePort,
   ReliableRemoteMutationPort,
   RemoteMutationIdentity,
   RemoteMutationOutcome,
