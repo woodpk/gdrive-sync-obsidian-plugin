@@ -101,7 +101,6 @@ export type {
   LocalMutationTransaction,
   LocalTransactionResult,
   LocalTransactionalMutationPort,
-  MutationIntentId,
   ReliableRemoteMutationPort,
   RemoteMutationIdentity,
   RemoteMutationOutcome,
@@ -113,6 +112,6 @@ export type {
   RemoteFolderCreateRecoveryReadPort,
 } from "../contracts/synchronization-folder-create-foundation";
 export type { RemoteUpdateFinalizationPort } from "./durable-intent-recovery-base";
-export type { RemoteRevisionId } from "../contracts/common";
+export type { MutationIntentId, RemoteRevisionId } from "../contracts/common";
 export { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
 export { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
