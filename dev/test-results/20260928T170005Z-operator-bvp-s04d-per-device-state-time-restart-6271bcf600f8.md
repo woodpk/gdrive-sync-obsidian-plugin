@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04d-per-device-state-time-restart
+- Source build HEAD requested: 6271bcf600f824bac501d6a5bb4e0cee6940e12a
+- Verification checkout HEAD: 6271bcf600f824bac501d6a5bb4e0cee6940e12a
+- Evidence publication target: origin/bvp-s04d-per-device-state-time-restart
