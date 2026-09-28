@@ -116,6 +116,7 @@ export class DeterministicOrderGate {
       pending.resolve(result);
     } catch (error) {
       pending.reject(error);
+      throw error;
     }
   }
 }
@@ -260,24 +261,27 @@ export class VirtualDeviceBacking {
   }
 
   async setChangeCursor(changeCursor: ChangeCursor | undefined): Promise<void> {
-    const runtime = this.reconstruct(new InMemoryGoogleDriveCore());
-    try {
-      const loaded = await runtime.stateStore().load(runtime.loadContext());
-      if (loaded.status !== "trusted") {
-        throw new Error(`cannot set cursor while state is ${loaded.status}`);
-      }
-      const candidate: TrustedSynchronizationState = {
-        ...loaded.state,
-        ...(changeCursor === undefined ? { changeCursor: undefined } : { changeCursor }),
-      };
-      const saved = await runtime
-        .stateStore()
-        .saveTrusted(candidate, loaded.state.stateRevision);
-      if (saved.status !== "saved") {
-        throw new Error(`unable to persist virtual cursor: ${saved.status}`);
-      }
-    } finally {
-      runtime.destroy();
+    const raw = new PersistentSynchronizationStateStore(this.storage);
+    const authority = new SynchronizationStateAuthorityAdapter(raw);
+    const context: StateLoadContext = {
+      expectation: "existing-pairing",
+      expectedVaultIdentity: this.vaultIdentity,
+      expectedDeviceIdentity: this.deviceIdentity,
+    };
+    const loaded = await authority.load(context);
+    if (loaded.status !== "trusted") {
+      throw new Error(`cannot set cursor while state is ${loaded.status}`);
+    }
+    const candidate: TrustedSynchronizationState = {
+      ...loaded.state,
+      ...(changeCursor === undefined ? { changeCursor: undefined } : { changeCursor }),
+    };
+    const saved = await authority.saveTrusted(
+      candidate,
+      loaded.state.stateRevision,
+    );
+    if (saved.status !== "saved") {
+      throw new Error(`unable to persist virtual cursor: ${saved.status}`);
     }
   }
 
