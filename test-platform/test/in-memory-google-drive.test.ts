@@ -3,6 +3,7 @@ import {
   deepStrictEqual,
   notStrictEqual,
   strictEqual,
+  throws,
 } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -793,6 +794,35 @@ test("partial change page can omit a real change while preserving explicit uncer
   const retained = await drive.observe(root.rootId, virtualDrivePath("two.bin"));
   strictEqual(retained.ok, true);
   if (retained.ok) strictEqual(retained.value.status, "present");
+});
+
+test("omission controls fail closed rather than claim complete coverage", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("must-not-hide.md"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  if (!created.ok) throw new Error(created.signal.kind);
+
+  throws(
+    () =>
+      drive.scriptNextListing({
+        completeness: { status: "complete" },
+        omitRemoteObjectIds: [created.value.remoteObjectId],
+      }),
+    /cannot omit remote objects while claiming complete coverage/i,
+  );
+
+  throws(
+    () =>
+      drive.scriptNextChangePage({
+        completeness: { status: "complete" },
+        omitRemoteObjectIds: [created.value.remoteObjectId],
+      }),
+    /cannot omit remote objects while claiming complete coverage/i,
+  );
 });
 
 test("duplicate provider reality surfaces production conflict ambiguity without choosing authority", async () => {
