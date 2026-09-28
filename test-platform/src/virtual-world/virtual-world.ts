@@ -983,40 +983,5 @@ export class VirtualSynchronizationWorld {
     );
   }
 
-  async createRemoteFile(
-    path: string,
-    bytes: Uint8Array,
-  ): Promise<RemoteObjectId> {
-    const result = await this.drive.create(this.managedRemote.rootId, {
-      path: virtualDrivePath(path),
-      entityKind: "file",
-      content: binarySource(bytes),
-    });
-    if (!result.ok) throw new Error(result.signal.kind);
-    return result.value.remoteObjectId;
-  }
 
-  async createLocalFile(
-    deviceName: string,
-    path: string,
-    bytes: Uint8Array,
-  ): Promise<void> {
-    await this.deviceBacking(deviceName).local.createFile(
-      virtualVaultPath(path),
-      binarySource(bytes),
-    );
-  }
-
-  async readLocalFile(
-    deviceName: string,
-    path: string,
-  ): Promise<Uint8Array | undefined> {
-    const local = this.deviceBacking(deviceName).local;
-    const vaultPath = virtualVaultPath(path);
-    const observed = await local.observe(vaultPath);
-    if (observed.status !== "present" || observed.entityKind !== "file") {
-      return undefined;
-    }
-    return collect((await local.readFile(vaultPath)).content);
-  }
 }
