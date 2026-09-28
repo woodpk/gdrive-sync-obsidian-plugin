@@ -333,7 +333,8 @@ test("production canary: partial REMOTE listing cannot masquerade as authoritati
 
 test("production canary: ambiguous applied REMOTE create remains unresolved until a later production recovery observation", async () => {
   const world = await VirtualSynchronizationWorld.create();
-  await world.createLocalFile(
+  await createLocal(
+    world,
     "device-a",
     "ambiguous.bin",
     new Uint8Array([3, 1, 4, 1]),
