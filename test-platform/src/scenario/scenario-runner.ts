@@ -223,6 +223,9 @@ export class DeterministicScenarioRunner {
       const result = await (await context.device(step.device)).controller.request({ kind: "cancel-active-sync" });
       return result.status === "accepted" ? { status: "completed" } : fail("failed", "production-request-rejected", result.reason);
     }
+    if (step.transition !== "inject-remote-mutation-fault") {
+      return fail("unsupported", "external-state-transition-unsupported");
+    }
     context.world.drive.queueBoundaryFault({
       boundary: step.operation,
       signal: { kind: "transient-failure", detail: step.classification },
