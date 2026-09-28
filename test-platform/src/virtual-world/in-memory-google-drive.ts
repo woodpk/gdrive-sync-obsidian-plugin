@@ -460,6 +460,9 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     rootId: RemoteObjectId,
     path: VaultPath,
   ): Promise<DriveResult<RemoteObservation>> {
+    const fault = this.takeBoundaryFault("observe");
+    if (fault) return { ok: false, signal: fault.signal };
+
     const root = this.roots.get(String(rootId));
     if (!root) return notFound(rootId);
 
@@ -500,6 +503,9 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
   async download(
     remoteObjectId: RemoteObjectId,
   ): Promise<DriveResult<RemoteDownload>> {
+    const fault = this.takeBoundaryFault("download");
+    if (fault) return { ok: false, signal: fault.signal };
+
     const object = this.objectsById.get(String(remoteObjectId));
     if (!object) return notFound(remoteObjectId);
     if (object.entityKind === "folder") {
@@ -521,6 +527,11 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     rootId: RemoteObjectId,
     request: RemoteCreateRequest,
   ): Promise<DriveResult<RemoteMutationReceipt>> {
+    const fault = this.takeBoundaryFault("create");
+    if (fault && fault.mutationEffect !== "applied-before-failure") {
+      return { ok: false, signal: fault.signal };
+    }
+
     const root = this.roots.get(String(rootId));
     if (!root) return notFound(rootId);
 
@@ -554,7 +565,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       }
     }
 
-    return {
+    const result: DriveResult<RemoteMutationReceipt> = {
       ok: true,
       value: {
         remoteObjectId: object.remoteObjectId,
@@ -562,11 +573,19 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
         ...(evidence ? { evidence } : {}),
       },
     };
+    return fault?.mutationEffect === "applied-before-failure"
+      ? { ok: false, signal: fault.signal }
+      : result;
   }
 
   async update(
     request: RemoteUpdateRequest,
   ): Promise<DriveResult<RemoteMutationReceipt>> {
+    const fault = this.takeBoundaryFault("update");
+    if (fault && fault.mutationEffect !== "applied-before-failure") {
+      return { ok: false, signal: fault.signal };
+    }
+
     const object = this.objectsById.get(String(request.remoteObjectId));
     if (!object) return notFound(request.remoteObjectId);
     if (object.entityKind === "folder") {
@@ -587,10 +606,14 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       return conflict("update-parent-change-requires-move");
     }
 
+    const root = this.roots.get(String(object.rootId));
+    if (!root) return recoveryRequired("managed-object-root-missing");
+
     object.path = requestedPath;
     object.bytes = await collectContent(request.content);
     object.revision += 1;
     const evidence = fileEvidence(object);
+    this.recordUpsert(root, object);
 
     const updateMismatch = evidenceMismatch(
       evidence,
@@ -604,7 +627,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       );
     }
 
-    return {
+    const result: DriveResult<RemoteMutationReceipt> = {
       ok: true,
       value: {
         remoteObjectId: object.remoteObjectId,
@@ -612,6 +635,9 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
         evidence,
       },
     };
+    return fault?.mutationEffect === "applied-before-failure"
+      ? { ok: false, signal: fault.signal }
+      : result;
   }
 
   async move(
@@ -619,6 +645,11 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     _fromPath: VaultPath,
     toPath: VaultPath,
   ): Promise<DriveResult<RemoteMutationReceipt>> {
+    const fault = this.takeBoundaryFault("move");
+    if (fault && fault.mutationEffect !== "applied-before-failure") {
+      return { ok: false, signal: fault.signal };
+    }
+
     const object = this.objectsById.get(String(remoteObjectId));
     if (!object) return notFound(remoteObjectId);
 
@@ -653,8 +684,9 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
 
     object.path = target;
     object.revision += 1;
+    this.recordUpsert(root, object);
 
-    return {
+    const result: DriveResult<RemoteMutationReceipt> = {
       ok: true,
       value: {
         remoteObjectId: object.remoteObjectId,
@@ -664,17 +696,32 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
           : {}),
       },
     };
+    return fault?.mutationEffect === "applied-before-failure"
+      ? { ok: false, signal: fault.signal }
+      : result;
   }
 
   async trash(remoteObjectId: RemoteObjectId): Promise<DriveResult<void>> {
+    const fault = this.takeBoundaryFault("trash");
+    if (fault && fault.mutationEffect !== "applied-before-failure") {
+      return { ok: false, signal: fault.signal };
+    }
+
     const object = this.objectsById.get(String(remoteObjectId));
     if (!object) return notFound(remoteObjectId);
+    const root = this.roots.get(String(object.rootId));
+    if (!root) return recoveryRequired("managed-object-root-missing");
 
     if (!object.trashed) {
+      const lastKnownPath = object.path;
       object.trashed = true;
       object.revision += 1;
+      this.recordRemoved(root, object.remoteObjectId, lastKnownPath);
     }
-    return { ok: true, value: undefined };
+
+    return fault?.mutationEffect === "applied-before-failure"
+      ? { ok: false, signal: fault.signal }
+      : { ok: true, value: undefined };
   }
 
   inspectObject(
@@ -790,6 +837,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     };
     root.objects.set(String(remoteObjectId), object);
     this.objectsById.set(String(remoteObjectId), object);
+    this.recordUpsert(root, object);
     return object;
   }
 
