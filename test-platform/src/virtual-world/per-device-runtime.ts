@@ -8,6 +8,7 @@ import {
   createInitialAuthorityState,
   generateDeviceIdentity,
   markKnownDeviceReconciled,
+  registerKnownDevice,
   type ChangeCursor,
   type DeviceIdentity,
   type DurableSynchronizationAuthorityState,
@@ -338,6 +339,13 @@ export class VirtualDeviceBacking {
     staleAfterMs: number,
   ): TrustedSynchronizationState {
     return ageKnownDevices(state, this.clock.nowMs(), { staleAfterMs });
+  }
+
+  registerDevice(
+    state: TrustedSynchronizationState,
+    deviceIdentity: DeviceIdentity,
+  ): TrustedSynchronizationState {
+    return registerKnownDevice(state, deviceIdentity);
   }
 
   markDeviceReconciled(
