@@ -343,10 +343,13 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
   async listForReconciliation(
     rootId: RemoteObjectId,
   ): Promise<DriveResult<RemoteListing>> {
+    const fault = this.takeBoundaryFault("list");
+    if (fault) return { ok: false, signal: fault.signal };
+
     const root = this.roots.get(String(rootId));
     if (!root) return notFound(rootId);
 
-    const entries = [...root.objects.values()]
+    let entries = [...root.objects.values()]
       .filter((object) => this.isVisible(root, object))
       .sort((left, right) => {
         const byPath =
@@ -364,6 +367,15 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       })
       .map((object) => this.entryFor(object));
 
+    const control = this.nextListingControl;
+    this.nextListingControl = undefined;
+    if (control?.omitRemoteObjectIds?.length) {
+      const omitted = new Set(control.omitRemoteObjectIds.map(String));
+      entries = entries.filter(
+        (entry) => !omitted.has(String(entry.remoteObjectId)),
+      );
+    }
+
     const seen = new Map<string, RemoteObjectId>();
     for (const entry of entries) {
       const key = comparisonKey(entry.path);
@@ -378,7 +390,68 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       ok: true,
       value: {
         entries,
-        completeness: { status: "complete" },
+        completeness: control?.completeness ?? { status: "complete" },
+      },
+    };
+  }
+
+  async getStartCursor(
+    rootId: RemoteObjectId,
+  ): Promise<DriveResult<ChangeCursor>> {
+    const fault = this.takeBoundaryFault("start-cursor");
+    if (fault) return { ok: false, signal: fault.signal };
+
+    const root = this.roots.get(String(rootId));
+    if (!root) return notFound(rootId);
+    return {
+      ok: true,
+      value: this.cursorFor(rootId, root.changes.length),
+    };
+  }
+
+  async readChanges(
+    rootId: RemoteObjectId,
+    cursor: ChangeCursor,
+  ): Promise<DriveResult<RemoteChangePage>> {
+    const fault = this.takeBoundaryFault("read-changes");
+    if (fault) return { ok: false, signal: fault.signal };
+
+    const root = this.roots.get(String(rootId));
+    if (!root) return notFound(rootId);
+
+    if (this.invalidCursors.has(String(cursor))) {
+      return recoveryRequired("drive-change-cursor-invalid");
+    }
+
+    const position = this.cursorPosition(rootId, cursor);
+    if (
+      position === undefined ||
+      position < 0 ||
+      position > root.changes.length
+    ) {
+      return recoveryRequired("drive-change-cursor-invalid");
+    }
+
+    let changes = root.changes.slice(position);
+    const control = this.nextChangePageControl;
+    this.nextChangePageControl = undefined;
+    if (control?.omitRemoteObjectIds?.length) {
+      const omitted = new Set(control.omitRemoteObjectIds.map(String));
+      changes = changes.filter((change) => {
+        const id =
+          change.kind === "upsert"
+            ? change.entry.remoteObjectId
+            : change.remoteObjectId;
+        return !omitted.has(String(id));
+      });
+    }
+
+    return {
+      ok: true,
+      value: {
+        changes,
+        nextCursor: this.cursorFor(rootId, root.changes.length),
+        completeness: control?.completeness ?? { status: "complete" },
       },
     };
   }
