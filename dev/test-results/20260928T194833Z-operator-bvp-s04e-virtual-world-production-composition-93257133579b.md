@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: PRODUCT FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04e-virtual-world-production-composition
+- Source build HEAD requested: 93257133579b1604949325d12fe7cef2900b8827
+- Verification checkout HEAD: 93257133579b1604949325d12fe7cef2900b8827
+- Evidence publication target: origin/bvp-s04e-virtual-world-production-composition
