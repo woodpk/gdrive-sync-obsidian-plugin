@@ -846,6 +846,7 @@ export class VirtualProductionDevice {
 export class VirtualSynchronizationWorld {
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
+  private readonly leasePort = new InMemoryRunLeasePort();
 
   private constructor(
     readonly drive: InMemoryGoogleDriveCore,
@@ -958,7 +959,7 @@ export class VirtualSynchronizationWorld {
             { trigger },
           ),
         ),
-      leasePort: new InMemoryRunLeasePort(),
+      leasePort: this.leasePort,
       audit: new BoundedAuditHistory(new MemoryAuditPersistence()),
       holderId: `virtual-world:${name}`,
       firstSyncActive: () => false,
