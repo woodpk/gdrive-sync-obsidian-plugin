@@ -3,11 +3,44 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World
 
 This is a complete prewritten verification contract. It has no implementation-repair authority.
+
+## 0.1 Authoritative Acceptance Record
+
+BVP-S04 is accepted and S04V is complete / non-executable.
+
+- accepted integrated S04V input SHA: `053568a288cd26cab1c287cca9fc965831ea8443`;
+- authoritative S04V PHX-CI evidence / promoted integration SHA: `cc9078551322c7608c74c1a647f869da2ea9620d`;
+- authoritative S04 stage verification base: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE / task exit 0;
+- focused integrated BVP tests: PASS, 130/130;
+- full repository tests: PASS, 822/822;
+- build: PASS;
+- repository check: PASS;
+- architecture guard: PASS, 0 violations;
+- current production source: 16,533 logical LOC;
+- production seam: 112 logical LOC / 1 file, within the 350-LOC / 4-file budget;
+- framework core: 2,904 logical TypeScript LOC / 6 runtime modules, within the 4,000-LOC budget;
+- live-device agent/relay: 0 logical LOC;
+- declarative scenarios: 0 LOC / 0 scenarios;
+- production modules imported by BVP: 1, the approved non-shipping seam;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific PowerShell: 0;
+- scenario-specific production files: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The integrated S04 architecture review is PASS. The deterministic world remains external test-platform infrastructure over the approved one-way production seam; it contains no duplicate planner, reconciler, conflict/safety engine, scenario runner, scenario evidence subsystem, live-device agent, or alternate synchronization state machine. Accepted S04 capabilities include stateful LOCAL and REMOTE reality, deterministic change-feed/completeness/ambiguity/fault control, per-device durable authority/state, deterministic time/order control, true runtime reconstruction, and production-path canaries executed through the real planner/executor/state authority.
+
+The earlier S04V evidence `f9017111fce8c01d00e612b80dcbdb601f471885` is retained as diagnostic history only. It was blocked by the superseded supervisor base binding `a80ec07562072224a28f08d6b68069b9fa0b3521`, not by an S04 product or platform defect.
+
+This file is now a historical completion record and authorizes no further S04V work.
 
 ## 1. Objective
 
