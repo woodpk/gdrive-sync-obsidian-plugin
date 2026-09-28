@@ -827,11 +827,36 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
       : { ok: true, value: undefined };
   }
 
+  inspectObjectsAtPath(
+    rootId: RemoteObjectId,
+    path: VaultPath,
+    includeTrashed = false,
+  ): readonly InMemoryRemoteObjectSnapshot[] {
+    const root = this.roots.get(String(rootId));
+    if (!root) return [];
+    const normalized = String(virtualDrivePath(String(path)));
+    return [...root.objects.values()]
+      .filter(
+        object =>
+          String(object.path) === normalized &&
+          (includeTrashed || !object.trashed),
+      )
+      .sort((left, right) =>
+        String(left.remoteObjectId).localeCompare(String(right.remoteObjectId)),
+      )
+      .map(object => this.snapshotFor(object));
+  }
+
   inspectObject(
     remoteObjectId: RemoteObjectId,
   ): InMemoryRemoteObjectSnapshot | undefined {
     const object = this.objectsById.get(String(remoteObjectId));
-    if (!object) return undefined;
+    return object ? this.snapshotFor(object) : undefined;
+  }
+
+  private snapshotFor(
+    object: InMemoryRemoteObject,
+  ): InMemoryRemoteObjectSnapshot {
     return {
       remoteObjectId: object.remoteObjectId,
       rootId: object.rootId,
