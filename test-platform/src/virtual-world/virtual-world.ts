@@ -865,7 +865,7 @@ export class VirtualSynchronizationWorld {
       () => true,
       () => false,
       undefined,
-      undefined,
+      this.drive,
       state,
     );
     const conflicts = new ThreeWayConflictResolver(
