@@ -272,6 +272,45 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     this.nextChangePageControl = control;
   }
 
+  removeExternally(remoteObjectId: RemoteObjectId): void {
+    const object = this.objectsById.get(String(remoteObjectId));
+    if (!object) {
+      throw new Error(
+        `Cannot externally remove unknown remote object: ${String(remoteObjectId)}`,
+      );
+    }
+    const root = this.roots.get(String(object.rootId));
+    if (!root) {
+      throw new Error(
+        `Cannot externally remove object with missing root: ${String(remoteObjectId)}`,
+      );
+    }
+
+    const affected = [...root.objects.values()]
+      .filter(
+        (candidate) =>
+          candidate.remoteObjectId === object.remoteObjectId ||
+          isDescendantPath(candidate.path, object.path),
+      )
+      .sort((left, right) =>
+        String(left.path) < String(right.path)
+          ? -1
+          : String(left.path) > String(right.path)
+            ? 1
+            : 0,
+      );
+
+    for (const candidate of affected) {
+      root.objects.delete(String(candidate.remoteObjectId));
+      this.objectsById.delete(String(candidate.remoteObjectId));
+      this.recordRemoved(
+        root,
+        candidate.remoteObjectId,
+        candidate.path,
+      );
+    }
+  }
+
   async createManagedRoot(
     vaultIdentity: VaultIdentity,
     protocolVersion: ProtocolVersion,
@@ -713,10 +752,9 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     if (!root) return recoveryRequired("managed-object-root-missing");
 
     if (!object.trashed) {
-      const lastKnownPath = object.path;
       object.trashed = true;
       object.revision += 1;
-      this.recordRemoved(root, object.remoteObjectId, lastKnownPath);
+      this.recordUpsert(root, object);
     }
 
     return fault?.mutationEffect === "applied-before-failure"
