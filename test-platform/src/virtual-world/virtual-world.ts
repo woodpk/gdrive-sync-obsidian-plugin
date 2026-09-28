@@ -10,7 +10,6 @@ import {
   ProductSynchronizationExecutor,
   ProductionSynchronizationPlanner,
   ThreeWayConflictResolver,
-  contractId,
   type BinaryContentSource,
   type CanonicalFileContentProof,
   type DriveResult,
@@ -25,9 +24,15 @@ import {
   type RemoteObjectId,
   type RemoteUpdateFinalizationPort,
   type SynchronizationCancellationSignal,
-  type VaultIdentity,
   type VaultPath,
 } from "../../../src/product/local-vault-boundary-seam";
+
+type ReservedCreateIdentity = Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" | "reserved-folder-create" }>;
+type UpdateIdentity = Extract<RemoteMutationIdentity, { readonly kind: "existing-file-content-update" }>;
+type MoveIdentity = Extract<RemoteMutationIdentity, { readonly kind: "identity-preserving-move" }>;
+type TrashIdentity = Extract<RemoteMutationIdentity, { readonly kind: "trash" }>;
+type DriveFailure = Extract<DriveResult<never>, { readonly ok: false }>;
+
 import {
   InMemoryGoogleDriveCore,
   type InMemoryRemoteObjectSnapshot,
@@ -102,12 +107,7 @@ function parentPath(path: VaultPath): VaultPath {
   return virtualDrivePath(slash < 0 ? "" : value.slice(0, slash));
 }
 
-export class InMemoryReliableRemoteMutationPort
-  implements
-    ReliableRemoteMutationPort,
-    RemoteUpdateFinalizationPort,
-    RemoteFolderCreateRecoveryReadPort
-{
+export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {
   private readonly postMutationObservationFailures: string[] = [];
 
   constructor(
@@ -115,9 +115,7 @@ export class InMemoryReliableRemoteMutationPort
     private readonly managedRemote: ManagedRemoteIdentity,
   ) {}
 
-  queuePostMutationObservationFailure(
-    reason = "simulated-post-mutation-observation-failure",
-  ): void {
+  queuePostMutationObservationFailure(reason = "simulated-post-mutation-observation-failure"): void {
     this.postMutationObservationFailures.push(reason);
   }
 
@@ -172,14 +170,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  async createReserved(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "reserved-file-create" | "reserved-folder-create" }
-    >,
-    content?: BinaryContentSource,
-    cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteMutationOutcome> {
+  async createReserved(identity: ReservedCreateIdentity, content?: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
     if (cancelled(cancellation)) {
       return {
         status: "verified-not-applied",
@@ -252,14 +243,7 @@ export class InMemoryReliableRemoteMutationPort
         };
   }
 
-  async updateExisting(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "existing-file-content-update" }
-    >,
-    content: BinaryContentSource,
-    cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteMutationOutcome> {
+  async updateExisting(identity: UpdateIdentity, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
     if (identity.updateProtocol !== "immutable-candidate-preservation") {
       return { status: "outcome-unknown", reason: "unsupported-update-protocol" };
     }
@@ -306,13 +290,7 @@ export class InMemoryReliableRemoteMutationPort
     return this.finalizeExistingUpdate(identity, cancellation);
   }
 
-  async finalizeExistingUpdate(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "existing-file-content-update" }
-    >,
-    cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteMutationOutcome> {
+  async finalizeExistingUpdate(identity: UpdateIdentity, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
     if (cancelled(cancellation)) {
       return {
         status: "outcome-unknown",
@@ -425,13 +403,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  async moveExisting(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "identity-preserving-move" }
-    >,
-    cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteMutationOutcome> {
+  async moveExisting(identity: MoveIdentity, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
     if (cancelled(cancellation)) {
       return {
         status: "verified-not-applied",
@@ -503,10 +475,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  async trashExisting(
-    identity: Extract<RemoteMutationIdentity, { readonly kind: "trash" }>,
-    cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteMutationOutcome> {
+  async trashExisting(identity: TrashIdentity, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
     if (cancelled(cancellation)) {
       return {
         status: "verified-not-applied",
@@ -603,15 +572,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  private async validateRoot(
-    root: ManagedRemoteIdentity,
-  ): Promise<
-    | Extract<
-        DriveResult<never>,
-        { readonly ok: false }
-      >
-    | undefined
-  > {
+  private async validateRoot(root: ManagedRemoteIdentity): Promise<DriveFailure | undefined> {
     if (
       root.rootId !== this.managedRemote.rootId ||
       root.vaultIdentity !== this.managedRemote.vaultIdentity ||
@@ -635,13 +596,7 @@ export class InMemoryReliableRemoteMutationPort
         };
   }
 
-  private verifyReserved(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "reserved-file-create" | "reserved-folder-create" }
-    >,
-    observed: InMemoryRemoteObjectSnapshot,
-  ): RemoteMutationOutcome {
+  private verifyReserved(identity: ReservedCreateIdentity, observed: InMemoryRemoteObjectSnapshot): RemoteMutationOutcome {
     if (
       observed.trashed ||
       observed.remoteObjectId !== identity.reservedRemoteObjectId ||
@@ -694,13 +649,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  private validateUpdatePredecessor(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "existing-file-content-update" }
-    >,
-    predecessor: InMemoryRemoteObjectSnapshot | undefined,
-  ): RemoteMutationOutcome | undefined {
+  private validateUpdatePredecessor(identity: UpdateIdentity, predecessor: InMemoryRemoteObjectSnapshot | undefined): RemoteMutationOutcome | undefined {
     if (!predecessor) {
       return { status: "verified-not-applied", reason: "update-predecessor:not-found" };
     }
@@ -728,13 +677,7 @@ export class InMemoryReliableRemoteMutationPort
     return undefined;
   }
 
-  private moveVerified(
-    identity: Extract<
-      RemoteMutationIdentity,
-      { readonly kind: "identity-preserving-move" }
-    >,
-    observed: InMemoryRemoteObjectSnapshot,
-  ): RemoteMutationOutcome {
+  private moveVerified(identity: MoveIdentity, observed: InMemoryRemoteObjectSnapshot): RemoteMutationOutcome {
     return {
       status: "verified-effect",
       receipt: {
@@ -751,9 +694,7 @@ export class InMemoryReliableRemoteMutationPort
     };
   }
 
-  private trashVerified(
-    identity: Extract<RemoteMutationIdentity, { readonly kind: "trash" }>,
-  ): RemoteMutationOutcome {
+  private trashVerified(identity: TrashIdentity): RemoteMutationOutcome {
     return {
       status: "verified-effect",
       applicationProof: {
