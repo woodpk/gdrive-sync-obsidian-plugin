@@ -73,6 +73,7 @@ export {
   ageKnownDevices,
   generateDeviceIdentity,
   markKnownDeviceReconciled,
+  registerKnownDevice,
 } from "../state/state-policy";
 export { SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
 export type {
