@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
 **Predecessor:** accepted BVP-S04 primary-stage gate
 
@@ -38,15 +38,25 @@ The initial step vocabulary remains intentionally small and capability-oriented.
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S05A contract is bound to the accepted S04 repository state as follows:
 
-- exact accepted S04 predecessor SHA;
-- exact task branch;
-- actual S04 world/public test API and production operation entrypoints available for later execution;
-- exact scenario-contract/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S04 predecessor / PHX-CI base authority: `7791976db3bfce21dd8e016e856539e409da96cd`;
+- exact task branch: `bvp-s05a-typed-scenario-contract`;
+- accepted S04 world builder: `VirtualSynchronizationWorld.create(deviceNames?)`;
+- accepted device surfaces: `VirtualSynchronizationWorld.deviceBacking(name)` and `VirtualSynchronizationWorld.reconstructDevice(name)`;
+- accepted reconstructed production device surface: `VirtualProductionDevice`, including its real production `ProductController`;
+- accepted production operation entrypoints available to later execution: `ProductController.previewManual()` and `requestPreviewAction({ kind: "execute-plan", planId })`;
+- accepted deterministic external-reality/control surfaces available to later execution: `InMemoryLocalVault`, `InMemoryGoogleDriveCore`, `VirtualDeviceBacking` / `VirtualDeviceRuntime`, per-device `DeterministicClock`, and shared `DeterministicOrderGate`;
+- exact scenario-contract implementation path: `test-platform/src/scenario/scenario-contract.ts`;
+- exact scenario-contract test path: `test-platform/test/scenario-contract.test.ts`;
+- exact implementation-writable allowlist: `test-platform/src/scenario/scenario-contract.ts` and `test-platform/test/scenario-contract.test.ts` only;
+- no production, production-seam, governance, PowerShell, runner, evidence, checkpoint, live-device, or persistence implementation changes are authorized in S05A;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- focused S05A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-contract.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- no new dependency is authorized or required;
+- BVP-GOV-010 size gate: PASS — one new platform-level contract family, one substantive non-test implementation file plus one focused test file, two implementation files total, and an expected delta comfortably below the approximate 1000 net-new non-test LOC split threshold.
 
 Binding may not turn repository-specific implementation details into scenario-specific orchestration concepts.
 

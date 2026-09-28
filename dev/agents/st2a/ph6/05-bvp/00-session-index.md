@@ -35,7 +35,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 04D | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04d-per-device-durable-state-deterministic-time-order-restart.md` |
 | 04E | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04e-virtual-world-composition-over-real-production-logic.md` |
 | 04V | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04v-primary-stage-phx-ci-acceptance.md` |
-| 05A | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05a-typed-scenario-contract-and-small-step-vocabulary.md` |
+| 05A | S05 — Declarative Scenario Runner / Assertions / Evidence | EXECUTABLE | `05-declarative-scenario-runner-assertions-evidence/05a-typed-scenario-contract-and-small-step-vocabulary.md` |
 | 05B | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05b-external-deterministic-runner-core.md` |
 | 05C | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05c-generic-observations-assertions-and-canonical-evidence.md` |
 | 05D | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05d-bounded-checkpoint-resume-representation.md` |
