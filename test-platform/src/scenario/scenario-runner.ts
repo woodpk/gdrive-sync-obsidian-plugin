@@ -54,8 +54,8 @@ function driveSignal(classification: string): DriveSignal | undefined {
   switch (classification) {
     case "authentication-required":
     case "transient-failure":
-    case "permission-denied":
-    case "quota-exhausted": return { kind: classification, detail: "scenario-injected-fault" };
+    case "permission-denied": return { kind: classification, detail: "scenario-injected-fault" };
+    case "quota-exhausted": return { kind: "quota-exhausted", detail: "scenario-injected-fault" };
     case "rate-limited": return { kind: "rate-limited" };
     case "not-found": return { kind: "not-found" };
     case "conflict":
