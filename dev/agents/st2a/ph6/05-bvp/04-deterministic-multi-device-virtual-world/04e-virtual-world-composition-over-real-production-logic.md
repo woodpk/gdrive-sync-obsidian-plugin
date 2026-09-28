@@ -3,14 +3,36 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
-**Implementation state:** `READY FOR LOCAL PHX-CI VERIFICATION`  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S04E is complete and accepted.
+
+- authoritative predecessor / reviewed post-S04D integration state: `238064e44843e256f35f074ef4a860509790b8a2`;
+- accepted implementation SHA: `af0f615cb219dfac17e0f65d1154696f3e1dde72`;
+- authoritative PHX-CI evidence / promoted integration SHA: `6682e853370049420174958f28e33b3dab6a5335`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused BVP verification: PASS, 130/130;
+- full repository tests: PASS, 822/822;
+- architecture guard: PASS, 0 violations;
+- production seam: 1 file / 112 logical LOC;
+- framework core: 2904 logical TypeScript LOC / 6 runtime modules, within the 4000-LOC budget;
+- final S04E framework-core delta: 993 logical LOC; production-seam delta: 32 logical LOC; combined non-test delta is approximately 1025 LOC, remaining within the execution contract's approximate pre-dispatch 1000-LOC split heuristic for this single already-bounded contract family;
+- live-device/scenario-specific production surfaces: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+Accepted behavior includes the required production-path upload/create and download/create canaries, two independent devices over one shared remote, stable remote-ID-preserving move behavior, partial-listing safety, ambiguous-result preservation/recovery observation, genuine runtime reconstruction, deterministic time/order control, and production-faithful local transaction scoping through `ProductPathScope`, `ScopedLocalVault`, and `ScopedLocalTransactionalMutationPort`.
+
+Failed evidence `e4350b7d0a8729a712ad638a232e0182b5d7ab6f` and `b90fa7b26e2eddecfe2ff720403887b11d36b91e` remain diagnostic history only and are superseded by the authoritative accepted evidence above.
+
+This file is now a historical completion record and authorizes no further S04E implementation work.
 
 ## 1. Objective
 
@@ -59,7 +81,7 @@ The S04E contract is bound to the reviewed post-S04D repository state as follows
   - `ThreeWayConflictResolver`;
   - `InMemoryRunLeasePort`;
   - `BoundedAuditHistory` + `MemoryAuditPersistence`;
-  - `CanonicalEvidenceLocalVault` + `ObsidianLocalMutationTransactions` for the production canonical-read and crash-safe local-transaction path;
+  - `CanonicalEvidenceLocalVault` + `ProductPathScope` + `ScopedLocalVault` + `ScopedLocalTransactionalMutationPort` (delegating to `ObsidianLocalMutationTransactions`) for the production canonical-read and crash-safe local-transaction path;
 - accepted S04 deterministic realities/factories consumed directly:
   - `InMemoryLocalVault` from S04A;
   - `InMemoryGoogleDriveCore` from S04B/C;
@@ -85,7 +107,7 @@ The S04E contract is bound to the reviewed post-S04D repository state as follows
 - PHX-CI change classification: `authorized-governance` because the explicitly authorized production-seam expansion changes supervisor-owned frozen surface `src/product/local-vault-boundary-seam.ts`;
 - focused S04E command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/virtual-world.test.js`;
 - authoritative full BVP focused command remains `npm run test:bvp-root`;
-- BVP-GOV-010 size gate: **PASS** — measured implementation delta is approximately **968 logical net-new non-test LOC**, with two substantive BVP runtime files touched/created plus the existing one-file production seam expansion; this remains below the 1000-LOC split threshold.
+- BVP-GOV-010 size gate: **PASS** — final authoritative metrics measure a 993-LOC framework-core delta plus a 32-LOC production-seam delta, approximately 1025 net-new non-test LOC total. This remains approximately at the pre-dispatch 1000-LOC split heuristic, within one contract family and four substantive non-test implementation files; all hard architecture budgets remain PASS.
 
 The post-S04C/S04D BVP-GOV-008 architecture review passed at `238064e44843e256f35f074ef4a860509790b8a2`. S04E may compose only the reviewed capabilities above.
 
