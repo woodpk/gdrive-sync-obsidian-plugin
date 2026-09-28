@@ -3,13 +3,35 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04C
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S04D is complete and accepted.
+
+- authoritative predecessor / accepted S04C closure: `95bd0e4f229e4173311120aa94bf8a3203b03c1a`;
+- accepted implementation SHA: `6271bcf600f824bac501d6a5bb4e0cee6940e12a`;
+- authoritative PHX-CI evidence / promoted integration SHA: `f1371daacabe51196580f9e8e974e242471b4909`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused BVP verification: PASS, 122/122;
+- full repository tests: PASS, 822/822;
+- architecture guard: PASS, 0 violations;
+- production seam: 1 file / 80 logical LOC;
+- framework core: 1911 logical TS LOC / 5 runtime modules, within the 4000-LOC budget;
+- live-device/scenario-specific production surfaces: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The initial S04D run at evidence `bdcf308886c4c6ddbba6fb2355baaea607bcc331` was BLOCKED solely by a TypeScript variance defect in the deterministic order-gate queue. Repository verification and the full production test suite passed in that run. The bounded type-storage repair at `6271bcf600f824bac501d6a5bb4e0cee6940e12a` changed only `test-platform/src/virtual-world/per-device-runtime.ts` beyond the failed evidence commit and was then reverified authoritatively.
+
+Accepted S04D behavior includes isolated per-device production state/cursor authority, shared Drive with independent local/state reality, genuine runtime destruction/reconstruction over retained production bytes, deterministic explicit time inputs to production policies, explicit external observation ordering, cursor loss, truncation, checksum corruption, incompatible schema, missing expected state, and clone/restore identity mismatch.
+
+This file is now a historical completion record and authorizes no further S04D work.
 
 ## 1. Objective
 
