@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04e-virtual-world-production-composition
+- Source build HEAD requested: 59ccd954987268b1b4f58be37295f4554f11f143
+- Verification checkout HEAD: 59ccd954987268b1b4f58be37295f4554f11f143
+- Evidence publication target: origin/bvp-s04e-virtual-world-production-composition
