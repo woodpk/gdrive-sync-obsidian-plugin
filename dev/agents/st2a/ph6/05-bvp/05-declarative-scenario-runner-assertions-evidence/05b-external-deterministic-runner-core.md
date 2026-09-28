@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
 **Predecessor:** accepted S05A
 
@@ -31,16 +31,29 @@ The runner can:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S05B contract is bound to the accepted S05A/S04 repository state as follows:
 
-- exact accepted S05A predecessor SHA;
-- task branch;
-- actual scenario types/vocabulary;
-- actual S04 world-builder and production-operation surfaces;
-- exact runner/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S05A predecessor / PHX-CI base: `e7c02dacc2594cddc298f838078c5d21d2d5c622`;
+- exact task branch: `bvp-s05b-external-deterministic-runner`;
+- frozen S05A contract module: `test-platform/src/scenario/scenario-contract.ts`;
+- frozen scenario authority types: `ScenarioDefinition`, `ScenarioStep`, `ScenarioFixtureStep`, `ScenarioProductionStep`, `ScenarioExternalStateStep`, `ScenarioCheckpointStep`, `ScenarioObservationStep`, and `ScenarioAssertionStep`;
+- frozen validation/helpers: `validateScenarioDefinition`, `defineScenario`, and `assertNeverScenarioStep`;
+- frozen generic step families: `fixture`, `production`, `external-state`, `checkpoint`, `observe`, and `assert`; no new step family is authorized in S05B;
+- accepted S04 world builder: `VirtualSynchronizationWorld.create(deviceNames?)`;
+- accepted world/device surfaces: `deviceBacking(name)`, `reconstructDevice(name)`, shared `drive`, shared `orderGate`, `VirtualProductionDevice`, and retained per-device LOCAL/state/runtime reality;
+- accepted production controller surfaces available to the runner: `previewManual()`, `previewVerifyReconcile()`, `request(...)`, and `requestPreviewAction(...)`;
+- production synchronization decisions/results remain authoritative; the runner may sequence production entrypoints but may not mutate product synchronization state directly;
+- exact runner implementation path: `test-platform/src/scenario/scenario-runner.ts`;
+- exact runner test path: `test-platform/test/scenario-runner.test.ts`;
+- exact implementation-writable allowlist: `test-platform/src/scenario/scenario-runner.ts` and `test-platform/test/scenario-runner.test.ts` only;
+- S05A scenario-contract source is frozen for S05B and is not writable;
+- no production, production-seam, governance, PowerShell, canonical-evidence, checkpoint-persistence, live-device, plugin/router, or scenario-catalog changes are authorized;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- focused S05B command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-runner.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- current accepted framework core is 3,052 / 4,000 logical TypeScript LOC, leaving 948 LOC of hard-budget headroom before S05B;
+- BVP-GOV-010 size gate: PASS — one existing platform contract family is extended by one substantive non-test runner module plus one focused test file; no new platform-level contract family or dependency is authorized.
 
 Binding may not add new step families merely because one implementation strategy would prefer them.
 
