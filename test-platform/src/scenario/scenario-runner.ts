@@ -50,20 +50,6 @@ const expectedMatches = (expected: ScenarioExpectedOutcome | undefined, actual: 
     ? actual.status === "completed"
     : actual.status === expected.status && "classification" in actual && actual.classification === expected.classification;
 
-function driveSignal(classification: string): DriveSignal | undefined {
-  switch (classification) {
-    case "authentication-required":
-    case "transient-failure":
-    case "permission-denied": return { kind: classification, detail: "scenario-injected-fault" };
-    case "quota-exhausted": return { kind: "quota-exhausted", detail: "scenario-injected-fault" };
-    case "rate-limited": return { kind: "rate-limited" };
-    case "not-found": return { kind: "not-found" };
-    case "conflict":
-    case "recovery-required": return { kind: classification, detail: "scenario-injected-fault" };
-    default: return undefined;
-  }
-}
-
 export class DeterministicScenarioRunner {
   constructor(private readonly hooks: ScenarioRunnerHooks = {}) {}
 
@@ -237,9 +223,11 @@ export class DeterministicScenarioRunner {
       const result = await (await context.device(step.device)).controller.request({ kind: "cancel-active-sync" });
       return result.status === "accepted" ? { status: "completed" } : fail("failed", "production-request-rejected", result.reason);
     }
-    const signal = driveSignal(step.classification);
-    if (!signal) return fail("unsupported", "drive-fault-classification-unsupported");
-    context.world.drive.queueBoundaryFault({ boundary: step.operation, signal, mutationEffect: step.effect });
+    context.world.drive.queueBoundaryFault({
+      boundary: step.operation,
+      signal: { kind: "transient-failure", detail: step.classification },
+      mutationEffect: step.effect,
+    });
     return { status: "completed" };
   }
 }
