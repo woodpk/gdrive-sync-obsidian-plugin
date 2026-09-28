@@ -184,6 +184,24 @@ test("fixture failures propagate deterministically", async () => {
   strictEqual(result.steps[0]?.status, "failed");
 });
 
+test("arbitrary frozen S05A mutation-fault classifications are accepted as declarative fault detail", async () => {
+  const result = await new DeterministicScenarioRunner().run(
+    scenario("fault-classification", [
+      {
+        id: "fault",
+        kind: "external-state",
+        transition: "inject-remote-mutation-fault",
+        operation: "create",
+        effect: "applied-before-failure",
+        classification: "simulated-response-loss",
+      },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  strictEqual(result.steps[0]?.status, "completed");
+});
+
 test("explicitly expected blocked capability may continue without becoming a hidden PASS", async () => {
   const result = await new DeterministicScenarioRunner().run(
     scenario("expected-block", [
@@ -234,15 +252,12 @@ test("observation and assertion families use fixed generic hooks and missing hoo
 
   const withHooks = await new DeterministicScenarioRunner({
     observe: async () => ({ status: "completed", value: "observed-value" }),
-    assert: async (step, context) => ({
-      status:
-        context.readCapture(step.observationRef) === "observed-value"
-          ? "completed"
-          : "failed",
-      ...(context.readCapture(step.observationRef) === "observed-value"
-        ? {}
-        : { classification: "assertion-mismatch" }),
-    }),
+    assert: async (step, context) => {
+      if (context.readCapture(step.observationRef) === "observed-value") {
+        return { status: "completed" };
+      }
+      return { status: "failed", classification: "assertion-mismatch" };
+    },
   }).run(
     scenario("generic-hooks", [
       {
