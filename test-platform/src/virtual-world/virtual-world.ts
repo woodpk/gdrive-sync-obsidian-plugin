@@ -1,5 +1,6 @@
 import {
   BoundedAuditHistory,
+  CanonicalEvidenceLocalVault,
   DeterministicSynchronizationPlanner,
   InMemoryRunLeasePort,
   MemoryAuditPersistence,
@@ -834,6 +835,7 @@ export class VirtualProductionDevice {
     readonly runtime: VirtualDeviceRuntime,
     readonly controller: ProductController,
     readonly remoteMutations: InMemoryReliableRemoteMutationPort,
+    readonly productionLocal: CanonicalEvidenceLocalVault,
   ) {}
 
   get local(): InMemoryLocalVault {
@@ -847,12 +849,12 @@ export class VirtualProductionDevice {
 }
 
 export class VirtualSynchronizationWorld {
-  readonly drive = new InMemoryGoogleDriveCore();
   readonly vaultIdentity: VaultIdentity;
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
 
   private constructor(
+    readonly drive: InMemoryGoogleDriveCore,
     vaultIdentity: VaultIdentity,
     managedRemote: ManagedRemoteIdentity,
   ) {
@@ -879,11 +881,10 @@ export class VirtualSynchronizationWorld {
     if (!root.ok) throw new Error(root.signal.kind);
 
     const world = new VirtualSynchronizationWorld(
+      temporaryDrive,
       vaultIdentity,
       root.value,
     );
-    // Preserve the exact Drive instance whose managed root was created.
-    (world as { drive: InMemoryGoogleDriveCore }).drive = temporaryDrive;
 
     for (const [index, name] of deviceNames.entries()) {
       const backing = new VirtualDeviceBacking({
@@ -915,8 +916,13 @@ export class VirtualSynchronizationWorld {
       localAdapterFacade(backing.local) as never,
       backing.local,
     );
-    const snapshots = new ProductSnapshotAssembler(
+    const canonicalLocal = new CanonicalEvidenceLocalVault(
       backing.local,
+      { staleRetryDelayMs: 0 },
+      localTransactions,
+    );
+    const snapshots = new ProductSnapshotAssembler(
+      canonicalLocal,
       this.drive,
       state,
       context,
@@ -935,7 +941,7 @@ export class VirtualSynchronizationWorld {
 
     let controller!: ProductController;
     const executor = new ProductSynchronizationExecutor(
-      backing.local,
+      canonicalLocal,
       this.drive,
       state,
       context,
@@ -951,7 +957,7 @@ export class VirtualSynchronizationWorld {
       executor,
       conflictResolver: conflicts,
       reliableRemoteMutationPort: remoteMutations,
-      localTransactionalMutationPort: localTransactions,
+      localTransactionalMutationPort: canonicalLocal,
       remoteFolderCreateRecoveryReadPort: remoteMutations,
       plannerForTrigger: trigger =>
         new ProductionSynchronizationPlanner(
@@ -973,6 +979,7 @@ export class VirtualSynchronizationWorld {
       runtime,
       controller,
       remoteMutations,
+      canonicalLocal,
     );
   }
 
