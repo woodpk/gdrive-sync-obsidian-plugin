@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: phase6-integration
+- Source build HEAD requested: 04ded4f163e97cf5434a27bc03eddb1f2ef68ccb
+- Verification checkout HEAD: 04ded4f163e97cf5434a27bc03eddb1f2ef68ccb
+- Evidence publication target: origin/phase6-integration
