@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04c-drive-feed-completeness-faults
+- Source build HEAD requested: 88b8c67f68c8f3ca1df9fc1cb426566168018c73
+- Verification checkout HEAD: 88b8c67f68c8f3ca1df9fc1cb426566168018c73
+- Evidence publication target: origin/bvp-s04c-drive-feed-completeness-faults
