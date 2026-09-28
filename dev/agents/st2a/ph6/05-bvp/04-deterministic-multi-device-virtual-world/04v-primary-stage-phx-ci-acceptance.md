@@ -33,7 +33,7 @@ S04 may close only if the integrated repository provides:
 The S04V verification contract is bound to the accepted integrated S04 repository state as follows:
 
 - exact integrated `phase6-integration` S04E closure SHA: `6d193d25b80806d8604c29226b3a40316cb5f47c`;
-- exact S04 stage verification base / accepted pre-S04 predecessor: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- exact S04 stage verification base / accepted seam-prerequisite evidence and S04A task base: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
 - target branch: `phase6-integration`;
 - authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
 - PHX-CI change classification: `authorized-governance`, because the integrated S04 stage delta contains the explicitly accepted supervisor-owned production-seam/governance changes;
@@ -45,10 +45,12 @@ The S04V verification contract is bound to the accepted integrated S04 repositor
 - accepted S04E implementation/evidence: `af0f615cb219dfac17e0f65d1154696f3e1dde72` / `6682e853370049420174958f28e33b3dab6a5335`;
 - authoritative integrated focused command: `npm run test:bvp-root`;
 - direct S04E production-canary surface: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/virtual-world.test.js`;
-- accepted pre-S04 architecture baseline: production source 16,421 logical LOC; production seam 0 LOC / 0 files; framework core 210 logical TypeScript LOC / 2 runtime modules; live-device 0; scenarios 0; production BVP imports 0; BVP PowerShell 4 scripts / 1,477 logical LOC;
+- accepted S04 prerequisite baseline evidence: production source 16,446 logical LOC; framework core 210 logical TypeScript LOC / 2 runtime modules; live-device 0; scenarios 0; production BVP imports 0; BVP PowerShell 4 scripts / 1,477 logical LOC. The prerequisite seam file already exists at this base; fresh S04V evaluation under the current authoritative manifest determines its seam classification.
 - expected integrated S04 metrics from authoritative S04E evidence: production source 16,533 logical LOC; production seam 112 LOC / 1 file; framework core 2,904 logical TypeScript LOC / 6 runtime modules; live-device 0; scenarios 0; production BVP imports 1; BVP PowerShell 4 scripts / 1,477 logical LOC; scenario-specific production and PowerShell surfaces 0.
 
 These metrics are verification references, not substitutes for fresh S04V architecture measurement.
+
+The prior S04V evidence `f9017111fce8c01d00e612b80dcbdb601f471885` is diagnostic only. It was blocked solely because the supervisor incorrectly bound PHX-CI to the earlier S03-only base `a80ec07562072224a28f08d6b68069b9fa0b3521`, where the later approved seam file did not yet exist.
 
 ## 4. Verification Procedure
 
