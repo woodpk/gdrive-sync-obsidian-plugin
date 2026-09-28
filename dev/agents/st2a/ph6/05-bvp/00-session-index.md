@@ -31,7 +31,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 03V | S03 — Hard Boundary / Guard / Metrics / PHX-CI Enforcement | COMPLETE | `03-hard-boundary-guard-metrics-phx-ci-enforcement/03v-primary-stage-phx-ci-acceptance-and-architecture-baseline.md` |
 | 04A | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04a-stateful-in-memory-local-vault.md` |
 | 04B | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04b-stateful-in-memory-drive-core.md` |
-| 04C | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04c-drive-change-feed-completeness-ambiguity-and-faults.md` |
+| 04C | S04 — Deterministic Multi-Device Virtual World | EXECUTABLE / ACTIVE | `04-deterministic-multi-device-virtual-world/04c-drive-change-feed-completeness-ambiguity-and-faults.md` |
 | 04D | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04d-per-device-durable-state-deterministic-time-order-restart.md` |
 | 04E | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04e-virtual-world-composition-over-real-production-logic.md` |
 | 04V | S04 — Deterministic Multi-Device Virtual World | PREPLANNED | `04-deterministic-multi-device-virtual-world/04v-primary-stage-phx-ci-acceptance.md` |
@@ -96,7 +96,7 @@ BVP-GOV-008 repository-level architecture review completed against accepted S04B
 
 This review authorizes continued S04 dispatch under the existing frozen architecture and budgets; it authorizes no budget increase or new architecture family.
 
-S04C is the next child and remains **PREPLANNED / NOT-YET-EXECUTABLE** until its hard execution facts are bound against the accepted S04B state.
+S04C is **EXECUTABLE / ACTIVE** on branch `bvp-s04c-drive-feed-completeness-faults`, with accepted S04B semantic predecessor `715d3693aa8f0b47376a1cef03fd4b3af6e0b132`, reviewed integration/base `f9e3f40599d8d48a62db8980591bbeb896c441e6`, and PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`. It owns change cursor/feed behavior, explicit listing/change completeness, deterministic provider-boundary faults, and applied-vs-not-applied ambiguous raw mutation effects. It does not own product recovery policy, per-device state, or S04D/S04E composition.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 

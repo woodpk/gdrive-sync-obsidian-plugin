@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04B
 
@@ -29,15 +29,34 @@ The simulated Drive can deterministically model:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S04C contract is bound to the reviewed post-S04B repository state as follows:
 
-- exact accepted S04B predecessor SHA;
-- task branch;
-- current Drive/change-feed production interfaces and result/error classifications;
-- exact extension/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S04B semantic predecessor: `715d3693aa8f0b47376a1cef03fd4b3af6e0b132`;
+- exact BVP-GOV-008 reviewed integration / PHX-CI base authority: `f9e3f40599d8d48a62db8980591bbeb896c441e6`;
+- exact task branch: `bvp-s04c-drive-feed-completeness-faults`;
+- production Drive contract remains `GoogleDrivePort` from `src/contracts/google-drive.ts`;
+- S04C completes the two `GoogleDrivePort` members intentionally deferred by S04B:
+  - `getStartCursor(rootId)`;
+  - `readChanges(rootId, cursor)`;
+- exact production change/completeness types: `ChangeCursor`, `RemoteChange`, `RemoteChangePage`, and `EnumerationCompleteness`;
+- exact production-facing Drive failure classes remain the existing `DriveSignal` union. Lost/invalid/stale cursor is represented as `recovery-required` with production detail `drive-change-cursor-invalid`, matching the HTTP-410 transport classification;
+- injected provider/network faults use existing production classes such as `transient-failure`, `authentication-required`, `permission-denied`, `rate-limited`, `quota-exhausted`, and `recovery-required`; no BVP-only product result type is introduced;
+- ambiguous mutation behavior is modeled at the raw Drive boundary by returning an ordinary production `DriveResult` failure signal while the deterministic external effect is separately scripted as applied or not applied. This preserves uncertainty for later reliable production observation/recovery logic rather than inventing synchronization authority in the simulator;
+- listing/change-page incompleteness uses the existing `EnumerationCompleteness` contract and must never be converted into confirmed absence;
+- path ambiguity remains represented by the existing production `conflict` classification; S04B already permits retained provider reality with duplicate logical occupancy, and S04C tests that ambiguity rather than adding a new ambiguity result family;
+- S04C extends the accepted S04B implementation in place at `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+- S04C extends the accepted S04B focused tests in place at `test-platform/test/in-memory-google-drive.test.ts`;
+- exact implementation-writable allowlist:
+  - `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+  - `test-platform/test/in-memory-google-drive.test.ts`;
+- supervisor-owned seam expansion is authorized only in the already-approved `src/product/local-vault-boundary-seam.ts` to re-export `ChangeCursor`, `RemoteChange`, `RemoteChangePage`, and `EnumerationCompleteness`; seam file count remains 1 and must remain below 350 logical LOC;
+- deterministic controls are bounded helper APIs on the in-memory Drive model only: one-shot boundary faults, explicit cursor invalidation, one-shot listing completeness/omission, and one-shot change-page completeness/omission. No plugin system, persistent fault-program subsystem, or scenario DSL is authorized;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04C command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-google-drive.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — no new platform contract family, no new substantive runtime file, and expected S04C non-test delta remains below the approximately 1000-net-LOC split threshold.
+
+The recurring architecture review required after S04A/S04B passed and is recorded at `f9e3f40599d8d48a62db8980591bbeb896c441e6`. S04C may extend only the reviewed Drive boundary capabilities above and may not begin S04D world/device state.
 
 Binding may not invent new product uncertainty semantics.
 

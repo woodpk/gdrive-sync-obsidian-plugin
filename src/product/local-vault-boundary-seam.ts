@@ -8,6 +8,7 @@
 export { contractId } from "../contracts/common";
 export type {
   BinaryContentSource,
+  ChangeCursor,
   ContentEvidence,
   ObservationToken,
   VaultPath,
@@ -38,6 +39,8 @@ export type {
   GoogleDrivePort,
   ManagedRemoteIdentity,
   ManagedRemoteValidation,
+  RemoteChange,
+  RemoteChangePage,
   RemoteCreateRequest,
   RemoteDownload,
   RemoteEntry,
@@ -51,4 +54,7 @@ export type {
   RemoteObjectId,
   VaultIdentity,
 } from "../contracts/common";
-export type { RemoteObservation } from "../contracts/snapshot";
+export type {
+  EnumerationCompleteness,
+  RemoteObservation,
+} from "../contracts/snapshot";
