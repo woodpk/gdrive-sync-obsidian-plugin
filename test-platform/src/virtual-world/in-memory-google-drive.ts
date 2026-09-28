@@ -743,6 +743,75 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     };
   }
 
+  private takeBoundaryFault(
+    boundary: InMemoryDriveBoundary,
+  ): InMemoryDriveBoundaryFault | undefined {
+    const index = this.boundaryFaults.findIndex(
+      (fault) => fault.boundary === boundary,
+    );
+    if (index < 0) return undefined;
+    return this.boundaryFaults.splice(index, 1)[0];
+  }
+
+  private cursorFor(
+    rootId: RemoteObjectId,
+    position: number,
+  ): ChangeCursor {
+    return virtualChangeCursor(
+      `in-memory-drive:${String(rootId)}:${position}`,
+    );
+  }
+
+  private cursorPosition(
+    rootId: RemoteObjectId,
+    cursor: ChangeCursor,
+  ): number | undefined {
+    const prefix = `in-memory-drive:${String(rootId)}:`;
+    const raw = String(cursor);
+    if (!raw.startsWith(prefix)) return undefined;
+    const suffix = raw.slice(prefix.length);
+    if (!/^\d+$/.test(suffix)) return undefined;
+    const position = Number(suffix);
+    return Number.isSafeInteger(position) ? position : undefined;
+  }
+
+  private assertIncompleteIfOmitting(
+    completeness: EnumerationCompleteness,
+    omitted: readonly RemoteObjectId[] | undefined,
+    surface: string,
+  ): void {
+    if (
+      omitted?.length &&
+      completeness.status === "complete"
+    ) {
+      throw new Error(
+        `${surface} cannot omit remote objects while claiming complete coverage`,
+      );
+    }
+  }
+
+  private recordUpsert(
+    root: ManagedRootState,
+    object: InMemoryRemoteObject,
+  ): void {
+    root.changes.push({
+      kind: "upsert",
+      entry: this.entryFor(object),
+    });
+  }
+
+  private recordRemoved(
+    root: ManagedRootState,
+    remoteObjectId: RemoteObjectId,
+    lastKnownPath: VaultPath,
+  ): void {
+    root.changes.push({
+      kind: "removed",
+      remoteObjectId,
+      lastKnownPath,
+    });
+  }
+
   private isVisible(
     root: ManagedRootState,
     object: InMemoryRemoteObject,
