@@ -2,14 +2,36 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
-**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted BVP-S04 primary-stage gate
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05A is complete and accepted.
+
+- accepted S04 predecessor: `7791976db3bfce21dd8e016e856539e409da96cd`;
+- bound S05A HEAD: `693aeec428132dd271dc83fb6f1def0a8b46f927`;
+- accepted implementation SHA: `63475e8b421ec50c7c28a8e488a65febe8f67718`;
+- authoritative PHX-CI evidence SHA: `567e506d69285597aceb7eb8330d7a83e5f1c2df`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused contract tests: PASS, 7/7;
+- integrated BVP tests: PASS, 137/137;
+- full repository tests: PASS, 822/822;
+- architecture guard and metrics: PASS;
+- framework-core delta: +148 logical TypeScript LOC, 3,052 / 4,000 current;
+- production source/seam delta: 0;
+- live-device/scenario-instance/scenario-specific production/PowerShell delta: 0;
+- production artifact unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted frozen vocabulary has six generic step families: fixture, production, external-state, checkpoint, observe, and assert. Scenario identity/description, non-empty requirement/invariant/completion-evidence traceability, explicit execution modes, ordered steps, typed step-specific inputs, explicit expected blocked/failed classifications, JSON-safe declarative data, fail-closed runtime validation, and compile-time discriminated-union constraints are established. No runner, persistence/checkpoint store, evidence aggregation, live executor, scenario catalog, plugin/router, production seam, or synchronization-policy implementation was added.
+
+This file is now a historical completion record and authorizes no further S05A implementation work.
 
 ## 1. Objective
 
