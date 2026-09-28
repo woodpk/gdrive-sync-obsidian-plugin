@@ -830,17 +830,12 @@ function localAdapterFacade(local: InMemoryLocalVault) {
 
 export class VirtualProductionDevice {
   constructor(
-    readonly name: string,
     readonly backing: VirtualDeviceBacking,
     readonly runtime: VirtualDeviceRuntime,
     readonly controller: ProductController,
     readonly remoteMutations: InMemoryReliableRemoteMutationPort,
     readonly productionLocal: CanonicalEvidenceLocalVault,
   ) {}
-
-  get local(): InMemoryLocalVault {
-    return this.backing.local;
-  }
 
   async dispose(): Promise<void> {
     await this.controller.beginRuntimeDisposal();
@@ -849,16 +844,13 @@ export class VirtualProductionDevice {
 }
 
 export class VirtualSynchronizationWorld {
-  readonly vaultIdentity: VaultIdentity;
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
 
   private constructor(
     readonly drive: InMemoryGoogleDriveCore,
-    vaultIdentity: VaultIdentity,
     managedRemote: ManagedRemoteIdentity,
   ) {
-    this.vaultIdentity = vaultIdentity;
     this.managedRemote = managedRemote;
   }
 
@@ -882,7 +874,6 @@ export class VirtualSynchronizationWorld {
 
     const world = new VirtualSynchronizationWorld(
       temporaryDrive,
-      vaultIdentity,
       root.value,
     );
 
@@ -948,7 +939,7 @@ export class VirtualSynchronizationWorld {
       () => controller.currentRunEvidence(),
     );
     controller = new ProductController({
-      vaultIdentity: this.vaultIdentity,
+      vaultIdentity: this.managedRemote.vaultIdentity,
       deviceIdentity: backing.deviceIdentity,
       stateContext: context,
       stateStore: state,
@@ -974,7 +965,6 @@ export class VirtualSynchronizationWorld {
       onFullReconciliationCompleted: async () => undefined,
     });
     return new VirtualProductionDevice(
-      name,
       backing,
       runtime,
       controller,
