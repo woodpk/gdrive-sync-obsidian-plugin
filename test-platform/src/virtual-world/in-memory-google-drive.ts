@@ -3,13 +3,18 @@ import { createHash } from "node:crypto";
 import {
   contractId,
   type BinaryContentSource,
+  type ChangeCursor,
   type ContentEvidence,
   type DriveAuthenticationState,
   type DriveResult,
+  type DriveSignal,
+  type EnumerationCompleteness,
   type GoogleDrivePort,
   type ManagedRemoteIdentity,
   type ManagedRemoteValidation,
   type ProtocolVersion,
+  type RemoteChange,
+  type RemoteChangePage,
   type RemoteCreateRequest,
   type RemoteDownload,
   type RemoteEntry,
@@ -23,21 +28,7 @@ import {
   type VaultPath,
 } from "../../../src/product/local-vault-boundary-seam";
 
-export type GoogleDriveCorePort = Pick<
-  GoogleDrivePort,
-  | "authenticationState"
-  | "createManagedRoot"
-  | "pairManagedRoot"
-  | "validateManagedRoot"
-  | "protocolInfo"
-  | "listForReconciliation"
-  | "observe"
-  | "download"
-  | "create"
-  | "update"
-  | "move"
-  | "trash"
->;
+export type GoogleDriveCorePort = GoogleDrivePort;
 
 type EntityKind = "file" | "folder";
 
@@ -54,7 +45,40 @@ interface InMemoryRemoteObject {
 interface ManagedRootState {
   readonly identity: ManagedRemoteIdentity;
   readonly objects: Map<string, InMemoryRemoteObject>;
+  readonly changes: RemoteChange[];
 }
+
+export type InMemoryDriveBoundary =
+  | "list"
+  | "start-cursor"
+  | "read-changes"
+  | "observe"
+  | "download"
+  | "create"
+  | "update"
+  | "move"
+  | "trash";
+
+export interface InMemoryDriveBoundaryFault {
+  readonly boundary: InMemoryDriveBoundary;
+  readonly signal: DriveSignal;
+  readonly mutationEffect?: "not-applied" | "applied-before-failure";
+}
+
+export interface InMemoryDriveListingControl {
+  readonly completeness: EnumerationCompleteness;
+  readonly omitRemoteObjectIds?: readonly RemoteObjectId[];
+}
+
+export interface InMemoryDriveChangePageControl {
+  readonly completeness: EnumerationCompleteness;
+  readonly omitRemoteObjectIds?: readonly RemoteObjectId[];
+}
+
+export type InMemoryDriveCursorInvalidation =
+  | "invalid"
+  | "lost"
+  | "stale";
 
 export interface InMemoryRemoteObjectSnapshot {
   readonly remoteObjectId: RemoteObjectId;
@@ -75,6 +99,9 @@ export const virtualVaultIdentity = (value: string): VaultIdentity =>
 
 export const virtualProtocolVersion = (value: string): ProtocolVersion =>
   contractId<"ProtocolVersion">(value) as ProtocolVersion;
+
+export const virtualChangeCursor = (value: string): ChangeCursor =>
+  contractId<"ChangeCursor">(value) as ChangeCursor;
 
 export const virtualDrivePath = (value: string): VaultPath =>
   contractId<"VaultPath">(normalizePath(value)) as VaultPath;
@@ -191,11 +218,58 @@ function recoveryRequired<T>(detail: string): DriveResult<T> {
 export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
   private readonly roots = new Map<string, ManagedRootState>();
   private readonly objectsById = new Map<string, InMemoryRemoteObject>();
+  private readonly boundaryFaults: InMemoryDriveBoundaryFault[] = [];
+  private readonly invalidCursors = new Map<string, InMemoryDriveCursorInvalidation>();
+  private nextListingControl?: InMemoryDriveListingControl;
+  private nextChangePageControl?: InMemoryDriveChangePageControl;
   private nextRootId = 1;
   private nextObjectId = 1;
 
   async authenticationState(): Promise<DriveAuthenticationState> {
     return { status: "authenticated", accountHint: "in-memory-drive" };
+  }
+
+  queueBoundaryFault(fault: InMemoryDriveBoundaryFault): void {
+    const mutationBoundaries = new Set<InMemoryDriveBoundary>([
+      "create",
+      "update",
+      "move",
+      "trash",
+    ]);
+    if (
+      fault.mutationEffect !== undefined &&
+      !mutationBoundaries.has(fault.boundary)
+    ) {
+      throw new Error(
+        `Mutation effect mode is invalid for non-mutation boundary: ${fault.boundary}`,
+      );
+    }
+    this.boundaryFaults.push(fault);
+  }
+
+  invalidateCursor(
+    cursor: ChangeCursor,
+    reason: InMemoryDriveCursorInvalidation = "invalid",
+  ): void {
+    this.invalidCursors.set(String(cursor), reason);
+  }
+
+  scriptNextListing(control: InMemoryDriveListingControl): void {
+    this.assertIncompleteIfOmitting(
+      control.completeness,
+      control.omitRemoteObjectIds,
+      "listing",
+    );
+    this.nextListingControl = control;
+  }
+
+  scriptNextChangePage(control: InMemoryDriveChangePageControl): void {
+    this.assertIncompleteIfOmitting(
+      control.completeness,
+      control.omitRemoteObjectIds,
+      "change-page",
+    );
+    this.nextChangePageControl = control;
   }
 
   async createManagedRoot(
@@ -215,6 +289,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort {
     this.roots.set(String(rootId), {
       identity,
       objects: new Map<string, InMemoryRemoteObject>(),
+      changes: [],
     });
     return { ok: true, value: identity };
   }
