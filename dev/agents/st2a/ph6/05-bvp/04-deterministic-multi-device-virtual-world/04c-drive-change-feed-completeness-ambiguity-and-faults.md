@@ -3,13 +3,34 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S04C is complete and accepted.
+
+- accepted S04B semantic predecessor: `715d3693aa8f0b47376a1cef03fd4b3af6e0b132`;
+- reviewed post-S04B PHX-CI base: `f9e3f40599d8d48a62db8980591bbeb896c441e6`;
+- accepted implementation SHA: `88b8c67f68c8f3ca1df9fc1cb426566168018c73`;
+- authoritative PHX-CI evidence / promoted integration SHA: `5e1f103e5c52b4462aec9b1e8bcfaf4db41c7f5c`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused BVP verification: PASS, 111/111;
+- full repository tests: PASS, 822/822;
+- architecture guard: PASS, 0 violations;
+- production seam: 1 file / 52 logical LOC;
+- framework core: 1571 logical TS LOC / 4 runtime modules, within the 4000-LOC budget;
+- live-device/scenario-specific production surfaces: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+Accepted S04C semantics include deterministic cursor progression and change ordering, explicit complete/partial coverage, invalid/lost/stale cursor recovery classification, duplicate-path ambiguity, one-shot production-classified boundary faults, known-failure versus ambiguous applied/not-applied mutation outcomes, and production-faithful distinction between trashed-object `upsert` changes and provider-level `removed` changes.
+
+This file is now a historical completion record and authorizes no further S04C work.
 
 ## 1. Objective
 
