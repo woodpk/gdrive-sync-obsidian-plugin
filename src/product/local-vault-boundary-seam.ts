@@ -114,3 +114,4 @@ export type {
 } from "../contracts/synchronization-folder-create-foundation";
 export type { RemoteUpdateFinalizationPort } from "./durable-intent-recovery-base";
 export type { RemoteRevisionId } from "../contracts/common";
+export { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
