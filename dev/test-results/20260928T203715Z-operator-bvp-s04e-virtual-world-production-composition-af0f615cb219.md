@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04e-virtual-world-production-composition
+- Source build HEAD requested: af0f615cb219dfac17e0f65d1154696f3e1dde72
+- Verification checkout HEAD: af0f615cb219dfac17e0f65d1154696f3e1dde72
+- Evidence publication target: origin/bvp-s04e-virtual-world-production-composition
