@@ -44,6 +44,7 @@ import {
   virtualVaultPath,
 } from "./in-memory-local-vault";
 import {
+  DeterministicOrderGate,
   VirtualDeviceBacking,
   VirtualDeviceRuntime,
   deterministicDeviceIdentity,
@@ -787,6 +788,7 @@ export class VirtualProductionDevice {
 export class VirtualSynchronizationWorld {
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
+  readonly orderGate = new DeterministicOrderGate();
   private readonly leasePort = new InMemoryRunLeasePort();
 
   private constructor(

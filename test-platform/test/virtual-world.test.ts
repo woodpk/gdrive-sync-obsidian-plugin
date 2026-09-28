@@ -107,6 +107,27 @@ async function remoteBytes(
   return bytes;
 }
 
+
+test("virtual world exposes retained deterministic time and explicit observation-order controls", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  const aClock = world.deviceBacking("device-a").clock;
+  const bClock = world.deviceBacking("device-b").clock;
+  aClock.set(100);
+  bClock.set(900);
+  strictEqual(aClock.advanceBy(25), 125);
+  strictEqual(bClock.nowMs(), 900);
+
+  const observed: string[] = [];
+  const deferred = world.orderGate.defer("remote-observation", () => {
+    observed.push("released");
+  });
+  deepStrictEqual(world.orderGate.pendingLabels(), ["remote-observation"]);
+  deepStrictEqual(observed, []);
+  await world.orderGate.release("remote-observation");
+  await deferred;
+  deepStrictEqual(observed, ["released"]);
+});
+
 test("production canary: local create plans and executes a recovery-safe REMOTE upload/create", async () => {
   const world = await VirtualSynchronizationWorld.create();
   await createLocal(world, "device-a", "local-create.bin", new Uint8Array([1, 2, 3, 4]));

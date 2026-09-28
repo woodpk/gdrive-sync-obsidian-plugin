@@ -58,10 +58,11 @@ The S04E contract is bound to the reviewed post-S04D repository state as follows
   - `ThreeWayConflictResolver`;
   - `InMemoryRunLeasePort`;
   - `BoundedAuditHistory` + `MemoryAuditPersistence`;
+  - `CanonicalEvidenceLocalVault` + `ObsidianLocalMutationTransactions` for the production canonical-read and crash-safe local-transaction path;
 - accepted S04 deterministic realities/factories consumed directly:
   - `InMemoryLocalVault` from S04A;
   - `InMemoryGoogleDriveCore` from S04B/C;
-  - `VirtualDeviceBacking` / `VirtualDeviceRuntime` from S04D;
+  - `VirtualDeviceBacking` / `VirtualDeviceRuntime`, per-device `DeterministicClock`, and shared `DeterministicOrderGate` from S04D;
 - S04E may add physical-boundary adapters over those accepted realities. Those adapters may reserve/materialize provider IDs, stage/swap local bytes, and report physical observations/outcomes through the frozen production contracts; they may not plan synchronization, choose authority, infer convergence/deletion, merge content, or commit canonical product state;
 - the accepted Drive reality is authorized one bounded external-reality extension: deterministic provider ID reservation plus exact-ID materialization so the frozen reliable-remote mutation seam can model Drive pre-dispatch ID reservation against the same shared remote reality;
 - immutable-candidate updates must preserve the production protocol: pre-reserved candidate identity, exact candidate materialization, predecessor preservation/retirement semantics, and `finalizeExistingUpdate` support for durable recovery;
