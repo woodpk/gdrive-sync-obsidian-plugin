@@ -8,6 +8,7 @@ import { test } from "node:test";
 
 import {
   InMemoryGoogleDriveCore,
+  virtualChangeCursor,
   virtualDrivePath,
   virtualProtocolVersion,
   virtualRemoteObjectId,
@@ -545,4 +546,384 @@ test("folder download and content update fail with production conflict classific
   });
   strictEqual(updated.ok, false);
   if (!updated.ok) strictEqual(updated.signal.kind, "conflict");
+});
+
+
+test("change feed records deterministic mutation order and advances an opaque production cursor", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const start = await drive.getStartCursor(root.rootId);
+  if (!start.ok) throw new Error(start.signal.kind);
+
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("feed.txt"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  if (!created.ok) throw new Error(created.signal.kind);
+
+  const updated = await drive.update({
+    remoteObjectId: created.value.remoteObjectId,
+    path: virtualDrivePath("feed.txt"),
+    content: source([2, 3]),
+    expectedRemoteRevision: "1",
+  });
+  if (!updated.ok) throw new Error(updated.signal.kind);
+
+  const moved = await drive.move(
+    created.value.remoteObjectId,
+    virtualDrivePath("feed.txt"),
+    virtualDrivePath("renamed.txt"),
+  );
+  if (!moved.ok) throw new Error(moved.signal.kind);
+
+  const trashed = await drive.trash(created.value.remoteObjectId);
+  if (!trashed.ok) throw new Error(trashed.signal.kind);
+
+  const page = await drive.readChanges(root.rootId, start.value);
+  strictEqual(page.ok, true);
+  if (!page.ok) return;
+
+  strictEqual(page.value.completeness.status, "complete");
+  deepStrictEqual(
+    page.value.changes.map((change) =>
+      change.kind === "upsert"
+        ? [
+            change.kind,
+            String(change.entry.path),
+            change.entry.content?.revision,
+            String(change.entry.remoteObjectId),
+          ]
+        : [
+            change.kind,
+            String(change.lastKnownPath),
+            undefined,
+            String(change.remoteObjectId),
+          ],
+    ),
+    [
+      ["upsert", "feed.txt", "1", String(created.value.remoteObjectId)],
+      ["upsert", "feed.txt", "2", String(created.value.remoteObjectId)],
+      ["upsert", "renamed.txt", "3", String(created.value.remoteObjectId)],
+      ["removed", "renamed.txt", undefined, String(created.value.remoteObjectId)],
+    ],
+  );
+  notStrictEqual(page.value.nextCursor, start.value);
+
+  const empty = await drive.readChanges(root.rootId, page.value.nextCursor);
+  strictEqual(empty.ok, true);
+  if (empty.ok) {
+    deepStrictEqual(empty.value.changes, []);
+    strictEqual(empty.value.nextCursor, page.value.nextCursor);
+  }
+});
+
+test("invalid lost and stale cursors surface the production recovery-required classification", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+
+  const invalid = await drive.getStartCursor(root.rootId);
+  if (!invalid.ok) throw new Error(invalid.signal.kind);
+  drive.invalidateCursor(invalid.value, "invalid");
+  const invalidResult = await drive.readChanges(root.rootId, invalid.value);
+  strictEqual(invalidResult.ok, false);
+  if (!invalidResult.ok) {
+    strictEqual(invalidResult.signal.kind, "recovery-required");
+    if (invalidResult.signal.kind === "recovery-required") {
+      strictEqual(invalidResult.signal.detail, "drive-change-cursor-invalid");
+    }
+  }
+
+  await drive.create(root.rootId, {
+    path: virtualDrivePath("one.txt"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  const lost = await drive.getStartCursor(root.rootId);
+  if (!lost.ok) throw new Error(lost.signal.kind);
+  drive.invalidateCursor(lost.value, "lost");
+  const lostResult = await drive.readChanges(root.rootId, lost.value);
+  strictEqual(lostResult.ok, false);
+  if (!lostResult.ok) strictEqual(lostResult.signal.kind, "recovery-required");
+
+  await drive.create(root.rootId, {
+    path: virtualDrivePath("two.txt"),
+    entityKind: "file",
+    content: source([2]),
+  });
+  const stale = await drive.getStartCursor(root.rootId);
+  if (!stale.ok) throw new Error(stale.signal.kind);
+  drive.invalidateCursor(stale.value, "stale");
+  const staleResult = await drive.readChanges(root.rootId, stale.value);
+  strictEqual(staleResult.ok, false);
+  if (!staleResult.ok) strictEqual(staleResult.signal.kind, "recovery-required");
+
+  const malformed = await drive.readChanges(
+    root.rootId,
+    virtualChangeCursor("foreign-or-malformed-cursor"),
+  );
+  strictEqual(malformed.ok, false);
+  if (!malformed.ok) strictEqual(malformed.signal.kind, "recovery-required");
+});
+
+test("partial listing can omit retained reality without claiming authoritative absence", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const one = await drive.create(root.rootId, {
+    path: virtualDrivePath("one.md"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  const two = await drive.create(root.rootId, {
+    path: virtualDrivePath("two.md"),
+    entityKind: "file",
+    content: source([2]),
+  });
+  if (!one.ok || !two.ok) throw new Error("create failed");
+
+  drive.scriptNextListing({
+    completeness: { status: "partial", reason: "simulated-page-gap" },
+    omitRemoteObjectIds: [two.value.remoteObjectId],
+  });
+  const partial = await drive.listForReconciliation(root.rootId);
+  strictEqual(partial.ok, true);
+  if (!partial.ok) return;
+
+  deepStrictEqual(
+    partial.value.entries.map((entry) => String(entry.path)),
+    ["one.md"],
+  );
+  deepStrictEqual(partial.value.completeness, {
+    status: "partial",
+    reason: "simulated-page-gap",
+  });
+
+  const retained = await drive.observe(root.rootId, virtualDrivePath("two.md"));
+  strictEqual(retained.ok, true);
+  if (retained.ok) strictEqual(retained.value.status, "present");
+
+  const complete = await drive.listForReconciliation(root.rootId);
+  strictEqual(complete.ok, true);
+  if (complete.ok) {
+    strictEqual(complete.value.completeness.status, "complete");
+    deepStrictEqual(
+      complete.value.entries.map((entry) => String(entry.path)),
+      ["one.md", "two.md"],
+    );
+  }
+});
+
+test("partial change page can omit a real change while preserving explicit uncertainty", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const start = await drive.getStartCursor(root.rootId);
+  if (!start.ok) throw new Error(start.signal.kind);
+
+  const one = await drive.create(root.rootId, {
+    path: virtualDrivePath("one.bin"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  const two = await drive.create(root.rootId, {
+    path: virtualDrivePath("two.bin"),
+    entityKind: "file",
+    content: source([2]),
+  });
+  if (!one.ok || !two.ok) throw new Error("create failed");
+
+  drive.scriptNextChangePage({
+    completeness: { status: "partial", reason: "simulated-change-gap" },
+    omitRemoteObjectIds: [two.value.remoteObjectId],
+  });
+  const page = await drive.readChanges(root.rootId, start.value);
+  strictEqual(page.ok, true);
+  if (!page.ok) return;
+
+  deepStrictEqual(page.value.completeness, {
+    status: "partial",
+    reason: "simulated-change-gap",
+  });
+  deepStrictEqual(
+    page.value.changes.map((change) =>
+      change.kind === "upsert" ? String(change.entry.path) : change.kind,
+    ),
+    ["one.bin"],
+  );
+
+  const retained = await drive.observe(root.rootId, virtualDrivePath("two.bin"));
+  strictEqual(retained.ok, true);
+  if (retained.ok) strictEqual(retained.value.status, "present");
+});
+
+test("duplicate provider reality surfaces production conflict ambiguity without choosing authority", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+
+  const first = await drive.create(root.rootId, {
+    path: virtualDrivePath("duplicate.md"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  const second = await drive.create(root.rootId, {
+    path: virtualDrivePath("duplicate.md"),
+    entityKind: "file",
+    content: source([2]),
+  });
+  if (!first.ok || !second.ok) throw new Error("create failed");
+  notStrictEqual(first.value.remoteObjectId, second.value.remoteObjectId);
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("duplicate.md"),
+  );
+  strictEqual(observed.ok, false);
+  if (!observed.ok) strictEqual(observed.signal.kind, "conflict");
+
+  const listed = await drive.listForReconciliation(root.rootId);
+  strictEqual(listed.ok, false);
+  if (!listed.ok) strictEqual(listed.signal.kind, "conflict");
+});
+
+test("known mutation failure leaves remote reality and change feed unchanged", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const start = await drive.getStartCursor(root.rootId);
+  if (!start.ok) throw new Error(start.signal.kind);
+
+  drive.queueBoundaryFault({
+    boundary: "create",
+    signal: { kind: "permission-denied", detail: "simulated-policy-denial" },
+    mutationEffect: "not-applied",
+  });
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("blocked.md"),
+    entityKind: "file",
+    content: source([1]),
+  });
+  strictEqual(created.ok, false);
+  if (!created.ok) strictEqual(created.signal.kind, "permission-denied");
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("blocked.md"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok) strictEqual(observed.value.status, "absent");
+
+  const page = await drive.readChanges(root.rootId, start.value);
+  strictEqual(page.ok, true);
+  if (page.ok) deepStrictEqual(page.value.changes, []);
+});
+
+test("ambiguous mutation failure can retain an applied effect that later observation reveals", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const start = await drive.getStartCursor(root.rootId);
+  if (!start.ok) throw new Error(start.signal.kind);
+
+  drive.queueBoundaryFault({
+    boundary: "create",
+    signal: { kind: "transient-failure", detail: "network-response-lost" },
+    mutationEffect: "applied-before-failure",
+  });
+  const result = await drive.create(root.rootId, {
+    path: virtualDrivePath("ambiguous-applied.md"),
+    entityKind: "file",
+    content: source([9]),
+  });
+  strictEqual(result.ok, false);
+  if (!result.ok) strictEqual(result.signal.kind, "transient-failure");
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("ambiguous-applied.md"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok) strictEqual(observed.value.status, "present");
+
+  const page = await drive.readChanges(root.rootId, start.value);
+  strictEqual(page.ok, true);
+  if (page.ok) {
+    strictEqual(page.value.changes.length, 1);
+    strictEqual(page.value.changes[0].kind, "upsert");
+  }
+});
+
+test("ambiguous mutation failure can also leave the effect unapplied without fabricating certainty", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const start = await drive.getStartCursor(root.rootId);
+  if (!start.ok) throw new Error(start.signal.kind);
+
+  drive.queueBoundaryFault({
+    boundary: "create",
+    signal: { kind: "transient-failure", detail: "network-response-lost" },
+    mutationEffect: "not-applied",
+  });
+  const result = await drive.create(root.rootId, {
+    path: virtualDrivePath("ambiguous-not-applied.md"),
+    entityKind: "file",
+    content: source([7]),
+  });
+  strictEqual(result.ok, false);
+  if (!result.ok) strictEqual(result.signal.kind, "transient-failure");
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("ambiguous-not-applied.md"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok) strictEqual(observed.value.status, "absent");
+
+  const page = await drive.readChanges(root.rootId, start.value);
+  strictEqual(page.ok, true);
+  if (page.ok) deepStrictEqual(page.value.changes, []);
+});
+
+test("one-shot provider faults preserve transient permanent and rate-limit classifications", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("faults.bin"),
+    entityKind: "file",
+    content: source([1, 2]),
+  });
+  if (!created.ok) throw new Error(created.signal.kind);
+
+  drive.queueBoundaryFault({
+    boundary: "list",
+    signal: { kind: "transient-failure", detail: "simulated-network-failure" },
+  });
+  const transient = await drive.listForReconciliation(root.rootId);
+  strictEqual(transient.ok, false);
+  if (!transient.ok) strictEqual(transient.signal.kind, "transient-failure");
+
+  const recoveredList = await drive.listForReconciliation(root.rootId);
+  strictEqual(recoveredList.ok, true);
+
+  drive.queueBoundaryFault({
+    boundary: "observe",
+    signal: { kind: "permission-denied", detail: "simulated-permission" },
+  });
+  const denied = await drive.observe(root.rootId, virtualDrivePath("faults.bin"));
+  strictEqual(denied.ok, false);
+  if (!denied.ok) strictEqual(denied.signal.kind, "permission-denied");
+
+  drive.queueBoundaryFault({
+    boundary: "download",
+    signal: { kind: "rate-limited", retryAfterMs: 250 },
+  });
+  const rateLimited = await drive.download(created.value.remoteObjectId);
+  strictEqual(rateLimited.ok, false);
+  if (!rateLimited.ok) {
+    strictEqual(rateLimited.signal.kind, "rate-limited");
+    if (rateLimited.signal.kind === "rate-limited") {
+      strictEqual(rateLimited.signal.retryAfterMs, 250);
+    }
+  }
+
+  deepStrictEqual(
+    await readAll(await drive.download(created.value.remoteObjectId)),
+    [1, 2],
+  );
 });
