@@ -119,6 +119,10 @@ function driveSignal(classification: string): DriveSignal | undefined {
   }
 }
 
+function signalReason(signal: DriveSignal): string | undefined {
+  return "detail" in signal ? signal.detail : undefined;
+}
+
 function expectedMatches(
   expected: ScenarioExpectedOutcome | undefined,
   actual: StepOutcome,
@@ -324,7 +328,7 @@ export class DeterministicScenarioRunner {
     if (!result) return failure("failed", "remote-path-is-folder");
     return result.ok
       ? { status: "completed" }
-      : failure("failed", result.signal.kind, result.signal.detail);
+      : failure("failed", result.signal.kind, signalReason(result.signal));
   }
 
   private async production(
