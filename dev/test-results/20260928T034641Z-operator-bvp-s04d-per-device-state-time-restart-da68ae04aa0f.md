@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s04d-per-device-state-time-restart
+- Source build HEAD requested: da68ae04aa0fb72c03111470a872b9921b398fb0
+- Verification checkout HEAD: da68ae04aa0fb72c03111470a872b9921b398fb0
+- Evidence publication target: origin/bvp-s04d-per-device-state-time-restart
