@@ -58,3 +58,31 @@ export type {
   EnumerationCompleteness,
   RemoteObservation,
 } from "../contracts/snapshot";
+
+export {
+  MemoryStateByteStorage,
+  PersistentSynchronizationStateStore,
+  createInitialAuthorityState,
+} from "../state/persistent-state-store";
+export type {
+  DurableSynchronizationAuthorityState,
+  StateByteStorage,
+} from "../state/persistent-state-store";
+export {
+  TombstoneRetentionPolicy,
+  ageKnownDevices,
+  generateDeviceIdentity,
+  markKnownDeviceReconciled,
+} from "../state/state-policy";
+export { SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
+export type {
+  DeviceIdentity,
+  PersistenceRevision,
+  SemanticStateGeneration,
+  StateRevision,
+} from "../contracts/common";
+export type {
+  StateLoadContext,
+  StateLoadResult,
+  TrustedSynchronizationState,
+} from "../contracts/state";

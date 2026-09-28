@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04C
 
@@ -35,16 +35,35 @@ The test infrastructure can:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S04D contract is bound to accepted S04C state as follows:
 
-- exact accepted S04C predecessor SHA;
-- task branch;
-- actual production state-store/device-identity/time abstractions;
-- existing serialization/state helpers relevant to deterministic reconstruction;
-- exact implementation/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S04C predecessor / PHX-CI base authority: `95bd0e4f229e4173311120aa94bf8a3203b03c1a`;
+- exact task branch: `bvp-s04d-per-device-state-time-restart`;
+- production durable byte boundary: `StateByteStorage` from `src/state/persistent-state-store.ts`;
+- production in-memory durable backing reused by BVP: `MemoryStateByteStorage`;
+- production serialization/checksum/schema/CAS/recovery implementation: `PersistentSynchronizationStateStore`;
+- production split-domain compatibility layer used by the runtime: `SynchronizationStateAuthorityAdapter` from `src/product/synchronization-adapters.ts`;
+- production initial durable authority constructor: `createInitialAuthorityState`;
+- production device identity generation: `generateDeviceIdentity(randomBytes)` from `src/state/state-policy.ts`; S04D injects deterministic bytes rather than inventing a second device-identity format;
+- production time-dependent state policies: `ageKnownDevices(state, nowMs, ...)`, `markKnownDeviceReconciled(..., advisoryReconciledAtMs)`, and `TombstoneRetentionPolicy`; production has no general synchronization clock port, so S04D supplies deterministic explicit `nowMs` values only where production already accepts them;
+- actual retained external reality consumed from accepted predecessors:
+  - `InMemoryLocalVault` from S04A;
+  - `InMemoryGoogleDriveCore` from S04B/S04C;
+- restart means new `PersistentSynchronizationStateStore` and `SynchronizationStateAuthorityAdapter` instances over the same retained per-device `MemoryStateByteStorage`, while the device's local external reality and shared Drive reality remain retained outside those runtime objects;
+- state-fault controls are restricted to the byte-storage boundary or valid production state transitions: missing bytes, checksum corruption, truncation, incompatible schema, device-identity mismatch, and change-cursor loss. Production load/recovery classification remains authoritative;
+- deterministic ordering is a narrow external observation gate in BVP code only; it controls when queued external actions are released and carries no synchronization decisions, retries, verdicts, or durable workflow state;
+- exact S04D implementation path: `test-platform/src/virtual-world/per-device-runtime.ts`;
+- exact S04D test path: `test-platform/test/per-device-runtime.test.ts`;
+- exact implementation-writable allowlist:
+  - `test-platform/src/virtual-world/per-device-runtime.ts`;
+  - `test-platform/test/per-device-runtime.test.ts`;
+- supervisor-owned seam expansion is authorized only in the existing `src/product/local-vault-boundary-seam.ts` to re-export the frozen production state/store/device/time-policy surfaces enumerated above; production seam count remains 1 and must remain below 350 logical LOC;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04D command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/per-device-runtime.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — one existing state contract family, one new substantive BVP runtime file, two implementation-writable files, and expected non-test delta remains below the approximately 1000-net-LOC split threshold.
+
+S04D may build the per-device/restart foundation only. It may not begin S04E's composed synchronization world or scenario execution.
 
 Binding may not replace production authority semantics with a BVP-only model.
 
