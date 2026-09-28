@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
 **Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
 **Predecessor:** accepted S04D
 
@@ -39,18 +39,54 @@ The following production-path canaries execute through real production logic:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S04E contract is bound to the reviewed post-S04D repository state as follows:
 
-- exact accepted S04D predecessor SHA;
-- task branch;
-- exact production composition/factory/planner/executor/state entrypoints;
-- actual accepted S04 adapter/state/time types;
-- exact world-builder/canary test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted/reviewed predecessor and PHX-CI base authority: `238064e44843e256f35f074ef4a860509790b8a2`;
+- exact task branch: `bvp-s04e-virtual-world-production-composition`;
+- exact production composition path:
+  - `ProductSnapshotAssembler`;
+  - `ProductionSynchronizationPlanner` over `DeterministicSynchronizationPlanner`;
+  - `ProductSynchronizationExecutor`;
+  - `ProductController`;
+  - `SynchronizationStateAuthorityAdapter` as the writable production state/authority surface;
+- frozen production physical mutation seams consumed by the authoritative executor/recovery path:
+  - `ReliableRemoteMutationPort`;
+  - `RemoteUpdateFinalizationPort`;
+  - `RemoteFolderCreateRecoveryReadPort`;
+  - `LocalTransactionalMutationPort`;
+- production support components used without behavioral modification:
+  - `ThreeWayConflictResolver`;
+  - `InMemoryRunLeasePort`;
+  - `BoundedAuditHistory` + `MemoryAuditPersistence`;
+- accepted S04 deterministic realities/factories consumed directly:
+  - `InMemoryLocalVault` from S04A;
+  - `InMemoryGoogleDriveCore` from S04B/C;
+  - `VirtualDeviceBacking` / `VirtualDeviceRuntime` from S04D;
+- S04E may add physical-boundary adapters over those accepted realities. Those adapters may reserve/materialize provider IDs, stage/swap local bytes, and report physical observations/outcomes through the frozen production contracts; they may not plan synchronization, choose authority, infer convergence/deletion, merge content, or commit canonical product state;
+- the accepted Drive reality is authorized one bounded external-reality extension: deterministic provider ID reservation plus exact-ID materialization so the frozen reliable-remote mutation seam can model Drive pre-dispatch ID reservation against the same shared remote reality;
+- immutable-candidate updates must preserve the production protocol: pre-reserved candidate identity, exact candidate materialization, predecessor preservation/retirement semantics, and `finalizeExistingUpdate` support for durable recovery;
+- local transaction adaptation must preserve the frozen persisted stage/backup paths and transaction stages rather than bypassing the durable transaction record;
+- exact S04E implementation paths:
+  - `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+  - `test-platform/src/virtual-world/virtual-world.ts`;
+  - `test-platform/test/virtual-world.test.ts`;
+- exact implementation-writable allowlist:
+  - `test-platform/src/virtual-world/in-memory-google-drive.ts`;
+  - `test-platform/src/virtual-world/virtual-world.ts`;
+  - `test-platform/test/virtual-world.test.ts`;
+- supervisor-owned seam expansion is authorized only in existing `src/product/local-vault-boundary-seam.ts` to re-export the frozen production composition/mutation/support surfaces above; no production behavior change is authorized;
+- production seam remains one file and must remain below 350 logical LOC;
+- manual canaries invoke `ProductController.previewManual()` and `requestPreviewAction({ kind: "execute-plan", planId })`; the world builder does not auto-select, rewrite, or approve product plans;
+- required canaries are exactly the S04E contract set: local create/upload, remote create/download, two-device shared remote, stable-ID remote move, partial-listing safety, ambiguous remote mutation followed by production observation/recovery, and fresh-runtime reconstruction;
+- S04E does not introduce S05 scenario data, runner lifecycle, assertion engine, evidence schema, or checkpoint persistence;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04E command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/virtual-world.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — one preplanned composition child over the frozen synchronization-execution boundary family, two substantive BVP runtime files touched/created, one focused test file, and expected non-test delta below the approximately 1000-net-LOC split threshold.
 
-If production composition cannot be achieved without modifying an unapproved production surface, return `BLOCKED` with the exact missing seam rather than adding one.
+The post-S04C/S04D BVP-GOV-008 architecture review passed at `238064e44843e256f35f074ef4a860509790b8a2`. S04E may compose only the reviewed capabilities above.
+
+If implementation proves a further production surface is required, stop `BLOCKED` with the exact missing seam rather than creating a parallel test synchronization stack.
 
 ## 4. Required Behavior and Semantics
 

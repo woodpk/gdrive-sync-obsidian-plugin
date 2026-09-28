@@ -87,3 +87,30 @@ export type {
   StateLoadResult,
   TrustedSynchronizationState,
 } from "../contracts/state";
+
+export { ProductController } from "./product-controller";
+export { ProductSnapshotAssembler } from "./snapshot-assembler";
+export { ProductSynchronizationExecutor } from "./production-executor";
+export { ProductionSynchronizationPlanner } from "../core/production-planner";
+export { DeterministicSynchronizationPlanner } from "../core/planner";
+export { ThreeWayConflictResolver } from "../core/conflict-resolver";
+export { InMemoryRunLeasePort } from "../core/run-coordinator";
+export { BoundedAuditHistory, MemoryAuditPersistence } from "./audit-history";
+export type {
+  CanonicalFileContentProof,
+  LocalMutationTransaction,
+  LocalTransactionResult,
+  LocalTransactionalMutationPort,
+  MutationIntentId,
+  ReliableRemoteMutationPort,
+  RemoteMutationIdentity,
+  RemoteMutationOutcome,
+  SynchronizationCancellationSignal,
+} from "../contracts/synchronization-foundation";
+export type {
+  RemoteFolderCreateObservation,
+  RemoteFolderCreatePhysicalMutationDescriptor,
+  RemoteFolderCreateRecoveryReadPort,
+} from "../contracts/synchronization-folder-create-foundation";
+export type { RemoteUpdateFinalizationPort } from "./durable-intent-recovery-base";
+export type { RemoteRevisionId } from "../contracts/common";
