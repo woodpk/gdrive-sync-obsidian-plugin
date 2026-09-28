@@ -593,19 +593,21 @@ test("change feed records deterministic mutation order and advances an opaque pr
             String(change.entry.path),
             change.entry.content?.revision,
             String(change.entry.remoteObjectId),
+            change.entry.trashed,
           ]
         : [
             change.kind,
             String(change.lastKnownPath),
             undefined,
             String(change.remoteObjectId),
+            undefined,
           ],
     ),
     [
-      ["upsert", "feed.txt", "1", String(created.value.remoteObjectId)],
-      ["upsert", "feed.txt", "2", String(created.value.remoteObjectId)],
-      ["upsert", "renamed.txt", "3", String(created.value.remoteObjectId)],
-      ["removed", "renamed.txt", undefined, String(created.value.remoteObjectId)],
+      ["upsert", "feed.txt", "1", String(created.value.remoteObjectId), false],
+      ["upsert", "feed.txt", "2", String(created.value.remoteObjectId), false],
+      ["upsert", "renamed.txt", "3", String(created.value.remoteObjectId), false],
+      ["upsert", "renamed.txt", "4", String(created.value.remoteObjectId), true],
     ],
   );
   notStrictEqual(page.value.nextCursor, start.value);
@@ -616,6 +618,44 @@ test("change feed records deterministic mutation order and advances an opaque pr
     deepStrictEqual(empty.value.changes, []);
     strictEqual(empty.value.nextCursor, page.value.nextCursor);
   }
+});
+
+test("provider removal emits a removed change distinct from trash and removes retained reality", async () => {
+  const drive = new InMemoryGoogleDriveCore();
+  const root = await managedRoot(drive);
+  const created = await drive.create(root.rootId, {
+    path: virtualDrivePath("provider-removed.md"),
+    entityKind: "file",
+    content: source([4]),
+  });
+  if (!created.ok) throw new Error(created.signal.kind);
+
+  const cursor = await drive.getStartCursor(root.rootId);
+  if (!cursor.ok) throw new Error(cursor.signal.kind);
+
+  drive.removeExternally(created.value.remoteObjectId);
+
+  const page = await drive.readChanges(root.rootId, cursor.value);
+  strictEqual(page.ok, true);
+  if (!page.ok) return;
+  deepStrictEqual(page.value.changes, [
+    {
+      kind: "removed",
+      remoteObjectId: created.value.remoteObjectId,
+      lastKnownPath: virtualDrivePath("provider-removed.md"),
+    },
+  ]);
+
+  const observed = await drive.observe(
+    root.rootId,
+    virtualDrivePath("provider-removed.md"),
+  );
+  strictEqual(observed.ok, true);
+  if (observed.ok) strictEqual(observed.value.status, "absent");
+
+  const downloaded = await drive.download(created.value.remoteObjectId);
+  strictEqual(downloaded.ok, false);
+  if (!downloaded.ok) strictEqual(downloaded.signal.kind, "not-found");
 });
 
 test("invalid lost and stale cursors surface the production recovery-required classification", async () => {
