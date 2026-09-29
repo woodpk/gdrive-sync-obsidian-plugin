@@ -55,10 +55,16 @@ export type ScenarioObservationStep = Step<
 >;
 
 export type ScenarioLiteral = string | number | boolean | null | readonly string[] | readonly number[];
+export type ScenarioObservationField =
+  | "status" | "hash" | "sizeBytes" | "remoteObjectId" | "revision" | "entityKind"
+  | "stateRevision" | "changeCursor" | "operationKinds" | "knownDeviceIds";
 export type ScenarioAssertionStep = Step<
   | { readonly kind: "assert"; readonly assertion: "equals" | "not-equals"; readonly observationRef: string; readonly expected: ScenarioLiteral }
   | { readonly kind: "assert"; readonly assertion: "status"; readonly observationRef: string; readonly expectedStatus: string }
   | { readonly kind: "assert"; readonly assertion: "exists"; readonly observationRef: string; readonly expected: boolean }
+  | { readonly kind: "assert"; readonly assertion: "field-equals" | "field-not-equals"; readonly observationRef: string; readonly field: ScenarioObservationField; readonly expected: ScenarioLiteral }
+  | { readonly kind: "assert"; readonly assertion: "contains"; readonly observationRef: string; readonly field: ScenarioObservationField; readonly expected: ScenarioLiteral }
+  | { readonly kind: "assert"; readonly assertion: "count"; readonly observationRef: string; readonly field: ScenarioObservationField; readonly expectedCount: number }
 >;
 
 export type ScenarioStep = ScenarioFixtureStep | ScenarioProductionStep | ScenarioExternalStateStep | ScenarioCheckpointStep | ScenarioObservationStep | ScenarioAssertionStep;
@@ -105,6 +111,10 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "assert:not-equals": { discriminator: "assertion", required: ["observationRef", "expected"], allowed: ["observationRef", "expected"] },
   "assert:status": { discriminator: "assertion", required: ["observationRef", "expectedStatus"], allowed: ["observationRef", "expectedStatus"] },
   "assert:exists": { discriminator: "assertion", required: ["observationRef", "expected"], allowed: ["observationRef", "expected"] },
+  "assert:field-equals": { discriminator: "assertion", required: ["observationRef", "field", "expected"], allowed: ["observationRef", "field", "expected"] },
+  "assert:field-not-equals": { discriminator: "assertion", required: ["observationRef", "field", "expected"], allowed: ["observationRef", "field", "expected"] },
+  "assert:contains": { discriminator: "assertion", required: ["observationRef", "field", "expected"], allowed: ["observationRef", "field", "expected"] },
+  "assert:count": { discriminator: "assertion", required: ["observationRef", "field", "expectedCount"], allowed: ["observationRef", "field", "expectedCount"] },
 };
 
 const isRecord = (value: unknown): value is RecordValue => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -135,6 +145,7 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   if (step.kind === "external-state" && step.transition === "set-device-connectivity" && step.state !== "online" && step.state !== "offline") issues.push(`${at}.state is invalid`);
   if (step.kind === "external-state" && step.transition === "inject-remote-mutation-fault" && (!["create", "update", "move", "trash"].includes(String(step.operation)) || !["not-applied", "applied-before-failure"].includes(String(step.effect)))) issues.push(`${at} remote mutation fault is invalid`);
   if (step.kind === "assert" && step.assertion === "exists" && typeof step.expected !== "boolean") issues.push(`${at}.expected must be boolean`);
+  if (step.kind === "assert" && step.assertion === "count" && (!Number.isInteger(step.expectedCount) || step.expectedCount < 0)) issues.push(`${at}.expectedCount must be a non-negative integer`);
   if (!jsonSafe(step)) issues.push(`${at} must contain JSON-safe declarative data only`);
 }
 
