@@ -90,7 +90,7 @@ function safeObservation(value: unknown): Readonly<Record<string, SafeValue>> {
   for (const [key, candidate] of Object.entries(value)) {
     if (!SAFE_OBSERVATION_FIELDS.has(key)) continue;
     if (safeScalar(candidate)) result[key] = candidate;
-    else if (Array.isArray(candidate) && candidate.every(safeScalar)) result[key] = candidate;
+    else if (Array.isArray(candidate) && candidate.every(safeScalar)) result[key] = candidate as JsonScalar[];
   }
   return result;
 }
@@ -105,9 +105,14 @@ function contentIdentity(content: ScenarioFixtureContent): { hash: string; sizeB
   };
 }
 
-function fixtureIdentity(step: ScenarioDefinition["steps"][number]) {
+function fixtureIdentity(
+  step: ScenarioDefinition["steps"][number],
+): CanonicalScenarioEvidenceMachine["fixtures"][number] | undefined {
   if (step.kind !== "fixture") return undefined;
-  const base: Record<string, string | number> = { stepId: step.id, operation: step.operation };
+  const base: {
+    stepId: string; operation: string; device?: string; path?: string;
+    fromPath?: string; toPath?: string; contentHash?: string; sizeBytes?: number;
+  } = { stepId: step.id, operation: step.operation };
   if ("device" in step) base.device = step.device;
   if ("path" in step) base.path = step.path;
   if ("fromPath" in step) base.fromPath = step.fromPath;
