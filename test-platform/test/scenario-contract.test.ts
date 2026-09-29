@@ -192,6 +192,27 @@ test("generic local-access and deterministic-time controls validate narrowly", (
   assertInvalid(
     {
       ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "set-local-access", device: "device-a", state: "unreadable" }],
+    },
+    /path is required/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "advance-device-time", device: "device-a" }],
+    },
+    /deltaMs is required/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "advance-device-time", device: "device-a", deltaMs: Number.POSITIVE_INFINITY }],
+    },
+    /deltaMs must be finite and non-negative/,
+  );
+  assertInvalid(
+    {
+      ...representative,
       steps: [{ id: "x", kind: "external-state", transition: "advance-device-time", device: "device-a", deltaMs: 1, arbitrary: true }],
     },
     /unsupported field 'arbitrary'/,
