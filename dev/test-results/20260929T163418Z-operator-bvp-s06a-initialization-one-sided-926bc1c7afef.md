@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06a-initialization-one-sided
+- Source build HEAD requested: 926bc1c7afefeab72cc03ec9b689e32a082b898f
+- Verification checkout HEAD: 926bc1c7afefeab72cc03ec9b689e32a082b898f
+- Evidence publication target: origin/bvp-s06a-initialization-one-sided
