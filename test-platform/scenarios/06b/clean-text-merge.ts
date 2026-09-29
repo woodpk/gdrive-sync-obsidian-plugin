@@ -9,7 +9,6 @@ export const cleanTextMergeScenario = defineScenario({
     { kind: "requirement", id: "PLAN-002" },
     { kind: "requirement", id: "PLAN-003" },
     { kind: "requirement", id: "CHANGE-002" },
-    { kind: "requirement", id: "XFER-003" },
     { kind: "invariant", id: "INV-005" },
   ] },
   executionModes: ["deterministic"],
