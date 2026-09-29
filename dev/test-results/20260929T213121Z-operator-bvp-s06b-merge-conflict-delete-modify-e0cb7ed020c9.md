@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06b-merge-conflict-delete-modify
+- Source build HEAD requested: e0cb7ed020c97287cec53508092d91993c853ac3
+- Verification checkout HEAD: e0cb7ed020c97287cec53508092d91993c853ac3
+- Evidence publication target: origin/bvp-s06b-merge-conflict-delete-modify
