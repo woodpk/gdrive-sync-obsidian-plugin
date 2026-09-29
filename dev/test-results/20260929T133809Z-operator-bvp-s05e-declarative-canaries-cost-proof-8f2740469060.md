@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s05e-declarative-canaries-cost-proof
+- Source build HEAD requested: 8f2740469060d9b000cf8489ffaff68ac541fb00
+- Verification checkout HEAD: 8f2740469060d9b000cf8489ffaff68ac541fb00
+- Evidence publication target: origin/bvp-s05e-declarative-canaries-cost-proof
