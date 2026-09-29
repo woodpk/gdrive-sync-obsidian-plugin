@@ -120,3 +120,4 @@ export type { RemoteUpdateFinalizationPort } from "./durable-intent-recovery-bas
 export type { MutationIntentId, RemoteRevisionId } from "../contracts/common";
 export { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
 export { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
+export { MemoryTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
