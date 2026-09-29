@@ -49,7 +49,7 @@ The S06B execution binding is:
 - new scenario paths: `test-platform/scenarios/06b/clean-text-merge.ts`, `true-text-conflict.ts`, `binary-conflict.ts`, `local-delete-remote-modify.ts`, and `remote-delete-local-modify.ts`;
 - focused test path: `test-platform/test/s06b-merge-conflict-delete-modify.test.ts`;
 - writable allowlist: exactly those five scenario files plus that focused test file;
-- target requirements: `CONFLICT-001`–`CONFLICT-009`, `PLAN-001`–`PLAN-004`, `CHANGE-001`, `CHANGE-002`, and `XFER-003`; invariants `INV-005`–`INV-008`; conflict contract §6.5; required conflict/deletion responses in §9; reconciliation evidence cases in §13.2;
+- target requirements: `CONFLICT-001`–`CONFLICT-006`, `PLAN-001`–`PLAN-003`, `CHANGE-001`, and `CHANGE-002`; invariants `INV-005`–`INV-008`; conflict contract §6.5; required conflict/deletion responses in §9; reconciliation evidence cases in §13.2;
 - focused command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06b-merge-conflict-delete-modify.test.js`;
 - full BVP command: `npm run test:bvp-root`;
 - PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; change class: `ordinary`;
