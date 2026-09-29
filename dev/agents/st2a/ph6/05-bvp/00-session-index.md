@@ -41,7 +41,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 05D | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05d-bounded-checkpoint-resume-representation.md` |
 | 05E | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05e-declarative-canaries-and-scenario-cost-proof.md` |
 | 05V | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05v-primary-stage-phx-ci-acceptance.md` |
-| 06A | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06a-initialization-and-one-sided-synchronization-scenarios.md` |
+| 06A | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | EXECUTABLE | `06-deterministic-reconciliation-conflict-move-delet/06a-initialization-and-one-sided-synchronization-scenarios.md` |
 | 06B | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06b-merge-conflict-and-delete-vs-modify-scenarios.md` |
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
