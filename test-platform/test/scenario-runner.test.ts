@@ -12,6 +12,7 @@ import {
   DeterministicScenarioRunner,
   type ScenarioStepExecution,
 } from "../src/scenario/scenario-runner";
+import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
 
 function scenario(
   id: string,
@@ -278,6 +279,83 @@ test("observation and assertion families use fixed generic hooks and missing hoo
 
   strictEqual(withHooks.status, "completed");
   strictEqual(withHooks.captures.changes, "observed-value");
+});
+
+test("generic external controls mutate retained local access and only the selected device clock", async () => {
+  const result = await new DeterministicScenarioRunner({
+    observe: async (_step, context) => {
+      const local = await context.world.deviceBacking("device-a").local.observe(
+        virtualVaultPath("controlled.md"),
+      );
+      return {
+        status: "completed",
+        value: {
+          accessStatus: local.status,
+          deviceATime: context.world.deviceBacking("device-a").clock.nowMs(),
+          deviceBTime: context.world.deviceBacking("device-b").clock.nowMs(),
+        },
+      };
+    },
+    assert: async (_step, context) => {
+      const probe = context.readCapture("probe") as {
+        readonly accessStatus?: string;
+        readonly deviceATime?: number;
+        readonly deviceBTime?: number;
+      } | undefined;
+      return probe?.accessStatus === "unreadable" &&
+        probe.deviceATime === 86400000 &&
+        probe.deviceBTime === 0
+        ? { status: "completed" }
+        : { status: "failed", classification: "assertion-mismatch" };
+    },
+  }).run(
+    scenario("generic-external-controls", [
+      {
+        id: "seed",
+        kind: "fixture",
+        operation: "put-local-file",
+        device: "device-a",
+        path: "controlled.md",
+        content: { encoding: "utf8", value: "retained" },
+      },
+      {
+        id: "make-unreadable",
+        kind: "external-state",
+        transition: "set-local-access",
+        device: "device-a",
+        path: "controlled.md",
+        state: "unreadable",
+      },
+      {
+        id: "advance-device-a",
+        kind: "external-state",
+        transition: "advance-device-time",
+        device: "device-a",
+        deltaMs: 86400000,
+      },
+      {
+        id: "probe",
+        kind: "observe",
+        subject: "device-state",
+        device: "device-a",
+        captureAs: "probe",
+      },
+      {
+        id: "assert-controls",
+        kind: "assert",
+        assertion: "equals",
+        observationRef: "probe",
+        expected: "controls-applied",
+      },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  deepStrictEqual(result.captures.probe, {
+    accessStatus: "unreadable",
+    deviceATime: 86400000,
+    deviceBTime: 0,
+  });
 });
 
 test("checkpoint capture fails closed until bounded checkpoint capability is supplied", async () => {
