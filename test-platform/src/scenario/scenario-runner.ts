@@ -224,6 +224,14 @@ export class DeterministicScenarioRunner {
     context: ScenarioRunnerHookContext,
   ): Promise<StepOutcome> {
     if (step.transition === "set-device-connectivity") return fail("blocked", "device-connectivity-control-unavailable");
+    if (step.transition === "set-local-access") {
+      context.world.deviceBacking(step.device).local.setAccess(virtualVaultPath(step.path), step.state);
+      return { status: "completed" };
+    }
+    if (step.transition === "advance-device-time") {
+      context.world.deviceBacking(step.device).clock.advanceBy(step.deltaMs);
+      return { status: "completed" };
+    }
     if (step.transition === "set-remote-listing-completeness") {
       context.world.drive.scriptNextListing({ completeness: step.completeness === "complete"
         ? { status: "complete" } : { status: "partial", reason: step.reason ?? "scenario-partial-listing" } });
