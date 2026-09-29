@@ -3,13 +3,24 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
 **Predecessor:** accepted S06B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Blocked Dispatch Record
+
+S06C is blocked before scenario implementation because two required deterministic conditions cannot yet be expressed through the frozen declarative scenario vocabulary:
+
+- local unreadable/inaccessible path state, although the accepted `InMemoryLocalVault.setAccess(...)` capability already models it;
+- deterministic device-clock advancement for clock-skew/stale chronology, although each accepted `VirtualDeviceBacking` already owns a `DeterministicClock` with `set(...)` and `advanceBy(...)`.
+
+The missing capability is an exposure gap in the existing `external-state` step family, not a product or synchronization-policy defect. S06C remains scenario-only and may not modify `test-platform/src/**`.
+
+A separate generic prerequisite must expose only these existing deterministic controls through the common scenario contract/runner, prove fail-closed validation and dispatch, pass architecture budgets, and then be frozen before S06C is rebound.
 
 ## 1. Objective
 
