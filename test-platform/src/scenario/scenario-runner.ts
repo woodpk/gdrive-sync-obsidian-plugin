@@ -7,6 +7,11 @@ import {
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../virtual-world/virtual-world";
 import { virtualDrivePath, type InMemoryGoogleDriveCore } from "../virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../virtual-world/in-memory-local-vault";
+import {
+  buildScenarioEvidence,
+  createScenarioEvidenceHooks,
+  type CanonicalScenarioEvidence,
+} from "./scenario-evidence";
 
 export type ScenarioExecutionStatus = "completed" | "failed" | "blocked" | "unsupported";
 export interface ScenarioStepExecution {
@@ -18,6 +23,7 @@ export interface ScenarioExecutionResult {
   readonly scenarioId: string; readonly status: ScenarioExecutionStatus;
   readonly steps: readonly ScenarioStepExecution[]; readonly captures: Readonly<Record<string, unknown>>;
   readonly classification?: string; readonly reason?: string;
+  readonly evidence?: CanonicalScenarioEvidence;
 }
 export type ScenarioCapabilityResult =
   | { readonly status: "completed"; readonly value?: unknown }
@@ -53,16 +59,23 @@ const expectedMatches = (expected: ScenarioExpectedOutcome | undefined, actual: 
 export class DeterministicScenarioRunner {
   constructor(private readonly hooks: ScenarioRunnerHooks = {}) {}
 
+  static canonical(): DeterministicScenarioRunner {
+    return new DeterministicScenarioRunner(createScenarioEvidenceHooks());
+  }
+
   async run(scenario: ScenarioDefinition): Promise<ScenarioExecutionResult> {
     const validated = validateScenarioDefinition(scenario);
     if (!validated.ok) return {
       scenarioId: scenario.id ?? "<invalid>", status: "unsupported", steps: [], captures: {},
       classification: "invalid-scenario", reason: validated.issues.join("; "),
     };
-    if (!scenario.executionModes.includes("deterministic")) return {
-      scenarioId: scenario.id, status: "unsupported", steps: [], captures: {},
-      classification: "execution-mode-not-applicable",
-    };
+    if (!scenario.executionModes.includes("deterministic")) {
+      const core = {
+        scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {},
+        classification: "execution-mode-not-applicable",
+      };
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: [] }) };
+    }
 
     const names = new Set(["device-a", "device-b"]);
     for (const step of scenario.steps) if ("device" in step && typeof step.device === "string") names.add(step.device);
@@ -83,11 +96,13 @@ export class DeterministicScenarioRunner {
     };
     const finish = async (status: ScenarioExecutionStatus, classification?: string, reason?: string): Promise<ScenarioExecutionResult> => {
       for (const device of devices.values()) await device.dispose();
-      return {
+      const core = {
         scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
         ...(classification === undefined ? {} : { classification }),
         ...(reason === undefined ? {} : { reason }),
       };
+      const deviceIdentities = [...names].map(name => String(world.deviceBacking(name).deviceIdentity));
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities }) };
     };
 
     for (const [index, step] of scenario.steps.entries()) {
