@@ -136,8 +136,21 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.productionSeamLogicalLoc > 0, true);
   strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
   strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 0);
-  strictEqual(value.current.scenarioCount, 0);
-  strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 0);
+  const scenarios = value.current.scenarios ?? [];
+  strictEqual(value.current.scenarioCount, scenarios.length);
+  strictEqual(
+    value.current.scenarioDefinitionLogicalLocTotal,
+    scenarios.reduce((sum: number, scenario: any) => sum + Number(scenario.logicalLoc ?? 0), 0),
+  );
+  strictEqual(scenarios.every((scenario: any) => Number(scenario.logicalLoc) <= 200), true);
+  for (const path of [
+    "test-platform/scenarios/multi-device-conflict.ts",
+    "test-platform/scenarios/ordinary-one-sided-sync.ts",
+  ]) {
+    const scenario = scenarios.find((candidate: any) => candidate.path === path);
+    strictEqual(Boolean(scenario), true);
+    strictEqual(Number(scenario.logicalLoc) <= 120, true);
+  }
   strictEqual(
     value.current.platformCoreRuntimeModuleCount,
     value.current.frameworkCoreFiles.length,
