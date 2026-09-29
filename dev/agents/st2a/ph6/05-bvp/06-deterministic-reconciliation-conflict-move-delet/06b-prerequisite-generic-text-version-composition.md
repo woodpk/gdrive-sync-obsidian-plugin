@@ -2,8 +2,8 @@
 
 ## Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
-**Predecessor:** accepted S06A closure `109a4ac26309ccd5c22de6eb70420af410c2a8d8`  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Predecessor:** accepted S06A closure `109a4ac26309ccd5c22de6eb70420af410c2a8d8`
 **Branch:** `bvp-s06b-prereq-text-version-composition`
 
 ## Objective
