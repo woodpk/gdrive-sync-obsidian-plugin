@@ -1,7 +1,7 @@
 # BVP Child-Session Task Index
 
-**Authority:** Stage-2A execution index  
-**Primary work packages:** BVP-S01 through BVP-S09  
+**Authority:** Stage-2A execution index
+**Primary work packages:** BVP-S01 through BVP-S09
 **Shared execution contract:** `00-execution-contract.md`
 
 ## 1. Prompt Model
@@ -36,7 +36,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 04E | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04e-virtual-world-composition-over-real-production-logic.md` |
 | 04V | S04 — Deterministic Multi-Device Virtual World | COMPLETE | `04-deterministic-multi-device-virtual-world/04v-primary-stage-phx-ci-acceptance.md` |
 | 05A | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05a-typed-scenario-contract-and-small-step-vocabulary.md` |
-| 05B | S05 — Declarative Scenario Runner / Assertions / Evidence | EXECUTABLE | `05-declarative-scenario-runner-assertions-evidence/05b-external-deterministic-runner-core.md` |
+| 05B | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05b-external-deterministic-runner-core.md` |
 | 05C | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05c-generic-observations-assertions-and-canonical-evidence.md` |
 | 05D | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05d-bounded-checkpoint-resume-representation.md` |
 | 05E | S05 — Declarative Scenario Runner / Assertions / Evidence | PREPLANNED | `05-declarative-scenario-runner-assertions-evidence/05e-declarative-canaries-and-scenario-cost-proof.md` |
@@ -121,6 +121,8 @@ S04E is **COMPLETE / ACCEPTED**. Accepted implementation `af0f615cb219dfac17e0f6
 BVP-S04 — Deterministic Multi-Device Virtual World is **CLOSED / ACCEPTED**. S04V input `053568a288cd26cab1c287cca9fc965831ea8443` passed authoritative PHX-CI with runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; accepted stage evidence is `cc9078551322c7608c74c1a647f869da2ea9620d`. Integrated BVP verification passed 130/130, the full repository suite passed 822/822, architecture guard and metrics passed, and the production artifact remained unchanged. The earlier blocked S04V evidence `f9017111fce8c01d00e612b80dcbdb601f471885` is diagnostic only and resulted from the superseded stage-base binding.
 
 S05A is **COMPLETE / ACCEPTED**. Accepted implementation `63475e8b421ec50c7c28a8e488a65febe8f67718` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `567e506d69285597aceb7eb8330d7a83e5f1c2df`. Focused contract verification passed 7/7, integrated BVP verification passed 137/137, full repository verification passed 822/822, architecture guard/metrics passed, and framework core increased by 148 logical LOC to 3,052/4,000. Production source/seam, live-device, scenario-instance, scenario-specific production, and PowerShell surfaces were unchanged; the production artifact remained byte-identical.
+
+S05B is **COMPLETE / ACCEPTED**. Accepted implementation `8960e15cb7d9d569e28aed8b0ec05402a57f2a5a` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `f7ee2f3764df2dff5d34868f19a07462e70b2b68`. Focused runner verification passed 10/10, integrated BVP verification passed 147/147, full repository verification passed 822/822, architecture guard/metrics passed, and framework core increased by 223 logical LOC to 3,275/4,000. Production source/seam, live-device, scenario-instance, scenario-specific production, and PowerShell surfaces were unchanged; the production artifact remained byte-identical.
 
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 
