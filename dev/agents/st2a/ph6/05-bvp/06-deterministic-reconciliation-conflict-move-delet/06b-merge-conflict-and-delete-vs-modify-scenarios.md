@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted S06B generic text-version prerequisite closure `4ee5aaeebb89b4531831450ad016e93c0b4f334d`
 
@@ -20,6 +20,32 @@ The original S06B dispatch was correctly blocked at commit `c222d86222e4b60d13d4
 - accepted prerequisite closure: `4ee5aaeebb89b4531831450ad016e93c0b4f334d`.
 
 S06B is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by this scenario-only child.
+
+## 0.2 Authoritative Acceptance Record
+
+S06B is complete and accepted.
+
+- accepted prerequisite closure / PHX-CI base: `4ee5aaeebb89b4531831450ad016e93c0b4f334d`;
+- accepted S06B implementation SHA: `e0cb7ed020c97287cec53508092d91993c853ac3`;
+- authoritative PHX-CI evidence SHA: `c1754311f999229b0fd53f89d3394f456ae6aedd`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06B verification: PASS, 8/8;
+- integrated BVP verification: PASS, 185/185;
+- full repository verification: PASS;
+- PHX-CI overall: PASS / compatibility COMPLETE;
+- architecture guard and metrics: PASS;
+- framework core: 3,827 / 4,000 logical TypeScript LOC;
+- production seam: 113 logical LOC / 1 file;
+- scenario catalog: 14 scenarios / 351 logical LOC;
+- S06B scenario delta: +5 scenarios / +143 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific production files: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted S06B scenarios prove clean recognized-text merge, true text conflict preservation, binary conflict preservation, and delete-vs-modify preservation in both directions through frozen production planning/execution semantics. Wrong expected merged content fails deterministically, and conflict evidence is deterministic across repeated runs.
+
+This file is now a historical completion record and authorizes no further S06B implementation work.
 
 ## 1. Objective
 
