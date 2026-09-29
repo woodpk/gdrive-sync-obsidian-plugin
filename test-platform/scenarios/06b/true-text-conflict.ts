@@ -7,7 +7,6 @@ export const trueTextConflictScenario = defineScenario({
     { kind: "requirement", id: "CONFLICT-001" },
     { kind: "requirement", id: "CONFLICT-003" },
     { kind: "requirement", id: "CONFLICT-004" },
-    { kind: "requirement", id: "CONFLICT-007" },
     { kind: "invariant", id: "INV-005" },
     { kind: "invariant", id: "INV-008" },
   ] },
