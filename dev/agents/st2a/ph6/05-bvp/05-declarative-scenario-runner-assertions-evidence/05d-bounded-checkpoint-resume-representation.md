@@ -3,13 +3,37 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05C
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05D is complete and accepted.
+
+- accepted S05C predecessor / PHX-CI base: `94b903a7bca9f13269e3eec93e72b6c6c46ac2a6`;
+- bound S05D HEAD: `d7574f5e96de2ad2661ebe694ede0c87941ac4d6`;
+- accepted implementation SHA: `b22a1da9cfc0efd1ce61f35b2aafc173b2c88bb6`;
+- authoritative PHX-CI evidence SHA: `bcf537c146178a454393759f896ea87272a5380b`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S05D checkpoint tests: PASS, 8/8;
+- integrated BVP tests: PASS, 164/164;
+- full repository tests: PASS, 822/822;
+- architecture guard and metrics: PASS;
+- framework-core delta: +219 logical TypeScript LOC, 3,813 / 4,000 current;
+- production source/seam delta: 0;
+- live-device/scenario-instance/scenario-specific production/PowerShell delta: 0;
+- production artifact unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted checkpoint representation is versioned, deterministic, JSON-safe, explicitly bounded, and external to product synchronization authority. It preserves scenario/run/mode identity, next-step position, bounded prior step summaries, sorted device identity context, explicit resume disposition/evidence requirements, and only a digest/summary of canonical S05C evidence. Resume validation fails closed for malformed/truncated/incompatible, scenario/run/mode/context mismatches. Secret-like fields, arbitrary runner reasons, raw canonical-evidence bodies, and product runtime state are not serialized. Restore/validation alone is proven not to mutate product state.
+
+No runner redesign, production change, production seam change, live execution, distributed workflow engine, database, retry scheduler, or per-device durable scenario state was added.
+
+This file is now a historical completion record and authorizes no further S05D implementation work.
 
 ## 1. Objective
 
