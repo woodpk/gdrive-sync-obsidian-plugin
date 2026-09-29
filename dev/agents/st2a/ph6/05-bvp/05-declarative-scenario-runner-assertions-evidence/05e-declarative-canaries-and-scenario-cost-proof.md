@@ -2,9 +2,9 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
@@ -28,16 +28,28 @@ A deliberately wrong expectation for a canary must fail deterministically.
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S05E contract is bound to the accepted S05D/S05C/S05B/S05A repository state as follows:
 
-- exact accepted S05D predecessor SHA;
-- task branch;
-- actual scenario/fixture catalog locations;
-- actual focused runner command;
-- exact scenario/test writable allowlist;
-- PHX-CI base/pin/runtime;
-- current architecture metrics baseline;
-- size-gate confirmation.
+- exact accepted S05D predecessor / PHX-CI base: `a990838016fc13d83e8a853c301a41b49fdc334c`;
+- exact task branch: `bvp-s05e-declarative-canaries-cost-proof`;
+- scenario catalog root: `test-platform/scenarios/` (excluded from framework-core LOC and measured separately by the frozen architecture metrics);
+- first canary path: `test-platform/scenarios/multi-device-conflict.ts`;
+- second ordinary scenario path: `test-platform/scenarios/ordinary-one-sided-sync.ts`;
+- focused test path: `test-platform/test/scenario-canaries.test.ts`;
+- exact S05E implementation-writable allowlist is those three paths only;
+- no changes to `test-platform/src/**`, `src/**`, `dev/scripts/**`, governance, PHX-CI configuration, checkpoint code, live-device surfaces, or production are authorized;
+- accepted execution path: `DeterministicScenarioRunner.canonical()` using the frozen S05A–S05D contract/runner/evidence surfaces;
+- focused command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-canaries.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- current accepted framework core: 3,813 / 4,000 logical TypeScript LOC; S05E must produce zero framework-core LOC delta;
+- current scenario baseline: 0 scenarios / 0 scenario logical LOC;
+- each new scenario targets <=120 logical lines and hard-fails above 200 logical lines;
+- scenario-specific PowerShell baseline/required result: 0;
+- scenario-specific production baseline/required result: 0;
+- production artifact must remain byte-identical;
+- BVP-GOV-010 size gate: PASS — two declarative scenario files plus one focused test file, all outside framework-core classification; no new subsystem, dependency, core capability, or production surface.
 
 The platform core is treated as frozen for the second-scenario proof unless a genuinely missing generic capability causes a BLOCKED return.
 
