@@ -2,9 +2,9 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05C
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
@@ -32,15 +32,28 @@ It remains external test-runner state and never becomes product synchronization 
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S05D contract is bound to the accepted S05C/S05B/S05A repository state as follows:
 
-- exact accepted S05C predecessor SHA;
-- task branch;
-- actual runner/scenario/result types to checkpoint;
-- exact checkpoint storage/codec/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S05C predecessor / PHX-CI base: `94b903a7bca9f13269e3eec93e72b6c6c46ac2a6`;
+- exact task branch: `bvp-s05d-bounded-checkpoint-resume`;
+- accepted scenario identity/applicability authority: `ScenarioDefinition.id` and `ScenarioDefinition.executionModes`;
+- accepted runner result semantics: `ScenarioExecutionResult` and ordered `ScenarioStepExecution` records;
+- accepted canonical evidence type: `CanonicalScenarioEvidence`; checkpoint state may retain bounded references/summaries needed for continuation but may not serialize arbitrary captures or the production runtime object graph;
+- existing S05A checkpoint vocabulary remains `checkpoint:capture` and `checkpoint:restart-device`; S05D defines the external checkpoint representation/codec/store only and does not redesign runner sequencing;
+- exact checkpoint implementation path: `test-platform/src/scenario/scenario-checkpoint.ts`;
+- exact checkpoint test path: `test-platform/test/scenario-checkpoint.test.ts`;
+- exact implementation-writable allowlist: `test-platform/src/scenario/scenario-checkpoint.ts` and `test-platform/test/scenario-checkpoint.test.ts` only;
+- no changes to `scenario-contract.ts`, `scenario-runner.ts`, `scenario-evidence.ts`, production, production seam, governance, PowerShell, live-device transport, or scenario catalog are authorized;
+- checkpoint state is external test-controller authority only and may never become synchronization authority or mutate product state by restoration alone;
+- representation must be versioned, deterministic, bounded, JSON-safe, and secret-free; malformed, truncated, wrong-scenario, wrong-run, incompatible-version, and execution-context mismatches must fail closed;
+- permitted storage is a small in-memory/local test-controller abstraction only; no database, distributed state service, workflow engine, retry scheduler, or per-device durable scenario state is authorized;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- focused S05D command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-checkpoint.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- current accepted framework core is 3,594 / 4,000 logical TypeScript LOC, leaving 406 LOC of hard-budget headroom before S05D;
+- S05D must remain compact enough to preserve architecture margin; if the required checkpoint module approaches the remaining hard budget, stop and replan rather than broaden architecture;
+- BVP-GOV-010 size gate: PASS — one bounded checkpoint representation/codec/store module plus one focused test file, two implementation paths total, no new dependency, and no new platform-level subsystem family.
 
 No binding may turn the checkpoint into general workflow persistence.
 
