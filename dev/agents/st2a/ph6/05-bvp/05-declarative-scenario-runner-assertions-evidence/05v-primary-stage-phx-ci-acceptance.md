@@ -3,11 +3,58 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 
 This is a complete prewritten verification contract. It has no implementation-repair authority.
+
+## 0.1 Authoritative Stage Acceptance Record
+
+BVP-S05 — Declarative Scenario Runner / Assertions / Evidence is CLOSED / ACCEPTED.
+
+- accepted integrated S05 input before stage gate: `8c9fe29e5ac40b02371b09f70ee00831ae30b15f`;
+- S05V bound verification HEAD: `70e2db458efb84933d52c5e5bbb624420d6a2eea`;
+- authoritative S05V PHX-CI evidence SHA: `349caae562f236526bf485ac324347a5ea2209f0`;
+- exact stage verification base / accepted S04 closure: `7791976db3bfce21dd8e016e856539e409da96cd`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S05 platform verification: PASS, 37/37;
+- integrated BVP verification: PASS, 167/167;
+- full repository verification: PASS;
+- PHX-CI overall: PASS / compatibility COMPLETE;
+- architecture guard / metrics: PASS;
+- framework core: 3,813 / 4,000 logical TypeScript LOC;
+- production seam: 112 logical LOC / 1 file;
+- live-device agent/relay: 0;
+- scenario catalog: 2 scenarios / 46 logical LOC total;
+- scenario-specific PowerShell: 0;
+- scenario-specific production source: 0;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- production artifact unchanged from the accepted S04 baseline.
+
+Stage-level review confirms:
+
+- scenario definitions are typed declarative data with no custom lifecycle code;
+- one external deterministic runner owns ordering and verdict semantics;
+- unsupported/missing required state fails closed;
+- objective observations/assertions and deliberately wrong expectations behave correctly;
+- canonical machine/human evidence is deterministic, private, and traceable;
+- checkpoint/resume representation is bounded, external, and non-authoritative for product synchronization;
+- both declarative canaries pass through the common platform;
+- the second ordinary canary required no platform-core change;
+- scenario/core/live-agent/PowerShell hard tripwires are enforced;
+- no scenario-ID-specific orchestration exists in common core;
+- no module router/plugin system, distributed workflow engine, second runner, alternate evidence family, or production scenario seam exists.
+
+Accepted S05 child lineage:
+
+- S05A implementation/evidence: `63475e8b421ec50c7c28a8e488a65febe8f67718` / `567e506d69285597aceb7eb8330d7a83e5f1c2df`;
+- S05B implementation/evidence: `8960e15cb7d9d569e28aed8b0ec05402a57f2a5a` / `f7ee2f3764df2dff5d34868f19a07462e70b2b68`;
+- S05C implementation/evidence: `c4e8a25c4ed685446be7facac9c8ee6f3d7cf8dc` / `99a4218f820edf4355de4cec019f2f537eddfcd1`;
+- S05D implementation/evidence: `b22a1da9cfc0efd1ce61f35b2aafc173b2c88bb6` / `bcf537c146178a454393759f896ea87272a5380b`;
+- S05E implementation/evidence: `8f2740469060d9b000cf8489ffaff68ac541fb00` / `aa88c5e6a84f739ffe99e42a1eb1cab601f82106`.
+
+The common S05 declarative scenario/runner/assertion/evidence core is now frozen for ordinary scenario expansion. This file is a historical completion record and authorizes no further S05 implementation or repair work.
 
 ## 1. Objective
 
