@@ -22,5 +22,7 @@ export const binaryConflictScenario = defineScenario({
     { id: "assert-local-preserved", kind: "assert", assertion: "field-equals", observationRef: "local-version", field: "hash", expected: "sha256:c928c38ab25d86ad74198faaac21ea3707c9d218fc68a5fa4a80371094f5753e" },
     { id: "observe-remote", kind: "observe", subject: "remote-entry", path: "binary-conflict.bin", captureAs: "remote-version" },
     { id: "assert-remote-preserved", kind: "assert", assertion: "field-equals", observationRef: "remote-version", field: "hash", expected: "sha256:6bf05e1c07111cea4acd7926f3f8448af61b88a39fe845aefb0ede6f09735942" },
+    { id: "observe-state", kind: "observe", subject: "device-state", device: "device-a", captureAs: "state-after" },
+    { id: "assert-trusted-base-retained", kind: "assert", assertion: "field-equals", observationRef: "state-after", field: "baseCount", expected: 1 },
   ],
 });
