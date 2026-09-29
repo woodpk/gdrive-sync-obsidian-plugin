@@ -5,7 +5,6 @@ export const remoteDeleteLocalModifyScenario = defineScenario({
   description: "After a trustworthy common base, REMOTE deletion cannot erase an independent LOCAL modification; production surfaces an unresolved delete-vs-modify conflict and preserves the LOCAL version.",
   traceability: { targets: [
     { kind: "requirement", id: "CONFLICT-006" },
-    { kind: "requirement", id: "CONFLICT-007" },
     { kind: "requirement", id: "PLAN-002" },
     { kind: "requirement", id: "CHANGE-001" },
     { kind: "requirement", id: "CHANGE-002" },
