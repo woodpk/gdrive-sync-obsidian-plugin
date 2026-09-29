@@ -81,8 +81,8 @@ function validCheckpoint() {
     requiredResumeEvidence: ["human-confirmation", "canonical-evidence"],
     evidence,
   });
+  if (!result.ok) throw new Error(`checkpoint creation failed: ${result.classification}`);
   strictEqual(result.ok, true);
-  if (!result.ok) throw new Error(result.classification);
   return result.value;
 }
 
