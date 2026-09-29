@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
-**Predecessor:** accepted S06B
+**Predecessor:** accepted S06C generic-control prerequisite closure `77962c0ef118f41e661d0323fdaa10269a96336f`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -21,6 +21,16 @@ S06C is blocked before scenario implementation because two required deterministi
 The missing capability is an exposure gap in the existing `external-state` step family, not a product or synchronization-policy defect. S06C remains scenario-only and may not modify `test-platform/src/**`.
 
 A separate generic prerequisite must expose only these existing deterministic controls through the common scenario contract/runner, prove fail-closed validation and dispatch, pass architecture budgets, and then be frozen before S06C is rebound.
+
+## 0.2 Resolved Prerequisite Record
+
+The S06C dispatch blocker recorded above is resolved by the accepted generic-control prerequisite:
+
+- prerequisite implementation: `72a4e79ea69f0f0dad062cc7128115e6e3c22ce1`;
+- authoritative prerequisite evidence: `5ce98f0a1a132b3ef57491f1a2f9d987ed3b639a`;
+- accepted prerequisite closure / S06C PHX-CI base: `77962c0ef118f41e661d0323fdaa10269a96336f`.
+
+The frozen declarative `external-state` family now exposes the already-existing local access-state and deterministic device-time controls required by this scenario-only child. S06C is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by S06C.
 
 ## 1. Objective
 
@@ -40,15 +50,32 @@ Executable scenarios cover:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S06C execution binding is:
 
-- exact accepted S06B predecessor SHA;
-- task branch;
-- current product requirement IDs/target clauses for deletion/staleness/clock authority/unreadable paths;
-- exact scenario/fixture/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- current architecture metrics baseline.
+- accepted predecessor / PHX-CI base: `77962c0ef118f41e661d0323fdaa10269a96336f`;
+- prerequisite implementation/evidence: `72a4e79ea69f0f0dad062cc7128115e6e3c22ce1` / `5ce98f0a1a132b3ef57491f1a2f9d987ed3b639a`;
+- task branch: `bvp-s06c-deletion-stale-clock-unreadable`;
+- target requirements: `DELETE-001`–`DELETE-003`, `FILE-015`, `CHANGE-001`, `CHANGE-002`, `STATE-005`–`STATE-007`, `FIRST-005`, `PLAN-002`, `PLAN-003`, and `PLAN-008`;
+- governing invariants: `INV-001`, `INV-003`, `INV-009`, and `INV-016`;
+- target contracts/evidence: snapshot contract §6.1, deletion workflow §4.8, tombstone authority §7.5, reconciliation semantic evidence §13.2, and destructive-safety evidence §13.5;
+- new scenario files:
+  - `test-platform/scenarios/06c/local-deletion.ts`;
+  - `test-platform/scenarios/06c/remote-deletion.ts`;
+  - `test-platform/scenarios/06c/both-deleted.ts`;
+  - `test-platform/scenarios/06c/no-base-absence.ts`;
+  - `test-platform/scenarios/06c/unreadable-local-path.ts`;
+  - `test-platform/scenarios/06c/clock-skew.ts`;
+  - `test-platform/scenarios/06c/stale-device-return.ts`;
+- focused test file: `test-platform/test/s06c-deletion-stale-clock-unreadable.test.ts`;
+- writable allowlist: exactly the seven scenario files above plus that focused test file;
+- focused PHX-CI command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06c-deletion-stale-clock-unreadable.test.js`;
+- full BVP command remains owned by PHX-CI through the repository's existing Node/TypeScript adapter configuration;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- change class: `ordinary`;
+- accepted architecture baseline: framework core 3,841/4,000 logical TypeScript LOC; production seam 113 LOC/1 file; scenario catalog 14 scenarios/351 logical LOC; BVP PowerShell 4 scripts/1,477 logical LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- required S06C core/production/PowerShell delta: 0;
+- each new ordinary scenario targets ≤120 logical lines and must remain ≤200;
+- no `test-platform/src/**`, `src/**`, `dev/scripts/**`, PHX-CI integration, governance, or architecture-metrics implementation changes are authorized.
 
 No core change is authorized.
 
