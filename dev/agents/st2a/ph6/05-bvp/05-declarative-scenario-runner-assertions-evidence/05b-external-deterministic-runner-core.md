@@ -2,14 +2,38 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
-**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05A
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05B is complete and accepted.
+
+- accepted S05A predecessor / PHX-CI base: `e7c02dacc2594cddc298f838078c5d21d2d5c622`;
+- bound S05B HEAD: `2abbb39cd18bf24469369e349b909c8ca8d280d4`;
+- accepted implementation SHA: `8960e15cb7d9d569e28aed8b0ec05402a57f2a5a`;
+- authoritative PHX-CI evidence SHA: `f7ee2f3764df2dff5d34868f19a07462e70b2b68`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused runner tests: PASS, 10/10;
+- integrated BVP tests: PASS, 147/147;
+- full repository tests: PASS, 822/822;
+- architecture guard and metrics: PASS;
+- framework-core delta: +223 logical TypeScript LOC, 3,275 / 4,000 current;
+- production source/seam delta: 0;
+- live-device/scenario-instance/scenario-specific production/PowerShell delta: 0;
+- production artifact unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted runner creates a fresh deterministic virtual world per execution, interprets the frozen S05A step families in declared order, invokes the real S04 production controller for production steps, applies generic fixture and external-state controls through S04, exposes fixed observation/assertion/checkpoint extension hooks for later children, and returns typed terminal results. Unsupported or unavailable capabilities fail closed. Expected blocked/failed outcomes remain explicit and cannot silently become PASS. Async fixture/production/hook failures are awaited inside the runner failure boundary so rejected promises are deterministically converted to typed `step-exception` failures.
+
+No production seam, synchronization policy, checkpoint persistence, canonical evidence subsystem, live-device transport, plugin/router, scenario catalog, or scenario-ID-specific orchestration was added.
+
+This file is now a historical completion record and authorizes no further S05B implementation work.
 
 ## 1. Objective
 
