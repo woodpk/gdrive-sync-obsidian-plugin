@@ -36,7 +36,7 @@ The S05E contract is bound to the accepted S05D/S05C/S05B/S05A repository state 
 - first canary path: `test-platform/scenarios/multi-device-conflict.ts`;
 - second ordinary scenario path: `test-platform/scenarios/ordinary-one-sided-sync.ts`;
 - focused test path: `test-platform/test/scenario-canaries.test.ts`;
-- exact S05E implementation-writable allowlist is those three paths only;
+- exact S05E implementation-writable allowlist is those three paths plus `test-platform/test/architecture-metrics.test.ts`, solely to replace the stale pre-S05E zero-scenario baseline assertion with structural scenario-metric consistency/cost checks;
 - no changes to `test-platform/src/**`, `src/**`, `dev/scripts/**`, governance, PHX-CI configuration, checkpoint code, live-device surfaces, or production are authorized;
 - accepted execution path: `DeterministicScenarioRunner.canonical()` using the frozen S05A–S05D contract/runner/evidence surfaces;
 - focused command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-canaries.test.js`;
@@ -49,7 +49,7 @@ The S05E contract is bound to the accepted S05D/S05C/S05B/S05A repository state 
 - scenario-specific PowerShell baseline/required result: 0;
 - scenario-specific production baseline/required result: 0;
 - production artifact must remain byte-identical;
-- BVP-GOV-010 size gate: PASS — two declarative scenario files plus one focused test file, all outside framework-core classification; no new subsystem, dependency, core capability, or production surface.
+- BVP-GOV-010 size gate: PASS — two declarative scenario files plus one focused canary test and one bounded update to the existing architecture-metrics regression test, all outside framework-core classification; no new subsystem, dependency, core capability, or production surface.
 
 The platform core is treated as frozen for the second-scenario proof unless a genuinely missing generic capability causes a BLOCKED return.
 
