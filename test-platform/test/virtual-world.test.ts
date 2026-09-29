@@ -481,3 +481,61 @@ test("production canary: reconstructed runtime is fresh while durable LOCAL REMO
 
   await second.dispose();
 });
+
+test("production canary: generic text-version composition enables a real clean three-way merge", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const path = "clean-merge.md";
+  const base = "alpha\nbeta\ngamma\n";
+  const localEdit = "ALPHA\nbeta\ngamma\n";
+  const remoteEdit = "alpha\nbeta\nGAMMA\n";
+  const merged = "ALPHA\nbeta\nGAMMA\n";
+
+  await createLocal(world, "device-a", path, encoder.encode(base));
+  const device = await world.reconstructDevice("device-a");
+  const baseline = await preview(device);
+  strictEqual(
+    baseline.operations.find(value => String(value.path) === path)?.kind,
+    "upload-create",
+  );
+  strictEqual((await executeReviewed(device, baseline)).status, "accepted");
+
+  await world.deviceBacking("device-a").local.replaceFile(
+    virtualVaultPath(path),
+    source(encoder.encode(localEdit)),
+  );
+
+  const beforeRemoteEdit = await world.drive.observe(
+    world.managedRemote.rootId,
+    virtualDrivePath(path),
+  );
+  if (!beforeRemoteEdit.ok || beforeRemoteEdit.value.status !== "present" || !beforeRemoteEdit.value.remoteObjectId) {
+    throw new Error("remote baseline missing before clean-merge test");
+  }
+  const remoteObjectId = beforeRemoteEdit.value.remoteObjectId;
+  const remoteUpdated = await world.drive.update({
+    remoteObjectId,
+    path: virtualDrivePath(path),
+    content: source(encoder.encode(remoteEdit)),
+  });
+  strictEqual(remoteUpdated.ok, true);
+
+  const plan = await preview(device);
+  strictEqual(
+    plan.operations.find(value => String(value.path) === path)?.kind,
+    "clean-text-merge",
+  );
+  strictEqual((await executeReviewed(device, plan)).status, "accepted");
+
+  strictEqual(
+    decoder.decode((await readLocal(world, "device-a", path))!),
+    merged,
+  );
+  strictEqual(
+    decoder.decode(Uint8Array.from(await remoteBytes(world, remoteObjectId))),
+    merged,
+  );
+
+  await device.dispose();
+});
