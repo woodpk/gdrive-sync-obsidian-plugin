@@ -532,8 +532,26 @@ test("production canary: generic text-version composition enables a real clean t
     decoder.decode((await readLocal(world, "device-a", path))!),
     merged,
   );
+  const convergedRemote = await world.drive.observe(
+    world.managedRemote.rootId,
+    virtualDrivePath(path),
+  );
+  strictEqual(convergedRemote.ok, true);
+  if (
+    !convergedRemote.ok ||
+    convergedRemote.value.status !== "present" ||
+    !convergedRemote.value.remoteObjectId
+  ) {
+    throw new Error("merged remote result missing after clean-merge execution");
+  }
+  notStrictEqual(convergedRemote.value.remoteObjectId, remoteObjectId);
+  strictEqual(world.drive.inspectObject(remoteObjectId)?.trashed, true);
   strictEqual(
-    decoder.decode(Uint8Array.from(await remoteBytes(world, remoteObjectId))),
+    decoder.decode(
+      Uint8Array.from(
+        await remoteBytes(world, convergedRemote.value.remoteObjectId),
+      ),
+    ),
     merged,
   );
 
