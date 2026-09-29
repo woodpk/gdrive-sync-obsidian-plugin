@@ -295,7 +295,9 @@ export function buildScenarioEvidence(
     verdict: {
       status: execution.status,
       ...(execution.classification === undefined ? {} : { classification: execution.classification }),
-      ...(execution.reason === undefined ? {} : { reason: execution.reason }),
+      ...(execution.status === "completed" || execution.classification === undefined
+        ? {}
+        : { reason: execution.classification }),
     },
   };
   const machineJson = JSON.stringify(machine);
