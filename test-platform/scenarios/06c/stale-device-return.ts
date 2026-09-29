@@ -1,0 +1,32 @@
+import { defineScenario } from "../../src/scenario/scenario-contract";
+
+export const staleDeviceReturnScenario = defineScenario({
+  id: "s06c-stale-device-return",
+  description: "A device returning with an older trusted BASE and retained LOCAL copy after another device deletes shared content reconciles current REMOTE absence as LOCAL trash rather than resurrecting the stale copy.",
+  traceability: { targets: [
+    { kind: "requirement", id: "STATE-005" },
+    { kind: "requirement", id: "STATE-006" },
+    { kind: "requirement", id: "STATE-007" },
+    { kind: "requirement", id: "DELETE-001" },
+    { kind: "requirement", id: "PLAN-002" },
+    { kind: "requirement", id: "PLAN-008" },
+    { kind: "invariant", id: "INV-016" },
+  ] },
+  executionModes: ["deterministic"],
+  steps: [
+    { id: "seed-device-a", kind: "fixture", operation: "put-local-file", device: "device-a", path: "stale-return.bin", content: { encoding: "bytes", value: [21, 22, 23] } },
+    { id: "establish-device-a-base", kind: "production", device: "device-a", operation: "synchronize" },
+    { id: "establish-device-b-base", kind: "production", device: "device-b", operation: "synchronize" },
+    { id: "delete-on-device-b", kind: "fixture", operation: "remove-local", device: "device-b", path: "stale-return.bin" },
+    { id: "propagate-delete-from-b", kind: "production", device: "device-b", operation: "synchronize" },
+    { id: "age-device-a", kind: "external-state", transition: "advance-device-time", device: "device-a", deltaMs: 2678400000 },
+    { id: "preview-returning-device", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
+    { id: "observe-plan", kind: "observe", subject: "production-plan", inputRef: "plan", captureAs: "plan-view" },
+    { id: "assert-no-resurrection", kind: "assert", assertion: "contains", observationRef: "plan-view", field: "operationKinds", expected: "trash-local" },
+    { id: "execute-reconciliation", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan" },
+    { id: "observe-local", kind: "observe", subject: "local-entry", device: "device-a", path: "stale-return.bin", captureAs: "local-after" },
+    { id: "assert-local-removed", kind: "assert", assertion: "exists", observationRef: "local-after", expected: false },
+    { id: "observe-remote", kind: "observe", subject: "remote-entry", path: "stale-return.bin", captureAs: "remote-after" },
+    { id: "assert-remote-stays-deleted", kind: "assert", assertion: "exists", observationRef: "remote-after", expected: false },
+  ],
+});
