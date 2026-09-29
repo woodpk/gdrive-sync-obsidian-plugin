@@ -6,6 +6,7 @@ export const cleanTextMergeScenario = defineScenario({
   traceability: { targets: [
     { kind: "requirement", id: "CONFLICT-001" },
     { kind: "requirement", id: "CONFLICT-002" },
+    { kind: "requirement", id: "PLAN-001" },
     { kind: "requirement", id: "PLAN-002" },
     { kind: "requirement", id: "PLAN-003" },
     { kind: "requirement", id: "CHANGE-002" },
