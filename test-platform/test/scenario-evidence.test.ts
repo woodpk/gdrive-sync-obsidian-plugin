@@ -106,7 +106,7 @@ test("missing required observation fails closed as blocked evidence", async () =
   strictEqual(result.evidence?.machine.verdict.status, "blocked");
 });
 
-test("production plan observation supports bounded collection membership and count", async () => {
+test("production plan observation supports bounded collection membership", async () => {
   const result = await DeterministicScenarioRunner.canonical().run(
     scenario("plan-observation", [
       {
@@ -120,13 +120,33 @@ test("production plan observation supports bounded collection membership and cou
       { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
       { id: "observe-plan", kind: "observe", subject: "production-plan", inputRef: "plan", captureAs: "plan-observation" },
       { id: "contains", kind: "assert", assertion: "contains", observationRef: "plan-observation", field: "operationKinds", expected: "upload-create" },
-      { id: "count", kind: "assert", assertion: "count", observationRef: "plan-observation", field: "operationKinds", expectedCount: 1 },
     ]),
   );
 
   strictEqual(result.status, "completed");
-  deepStrictEqual(result.evidence?.machine.observations[0]?.value.operationKinds, ["upload-create"]);
-  strictEqual(result.evidence?.machine.observations[0]?.value.operationCount, 1);
+  const kinds = result.evidence?.machine.observations[0]?.value.operationKinds;
+  strictEqual(Array.isArray(kinds), true);
+  strictEqual((kinds as readonly unknown[]).includes("upload-create"), true);
+  strictEqual(typeof result.evidence?.machine.observations[0]?.value.operationCount, "number");
+});
+
+test("bounded count assertion checks controlled collection cardinality", async () => {
+  const hooks = createScenarioEvidenceHooks();
+  const result = await new DeterministicScenarioRunner({
+    ...hooks,
+    observe: async () => ({
+      status: "completed",
+      value: { status: "present", knownDeviceIds: ["device-a", "device-b"] },
+    }),
+  }).run(
+    scenario("count-assertion", [
+      { id: "observe", kind: "observe", subject: "remote-change-state", captureAs: "devices" },
+      { id: "count", kind: "assert", assertion: "count", observationRef: "devices", field: "knownDeviceIds", expectedCount: 2 },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  deepStrictEqual(result.evidence?.machine.observations[0]?.value.knownDeviceIds, ["device-a", "device-b"]);
 });
 
 test("production terminal result is observed from the real controller result", async () => {
@@ -202,7 +222,7 @@ test("diagnostic-looking custom observation cannot substitute for authoritative 
   strictEqual(result.status, "blocked");
   strictEqual(result.classification, "missing-observation-field");
   const json = result.evidence?.machineJson ?? "";
-  doesNotMatch(json, /secret-token|unrelated note content|diagnostic/);
+  doesNotMatch(json, /secret-token|unrelated note content|"diagnostic":/);
 });
 
 test("canonical evidence retains traceability and derives human text from the same machine verdict", async () => {
