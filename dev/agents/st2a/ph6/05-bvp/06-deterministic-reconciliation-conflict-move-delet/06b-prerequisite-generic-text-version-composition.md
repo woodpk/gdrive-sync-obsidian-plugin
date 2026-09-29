@@ -2,9 +2,32 @@
 
 ## Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Predecessor:** accepted S06A closure `109a4ac26309ccd5c22de6eb70420af410c2a8d8`
 **Branch:** `bvp-s06b-prereq-text-version-composition`
+
+## Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- accepted S06A predecessor / PHX-CI base: `109a4ac26309ccd5c22de6eb70420af410c2a8d8`;
+- accepted prerequisite implementation SHA: `194f00c012c09811e595a5aacbe1f112a7709df1`;
+- authoritative PHX-CI evidence SHA: `595483b2b459f89c05948d0b8e0a9b78bfaa0f1a`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused virtual-world production canaries: PASS, 9/9;
+- integrated BVP tests: PASS, 177/177;
+- full repository verification: PASS;
+- PHX-CI overall: PASS / compatibility COMPLETE;
+- architecture guard: PASS;
+- framework core: 3,827 / 4,000 logical TypeScript LOC;
+- production seam: 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 9 scenarios / 208 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- production artifact: unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted production-parity composition now supplies one device-local `ProductTextVersionStore` to both the production conflict resolver and production executor, with persistence retained across virtual runtime reconstruction. The final regression verifies clean three-way merge convergence through the immutable-candidate REMOTE update protocol, including retirement of the predecessor object and promotion of the merged candidate.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## Objective
 
