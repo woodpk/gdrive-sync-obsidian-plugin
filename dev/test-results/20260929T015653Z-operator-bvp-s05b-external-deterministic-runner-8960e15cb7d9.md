@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s05b-external-deterministic-runner
+- Source build HEAD requested: 8960e15cb7d9d569e28aed8b0ec05402a57f2a5a
+- Verification checkout HEAD: 8960e15cb7d9d569e28aed8b0ec05402a57f2a5a
+- Evidence publication target: origin/bvp-s05b-external-deterministic-runner
