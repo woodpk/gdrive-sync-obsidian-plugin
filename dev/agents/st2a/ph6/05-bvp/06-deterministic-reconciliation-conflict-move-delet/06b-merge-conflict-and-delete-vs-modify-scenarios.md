@@ -2,10 +2,10 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor:** accepted S06A
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
+**Predecessor:** accepted S06B generic text-version prerequisite closure `4ee5aaeebb89b4531831450ad016e93c0b4f334d`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -29,17 +29,25 @@ Each scenario proves the current product target requirement and preservation/saf
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S06B execution binding is:
 
-- exact accepted S06A predecessor SHA;
-- task branch;
-- current requirement IDs/target clauses for merge/conflict/delete-vs-modify;
-- exact scenario/fixture/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- current architecture metrics baseline.
+- accepted S06A closure before the generic text-version prerequisite: `109a4ac26309ccd5c22de6eb70420af410c2a8d8`;
+- accepted generic text-version prerequisite closure / PHX-CI base: `4ee5aaeebb89b4531831450ad016e93c0b4f334d`;
+- accepted prerequisite implementation/evidence: `194f00c012c09811e595a5aacbe1f112a7709df1` / `595483b2b459f89c05948d0b8e0a9b78bfaa0f1a`;
+- task branch: `bvp-s06b-merge-conflict-delete-modify`;
+- frozen scenario catalog root: `test-platform/scenarios/`;
+- new scenario paths: `test-platform/scenarios/06b/clean-text-merge.ts`, `true-text-conflict.ts`, `binary-conflict.ts`, `local-delete-remote-modify.ts`, and `remote-delete-local-modify.ts`;
+- focused test path: `test-platform/test/s06b-merge-conflict-delete-modify.test.ts`;
+- writable allowlist: exactly those five scenario files plus that focused test file;
+- target requirements: `CONFLICT-001`–`CONFLICT-009`, `PLAN-001`–`PLAN-004`, `CHANGE-001`, `CHANGE-002`, and `XFER-003`; invariants `INV-005`–`INV-008`; conflict contract §6.5; required conflict/deletion responses in §9; reconciliation evidence cases in §13.2;
+- focused command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06b-merge-conflict-delete-modify.test.js`;
+- full BVP command: `npm run test:bvp-root`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; change class: `ordinary`;
+- accepted architecture baseline after the prerequisite: framework core 3,827/4,000; production seam 113 LOC/1 file; scenarios 9/208 LOC; live-device 0; scenario-specific production 0; scenario-specific PowerShell 0; BVP PowerShell 4 scripts/1,477 LOC;
+- required S06B framework-core delta: 0; required production-seam delta: 0; required PowerShell delta: 0; each scenario targets ≤120 logical lines and must remain ≤200;
+- no `test-platform/src/**`, production, PowerShell, governance, PHX-CI, or architecture-metrics implementation changes are authorized.
 
-No core change is authorized.
+The accepted prerequisite is frozen and consumed as existing infrastructure. No core change is authorized.
 
 ## 4. Required Semantics
 
