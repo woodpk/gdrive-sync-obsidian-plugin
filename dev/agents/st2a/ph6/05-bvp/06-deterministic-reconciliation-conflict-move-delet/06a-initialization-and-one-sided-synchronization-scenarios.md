@@ -3,13 +3,39 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted BVP-S05 primary-stage gate
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S06A is complete and accepted.
+
+- accepted S05 predecessor / PHX-CI base: `0a57e8cbf96b7512b0157886cc78bad260561448`;
+- accepted S06A implementation SHA: `926bc1c7afefeab72cc03ec9b689e32a082b898f`;
+- authoritative PHX-CI evidence SHA: `d0439e929a28238bf96f9f35cbda0e5297b48c02`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06A scenario tests: PASS, 9/9;
+- integrated BVP tests: PASS, 176/176;
+- full repository verification: PASS;
+- PHX-CI overall: PASS / compatibility COMPLETE;
+- framework core: 3,813 / 4,000 logical TypeScript LOC, delta 0;
+- scenario catalog: 9 scenarios / 208 logical LOC total;
+- S06A scenario logical LOC: 25, 21, 25, 25, 22, 22, and 22;
+- scenario-specific production source: 0;
+- scenario-specific PowerShell: 0;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- production seam unchanged at 112 logical LOC / 1 file.
+
+Accepted coverage proves fresh local-only upload/create, fresh remote-only download/create, identical first-sync no-op/base establishment, divergent no-base conflict preservation, established-base local-only upload/update, established-base remote-only download/update, and established equal no-op. Deliberately wrong expectation fails deterministically and a missing observation cannot PASS.
+
+The S05 common scenario platform remained frozen. S06A added only seven declarative scenario definitions plus one focused test file.
+
+This file is now a historical completion record and authorizes no further S06A implementation work.
 
 ## 1. Objective
 
