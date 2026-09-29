@@ -3,13 +3,48 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05E is complete and accepted.
+
+- accepted S05D predecessor / PHX-CI base: `a990838016fc13d83e8a853c301a41b49fdc334c`;
+- accepted implementation / verification HEAD: `8f2740469060d9b000cf8489ffaff68ac541fb00`;
+- authoritative PHX-CI evidence SHA: `aa88c5e6a84f739ffe99e42a1eb1cab601f82106`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused architecture-metrics regression verification: PASS, 37/37;
+- focused S05E canaries: PASS, 3/3;
+- integrated BVP tests: PASS, 167/167;
+- full repository verification: PASS;
+- architecture guard / metrics: PASS;
+- framework core: 3,813 / 4,000 logical TypeScript LOC, delta 0 for S05E;
+- scenario catalog: 2 scenarios / 46 logical LOC total;
+- `multi-device-conflict`: 24 logical LOC;
+- `ordinary-one-sided-sync`: 22 logical LOC;
+- scenario-specific PowerShell: 0;
+- scenario-specific production source: 0;
+- production seam: 112 logical LOC / 1 file;
+- production artifact unchanged.
+
+Canary requirement mapping and result:
+
+- `multi-device-conflict` traces to `CONFLICT-001`, `CONFLICT-003`, and `PLAN-003`; it establishes a shared base through real production synchronization, creates divergent independent text edits on two devices, and objectively observes an `unresolved-conflict` plan through the canonical S05C evidence path;
+- the deliberately inverted expectation fails deterministically with `assertion-mismatch`, proving that diagnostics or mere command completion cannot manufacture PASS;
+- `ordinary-one-sided-sync` traces to `SYNC-013` and `PLAN-003`; it synchronizes a local-only opaque file through the shared remote and into the second device through the frozen common runner/core;
+- the second-scenario commit `ed44b0f4422719f250d42bdf42b9841c6ef2837f` changes only `test-platform/scenarios/ordinary-one-sided-sync.ts`, proving zero common-core, production, PowerShell, vocabulary, assertion-engine, or virtual-world change for the second ordinary scenario.
+
+The pre-S05E architecture-metrics regression test contained a stale zero-scenario assumption. S05E corrected that test to validate structural scenario-metric consistency and the frozen scenario cost limits rather than hard-code an empty catalog. This was test-governance adaptation to the intended S05E state and did not alter metric implementation or architecture budgets.
+
+No S06/S07 scenario batches, live execution, production source, core runner capability, scenario vocabulary, evidence family, or checkpoint architecture were added.
+
+This file is now a historical completion record and authorizes no further S05E implementation work.
 
 ## 1. Objective
 
