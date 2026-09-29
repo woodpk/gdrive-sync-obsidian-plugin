@@ -150,8 +150,9 @@ function validateData(value: unknown): ScenarioCheckpointResult<ScenarioCheckpoi
     return { ok: false, classification: "checkpoint-malformed" };
   }
 
+  const nextStepIndex = value.nextStepIndex as number;
   const results = value.results as ScenarioCheckpointStepResult[];
-  if (results.some((result, index) => result.index >= value.nextStepIndex || (index > 0 && result.index <= results[index - 1]!.index))) {
+  if (results.some((result, index) => result.index >= nextStepIndex || (index > 0 && result.index <= results[index - 1]!.index))) {
     return { ok: false, classification: "checkpoint-malformed" };
   }
   const devices = value.deviceIdentities as string[];
