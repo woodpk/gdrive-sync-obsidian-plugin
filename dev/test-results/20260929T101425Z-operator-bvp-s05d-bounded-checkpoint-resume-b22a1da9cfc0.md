@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s05d-bounded-checkpoint-resume
+- Source build HEAD requested: b22a1da9cfc0efd1ce61f35b2aafc173b2c88bb6
+- Verification checkout HEAD: b22a1da9cfc0efd1ce61f35b2aafc173b2c88bb6
+- Evidence publication target: origin/bvp-s05d-bounded-checkpoint-resume
