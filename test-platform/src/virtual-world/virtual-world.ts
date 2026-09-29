@@ -4,12 +4,14 @@ import {
   DeterministicSynchronizationPlanner,
   InMemoryRunLeasePort,
   MemoryAuditPersistence,
+  MemoryTextVersionPersistence,
   ProductController,
   ProductPathScope,
   ScopedLocalTransactionalMutationPort,
   ScopedLocalVault,
   ProductSnapshotAssembler,
   ProductSynchronizationExecutor,
+  ProductTextVersionStore,
   ProductionSynchronizationPlanner,
   ThreeWayConflictResolver,
   type BinaryContentSource,
@@ -790,6 +792,7 @@ export class VirtualProductionDevice {
 export class VirtualSynchronizationWorld {
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
+  private readonly textVersionPersistence = new Map<string, MemoryTextVersionPersistence>();
   readonly orderGate = new DeterministicOrderGate();
   private readonly leasePort = new InMemoryRunLeasePort();
 
@@ -876,9 +879,19 @@ export class VirtualSynchronizationWorld {
       this.drive,
       state,
     );
+    let textPersistence = this.textVersionPersistence.get(name);
+    if (!textPersistence) {
+      textPersistence = new MemoryTextVersionPersistence();
+      this.textVersionPersistence.set(name, textPersistence);
+    }
+    const textVersions = new ProductTextVersionStore(
+      textPersistence,
+      canonicalLocal,
+      this.drive,
+    );
     const conflicts = new ThreeWayConflictResolver(
-      { readText: async () => undefined },
-      undefined,
+      textVersions,
+      textVersions,
       backing.deviceIdentity,
     );
 
@@ -889,6 +902,7 @@ export class VirtualSynchronizationWorld {
       state,
       context,
       () => controller.currentRunEvidence(),
+      textVersions,
     );
     controller = new ProductController({
       vaultIdentity: this.managedRemote.vaultIdentity,
