@@ -3,13 +3,37 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05C is complete and accepted.
+
+- accepted S05B predecessor / PHX-CI base: `5a3dc0d5dacdbf6d57e8861359cf7a1aa5726a67`;
+- bound S05C HEAD: `5f1b22546ad3b6f1b71bf529d52577a087a0acdf`;
+- accepted implementation SHA: `c4e8a25c4ed685446be7facac9c8ee6f3d7cf8dc`;
+- authoritative PHX-CI evidence SHA: `99a4218f820edf4355de4cec019f2f537eddfcd1`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S05C evidence tests: PASS, 9/9;
+- integrated BVP tests: PASS, 156/156;
+- full repository tests: PASS, 822/822;
+- architecture guard and metrics: PASS;
+- framework-core delta: +319 logical TypeScript LOC, 3,594 / 4,000 current;
+- production source/seam delta: 0;
+- live-device/scenario-instance/scenario-specific production/PowerShell delta: 0;
+- production artifact unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted S05C surface provides objective local/remote/device/production observations, bounded equality/status/existence/field/membership/count assertions, canonical machine-readable evidence, human rendering derived from the same machine verdict, deterministic serialization, requirement/invariant traceability, and privacy-safe evidence canonicalization. Missing observations/fields fail closed, one failing assertion prevents overall PASS, diagnostic-looking custom data cannot substitute for authoritative observation fields, and raw note content/token-like fields are excluded from canonical evidence.
+
+No production seam, synchronization policy, checkpoint persistence, live-device transport, plugin/router, scenario catalog, or scenario-specific production behavior was added.
+
+This file is now a historical completion record and authorizes no further S05C implementation work.
 
 ## 1. Objective
 
