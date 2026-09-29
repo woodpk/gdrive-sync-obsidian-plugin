@@ -26,7 +26,7 @@ for (const scenario of scenarios) {
     const result = await DeterministicScenarioRunner.canonical().run(scenario);
     strictEqual(result.status, "completed");
     strictEqual(result.evidence?.machine.verdict.status, "completed");
-    strictEqual(result.evidence?.machine.traceability.length > 0, true);
+    strictEqual((result.evidence?.machine.traceability.length ?? 0) > 0, true);
   });
 }
 
