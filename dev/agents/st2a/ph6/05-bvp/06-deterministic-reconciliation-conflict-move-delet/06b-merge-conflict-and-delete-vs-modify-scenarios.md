@@ -11,6 +11,16 @@ Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
+## 0.1 Resolved Prerequisite Record
+
+The original S06B dispatch was correctly blocked at commit `c222d86222e4b60d13d478d261355bb9ffce80b9` because the accepted virtual-world composition did not materialize recognized text through the production `ProductTextVersionStore`. That blocker has been resolved by the accepted generic production-parity prerequisite:
+
+- prerequisite implementation: `194f00c012c09811e595a5aacbe1f112a7709df1`;
+- authoritative prerequisite evidence: `595483b2b459f89c05948d0b8e0a9b78bfaa0f1a`;
+- accepted prerequisite closure: `4ee5aaeebb89b4531831450ad016e93c0b4f334d`.
+
+S06B is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by this scenario-only child.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for concurrent text merge/conflict, binary conflict, and delete-vs-modify preservation semantics using the frozen S04/S05 core.
