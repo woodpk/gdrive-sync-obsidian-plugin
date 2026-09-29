@@ -151,6 +151,53 @@ test("traceability and execution applicability are mandatory and fail closed", (
   );
 });
 
+test("generic local-access and deterministic-time controls validate narrowly", () => {
+  const valid = validateScenarioDefinition({
+    ...representative,
+    id: "generic-external-controls",
+    steps: [
+      {
+        id: "local-access",
+        kind: "external-state",
+        transition: "set-local-access",
+        device: "device-a",
+        path: "note.md",
+        state: "unreadable",
+      },
+      {
+        id: "advance-time",
+        kind: "external-state",
+        transition: "advance-device-time",
+        device: "device-a",
+        deltaMs: 60000,
+      },
+    ],
+  });
+  strictEqual(valid.ok, true);
+
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "set-local-access", device: "device-a", path: "note.md", state: "blocked" }],
+    },
+    /state is invalid/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "advance-device-time", device: "device-a", deltaMs: -1 }],
+    },
+    /deltaMs must be finite and non-negative/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "external-state", transition: "advance-device-time", device: "device-a", deltaMs: 1, arbitrary: true }],
+    },
+    /unsupported field 'arbitrary'/,
+  );
+});
+
 test("each capability family requires its essential fields", () => {
   assertInvalid(
     {
