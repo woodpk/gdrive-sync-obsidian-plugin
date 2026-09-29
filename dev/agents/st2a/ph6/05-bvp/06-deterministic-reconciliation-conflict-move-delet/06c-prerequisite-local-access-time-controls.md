@@ -2,10 +2,35 @@
 
 ## Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Predecessor:** accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`
 **Architecture review:** BVP-GOV-008 PASS recorded on `phase6-integration` before dispatch
 **Branch:** `bvp-s06c-prereq-local-access-time-controls`
+
+## Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- accepted S06B closure / PHX-CI base: `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`;
+- accepted prerequisite implementation SHA: `72a4e79ea69f0f0dad062cc7128115e6e3c22ce1`;
+- authoritative PHX-CI evidence SHA: `5ce98f0a1a132b3ef57491f1a2f9d987ed3b639a`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused prerequisite verification: PASS, 19/19;
+- integrated BVP verification: PASS, 187/187;
+- full repository verification: PASS;
+- PHX-CI overall: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,841 / 4,000 logical TypeScript LOC (+14);
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 14 scenarios / 351 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted prerequisite extends only the existing declarative `external-state` family with generic `set-local-access` and `advance-device-time` controls backed by already-existing virtual-world capabilities. No new runner, persistence system, evidence family, production seam, synchronization policy, or architecture family was introduced.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## Objective
 
