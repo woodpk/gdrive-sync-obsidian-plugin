@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s05v-primary-stage-acceptance
+- Source build HEAD requested: 70e2db458efb84933d52c5e5bbb624420d6a2eea
+- Verification checkout HEAD: 70e2db458efb84933d52c5e5bbb624420d6a2eea
+- Evidence publication target: origin/bvp-s05v-primary-stage-acceptance
