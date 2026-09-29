@@ -23,5 +23,7 @@ export const trueTextConflictScenario = defineScenario({
     { id: "assert-local-preserved", kind: "assert", assertion: "field-equals", observationRef: "local-version", field: "hash", expected: "sha256:a018ca0660b8e335b66769aae9a78f9e1047e5aa3c9cc79534a3a7a589d571f0" },
     { id: "observe-remote", kind: "observe", subject: "remote-entry", path: "true-conflict.md", captureAs: "remote-version" },
     { id: "assert-remote-preserved", kind: "assert", assertion: "field-equals", observationRef: "remote-version", field: "hash", expected: "sha256:93f93626aab55601bc843d9a4d4842ec8a868bc6408fcac7a939168ab1bbae88" },
+    { id: "observe-state", kind: "observe", subject: "device-state", device: "device-a", captureAs: "state-after" },
+    { id: "assert-trusted-base-retained", kind: "assert", assertion: "field-equals", observationRef: "state-after", field: "baseCount", expected: 1 },
   ],
 });
