@@ -115,11 +115,11 @@ export class DeterministicScenarioRunner {
   ): Promise<StepOutcome> {
     try {
       switch (step.kind) {
-        case "fixture": return this.fixture(step, context.world);
-        case "production": return this.production(step, context, captures);
-        case "external-state": return this.external(step, context);
+        case "fixture": return await this.fixture(step, context.world);
+        case "production": return await this.production(step, context, captures);
+        case "external-state": return await this.external(step, context);
         case "checkpoint":
-          if (this.hooks.checkpoint) return this.hooks.checkpoint(step, context);
+          if (this.hooks.checkpoint) return await this.hooks.checkpoint(step, context);
           if (step.operation !== "restart-device" || step.checkpointRef) return fail("blocked", "checkpoint-capability-unavailable");
           if (devices.has(step.device)) await devices.get(step.device)!.dispose();
           devices.delete(step.device); await context.device(step.device);
@@ -131,7 +131,7 @@ export class DeterministicScenarioRunner {
           return result;
         }
         case "assert":
-          return this.hooks.assert ? this.hooks.assert(step, context) : fail("blocked", "assertion-capability-unavailable");
+          return this.hooks.assert ? await this.hooks.assert(step, context) : fail("blocked", "assertion-capability-unavailable");
         default: return assertNeverScenarioStep(step);
       }
     } catch (error) {
