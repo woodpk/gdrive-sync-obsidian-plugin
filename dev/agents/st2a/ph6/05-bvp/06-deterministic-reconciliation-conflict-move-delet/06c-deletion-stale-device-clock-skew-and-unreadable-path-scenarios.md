@@ -2,9 +2,9 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
-**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY
+**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted S06B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
