@@ -57,7 +57,8 @@ export type ScenarioObservationStep = Step<
 export type ScenarioLiteral = string | number | boolean | null | readonly string[] | readonly number[];
 export type ScenarioObservationField =
   | "status" | "hash" | "sizeBytes" | "remoteObjectId" | "revision" | "entityKind"
-  | "stateRevision" | "changeCursor" | "operationKinds" | "knownDeviceIds";
+  | "stateRevision" | "changeCursor" | "operationKinds" | "knownDeviceIds"
+  | "operationCount" | "baseCount" | "mappingCount" | "tombstoneCount";
 export type ScenarioAssertionStep = Step<
   | { readonly kind: "assert"; readonly assertion: "equals" | "not-equals"; readonly observationRef: string; readonly expected: ScenarioLiteral }
   | { readonly kind: "assert"; readonly assertion: "status"; readonly observationRef: string; readonly expectedStatus: string }
