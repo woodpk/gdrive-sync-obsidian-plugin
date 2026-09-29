@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06b-prereq-text-version-composition
+- Source build HEAD requested: 194f00c012c09811e595a5aacbe1f112a7709df1
+- Verification checkout HEAD: 194f00c012c09811e595a5aacbe1f112a7709df1
+- Evidence publication target: origin/bvp-s06b-prereq-text-version-composition
