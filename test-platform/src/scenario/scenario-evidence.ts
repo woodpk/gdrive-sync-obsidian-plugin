@@ -95,6 +95,16 @@ function safeObservation(value: unknown): Readonly<Record<string, SafeValue>> {
   return result;
 }
 
+async function streamedContentIdentity(source: { openChunks(): AsyncIterable<Uint8Array> }): Promise<{ hash: string; sizeBytes: number }> {
+  const hash = createHash("sha256");
+  let sizeBytes = 0;
+  for await (const chunk of source.openChunks()) {
+    hash.update(chunk);
+    sizeBytes += chunk.byteLength;
+  }
+  return { hash: `sha256:${hash.digest("hex")}`, sizeBytes };
+}
+
 function contentIdentity(content: ScenarioFixtureContent): { hash: string; sizeBytes: number } {
   const bytes = content.encoding === "utf8"
     ? new TextEncoder().encode(content.value)
@@ -190,9 +200,17 @@ async function observe(step: ScenarioObservationStep, context: ScenarioRunnerHoo
     };
     if (observed.status === "present") {
       value.entityKind = observed.entityKind;
-      if (observed.content?.hash !== undefined) value.hash = String(observed.content.hash);
       if (observed.content?.sizeBytes !== undefined) value.sizeBytes = observed.content.sizeBytes;
       if (observed.content?.revision !== undefined) value.revision = observed.content.revision;
+      if (observed.entityKind === "file" && observed.stability === "stable") {
+        const read = await context.world.deviceBacking(step.device).local.readFile(
+          virtualVaultPath(step.path),
+          observed.observationToken,
+        );
+        const identity = await streamedContentIdentity(read.content);
+        value.hash = identity.hash;
+        value.sizeBytes = identity.sizeBytes;
+      }
     } else if ("reason" in observed) value.reason = observed.reason;
     return { status: "completed", value };
   }
