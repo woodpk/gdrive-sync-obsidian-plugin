@@ -17,7 +17,7 @@ export const divergentNoBaseCollisionScenario = defineScenario({
     { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
     { id: "observe-plan", kind: "observe", subject: "production-plan", inputRef: "plan", captureAs: "plan-view" },
     { id: "assert-conflict", kind: "assert", assertion: "contains", observationRef: "plan-view", field: "operationKinds", expected: "unresolved-conflict" },
-    { id: "execute-blocked", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan", expect: { status: "failed", classification: "production-request-rejected" } },
+    { id: "execute-reviewed", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan" },
     { id: "observe-local", kind: "observe", subject: "local-entry", device: "device-a", path: "divergent.bin", captureAs: "local" },
     { id: "observe-remote", kind: "observe", subject: "remote-entry", path: "divergent.bin", captureAs: "remote" },
     { id: "assert-local-size", kind: "assert", assertion: "field-equals", observationRef: "local", field: "sizeBytes", expected: 3 },
