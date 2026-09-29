@@ -133,6 +133,23 @@ S06B generic text-version composition prerequisite is **COMPLETE / ACCEPTED**. A
 
 S06B is **COMPLETE / ACCEPTED**. Accepted implementation `e0cb7ed020c97287cec53508092d91993c853ac3` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `c1754311f999229b0fd53f89d3394f456ae6aedd`. Focused S06B verification passed 8/8, integrated BVP verification passed 185/185, full repository verification passed, architecture guard/metrics passed, framework core remained 3,827/4,000, production seam remained 113 LOC/1 file, and the scenario catalog reached 14 scenarios / 351 logical LOC. S06B added exactly five declarative scenarios with no production, framework-core, scenario-specific production, or PowerShell delta.
 
+### Recurring Architecture Review — after S06A / S06B
+
+BVP-GOV-008 repository-level architecture review completed against accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`: **PASS**.
+
+- dependency direction remains one-way from `test-platform/**` into the single approved production seam; production imports no BVP/test-platform runtime;
+- the only approved production seam remains `src/product/local-vault-boundary-seam.ts`, at 113 logical LOC / 1 file versus limits of 350 LOC / 4 files;
+- framework core remains 3,827 logical TypeScript LOC / 10 runtime modules versus the 4,000-LOC budget;
+- S06A/S06B added declarative scenario coverage only after the accepted generic text-version composition prerequisite; no second runner, persistence subsystem, coordination protocol, evidence family, module/plugin router, alternate synchronization engine, or production testing bypass exists;
+- live-device/scenario-specific production surfaces remain 0;
+- BVP PowerShell remains 4 scripts / 1,477 logical LOC, within the frozen 4-script / 1,500-LOC limits;
+- scenario catalog is 14 scenarios / 351 logical LOC; all ordinary scenarios remain below the 200-line hard maximum;
+- production build entrypoint remains unchanged and `test-platform/**` remains excluded from the shipping bundle;
+- authoritative S06B evidence `c1754311f999229b0fd53f89d3394f456ae6aedd` records architecture guard PASS with 0 violations and metrics PASS;
+- accepted production artifact remains unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The review authorizes continued S06 work under the existing frozen architecture and budgets. It authorizes no budget increase or new architecture family. Repository grounding for S06C identified a bounded missing generic DSL exposure: existing local access-state and deterministic device-clock controls are not currently expressible through the frozen declarative `external-state` step family. S06C remains scenario-only and must not absorb that core change.
+
 Current execution mode is direct implementation by ChatGPT rather than a separate supervisor-to-coding-agent handoff loop. The prewritten child-session files remain authoritative technical implementation contracts for scope, semantics, invariants, dependencies, acceptance criteria, and non-goals. Prompt-building and intermediate coding-agent review are not separate execution steps in this mode; formal independent code review is deferred to the later review/validation stage. Where older contracts use `supervisor` and `worker` terminology, those names continue to define responsibility boundaries but do not require separate agents.
 
 ## 4. Sequencing Rule
