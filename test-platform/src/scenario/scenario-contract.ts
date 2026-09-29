@@ -146,7 +146,10 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   if (step.kind === "external-state" && step.transition === "set-device-connectivity" && step.state !== "online" && step.state !== "offline") issues.push(`${at}.state is invalid`);
   if (step.kind === "external-state" && step.transition === "inject-remote-mutation-fault" && (!["create", "update", "move", "trash"].includes(String(step.operation)) || !["not-applied", "applied-before-failure"].includes(String(step.effect)))) issues.push(`${at} remote mutation fault is invalid`);
   if (step.kind === "assert" && step.assertion === "exists" && typeof step.expected !== "boolean") issues.push(`${at}.expected must be boolean`);
-  if (step.kind === "assert" && step.assertion === "count" && (!Number.isInteger(step.expectedCount) || step.expectedCount < 0)) issues.push(`${at}.expectedCount must be a non-negative integer`);
+  if (step.kind === "assert" && step.assertion === "count") {
+    const expectedCount = step.expectedCount;
+    if (typeof expectedCount !== "number" || !Number.isInteger(expectedCount) || expectedCount < 0) issues.push(`${at}.expectedCount must be a non-negative integer`);
+  }
   if (!jsonSafe(step)) issues.push(`${at} must contain JSON-safe declarative data only`);
 }
 
