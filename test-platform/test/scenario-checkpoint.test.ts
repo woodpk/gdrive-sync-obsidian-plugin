@@ -209,7 +209,7 @@ test("in-memory store persists encoded checkpoints without becoming runtime auth
 });
 
 test("restoring and validating a checkpoint cannot mutate product state by itself", async () => {
-  const world = await VirtualSynchronizationWorld.create(["device-a"]);
+  const world = await VirtualSynchronizationWorld.create(["device-a", "device-b"]);
   const path = virtualVaultPath("sentinel.bin");
   await world.deviceBacking("device-a").local.replaceFile(path, {
     sizeBytes: 3,
