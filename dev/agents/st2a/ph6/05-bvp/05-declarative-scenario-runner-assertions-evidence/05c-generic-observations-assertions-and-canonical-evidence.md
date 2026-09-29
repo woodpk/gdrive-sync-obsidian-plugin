@@ -2,9 +2,9 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence  
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
 **Predecessor:** accepted S05B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
@@ -44,16 +44,36 @@ Every scenario execution produces:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S05C contract is bound to the accepted S05B/S05A/S04 repository state as follows:
 
-- exact accepted S05B predecessor SHA;
-- task branch;
-- actual S05 runner/result interfaces;
-- actual S04/production observation surfaces;
-- exact observation/assertion/evidence paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- size-gate confirmation.
+- exact accepted S05B predecessor / PHX-CI base: `5a3dc0d5dacdbf6d57e8861359cf7a1aa5726a67`;
+- exact task branch: `bvp-s05c-observations-assertions-evidence`;
+- accepted runner: `DeterministicScenarioRunner`;
+- accepted runner result surfaces: `ScenarioExecutionResult`, `ScenarioStepExecution`, and `ScenarioCapabilityResult`;
+- accepted hook surfaces: `ScenarioRunnerHooks` and `ScenarioRunnerHookContext`;
+- accepted capture access: `ScenarioRunnerHookContext.readCapture(ref)`;
+- accepted device access: `ScenarioRunnerHookContext.device(name)` returning `VirtualProductionDevice`;
+- accepted local authoritative observation surfaces: per-device `InMemoryLocalVault.observe(path)` and `readFile(path, expectedToken?)`;
+- accepted remote authoritative observation surfaces: shared `InMemoryGoogleDriveCore.observe(rootId, path)`, `download(remoteObjectId)`, `inspectObjectsAtPath(rootId, path)`, change-feed/listing state, and managed-root identity;
+- accepted durable-state observation surfaces: `VirtualDeviceBacking.load()` and `loadAuthority()`;
+- accepted production plan/result authority: runner captures originating from real `ProductController` preview/execute/reconcile requests;
+- diagnostics remain corroborative only and may not produce PASS without authoritative observation;
+- canonical observation/assertion/evidence implementation path: `test-platform/src/scenario/scenario-evidence.ts`;
+- focused test path: `test-platform/test/scenario-evidence.test.ts`;
+- bounded existing-vocabulary extension path: `test-platform/src/scenario/scenario-contract.ts`; only assertion capabilities required by this S05C contract may be added; no new step family is authorized;
+- bounded runner integration path: `test-platform/src/scenario/scenario-runner.ts`; changes are limited to wiring generic observation/assertion/evidence behavior and canonical result production; runner sequencing architecture may not be redesigned;
+- exact S05C implementation-writable allowlist: `test-platform/src/scenario/scenario-contract.ts`, `test-platform/src/scenario/scenario-runner.ts`, `test-platform/src/scenario/scenario-evidence.ts`, and `test-platform/test/scenario-evidence.test.ts` only;
+- no production, production-seam, governance, PowerShell, checkpoint-persistence, live-device, plugin/router, or scenario-catalog changes are authorized;
+- canonical evidence is test evidence only and must never become synchronization authority;
+- machine-readable canonical evidence is authoritative for the human rendering; the human rendering may not independently determine verdict;
+- evidence must exclude OAuth secrets, auth codes, access/refresh tokens, unrelated note contents, and unrelated user data by construction;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- focused S05C command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-evidence.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- current accepted framework core is 3,275 / 4,000 logical TypeScript LOC, leaving 725 LOC of hard-budget headroom before S05C;
+- S05C must preserve sufficient framework-core headroom for S05D; implementation should favor one compact canonical evidence family rather than separate parallel subsystems;
+- BVP-GOV-010 size gate: PASS — one bounded existing scenario-platform family is extended with one canonical evidence/observation/assertion implementation, bounded runner/contract integration, and one focused test file; four implementation paths total and no dependency addition.
 
 No binding may make diagnostics the success protocol or invent a second product authority.
 
