@@ -2,9 +2,9 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
-**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted BVP-S05 primary-stage gate
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
@@ -34,16 +34,21 @@ Each scenario maps to the current product target requirement(s)/invariant(s) it 
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S06A execution binding is:
 
-- exact accepted S05 predecessor SHA;
-- exact task branch;
-- current scenario/fixture catalog paths;
-- exact current production requirement IDs and target-spec clauses for this coverage family;
-- exact writable-path allowlist limited by the scenario-only default;
-- PHX-CI base/pin/runtime;
-- focused scenario command if established;
-- current architecture metrics baseline.
+- accepted S05 predecessor / PHX-CI base: `0a57e8cbf96b7512b0157886cc78bad260561448`;
+- task branch: `bvp-s06a-initialization-one-sided`;
+- frozen scenario catalog root: `test-platform/scenarios/`;
+- new scenario paths: `test-platform/scenarios/06a/fresh-local-only.ts`, `fresh-remote-only.ts`, `fresh-equal-collision.ts`, `divergent-no-base-collision.ts`, `established-local-only-modification.ts`, `established-remote-only-modification.ts`, and `established-equal-no-op.ts` under that `06a/` directory;
+- focused test path: `test-platform/test/s06a-initialization-one-sided.test.ts`;
+- writable allowlist: exactly those seven scenario files plus that focused test file;
+- target requirements: `FIRST-001`–`FIRST-005`, `PLAN-001`–`PLAN-003`, `CHANGE-001`, `CHANGE-002`, `STATE-001`, and `SYNC-013`; observable workflows §4.1, §4.3, §4.4; reconciliation evidence cases in §13.2;
+- focused command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06a-initialization-one-sided.test.js`;
+- full BVP command: `npm run test:bvp-root`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; change class: `ordinary`;
+- accepted architecture baseline: framework core 3,813/4,000; production seam 112 LOC/1 file; scenarios 2/46 LOC; live-device 0; scenario-specific production 0; scenario-specific PowerShell 0; BVP PowerShell 4 scripts/1,477 LOC;
+- required S06A framework-core delta: 0; each scenario targets ≤120 logical lines and must remain ≤200;
+- no `test-platform/src/**`, production, PowerShell, governance, PHX-CI, or architecture-metrics implementation changes are authorized.
 
 Binding may not add platform-core work to this child.
 
