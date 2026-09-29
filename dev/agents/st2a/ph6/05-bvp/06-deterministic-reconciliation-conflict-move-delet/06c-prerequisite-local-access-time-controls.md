@@ -2,9 +2,9 @@
 
 ## Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
-**Predecessor:** accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`  
-**Architecture review:** BVP-GOV-008 PASS recorded on `phase6-integration` before dispatch  
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Predecessor:** accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`
+**Architecture review:** BVP-GOV-008 PASS recorded on `phase6-integration` before dispatch
 **Branch:** `bvp-s06c-prereq-local-access-time-controls`
 
 ## Objective
