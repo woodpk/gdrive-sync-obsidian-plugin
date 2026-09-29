@@ -214,6 +214,9 @@ async function observe(step: ScenarioObservationStep, context: ScenarioRunnerHoo
     } else if ("reason" in observed) value.reason = observed.reason;
     return { status: "completed", value };
   }
+  if (step.subject !== "remote-entry") {
+    return { status: "unsupported", classification: "observation-subject-unsupported" };
+  }
   const observed = await context.world.drive.observe(
     context.world.managedRemote.rootId,
     virtualDrivePath(step.path),
@@ -251,7 +254,7 @@ async function assertObservation(step: ScenarioAssertionStep, context: ScenarioR
   } else if (step.assertion === "exists") {
     if (!record || typeof record.exists !== "boolean") return { status: "blocked", classification: "missing-observation-field", reason: "exists" };
     pass = record.exists === step.expected;
-  } else {
+  } else if ("field" in step) {
     if (!record || record[step.field] === undefined) return { status: "blocked", classification: "missing-observation-field", reason: step.field };
     const actual = record[step.field];
     if (step.assertion === "field-equals" || step.assertion === "field-not-equals") {
@@ -261,7 +264,7 @@ async function assertObservation(step: ScenarioAssertionStep, context: ScenarioR
       pass = Array.isArray(actual)
         ? actual.some(value => same(value, step.expected))
         : typeof actual === "string" && typeof step.expected === "string" && actual.includes(step.expected);
-    } else {
+    } else if (step.assertion === "count") {
       pass = (Array.isArray(actual) || typeof actual === "string") && actual.length === step.expectedCount;
     }
   }
