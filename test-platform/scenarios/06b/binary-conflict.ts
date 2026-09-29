@@ -6,7 +6,6 @@ export const binaryConflictScenario = defineScenario({
   traceability: { targets: [
     { kind: "requirement", id: "CONFLICT-004" },
     { kind: "requirement", id: "CONFLICT-005" },
-    { kind: "requirement", id: "CONFLICT-007" },
     { kind: "invariant", id: "INV-005" },
     { kind: "invariant", id: "INV-007" },
   ] },
