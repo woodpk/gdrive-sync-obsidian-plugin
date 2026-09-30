@@ -267,6 +267,10 @@ export class DeterministicScenarioRunner {
       context.world.armCrashBoundary(step.device, step.boundary);
       return { status: "completed" };
     }
+    if (step.transition === "inject-post-mutation-observation-failure") {
+      (await context.device(step.device)).remoteMutations.queuePostMutationObservationFailure(step.classification);
+      return { status: "completed" };
+    }
     if (step.transition !== "inject-remote-mutation-fault") {
       return fail("unsupported", "external-state-transition-unsupported");
     }
