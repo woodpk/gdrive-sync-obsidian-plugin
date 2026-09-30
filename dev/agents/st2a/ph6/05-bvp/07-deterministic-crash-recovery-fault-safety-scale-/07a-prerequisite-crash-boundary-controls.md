@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07A  
 **Predecessor:** accepted BVP-S06 stage closure `058b4ac9b0bc745f687ed1691ef79f846a790361`
 
@@ -50,6 +50,39 @@ Bounded repair:
 - no semantic, production, PowerShell, PHX-CI, persistence, or architecture change.
 
 The prerequisite remains unaccepted pending authoritative PHX-CI PASS.
+
+## 0.4 Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- prerequisite base: `56d4abdfbaf56206f58d4d86c5214d833d002480`;
+- accepted verification HEAD: `b4b3c219e40b85fa9fa6bf3123c94421fe224133`;
+- authoritative PHX-CI evidence: `2f22710e01e24f89f0e949bba22b9ef294e3b534`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused prerequisite verification: PASS, 39/39;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,944 / 4,000 logical TypeScript LOC (+80);
+- production source: unchanged at 16,534 logical LOC;
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 39 scenarios / 818 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+Accepted generic controls:
+
+- one-shot `before-remote-dispatch`;
+- one-shot `after-remote-effect`;
+- one-shot `before-canonical-state-write`;
+- one-shot `after-canonical-state-write`;
+- each control is exposed through the existing declarative `external-state` family;
+- restart continues to reconstruct fresh runtime objects over retained LOCAL/REMOTE/state reality;
+- no production fault hook or second fault framework was introduced.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## 1. Objective
 
