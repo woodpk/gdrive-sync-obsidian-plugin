@@ -6,6 +6,18 @@
 **Parent:** BVP-S07A  
 **Predecessor:** accepted BVP-S06 stage closure `058b4ac9b0bc745f687ed1691ef79f846a790361`
 
+## 0.1 Ready-for-Verification Record
+
+Implementation is complete and ready for authoritative PHX-CI.
+
+- implementation HEAD: `212a5fadc488d973558fdffcb7509abfc9673f47`;
+- PHX-CI base: `56d4abdfbaf56206f58d4d86c5214d833d002480`;
+- changed implementation paths: exactly the six writable allowlist paths;
+- production / production-seam / PowerShell / PHX-CI delta: 0;
+- expected framework-core delta: +65 logical TypeScript LOC, approximately 3,929 / 4,000;
+- exposed boundaries: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`;
+- each boundary is one-shot and retained across runtime reconstruction only as persisted/physical reality, not as an armed crash.
+
 ## 1. Objective
 
 Expose four one-shot, deterministic crash points through the existing virtual-world/scenario infrastructure so S07A can test real production crash ordering and restart recovery without changing production semantics.
