@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07A  
 **Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`  
 **Triggering S07A evidence:** `50506113f51f0aa7450d5f3550aa861b6498545c`
@@ -27,6 +27,29 @@ The corrected prerequisite implementation is complete and ready for authoritativ
 - production seam / PowerShell / PHX-CI / governance delta: 0.
 
 If PHX-CI accepts this prerequisite, BVP-GOV-008 architecture review is mandatory before S07A resumes.
+
+## 0.3 Acceptance / Closure Record
+
+This prerequisite is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `7c6b5238ea46bba74d365b7b025c4375b1b29f44`;
+- authoritative PHX-CI evidence: `32bf4a17357735673309f1465b6c657a1bf8f5d0`;
+- runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused durable-intent recovery verification: 16/16 PASS;
+- complete repository suite: 830/830 PASS;
+- build/check/repository gate/artifacts: PASS;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,970 / 4,000 logical TypeScript LOC, 10 runtime modules;
+- production source: 16,668 logical LOC;
+- approved production seam: unchanged at 113 LOC / 1 file;
+- scenario catalog: unchanged at 39 scenarios / 818 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production and PowerShell: 0;
+- production artifact: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+The repair preserves legacy positive proof for already-applied reserved file creates while requiring the new exact-ID/path recovery seam for authoritative absence / `verified-not-applied`. The frozen predecessor `src/contracts/synchronization-foundation.ts` remains byte-identical to its approved blob.
+
+BVP-GOV-008 architecture review remains mandatory before S07A scenario work resumes.
 
 ## 1. Objective
 
