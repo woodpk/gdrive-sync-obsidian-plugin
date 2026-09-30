@@ -219,6 +219,34 @@ test("generic local-access and deterministic-time controls validate narrowly", (
   );
 });
 
+test("post-mutation observation failure control validates narrowly", () => {
+  const valid = validateScenarioDefinition({
+    ...representative,
+    id: "post-mutation-observation-failure",
+    steps: [{
+      id: "fail-observation",
+      kind: "external-state",
+      transition: "inject-post-mutation-observation-failure",
+      device: "device-a",
+      classification: "simulated-post-observation-loss",
+    }],
+  });
+  strictEqual(valid.ok, true);
+
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-post-mutation-observation-failure", classification: "reason" }] },
+    /device is required/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-post-mutation-observation-failure", device: "device-a" }] },
+    /classification is required/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-post-mutation-observation-failure", device: "device-a", classification: "reason", arbitrary: true }] },
+    /unsupported field 'arbitrary'/,
+  );
+});
+
 test("generic crash-boundary controls validate narrowly", () => {
   for (const boundary of ["before-remote-dispatch", "after-remote-effect", "before-canonical-state-write", "after-canonical-state-write"] as const) {
     const valid = validateScenarioDefinition({
