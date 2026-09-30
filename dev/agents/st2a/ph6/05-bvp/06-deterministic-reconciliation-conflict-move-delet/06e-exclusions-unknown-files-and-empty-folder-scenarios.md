@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted S06E empty-folder prerequisite closure `11726f416a77582d85a1808de6642884b7b3aacd`
 
@@ -36,6 +36,31 @@ The empty-folder fixture blocker is resolved by the accepted generic prerequisit
 - accepted prerequisite closure / S06E PHX-CI base: `11726f416a77582d85a1808de6642884b7b3aacd`.
 
 The frozen fixture family now exposes existing LOCAL and REMOTE empty-folder setup. S06E is unblocked. The prerequisite is frozen infrastructure and is not writable by S06E.
+
+## 0.3 Acceptance Record
+
+S06E is complete and accepted.
+
+- accepted predecessor / PHX-CI base: `11726f416a77582d85a1808de6642884b7b3aacd`;
+- accepted implementation SHA: `18b6f82a45dd86cc798ccfac14eb9b6cba772eb5`;
+- authoritative PHX-CI evidence SHA: `a3cd74a56a38427e424d5c7d8c75a72c28d1da22`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06E verification: PASS, 13/13;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: unchanged at 3,864 / 4,000 logical TypeScript LOC;
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: 36 scenarios / 779 logical LOC (+8 / +104);
+- S06E scenarios: 13 logical LOC each, all within target/hard limits;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted S06E coverage proves symmetric default exclusions, device-local/protected configuration exclusion from ordinary vault synchronization, opaque unknown-format binary synchronization in both directions, and empty-folder preservation in both directions without marker-file substitution.
+
+This file is now a historical completion record and authorizes no further S06E implementation work.
 
 ## 1. Objective
 
