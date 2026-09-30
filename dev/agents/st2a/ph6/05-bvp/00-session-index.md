@@ -185,7 +185,7 @@ S06E is **BLOCKED / MISSING GENERIC CAPABILITY**. Repository grounding after the
 
 S06E generic empty-folder fixture prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `2e91eca2e884f1622e0e0dd8355b780ee4a037ae` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `5434525ba618faeb895751dfbca79e9010762fc3`. Focused verification passed 24/24; architecture guard passed with 0 violations; framework core reached 3,864/4,000 (+13); production/seam/scenario/PowerShell metrics remained unchanged.
 
-S06E is now **BOUND / EXECUTABLE** against accepted prerequisite closure `11726f416a77582d85a1808de6642884b7b3aacd`. Scope is eight declarative scenarios plus one focused test, covering symmetric default exclusions, device-local/protected configuration exclusion from ordinary vault sync, opaque unknown binaries in both directions, and empty folders in both directions. No platform-core, production, PowerShell, or governance changes are authorized.
+S06E is now **BOUND / IMPLEMENTED / READY FOR PHX-CI VERIFICATION** on branch `bvp-s06e-exclusions-unknown-empty-folders`. Its accepted predecessor / PHX-CI base is empty-folder prerequisite closure `11726f416a77582d85a1808de6642884b7b3aacd`. S06E implementation is restricted to eight declarative scenario files plus one focused test file, with zero authorized production, platform-core, PowerShell, governance, or PHX-CI changes.
 
 ### Recurring Architecture Review — after S06A / S06B
 
