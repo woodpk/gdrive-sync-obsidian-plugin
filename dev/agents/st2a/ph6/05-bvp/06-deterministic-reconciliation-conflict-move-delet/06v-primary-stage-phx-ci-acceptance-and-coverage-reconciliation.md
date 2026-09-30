@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 
@@ -12,6 +12,49 @@ This is a complete prewritten verification contract. It has no implementation-re
 ## 0.1 Coverage Reconciliation Resolution
 
 The previously recorded pre-PHX coverage blocker is resolved by accepted prerequisite evidence `db1629c57f0b88513a16ad67cc5bf2f45abcd24a`. Independent reconciliation now finds every explicitly assigned S06 requirement/invariant mapped to executable scenario evidence. 06V is executable.
+
+## 0.2 Authoritative Stage Acceptance Record
+
+BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage is **CLOSED / ACCEPTED**.
+
+- accepted integrated S06V input / verification HEAD: `072623e06fef30896d6d0d99b53d7486d2ddc94b`;
+- authoritative S06V PHX-CI evidence SHA: `e155c9a1b7465617fa3d858f00673f8fd117e48e`;
+- exact stage verification base / accepted S05 closure: `0a57e8cbf96b7512b0157886cc78bad260561448`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `authorized-governance`;
+- focused integrated S06 verification: PASS, 55/55;
+- repository verification: PASS;
+- build: PASS;
+- repository check: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- production source: 16,534 logical LOC (+1 from S05 baseline);
+- production seam: 113 logical LOC / 1 file (+1 LOC / 0 files);
+- framework core: 3,864 logical TypeScript LOC / 10 runtime modules (+51 LOC / 0 modules);
+- scenario catalog: 39 scenarios / 818 logical LOC (+37 / +772);
+- live-device agent/relay: 0;
+- scenario-specific production files: 0;
+- scenario-specific PowerShell: 0;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`;
+- assigned S06 requirement/invariant reconciliation: PASS with no unmapped assigned IDs after the accepted coverage repair.
+
+Accepted S06 child/prerequisite lineage:
+
+- S06A implementation/evidence: `926bc1c7afefeab72cc03ec9b689e32a082b898f` / `d0439e929a28238bf96f9f35cbda0e5297b48c02`;
+- S06B text-version prerequisite: `194f00c012c09811e595a5aacbe1f112a7709df1` / `595483b2b459f89c05948d0b8e0a9b78bfaa0f1a`;
+- S06B implementation/evidence: `e0cb7ed020c97287cec53508092d91993c853ac3` / `c1754311f999229b0fd53f89d3394f456ae6aedd`;
+- S06C local-access/time prerequisite: `72a4e79ea69f0f0dad062cc7128115e6e3c22ce1` / `5ce98f0a1a132b3ef57491f1a2f9d987ed3b639a`;
+- S06C implementation/evidence: `d45ba2b857a4dea6b0befafbce7a9bfe193ed3f2` / `401b3bd36ab6f32456663b09fff5909d4a1483a4`;
+- S06D remote-move prerequisite: `ee96323b74a60d9cceeb71b7012e95af1da0f270` / `24a49a6c3400c18bf9d4e24da645df83298b4aea`;
+- S06D implementation/evidence: `49e74a40f53971002f8bdbdb873a20d2fc09a957` / `8459471e714df74a3ad64b3dc57a2909f2eaa1fd`;
+- S06E empty-folder prerequisite: `2e91eca2e884f1622e0e0dd8355b780ee4a037ae` / `5434525ba618faeb895751dfbca79e9010762fc3`;
+- S06E implementation/evidence: `18b6f82a45dd86cc798ccfac14eb9b6cba772eb5` / `a3cd74a56a38427e424d5c7d8c75a72c28d1da22`;
+- S06V assigned-coverage repair verification/evidence: `610c1372190aa3f0195bdf68322c63aac6ee1264` / `db1629c57f0b88513a16ad67cc5bf2f45abcd24a`.
+
+Stage-level reconciliation confirms executable deterministic coverage for initialization, one-sided changes, text/binary conflicts, delete-vs-modify, attested deletion safety, unreadable paths, clock skew, stale-device behavior, stable-ID moves, ambiguous moves, path/case/Unicode collisions, exclusions, hidden files, unknown binary content, protected/unknown configuration boundaries, and empty folders.
+
+This file is now a historical completion record and authorizes no further S06 implementation or repair work.
 
 ## 1. Objective
 
