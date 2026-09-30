@@ -22,6 +22,18 @@ The crash-boundary blocker is resolved by the accepted generic prerequisite:
 
 The frozen scenario platform now exposes faithful one-shot crash points before REMOTE dispatch, after REMOTE effect, before canonical state write, and after canonical state write. S07A is unblocked. The prerequisite is frozen infrastructure and is not writable by S07A.
 
+## 0.2 Ready-for-Verification Record
+
+S07A implementation is complete and ready for authoritative PHX-CI.
+
+- implementation HEAD: `eafd7fbdaf581b5ea85f120adfd2acdea1f12b76`;
+- PHX-CI base: `993f459a5e3299c460e427f3010e9c983dfb6ca5`;
+- changed implementation paths: exactly six S07A scenario files plus one focused test;
+- framework-core / production / PowerShell delta: 0;
+- scenario logical size: 20–23 nonblank lines each;
+- exercised semantics: pre-effect crash, post-effect/pre-commit crash, pre-canonical-write crash, post-canonical-write crash, ambiguous-applied, ambiguous-not-applied, fresh-runtime restart, repeated recovery, and stable REMOTE identity/no duplicate effect;
+- focused test includes step/capture diagnostics on failure.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for interruption at critical effect/state boundaries and for remote outcomes whose physical result is genuinely uncertain.
