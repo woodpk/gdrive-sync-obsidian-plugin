@@ -37,7 +37,7 @@ type MoveIdentity = Extract<RemoteMutationIdentity, { readonly kind: "identity-p
 type TrashIdentity = Extract<RemoteMutationIdentity, { readonly kind: "trash" }>;
 type DriveFailure = Extract<DriveResult<never>, { readonly ok: false }>;
 
-import type { RemoteFileCreateObservation, RemoteFileCreatePhysicalMutationDescriptor, RemoteFileCreateRecoveryReadPort } from "../../../src/contracts/synchronization-foundation";
+import type { RemoteFileCreateObservation, RemoteFileCreatePhysicalMutationDescriptor, RemoteFileCreateRecoveryReadPort } from "../../../src/contracts/synchronization-folder-create-foundation";
 
 import {
   InMemoryGoogleDriveCore,
