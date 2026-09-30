@@ -1,6 +1,7 @@
 import {
   deepStrictEqual,
   notStrictEqual,
+  rejects,
   strictEqual,
 } from "node:assert/strict";
 import { test } from "node:test";
@@ -181,6 +182,114 @@ test("production canary: local create plans and executes a recovery-safe REMOTE 
   }
 
   await device.dispose();
+});
+
+test("crash boundary before REMOTE dispatch retains intent without physical or canonical effect", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  await createLocal(world, "device-a", "crash-before.bin", new Uint8Array([1, 3, 5]));
+  const device = await world.reconstructDevice("device-a");
+  const plan = await preview(device);
+
+  world.armCrashBoundary("device-a", "before-remote-dispatch");
+  await rejects(() => executeReviewed(device, plan), /virtual-crash:before-remote-dispatch/);
+
+  const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath("crash-before.bin"));
+  strictEqual(remote.ok, true);
+  if (remote.ok) strictEqual(remote.value.status, "absent");
+
+  const authority = await world.deviceBacking("device-a").loadAuthority();
+  strictEqual(authority.status, "trusted");
+  if (authority.status === "trusted") strictEqual(
+    authority.state.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "intent-persisted")),
+    true,
+  );
+  const canonical = await world.deviceBacking("device-a").load();
+  strictEqual(canonical.status, "trusted");
+  if (canonical.status === "trusted") strictEqual(canonical.state.base.some(entry => String(entry.path) === "crash-before.bin"), false);
+
+  const oldRuntime = device.runtime;
+  await device.dispose();
+  const restarted = await world.reconstructDevice("device-a");
+  notStrictEqual(restarted.runtime, oldRuntime);
+  await restarted.dispose();
+});
+
+test("crash boundary after REMOTE effect preserves physical reality without canonical commit", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  await createLocal(world, "device-a", "crash-after-effect.bin", new Uint8Array([2, 4, 6]));
+  const device = await world.reconstructDevice("device-a");
+  const plan = await preview(device);
+
+  world.armCrashBoundary("device-a", "after-remote-effect");
+  await rejects(() => executeReviewed(device, plan), /virtual-crash:after-remote-effect/);
+
+  const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath("crash-after-effect.bin"));
+  strictEqual(remote.ok, true);
+  if (remote.ok) strictEqual(remote.value.status, "present");
+  const canonical = await world.deviceBacking("device-a").load();
+  strictEqual(canonical.status, "trusted");
+  if (canonical.status === "trusted") strictEqual(canonical.state.base.some(entry => String(entry.path) === "crash-after-effect.bin"), false);
+
+  const oldRuntime = device.runtime;
+  await device.dispose();
+  const restarted = await world.reconstructDevice("device-a");
+  notStrictEqual(restarted.runtime, oldRuntime);
+  await restarted.dispose();
+});
+
+test("crash boundary before canonical write retains verified physical effect without canonical commit", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  await createLocal(world, "device-a", "crash-before-state.bin", new Uint8Array([7, 8, 9]));
+  const device = await world.reconstructDevice("device-a");
+  const plan = await preview(device);
+
+  world.armCrashBoundary("device-a", "before-canonical-state-write");
+  await rejects(() => executeReviewed(device, plan), /virtual-crash:before-canonical-state-write/);
+
+  const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath("crash-before-state.bin"));
+  strictEqual(remote.ok, true);
+  if (remote.ok) strictEqual(remote.value.status, "present");
+  const authority = await world.deviceBacking("device-a").loadAuthority();
+  strictEqual(authority.status, "trusted");
+  if (authority.status === "trusted") strictEqual(
+    authority.state.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "effect-verified")),
+    true,
+  );
+  const canonical = await world.deviceBacking("device-a").load();
+  strictEqual(canonical.status, "trusted");
+  if (canonical.status === "trusted") strictEqual(canonical.state.base.some(entry => String(entry.path) === "crash-before-state.bin"), false);
+
+  const oldRuntime = device.runtime;
+  await device.dispose();
+  const restarted = await world.reconstructDevice("device-a");
+  notStrictEqual(restarted.runtime, oldRuntime);
+  await restarted.dispose();
+});
+
+test("crash boundary after canonical write preserves committed state despite caller interruption", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  await createLocal(world, "device-a", "crash-after-state.bin", new Uint8Array([9, 7, 5]));
+  const device = await world.reconstructDevice("device-a");
+  const plan = await preview(device);
+
+  world.armCrashBoundary("device-a", "after-canonical-state-write");
+  await rejects(() => executeReviewed(device, plan), /virtual-crash:after-canonical-state-write/);
+
+  const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath("crash-after-state.bin"));
+  strictEqual(remote.ok, true);
+  if (remote.ok) strictEqual(remote.value.status, "present");
+  const canonical = await world.deviceBacking("device-a").load();
+  strictEqual(canonical.status, "trusted");
+  if (canonical.status === "trusted") strictEqual(
+    canonical.state.base.some(entry => String(entry.path) === "crash-after-state.bin" && entry.localExisted && entry.remoteExisted),
+    true,
+  );
+
+  const oldRuntime = device.runtime;
+  await device.dispose();
+  const restarted = await world.reconstructDevice("device-a");
+  notStrictEqual(restarted.runtime, oldRuntime);
+  await restarted.dispose();
 });
 
 test("production canary: remote create plans and executes a crash-safe LOCAL download/create", async () => {
