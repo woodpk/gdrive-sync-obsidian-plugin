@@ -37,6 +37,8 @@ type MoveIdentity = Extract<RemoteMutationIdentity, { readonly kind: "identity-p
 type TrashIdentity = Extract<RemoteMutationIdentity, { readonly kind: "trash" }>;
 type DriveFailure = Extract<DriveResult<never>, { readonly ok: false }>;
 
+import type { RemoteFileCreateObservation, RemoteFileCreatePhysicalMutationDescriptor, RemoteFileCreateRecoveryReadPort } from "../../../src/contracts/synchronization-foundation";
+
 import {
   InMemoryGoogleDriveCore,
   type InMemoryRemoteObjectSnapshot,
@@ -181,7 +183,7 @@ class VirtualCrashController {
   }
 }
 
-export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {
+export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFileCreateRecoveryReadPort, RemoteFolderCreateRecoveryReadPort {
   private readonly postMutationObservationFailures: string[] = [];
 
   constructor(
@@ -586,6 +588,27 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
     return dispatched.ok
       ? { status: "verified-not-applied", reason: "trash-post-observation-not-trashed" }
       : { status: "outcome-unknown", reason: `trash-${dispatched.signal.kind}` };
+  }
+
+  async observeFileCreateRecovery(
+    descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<RemoteFileCreateObservation> {
+    if (cancelled(cancellation)) return { status: "unobservable", reason: "synchronization-cancelled" };
+    const reservedId = descriptor.remoteMutation.reservedRemoteObjectId;
+    const reserved = this.drive.inspectObject(reservedId);
+    if (reserved) {
+      if (reserved.trashed) return { status: "unobservable", reason: "reserved-object-is-trashed" };
+      if (reserved.entityKind !== "file") {
+        return { status: "occupied", targetPath: reserved.path, remoteObjectId: reserved.remoteObjectId, entityKind: reserved.entityKind };
+      }
+      return { status: "file", targetPath: reserved.path, remoteObjectId: reserved.remoteObjectId, content: reserved.evidence ?? {} };
+    }
+    const occupants = this.drive.inspectObjectsAtPath(this.managedRemote.rootId, descriptor.targetPath);
+    if (occupants.length === 0) return { status: "authoritative-absent", reservedRemoteObjectId: reservedId };
+    if (occupants.length !== 1) return { status: "unobservable", reason: "target-path-ambiguous" };
+    const occupant = occupants[0]!;
+    return { status: "occupied", targetPath: occupant.path, remoteObjectId: occupant.remoteObjectId, entityKind: occupant.entityKind };
   }
 
   async observeFolderCreateRecovery(
