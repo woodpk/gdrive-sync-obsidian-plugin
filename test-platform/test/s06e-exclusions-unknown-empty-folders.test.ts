@@ -8,15 +8,21 @@ import { emptyLocalFolderScenario } from "../scenarios/06e/empty-local-folder";
 import { emptyRemoteFolderScenario } from "../scenarios/06e/empty-remote-folder";
 import { excludedLocalDefaultScenario } from "../scenarios/06e/excluded-local-default";
 import { excludedRemoteDefaultScenario } from "../scenarios/06e/excluded-remote-default";
+import { hiddenDotfileIncludedScenario } from "../scenarios/06e/hidden-dotfile-included";
+import { ownPluginSettingsProtectedScenario } from "../scenarios/06e/own-plugin-settings-protected";
 import { protectedConfigScenario } from "../scenarios/06e/protected-config";
+import { thirdPartySettingsExcludedScenario } from "../scenarios/06e/third-party-settings-excluded";
 import { unknownBinaryLocalScenario } from "../scenarios/06e/unknown-binary-local";
 import { unknownBinaryRemoteScenario } from "../scenarios/06e/unknown-binary-remote";
 
 const scenarios = [
   excludedLocalDefaultScenario,
   excludedRemoteDefaultScenario,
+  hiddenDotfileIncludedScenario,
   deviceLocalConfigScenario,
   protectedConfigScenario,
+  ownPluginSettingsProtectedScenario,
+  thirdPartySettingsExcludedScenario,
   unknownBinaryLocalScenario,
   unknownBinaryRemoteScenario,
   emptyLocalFolderScenario,
@@ -47,6 +53,18 @@ test("default exclusion is symmetric: excluded local content is not uploaded and
   strictEqual(remote.status, "completed");
   strictEqual((local.captures.remote as { readonly status?: string }).status, "absent");
   strictEqual((remote.captures.local as { readonly status?: string }).status, "absent");
+});
+
+test("hidden ordinary dotfiles remain included while protected and unknown plugin configuration remains local", async () => {
+  const hidden = await DeterministicScenarioRunner.canonical().run(hiddenDotfileIncludedScenario);
+  const ownPlugin = await DeterministicScenarioRunner.canonical().run(ownPluginSettingsProtectedScenario);
+  const thirdParty = await DeterministicScenarioRunner.canonical().run(thirdPartySettingsExcludedScenario);
+  strictEqual(hidden.status, "completed");
+  strictEqual(ownPlugin.status, "completed");
+  strictEqual(thirdParty.status, "completed");
+  strictEqual((hidden.captures.remote as { readonly status?: string }).status, "present");
+  strictEqual((ownPlugin.captures.remote as { readonly status?: string }).status, "absent");
+  strictEqual((thirdParty.captures.remote as { readonly status?: string }).status, "absent");
 });
 
 test("unknown extensions remain ordinary managed binary content in both directions", async () => {
