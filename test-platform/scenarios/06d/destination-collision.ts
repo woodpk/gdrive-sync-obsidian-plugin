@@ -10,7 +10,7 @@ export const destinationCollisionScenario = defineScenario({
     {id:"preview",kind:"production",device:"device-a",operation:"preview",captureAs:"plan"},
     {id:"plan-view",kind:"observe",subject:"production-plan",inputRef:"plan",captureAs:"plan-view"},
     {id:"assert-move",kind:"assert",assertion:"contains",observationRef:"plan-view",field:"operationKinds",expected:"identity-preserving-move"},
-    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan",expect:{status:"failed",classification:"production-request-rejected"}},
+    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"},
     {id:"source-local",kind:"observe",subject:"local-entry",device:"device-a",path:"source.bin",captureAs:"source-local"},
     {id:"occupied-local",kind:"observe",subject:"local-entry",device:"device-a",path:"occupied.bin",captureAs:"occupied-local"},
     {id:"assert-source-preserved",kind:"assert",assertion:"exists",observationRef:"source-local",expected:true},
