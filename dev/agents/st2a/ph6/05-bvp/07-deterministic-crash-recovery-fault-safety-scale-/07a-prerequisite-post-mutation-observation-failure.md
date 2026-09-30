@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07A  
 **Predecessor:** S07A bound integration state `4b81e6044b7281b490c64c9928fad288893e1814`  
 **Triggering evidence:** `3972bca1f39342bcfda30aaceecfd281a57de8c3`
@@ -17,6 +17,31 @@ Implementation is complete and ready for authoritative PHX-CI.
 - framework-core delta: +6 logical/nonblank lines, approximately 3,950 / 4,000;
 - production / virtual-world implementation / PowerShell / PHX-CI delta: 0;
 - proof pairs the accepted `applied-before-failure` provider fault with the new one-shot post-mutation observation failure and verifies caller rejection while the physical REMOTE object exists.
+
+## 0.2 Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- prerequisite base: `44814af44e4e5fbd2550a1357182d6b18035c44b`;
+- accepted verification HEAD: `f0e403e401dfb18d64f5e6e72b5325d6b7a39f75`;
+- authoritative PHX-CI evidence: `f0dac5853c73c380e0c711b648cbb2b599307ccc`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused prerequisite verification: PASS, 28/28;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,950 / 4,000 logical TypeScript LOC (+6);
+- production source: unchanged at 16,534 logical LOC;
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 39 scenarios / 818 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted prerequisite exposes only the already-existing one-shot post-mutation observation-failure control through the existing declarative `external-state` family. It adds no virtual-world algorithm, production hook, persistence behavior, or new fault framework.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## 1. Objective
 
