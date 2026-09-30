@@ -112,6 +112,51 @@ function parentPath(path: VaultPath): VaultPath {
   return virtualDrivePath(slash < 0 ? "" : value.slice(0, slash));
 }
 
+export type VirtualCrashBoundary = "before-remote-dispatch" | "after-remote-effect" | "before-canonical-state-write" | "after-canonical-state-write";
+
+class VirtualCrashController {
+  private armed?: VirtualCrashBoundary;
+
+  arm(boundary: VirtualCrashBoundary): void { this.armed = boundary; }
+
+  private hit(boundary: VirtualCrashBoundary): void {
+    if (this.armed !== boundary) return;
+    this.armed = undefined;
+    throw new Error(`virtual-crash:${boundary}`);
+  }
+
+  wrapRemote<T extends object>(target: T): T {
+    const physical = new Set(["createReserved", "updateExisting", "moveExisting", "trashExisting"]);
+    return new Proxy(target, { get: (inner, property) => {
+      const value = Reflect.get(inner, property, inner);
+      if (typeof value !== "function") return value;
+      const call = value.bind(inner) as (...args: unknown[]) => unknown;
+      if (!physical.has(String(property))) return call;
+      return async (...args: unknown[]) => {
+        this.hit("before-remote-dispatch");
+        const result = await call(...args);
+        if ((result as { status?: string } | undefined)?.status === "verified-effect") this.hit("after-remote-effect");
+        return result;
+      };
+    } }) as T;
+  }
+
+  wrapStateStore<T extends object>(target: T): T {
+    return new Proxy(target, { get: (inner, property) => {
+      const value = Reflect.get(inner, property, inner);
+      if (typeof value !== "function") return value;
+      const call = value.bind(inner) as (...args: unknown[]) => unknown;
+      if (property !== "saveTrusted") return call;
+      return async (...args: unknown[]) => {
+        this.hit("before-canonical-state-write");
+        const result = await call(...args);
+        if ((result as { status?: string } | undefined)?.status === "saved") this.hit("after-canonical-state-write");
+        return result;
+      };
+    } }) as T;
+  }
+}
+
 export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {
   private readonly postMutationObservationFailures: string[] = [];
 
@@ -793,6 +838,7 @@ export class VirtualSynchronizationWorld {
   readonly managedRemote: ManagedRemoteIdentity;
   private readonly devices = new Map<string, VirtualDeviceBacking>();
   private readonly textVersionPersistence = new Map<string, MemoryTextVersionPersistence>();
+  private readonly crashControllers = new Map<string, VirtualCrashController>();
   readonly orderGate = new DeterministicOrderGate();
   private readonly leasePort = new InMemoryRunLeasePort();
 
@@ -843,15 +889,27 @@ export class VirtualSynchronizationWorld {
     return backing;
   }
 
+  armCrashBoundary(name: string, boundary: VirtualCrashBoundary): void {
+    this.deviceBacking(name);
+    this.crashController(name).arm(boundary);
+  }
+
+  private crashController(name: string): VirtualCrashController {
+    let controller = this.crashControllers.get(name);
+    if (!controller) { controller = new VirtualCrashController(); this.crashControllers.set(name, controller); }
+    return controller;
+  }
+
   async reconstructDevice(name: string): Promise<VirtualProductionDevice> {
     const backing = this.deviceBacking(name);
     const runtime = backing.reconstruct(this.drive);
-    const state = runtime.stateStore();
+    const crash = this.crashController(name);
+    const state = crash.wrapStateStore(runtime.stateStore());
     const context = runtime.loadContext();
-    const remoteMutations = new InMemoryReliableRemoteMutationPort(
+    const remoteMutations = crash.wrapRemote(new InMemoryReliableRemoteMutationPort(
       this.drive,
       this.managedRemote,
-    );
+    ));
     const configurationDirectory = await backing.local.activeConfigurationDirectory();
     const scope = new ProductPathScope(configurationDirectory, () => ({
       userExclusionPatterns: [],
