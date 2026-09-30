@@ -25,7 +25,6 @@ export interface ProductControllerOptions extends BaseProductControllerOptions {
   /** Frozen synchronization mutation seams. Omission is fail-closed for physical mutation. */
   readonly reliableRemoteMutationPort?: ReliableRemoteMutationPort;
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPort;
-  readonly remoteFileCreateRecoveryReadPort?: RemoteFileCreateRecoveryReadPort;
   readonly remoteFolderCreateRecoveryReadPort?: RemoteFolderCreateRecoveryReadPort;
 }
 
