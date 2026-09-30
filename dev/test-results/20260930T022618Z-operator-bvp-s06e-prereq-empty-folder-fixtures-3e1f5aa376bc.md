@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06e-prereq-empty-folder-fixtures
+- Source build HEAD requested: 3e1f5aa376bca80aa5054218845838703638512b
+- Verification checkout HEAD: 3e1f5aa376bca80aa5054218845838703638512b
+- Evidence publication target: origin/bvp-s06e-prereq-empty-folder-fixtures
