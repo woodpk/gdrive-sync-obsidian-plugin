@@ -2,6 +2,7 @@ import {
   appendDurableRemoteChangeBatch,
   contractId,
   type LocalTransactionalMutationPort,
+  type RemoteFileCreateRecoveryReadPort,
   type RemoteFolderCreateRecoveryReadPort,
   type ReliableRemoteMutationPort,
   type StateRevision,
@@ -24,6 +25,7 @@ export interface ProductControllerOptions extends BaseProductControllerOptions {
   /** Frozen synchronization mutation seams. Omission is fail-closed for physical mutation. */
   readonly reliableRemoteMutationPort?: ReliableRemoteMutationPort;
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPort;
+  readonly remoteFileCreateRecoveryReadPort?: RemoteFileCreateRecoveryReadPort;
   readonly remoteFolderCreateRecoveryReadPort?: RemoteFolderCreateRecoveryReadPort;
 }
 
@@ -154,6 +156,7 @@ export class ProductController extends ProductControllerBase {
     const dependencies: RecoverableProductionMutationDependencies = {
       reliableRemoteMutationPort: options.reliableRemoteMutationPort,
       localTransactionalMutationPort: options.localTransactionalMutationPort,
+      remoteFileCreateRecoveryReadPort: options.remoteFileCreateRecoveryReadPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
     };
     const recoveryDependencies: DurableIntentRecoveryDependencies = {
