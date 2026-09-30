@@ -359,6 +359,68 @@ test("generic external controls mutate retained local access and only the select
   });
 });
 
+test("generic empty-folder fixtures seed exact LOCAL and REMOTE folders without marker content", async () => {
+  const result = await new DeterministicScenarioRunner({
+    observe: async (_step, context) => {
+      const localFolder = await context.world.deviceBacking("device-a").local.observe(virtualVaultPath("empty-local"));
+      const localMarker = await context.world.deviceBacking("device-a").local.observe(virtualVaultPath("empty-local/.marker"));
+      const remoteFolder = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("empty-remote"),
+      );
+      const remoteMarker = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("empty-remote/.marker"),
+      );
+      const unrelatedLocal = await context.world.deviceBacking("device-a").local.observe(virtualVaultPath("unrelated.bin"));
+      const unrelatedRemote = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("unrelated-remote.bin"),
+      );
+      return {
+        status: "completed",
+        value: {
+          localKind: localFolder.status === "present" ? localFolder.entityKind : localFolder.status,
+          localMarkerStatus: localMarker.status,
+          remoteKind: remoteFolder[0]?.entityKind ?? "absent",
+          remoteMarkerCount: remoteMarker.length,
+          unrelatedLocalStatus: unrelatedLocal.status,
+          unrelatedRemoteCount: unrelatedRemote.length,
+        },
+      };
+    },
+    assert: async (_step, context) => {
+      const probe = context.readCapture("probe") as {
+        readonly localKind?: string;
+        readonly localMarkerStatus?: string;
+        readonly remoteKind?: string;
+        readonly remoteMarkerCount?: number;
+        readonly unrelatedLocalStatus?: string;
+        readonly unrelatedRemoteCount?: number;
+      } | undefined;
+      return probe?.localKind === "folder"
+        && probe.localMarkerStatus === "absent"
+        && probe.remoteKind === "folder"
+        && probe.remoteMarkerCount === 0
+        && probe.unrelatedLocalStatus === "present"
+        && probe.unrelatedRemoteCount === 1
+        ? { status: "completed" }
+        : { status: "failed", classification: "assertion-mismatch" };
+    },
+  }).run(
+    scenario("generic-empty-folders", [
+      { id: "unrelated-local", kind: "fixture", operation: "put-local-file", device: "device-a", path: "unrelated.bin", content: { encoding: "bytes", value: [1] } },
+      { id: "unrelated-remote", kind: "fixture", operation: "put-remote-file", path: "unrelated-remote.bin", content: { encoding: "bytes", value: [2] } },
+      { id: "local-folder", kind: "fixture", operation: "put-local-folder", device: "device-a", path: "empty-local" },
+      { id: "remote-folder", kind: "fixture", operation: "put-remote-folder", path: "empty-remote" },
+      { id: "probe", kind: "observe", subject: "remote-change-state", captureAs: "probe" },
+      { id: "assert", kind: "assert", assertion: "equals", observationRef: "probe", expected: "folders-seeded" },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+});
+
 test("generic remote move fixture preserves stable remote identity and unrelated objects", async () => {
   const result = await new DeterministicScenarioRunner({
     observe: async (step, context) => {
