@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
 **Predecessor:** post-prerequisite architecture-reviewed integration `993f459a5e3299c460e427f3010e9c983dfb6ca5`
 
@@ -21,6 +21,28 @@ The crash-boundary blocker is resolved by the accepted generic prerequisite:
 - mandatory post-prerequisite architecture review: PASS at `993f459a5e3299c460e427f3010e9c983dfb6ca5`.
 
 The frozen scenario platform now exposes faithful one-shot crash points before REMOTE dispatch, after REMOTE effect, before canonical state write, and after canonical state write. S07A is unblocked. The prerequisite is frozen infrastructure and is not writable by S07A.
+
+## 0.3 S07A Verification Blocker — Missing Ambiguous-Outcome DSL Exposure
+
+Authoritative S07A PHX-CI evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3` proved that the existing declarative `inject-remote-mutation-fault` control is insufficient by itself to preserve a true caller-visible ambiguous outcome when the physical REMOTE effect was applied.
+
+Observed behavior:
+
+- the in-memory Drive correctly returned the scripted transient failure after applying the create;
+- the accepted `InMemoryReliableRemoteMutationPort` immediately performed its normal post-mutation observation;
+- that observation proved the effect had occurred, so production safely completed the operation instead of returning `outcome-unknown`.
+
+This is correct product behavior. Weakening the S07A scenario to expect success would fail S07A's explicit ambiguity contract, which requires the immediate caller to remain unable to know whether the effect occurred until later observation/recovery.
+
+The virtual-world REMOTE mutation port already owns the required deterministic one-shot control:
+
+`queuePostMutationObservationFailure(reason)`
+
+but that control is not exposed through the frozen declarative scenario vocabulary.
+
+S07A is therefore blocked on one bounded generic DSL prerequisite that exposes this existing hook through the `external-state` family. No production, virtual-world algorithm, persistence, or new fault framework is authorized.
+
+The same failed PHX run also showed scenario-only expectation issues around legitimate post-restart `missing-production-plan` no-work/recovery cycles. Those remain S07A scenario repairs and do not justify core changes.
 
 ## 1. Objective
 
