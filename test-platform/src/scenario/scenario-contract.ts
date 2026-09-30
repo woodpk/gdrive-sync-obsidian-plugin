@@ -25,6 +25,7 @@ export type ScenarioFixtureStep = Step<
   | { readonly kind: "fixture"; readonly operation: "put-local-file"; readonly device: string; readonly path: string; readonly content: ScenarioFixtureContent }
   | { readonly kind: "fixture"; readonly operation: "put-remote-file"; readonly path: string; readonly content: ScenarioFixtureContent }
   | { readonly kind: "fixture"; readonly operation: "move-local"; readonly device: string; readonly fromPath: string; readonly toPath: string }
+  | { readonly kind: "fixture"; readonly operation: "move-remote"; readonly fromPath: string; readonly toPath: string }
   | { readonly kind: "fixture"; readonly operation: "remove-local"; readonly device: string; readonly path: string }
   | { readonly kind: "fixture"; readonly operation: "remove-remote"; readonly path: string }
 >;
@@ -91,6 +92,7 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "fixture:put-local-file": { discriminator: "operation", required: ["device", "path", "content"], allowed: ["device", "path", "content"] },
   "fixture:put-remote-file": { discriminator: "operation", required: ["path", "content"], allowed: ["path", "content"] },
   "fixture:move-local": { discriminator: "operation", required: ["device", "fromPath", "toPath"], allowed: ["device", "fromPath", "toPath"] },
+  "fixture:move-remote": { discriminator: "operation", required: ["fromPath", "toPath"], allowed: ["fromPath", "toPath"] },
   "fixture:remove-local": { discriminator: "operation", required: ["device", "path"], allowed: ["device", "path"] },
   "fixture:remove-remote": { discriminator: "operation", required: ["path"], allowed: ["path"] },
   "production:preview": { discriminator: "operation", required: ["device"], allowed: ["device", "inputRef", "captureAs"] },
