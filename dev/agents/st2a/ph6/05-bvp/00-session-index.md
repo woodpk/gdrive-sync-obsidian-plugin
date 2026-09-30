@@ -290,3 +290,6 @@ S07A is **REBOUND / EXECUTABLE FOR BOUNDED REPAIR** against accepted ambiguity-p
 
 
 S07A is **BLOCKED / PRODUCTION RECOVERY DEFECT** after evidence `50506113f51f0aa7450d5f3550aa861b6498545c`. Restart recovery correctly retires a proven `verified-not-applied` durable operation, but `recoverOne(...)` misclassifies that successful retirement as `recovery-required`. A bounded two-file production prerequisite is authorized; S07A scenario work is frozen until it passes.
+
+
+S07A verified-not-applied production prerequisite is **IMPLEMENTED / READY FOR PHX-CI** at semantic HEAD `1f7d80fcdb34e3b7800d4d733a5f1fb59f7c39cb`. The repair is limited to +8 production LOC in durable restart recovery plus existing focused regressions; framework-core/seam/PowerShell deltas are zero. Acceptance will trigger mandatory BVP-GOV-008 architecture review before S07A resumes.
