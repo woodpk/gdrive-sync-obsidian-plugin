@@ -44,7 +44,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06A | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06a-initialization-and-one-sided-synchronization-scenarios.md` |
 | 06B | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06b-merge-conflict-and-delete-vs-modify-scenarios.md` |
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
-| 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | EXECUTABLE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
+| 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
@@ -160,7 +160,7 @@ S06D is **BLOCKED / MISSING GENERIC CAPABILITY**. Repository grounding after the
 
 S06D generic REMOTE-move fixture prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `ee96323b74a60d9cceeb71b7012e95af1da0f270` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `24a49a6c3400c18bf9d4e24da645df83298b4aea`. Focused verification passed 22/22; architecture guard passed with 0 violations; framework core reached 3,851/4,000 (+10); production/seam/scenario/PowerShell metrics remained unchanged.
 
-S06D is now **BOUND / IMPLEMENTED / READY FOR PHX-CI VERIFICATION** on branch `bvp-s06d-move-rename-identity-collision`. Its accepted predecessor / PHX-CI base is prerequisite closure `2a722bed8e052a483dc6ae6fa6dad830c7082d73`. The accepted generic REMOTE-move fixture prerequisite is frozen infrastructure. S06D implementation is restricted to seven declarative scenario files plus one focused test file, with zero authorized production, platform-core, PowerShell, governance, or PHX-CI changes.
+S06D is **COMPLETE / ACCEPTED**. Accepted implementation `49e74a40f53971002f8bdbdb873a20d2fc09a957` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `8459471e714df74a3ad64b3dc57a2909f2eaa1fd`. Focused verification passed 12/12; repository and overall verification passed; framework core remained 3,851/4,000; scenario catalog reached 28 scenarios / 675 logical LOC; production/seam/PowerShell remained unchanged; production artifact remained byte-identical.
 
 ### Recurring Architecture Review — after S06A / S06B
 
