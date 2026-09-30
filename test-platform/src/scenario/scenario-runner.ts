@@ -166,6 +166,14 @@ export class DeterministicScenarioRunner {
       await world.deviceBacking(step.device).local.move(virtualVaultPath(step.fromPath), virtualVaultPath(step.toPath));
       return { status: "completed" };
     }
+    if (step.operation === "move-remote") {
+      const fromPath = virtualDrivePath(step.fromPath);
+      const existing = world.drive.inspectObjectsAtPath(world.managedRemote.rootId, fromPath);
+      if (existing.length === 0) return fail("failed", "remote-source-missing");
+      if (existing.length > 1) return fail("failed", "remote-path-ambiguous");
+      const result = await world.drive.move(existing[0].remoteObjectId, fromPath, virtualDrivePath(step.toPath));
+      return result.ok ? { status: "completed" } : fail("failed", result.signal.kind, signalReason(result.signal));
+    }
     if (step.operation === "remove-local") {
       const local = world.deviceBacking(step.device).local;
       const path = virtualVaultPath(step.path);
