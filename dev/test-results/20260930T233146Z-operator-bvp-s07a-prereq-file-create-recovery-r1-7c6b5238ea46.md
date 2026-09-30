@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-file-create-recovery-r1
+- Source build HEAD requested: 7c6b5238ea46bba74d365b7b025c4375b1b29f44
+- Verification checkout HEAD: 7c6b5238ea46bba74d365b7b025c4375b1b29f44
+- Evidence publication target: origin/bvp-s07a-prereq-file-create-recovery-r1
