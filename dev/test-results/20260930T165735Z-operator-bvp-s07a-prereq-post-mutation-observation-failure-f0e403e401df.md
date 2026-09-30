@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-post-mutation-observation-failure
+- Source build HEAD requested: f0e403e401dfb18d64f5e6e72b5325d6b7a39f75
+- Verification checkout HEAD: f0e403e401dfb18d64f5e6e72b5325d6b7a39f75
+- Evidence publication target: origin/bvp-s07a-prereq-post-mutation-observation-failure
