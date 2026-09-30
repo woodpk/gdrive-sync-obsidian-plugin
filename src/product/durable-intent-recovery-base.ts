@@ -347,12 +347,15 @@ async function observePersistedEffect(legacy: ProductSynchronizationExecutor, de
   if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "reserved-file-create") {
     if (descriptor.mutationKind !== "create") return { status: "outcome-unknown", reason: "REMOTE file create descriptor has incompatible mutation kind" };
     const reader = deps.remoteFileCreateRecoveryReadPort;
-    if (!reader) return { status: "outcome-unknown", reason: "RemoteFileCreateRecoveryReadPort unavailable during durable recovery" };
-    const createDescriptor = { ...descriptor, mutationKind: "create" as const, remoteMutation: descriptor.remoteMutation };
-    const result = verifyRemoteFileCreate(createDescriptor, await reader.observeFileCreateRecovery(createDescriptor));
-    return result.status === "verified-effect"
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", result.proof) }
-      : result;
+    if (reader) {
+      const createDescriptor = { ...descriptor, mutationKind: "create" as const, remoteMutation: descriptor.remoteMutation };
+      const result = verifyRemoteFileCreate(createDescriptor, await reader.observeFileCreateRecovery(createDescriptor));
+      return result.status === "verified-effect"
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", result.proof) }
+        : result;
+    }
+    // Compatibility fallback: a complete listing may still prove the persisted effect
+    // positively. It may never prove authoritative absence for verified-not-applied.
   }
   const entries = await remoteEntries(legacy, remote);
   if (!entries) return { status: "outcome-unknown", reason: "complete REMOTE listing unavailable during durable recovery" };
