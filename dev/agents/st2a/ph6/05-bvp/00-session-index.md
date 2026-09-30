@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -287,3 +287,6 @@ S07A post-mutation observation-failure prerequisite is **COMPLETE / ACCEPTED**. 
 
 
 S07A is **REBOUND / EXECUTABLE FOR BOUNDED REPAIR** against accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`. Repair scope remains exactly six declarative scenarios plus one focused test. Failed evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3` authorizes only the demonstrated no-plan expectation repairs and use of the newly accepted post-mutation observation-failure control in the ambiguous-applied scenario.
+
+
+S07A is **BLOCKED / PRODUCTION RECOVERY DEFECT** after evidence `50506113f51f0aa7450d5f3550aa861b6498545c`. Restart recovery correctly retires a proven `verified-not-applied` durable operation, but `recoverOne(...)` misclassifies that successful retirement as `recovery-required`. A bounded two-file production prerequisite is authorized; S07A scenario work is frozen until it passes.
