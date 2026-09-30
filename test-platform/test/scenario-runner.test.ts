@@ -186,6 +186,23 @@ test("fixture failures propagate deterministically", async () => {
   strictEqual(result.steps[0]?.status, "failed");
 });
 
+test("post-mutation observation failure preserves caller-visible ambiguity after an applied REMOTE fault", async () => {
+  const result = await DeterministicScenarioRunner.canonical().run(
+    scenario("post-mutation-observation-failure", [
+      { id: "seed", kind: "fixture", operation: "put-local-file", device: "device-a", path: "ambiguous.bin", content: { encoding: "bytes", value: [3, 1, 4, 1] } },
+      { id: "provider-fault", kind: "external-state", transition: "inject-remote-mutation-fault", operation: "create", effect: "applied-before-failure", classification: "simulated-response-loss" },
+      { id: "observation-fault", kind: "external-state", transition: "inject-post-mutation-observation-failure", device: "device-a", classification: "simulated-post-observation-loss" },
+      { id: "sync", kind: "production", device: "device-a", operation: "synchronize", expect: { status: "failed", classification: "production-request-rejected" } },
+      { id: "remote", kind: "observe", subject: "remote-entry", path: "ambiguous.bin", captureAs: "remote" },
+      { id: "assert-applied", kind: "assert", assertion: "exists", observationRef: "remote", expected: true },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  strictEqual(result.steps[3]?.classification, "production-request-rejected");
+  strictEqual((result.captures.remote as { readonly status?: string }).status, "present");
+});
+
 test("generic crash-boundary transition arms a one-shot production crash", async () => {
   const result = await new DeterministicScenarioRunner().run(
     scenario("crash-boundary-dispatch", [
