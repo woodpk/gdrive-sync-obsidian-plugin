@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-crash-boundary-controls
+- Source build HEAD requested: 359c899464f9f25c3bda3964972291452d7d79f7
+- Verification checkout HEAD: 359c899464f9f25c3bda3964972291452d7d79f7
+- Evidence publication target: origin/bvp-s07a-prereq-crash-boundary-controls
