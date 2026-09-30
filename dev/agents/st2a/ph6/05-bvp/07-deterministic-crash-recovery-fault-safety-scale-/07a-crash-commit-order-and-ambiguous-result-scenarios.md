@@ -2,34 +2,25 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
-**Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted BVP-S06 primary-stage gate
+**Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
+**Predecessor:** post-prerequisite architecture-reviewed integration `993f459a5e3299c460e427f3010e9c983dfb6ca5`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
 
-## 0.1 Blocked Dispatch Record
+## 0.1 Resolved Prerequisite Record
 
-S07A is blocked before scenario implementation because the frozen scenario platform can express real REMOTE ambiguous outcomes and fresh-runtime restart, but it cannot interrupt execution at the required crash-order boundaries.
+The crash-boundary blocker is resolved by the accepted generic prerequisite:
 
-Current accepted capabilities already cover:
+- accepted prerequisite verification HEAD: `b4b3c219e40b85fa9fa6bf3123c94421fe224133`;
+- authoritative prerequisite evidence: `2f22710e01e24f89f0e949bba22b9ef294e3b534`;
+- accepted prerequisite closure: `77c48171442fa0eaa170de3469b0f7fc8f434df0`;
+- mandatory post-prerequisite architecture review: PASS at `993f459a5e3299c460e427f3010e9c983dfb6ca5`.
 
-- one-shot REMOTE mutation ambiguity with physical effect either not applied or applied before failure;
-- genuine device runtime reconstruction over retained local, REMOTE, and persisted state reality.
-
-Missing generic capability:
-
-- crash immediately before the production REMOTE mutation port dispatches a physical effect, after durable execution intent has been established;
-- crash immediately after the production REMOTE mutation port has physically applied/verified its effect but before canonical synchronization state commit;
-- crash immediately before canonical trusted-state persistence writes the commit;
-- crash immediately after canonical trusted-state persistence writes the commit but before the caller observes successful completion.
-
-Using a REMOTE API failure as a substitute for these crash points would violate S07A boundary-fidelity semantics and target §13.3.
-
-A separate bounded prerequisite may expose these four one-shot boundaries only through existing virtual-world composition and the existing declarative `external-state` family. It may not modify production code or create a second fault framework.
+The frozen scenario platform now exposes faithful one-shot crash points before REMOTE dispatch, after REMOTE effect, before canonical state write, and after canonical state write. S07A is unblocked. The prerequisite is frozen infrastructure and is not writable by S07A.
 
 ## 1. Objective
 
@@ -50,18 +41,34 @@ Executable scenarios cover, at minimum:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S07A execution binding is:
 
-- exact accepted S06 predecessor SHA;
-- exact task branch;
-- current product requirement IDs and production execution/state commit boundaries relevant to this coverage;
-- accepted S04 fault/restart controls and S05 scenario vocabulary;
-- exact scenario/fixture/test writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- current architecture metrics baseline.
+- accepted predecessor / PHX-CI base: `993f459a5e3299c460e427f3010e9c983dfb6ca5`;
+- task branch: `bvp-s07a-crash-commit-ambiguity`;
+- target requirements/invariants: `STATE-009`, `STATE-010`, `XFER-004`, `INV-004`;
+- target behavioral clauses: §4.10 interrupted run / iOS suspension and §13.3 controlled crash-safety evidence;
+- accepted prerequisite controls: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`; existing REMOTE mutation ambiguity `applied-before-failure` / `not-applied`; existing `checkpoint:restart-device`;
+- scenario files:
+  - `test-platform/scenarios/07a/before-remote-dispatch.ts`;
+  - `test-platform/scenarios/07a/after-remote-effect.ts`;
+  - `test-platform/scenarios/07a/before-canonical-state-write.ts`;
+  - `test-platform/scenarios/07a/after-canonical-state-write.ts`;
+  - `test-platform/scenarios/07a/ambiguous-applied.ts`;
+  - `test-platform/scenarios/07a/ambiguous-not-applied.ts`;
+- focused test: `test-platform/test/s07a-crash-commit-ambiguity.test.ts`;
+- writable allowlist: exactly those six scenario files plus that focused test file;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- change class: `ordinary`;
+- focused command: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07a-crash-commit-ambiguity.test.js`;
+- architecture baseline: production source 16,534 logical LOC; production seam 113 LOC / 1 file; framework core 3,944 / 4,000 logical TypeScript LOC / 10 modules; scenario catalog 39 scenarios / 818 LOC; BVP PowerShell 4 scripts / 1,477 LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- S07A proper framework-core/production/PowerShell delta must be 0;
+- every new scenario targets ≤120 logical LOC and must remain ≤200;
+- restart proof must reconstruct fresh runtime objects using the accepted checkpoint operation; no scenario may directly edit product state;
+- ambiguous applied/not-applied scenarios must preserve the immediate ambiguous result and let subsequent production observation/recovery determine reality;
+- repeated recovery must not create a second REMOTE object/effect for the same logical operation;
+- no S07B/S07C/S07D/S07E/S07F concern may be absorbed into this task.
 
-No new generic fault framework is authorized.
+No new generic fault framework or production repair is authorized. If an S07A scenario proves a production recovery defect, stop and re-ground that defect separately rather than changing production on this branch.
 
 ## 4. Required Semantics
 
