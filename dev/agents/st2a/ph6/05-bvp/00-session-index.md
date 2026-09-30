@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -243,3 +243,6 @@ S06V assigned-coverage prerequisite repair is **COMPLETE / ACCEPTED**. Accepted 
 
 
 BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage is **CLOSED / ACCEPTED**. S06V verification HEAD `072623e06fef30896d6d0d99b53d7486d2ddc94b` passed authoritative PHX-CI with runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; stage evidence is `e155c9a1b7465617fa3d858f00673f8fd117e48e`. Focused integrated S06 verification passed 55/55; repository/build/check passed; architecture guard recorded 0 violations; framework core is 3,864/4,000; scenario catalog is 39 scenarios / 818 logical LOC; scenario-specific production and PowerShell remain 0; production artifact remains byte-identical.
+
+
+S07A is **BLOCKED / MISSING GENERIC CAPABILITY**. The accepted platform can inject genuine REMOTE ambiguity and reconstruct fresh runtimes, but cannot yet crash at durable execution/commit boundaries required by STATE-009/STATE-010/INV-004 and target §13.3. A bounded generic prerequisite is authorized to expose four one-shot crash points entirely inside the existing test-platform composition/DSL; production changes are not authorized.
