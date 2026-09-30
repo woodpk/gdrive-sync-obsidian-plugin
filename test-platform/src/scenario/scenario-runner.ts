@@ -162,6 +162,10 @@ export class DeterministicScenarioRunner {
       await world.deviceBacking(step.device).local.replaceFile(virtualVaultPath(step.path), source(bytes(step.content)));
       return { status: "completed" };
     }
+    if (step.operation === "put-local-folder") {
+      world.deviceBacking(step.device).local.seedFolder(virtualVaultPath(step.path));
+      return { status: "completed" };
+    }
     if (step.operation === "move-local") {
       await world.deviceBacking(step.device).local.move(virtualVaultPath(step.fromPath), virtualVaultPath(step.toPath));
       return { status: "completed" };
@@ -187,6 +191,11 @@ export class DeterministicScenarioRunner {
     if (step.operation === "remove-remote") {
       if (existing[0]) world.drive.removeExternally(existing[0].remoteObjectId);
       return { status: "completed" };
+    }
+    if (step.operation === "put-remote-folder") {
+      if (existing[0]) return existing[0].entityKind === "folder" ? { status: "completed" } : fail("failed", "remote-path-is-file");
+      const result = await world.drive.create(world.managedRemote.rootId, { path, entityKind: "folder" });
+      return result.ok ? { status: "completed" } : fail("failed", result.signal.kind, signalReason(result.signal));
     }
     const content = source(bytes(step.content));
     const result = !existing[0]
