@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06d-move-rename-identity-collision
+- Source build HEAD requested: aa2e257c7365d8ea883a814856a6e59c4e302771
+- Verification checkout HEAD: aa2e257c7365d8ea883a814856a6e59c4e302771
+- Evidence publication target: origin/bvp-s06d-move-rename-identity-collision
