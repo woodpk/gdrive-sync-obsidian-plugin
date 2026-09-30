@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -284,3 +284,6 @@ S07A is **BLOCKED / MISSING GENERIC CAPABILITY** after authoritative evidence `3
 
 
 S07A post-mutation observation-failure prerequisite is **COMPLETE / ACCEPTED**. Verification HEAD `f0e403e401dfb18d64f5e6e72b5325d6b7a39f75` passed authoritative PHX-CI; evidence is `f0dac5853c73c380e0c711b648cbb2b599307ccc`. Focused verification passed 28/28; architecture guard passed with 0 violations; framework core is 3,950/4,000 (+6); production/seam/scenario/PowerShell metrics and artifact remain unchanged.
+
+
+S07A is **REBOUND / EXECUTABLE FOR BOUNDED REPAIR** against accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`. Repair scope remains exactly six declarative scenarios plus one focused test. Failed evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3` authorizes only the demonstrated no-plan expectation repairs and use of the newly accepted post-mutation observation-failure control in the ambiguous-applied scenario.
