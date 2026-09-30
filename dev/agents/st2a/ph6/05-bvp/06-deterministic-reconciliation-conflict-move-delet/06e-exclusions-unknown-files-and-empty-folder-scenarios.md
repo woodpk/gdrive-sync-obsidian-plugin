@@ -3,13 +3,29 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
 **Predecessor:** accepted S06D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Blocked Dispatch Record
+
+S06E is blocked before scenario implementation because the frozen declarative scenario vocabulary cannot seed an empty LOCAL or REMOTE folder.
+
+The accepted virtual world already supports empty-folder reality:
+
+- `InMemoryLocalVault.seedFolder(...)` / `createFolder(...)`;
+- the in-memory Drive `create(...)` path supports `entityKind: "folder"`;
+- production synchronization already contains folder-create authority/execution/recovery semantics.
+
+The scenario fixture family currently exposes only file put/move/remove operations. Replacing an empty folder with a marker file would violate `FILE-003` by changing the semantic object under test.
+
+This is a generic fixture-exposure gap, not a product synchronization defect. S06E remains scenario-only and may not modify `test-platform/src/**`.
+
+A separate prerequisite must expose only empty-folder seeding through the existing fixture family, prove exact local/remote folder creation and fail-closed validation, pass architecture budgets, and then be frozen before S06E is rebound.
 
 ## 1. Objective
 
