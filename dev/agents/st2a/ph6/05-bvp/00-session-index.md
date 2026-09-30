@@ -250,6 +250,26 @@ S07A is **BLOCKED / MISSING GENERIC CAPABILITY**. The accepted platform can inje
 
 S07A generic crash-boundary prerequisite is **COMPLETE / ACCEPTED**. Accepted verification HEAD `b4b3c219e40b85fa9fa6bf3123c94421fe224133` passed authoritative PHX-CI; evidence is `2f22710e01e24f89f0e949bba22b9ef294e3b534`. Focused verification passed 39/39; architecture guard passed with 0 violations; framework core is 3,944/4,000 (+80); production/seam/scenario/PowerShell metrics and the shipping artifact remain unchanged.
 
+### Recurring Architecture Review — after S06V repair / S07A crash-boundary prerequisite
+
+BVP-GOV-008 repository-level architecture review completed against accepted crash-boundary prerequisite closure `77c48171442fa0eaa170de3469b0f7fc8f434df0`: **PASS**.
+
+- review baseline is the prior post-S06E architecture-review state `47129c8bdfc396862341b3b5135df560eef3d535`;
+- the S06V assigned-coverage repair added only three declarative scenarios plus focused-test/traceability changes and introduced no framework-core, production, PowerShell, persistence, or architecture-family delta;
+- the only framework-core implementation delta since the prior review is the accepted S07A generic crash-boundary prerequisite;
+- framework core is now 3,944 logical TypeScript LOC / 10 runtime modules versus the frozen 4,000-LOC ceiling, leaving 56 LOC of remaining headroom;
+- the prerequisite extends only the existing scenario contract/runner/virtual-world family with four one-shot crash controls and introduces no new runtime module, no production fault hook, no second fault framework, and no alternate execution/recovery implementation;
+- dependency direction remains one-way from `test-platform/**` into the single approved production seam; production imports no BVP/test-platform runtime;
+- production source remains 16,534 logical LOC and the approved production seam remains 113 logical LOC / 1 file;
+- scenario catalog remains 39 scenarios / 818 logical LOC after prerequisite acceptance; the earlier S06V coverage repair accounts for +3 scenarios / +39 LOC relative to the post-S06E review baseline;
+- live-device agent/relay remains 0;
+- scenario-specific production remains 0;
+- scenario-specific PowerShell remains 0; BVP PowerShell remains 4 scripts / 1,477 logical LOC;
+- authoritative prerequisite evidence `2f22710e01e24f89f0e949bba22b9ef294e3b534` records 39/39 focused tests PASS, repository verification PASS, architecture guard PASS with 0 violations, and the expected +80 framework-core LOC delta;
+- the accepted production artifact remains byte-identical at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+This review authorizes S07A scenario implementation under the existing frozen architecture. S07A proper has no framework-core/production/PowerShell authority. With only 56 framework-core LOC of frozen-budget headroom remaining, any later generic core prerequisite must either fit within that residual budget or first reduce existing framework-core LOC without weakening accepted behavior. No budget increase is authorized.
+
 
 S07A crash-boundary prerequisite initial evidence `c97ca4e93a3b2404a56492b91aa7af115f1ecaa9` BLOCKED on three focused tests. The bounded repair is now complete: before-dispatch evidence correctly expects retained `dispatch-authorized` authority, and canonical-state crashes now target only completed-operation writes paired with `effect-verified` durable intent. No production/PowerShell delta; repaired framework-core estimate is ~3,944/4,000 pending PHX-CI.
 
