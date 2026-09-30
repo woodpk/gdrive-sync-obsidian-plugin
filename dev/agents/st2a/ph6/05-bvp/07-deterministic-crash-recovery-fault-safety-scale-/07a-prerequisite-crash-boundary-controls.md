@@ -18,6 +18,25 @@ Implementation is complete and ready for authoritative PHX-CI.
 - exposed boundaries: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`;
 - each boundary is one-shot and retained across runtime reconstruction only as persisted/physical reality, not as an armed crash.
 
+## 0.2 Failed Verification / Bounded Repair Record
+
+Initial authoritative PHX-CI evidence `c97ca4e93a3b2404a56492b91aa7af115f1ecaa9` blocked promotion because 3 of 39 focused prerequisite tests failed.
+
+Demonstrated defects and bounded repair:
+
+- the before-REMOTE-dispatch test incorrectly required the retained effect stage to remain `intent-persisted`; production correctly advances durable authority to `dispatch-authorized` before entering the REMOTE mutation port, so the assertion now verifies retained `dispatch-authorized` authority plus no physical/canonical effect;
+- canonical-state crash injection originally wrapped every `saveTrusted` call and therefore fired on unrelated cursor/state-learning persistence before physical mutation;
+- the state wrapper now identifies only a true canonical completion candidate: a completed operation whose matching durable intent still contains an `effect-verified` effect. Only that exact write can trigger `before-canonical-state-write` or `after-canonical-state-write`.
+
+Repair commits:
+
+- canonical completion discrimination: `5d1e1cd11b889a0abe4cb25041b6b6f59899abae`;
+- corrected before-dispatch retained-authority assertion: `63e780a18433e28aaeb24665070109ff17369808`.
+
+No production, production-seam, PowerShell, PHX-CI implementation, persistence implementation, or architecture-family change was introduced. Repaired framework-core delta is approximately +80 logical/nonblank lines from the prerequisite base, yielding approximately 3,944 / 4,000 pending authoritative PHX-CI measurement.
+
+The prerequisite is repaired and ready for authoritative re-verification.
+
 ## 1. Objective
 
 Expose four one-shot, deterministic crash points through the existing virtual-world/scenario infrastructure so S07A can test real production crash ordering and restart recovery without changing production semantics.
