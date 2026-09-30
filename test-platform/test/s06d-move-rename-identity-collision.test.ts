@@ -24,7 +24,7 @@ const scenarios = [
 for (const scenario of scenarios) {
   test(`${scenario.id} executes through production move/path semantics`, async () => {
     const result = await DeterministicScenarioRunner.canonical().run(scenario);
-    strictEqual(result.status, "completed");
+    strictEqual(result.status, "completed", JSON.stringify({ scenarioId: result.scenarioId, classification: result.classification, reason: result.reason, steps: result.steps }, null, 2));
     strictEqual(result.evidence?.machine.verdict.status, "completed");
   });
 }
