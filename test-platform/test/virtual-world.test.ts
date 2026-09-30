@@ -200,7 +200,7 @@ test("crash boundary before REMOTE dispatch retains intent without physical or c
   const authority = await world.deviceBacking("device-a").loadAuthority();
   strictEqual(authority.status, "trusted");
   if (authority.status === "trusted") strictEqual(
-    authority.state.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "intent-persisted")),
+    authority.state.operationIntents.some(intent => intent.effects.some(effect => effect.stage === "dispatch-authorized")),
     true,
   );
   const canonical = await world.deviceBacking("device-a").load();
