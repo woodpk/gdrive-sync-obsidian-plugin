@@ -186,6 +186,21 @@ test("fixture failures propagate deterministically", async () => {
   strictEqual(result.steps[0]?.status, "failed");
 });
 
+test("generic crash-boundary transition arms a one-shot production crash", async () => {
+  const result = await new DeterministicScenarioRunner().run(
+    scenario("crash-boundary-dispatch", [
+      { id: "seed", kind: "fixture", operation: "put-local-file", device: "device-a", path: "crash.bin", content: { encoding: "bytes", value: [1, 2, 3] } },
+      { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
+      { id: "arm", kind: "external-state", transition: "inject-crash-boundary", device: "device-a", boundary: "before-remote-dispatch" },
+      { id: "execute", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan", expect: { status: "failed", classification: "step-exception" } },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  strictEqual(result.steps[3]?.classification, "step-exception");
+  strictEqual(result.steps[3]?.reason, "virtual-crash:before-remote-dispatch");
+});
+
 test("arbitrary frozen S05A mutation-fault classifications are accepted as declarative fault detail", async () => {
   const result = await new DeterministicScenarioRunner().run(
     scenario("fault-classification", [
