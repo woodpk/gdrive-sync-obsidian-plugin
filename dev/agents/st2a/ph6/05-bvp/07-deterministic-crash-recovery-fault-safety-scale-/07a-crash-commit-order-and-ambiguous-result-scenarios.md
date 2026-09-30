@@ -3,13 +3,33 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted BVP-S06 primary-stage gate
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Blocked Dispatch Record
+
+S07A is blocked before scenario implementation because the frozen scenario platform can express real REMOTE ambiguous outcomes and fresh-runtime restart, but it cannot interrupt execution at the required crash-order boundaries.
+
+Current accepted capabilities already cover:
+
+- one-shot REMOTE mutation ambiguity with physical effect either not applied or applied before failure;
+- genuine device runtime reconstruction over retained local, REMOTE, and persisted state reality.
+
+Missing generic capability:
+
+- crash immediately before the production REMOTE mutation port dispatches a physical effect, after durable execution intent has been established;
+- crash immediately after the production REMOTE mutation port has physically applied/verified its effect but before canonical synchronization state commit;
+- crash immediately before canonical trusted-state persistence writes the commit;
+- crash immediately after canonical trusted-state persistence writes the commit but before the caller observes successful completion.
+
+Using a REMOTE API failure as a substitute for these crash points would violate S07A boundary-fidelity semantics and target §13.3.
+
+A separate bounded prerequisite may expose these four one-shot boundaries only through existing virtual-world composition and the existing declarative `external-state` family. It may not modify production code or create a second fault framework.
 
 ## 1. Objective
 
