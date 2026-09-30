@@ -46,7 +46,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
-| 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
+| 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | BLOCKED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
@@ -234,3 +234,6 @@ implemented child → implementation verification → authoritative PHX-CI evide
 Scenario-only children in S06/S07 may be parallelized only where the supervisor proves non-overlapping writable surfaces and frozen shared contracts before dispatch.
 
 No PREPLANNED task may execute until its required hard execution facts are bound, but its semantic contract is already authoritative and must not be redesigned at dispatch.
+
+
+S06V is **BLOCKED / ASSIGNED-COVERAGE GAP** before authoritative stage PHX-CI. Independent reconciliation found four explicitly assigned requirements without executable scenario traceability: `MOVE-004`, `FILE-004`, `CONFIG-006`, and `CONFIG-007`. A bounded scenario-only prerequisite repair is authorized; no product/platform-core repair is authorized or currently indicated.
