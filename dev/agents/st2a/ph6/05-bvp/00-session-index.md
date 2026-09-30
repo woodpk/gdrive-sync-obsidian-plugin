@@ -162,6 +162,25 @@ S06D generic REMOTE-move fixture prerequisite is **COMPLETE / ACCEPTED**. Accept
 
 S06D is **COMPLETE / ACCEPTED**. Accepted implementation `49e74a40f53971002f8bdbdb873a20d2fc09a957` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `8459471e714df74a3ad64b3dc57a2909f2eaa1fd`. Focused verification passed 12/12; repository and overall verification passed; framework core remained 3,851/4,000; scenario catalog reached 28 scenarios / 675 logical LOC; production/seam/PowerShell remained unchanged; production artifact remained byte-identical.
 
+### Recurring Architecture Review — after S06D prerequisite / S06D
+
+BVP-GOV-008 repository-level architecture review completed against accepted S06D closure `9b579aae1600a3cebb102291003b1bff7b1f97c2`: **PASS**.
+
+- since the prior post-S06C architecture review, the only platform-core implementation delta is the accepted generic REMOTE-move fixture prerequisite: +2 logical lines in the existing scenario contract and +8 logical lines in the existing scenario runner;
+- framework core is 3,851 logical TypeScript LOC / 10 runtime modules versus the frozen 4,000-LOC budget;
+- the prerequisite adds no new runner, persistence subsystem, evidence family, coordination protocol, module/plugin router, alternate synchronization engine, or production testing bypass; it exposes the existing in-memory Drive `move(...)` operation through the existing fixture family;
+- dependency direction remains one-way from `test-platform/**` into the single approved production seam; production imports no BVP/test-platform runtime;
+- the approved production seam remains `src/product/local-vault-boundary-seam.ts`, unchanged at 113 logical LOC / 1 file;
+- S06D itself is declarative scenario/test coverage only: 7 scenarios / +124 scenario logical LOC, with individual scenarios 16–19 logical LOC and all below target/hard limits;
+- scenario catalog is 28 scenarios / 675 logical LOC;
+- live-device/scenario-specific production surfaces remain 0;
+- scenario-specific PowerShell remains 0; BVP PowerShell remains 4 scripts / 1,477 logical LOC;
+- authoritative prerequisite evidence `24a49a6c3400c18bf9d4e24da645df83298b4aea` and S06D evidence `8459471e714df74a3ad64b3dc57a2909f2eaa1fd` both record architecture guard PASS with 0 violations;
+- accepted production artifact remains unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`;
+- S06D diagnostic refinement remained inside the focused test/scenario surfaces and did not change product or platform-core semantics.
+
+This review authorizes continued S06 dispatch under the existing frozen architecture and budgets. It authorizes no budget increase or new architecture family.
+
 ### Recurring Architecture Review — after S06A / S06B
 
 BVP-GOV-008 repository-level architecture review completed against accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`: **PASS**.
