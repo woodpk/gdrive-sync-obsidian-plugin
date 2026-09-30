@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-file-create-recovery-r1
+- Source build HEAD requested: 9166c95a862ec167710c861a2a56767bf3b5b5d7
+- Verification checkout HEAD: 9166c95a862ec167710c861a2a56767bf3b5b5d7
+- Evidence publication target: origin/bvp-s07a-prereq-file-create-recovery-r1
