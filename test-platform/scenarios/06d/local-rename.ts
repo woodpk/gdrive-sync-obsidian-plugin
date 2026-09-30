@@ -12,6 +12,7 @@ export const localRenameScenario = defineScenario({
     {id:"assert-move",kind:"assert",assertion:"contains",observationRef:"plan-view",field:"operationKinds",expected:"identity-preserving-move"},
     {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"},
     {id:"remote-after",kind:"observe",subject:"remote-entry",path:"after/local.md",captureAs:"remote-after"},
+    {id:"assert-new-remote",kind:"assert",assertion:"exists",observationRef:"remote-after",expected:true},
     {id:"old-remote",kind:"observe",subject:"remote-entry",path:"before/local.md",captureAs:"old-remote"},
     {id:"assert-old-gone",kind:"assert",assertion:"exists",observationRef:"old-remote",expected:false},
   ],
