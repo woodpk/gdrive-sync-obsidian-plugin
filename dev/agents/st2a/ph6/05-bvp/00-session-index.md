@@ -246,3 +246,6 @@ BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage i
 
 
 S07A is **BLOCKED / MISSING GENERIC CAPABILITY**. The accepted platform can inject genuine REMOTE ambiguity and reconstruct fresh runtimes, but cannot yet crash at durable execution/commit boundaries required by STATE-009/STATE-010/INV-004 and target §13.3. A bounded generic prerequisite is authorized to expose four one-shot crash points entirely inside the existing test-platform composition/DSL; production changes are not authorized.
+
+
+S07A generic crash-boundary prerequisite is **IMPLEMENTED / READY FOR PHX-CI** at `212a5fadc488d973558fdffcb7509abfc9673f47`. Scope is limited to the existing scenario contract/runner/virtual-world plus focused tests, with zero production/PowerShell delta and an expected framework-core increase of ~65 LOC. After acceptance this becomes implementation child #2 since the post-S06E architecture review, so BVP-GOV-008 requires a repository-level architecture review before S07A proper.
