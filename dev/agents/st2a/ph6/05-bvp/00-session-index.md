@@ -287,3 +287,6 @@ S07A post-mutation observation-failure prerequisite is **COMPLETE / ACCEPTED**. 
 
 
 S07A is **REBOUND / EXECUTABLE FOR BOUNDED REPAIR** against accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`. Repair scope remains exactly six declarative scenarios plus one focused test. Failed evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3` authorizes only the demonstrated no-plan expectation repairs and use of the newly accepted post-mutation observation-failure control in the ambiguous-applied scenario.
+
+
+S07A bounded repair is **IMPLEMENTED / READY FOR PHX-CI** at semantic HEAD `84f794c4a6f439cee858da3dc9005426b6a4635c` on branch `bvp-s07a-crash-commit-ambiguity-r1`. The repair changes only the six bound scenarios plus focused test, with zero framework-core/production/PowerShell delta, and addresses only defects demonstrated by evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3`.
