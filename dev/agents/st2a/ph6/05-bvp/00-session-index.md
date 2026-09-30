@@ -137,6 +137,25 @@ S06C generic local-access/time-control prerequisite is **COMPLETE / ACCEPTED**. 
 
 S06C is **COMPLETE / ACCEPTED**. Accepted implementation `d45ba2b857a4dea6b0befafbce7a9bfe193ed3f2` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `401b3bd36ab6f32456663b09fff5909d4a1483a4`. Focused verification passed 9/9; repository and overall verification passed; framework core remained 3,841/4,000; scenario catalog reached 21 scenarios / 551 logical LOC; production/seam/PowerShell remained unchanged; production artifact remained byte-identical.
 
+### Recurring Architecture Review — after S06C prerequisite / S06C
+
+BVP-GOV-008 repository-level architecture review completed against accepted S06C closure `416a8183b42e5a66b8f9cabe1ffdd2a9784ae685`: **PASS**.
+
+- the only platform-core delta since the prior S06A/S06B architecture review is the accepted generic prerequisite exposing two already-existing virtual-world capabilities through the existing `external-state` family: 6 logical lines in the scenario contract and 8 logical lines in the existing runner;
+- framework core is 3,841 logical TypeScript LOC / 10 runtime modules versus the frozen 4,000-LOC budget;
+- no new runner, persistence subsystem, evidence family, coordination protocol, module/plugin router, alternate synchronization engine, or production testing bypass was introduced;
+- dependency direction remains one-way from `test-platform/**` into the single approved production seam; production imports no BVP/test-platform runtime;
+- the approved production seam remains `src/product/local-vault-boundary-seam.ts`, unchanged at 113 logical LOC / 1 file;
+- S06C itself is declarative scenario/test coverage only: 7 scenarios, +200 scenario logical LOC, with individual scenarios 24–36 logical LOC and all below target/hard limits;
+- scenario catalog is 21 scenarios / 551 logical LOC;
+- live-device/scenario-specific production surfaces remain 0;
+- scenario-specific PowerShell remains 0; BVP PowerShell remains 4 scripts / 1,477 logical LOC;
+- authoritative S06C evidence `401b3bd36ab6f32456663b09fff5909d4a1483a4` records architecture guard PASS with 0 violations and metrics PASS;
+- accepted production artifact remains unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`;
+- the failed first S06C attempt exposed only a scenario-fixture mismatch with the existing mass-deletion circuit breaker; the accepted repair preserved the production safety architecture and did not add a bypass.
+
+This review authorizes continued S06 dispatch under the existing frozen architecture and budgets. It authorizes no budget increase or new architecture family.
+
 ### Recurring Architecture Review — after S06A / S06B
 
 BVP-GOV-008 repository-level architecture review completed against accepted S06B closure `e6b3b85f8a4c1982b5c6e883c536098b5da7afc3`: **PASS**.
