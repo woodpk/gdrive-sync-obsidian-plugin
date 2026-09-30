@@ -8,7 +8,7 @@ export const caseCollisionScenario = defineScenario({
     {id:"peer",kind:"fixture",operation:"put-local-file",device:"device-a",path:"case.bin",content:{encoding:"bytes",value:[2]}},
     {id:"move-remote",kind:"fixture",operation:"move-remote",fromPath:"old-case.bin",toPath:"CASE.bin"},
     {id:"preview",kind:"production",device:"device-a",operation:"preview",captureAs:"plan"},
-    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"},
+    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan",expect:{status:"failed",classification:"step-exception"}},
     {id:"old-local",kind:"observe",subject:"local-entry",device:"device-a",path:"old-case.bin",captureAs:"old-local"},
     {id:"peer-local",kind:"observe",subject:"local-entry",device:"device-a",path:"case.bin",captureAs:"peer-local"},
     {id:"assert-old",kind:"assert",assertion:"exists",observationRef:"old-local",expected:true},
