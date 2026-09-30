@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -278,3 +278,6 @@ S07A crash-boundary prerequisite second evidence `d8343f1d3413efa271e2ed10f42acb
 
 
 S07A is now **BOUND / EXECUTABLE** against post-prerequisite architecture-reviewed integration `993f459a5e3299c460e427f3010e9c983dfb6ca5`. Scope is six declarative crash/ambiguity scenarios plus one focused test. No platform-core, production, PowerShell, governance, or PHX-CI changes are authorized.
+
+
+S07A is **BLOCKED / MISSING GENERIC CAPABILITY** after authoritative evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3`. The accepted REMOTE mutation port can already force a one-shot post-mutation observation failure, but that hook is not exposed through the declarative DSL. A bounded four-file prerequisite is authorized to expose only that existing control; no production or virtual-world algorithm change is authorized.
