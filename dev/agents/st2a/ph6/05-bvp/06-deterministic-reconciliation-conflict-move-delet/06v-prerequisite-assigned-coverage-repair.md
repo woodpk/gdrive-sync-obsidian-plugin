@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S06V  
 **Predecessor:** post-S06E architecture-reviewed integration `47129c8bdfc396862341b3b5135df560eef3d535`
 
@@ -16,6 +16,29 @@ Implementation is complete and ready for authoritative PHX-CI.
 - repaired mappings: `MOVE-004`, `FILE-004`, `CONFIG-006`, `CONFIG-007`;
 - platform-core / production / PowerShell delta: 0;
 - new scenarios: 13 logical LOC each.
+
+## 0.2 Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- prerequisite base: `791806113f336a42b8589fc4502fcad9c79be289`;
+- accepted verification HEAD: `610c1372190aa3f0195bdf68322c63aac6ee1264`;
+- authoritative PHX-CI evidence: `db1629c57f0b88513a16ad67cc5bf2f45abcd24a`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06D/S06E verification: PASS, 29/29;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: unchanged at 3,864 / 4,000 logical TypeScript LOC;
+- scenario catalog: 39 scenarios / 818 logical LOC (+3 / +39);
+- production seam: unchanged at 113 LOC / 1 file;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`;
+- repaired executable mappings: `MOVE-004`, `FILE-004`, `CONFIG-006`, `CONFIG-007`.
+
+This file is now a historical completion record and authorizes no further repair work.
 
 ## 1. Objective
 
