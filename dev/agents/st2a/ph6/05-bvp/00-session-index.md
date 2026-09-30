@@ -43,7 +43,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 05V | S05 — Declarative Scenario Runner / Assertions / Evidence | COMPLETE | `05-declarative-scenario-runner-assertions-evidence/05v-primary-stage-phx-ci-acceptance.md` |
 | 06A | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06a-initialization-and-one-sided-synchronization-scenarios.md` |
 | 06B | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06b-merge-conflict-and-delete-vs-modify-scenarios.md` |
-| 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | EXECUTABLE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
+| 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
@@ -135,7 +135,7 @@ S06B is **COMPLETE / ACCEPTED**. Accepted implementation `e0cb7ed020c97287cec535
 
 S06C generic local-access/time-control prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `72a4e79ea69f0f0dad062cc7128115e6e3c22ce1` was verified with PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `5ce98f0a1a132b3ef57491f1a2f9d987ed3b639a`. Focused verification passed 19/19, integrated BVP verification passed 187/187, framework core reached 3,841/4,000 (+14), and all production/seam/scenario/PowerShell metrics remained unchanged.
 
-S06C is now **BOUND / EXECUTABLE** on branch `bvp-s06c-deletion-stale-clock-unreadable`. Its accepted predecessor / PHX-CI base is prerequisite closure `77962c0ef118f41e661d0323fdaa10269a96336f`; the generic local-access/time controls are frozen infrastructure. S06C is restricted to seven declarative scenario files plus one focused test file, with zero authorized production, platform-core, PowerShell, governance, or PHX-CI changes.
+S06C is **COMPLETE / ACCEPTED**. Accepted implementation `d45ba2b857a4dea6b0befafbce7a9bfe193ed3f2` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `401b3bd36ab6f32456663b09fff5909d4a1483a4`. Focused verification passed 9/9; repository and overall verification passed; framework core remained 3,841/4,000; scenario catalog reached 21 scenarios / 551 logical LOC; production/seam/PowerShell remained unchanged; production artifact remained byte-identical.
 
 ### Recurring Architecture Review — after S06A / S06B
 
