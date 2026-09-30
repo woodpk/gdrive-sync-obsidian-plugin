@@ -12,6 +12,7 @@ import {
   DeterministicScenarioRunner,
   type ScenarioStepExecution,
 } from "../src/scenario/scenario-runner";
+import { virtualDrivePath } from "../src/virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
 
 function scenario(
@@ -356,6 +357,125 @@ test("generic external controls mutate retained local access and only the select
     deviceATime: 86400000,
     deviceBTime: 0,
   });
+});
+
+test("generic remote move fixture preserves stable remote identity and unrelated objects", async () => {
+  const result = await new DeterministicScenarioRunner({
+    observe: async (step, context) => {
+      const source = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("before/note.md"),
+      );
+      const destination = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("after/note.md"),
+      );
+      const unrelated = context.world.drive.inspectObjectsAtPath(
+        context.world.managedRemote.rootId,
+        virtualDrivePath("unrelated.md"),
+      );
+      return {
+        status: "completed",
+        value: step.id === "before"
+          ? {
+              sourceId: source[0] ? String(source[0].remoteObjectId) : null,
+              unrelatedId: unrelated[0] ? String(unrelated[0].remoteObjectId) : null,
+            }
+          : {
+              sourceCount: source.length,
+              destinationId: destination[0] ? String(destination[0].remoteObjectId) : null,
+              unrelatedId: unrelated[0] ? String(unrelated[0].remoteObjectId) : null,
+            },
+      };
+    },
+    assert: async (_step, context) => {
+      const before = context.readCapture("before-state") as {
+        readonly sourceId?: string | null;
+        readonly unrelatedId?: string | null;
+      } | undefined;
+      const after = context.readCapture("after-state") as {
+        readonly sourceCount?: number;
+        readonly destinationId?: string | null;
+        readonly unrelatedId?: string | null;
+      } | undefined;
+      return before?.sourceId &&
+        before.sourceId === after?.destinationId &&
+        before.unrelatedId &&
+        before.unrelatedId === after?.unrelatedId &&
+        after.sourceCount === 0
+        ? { status: "completed" }
+        : { status: "failed", classification: "assertion-mismatch" };
+    },
+  }).run(
+    scenario("generic-remote-move", [
+      {
+        id: "seed-source",
+        kind: "fixture",
+        operation: "put-remote-file",
+        path: "before/note.md",
+        content: { encoding: "utf8", value: "move me" },
+      },
+      {
+        id: "seed-unrelated",
+        kind: "fixture",
+        operation: "put-remote-file",
+        path: "unrelated.md",
+        content: { encoding: "utf8", value: "leave me" },
+      },
+      {
+        id: "before",
+        kind: "observe",
+        subject: "remote-change-state",
+        captureAs: "before-state",
+      },
+      {
+        id: "move",
+        kind: "fixture",
+        operation: "move-remote",
+        fromPath: "before/note.md",
+        toPath: "after/note.md",
+      },
+      {
+        id: "after",
+        kind: "observe",
+        subject: "remote-change-state",
+        captureAs: "after-state",
+      },
+      {
+        id: "assert",
+        kind: "assert",
+        assertion: "equals",
+        observationRef: "after-state",
+        expected: "identity-preserved",
+      },
+    ]),
+  );
+
+  strictEqual(result.status, "completed");
+  const before = result.captures["before-state"] as { readonly sourceId?: string | null };
+  const after = result.captures["after-state"] as {
+    readonly sourceCount?: number;
+    readonly destinationId?: string | null;
+  };
+  strictEqual(before.sourceId, after.destinationId);
+  strictEqual(after.sourceCount, 0);
+});
+
+test("generic remote move fixture fails deterministically when source is missing", async () => {
+  const result = await new DeterministicScenarioRunner().run(
+    scenario("missing-remote-move-source", [
+      {
+        id: "move",
+        kind: "fixture",
+        operation: "move-remote",
+        fromPath: "missing.md",
+        toPath: "target.md",
+      },
+    ]),
+  );
+
+  strictEqual(result.status, "failed");
+  strictEqual(result.classification, "remote-source-missing");
 });
 
 test("checkpoint capture fails closed until bounded checkpoint capability is supplied", async () => {
