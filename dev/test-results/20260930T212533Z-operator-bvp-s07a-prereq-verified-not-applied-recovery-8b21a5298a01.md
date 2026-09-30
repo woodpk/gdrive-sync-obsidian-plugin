@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-verified-not-applied-recovery
+- Source build HEAD requested: 8b21a5298a01a502fb3c2c7a036bd92272cc9d70
+- Verification checkout HEAD: 8b21a5298a01a502fb3c2c7a036bd92272cc9d70
+- Evidence publication target: origin/bvp-s07a-prereq-verified-not-applied-recovery
