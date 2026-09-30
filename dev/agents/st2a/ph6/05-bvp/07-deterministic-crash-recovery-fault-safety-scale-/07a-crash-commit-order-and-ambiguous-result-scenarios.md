@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
-**Predecessor:** post-prerequisite architecture-reviewed integration `993f459a5e3299c460e427f3010e9c983dfb6ca5`
+**Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -44,6 +44,28 @@ S07A is therefore blocked on one bounded generic DSL prerequisite that exposes t
 
 The same failed PHX run also showed scenario-only expectation issues around legitimate post-restart `missing-production-plan` no-work/recovery cycles. Those remain S07A scenario repairs and do not justify core changes.
 
+## 0.4 Ambiguity Prerequisite Resolution / S07A Repair Binding
+
+The ambiguity DSL blocker is resolved by the accepted bounded prerequisite:
+
+- accepted prerequisite verification HEAD: `f0e403e401dfb18d64f5e6e72b5325d6b7a39f75`;
+- authoritative prerequisite evidence: `f0dac5853c73c380e0c711b648cbb2b599307ccc`;
+- accepted prerequisite closure / repaired S07A PHX-CI base: `3921e81d08be829070b83347539bc3809cf8fa57`;
+- framework core after prerequisite acceptance: 3,950 / 4,000 logical TypeScript LOC;
+- production source/seam/PowerShell/scenario metrics remain unchanged from the prior reviewed state.
+
+Authoritative failed S07A evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3` also demonstrated three scenario-only expectation repairs:
+
+1. after a before-REMOTE-dispatch crash, the first post-restart production cycle may legitimately perform retained-intent recovery and return `missing-production-plan`; a subsequent normal synchronization cycle must then create the single REMOTE effect;
+2. after an after-canonical-state-write crash, restart may legitimately find no production plan because canonical success is already durable; the scenario must treat that no-work result as expected rather than require a new execution;
+3. after an ambiguous-not-applied outcome, the first post-restart cycle may resolve/retire ambiguous durable work and return `missing-production-plan`; a subsequent normal synchronization cycle must then create one REMOTE effect.
+
+The accepted new transition `inject-post-mutation-observation-failure` must be paired with the existing `applied-before-failure` provider fault in the ambiguous-applied scenario so the immediate caller remains genuinely unable to resolve the physical outcome.
+
+The repaired task branch is `bvp-s07a-crash-commit-ambiguity-r1`.
+
+No platform-core, production, PowerShell, PHX-CI, governance, persistence, or new fault-framework change is authorized.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for interruption at critical effect/state boundaries and for remote outcomes whose physical result is genuinely uncertain.
@@ -65,11 +87,11 @@ Executable scenarios cover, at minimum:
 
 The S07A execution binding is:
 
-- accepted predecessor / PHX-CI base: `993f459a5e3299c460e427f3010e9c983dfb6ca5`;
-- task branch: `bvp-s07a-crash-commit-ambiguity`;
+- accepted predecessor / PHX-CI base: `3921e81d08be829070b83347539bc3809cf8fa57`;
+- task branch: `bvp-s07a-crash-commit-ambiguity-r1`;
 - target requirements/invariants: `STATE-009`, `STATE-010`, `XFER-004`, `INV-004`;
 - target behavioral clauses: §4.10 interrupted run / iOS suspension and §13.3 controlled crash-safety evidence;
-- accepted prerequisite controls: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`; existing REMOTE mutation ambiguity `applied-before-failure` / `not-applied`; existing `checkpoint:restart-device`;
+- accepted prerequisite controls: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`; REMOTE mutation ambiguity `applied-before-failure` / `not-applied`; `inject-post-mutation-observation-failure`; existing `checkpoint:restart-device`;
 - scenario files:
   - `test-platform/scenarios/07a/before-remote-dispatch.ts`;
   - `test-platform/scenarios/07a/after-remote-effect.ts`;
@@ -82,7 +104,7 @@ The S07A execution binding is:
 - PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
 - change class: `ordinary`;
 - focused command: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07a-crash-commit-ambiguity.test.js`;
-- architecture baseline: production source 16,534 logical LOC; production seam 113 LOC / 1 file; framework core 3,944 / 4,000 logical TypeScript LOC / 10 modules; scenario catalog 39 scenarios / 818 LOC; BVP PowerShell 4 scripts / 1,477 LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- architecture baseline: production source 16,534 logical LOC; production seam 113 LOC / 1 file; framework core 3,950 / 4,000 logical TypeScript LOC / 10 modules; scenario catalog 39 scenarios / 818 LOC; BVP PowerShell 4 scripts / 1,477 LOC; scenario-specific production 0; scenario-specific PowerShell 0;
 - S07A proper framework-core/production/PowerShell delta must be 0;
 - every new scenario targets ≤120 logical LOC and must remain ≤200;
 - restart proof must reconstruct fresh runtime objects using the accepted checkpoint operation; no scenario may directly edit product state;
