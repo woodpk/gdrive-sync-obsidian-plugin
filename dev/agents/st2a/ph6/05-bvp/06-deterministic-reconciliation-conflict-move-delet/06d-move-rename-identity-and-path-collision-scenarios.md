@@ -3,13 +3,23 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
 **Predecessor:** accepted S06C
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Blocked Dispatch Record
+
+S06D is blocked before scenario implementation because the frozen declarative scenario vocabulary cannot express an external REMOTE rename/move while preserving the same stable remote object identity.
+
+The accepted in-memory Drive already implements identity-preserving `move(remoteObjectId, fromPath, toPath)`, but the scenario fixture vocabulary exposes only LOCAL move plus REMOTE put/remove. Reconstructing a remote rename as remove+create would allocate a different remote object ID and would therefore fail to prove `REM-006`, `STATE-004`, `MOVE-001`, `MOVE-002`, and `INV-010`.
+
+This is a generic scenario-fixture exposure gap, not a product or synchronization-policy defect. S06D remains scenario-only and may not modify `test-platform/src/**`.
+
+A separate prerequisite must expose only the existing identity-preserving in-memory Drive move through the common fixture family, prove exact dispatch/identity preservation and fail-closed validation, pass PHX-CI architecture budgets, and then be frozen before S06D is rebound.
 
 ## 1. Objective
 
