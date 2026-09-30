@@ -66,6 +66,23 @@ The repaired task branch is `bvp-s07a-crash-commit-ambiguity-r1`.
 
 No platform-core, production, PowerShell, PHX-CI, governance, persistence, or new fault-framework change is authorized.
 
+## 0.5 Repaired Ready-for-Verification Record
+
+The bounded S07A repair is complete and ready for authoritative PHX-CI.
+
+- repaired implementation HEAD: `84f794c4a6f439cee858da3dc9005426b6a4635c`;
+- accepted predecessor / PHX-CI base: `3921e81d08be829070b83347539bc3809cf8fa57`;
+- triggering failed S07A evidence: `3972bca1f39342bcfda30aaceecfd281a57de8c3`;
+- changed implementation paths: exactly six S07A scenario files plus one focused test;
+- framework-core / production / PowerShell delta: 0;
+- scenario logical size: 21–24 nonblank lines each;
+- repaired semantics:
+  - before-REMOTE-dispatch and ambiguous-not-applied explicitly accept the first post-restart `missing-production-plan` recovery cycle before a later ordinary create;
+  - after-canonical-state-write explicitly accepts the first post-restart no-plan recovery cycle before ordinary settling;
+  - ambiguous-applied now pairs `applied-before-failure` with the accepted one-shot `inject-post-mutation-observation-failure` control so immediate ambiguity is preserved;
+  - the previously passing after-REMOTE-effect and before-canonical-state-write scenario semantics are unchanged;
+  - focused identity assertions continue to prove no duplicate REMOTE effect across restart/recovery.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for interruption at critical effect/state boundaries and for remote outcomes whose physical result is genuinely uncertain.
