@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-crash-commit-ambiguity
+- Source build HEAD requested: 647311120d6510c584d9dc502fcd58dc0f68862e
+- Verification checkout HEAD: 647311120d6510c584d9dc502fcd58dc0f68862e
+- Evidence publication target: origin/bvp-s07a-crash-commit-ambiguity
