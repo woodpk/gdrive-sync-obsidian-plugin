@@ -14,6 +14,11 @@ export const remoteDeletionScenario = defineScenario({
   executionModes: ["deterministic"],
   steps: [
     { id: "seed", kind: "fixture", operation: "put-local-file", device: "device-a", path: "remote-delete.bin", content: { encoding: "bytes", value: [4, 5, 6] } },
+    { id: "seed-guard-1", kind: "fixture", operation: "put-local-file", device: "device-a", path: "guard-1.bin", content: { encoding: "bytes", value: [31] } },
+    { id: "seed-guard-2", kind: "fixture", operation: "put-local-file", device: "device-a", path: "guard-2.bin", content: { encoding: "bytes", value: [32] } },
+    { id: "seed-guard-3", kind: "fixture", operation: "put-local-file", device: "device-a", path: "guard-3.bin", content: { encoding: "bytes", value: [33] } },
+    { id: "seed-guard-4", kind: "fixture", operation: "put-local-file", device: "device-a", path: "guard-4.bin", content: { encoding: "bytes", value: [34] } },
+    { id: "seed-guard-5", kind: "fixture", operation: "put-local-file", device: "device-a", path: "guard-5.bin", content: { encoding: "bytes", value: [35] } },
     { id: "establish-base", kind: "production", device: "device-a", operation: "synchronize" },
     { id: "delete-remote", kind: "fixture", operation: "remove-remote", path: "remote-delete.bin" },
     { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
