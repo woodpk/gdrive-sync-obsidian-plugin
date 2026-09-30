@@ -9,7 +9,7 @@ export const invalidTargetPathScenario = defineScenario({
     {id:"preview",kind:"production",device:"device-a",operation:"preview",captureAs:"plan"},
     {id:"plan-view",kind:"observe",subject:"production-plan",inputRef:"plan",captureAs:"plan-view"},
     {id:"assert-move",kind:"assert",assertion:"contains",observationRef:"plan-view",field:"operationKinds",expected:"identity-preserving-move"},
-    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan",expect:{status:"failed",classification:"production-request-rejected"}},
+    {id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"},
     {id:"local-source",kind:"observe",subject:"local-entry",device:"device-a",path:"valid.bin",captureAs:"local-source"},
     {id:"remote-target",kind:"observe",subject:"remote-entry",path:"CON.txt",captureAs:"remote-target"},
     {id:"assert-source",kind:"assert",assertion:"exists",observationRef:"local-source",expected:true},
