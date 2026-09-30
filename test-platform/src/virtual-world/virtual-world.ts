@@ -148,12 +148,36 @@ class VirtualCrashController {
       const call = value.bind(inner) as (...args: unknown[]) => unknown;
       if (property !== "saveTrusted") return call;
       return async (...args: unknown[]) => {
-        this.hit("before-canonical-state-write");
+        const canonicalCommit = this.isCanonicalCompletionCandidate(args[0]);
+        if (canonicalCommit) this.hit("before-canonical-state-write");
         const result = await call(...args);
-        if ((result as { status?: string } | undefined)?.status === "saved") this.hit("after-canonical-state-write");
+        if (canonicalCommit && (result as { status?: string } | undefined)?.status === "saved") this.hit("after-canonical-state-write");
         return result;
       };
     } }) as T;
+  }
+
+  private isCanonicalCompletionCandidate(value: unknown): boolean {
+    if (typeof value !== "object" || value === null) return false;
+    const state = value as {
+      readonly operations?: readonly { readonly operationId?: unknown; readonly status?: unknown }[];
+      readonly operationIntents?: readonly {
+        readonly operationId?: unknown;
+        readonly effects?: readonly { readonly stage?: unknown }[];
+      }[];
+    };
+    if (!Array.isArray(state.operations) || !Array.isArray(state.operationIntents)) return false;
+    const completed = new Set(
+      state.operations
+        .filter(operation => operation.status === "completed" && operation.operationId !== undefined)
+        .map(operation => String(operation.operationId)),
+    );
+    return state.operationIntents.some(intent =>
+      intent.operationId !== undefined &&
+      completed.has(String(intent.operationId)) &&
+      Array.isArray(intent.effects) &&
+      intent.effects.some(effect => effect.stage === "effect-verified"),
+    );
   }
 }
 
