@@ -2,9 +2,33 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S06D  
 **Predecessor:** accepted S06C reviewed integration state `e07dc3e93828180893882da2d43d378bdf9f4124`
+
+## 0.1 Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- accepted prerequisite input / PHX-CI base: `57601299ca6613b127fe35c76b5a33f6b7a84c04`;
+- accepted implementation SHA: `ee96323b74a60d9cceeb71b7012e95af1da0f270`;
+- authoritative PHX-CI evidence SHA: `24a49a6c3400c18bf9d4e24da645df83298b4aea`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused prerequisite verification: PASS, 22/22;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,851 / 4,000 logical TypeScript LOC (+10);
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 21 scenarios / 551 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted prerequisite adds only a `move-remote` variant to the existing fixture family and delegates directly to the existing in-memory Drive identity-preserving move operation. No new move algorithm, runner family, persistence system, production behavior, or architecture family was introduced.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## 1. Objective
 
