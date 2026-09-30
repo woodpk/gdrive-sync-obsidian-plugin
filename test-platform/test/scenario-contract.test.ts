@@ -219,6 +219,43 @@ test("generic local-access and deterministic-time controls validate narrowly", (
   );
 });
 
+test("generic remote move fixture validates narrowly", () => {
+  const valid = validateScenarioDefinition({
+    ...representative,
+    id: "generic-remote-move",
+    steps: [{
+      id: "move-remote",
+      kind: "fixture",
+      operation: "move-remote",
+      fromPath: "before/note.md",
+      toPath: "after/note.md",
+    }],
+  });
+  strictEqual(valid.ok, true);
+
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "fixture", operation: "move-remote", toPath: "after.md" }],
+    },
+    /fromPath is required/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "fixture", operation: "move-remote", fromPath: "before.md" }],
+    },
+    /toPath is required/,
+  );
+  assertInvalid(
+    {
+      ...representative,
+      steps: [{ id: "x", kind: "fixture", operation: "move-remote", fromPath: "before.md", toPath: "after.md", device: "device-a" }],
+    },
+    /unsupported field 'device'/,
+  );
+});
+
 test("each capability family requires its essential fields", () => {
   assertInvalid(
     {
