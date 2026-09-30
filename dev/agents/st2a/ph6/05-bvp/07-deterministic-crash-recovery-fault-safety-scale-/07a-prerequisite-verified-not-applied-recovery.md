@@ -15,7 +15,7 @@ The corrected prerequisite implementation is complete and ready for authoritativ
 - implementation HEAD: `10e054423a790fe07dae2129e90961df8f24eb43`;
 - PHX-CI base: `5ca1dbe0f2ed4918ae8ecca3b23196b02a3b6862`;
 - failed predecessor hypothesis evidence retained at `94a4cda7215ef3a4eab9fa6367d6b12ce0786a49`;
-- implementation scope: exactly six authorized non-test files plus the existing durable-intent recovery test;
+- implementation scope: exactly six authorized non-test files plus the existing durable-intent recovery test; the frozen predecessor contract is restored byte-for-byte and is not part of the net implementation delta;
 - REMOTE file-create recovery now mirrors the established folder-create design:
   - exact reserved-ID observation;
   - independent logical-target occupancy observation;
@@ -58,7 +58,7 @@ The prerequisite is therefore re-grounded to the smallest complete contract fami
 
 Authorized non-test paths:
 
-- `src/contracts/synchronization-foundation.ts` — add a read-only REMOTE file-create recovery observation contract/verifier;
+- `src/contracts/synchronization-folder-create-foundation.ts` — add the read-only REMOTE file-create recovery observation contract/verifier on the existing additive successor surface; `src/contracts/synchronization-foundation.ts` remains byte-identical to its frozen predecessor;
 - `src/drive/google-drive-port.ts` — implement the seam using existing exact-ID and logical-path topology reads;
 - `src/product/durable-intent-recovery-base.ts` — consume verified file-create recovery outcomes and safely retire proven no-effect work;
 - `src/product/durable-intent-recovery.ts` — use the same seam in wrapper/matching recovery paths;
