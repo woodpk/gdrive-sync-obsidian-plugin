@@ -322,6 +322,69 @@ export type RecoverablePhysicalMutationDescriptor =
       readonly identityAuthority?: IdentityAuthorityProof;
     };
 
+export type RemoteFileCreatePhysicalMutationDescriptor =
+  Extract<RecoverablePhysicalMutationDescriptor, { readonly kind: "remote-file" }> & {
+    readonly mutationKind: "create";
+    readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" }>;
+  };
+
+export type RemoteFileCreateObservation =
+  | { readonly status: "authoritative-absent"; readonly reservedRemoteObjectId: RemoteObjectId }
+  | { readonly status: "file"; readonly targetPath: VaultPath; readonly remoteObjectId: RemoteObjectId; readonly content: ContentEvidence }
+  | { readonly status: "occupied"; readonly targetPath: VaultPath; readonly remoteObjectId: RemoteObjectId; readonly entityKind: "file" | "folder" }
+  | { readonly status: "unobservable"; readonly reason: string };
+
+export interface RemoteFileCreateRecoveryReadPort {
+  observeFileCreateRecovery(
+    descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<RemoteFileCreateObservation>;
+}
+
+export type RemoteFileCreateRecoveryOutcome =
+  | { readonly status: "verified-effect"; readonly proof: { readonly remoteObjectId: RemoteObjectId; readonly targetPath: VaultPath; readonly intendedContent: CanonicalFileContentProof } }
+  | { readonly status: "verified-not-applied"; readonly reason: string }
+  | { readonly status: "conflict-preserved"; readonly reason: string }
+  | { readonly status: "outcome-unknown"; readonly reason: string };
+
+export function verifyRemoteFileCreate(
+  descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+  observation: RemoteFileCreateObservation,
+): RemoteFileCreateRecoveryOutcome {
+  const mutation = descriptor.remoteMutation;
+  if (descriptor.mutationKind !== "create"
+    || mutation.kind !== "reserved-file-create"
+    || descriptor.targetPath !== mutation.path
+    || descriptor.intendedContent.hash !== mutation.intendedContent.hash
+    || descriptor.intendedContent.sizeBytes !== mutation.intendedContent.sizeBytes) {
+    return { status: "outcome-unknown", reason: "remote-file-create-descriptor-inconsistent" };
+  }
+  if (observation.status === "unobservable") return { status: "outcome-unknown", reason: observation.reason };
+  if (observation.status === "authoritative-absent") {
+    return observation.reservedRemoteObjectId === mutation.reservedRemoteObjectId
+      ? { status: "verified-not-applied", reason: "reserved-remote-file-authoritatively-absent" }
+      : { status: "outcome-unknown", reason: "remote-file-absence-did-not-check-reserved-identity" };
+  }
+  if (observation.status === "occupied") {
+    return { status: "conflict-preserved", reason: "remote-file-logical-path-occupied-by-non-authoritative-object" };
+  }
+  if (observation.remoteObjectId !== mutation.reservedRemoteObjectId || observation.targetPath !== descriptor.targetPath) {
+    return { status: "conflict-preserved", reason: "remote-file-create-identity-or-path-mismatch" };
+  }
+  if (observation.content.hash !== descriptor.intendedContent.hash
+    || observation.content.sizeBytes !== descriptor.intendedContent.sizeBytes) {
+    return { status: "conflict-preserved", reason: "remote-file-create-content-mismatch" };
+  }
+  return {
+    status: "verified-effect",
+    proof: {
+      remoteObjectId: observation.remoteObjectId,
+      targetPath: observation.targetPath,
+      intendedContent: descriptor.intendedContent,
+    },
+  };
+}
+
 export interface RecoverableMutationEffect {
   readonly effectId: string;
   readonly descriptor: RecoverablePhysicalMutationDescriptor;
