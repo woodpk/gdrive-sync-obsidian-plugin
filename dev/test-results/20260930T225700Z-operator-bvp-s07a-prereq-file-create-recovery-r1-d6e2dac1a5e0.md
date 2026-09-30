@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-prereq-file-create-recovery-r1
+- Source build HEAD requested: d6e2dac1a5e038feb66d67cf3ba84ec716bd7328
+- Verification checkout HEAD: d6e2dac1a5e038feb66d67cf3ba84ec716bd7328
+- Evidence publication target: origin/bvp-s07a-prereq-file-create-recovery-r1
