@@ -44,6 +44,7 @@ export type ScenarioExternalStateStep = Step<
   | { readonly kind: "external-state"; readonly transition: "set-remote-listing-completeness" | "set-remote-change-completeness"; readonly completeness: "complete" | "partial"; readonly reason?: string }
   | { readonly kind: "external-state"; readonly transition: "inject-remote-mutation-fault"; readonly operation: "create" | "update" | "move" | "trash"; readonly effect: "not-applied" | "applied-before-failure"; readonly classification: string }
   | { readonly kind: "external-state"; readonly transition: "request-cancellation"; readonly device: string }
+  | { readonly kind: "external-state"; readonly transition: "inject-crash-boundary"; readonly device: string; readonly boundary: "before-remote-dispatch" | "after-remote-effect" | "before-canonical-state-write" | "after-canonical-state-write" }
 >;
 
 export type ScenarioCheckpointStep = Step<
@@ -110,6 +111,7 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "external-state:set-remote-change-completeness": { discriminator: "transition", required: ["completeness"], allowed: ["completeness", "reason"] },
   "external-state:inject-remote-mutation-fault": { discriminator: "transition", required: ["operation", "effect", "classification"], allowed: ["operation", "effect", "classification"] },
   "external-state:request-cancellation": { discriminator: "transition", required: ["device"], allowed: ["device"] },
+  "external-state:inject-crash-boundary": { discriminator: "transition", required: ["device", "boundary"], allowed: ["device", "boundary"] },
   "checkpoint:capture": { discriminator: "operation", required: ["checkpointId"], allowed: ["checkpointId"] },
   "checkpoint:restart-device": { discriminator: "operation", required: ["device"], allowed: ["device", "checkpointRef"] },
   "observe:local-entry": { discriminator: "subject", required: ["captureAs", "device", "path"], allowed: ["captureAs", "device", "path", "inputRef"] },
@@ -156,6 +158,7 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   if (step.kind === "external-state" && step.transition === "set-device-connectivity" && step.state !== "online" && step.state !== "offline") issues.push(`${at}.state is invalid`);
   if (step.kind === "external-state" && step.transition === "set-local-access" && !["readable", "unreadable", "inaccessible"].includes(String(step.state))) issues.push(`${at}.state is invalid`);
   if (step.kind === "external-state" && step.transition === "advance-device-time" && (typeof step.deltaMs !== "number" || !Number.isFinite(step.deltaMs) || step.deltaMs < 0)) issues.push(`${at}.deltaMs must be finite and non-negative`);
+  if (step.kind === "external-state" && step.transition === "inject-crash-boundary" && !["before-remote-dispatch", "after-remote-effect", "before-canonical-state-write", "after-canonical-state-write"].includes(String(step.boundary))) issues.push(`${at}.boundary is invalid`);
   if (step.kind === "external-state" && step.transition === "inject-remote-mutation-fault" && (!["create", "update", "move", "trash"].includes(String(step.operation)) || !["not-applied", "applied-before-failure"].includes(String(step.effect)))) issues.push(`${at} remote mutation fault is invalid`);
   if (step.kind === "assert" && step.assertion === "exists" && typeof step.expected !== "boolean") issues.push(`${at}.expected must be boolean`);
   if (step.kind === "assert" && step.assertion === "count") {
