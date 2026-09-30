@@ -43,6 +43,7 @@ export type ScenarioExternalStateStep = Step<
   | { readonly kind: "external-state"; readonly transition: "advance-device-time"; readonly device: string; readonly deltaMs: number }
   | { readonly kind: "external-state"; readonly transition: "set-remote-listing-completeness" | "set-remote-change-completeness"; readonly completeness: "complete" | "partial"; readonly reason?: string }
   | { readonly kind: "external-state"; readonly transition: "inject-remote-mutation-fault"; readonly operation: "create" | "update" | "move" | "trash"; readonly effect: "not-applied" | "applied-before-failure"; readonly classification: string }
+  | { readonly kind: "external-state"; readonly transition: "inject-post-mutation-observation-failure"; readonly device: string; readonly classification: string }
   | { readonly kind: "external-state"; readonly transition: "request-cancellation"; readonly device: string }
   | { readonly kind: "external-state"; readonly transition: "inject-crash-boundary"; readonly device: string; readonly boundary: "before-remote-dispatch" | "after-remote-effect" | "before-canonical-state-write" | "after-canonical-state-write" }
 >;
@@ -110,6 +111,7 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "external-state:set-remote-listing-completeness": { discriminator: "transition", required: ["completeness"], allowed: ["completeness", "reason"] },
   "external-state:set-remote-change-completeness": { discriminator: "transition", required: ["completeness"], allowed: ["completeness", "reason"] },
   "external-state:inject-remote-mutation-fault": { discriminator: "transition", required: ["operation", "effect", "classification"], allowed: ["operation", "effect", "classification"] },
+  "external-state:inject-post-mutation-observation-failure": { discriminator: "transition", required: ["device", "classification"], allowed: ["device", "classification"] },
   "external-state:request-cancellation": { discriminator: "transition", required: ["device"], allowed: ["device"] },
   "external-state:inject-crash-boundary": { discriminator: "transition", required: ["device", "boundary"], allowed: ["device", "boundary"] },
   "checkpoint:capture": { discriminator: "operation", required: ["checkpointId"], allowed: ["checkpointId"] },
