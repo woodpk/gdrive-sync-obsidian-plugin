@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
-**Prompt maturity:** BLOCKED / PRODUCTION RECOVERY DEFECT
+**Prompt maturity:** BOUND / EXECUTABLE
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
-**Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`
+**Predecessor:** architecture-reviewed post-recovery integration `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -88,6 +88,27 @@ The `after-canonical-state-write` no-plan behavior is **not** part of this produ
 
 S07A is blocked pending the separate bounded production prerequisite `07a-prerequisite-verified-not-applied-recovery.md`.
 
+## 0.6 File-Create Recovery Prerequisite Resolution / Final S07A Rebinding
+
+The production recovery blocker from §0.5 is resolved and accepted:
+
+- accepted file-create recovery implementation HEAD: `7c6b5238ea46bba74d365b7b025c4375b1b29f44`;
+- authoritative PHX-CI evidence: `32bf4a17357735673309f1465b6c657a1bf8f5d0`;
+- accepted prerequisite closure: `7680307475ebb5fde2a383a3896044639011e147`;
+- mandatory BVP-GOV-008 architecture review: PASS at `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`;
+- framework core after acceptance: 3,970 / 4,000 logical TypeScript LOC;
+- production source after acceptance: 16,668 logical LOC;
+- approved production seam remains 113 LOC / 1 file;
+- scenario catalog remains 39 scenarios / 818 LOC;
+- BVP PowerShell remains 4 scripts / 1,477 LOC;
+- architecture guard passed with 0 violations.
+
+S07A proper is rebound onto that reviewed integration state. The prior repaired scenario implementation is carried forward only as the six declarative scenarios plus one focused test; old blocked PHX-CI evidence/history is not part of the new implementation branch.
+
+Final task branch: `bvp-s07a-crash-commit-ambiguity-r2`.
+
+S07A proper remains strictly scenario/test-only. No platform-core, production, PowerShell, governance, PHX-CI, persistence, or architecture change is authorized.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for interruption at critical effect/state boundaries and for remote outcomes whose physical result is genuinely uncertain.
@@ -109,8 +130,8 @@ Executable scenarios cover, at minimum:
 
 The S07A execution binding is:
 
-- accepted predecessor / PHX-CI base: `3921e81d08be829070b83347539bc3809cf8fa57`;
-- task branch: `bvp-s07a-crash-commit-ambiguity-r1`;
+- accepted predecessor / PHX-CI base: `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`;
+- task branch: `bvp-s07a-crash-commit-ambiguity-r2`;
 - target requirements/invariants: `STATE-009`, `STATE-010`, `XFER-004`, `INV-004`;
 - target behavioral clauses: §4.10 interrupted run / iOS suspension and §13.3 controlled crash-safety evidence;
 - accepted prerequisite controls: `before-remote-dispatch`, `after-remote-effect`, `before-canonical-state-write`, `after-canonical-state-write`; REMOTE mutation ambiguity `applied-before-failure` / `not-applied`; `inject-post-mutation-observation-failure`; existing `checkpoint:restart-device`;
@@ -126,7 +147,7 @@ The S07A execution binding is:
 - PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
 - change class: `ordinary`;
 - focused command: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07a-crash-commit-ambiguity.test.js`;
-- architecture baseline: production source 16,534 logical LOC; production seam 113 LOC / 1 file; framework core 3,950 / 4,000 logical TypeScript LOC / 10 modules; scenario catalog 39 scenarios / 818 LOC; BVP PowerShell 4 scripts / 1,477 LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- architecture baseline: production source 16,668 logical LOC; production seam 113 LOC / 1 file; framework core 3,970 / 4,000 logical TypeScript LOC / 10 modules; scenario catalog 39 scenarios / 818 LOC; BVP PowerShell 4 scripts / 1,477 LOC; scenario-specific production 0; scenario-specific PowerShell 0;
 - S07A proper framework-core/production/PowerShell delta must be 0;
 - every new scenario targets ≤120 logical LOC and must remain ≤200;
 - restart proof must reconstruct fresh runtime objects using the accepted checkpoint operation; no scenario may directly edit product state;
