@@ -2,10 +2,10 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
-**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor:** accepted S06D
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
+**Predecessor:** accepted S06E empty-folder prerequisite closure `11726f416a77582d85a1808de6642884b7b3aacd`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -27,6 +27,16 @@ This is a generic fixture-exposure gap, not a product synchronization defect. S0
 
 A separate prerequisite must expose only empty-folder seeding through the existing fixture family, prove exact local/remote folder creation and fail-closed validation, pass architecture budgets, and then be frozen before S06E is rebound.
 
+## 0.2 Resolved Prerequisite Record
+
+The empty-folder fixture blocker is resolved by the accepted generic prerequisite:
+
+- prerequisite implementation: `2e91eca2e884f1622e0e0dd8355b780ee4a037ae`;
+- authoritative prerequisite evidence: `5434525ba618faeb895751dfbca79e9010762fc3`;
+- accepted prerequisite closure / S06E PHX-CI base: `11726f416a77582d85a1808de6642884b7b3aacd`.
+
+The frozen fixture family now exposes existing LOCAL and REMOTE empty-folder setup. S06E is unblocked. The prerequisite is frozen infrastructure and is not writable by S06E.
+
 ## 1. Objective
 
 Complete the non-fault reconciliation-coverage stage with declarative deterministic scenarios for configured scope/exclusions, unmanaged/unknown files, and empty-folder semantics.
@@ -45,15 +55,33 @@ Executable scenarios cover current product requirements for:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S06E execution binding is:
 
-- exact accepted S06D predecessor SHA;
-- task branch;
-- current scope/exclusion/unknown-file/empty-folder requirement IDs and target clauses;
-- exact scenario/fixture/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- current architecture metrics baseline.
+- accepted predecessor / PHX-CI base: `11726f416a77582d85a1808de6642884b7b3aacd`;
+- prerequisite implementation/evidence: `2e91eca2e884f1622e0e0dd8355b780ee4a037ae` / `5434525ba618faeb895751dfbca79e9010762fc3`;
+- task branch: `bvp-s06e-exclusions-unknown-empty-folders`;
+- target requirements: `FILE-001`–`FILE-006`, `CONFIG-001`, `CONFIG-003`–`CONFIG-007`, and `STATE-008`;
+- completion evidence: target specification §13.2 exclusions applied symmetrically, unknown-extension/binary synchronization, and empty-folder behavior; configuration safety evidence remains bounded to ordinary-sync exclusion behavior rather than selective configuration-sync implementation;
+- new scenario files:
+  - `test-platform/scenarios/06e/excluded-local-default.ts`;
+  - `test-platform/scenarios/06e/excluded-remote-default.ts`;
+  - `test-platform/scenarios/06e/device-local-config.ts`;
+  - `test-platform/scenarios/06e/protected-config.ts`;
+  - `test-platform/scenarios/06e/unknown-binary-local.ts`;
+  - `test-platform/scenarios/06e/unknown-binary-remote.ts`;
+  - `test-platform/scenarios/06e/empty-local-folder.ts`;
+  - `test-platform/scenarios/06e/empty-remote-folder.ts`;
+- focused test file: `test-platform/test/s06e-exclusions-unknown-empty-folders.test.ts`;
+- writable allowlist: exactly the eight scenario files above plus that focused test file;
+- focused PHX-CI command: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06e-exclusions-unknown-empty-folders.test.js`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- change class: `ordinary`;
+- accepted architecture baseline: framework core 3,864/4,000 logical TypeScript LOC; production seam 113 LOC/1 file; scenario catalog 28 scenarios/675 logical LOC; BVP PowerShell 4 scripts/1,477 logical LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- required S06E core/production/PowerShell delta: 0;
+- each new ordinary scenario targets ≤120 logical lines and must remain ≤200;
+- unknown-format files inside the managed BRAIN Sync root are ordinary vault content under `FILE-002` and MUST synchronize as opaque binary; this task does not reinterpret them as unmanaged;
+- the separate external BRAIN asset repository is outside this task and remains governed by `ASSET-006`;
+- no `test-platform/src/**`, `src/**`, `dev/scripts/**`, PHX-CI integration, governance, or architecture-metrics implementation changes are authorized.
 
 No core change is authorized.
 
