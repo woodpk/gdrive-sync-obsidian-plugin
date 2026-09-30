@@ -219,6 +219,35 @@ test("generic local-access and deterministic-time controls validate narrowly", (
   );
 });
 
+test("generic empty-folder fixtures validate narrowly", () => {
+  const valid = validateScenarioDefinition({
+    ...representative,
+    id: "generic-empty-folders",
+    steps: [
+      { id: "local-folder", kind: "fixture", operation: "put-local-folder", device: "device-a", path: "empty-local" },
+      { id: "remote-folder", kind: "fixture", operation: "put-remote-folder", path: "empty-remote" },
+    ],
+  });
+  strictEqual(valid.ok, true);
+
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "fixture", operation: "put-local-folder", path: "empty-local" }] },
+    /device is required/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "fixture", operation: "put-remote-folder" }] },
+    /path is required/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "fixture", operation: "put-local-folder", device: "device-a", path: "empty-local", content: { encoding: "utf8", value: "marker" } }] },
+    /unsupported field 'content'/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "fixture", operation: "put-remote-folder", path: "empty-remote", device: "device-a" }] },
+    /unsupported field 'device'/,
+  );
+});
+
 test("generic remote move fixture validates narrowly", () => {
   const valid = validateScenarioDefinition({
     ...representative,
