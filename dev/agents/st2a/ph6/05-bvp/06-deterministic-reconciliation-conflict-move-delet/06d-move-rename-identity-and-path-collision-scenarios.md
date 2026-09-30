@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted S06D remote-move prerequisite closure `2a722bed8e052a483dc6ae6fa6dad830c7082d73`
 
@@ -30,6 +30,31 @@ The remote-move fixture blocker is resolved by the accepted generic prerequisite
 - accepted prerequisite closure / S06D PHX-CI base: `2a722bed8e052a483dc6ae6fa6dad830c7082d73`.
 
 The frozen fixture family now exposes the already-existing in-memory Drive identity-preserving move operation. S06D is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by S06D.
+
+## 0.3 Acceptance Record
+
+S06D is complete and accepted.
+
+- accepted predecessor / PHX-CI base: `2a722bed8e052a483dc6ae6fa6dad830c7082d73`;
+- accepted implementation SHA: `49e74a40f53971002f8bdbdb873a20d2fc09a957`;
+- authoritative PHX-CI evidence SHA: `8459471e714df74a3ad64b3dc57a2909f2eaa1fd`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06D verification: PASS, 12/12;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: unchanged at 3,851 / 4,000 logical TypeScript LOC;
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: 28 scenarios / 675 logical LOC (+7 / +124);
+- S06D scenarios: 16–19 logical LOC each, all within target/hard limits;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted S06D coverage proves LOCAL and REMOTE identity-preserving moves, stable remote-object identity retention, ambiguous move no-guess behavior, destination collision preservation, case/Unicode collision refusal, and reserved-name refusal. Diagnostic refinement was limited to the focused S06D test surface and changed no product or platform-core behavior.
+
+This file is now a historical completion record and authorizes no further S06D implementation work.
 
 ## 1. Objective
 
