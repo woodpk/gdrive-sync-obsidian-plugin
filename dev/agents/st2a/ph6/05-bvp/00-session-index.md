@@ -281,3 +281,6 @@ S07A is now **BOUND / EXECUTABLE** against post-prerequisite architecture-review
 
 
 S07A is **BLOCKED / MISSING GENERIC CAPABILITY** after authoritative evidence `3972bca1f39342bcfda30aaceecfd281a57de8c3`. The accepted REMOTE mutation port can already force a one-shot post-mutation observation failure, but that hook is not exposed through the declarative DSL. A bounded four-file prerequisite is authorized to expose only that existing control; no production or virtual-world algorithm change is authorized.
+
+
+S07A post-mutation observation-failure prerequisite is **IMPLEMENTED / READY FOR PHX-CI** at `f52fbfc57746932272e456c70b9a8b6e866a3b01`. It adds only +6 framework-core LOC through the existing scenario contract/runner and proves caller-visible ambiguity using the accepted REMOTE mutation port; no production or virtual-world implementation delta.
