@@ -210,12 +210,15 @@ async function observePhysicalReality(
   if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "reserved-file-create") {
     if (descriptor.mutationKind !== "create") return { status: "outcome-unknown", reason: "REMOTE file create descriptor has incompatible mutation kind" };
     const reader: RemoteFileCreateRecoveryReadPort | undefined = dependencies.remoteFileCreateRecoveryReadPort;
-    if (!reader) return { status: "outcome-unknown", reason: "RemoteFileCreateRecoveryReadPort unavailable during durable recovery" };
-    const createDescriptor = { ...descriptor, mutationKind: "create" as const, remoteMutation: descriptor.remoteMutation };
-    const result = verifyRemoteFileCreate(createDescriptor, await reader.observeFileCreateRecovery(createDescriptor));
-    return result.status === "verified-effect"
-      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", result.proof) }
-      : result;
+    if (reader) {
+      const createDescriptor = { ...descriptor, mutationKind: "create" as const, remoteMutation: descriptor.remoteMutation };
+      const result = verifyRemoteFileCreate(createDescriptor, await reader.observeFileCreateRecovery(createDescriptor));
+      return result.status === "verified-effect"
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", result.proof) }
+        : result;
+    }
+    // Compatibility fallback: complete REMOTE listing may prove a persisted create
+    // positively, but cannot authorize verified-not-applied absence.
   }
   const entries = await remoteEntries();
   if (!entries) return { status: "outcome-unknown", reason: "complete REMOTE observation unavailable during durable recovery" };
