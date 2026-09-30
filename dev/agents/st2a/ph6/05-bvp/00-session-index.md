@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -316,3 +316,6 @@ BVP-GOV-008 repository-level architecture review completed against accepted prer
 - focused recovery verification passed 16/16 and the complete repository suite passed 830/830.
 
 This review authorizes S07A scenario work to resume under the existing frozen architecture. S07A proper remains scenario/test-only and has no framework-core, production, PowerShell, governance, or PHX-CI authority. No budget increase or new architecture family is authorized.
+
+
+S07A is **REBOUND / EXECUTABLE** against architecture-reviewed integration `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d` on branch `bvp-s07a-crash-commit-ambiguity-r2`. The branch carries forward only the six previously built declarative S07A scenarios plus `test-platform/test/s07a-crash-commit-ambiguity.test.ts`. The production recovery defect is resolved by the accepted prerequisite; S07A proper retains zero authority for platform-core, production, PowerShell, governance, PHX-CI, or persistence changes.
