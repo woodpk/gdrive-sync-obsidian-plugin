@@ -37,8 +37,6 @@ type MoveIdentity = Extract<RemoteMutationIdentity, { readonly kind: "identity-p
 type TrashIdentity = Extract<RemoteMutationIdentity, { readonly kind: "trash" }>;
 type DriveFailure = Extract<DriveResult<never>, { readonly ok: false }>;
 
-import type { RemoteFileCreateObservation, RemoteFileCreatePhysicalMutationDescriptor, RemoteFileCreateRecoveryReadPort } from "../../../src/contracts/synchronization-folder-create-foundation";
-
 import {
   InMemoryGoogleDriveCore,
   type InMemoryRemoteObjectSnapshot,
@@ -183,7 +181,7 @@ class VirtualCrashController {
   }
 }
 
-export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFileCreateRecoveryReadPort, RemoteFolderCreateRecoveryReadPort {
+export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {
   private readonly postMutationObservationFailures: string[] = [];
 
   constructor(
@@ -591,9 +589,9 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
   }
 
   async observeFileCreateRecovery(
-    descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+    descriptor: { readonly targetPath: VaultPath; readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" }> },
     cancellation?: SynchronizationCancellationSignal,
-  ): Promise<RemoteFileCreateObservation> {
+  ) {
     if (cancelled(cancellation)) return { status: "unobservable", reason: "synchronization-cancelled" };
     const reservedId = descriptor.remoteMutation.reservedRemoteObjectId;
     const reserved = this.drive.inspectObject(reservedId);
