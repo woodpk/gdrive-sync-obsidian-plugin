@@ -7,6 +7,27 @@
 **Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`  
 **Triggering S07A evidence:** `50506113f51f0aa7450d5f3550aa861b6498545c`
 
+## 0.1 Ready-for-Verification Record
+
+Implementation is complete and ready for authoritative PHX-CI.
+
+- implementation HEAD: `1f7d80fcdb34e3b7800d4d733a5f1fb59f7c39cb`;
+- PHX-CI base: `df7aacce0e3568455a80c7c08f32795004d3583f`;
+- production implementation delta: +8 logical/nonblank LOC in `src/product/durable-intent-recovery-base.ts`;
+- focused regression delta: +52 logical/nonblank LOC in the existing durable-intent recovery test;
+- framework-core delta: 0;
+- production-seam delta: 0;
+- PowerShell / PHX-CI / governance delta: 0;
+- regression coverage includes:
+  - `dispatch-authorized` verified-not-applied retirement;
+  - `outcome-unknown` verified-not-applied retirement;
+  - no false canonical success commit;
+  - no physical redispatch;
+  - ordinary controller planning resumes after retired no-effect work;
+  - partially progressed multi-effect work remains fail-closed.
+
+If accepted, this prerequisite becomes implementation child #2 since the post-crash-prerequisite architecture review, so BVP-GOV-008 requires a repository-level architecture review before S07A proper resumes.
+
 ## 1. Objective
 
 Repair the existing durable restart-recovery path so a physical result proven `verified-not-applied` is treated as successful retired recovery **only when** the durable lifecycle has in fact retired the entire logical operation. Ordinary planning must then be allowed to resume from current LOCAL/REMOTE/canonical reality.
