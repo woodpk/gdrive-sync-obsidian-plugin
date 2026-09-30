@@ -2,9 +2,33 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S06E  
 **Predecessor:** accepted S06D reviewed integration state `c7c2f048eee9b295488af63553b19d373fdee451`
+
+## 0.1 Acceptance Record
+
+This prerequisite is complete and accepted.
+
+- accepted prerequisite input / PHX-CI base: `b41f9e1186003c11cae034a66fb16701d4a4fd19`;
+- accepted implementation SHA: `2e91eca2e884f1622e0e0dd8355b780ee4a037ae`;
+- authoritative PHX-CI evidence SHA: `5434525ba618faeb895751dfbca79e9010762fc3`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused prerequisite verification: PASS, 24/24;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,864 / 4,000 logical TypeScript LOC (+13);
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: unchanged at 28 scenarios / 675 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted prerequisite adds only `put-local-folder` and `put-remote-folder` to the existing fixture family and delegates to existing in-memory folder capabilities. No new folder algorithm, runner family, persistence system, production behavior, or architecture family was introduced.
+
+This file is now a historical completion record and authorizes no further prerequisite implementation work.
 
 ## 1. Objective
 
