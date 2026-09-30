@@ -45,7 +45,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06B | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06b-merge-conflict-and-delete-vs-modify-scenarios.md` |
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
-| 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | EXECUTABLE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
+| 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
@@ -185,7 +185,7 @@ S06E is **BLOCKED / MISSING GENERIC CAPABILITY**. Repository grounding after the
 
 S06E generic empty-folder fixture prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `2e91eca2e884f1622e0e0dd8355b780ee4a037ae` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `5434525ba618faeb895751dfbca79e9010762fc3`. Focused verification passed 24/24; architecture guard passed with 0 violations; framework core reached 3,864/4,000 (+13); production/seam/scenario/PowerShell metrics remained unchanged.
 
-S06E is now **BOUND / IMPLEMENTED / READY FOR PHX-CI VERIFICATION** on branch `bvp-s06e-exclusions-unknown-empty-folders`. Its accepted predecessor / PHX-CI base is empty-folder prerequisite closure `11726f416a77582d85a1808de6642884b7b3aacd`. S06E implementation is restricted to eight declarative scenario files plus one focused test file, with zero authorized production, platform-core, PowerShell, governance, or PHX-CI changes.
+S06E is **COMPLETE / ACCEPTED**. Accepted implementation `18b6f82a45dd86cc798ccfac14eb9b6cba772eb5` was verified by PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`; authoritative evidence is `a3cd74a56a38427e424d5c7d8c75a72c28d1da22`. Focused verification passed 13/13; repository and overall verification passed; framework core remained 3,864/4,000; scenario catalog reached 36 scenarios / 779 logical LOC; production/seam/PowerShell remained unchanged; production artifact remained byte-identical.
 
 ### Recurring Architecture Review — after S06A / S06B
 
