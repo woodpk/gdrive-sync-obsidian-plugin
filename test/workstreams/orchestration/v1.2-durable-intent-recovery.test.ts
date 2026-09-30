@@ -109,6 +109,43 @@ test("D-C11 intent-persisted retires without mutation; stale generation and malf
   const oid = id<"OperationId">("op:bad-local"), iid = id<"MutationIntentId">("intent:bad-local"), txid = id<"LocalMutationTransactionId">("tx:missing"); const malformed = new AuthorityStore([{ logicalKind: "single-effect", operationId: oid, intentId: iid, semanticAuthority: { generation: gen }, effects: [{ effectId: "effect:bad", stage: "effect-verified", verificationEvidenceRef: "proof", descriptor: { kind: "local-file", targetSide: "local", mutationKind: "create", targetPath: target, localTransactionId: txid, intendedContent: v1 } }] } as never]); assert.equal((await recoverOutstandingDurableIntents(f.executor, malformed, canonical as never, context, managedRemote)).status, "recovery-required");
 });
 
+test("D-C11 verified-not-applied restart recovery retires dispatch-authorized and outcome-unknown single-effect work without false commit", async () => {
+  for (const stage of ["dispatch-authorized", "outcome-unknown"] as const) {
+    const canonical = new CanonicalStore();
+    const authority = new AuthorityStore([createIntent(stage)]);
+    const f = fixture(canonical, () => []);
+    const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote);
+    assert.deepEqual(result, { status: "recovered", changed: true, recoveredCount: 0, retiredCount: 1 });
+    assert.equal(authority.value.operationIntents.length, 0);
+    assert.equal(canonical.saves, 0);
+    assert.equal(canonical.value.base.length, 0);
+    assert.equal(f.raw(), 0);
+  }
+});
+
+test("D-C11 verified-not-applied recovery does not retire partially progressed multi-effect work", async () => {
+  const seed = createIntent("outcome-unknown");
+  const descriptor = seed.effects[0]!.descriptor;
+  const progressed = {
+    logicalKind: "clean-text-merge",
+    operationId: seed.operationId,
+    intentId: seed.intentId,
+    semanticAuthority: seed.semanticAuthority,
+    effects: [
+      { ...seed.effects[0]!, effectId: "effect:verified-sibling", stage: "effect-verified", verificationEvidenceRef: "proof:sibling" },
+      { ...seed.effects[0]!, effectId: "effect:not-applied", stage: "outcome-unknown", descriptor },
+    ],
+  } as RecoverableOperationIntentV1_1;
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([progressed]);
+  const f = fixture(canonical, () => []);
+  const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote);
+  assert.equal(result.status, "recovery-required");
+  assert.equal(authority.value.operationIntents.length, 1);
+  assert.equal(canonical.saves, 0);
+  assert.equal(f.raw(), 0);
+});
+
 test("D-C12 contradictory current REMOTE identity cannot replace persisted reserved identity", async () => {
   const canonical = new CanonicalStore(); const authority = new AuthorityStore([createIntent()]); const f = fixture(canonical, () => [entry()]); const adapter = createAuthoritativeProductExecutor(f.executor, authority, canonical as never, context, managedRemote); assert.equal((await adapter.validatePreconditions(executable(v2, wrong))).status, "recovery-required"); assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "dispatch-authorized"); assert.equal(f.raw(), 0);
 });
@@ -119,6 +156,24 @@ test("D-C12 persisted update candidate identity becomes canonical", async () => 
 
 test("D-C12 clean merge requires every verified durable effect and aggregate evidence is deterministic", async () => {
   const complete = mergeIntent(false), incomplete = mergeIntent(true), entries = [entry(target, candidate)]; const one = reconstructDurableRecovery(complete.intent, priorState(), entries), two = reconstructDurableRecovery(complete.intent, priorState(), entries); assert.ok(one); assert.equal(one?.receipt.resultingRemoteObjectId, candidate); assert.equal(one?.receipt.verificationEvidenceRef, two?.receipt.verificationEvidenceRef); assert.equal(reconstructDurableRecovery(incomplete.intent, priorState(), entries), undefined); const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([incomplete.intent], gen, [incomplete.tx]); const f = fixture(canonical, () => entries); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovery-required"); assert.equal(f.raw(), 0);
+});
+
+test("D-C11 controller resumes ordinary planning after verified-not-applied retirement", async () => {
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([createIntent("dispatch-authorized")]);
+  const f = fixture(canonical, () => []);
+  let assemblyCalls = 0, plannerCalls = 0;
+  const assembler = { async assembleFull() { assemblyCalls++; return { input: { snapshots: [], state: await canonical.load() }, managedRemote, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, mode: "full" }; } };
+  const plan = { planId: id<"PlanId">("plan:replanned-after-no-effect") as any, trigger: "manual", operations: [{ operationId: id<"OperationId">("op:replanned"), kind: "noop", path: target, destructive: false, preconditions: [], reasons: [] }], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" } as any;
+  const controller = new ProductController({ vaultIdentity: vault as never, deviceIdentity: device as never, stateContext: context, stateStore: canonical as never, authorityStore: authority, snapshotAssembler: assembler as never, executor: f.executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, plannerForTrigger: () => ({ async plan() { plannerCalls++; assert.equal(authority.value.operationIntents.length, 0); return plan; } }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:d-c11:no-effect" });
+  const preview = await controller.previewManual();
+  assert.ok(preview);
+  assert.equal(preview?.planId, plan.planId);
+  assert.equal(plannerCalls, 1);
+  assert.equal(assemblyCalls, 2);
+  assert.equal(authority.value.operationIntents.length, 0);
+  assert.equal(canonical.saves, 0);
+  assert.equal(f.raw(), 0);
 });
 
 test("D-C11 controller recovers outstanding durable work before a fresh planner returns noop", async () => {
