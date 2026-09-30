@@ -2,10 +2,10 @@
 
 ## 0. Status
 
-**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
-**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage  
-**Predecessor:** accepted S06C
+**Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
+**Predecessor:** accepted S06D remote-move prerequisite closure `2a722bed8e052a483dc6ae6fa6dad830c7082d73`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -20,6 +20,16 @@ The accepted in-memory Drive already implements identity-preserving `move(remote
 This is a generic scenario-fixture exposure gap, not a product or synchronization-policy defect. S06D remains scenario-only and may not modify `test-platform/src/**`.
 
 A separate prerequisite must expose only the existing identity-preserving in-memory Drive move through the common fixture family, prove exact dispatch/identity preservation and fail-closed validation, pass PHX-CI architecture budgets, and then be frozen before S06D is rebound.
+
+## 0.2 Resolved Prerequisite Record
+
+The remote-move fixture blocker is resolved by the accepted generic prerequisite:
+
+- prerequisite implementation: `ee96323b74a60d9cceeb71b7012e95af1da0f270`;
+- authoritative prerequisite evidence: `24a49a6c3400c18bf9d4e24da645df83298b4aea`;
+- accepted prerequisite closure / S06D PHX-CI base: `2a722bed8e052a483dc6ae6fa6dad830c7082d73`.
+
+The frozen fixture family now exposes the already-existing in-memory Drive identity-preserving move operation. S06D is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by S06D.
 
 ## 1. Objective
 
@@ -39,15 +49,31 @@ Executable scenarios cover:
 
 ## 3. Dispatch Binding — Hard Data Only
 
-Before execution the supervisor binds:
+The S06D execution binding is:
 
-- exact accepted S06C predecessor SHA;
-- task branch;
-- current move/path/identity requirement IDs and target clauses;
-- exact scenario/fixture/test paths and writable allowlist;
-- PHX-CI base/pin/runtime;
-- focused command if established;
-- current architecture metrics baseline.
+- accepted predecessor / PHX-CI base: `2a722bed8e052a483dc6ae6fa6dad830c7082d73`;
+- prerequisite implementation/evidence: `ee96323b74a60d9cceeb71b7012e95af1da0f270` / `24a49a6c3400c18bf9d4e24da645df83298b4aea`;
+- task branch: `bvp-s06d-move-rename-identity-collision`;
+- target requirements: `REM-006`, `MOVE-001`–`MOVE-005`, `FILE-008`–`FILE-010`;
+- governing invariants: `INV-010` and `INV-017`;
+- completion evidence: target specification §13.2 identity-preserving local/remote rename, ambiguous rename no-guess, and path/Unicode/case collision blocking;
+- new scenario files:
+  - `test-platform/scenarios/06d/local-rename.ts`;
+  - `test-platform/scenarios/06d/remote-rename.ts`;
+  - `test-platform/scenarios/06d/ambiguous-local-move.ts`;
+  - `test-platform/scenarios/06d/destination-collision.ts`;
+  - `test-platform/scenarios/06d/case-collision.ts`;
+  - `test-platform/scenarios/06d/unicode-collision.ts`;
+  - `test-platform/scenarios/06d/invalid-target-path.ts`;
+- focused test file: `test-platform/test/s06d-move-rename-identity-collision.test.ts`;
+- writable allowlist: exactly the seven scenario files above plus that focused test file;
+- focused PHX-CI command: `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s06d-move-rename-identity-collision.test.js`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- change class: `ordinary`;
+- accepted architecture baseline: framework core 3,851/4,000 logical TypeScript LOC; production seam 113 LOC/1 file; scenario catalog 21 scenarios/551 logical LOC; BVP PowerShell 4 scripts/1,477 logical LOC; scenario-specific production 0; scenario-specific PowerShell 0;
+- required S06D core/production/PowerShell delta: 0;
+- each new ordinary scenario targets ≤120 logical lines and must remain ≤200;
+- no `test-platform/src/**`, `src/**`, `dev/scripts/**`, PHX-CI integration, governance, or architecture-metrics implementation changes are authorized.
 
 No core change is authorized.
 
