@@ -46,7 +46,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
-| 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | BLOCKED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
+| 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | EXECUTABLE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
@@ -240,3 +240,6 @@ S06V is **BLOCKED / ASSIGNED-COVERAGE GAP** before authoritative stage PHX-CI. I
 
 
 S06V assigned-coverage prerequisite repair is **COMPLETE / ACCEPTED**. Accepted verification HEAD `610c1372190aa3f0195bdf68322c63aac6ee1264` passed authoritative PHX-CI; evidence is `db1629c57f0b88513a16ad67cc5bf2f45abcd24a`. Focused verification passed 29/29, architecture guard passed with 0 violations, framework core remained 3,864/4,000, and the scenario catalog reached 39 scenarios / 818 logical LOC. The four prior mapping gaps `MOVE-004`, `FILE-004`, `CONFIG-006`, and `CONFIG-007` are repaired with scenario/focused-test-only changes.
+
+
+S06V is **BOUND / EXECUTABLE**. Full assigned-ID reconciliation now passes after accepted coverage-repair evidence `db1629c57f0b88513a16ad67cc5bf2f45abcd24a`. The stage gate compares the integrated S06 state against accepted S05 closure `0a57e8cbf96b7512b0157886cc78bad260561448` using PHX-CI change class `authorized-governance`.
