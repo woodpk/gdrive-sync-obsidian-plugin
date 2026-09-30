@@ -176,7 +176,7 @@ class VirtualCrashController {
       intent.operationId !== undefined &&
       completed.has(String(intent.operationId)) &&
       Array.isArray(intent.effects) &&
-      intent.effects.some(effect => effect.stage === "effect-verified"),
+      intent.effects.some((effect: { readonly stage?: unknown }) => effect.stage === "effect-verified"),
     );
   }
 }
