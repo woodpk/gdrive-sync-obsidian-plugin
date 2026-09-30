@@ -7,6 +7,17 @@
 **Predecessor:** S07A bound integration state `4b81e6044b7281b490c64c9928fad288893e1814`  
 **Triggering evidence:** `3972bca1f39342bcfda30aaceecfd281a57de8c3`
 
+## 0.1 Ready-for-Verification Record
+
+Implementation is complete and ready for authoritative PHX-CI.
+
+- implementation HEAD: `f52fbfc57746932272e456c70b9a8b6e866a3b01`;
+- PHX-CI base: `44814af44e4e5fbd2550a1357182d6b18035c44b`;
+- changed implementation paths: exactly the four writable allowlist paths;
+- framework-core delta: +6 logical/nonblank lines, approximately 3,950 / 4,000;
+- production / virtual-world implementation / PowerShell / PHX-CI delta: 0;
+- proof pairs the accepted `applied-before-failure` provider fault with the new one-shot post-mutation observation failure and verifies caller rejection while the physical REMOTE object exists.
+
 ## 1. Objective
 
 Expose the already-existing one-shot `InMemoryReliableRemoteMutationPort.queuePostMutationObservationFailure(...)` control through the existing declarative `external-state` family so an S07A scenario can preserve a genuine `outcome-unknown` REMOTE mutation result after an applied-but-response-lost provider failure.
