@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** BLOCKED / PRODUCTION RECOVERY DEFECT
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
 **Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`
 
@@ -65,6 +65,28 @@ The accepted new transition `inject-post-mutation-observation-failure` must be p
 The repaired task branch is `bvp-s07a-crash-commit-ambiguity-r1`.
 
 No platform-core, production, PowerShell, PHX-CI, governance, persistence, or new fault-framework change is authorized.
+
+## 0.5 S07A Verification Blocker — Verified-Not-Applied Restart Recovery Defect
+
+Authoritative repaired S07A evidence `50506113f51f0aa7450d5f3550aa861b6498545c` proves a production recovery defect in the two restart cases where physical REMOTE observation establishes that an authorized/ambiguous mutation did **not** occur.
+
+Observed production behavior:
+
+- `DurableEffectLifecycleCoordinator.recordPhysicalResult(...)` correctly handles a single logical operation with no progressed sibling by removing the durable operation intent and returning `verified-not-applied`;
+- `recoverOne(...)` in `src/product/durable-intent-recovery-base.ts` immediately rejects every recorded result other than `effect-verified` / `already-progressed`;
+- therefore the successfully retired `verified-not-applied` result is incorrectly surfaced as `recovery-required`;
+- the controller maps that recovery failure into a recovery-gated planning failure, observed by the S07A runner as persistent `missing-production-plan`.
+
+This violates the existing lifecycle contract documented in `recordPhysicalResult(...)`: a verified non-effect may retire the whole operation when no sibling crossed dispatch so renewed ordinary planning authority can decide whether work is still valid.
+
+Affected demonstrated S07A cases:
+
+- `before-remote-dispatch` (`dispatch-authorized` + REMOTE absence);
+- `ambiguous-not-applied` (`outcome-unknown` + REMOTE absence).
+
+The `after-canonical-state-write` no-plan behavior is **not** part of this product defect: ordinary successful execution also retains `state-committed` durable history, and restart with already committed canonical state may legitimately produce no new plan.
+
+S07A is blocked pending the separate bounded production prerequisite `07a-prerequisite-verified-not-applied-recovery.md`.
 
 ## 1. Objective
 
