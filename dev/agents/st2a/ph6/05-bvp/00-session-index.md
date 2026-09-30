@@ -252,3 +252,6 @@ S07A generic crash-boundary prerequisite is **IMPLEMENTED / READY FOR PHX-CI** a
 
 
 S07A crash-boundary prerequisite initial evidence `c97ca4e93a3b2404a56492b91aa7af115f1ecaa9` BLOCKED on three focused tests. The bounded repair is now complete: before-dispatch evidence correctly expects retained `dispatch-authorized` authority, and canonical-state crashes now target only completed-operation writes paired with `effect-verified` durable intent. No production/PowerShell delta; repaired framework-core estimate is ~3,944/4,000 pending PHX-CI.
+
+
+S07A crash-boundary prerequisite second evidence `d8343f1d3413efa271e2ed10f42acbfa0f2808a7` BLOCKED at TypeScript compile on one implicit-any callback in the new canonical completion discriminator. Commit `32968cd310548a3f3352df28244f377b708ddbaa` fixes only that typing defect. Prerequisite remains unaccepted pending PHX-CI PASS.
