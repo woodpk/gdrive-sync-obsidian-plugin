@@ -148,7 +148,7 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
     else if ((expect.status === "blocked" || expect.status === "failed") && !text(expect.classification)) issues.push(`${at}.expect ${expect.status} requires classification`);
     else if (expect.status === "success" && expect.classification !== undefined) issues.push(`${at}.expect success cannot carry classification`);
   }
-  if (step.kind === "fixture" && String(step.operation).startsWith("put-")) {
+  if (step.kind === "fixture" && (step.operation === "put-local-file" || step.operation === "put-remote-file")) {
     const content = step.content;
     if (!isRecord(content) || (content.encoding === "utf8" ? typeof content.value !== "string" : content.encoding === "bytes" ? !Array.isArray(content.value) || content.value.some(value => typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 255) : true)) issues.push(`${at}.content is invalid`);
   }
