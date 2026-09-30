@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 **Predecessor:** accepted S06C generic-control prerequisite closure `77962c0ef118f41e661d0323fdaa10269a96336f`
 
@@ -31,6 +31,31 @@ The S06C dispatch blocker recorded above is resolved by the accepted generic-con
 - accepted prerequisite closure / S06C PHX-CI base: `77962c0ef118f41e661d0323fdaa10269a96336f`.
 
 The frozen declarative `external-state` family now exposes the already-existing local access-state and deterministic device-time controls required by this scenario-only child. S06C is therefore unblocked. The prerequisite is frozen infrastructure and is not writable by S06C.
+
+## 0.3 Acceptance Record
+
+S06C is complete and accepted.
+
+- accepted predecessor / PHX-CI base: `77962c0ef118f41e661d0323fdaa10269a96336f`;
+- accepted implementation SHA: `d45ba2b857a4dea6b0befafbce7a9bfe193ed3f2`;
+- authoritative PHX-CI evidence SHA: `401b3bd36ab6f32456663b09fff5909d4a1483a4`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S06C verification: PASS, 9/9;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- architecture guard: PASS, 0 violations;
+- framework core: unchanged at 3,841 / 4,000 logical TypeScript LOC;
+- production seam: unchanged at 113 logical LOC / 1 file;
+- scenario catalog: 21 scenarios / 551 logical LOC (+7 / +200);
+- S06C scenarios: 24–36 logical LOC each, all within target/hard limits;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production: 0;
+- scenario-specific PowerShell: 0;
+- production artifact unchanged at 872,862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The first PHX-CI attempt correctly blocked because single-object destructive scenarios tripped the production mass-deletion safety threshold. The bounded repair preserved product safety semantics by modeling ordinary low-risk deletion against six managed paths rather than bypassing the checkpoint gate.
+
+This file is now a historical completion record and authorizes no further S06C implementation work.
 
 ## 1. Objective
 
