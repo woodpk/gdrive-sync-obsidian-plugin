@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 872862 bytes; SHA-256 6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06d-prereq-remote-move-fixture
+- Source build HEAD requested: ee96323b74a60d9cceeb71b7012e95af1da0f270
+- Verification checkout HEAD: ee96323b74a60d9cceeb71b7012e95af1da0f270
+- Evidence publication target: origin/bvp-s06d-prereq-remote-move-fixture
