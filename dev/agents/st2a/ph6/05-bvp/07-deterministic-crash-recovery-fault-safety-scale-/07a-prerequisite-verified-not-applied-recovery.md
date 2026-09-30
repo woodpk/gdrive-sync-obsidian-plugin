@@ -7,6 +7,27 @@
 **Predecessor:** accepted ambiguity-prerequisite closure `3921e81d08be829070b83347539bc3809cf8fa57`  
 **Triggering S07A evidence:** `50506113f51f0aa7450d5f3550aa861b6498545c`
 
+## 0.2 Re-grounded Ready-for-Verification Record
+
+The corrected prerequisite implementation is complete and ready for authoritative PHX-CI.
+
+- repair branch: `bvp-s07a-prereq-file-create-recovery-r1`;
+- implementation HEAD: `10e054423a790fe07dae2129e90961df8f24eb43`;
+- PHX-CI base: `5ca1dbe0f2ed4918ae8ecca3b23196b02a3b6862`;
+- failed predecessor hypothesis evidence retained at `94a4cda7215ef3a4eab9fa6367d6b12ce0786a49`;
+- implementation scope: exactly six authorized non-test files plus the existing durable-intent recovery test;
+- REMOTE file-create recovery now mirrors the established folder-create design:
+  - exact reserved-ID observation;
+  - independent logical-target occupancy observation;
+  - `authoritative-absent` only when both are proven;
+  - incompatible/ambiguous evidence remains fail-closed;
+  - no recovery read dispatches or mutates Drive;
+- downstream `verified-not-applied` retirement succeeds only when durable authority proves the logical operation was actually removed;
+- framework-core delta comes only from the deterministic virtual-world observer and is expected to move from 3,950 to approximately 3,973 logical LOC; PHX-CI metrics are authoritative;
+- production seam / PowerShell / PHX-CI / governance delta: 0.
+
+If PHX-CI accepts this prerequisite, BVP-GOV-008 architecture review is mandatory before S07A resumes.
+
 ## 1. Objective
 
 Repair the existing durable restart-recovery path so a physical result proven `verified-not-applied` is treated as successful retired recovery **only when** the durable lifecycle has in fact retired the entire logical operation. Ordinary planning must then be allowed to resume from current LOCAL/REMOTE/canonical reality.
@@ -76,7 +97,7 @@ Add focused regression coverage proving the exact-ID/path recovery seam and down
 - focused durable-intent recovery tests PASS;
 - complete repository suite/build/repository checks PASS;
 - production source delta is limited to the bounded recovery correction;
-- framework core remains 3,950 / 4,000 with zero delta;
+- framework core remains <=4,000; expected post-repair value is approximately 3,973 pending authoritative PHX-CI metrics;
 - production seam remains 113 LOC / 1 file;
 - scenario-specific production remains 0;
 - production artifact behavior changes only as implied by this product recovery repair and PHX-CI artifact/hash evidence is recorded;
