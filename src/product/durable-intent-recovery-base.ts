@@ -3,6 +3,7 @@ import {
   folderCreateDescriptorIsSelfConsistent,
   verifyLocalFolderCreate,
   verifyRemoteFolderCreate,
+  verifyRemoteFileCreate,
   type CanonicalFileContentProof,
   type ContentEvidence,
   type GoogleDrivePort,
@@ -15,6 +16,7 @@ import {
   type RecoverableOperationIntentV1_1,
   type RecoverablePhysicalMutationDescriptorV1_1,
   type RemoteEntry,
+  type RemoteFileCreateRecoveryReadPort,
   type RemoteFolderCreateRecoveryReadPort,
   type RemoteMutationIdentity,
   type RemoteMutationOutcome,
@@ -41,6 +43,7 @@ export interface RemoteUpdateFinalizationPort {
 
 export interface DurableIntentRecoveryDependencies {
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPort;
+  readonly remoteFileCreateRecoveryReadPort?: RemoteFileCreateRecoveryReadPort;
   readonly remoteFolderCreateRecoveryReadPort?: RemoteFolderCreateRecoveryReadPort;
   readonly remoteUpdateFinalizationPort?: RemoteUpdateFinalizationPort;
 }
@@ -341,6 +344,16 @@ async function observePersistedEffect(legacy: ProductSynchronizationExecutor, de
       ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-local-trash", descriptor) }
       : { status: "outcome-unknown", reason: "LOCAL trash target remains present" };
   }
+  if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "reserved-file-create") {
+    if (descriptor.mutationKind !== "create") return { status: "outcome-unknown", reason: "REMOTE file create descriptor has incompatible mutation kind" };
+    const reader = deps.remoteFileCreateRecoveryReadPort;
+    if (!reader) return { status: "outcome-unknown", reason: "RemoteFileCreateRecoveryReadPort unavailable during durable recovery" };
+    const createDescriptor = { ...descriptor, mutationKind: "create" as const, remoteMutation: descriptor.remoteMutation };
+    const result = verifyRemoteFileCreate(createDescriptor, await reader.observeFileCreateRecovery(createDescriptor));
+    return result.status === "verified-effect"
+      ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", result.proof) }
+      : result;
+  }
   const entries = await remoteEntries(legacy, remote);
   if (!entries) return { status: "outcome-unknown", reason: "complete REMOTE listing unavailable during durable recovery" };
   if (descriptor.kind === "remote-file") {
@@ -420,6 +433,14 @@ async function recoverOne(snapshot: RecoverableOperationIntentV1_1, legacy: Prod
     emitStateRecoveryDiagnostic(diagnostics, physical.status === "verified-effect" ? "info" : "warn", "recovery.durable", "recovery-physical-observation", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, result: physical.status, ...(physical.status === "verified-effect" ? { verificationEvidenceRef: physical.verificationEvidenceRef } : { reason: physical.reason }) });
     const recorded = await lifecycle.recordPhysicalResult(String(intent.operationId), effect.effectId, physical);
     emitStateRecoveryDiagnostic(diagnostics, recorded.status === "effect-verified" || recorded.status === "already-progressed" ? "info" : "warn", "recovery.durable", "recovery-physical-result-recorded", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, result: recorded.status, ...("reason" in recorded ? { reason: recorded.reason } : {}) });
+    if (recorded.status === "verified-not-applied") {
+      const retired = recorded.authority
+        ? !recorded.authority.operationIntents.some(value => value.operationId === intent.operationId)
+        : false;
+      return retired
+        ? { status: "recovered", changed: true, retired: true }
+        : { status: "recovery-required", reason: `durable effect ${effect.effectId} was verified not applied but the logical operation remains active` };
+    }
     if (recorded.status !== "effect-verified" && recorded.status !== "already-progressed") {
       return { status: "recovery-required", reason: `durable effect ${effect.effectId} remains unresolved (${recorded.status}${"reason" in recorded ? `: ${recorded.reason}` : ""})` };
     }
