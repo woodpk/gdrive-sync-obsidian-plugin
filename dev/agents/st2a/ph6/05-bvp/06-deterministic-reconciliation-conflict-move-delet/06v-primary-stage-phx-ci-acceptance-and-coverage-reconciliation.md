@@ -3,11 +3,24 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s06-reconciliation-coverage-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / ASSIGNED-COVERAGE GAP  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage
 
 This is a complete prewritten verification contract. It has no implementation-repair authority.
+
+## 0.1 Pre-PHX Coverage Reconciliation Blocker
+
+Before binding 06V for authoritative PHX-CI, independent reconciliation of the explicit S06A–S06E target assignments against executable scenario traceability found four assigned requirements without scenario mappings:
+
+- `MOVE-004`;
+- `FILE-004`;
+- `CONFIG-006`;
+- `CONFIG-007`.
+
+All other explicitly assigned S06 requirement/invariant IDs are mapped by accepted executable scenarios.
+
+06V has no implementation-repair authority, so it is blocked pending the separate bounded scenario-only prerequisite `06v-prerequisite-assigned-coverage-repair.md`. No product or platform-core defect is currently demonstrated.
 
 ## 1. Objective
 
