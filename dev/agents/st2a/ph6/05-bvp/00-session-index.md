@@ -290,3 +290,6 @@ S07A is **REBOUND / EXECUTABLE FOR BOUNDED REPAIR** against accepted ambiguity-p
 
 
 S07A is **BLOCKED / PRODUCTION RECOVERY DEFECT** after evidence `50506113f51f0aa7450d5f3550aa861b6498545c`. Restart recovery correctly retires a proven `verified-not-applied` durable operation, but `recoverOne(...)` misclassifies that successful retirement as `recovery-required`. A bounded two-file production prerequisite is authorized; S07A scenario work is frozen until it passes.
+
+
+S07A file-create recovery prerequisite is **RE-GROUNDED / READY FOR PHX-CI** on branch `bvp-s07a-prereq-file-create-recovery-r1`, semantic implementation HEAD `10e054423a790fe07dae2129e90961df8f24eb43`. The failed two-file hypothesis is retained in evidence `94a4cda7215ef3a4eab9fa6367d6b12ce0786a49`. The corrected repair adds an exact reserved-ID/path REMOTE file-create recovery seam and is expected to raise framework core from 3,950 to roughly 3,973 / 4,000 pending authoritative metrics.
