@@ -37,6 +37,20 @@ No production, production-seam, PowerShell, PHX-CI implementation, persistence i
 
 The prerequisite is repaired and ready for authoritative re-verification.
 
+## 0.3 Second Verification / Compile Repair Record
+
+Second authoritative PHX-CI evidence `d8343f1d3413efa271e2ed10f42acbfa0f2808a7` blocked before executing focused tests because TypeScript strict compilation found one implicit-`any` callback parameter in the new canonical completion discriminator:
+
+`test-platform/src/virtual-world/virtual-world.ts(179,27): TS7006`.
+
+Bounded repair:
+
+- explicit callback type added to the `effect-verified` discriminator only;
+- repair commit: `32968cd310548a3f3352df28244f377b708ddbaa`;
+- no semantic, production, PowerShell, PHX-CI, persistence, or architecture change.
+
+The prerequisite remains unaccepted pending authoritative PHX-CI PASS.
+
 ## 1. Objective
 
 Expose four one-shot, deterministic crash points through the existing virtual-world/scenario infrastructure so S07A can test real production crash ordering and restart recovery without changing production semantics.
