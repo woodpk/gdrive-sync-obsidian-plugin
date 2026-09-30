@@ -277,4 +277,4 @@ S07A crash-boundary prerequisite initial evidence `c97ca4e93a3b2404a56492b91aa7a
 S07A crash-boundary prerequisite second evidence `d8343f1d3413efa271e2ed10f42acbfa0f2808a7` BLOCKED at TypeScript compile on one implicit-any callback in the new canonical completion discriminator. Commit `32968cd310548a3f3352df28244f377b708ddbaa` fixes only that typing defect. Prerequisite remains unaccepted pending PHX-CI PASS.
 
 
-S07A is now **BOUND / EXECUTABLE** against post-prerequisite architecture-reviewed integration `993f459a5e3299c460e427f3010e9c983dfb6ca5`. Scope is six declarative crash/ambiguity scenarios plus one focused test. No platform-core, production, PowerShell, governance, or PHX-CI changes are authorized.
+S07A is **BOUND / IMPLEMENTED / READY FOR PHX-CI VERIFICATION** on branch `bvp-s07a-crash-commit-ambiguity`. Implementation is restricted to six declarative scenarios plus one focused test, with zero framework-core, production, PowerShell, governance, or PHX-CI delta.
