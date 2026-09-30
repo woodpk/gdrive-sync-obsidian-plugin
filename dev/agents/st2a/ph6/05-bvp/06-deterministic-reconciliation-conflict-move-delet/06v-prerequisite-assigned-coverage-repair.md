@@ -6,6 +6,17 @@
 **Parent:** BVP-S06V  
 **Predecessor:** post-S06E architecture-reviewed integration `47129c8bdfc396862341b3b5135df560eef3d535`
 
+## 0.1 Ready-for-Verification Record
+
+Implementation is complete and ready for authoritative PHX-CI.
+
+- implementation HEAD: `a76769675984e830239875827e6cd2d2af1006fd`;
+- PHX-CI base: `791806113f336a42b8589fc4502fcad9c79be289`;
+- changed implementation paths: exactly the five writable allowlist paths;
+- repaired mappings: `MOVE-004`, `FILE-004`, `CONFIG-006`, `CONFIG-007`;
+- platform-core / production / PowerShell delta: 0;
+- new scenarios: 13 logical LOC each.
+
 ## 1. Objective
 
 Repair the four coverage-traceability gaps independently discovered during S06V pre-PHX reconciliation:
