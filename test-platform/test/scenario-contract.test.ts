@@ -219,6 +219,29 @@ test("generic local-access and deterministic-time controls validate narrowly", (
   );
 });
 
+test("generic crash-boundary controls validate narrowly", () => {
+  for (const boundary of ["before-remote-dispatch", "after-remote-effect", "before-canonical-state-write", "after-canonical-state-write"] as const) {
+    const valid = validateScenarioDefinition({
+      ...representative,
+      id: `crash-${boundary}`,
+      steps: [{ id: "crash", kind: "external-state", transition: "inject-crash-boundary", device: "device-a", boundary }],
+    });
+    strictEqual(valid.ok, true);
+  }
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-crash-boundary", device: "device-a", boundary: "somewhere-else" }] },
+    /boundary is invalid/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-crash-boundary", boundary: "before-remote-dispatch" }] },
+    /device is required/,
+  );
+  assertInvalid(
+    { ...representative, steps: [{ id: "x", kind: "external-state", transition: "inject-crash-boundary", device: "device-a", boundary: "before-remote-dispatch", arbitrary: true }] },
+    /unsupported field 'arbitrary'/,
+  );
+});
+
 test("generic empty-folder fixtures validate narrowly", () => {
   const valid = validateScenarioDefinition({
     ...representative,
