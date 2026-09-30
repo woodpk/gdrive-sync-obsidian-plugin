@@ -155,11 +155,15 @@ export class ProductController extends ProductControllerBase {
     const dependencies: RecoverableProductionMutationDependencies = {
       reliableRemoteMutationPort: options.reliableRemoteMutationPort,
       localTransactionalMutationPort: options.localTransactionalMutationPort,
-      remoteFileCreateRecoveryReadPort: options.remoteFileCreateRecoveryReadPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
     };
+    const remoteFileRecoveryCandidate = options.reliableRemoteMutationPort as (ReliableRemoteMutationPort & Partial<RemoteFileCreateRecoveryReadPort>) | undefined;
+    const remoteFileCreateRecoveryReadPort = typeof remoteFileRecoveryCandidate?.observeFileCreateRecovery === "function"
+      ? remoteFileRecoveryCandidate as ReliableRemoteMutationPort & RemoteFileCreateRecoveryReadPort
+      : undefined;
     const recoveryDependencies: DurableIntentRecoveryDependencies = {
       localTransactionalMutationPort: options.localTransactionalMutationPort,
+      remoteFileCreateRecoveryReadPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
       remoteUpdateFinalizationPort: options.reliableRemoteMutationPort as (ReliableRemoteMutationPort & RemoteUpdateFinalizationPort) | undefined,
     };
