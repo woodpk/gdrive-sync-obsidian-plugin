@@ -2,7 +2,7 @@ import { OperationalFailureErrorV1_3, contractId, type BinaryContentSource, type
 import { operationalFailureFromDriveSignalV1_3, type DriveAuthenticationState, type DriveResult, type DriveSignal, type GoogleDrivePort, type ManagedRemoteIdentity, type ManagedRemoteValidation, type RemoteChange, type RemoteChangePage, type RemoteCreateRequest, type RemoteDownload, type RemoteEntry, type RemoteListing, type RemoteMutationReceipt, type RemoteProtocolInfo, type RemoteUpdateRequest } from "../contracts/google-drive";
 import type { CoherentRemoteDownloadV1_3, CoherentRemoteReadPortV1_3, ReliableRemoteMutationPortV1_3, RemoteMutationOutcomeV1_3 } from "../contracts/execution";
 import type { RemoteObservation } from "../contracts/snapshot";
-import { classifyRemoteChangePage, type CanonicalFileContentProof, type CoherentRemoteReadPort, type ReliableRemoteChangePort, type ReliableRemoteMutationPort, type RemoteMutationIdentity, type RemoteMutationOutcome, type SynchronizationCancellationSignal } from "../contracts/synchronization-foundation";
+import { classifyRemoteChangePage, type CanonicalFileContentProof, type CoherentRemoteReadPort, type ReliableRemoteChangePort, type ReliableRemoteMutationPort, type RemoteFileCreateObservation, type RemoteFileCreatePhysicalMutationDescriptor, type RemoteFileCreateRecoveryReadPort, type RemoteMutationIdentity, type RemoteMutationOutcome, type SynchronizationCancellationSignal } from "../contracts/synchronization-foundation";
 import type { RemoteFolderCreateObservation, RemoteFolderCreatePhysicalMutationDescriptor, RemoteFolderCreateRecoveryReadPort } from "../contracts/synchronization-folder-create-foundation";
 import { diagnosticPathKey, renderDiagnosticOccupantIds, type DiagnosticLogger, type SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { Sha256 } from "../util/sha256";
@@ -81,7 +81,7 @@ export class DriveContentStreamError extends Error {
 export function isDriveContentStreamError(error: unknown): error is DriveContentStreamError { return error instanceof DriveContentStreamError || Boolean(error && typeof error === "object" && "driveSignal" in error); }
 function lazyDriveFailure(signal:DriveSignal):Error { const provenance=operationalFailureFromDriveSignalV1_3(signal); return provenance ? new OperationalFailureErrorV1_3(provenance,`drive-download-${signal.kind}:${streamSignalMessage(signal)}`) : new DriveContentStreamError(signal); }
 
-export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChangePort, ReliableRemoteMutationPort, ReliableRemoteMutationPortV1_3, CoherentRemoteReadPort, CoherentRemoteReadPortV1_3, RemoteFolderCreateRecoveryReadPort {
+export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChangePort, ReliableRemoteMutationPort, ReliableRemoteMutationPortV1_3, CoherentRemoteReadPort, CoherentRemoteReadPortV1_3, RemoteFileCreateRecoveryReadPort, RemoteFolderCreateRecoveryReadPort {
   private readonly pathCache = new Map<string, VaultPath>();
   constructor(
     private readonly oauth: GoogleOAuthSession,
@@ -357,6 +357,32 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     const fields:SafeDiagnosticFields={operation:"trash",intentId:opaqueDiagnosticId(String(identity.intentId)),pathKey:diagnosticPathKey(String(identity.path)),remoteObjectId:String(identity.remoteObjectId)};
     this.semantic("drive-trash-started",fields);
     if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};if(identity.identityAuthority.remoteObjectId!==identity.remoteObjectId||identity.identityAuthority.path!==identity.path||identity.baseAuthority.path!==identity.path)return {status:"outcome-unknown",reason:"trash-authority-inconsistent"};const before=await this.getFile(identity.remoteObjectId);if(!before.ok)return this.outcomeFromSignalValue(before.signal,"trash-object");if(before.value.trashed){this.semantic("drive-trash-result",{...fields,result:"verified-effect",trashed:true});return {status:"verified-effect",applicationProof:{kind:"trash",remoteObjectId:identity.remoteObjectId,path:identity.path,trashed:true}};}const root=await this.rootForFile(before.value);if(!root.ok)return this.outcomeUnknown(root.signal,"trash-managed-root");if(!root.value)return {status:"outcome-unknown",reason:"trash-managed-root-unprovable"};const roots=await this.domainRoots(root.value);if(!roots.ok)return this.outcomeUnknown(roots.signal,"trash-domain");const actual=await this.logicalPathForFile(before.value,roots.value);if(!actual.ok)return this.outcomeUnknown(actual.signal,"trash-path");if(actual.value!==identity.path)return {status:"conflict-preserved",reason:"trash-object-no-longer-at-authorized-path",preservedRemoteObjectIds:[identity.remoteObjectId]};this.semantic("drive-trash-dispatch",{...fields,result:"started"});const dispatched=await this.transport.request(`${DRIVE_API}/files/${encodeURIComponent(String(identity.remoteObjectId))}?fields=${encodeURIComponent(FIELDS)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({trashed:true})});this.semantic("drive-trash-dispatch",{...fields,result:dispatched.ok?"success":"failure",...(!dispatched.ok?{driveSignal:dispatched.signal.kind}:{})});if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-trash-dispatch"};const after=await this.getFile(identity.remoteObjectId);if(!after.ok){if(!dispatched.ok)return remoteMutationOutcomeWithDriveSignalV1_3({status:"outcome-unknown",reason:`trash-post-observation-${after.signal.kind}`},operationalFailureFromDriveSignalV1_3(after.signal)?after.signal:dispatched.signal);return this.outcomeUnknown(after.signal,"trash-post-observation");}if(after.value.trashed){this.semantic("drive-trash-result",{...fields,result:"verified-effect",trashed:true});return {status:"verified-effect",applicationProof:{kind:"trash",remoteObjectId:identity.remoteObjectId,path:identity.path,trashed:true}};}const safe={status:"verified-not-applied",reason:"trash-post-observation-not-trashed"} as const;this.semantic("drive-trash-result",{...fields,result:safe.status,trashed:false});return !dispatched.ok?remoteMutationOutcomeWithDriveSignalV1_3(safe,dispatched.signal):safe;
+  }
+
+  async observeFileCreateRecovery(descriptor:RemoteFileCreatePhysicalMutationDescriptor,cancellation?:SynchronizationCancellationSignal):Promise<RemoteFileCreateObservation>{
+    this.semantic("drive-recovery-observation-started",{operation:"file-create-recovery",pathKey:diagnosticPathKey(String(descriptor.targetPath)),remoteObjectId:String(descriptor.remoteMutation.reservedRemoteObjectId)});
+    if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};
+    const guard=await this.guardPairedAccount();if(!guard.ok)return {status:"unobservable",reason:`authentication-or-remote-unavailable:${guard.signal.kind}`};
+    const reserved=await this.getFile(descriptor.remoteMutation.reservedRemoteObjectId);
+    if(reserved.ok){
+      if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};
+      if(reserved.value.trashed)return {status:"unobservable",reason:"reserved-object-is-trashed"};
+      const root=await this.rootForFile(reserved.value);if(!root.ok||!root.value)return {status:"unobservable",reason:"reserved-object-managed-root-unprovable"};
+      const roots=await this.domainRoots(root.value);if(!roots.ok)return {status:"unobservable",reason:`managed-domain-unobservable:${roots.signal.kind}`};
+      const actualPath=await this.logicalPathForFile(reserved.value,roots.value);if(!actualPath.ok||!actualPath.value)return {status:"unobservable",reason:"reserved-object-structural-path-unprovable"};
+      if(reserved.value.mimeType===FOLDER_MIME)return {status:"occupied",targetPath:actualPath.value,remoteObjectId:rid(reserved.value.id),entityKind:"folder"};
+      return {status:"file",targetPath:actualPath.value,remoteObjectId:rid(reserved.value.id),content:evidence(reserved.value)};
+    }
+    if(reserved.signal.kind!=="not-found")return {status:"unobservable",reason:`reserved-object-absence-unproven:${reserved.signal.kind}`};
+    if(cancelled(cancellation))return {status:"unobservable",reason:"synchronization-cancelled"};
+    const root=await this.uniqueManagedRoot();if(!root.ok)return {status:"unobservable",reason:`managed-root-unobservable:${root.signal.kind}`};
+    const parent=await this.resolveUniqueParent(root.value.rootId,descriptor.targetPath);if(!parent.ok)return {status:"unobservable",reason:`target-parent-unobservable:${parent.signal.kind}`};
+    if(!parent.value)return {status:"authoritative-absent",reservedRemoteObjectId:descriptor.remoteMutation.reservedRemoteObjectId};
+    const matches=await this.children(parent.value,segmentName(descriptor.targetPath));if(!matches.ok)return {status:"unobservable",reason:`target-child-unobservable:${matches.signal.kind}`};
+    if(matches.value.length===0)return {status:"authoritative-absent",reservedRemoteObjectId:descriptor.remoteMutation.reservedRemoteObjectId};
+    if(matches.value.length>1)return {status:"unobservable",reason:"ambiguous-logical-path:multiple-candidates"};
+    const file=matches.value[0]!;
+    return {status:"occupied",targetPath:descriptor.targetPath,remoteObjectId:rid(file.id),entityKind:file.mimeType===FOLDER_MIME?"folder":"file"};
   }
 
   async observeFolderCreateRecovery(descriptor:RemoteFolderCreatePhysicalMutationDescriptor,cancellation?:SynchronizationCancellationSignal):Promise<RemoteFolderCreateObservation>{
