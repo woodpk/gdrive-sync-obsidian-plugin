@@ -237,3 +237,6 @@ No PREPLANNED task may execute until its required hard execution facts are bound
 
 
 S06V is **BLOCKED / ASSIGNED-COVERAGE GAP** before authoritative stage PHX-CI. Independent reconciliation found four explicitly assigned requirements without executable scenario traceability: `MOVE-004`, `FILE-004`, `CONFIG-006`, and `CONFIG-007`. A bounded scenario-only prerequisite repair is authorized; no product/platform-core repair is authorized or currently indicated.
+
+
+S06V assigned-coverage prerequisite repair is **IMPLEMENTED / READY FOR PHX-CI** at `a76769675984e830239875827e6cd2d2af1006fd`; it maps `MOVE-004`, `FILE-004`, `CONFIG-006`, and `CONFIG-007` using only scenario/focused-test changes and zero core/production/PowerShell delta.
