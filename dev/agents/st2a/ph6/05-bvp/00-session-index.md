@@ -45,7 +45,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06B | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06b-merge-conflict-and-delete-vs-modify-scenarios.md` |
 | 06C | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06c-deletion-stale-device-clock-skew-and-unreadable-path-scenarios.md` |
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
-| 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
+| 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | BLOCKED | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | PREPLANNED | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
@@ -180,6 +180,8 @@ BVP-GOV-008 repository-level architecture review completed against accepted S06D
 - S06D diagnostic refinement remained inside the focused test/scenario surfaces and did not change product or platform-core semantics.
 
 This review authorizes continued S06 dispatch under the existing frozen architecture and budgets. It authorizes no budget increase or new architecture family.
+
+S06E is **BLOCKED / MISSING GENERIC CAPABILITY**. Repository grounding after the post-S06D architecture review found that the frozen scenario fixture vocabulary cannot seed an empty LOCAL or REMOTE folder, even though both virtual adapters and product synchronization already support folders. A bounded generic prerequisite now exposes only empty-folder fixture setup through the existing fixture family before S06E can be rebound.
 
 ### Recurring Architecture Review — after S06A / S06B
 
