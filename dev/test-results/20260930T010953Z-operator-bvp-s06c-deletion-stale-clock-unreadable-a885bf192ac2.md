@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s06c-deletion-stale-clock-unreadable
+- Source build HEAD requested: a885bf192ac24ed842ce2e3e414ec3f33a51db32
+- Verification checkout HEAD: a885bf192ac24ed842ce2e3e414ec3f33a51db32
+- Evidence publication target: origin/bvp-s06c-deletion-stale-clock-unreadable
