@@ -249,3 +249,6 @@ S07A is **BLOCKED / MISSING GENERIC CAPABILITY**. The accepted platform can inje
 
 
 S07A generic crash-boundary prerequisite is **IMPLEMENTED / READY FOR PHX-CI** at `212a5fadc488d973558fdffcb7509abfc9673f47`. Scope is limited to the existing scenario contract/runner/virtual-world plus focused tests, with zero production/PowerShell delta and an expected framework-core increase of ~65 LOC. After acceptance this becomes implementation child #2 since the post-S06E architecture review, so BVP-GOV-008 requires a repository-level architecture review before S07A proper.
+
+
+S07A crash-boundary prerequisite initial evidence `c97ca4e93a3b2404a56492b91aa7af115f1ecaa9` BLOCKED on three focused tests. The bounded repair is now complete: before-dispatch evidence correctly expects retained `dispatch-authorized` authority, and canonical-state crashes now target only completed-operation writes paired with `effect-verified` durable intent. No production/PowerShell delta; repaired framework-core estimate is ~3,944/4,000 pending PHX-CI.
