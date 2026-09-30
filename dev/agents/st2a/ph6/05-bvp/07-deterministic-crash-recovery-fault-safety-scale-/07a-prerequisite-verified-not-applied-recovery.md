@@ -29,18 +29,32 @@ Required correction:
 - if absent, return successful recovery with `changed:true` and `retired:true`;
 - if the operation intent still exists, remain fail-closed as recovery-required; do not infer that a partially progressed multi-effect operation can be retired.
 
-## 3. Writable Allowlist
+## 3. Re-grounded Writable Allowlist
 
-Exactly:
+PHX-CI evidence `94a4cda7215ef3a4eab9fa6367d6b12ce0786a49` proved the original two-file hypothesis incomplete: persisted REMOTE file creates have no exact-ID/path recovery read seam, so complete reconciliation absence remains correctly classified `outcome-unknown` and never reaches the downstream `verified-not-applied` branch.
 
-- `src/product/durable-intent-recovery-base.ts`;
+The prerequisite is therefore re-grounded to the smallest complete contract family, mirroring the existing REMOTE folder-create recovery architecture.
+
+Authorized non-test paths:
+
+- `src/contracts/synchronization-foundation.ts` — add a read-only REMOTE file-create recovery observation contract/verifier;
+- `src/drive/google-drive-port.ts` — implement the seam using existing exact-ID and logical-path topology reads;
+- `src/product/durable-intent-recovery-base.ts` — consume verified file-create recovery outcomes and safely retire proven no-effect work;
+- `src/product/durable-intent-recovery.ts` — use the same seam in wrapper/matching recovery paths;
+- `src/product/product-controller.ts` — wire the read-only dependency;
+- `test-platform/src/virtual-world/virtual-world.ts` — implement/wire the deterministic in-memory equivalent.
+
+Authorized test path:
+
 - `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`.
 
-No planner, execution coordinator, lifecycle state-machine, production seam, test-platform core, PowerShell, PHX-CI, governance, or architecture-metrics source changes are authorized.
+No planner, execution coordinator, lifecycle state-machine redesign, production seam, PowerShell, PHX-CI, governance, or architecture-metrics source changes are authorized.
+
+The new read seam MUST be observation-only. `authoritative-absent` requires both exact reserved-ID absence and an unoccupied intended logical target; incomplete/ambiguous evidence remains fail-closed.
 
 ## 4. Required Verification
 
-Add focused regression coverage proving:
+Add focused regression coverage proving the exact-ID/path recovery seam and downstream retirement behavior:
 
 1. a `dispatch-authorized` single-effect REMOTE create whose persisted physical observation proves authoritative absence:
    - returns `recovered`;
