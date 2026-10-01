@@ -18,10 +18,25 @@ function Test-Under([string]$Path, [string]$Root) {
     return $p -eq $r -or $p.StartsWith("$r/", [System.StringComparison]::Ordinal)
 }
 
-function Get-ManifestPolicy {
-    $path = Join-Path $RepoRoot 'dev/governance/testing-platform-boundary.yaml'
+function Get-BoundaryManifestLines([string]$Sha = '') {
+    $relativePath = 'dev/governance/testing-platform-boundary.yaml'
+    if ($Sha) {
+        $probe = @(& git -C $RepoRoot cat-file -e "$Sha^{commit}" 2>&1)
+        $probeCode = $LASTEXITCODE
+        if ($probeCode -ne 0) { throw "BASE_SHA_UNREADABLE: git cat-file exited ${probeCode}: $($probe -join ' ')" }
+        $spec = '{0}:{1}' -f $Sha, $relativePath
+        $output = @(& git -C $RepoRoot show $spec 2>&1)
+        $code = $LASTEXITCODE
+        if ($code -ne 0) { throw "BOUNDARY_MANIFEST_UNREADABLE: git show exited ${code}: $($output -join ' ')" }
+        return @($output)
+    }
+    $path = Join-Path $RepoRoot $relativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw 'BOUNDARY_MANIFEST_MISSING' }
-    $lines = @(Get-Content -LiteralPath $path)
+    return @(Get-Content -LiteralPath $path)
+}
+
+function Get-ManifestPolicy([string]$Sha = '') {
+    $lines = @(Get-BoundaryManifestLines $Sha)
     $top = ''
     $sub = ''
     $production = [System.Collections.Generic.List[string]]::new()
@@ -363,7 +378,8 @@ try {
     $base = $null
     $delta = $null
     if ($BaseSha) {
-        $base = Measure-Snapshot $BaseSha $policy
+        $basePolicy = Get-ManifestPolicy $BaseSha
+        $base = Measure-Snapshot $BaseSha $basePolicy
         $delta = [ordered]@{}
         foreach ($name in @('productionSourceLogicalLoc','productionSeamLogicalLoc','productionSeamFileCount','frameworkCoreLogicalTsLoc','platformCoreRuntimeModuleCount','liveDeviceAgentRelayLogicalTsLoc','scenarioDefinitionLogicalLocTotal','scenarioCount','productionModulesImportedCount','bvpPowerShellScriptCount','bvpPowerShellLogicalLoc','scenarioSpecificPowerShellCount','scenarioSpecificProductionFileCount')) {
             $delta[$name] = [pscustomobject]@{ base = [int]$base.$name; current = [int]$current.$name; delta = ([int]$current.$name - [int]$base.$name) }

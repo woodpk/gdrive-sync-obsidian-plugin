@@ -536,6 +536,37 @@ test("production seam classification recognizes TS-family extension and index fo
   );
 });
 
+test("base snapshot uses its own approved seam policy when current governance adds a seam", () => {
+  withFixture((root) => {
+    writeText(root, "src/seam.ts", "export const seam = 1;\n");
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest(["src/seam.ts"]),
+    );
+    runGit(root, ["init"]);
+    runGit(root, ["config", "user.email", "bvp@example.invalid"]);
+    runGit(root, ["config", "user.name", "BVP Fixture"]);
+    runGit(root, ["add", "."]);
+    runGit(root, ["commit", "-m", "baseline"]);
+    const base = runGit(root, ["rev-parse", "HEAD"]);
+
+    writeText(root, "src/new-seam.ts", "export const newSeam = 2;\n");
+    writeText(
+      root,
+      "dev/governance/testing-platform-boundary.yaml",
+      boundaryManifest(["src/seam.ts", "src/new-seam.ts"]),
+    );
+
+    const value = assertPass(runMetrics(root, ["-BaseSha", base]));
+    strictEqual(value.base.productionSeamFileCount, 1);
+    strictEqual(value.current.productionSeamFileCount, 2);
+    strictEqual(value.delta.productionSeamFileCount.delta, 1);
+    strictEqual(value.base.classificationErrors.length, 0);
+    strictEqual(value.current.classificationErrors.length, 0);
+  });
+});
+
 test("base/current dependency deltas use identical semantic classification", () => {
   withFixture((root) => {
     runGit(root, ["init"]);
