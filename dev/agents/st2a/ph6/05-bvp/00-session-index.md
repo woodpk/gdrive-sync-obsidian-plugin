@@ -611,3 +611,6 @@ Hard constraints:
 - ordinary readable/unreadable/inaccessible local-access behavior remains unchanged;
 - ordinary transient remote-mutation fault behavior remains unchanged;
 - S07E proper remains scenario/test-only after prerequisite acceptance.
+
+
+S07E is **BLOCKED** on prerequisite `bvp-s07e-prereq-resource-fault-controls` from base `c47efae7b1785e0d5a89e482044fcf5811785bce`. The prerequisite is limited to preserving `quota-exhausted` in the existing remote mutation fault and adding a device-level `disk-full` write-capacity state to the existing local-access fault family with zero net framework-core LOC growth. S07E proper remains scenario/test-only after prerequisite acceptance.
