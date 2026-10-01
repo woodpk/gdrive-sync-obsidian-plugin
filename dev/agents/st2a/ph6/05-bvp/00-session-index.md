@@ -50,7 +50,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
-| 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
+| 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
 | 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
 | 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
@@ -583,3 +583,6 @@ S07D proper is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `032df1f82
 
 
 S07D repository-gate repair: direct production imports were removed from `test-platform/test/s07d-transfer-integrity-retry-backoff.test.ts`; deterministic transport retry/backoff assertions now live in the existing root `test/phase3-transport.test.ts`, preserving the architecture boundary while retaining focused production retry coverage.
+
+
+S07D — Transfer Integrity and Retry / Backoff Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation `b8f08eb08422006a636260dcb10163e2fa5d8437`; authoritative evidence `19421e7816d881707c1d02a4d86fa6e9b8aee08b`. Complete persisted JSON, Markdown, and 6,883-line log reviewed. Focused verification passed 8/8 platform tests plus 5/5 transport tests; full suite 833/833 PASS; architecture guard 0; framework core 4,000/4,000; scenario catalog 64/1,311; production source 16,670; artifact `main.js` 880,742 bytes SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
