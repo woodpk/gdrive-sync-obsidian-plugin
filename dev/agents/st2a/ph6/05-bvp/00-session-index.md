@@ -52,7 +52,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
-| 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
+| 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
 | 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
 | 08A | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08a-narrow-production-run-receipt-seam.md` |
 | 08B | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08b-validation-only-obsidian-build-entrypoint.md` |
@@ -651,3 +651,6 @@ S07E first PHX-CI correction: evidence `1679b310395ae215c89a6787f4bf666f9c0e177f
 
 
 S07E — Quota / Disk, Destructive Safety, Configuration, and Lifecycle Deterministic Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation `abda511c8f2d701fbb4b285634a4baf43fad87f4`; evidence `5420a270e024d4a2c639c6d4023ce21e0bb21a5d`. Complete persisted JSON, Markdown, and 6,992-line log reviewed. Focused 11/11 PASS; full suite 833/833 PASS; architecture guard 0; framework core 4,000/4,000; scenario catalog 70/1,524; production source 16,670; artifact `main.js` 880,742 bytes SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+
+S07F is **BOUND / EXECUTABLE** from `556a58d96b9387fae799c4e10d8cd9476f7348ed` on branch `bvp-s07f-deterministic-scale-resource-measurement`. It is test-only: a 16-MiB production Drive chunking/integrity case plus a 256-file deterministic virtual-vault case with a 64-file update batch and host elapsed/RSS/heap measurements. No performance SLA is invented; framework core remains 4,000/4,000 and no production change is authorized.
