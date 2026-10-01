@@ -43,6 +43,7 @@ import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanning
 import { ProductSynchronizationExecutor, type ExecutorRunEvidence } from "./production-executor";
 import { dependsOnSkippedOperation } from "./operation-isolation";
 import type { SkippedPathAttention, SyncAttentionLedger } from "./sync-attention-ledger";
+import type { ProductionRunReceipt, ProductionRunTerminalClassification } from "./run-receipt-seam";
 
 export type PlannerFactory = (trigger: SynchronizationPlan["trigger"]) => SynchronizationPlanner;
 export interface AutomaticExecutionDecision { readonly allowed: boolean; readonly reason?: string; }
@@ -286,6 +287,8 @@ export class ProductControllerBase implements ProductControlPort {
   private runEvidence?: ExecutorRunEvidence;
   private pendingAutomaticTrigger?: AutomaticTrigger;
   private automaticDrain?: Promise<void>;
+  private latestReceipt?: ProductionRunReceipt;
+  private nextReceiptRunSequence = 1;
 
   constructor(private readonly options: ProductControllerOptions) {
     this.runs = new CoreRunCoordinator(options.vaultIdentity, options.deviceIdentity, options.leasePort, options.holderId);
@@ -295,6 +298,7 @@ export class ProductControllerBase implements ProductControlPort {
   onSurface(listener: (surface: ProductSurfaceState) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   readAuditHistory(): Promise<readonly AuditRecord[]> { return this.options.audit.read(); }
   currentRunEvidence(): ExecutorRunEvidence { if (!this.runEvidence) throw new Error("no active synchronization run evidence"); return this.runEvidence; }
+  latestProductionRunReceipt(): ProductionRunReceipt | undefined { return this.latestReceipt ? { ...this.latestReceipt } : undefined; }
   pendingDestructiveCheckpoint(): CheckpointId | undefined { return this.planned?.checkpointId; }
   async previewManual(runId = this.options.diagnostics?.beginSyncRun("controller")): Promise<SynchronizationPlan | undefined> {
     this.syncInfo(runId, "manual-sync-request-enter", { operation: "preview-manual", trigger: "manual" });
@@ -515,20 +519,38 @@ export class ProductControllerBase implements ProductControlPort {
   private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number, automaticPlanned?: PlannedRun): Promise<RunOutcome> {
     const planned = automaticPlanned ?? this.planned;
     if (!planned) return "failed";
-    if (!userInitiated && globalExecutionGate(planned.plan) !== "none") return "failed";
-    if (globalExecutionGate(planned.plan) === "globally-blocked") return "failed";
-    if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) return "failed";
+    const receiptRunId = `product-run:${this.nextReceiptRunSequence++}`;
+    const planGate = globalExecutionGate(planned.plan);
+    if (!userInitiated && planGate !== "none") {
+      this.recordProductionRunReceipt(receiptRunId, planned, "blocked", 0, 0, `plan-gate:${planGate}`);
+      return "failed";
+    }
+    if (planGate === "globally-blocked") {
+      this.recordProductionRunReceipt(receiptRunId, planned, "blocked", 0, 0, "plan-gate:globally-blocked");
+      return "failed";
+    }
+    if (planned.plan.recoveryCheckpointRequired && approvedCheckpoint !== planned.checkpointId) {
+      this.recordProductionRunReceipt(receiptRunId, planned, "blocked", 0, 0, "recovery-checkpoint-approval-required");
+      return "failed";
+    }
     const runId = diagnosticRunId ?? planned.diagnosticRunId;
     this.syncInfo(runId, "execution-start", { stage: "execution", planId: diagnosticPlanId(planned.plan), operationCount: planned.plan.operations.length, planDisposition: planned.plan.executionDisposition });
+    let terminalClassification: ProductionRunTerminalClassification = "failed";
+    let terminalReason: string | undefined;
     let begun: Awaited<ReturnType<CoreRunCoordinator["beginRun"]>>;
     try { begun = await this.runs.beginRun(); }
     catch (error) {
-      this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease", classification: "run-lease-acquisition-failure", result: "failed" });
+      terminalReason = "run-lease-acquisition-failure";
+      this.recordProductionRunReceipt(receiptRunId, planned, terminalClassification, 0, 0, terminalReason);
+      this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease", classification: terminalReason, result: "failed" });
       this.endDiagnosticRun(runId);
       throw error;
     }
     if (begun.status !== "started") {
       if (begun.status === "paused") this.setStatus({ kind: "paused" });
+      terminalClassification = begun.status === "cancelled" ? "cancelled" : "deferred";
+      terminalReason = `run-start:${begun.status}`;
+      this.recordProductionRunReceipt(receiptRunId, planned, terminalClassification, 0, 0, terminalReason);
       this.syncInfo(runId, "sync-run-deferred", { stage: "run-lease", result: begun.status });
       this.endDiagnosticRun(runId);
       return "failed";
@@ -573,8 +595,10 @@ export class ProductControllerBase implements ProductControlPort {
         this.options.stateContext,
       ) : undefined;
       if (!coordinator) {
+        terminalClassification = "recovery-required";
+        terminalReason = "authoritative-store-unavailable";
         this.setStatus({ kind: "recovery-required", reason: "V1.3 authoritative synchronization execution dependencies are unavailable; ordinary mutation is disabled" });
-        this.syncError(runId, "authority-complete-execution-unavailable", { stage: "execution-authority", classification: "authoritative-store-unavailable", result: "blocked" });
+        this.syncError(runId, "authority-complete-execution-unavailable", { stage: "execution-authority", classification: terminalReason, result: "blocked" });
         globalFailure = true;
       }
 
@@ -612,23 +636,32 @@ export class ProductControllerBase implements ProductControlPort {
         if (exactV1_3 && exactV1_3.status !== "durable-verified-success") {
           const disposition = executionDispositionV1_3(exactV1_3);
           const surfaceReason = operationalSurfaceReasonV1_3(exactV1_3);
+          const uncertain = exactV1_3.status === "uncertain";
           if (disposition.primary === "authentication-required") {
-            this.setStatus({ kind: "authentication-required", reason: surfaceReason ?? "authorization-required" });
+            terminalClassification = uncertain ? "uncertain" : "blocked";
+            terminalReason = surfaceReason ?? "authorization-required";
+            this.setStatus({ kind: "authentication-required", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "deferred") {
-            this.setStatus({ kind: "offline-deferred", reason: surfaceReason ?? "remote synchronization deferred" });
+            terminalClassification = uncertain ? "uncertain" : "deferred";
+            terminalReason = surfaceReason ?? "remote synchronization deferred";
+            this.setStatus({ kind: "offline-deferred", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "recovery-required") {
-            this.setStatus({ kind: "recovery-required", reason: exactV1_3.reason ?? "physical reconciliation is required" });
+            terminalClassification = uncertain ? "uncertain" : "recovery-required";
+            terminalReason = exactV1_3.reason ?? "physical reconciliation is required";
+            this.setStatus({ kind: "recovery-required", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "blocking-failure") {
-            this.setStatus({ kind: "error", code: "operation-blocked", message: exactV1_3.reason ?? "operation blocked" });
+            terminalClassification = uncertain ? "uncertain" : "blocked";
+            terminalReason = exactV1_3.reason ?? "operation blocked";
+            this.setStatus({ kind: "error", code: "operation-blocked", message: terminalReason });
             globalFailure = true;
             break;
           }
@@ -651,17 +684,23 @@ export class ProductControllerBase implements ProductControlPort {
           continue;
         }
         if (result.status === "stale-state") {
+          terminalClassification = "recovery-required"; terminalReason = "authoritative state changed during execution";
           needsReplan = true; globalFailure = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break;
         }
         if (result.status === "recovery-required" || result.status === "uncertain") {
+          terminalClassification = result.status; terminalReason = result.reason;
           this.setStatus({ kind: "recovery-required", reason: result.reason }); globalFailure = true; break;
         }
         if (result.status === "retryable-failure") {
+          terminalClassification = "deferred"; terminalReason = result.reason;
           this.setStatus({ kind: "offline-deferred", reason: result.reason }); globalFailure = true; break;
         }
         if (result.status === "blocked") {
+          terminalClassification = "blocked"; terminalReason = result.reason;
           this.setStatus({ kind: "error", code: "operation-blocked", message: result.reason }); globalFailure = true; break;
         }
+        terminalClassification = result.status === "cancelled" ? "cancelled" : "failed";
+        terminalReason = "execution-did-not-complete";
         partial = true; break;
       }
 
@@ -682,6 +721,7 @@ export class ProductControllerBase implements ProductControlPort {
         }
       } else if (!globalFailure && (partial || anyCommitted)) {
         outcome = "partial";
+        terminalClassification = "partial";
         const conflicts = this.surface.conflicts.length;
         const attentionCount = Math.max(skippedCount, attentionOperations(planned.plan).length);
         if (planned.assembly.reconstruction || this.options.recoveryActive?.()) this.setStatus({ kind: "recovery-required", reason: "reconstruction remains incomplete; destructive authority remains disabled" });
@@ -690,7 +730,9 @@ export class ProductControllerBase implements ProductControlPort {
         this.setStatus({ kind: "attention-required", attentionCount: 0, attentionIdentity: await this.attentionIdentityFor(planned.plan, false), conflictCount: 0, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: false });
       }
     } catch (error) {
-      if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: "execution-failure", result: "failed" });
+      terminalClassification = "failed";
+      terminalReason = "execution-failure";
+      if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: terminalReason, result: "failed" });
       throw error;
     } finally {
       const cancelled = this.runs.isCancellationRequested();
@@ -700,9 +742,13 @@ export class ProductControllerBase implements ProductControlPort {
         if (finished.reconcileAgain && !this.options.recoveryActive?.()) void this.runAutomatic("local-change");
         else if (this.surface.status.kind === "syncing") this.setStatus(this.options.recoveryActive?.() ? { kind: "recovery-required", reason: "recovery reconstruction is incomplete" } : { kind: "idle-ready" });
       } catch (error) {
-        this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease-release", classification: "run-lease-release-failure", result: "failed" });
+        terminalClassification = "failed";
+        terminalReason = "run-lease-release-failure";
+        this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease-release", classification: terminalReason, result: "failed" });
         throw error;
       } finally {
+        const receiptTerminal: ProductionRunTerminalClassification = cancelled ? "cancelled" : outcome === "complete" ? "complete" : outcome === "partial" ? "partial" : terminalClassification;
+        this.recordProductionRunReceipt(receiptRunId, planned, receiptTerminal, committedCount, skippedCount, terminalReason);
         this.syncInfo(runId, cancelled ? "sync-run-cancelled" : outcome === "failed" ? "sync-run-failed" : "sync-run-complete", { stage: "terminal", result: cancelled ? "cancelled" : outcome, safeCommittedCount: committedCount, skippedCount, attentionReasonCodes: [...skippedReasonCodes].sort().join(","), ...planDiagnosticFields(planned.plan, planned.assembly) });
         this.endDiagnosticRun(runId);
       }
@@ -968,6 +1014,25 @@ export class ProductControllerBase implements ProductControlPort {
       this.syncError(this.planned?.diagnosticRunId, "attention-ledger-write-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
       return false;
     }
+  }
+  private recordProductionRunReceipt(
+    runId: string,
+    planned: PlannedRun,
+    terminal: ProductionRunTerminalClassification,
+    committedOperationCount: number,
+    skippedOperationCount: number,
+    reason?: string,
+  ): void {
+    this.latestReceipt = {
+      runId,
+      trigger: planned.plan.trigger,
+      planId: planned.plan.planId,
+      terminal,
+      requiredEffectsCommittedAndVerified: terminal === "complete",
+      committedOperationCount,
+      skippedOperationCount,
+      ...(reason ? { reason } : {}),
+    };
   }
   private syncInfo(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {
     if (runId !== undefined) this.options.diagnostics?.syncInfo("sync.controller", event, runId, fields);
