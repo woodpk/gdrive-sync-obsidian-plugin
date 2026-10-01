@@ -47,7 +47,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06D | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06d-move-rename-identity-and-path-collision-scenarios.md` |
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
-| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
+| 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
@@ -319,3 +319,6 @@ This review authorizes S07A scenario work to resume under the existing frozen ar
 
 
 S07A is **REBOUND / EXECUTABLE** against architecture-reviewed integration `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d` on branch `bvp-s07a-crash-commit-ambiguity-r2`. The branch carries forward only the six previously built declarative S07A scenarios plus `test-platform/test/s07a-crash-commit-ambiguity.test.ts`. The production recovery defect is resolved by the accepted prerequisite; S07A proper retains zero authority for platform-core, production, PowerShell, governance, PHX-CI, or persistence changes.
+
+
+S07A — Crash, Commit-Order, and Ambiguous-Result Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation HEAD `e243922afdabd49f42f94395243191231ff89ada` passed authoritative PHX-CI; evidence is `d836055376110f02a415fa5b8cf0e8c58e9ed6bd`. Acceptance was made only after complete review of the persisted JSON, Markdown, and 6,410-line execution-log reports. Focused S07A verification passed 13/13; full repository verification passed 830/830; every PHX-CI stage passed with exit 0; architecture guard recorded 0 violations; framework core remained 3,970/4,000; production/seam/PowerShell metrics were unchanged; scenario catalog is now 45 scenarios / 952 logical LOC; production artifact remained 880,512 bytes with SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
