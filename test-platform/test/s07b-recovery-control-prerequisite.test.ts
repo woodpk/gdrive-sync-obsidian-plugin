@@ -50,7 +50,7 @@ for (const [state, expected] of [
   ["incompatible-protocol", "incompatible-protocol"],
 ] as const) {
   test(`managed-root fault exposes ${expected} through existing validation`, async () => {
-    const world = await VirtualSynchronizationWorld.create(["device-a"]);
+    const world = await VirtualSynchronizationWorld.create(["device-a", "device-b"]);
     world.drive.faultManagedRoot(world.managedRemote.rootId, state);
     const validation = await world.drive.validateManagedRoot(world.managedRemote);
     strictEqual(validation.ok, true);
