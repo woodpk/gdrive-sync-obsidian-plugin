@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`
-**Prompt maturity:** BOUND / EXECUTABLE
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
 **Predecessor:** architecture-reviewed post-recovery integration `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`
 
@@ -108,6 +108,34 @@ S07A proper is rebound onto that reviewed integration state. The prior repaired 
 Final task branch: `bvp-s07a-crash-commit-ambiguity-r2`.
 
 S07A proper remains strictly scenario/test-only. No platform-core, production, PowerShell, governance, PHX-CI, persistence, or architecture change is authorized.
+
+## 0.7 Acceptance / Closure Record
+
+BVP-S07A is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `e243922afdabd49f42f94395243191231ff89ada`;
+- authoritative PHX-CI evidence commit: `d836055376110f02a415fa5b8cf0e8c58e9ed6bd`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- authoritative evidence set reviewed in full before acceptance:
+  - JSON: `dev/test-results/20261001T013703Z-operator-bvp-s07a-crash-commit-ambiguity-r2-e243922afdab.json`;
+  - Markdown: `dev/test-results/20261001T013703Z-operator-bvp-s07a-crash-commit-ambiguity-r2-e243922afdab.md`;
+  - execution log: `dev/test-results/20261001T013703Z-operator-bvp-s07a-crash-commit-ambiguity-r2-e243922afdab.log` (6,410 lines);
+- focused S07A verification: 13/13 PASS;
+- complete repository suite: 830/830 PASS;
+- all PHX-CI stages PASS with exit 0;
+- architecture guard: PASS, 0 violations;
+- repository architecture metrics: PASS;
+- framework core: unchanged at 3,970 / 4,000 logical TypeScript LOC;
+- production source: unchanged at 16,668 logical LOC;
+- approved production seam: unchanged at 113 LOC / 1 file;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production and PowerShell remain 0;
+- scenario catalog: 45 scenarios / 952 logical LOC, reflecting exactly six new S07A scenarios / +134 scenario LOC;
+- each S07A scenario remains below the 200-LOC hard limit: 23, 22, 21, 22, 22, and 24 logical LOC respectively;
+- production artifact remains unchanged from the accepted prerequisite state: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`;
+- the full log contains no genuine `not ok` records, no nonzero stage result, and no hidden verification failure. The only non-pass diagnostic is the existing npm audit notice for 2 moderate vulnerabilities, which did not affect install or acceptance.
+
+The accepted scenarios prove crash/restart and ambiguous-result behavior through production logic while preserving stable REMOTE identity and preventing duplicate physical effects. No production, platform-core, PowerShell, PHX-CI, governance, persistence, or new fault-framework change is part of S07A proper.
 
 ## 1. Objective
 
