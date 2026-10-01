@@ -55,6 +55,19 @@ R2 implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
 
 Authoritative PHX-CI and complete persisted JSON/Markdown/full-log review are required before acceptance.
 
+Pre-PHX audit:
+
+- semantic implementation HEAD: `4cea4fcdc3c458570ebebe5a6e5ec11890069754`;
+- exact changed paths: 9;
+- framework-core delta: +1 logical TypeScript LOC, yielding 4,000 / 4,000;
+- production source delta: +2 logical TypeScript LOC, projected 16,670;
+- production seam: unchanged;
+- runtime module count: unchanged at 10;
+- scenario catalog: unchanged at 54 scenarios / 1,131 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- frozen `src/contracts/**`: unchanged;
+- focused test now contains six prerequisite proofs, including fail-closed missing-source state copy.
+
 ## 1. Objective
 
 Complete the two generic deterministic controls required by S07C and repair only the demonstrated production cancellation-signal propagation defect.
