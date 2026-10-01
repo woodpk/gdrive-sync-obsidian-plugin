@@ -80,7 +80,7 @@ test("cancellation armed before remote dispatch prevents the physical effect", a
       { id: "seed", kind: "fixture", operation: "put-local-file", device: "device-a", path: "cancel-before.bin", content: { encoding: "bytes", value: [4] } },
       { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
       { id: "arm-cancel", kind: "external-state", transition: "request-cancellation", device: "device-a", boundary: "before-remote-dispatch" },
-      { id: "execute", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan" },
+      { id: "execute", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan", expect: { status: "failed", classification: "production-request-rejected" } },
       { id: "remote", kind: "observe", subject: "remote-entry", path: "cancel-before.bin", captureAs: "remote" },
       { id: "assert-absent", kind: "assert", assertion: "exists", observationRef: "remote", expected: false },
     ],
