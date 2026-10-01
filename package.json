@@ -15,20 +15,15 @@
     "verify:build": "node scripts/verify-build.mjs",
     "check": "npm run typecheck && npm test && npm run build"
   },
-  "keywords": [
-    "obsidian",
-    "plugin",
-    "google-drive",
-    "sync"
-  ],
+  "keywords": ["obsidian", "plugin", "google-drive", "sync"],
   "license": "UNLICENSED",
+  "overrides": {
+    "moment": "2.31.0"
+  },
   "devDependencies": {
     "@types/node": "20.19.43",
     "esbuild": "0.28.2",
     "obsidian": "1.13.1",
     "typescript": "5.9.3"
-  },
-  "overrides": {
-    "moment": "2.31.0"
   }
 }
