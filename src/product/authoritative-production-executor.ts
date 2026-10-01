@@ -17,6 +17,7 @@ import type {
   RemoteObjectId,
   RetrySafePhysicalAuthorityV1_3,
   StateLoadContext,
+  SynchronizationCancellationSignal,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
 } from "../contracts";
@@ -284,6 +285,7 @@ export function createAuthoritativeProductExecutorV1_3(
   stateContext: StateLoadContext,
   managedRemote: ManagedRemoteIdentity,
   explicitDependencies: RecoverableProductionMutationDependenciesV1_3,
+  cancellation?: SynchronizationCancellationSignal,
 ): AuthoritativeSynchronizationExecutorV1_3 {
   const remoteOutcomes: RemoteMutationOutcomeV1_3[] = [];
   const localResults: LocalTransactionResultV1_3[] = [];
@@ -295,23 +297,23 @@ export function createAuthoritativeProductExecutorV1_3(
       reliableRemoteMutationPort: {
         reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
         reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
-        createReserved: async (...args) => {
-          const outcome = await remote.createReserved(...args);
+        createReserved: async (identity, content) => {
+          const outcome = await remote.createReserved(identity, content, cancellation);
           remoteOutcomes.push(outcome);
           return outcome;
         },
-        updateExisting: async (...args) => {
-          const outcome = await remote.updateExisting(...args);
+        updateExisting: async (identity, content) => {
+          const outcome = await remote.updateExisting(identity, content, cancellation);
           remoteOutcomes.push(outcome);
           return outcome;
         },
-        moveExisting: async (...args) => {
-          const outcome = await remote.moveExisting(...args);
+        moveExisting: async identity => {
+          const outcome = await remote.moveExisting(identity, cancellation);
           remoteOutcomes.push(outcome);
           return outcome;
         },
-        trashExisting: async (...args) => {
-          const outcome = await remote.trashExisting(...args);
+        trashExisting: async identity => {
+          const outcome = await remote.trashExisting(identity, cancellation);
           remoteOutcomes.push(outcome);
           return outcome;
         },
@@ -319,18 +321,18 @@ export function createAuthoritativeProductExecutorV1_3(
     } : {}),
     ...(local ? {
       localTransactionalMutationPort: {
-        stageAndVerify: async (...args) => {
-          const result = await local.stageAndVerify(...args);
+        stageAndVerify: async (transaction, content) => {
+          const result = await local.stageAndVerify(transaction, content, cancellation);
           localResults.push(result);
           return result;
         },
-        commitVerifiedStage: async (...args) => {
-          const result = await local.commitVerifiedStage(...args);
+        commitVerifiedStage: async transaction => {
+          const result = await local.commitVerifiedStage(transaction, cancellation);
           localResults.push(result);
           return result;
         },
-        recover: async (...args) => {
-          const result = await local.recover(...args);
+        recover: async transaction => {
+          const result = await local.recover(transaction, cancellation);
           localResults.push(result);
           return result;
         },
