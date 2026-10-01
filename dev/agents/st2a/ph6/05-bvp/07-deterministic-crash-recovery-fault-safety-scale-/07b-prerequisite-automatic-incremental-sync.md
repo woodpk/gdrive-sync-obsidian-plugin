@@ -1,0 +1,81 @@
+# BVP-S07B Prerequisite — Declarative Automatic / Incremental Production Invocation
+
+## 0. Status
+
+**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Parent:** BVP-S07B  
+**Predecessor:** architecture-reviewed accepted recovery-control integration `436b0d902c463adc78819344b715ae0fd3ac1605`  
+**Branch:** `bvp-s07b-prereq-automatic-incremental-sync`
+
+## 1. Objective
+
+Expose the existing production automatic/incremental synchronization path through the frozen declarative production-step family so S07B can prove that an invalid persisted Drive cursor is detected by the incremental path and leads to conservative recovery/reconciliation behavior.
+
+Do not redefine the existing `synchronize` step. Its accepted S05 meaning remains reviewed manual/full synchronization.
+
+## 2. Required End State
+
+Add one generic production operation:
+
+`automatic-sync`
+
+Behavior:
+
+- invokes `ProductController.runAutomatic("local-change")`;
+- waits for automatic-run quiescence;
+- reads the existing controller surface after completion;
+- returns a blocked scenario outcome when the production surface is a hard terminal state:
+  - `recovery-required`;
+  - `authentication-required`;
+  - `offline-deferred`;
+  - `error`;
+- otherwise returns completed;
+- performs no test-side state repair and makes no synchronization decisions.
+
+## 3. Writable Allowlist
+
+Implementation/test:
+
+- `test-platform/src/scenario/scenario-contract.ts`
+- `test-platform/src/scenario/scenario-runner.ts`
+- `test-platform/test/s07b-automatic-incremental-prerequisite.test.ts`
+
+Documentation:
+
+- `dev/agents/st2a/ph6/05-bvp/07-deterministic-crash-recovery-fault-safety-scale-/07b-prerequisite-automatic-incremental-sync.md`
+- `dev/agents/st2a/ph6/05-bvp/07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md`
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`
+
+No other path is writable.
+
+## 4. Architecture Constraints
+
+- framework core baseline: 3,994 / 4,000 logical TypeScript LOC;
+- net framework-core delta MUST be <=6 LOC;
+- no new runtime module;
+- production/seam/PowerShell/PHX-CI/governance implementation delta: 0;
+- no new runner, state machine, persistence family, fault framework, or observation family.
+
+If this cannot fit, stop BLOCKED.
+
+## 5. Focused Proof
+
+The focused test must prove:
+
+- ordinary `automatic-sync` executes through the existing production automatic path;
+- after a trusted cursor is invalidated by the already-accepted generic control, `automatic-sync` returns blocked / `recovery-required`;
+- the invalid cursor is not silently advanced or treated as authoritative absence;
+- a subsequent explicit reviewed full reconcile can safely re-establish a current cursor without destructive inference;
+- the existing `synchronize` semantics remain unchanged.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07b-automatic-incremental-prerequisite.test.js`
+
+PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`  
+PHX-CI base: `436b0d902c463adc78819344b715ae0fd3ac1605`  
+Change class: `ordinary`.
+
+## 6. Stop
+
+Stop after authoritative PHX-CI acceptance and architecture review. Do not implement S07B proper scenarios on this branch.
