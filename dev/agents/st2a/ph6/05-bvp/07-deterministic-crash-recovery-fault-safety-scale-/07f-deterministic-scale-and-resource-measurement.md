@@ -54,6 +54,33 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-build/bvp/test-platform/test/s07f-deterministic-scale-resource-measurement.test.js && node --test .test-build/test/s07f-large-transfer-resource.test.js`
 
+## 0.2 Ready-for-Verification Record
+
+S07F is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic test implementation HEAD: `7c21441a4c5ebbf3cfe5372d23919baff3c101fe`;
+- exact PHX-CI base: `556a58d96b9387fae799c4e10d8cd9476f7348ed`;
+- implementation delta: two test files only;
+- framework-core / scenario-definition / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- framework core remains 4,000 / 4,000;
+- scenario catalog remains 70 scenarios / 1,524 logical LOC;
+- production artifact is expected to remain unchanged.
+
+Scale proof:
+
+- 16 MiB virtual-world synchronization validates final content hash, size, trusted BASE, and remote mapping state while recording elapsed host time and sampled RSS/heap/external/array-buffer memory;
+- 256 deterministic 4-KiB managed files synchronize through 256 production upload-create operations;
+- a subsequent 64-file update batch executes through 64 production upload-update operations while preserving all 256 remote identities and trusted BASE/mapping cardinality;
+- production Drive resumable upload consumes a generated 16 MiB source incrementally and emits exactly 64 request bodies at the current 256-KiB implementation chunk boundary;
+- production Drive download consumes the complete 16 MiB object through exactly 64 range requests at the current 256-KiB implementation chunk boundary;
+- upload/download tests independently hash all transferred bytes;
+- every scale test emits `S07F_MEASUREMENT` evidence with Node version, host platform/architecture, input size/count, elapsed milliseconds, and available host memory samples;
+- no elapsed-time, memory, or throughput SLA is asserted because current product authority defines none.
+
+Unavailable by design:
+
+- actual iOS/WebView constrained-resource behavior and physical large-transfer evidence remain S09D.
+
 ## 1. Objective
 
 Add bounded host-side deterministic large-file/large-vault execution and resource measurements sufficient to prove required algorithmic/behavioral scale characteristics without turning the BVP into a benchmark framework.
