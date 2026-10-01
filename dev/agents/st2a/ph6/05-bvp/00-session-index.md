@@ -357,3 +357,25 @@ S07B generic recovery-control prerequisite is **READY FOR PHX-CI**. Semantic imp
 
 
 S07B generic recovery-control prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `7a0c13b7af67f317e870c4b85063561413c20776` passed authoritative PHX-CI; evidence is `058a931e64320ea2982efe938d246211ef70be5e`. Acceptance followed complete review of the persisted JSON, Markdown, and 6,423-line execution log. Focused verification passed 8/8; full repository verification passed 830/830; all stages passed with exit 0; architecture guard recorded 0 violations; framework core is 3,994/4,000 (+24); production/seam/scenario/PowerShell metrics and production artifact remain unchanged.
+
+
+### Recurring Architecture Review — after S07B recovery-control prerequisite
+
+BVP-GOV-008 repository-level architecture review completed against accepted prerequisite closure `a12f2d5773c279eb79179dbb03699a96eaadecc1`: **PASS**.
+
+- accepted implementation HEAD: `7a0c13b7af67f317e870c4b85063561413c20776`;
+- authoritative evidence: `058a931e64320ea2982efe938d246211ef70be5e`;
+- acceptance was based on complete review of the persisted JSON, Markdown, and 6,423-line execution log;
+- the only framework-core delta since the pre-S07B review `93262366c749b27f95f973f1c6db04673f7f8fcb` is the bounded generic recovery-control exposure in the existing scenario contract/runner/in-memory Drive family;
+- framework core is 3,994 logical TypeScript LOC / 10 runtime modules versus the frozen 4,000-LOC ceiling, leaving 6 LOC headroom;
+- no new runtime module, runner, router, persistence subsystem, fault framework, evidence family, coordination protocol, or production testing bypass was introduced;
+- dependency direction remains one-way from `test-platform/**` into the approved production seam;
+- production source remains 16,668 logical LOC; approved production seam remains 113 LOC / 1 file;
+- scenario catalog remains 45 scenarios / 952 logical LOC;
+- scenario-specific production and PowerShell remain 0;
+- BVP PowerShell remains 4 scripts / 1,477 logical LOC;
+- architecture guard PASS with 0 violations; repository metrics PASS;
+- focused prerequisite verification passed 8/8; complete repository suite passed 830/830;
+- production artifact remains unchanged at 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+This review authorizes S07B proper only as declarative scenario/test coverage against the now-frozen platform. S07B proper has zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes. With only 6 framework-core LOC of headroom remaining, any newly discovered generic capability gap blocks S07B and requires supervisor re-grounding; no budget increase is authorized.
