@@ -95,6 +95,38 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07b-state-cursor-listing-root-recovery.test.js`
 
+## 0.4 Ready-for-Verification Record
+
+S07B proper implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `a02ce12e9285e1b1281d7d7305d721c2568829d1`;
+- PHX-CI base: `3bdb68172a5d5791ad10fd42decd5a06d6468a82`;
+- branch: `bvp-s07b-state-cursor-listing-root-recovery`;
+- changed paths: exactly this task/index, nine `test-platform/scenarios/07b/*.ts` scenario definitions, and one focused test;
+- platform-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- framework core remains 3,996 / 4,000;
+- scenario catalog projects to 54 scenarios / 1,128 logical LOC;
+- S07B scenario logical LOC: 22, 22, 22, 22, 20, 19, 15, 17, 17; every scenario remains far below the 200-LOC hard limit.
+
+Scenario coverage:
+
+- corrupt checksum state;
+- truncated state;
+- incompatible state schema;
+- lost Drive change cursor;
+- partial full remote listing;
+- partial remote change page;
+- missing managed root;
+- managed-root vault-identity mismatch;
+- incompatible managed-root protocol.
+
+The focused test additionally proves that:
+
+- lost cursor re-baselining advances to a new durable cursor;
+- partial remote listing produces `blocked-unsafe` and never `trash-local`;
+- all three state-integrity recovery cases return to trusted state while preserving both copies;
+- an intentionally wrong optimistic deletion expectation fails deterministically.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for fail-closed recovery from corrupt/incompatible durable state, lost/invalid change cursors, incomplete remote coverage, and loss/replacement of the managed remote root.
