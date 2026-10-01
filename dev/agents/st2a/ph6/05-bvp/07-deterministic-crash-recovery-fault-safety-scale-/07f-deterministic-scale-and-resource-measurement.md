@@ -38,7 +38,7 @@ Representative deterministic scale cases selected for this child:
 
 - 16 MiB file transfer/content-integrity case, exercising 64 production 256-KiB upload chunks in the root Drive-port focused test;
 - 256-file managed-vault case using 4-KiB deterministic files;
-- a second 64-file update batch over that same 256-file trusted vault to prove bounded multi-operation synchronization while preserving identity/state;
+- a second 64-file update batch over that same 256-file trusted vault to prove bounded multi-operation synchronization while preserving correct identity/state semantics: untouched objects retain their Drive IDs, while updated objects converge on the frozen immutable-candidate update protocol's new canonical IDs and trusted mappings follow those IDs;
 - host measurements: elapsed milliseconds plus sampled RSS/heap-used before, during, and after each scale case, with Node/platform/architecture context.
 
 Writable implementation allowlist:
@@ -70,7 +70,7 @@ Scale proof:
 
 - 16 MiB virtual-world synchronization validates final content hash, size, trusted BASE, and remote mapping state while recording elapsed host time and sampled RSS/heap/external/array-buffer memory;
 - 256 deterministic 4-KiB managed files synchronize through 256 production upload-create operations;
-- a subsequent 64-file update batch executes through 64 production upload-update operations while preserving all 256 remote identities and trusted BASE/mapping cardinality;
+- a subsequent 64-file update batch executes through 64 production upload-update operations; the 64 updated paths converge on unique immutable-candidate remote IDs, the 192 untouched paths retain their prior IDs, and trusted BASE/mapping state tracks all 256 observed post-update identities;
 - production Drive resumable upload consumes a generated 16 MiB source incrementally and emits exactly 64 request bodies at the current 256-KiB implementation chunk boundary;
 - production Drive download consumes the complete 16 MiB object through exactly 64 range requests at the current 256-KiB implementation chunk boundary;
 - upload/download tests independently hash all transferred bytes;
