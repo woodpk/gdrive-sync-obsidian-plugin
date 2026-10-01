@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07A
+**Predecessor:** architecture-reviewed S07B prerequisite closure `3bdb68172a5d5791ad10fd42decd5a06d6468a82`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -40,6 +40,60 @@ Branch:
 `bvp-s07b-prereq-automatic-incremental-sync`
 
 The prerequisite is limited to <=6 net framework-core LOC, preserving the 4,000-LOC frozen ceiling. S07B proper remains blocked until this prerequisite is accepted and architecture-reviewed.
+
+## 0.3 Final Dispatch Binding
+
+S07B proper is now **BOUND / EXECUTABLE** after acceptance and architecture review of both required generic prerequisites.
+
+- exact predecessor / PHX-CI base: `3bdb68172a5d5791ad10fd42decd5a06d6468a82`;
+- task branch: `bvp-s07b-state-cursor-listing-root-recovery`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework core baseline: 3,996 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source baseline: 16,668 LOC;
+- approved production seam baseline: 113 LOC / 1 file;
+- scenario baseline: 45 scenarios / 952 logical LOC;
+- BVP PowerShell baseline: 4 scripts / 1,477 logical LOC;
+- production artifact baseline: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+Accepted generic controls now available:
+
+- `fault-device-state` for corrupt checksum, truncation, and incompatible schema;
+- `invalidate-change-cursor`;
+- `set-remote-listing-completeness`;
+- `set-remote-change-completeness`;
+- `fault-managed-root` for missing, identity mismatch, and incompatible protocol;
+- `production:automatic-sync` for the real existing incremental production path;
+- existing `synchronize` remains reviewed full/manual synchronization;
+- existing `reconcile` remains explicit full Verify/Reconcile.
+
+Current production classifications / safety behavior grounded from accepted code:
+
+- corrupt/truncated/incompatible authoritative state loads as `recovery-required`;
+- recovery reconstruction requires complete LOCAL + REMOTE observation and projects current reality as an uninitialized safe union, never an empty trusted BASE;
+- invalid/lost cursor through reliable Changes returns `recovery-required`;
+- incomplete change page through reliable Changes returns `recovery-required`;
+- REMOTE absence under partial full enumeration becomes planner `blocked-unsafe` / `remote-enumeration-incomplete`, never deletion authority;
+- managed-root `missing-root`, `identity-mismatch`, and `incompatible-protocol` map to production recovery-required status and yield no reviewable production plan.
+
+Requirement mappings:
+
+- state faults: `STATE-011`, `STATE-012`, `STATE-013`, `STATE-015`, `INV-001`;
+- cursor loss: `CHANGE-005`, `CHANGE-006`;
+- incomplete coverage: `CHANGE-007`, `INV-002`;
+- managed-root authority: `REM-002`, `REM-007`, `REM-008`.
+
+Writable implementation allowlist for S07B proper:
+
+- `test-platform/scenarios/07b/*.ts`;
+- `test-platform/test/s07b-state-cursor-listing-root-recovery.test.ts`;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+S07B proper has zero authority to modify platform core, production, production seam, PowerShell, PHX-CI, persistence, governance, or architecture code.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07b-state-cursor-listing-root-recovery.test.js`
 
 ## 1. Objective
 
