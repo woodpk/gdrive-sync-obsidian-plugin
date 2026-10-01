@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** architecture-reviewed accepted S07B prerequisite closure `be226f6008eb7d26fa7c9df574dfde27180d8c73`
 
@@ -93,6 +93,33 @@ S07B R2 implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
 - S07B R2 scenario logical LOC: 23, 23, 23, 22, 20, 19, 15, 17, 17; every scenario remains below the 200-LOC hard limit.
 
 Authoritative PHX-CI plus complete review of the persisted JSON, Markdown, and full execution log are required before acceptance.
+
+## 0.6 Acceptance / Closure Record
+
+BVP-S07B is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `25212a5101f02926348edaa6e5d7e32618c6bade`;
+- authoritative PHX-CI evidence: `680f3671769ba145f953a95b34804089942fd2ad`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- complete persisted evidence set reviewed before acceptance:
+  - JSON: `dev/test-results/20261001T034239Z-operator-bvp-s07b-state-cursor-listing-root-recovery-r2-25212a5101f0.json`;
+  - Markdown: matching `.md`;
+  - execution log: matching `.log`, 6,597 lines;
+- focused S07B verification: 13/13 PASS;
+- complete repository suite: 830/830 PASS;
+- all PHX-CI stages: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,999 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: unchanged at 16,668 LOC;
+- approved production seam: unchanged at 113 LOC / 1 file;
+- scenario catalog: 54 scenarios / 1,131 logical LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- production artifact unchanged: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`;
+- no genuine `not ok`, hidden nonzero stage, hidden BLOCKED/FAIL verdict, or artifact discrepancy exists in the complete log;
+- only non-pass diagnostic is the existing npm audit notice for 2 moderate vulnerabilities.
+
+Accepted S07B coverage proves fail-closed state-integrity recovery, conservative cursor re-baselining, incomplete remote coverage safety, and managed-root authority failure behavior through production logic without scenario-specific production code or platform-core changes in S07B proper.
 
 ## 1. Objective
 
