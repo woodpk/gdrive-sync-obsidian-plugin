@@ -311,10 +311,10 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
           status: "outcome-unknown",
           reason: "reserved-create-post-observation-missing",
         }
-      : {
+      : ({
           status: "outcome-unknown",
-          reason: `reserved-create-ambiguous:${dispatched.signal.kind}`,
-        };
+          reason: `reserved-create-ambiguous:${dispatched.signal.kind}`, ...(dispatched.signal.kind === "quota-exhausted" ? { operationalFailure: { kind: "quota-exhausted", source: "google-drive", detail: "quota-exhausted" } } : {}),
+        } as RemoteMutationOutcome);
   }
 
   async updateExisting(identity: UpdateIdentity, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
