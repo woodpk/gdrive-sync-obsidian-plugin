@@ -52,8 +52,8 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
-| 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
-| 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
+| 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
+| 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
 | 08A | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08a-narrow-production-run-receipt-seam.md` |
 | 08B | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08b-validation-only-obsidian-build-entrypoint.md` |
 | 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
@@ -657,3 +657,10 @@ S07F is **BOUND / EXECUTABLE** from `556a58d96b9387fae799c4e10d8cd9476f7348ed` o
 
 
 S07F is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `7c21441a4c5ebbf3cfe5372d23919baff3c101fe`; base `556a58d96b9387fae799c4e10d8cd9476f7348ed`. Test-only coverage measures a 16-MiB end-to-end virtual transfer, a 256-file vault with a 64-file update batch, and production 16-MiB upload/download chunking at the current 256-KiB boundary. Measurements emit environment, elapsed, and sampled memory evidence without inventing a performance SLA. Framework core remains 4,000/4,000; scenario catalog remains 70/1,524; no production or architecture implementation changed.
+
+
+S07F — Deterministic Scale and Resource Measurement is **COMPLETE / ACCEPTED**. Accepted implementation `70207ca23c71153f7831b14fad1dd3a155729b42`; authoritative evidence `3ed9973aba739626239ad5bc010bdd2a256dec71`. Complete JSON, Markdown, and 7,019-line log reviewed; focused 4/4 PASS; full suite 835/835 PASS; architecture guard 0; framework core 4,000/4,000; scenario catalog 70/1,524; production source 16,670; artifact unchanged at 880,742 bytes / SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted dependency-security maintenance after S07F forces transitive Moment 2.31.0 without changing Obsidian 1.13.1. Implementation `f996086a7b8b1c3fc1e898bc3034ae4d5d719bdf`; authoritative evidence `b06013b8298cc8c9f88ea9ba2e4bdbea03660007`; `npm ci` and focused `npm audit --audit-level=low` both report 0 vulnerabilities; full suite 835/835 PASS; architecture/artifact unchanged. This evidence is the current `phase6-integration` HEAD.
+
+S07V — Primary-Stage PHX-CI Acceptance and Mandatory Architecture Review is **BOUND / EXECUTABLE** on branch `bvp-s07v-primary-stage-acceptance`. Integrated input `b06013b8298cc8c9f88ea9ba2e4bdbea03660007`; S07 stage verification base `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`; PHX-CI runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c`. S07V is verification/reconciliation-only and may not repair implementation defects.

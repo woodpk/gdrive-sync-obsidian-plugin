@@ -3,11 +3,62 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage
 
 This is a complete prewritten verification contract. It has no implementation-repair authority.
+
+## 0.1 Final Dispatch Binding
+
+BVP-S07V is **BOUND / EXECUTABLE** as the stage-closing verification and mandatory pre-S08 architecture review.
+
+Repository coordinates:
+
+- verification branch: `bvp-s07v-primary-stage-acceptance`;
+- exact integrated `phase6-integration` input: `b06013b8298cc8c9f88ea9ba2e4bdbea03660007`;
+- exact S07 stage verification base / reviewed pre-S07 integration: `e15a61cfe23b29dbc67b04ededd009c6d6ee0c5d`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI framework version: `0.2.0-dev.2`;
+- PowerShell baseline: 7.6.6;
+- Node/npm baseline from latest accepted evidence: Node 22.23.2 / npm 10.9.8.
+
+Accepted S07 child implementation / authoritative evidence lineage:
+
+- S07A: `e243922afdabd49f42f94395243191231ff89ada` / `d836055376110f02a415fa5b8cf0e8c58e9ed6bd`;
+- S07B: `25212a5101f02926348edaa6e5d7e32618c6bade` / `680f3671769ba145f953a95b34804089942fd2ad`;
+- S07C: `1e5e7896df8e8288dad18831687cb21654197488` / `5fd3ff789a564935b4eed38732af0cd7aa0aecf6`;
+- S07D: `b8f08eb08422006a636260dcb10163e2fa5d8437` / `19421e7816d881707c1d02a4d86fa6e9b8aee08b`;
+- S07E: `abda511c8f2d701fbb4b285634a4baf43fad87f4` / `5420a270e024d4a2c639c6d4023ce21e0bb21a5d`;
+- S07F: `70207ca23c71153f7831b14fad1dd3a155729b42` / `3ed9973aba739626239ad5bc010bdd2a256dec71`.
+
+The integrated input also contains accepted dependency-security maintenance `f996086a7b8b1c3fc1e898bc3034ae4d5d719bdf` with authoritative evidence `b06013b8298cc8c9f88ea9ba2e4bdbea03660007`. That maintenance only overrides transitive Moment to 2.31.0, proves `npm audit` reports zero vulnerabilities, and has no product, framework-core, scenario, PowerShell, or production-artifact delta.
+
+Architecture baselines:
+
+- accepted S05 baseline: production source 16,533 LOC; production seam 112 LOC / 1 file; framework core 3,813 LOC / 10 modules; scenario catalog 2 / 46 LOC; BVP PowerShell 4 / 1,477 LOC; scenario-specific production / PowerShell 0 / 0;
+- accepted S06 closure: production source 16,534 LOC; production seam 113 LOC / 1 file; framework core 3,864 LOC / 10 modules; scenario catalog 39 / 818 LOC; BVP PowerShell 4 / 1,477 LOC; scenario-specific production / PowerShell 0 / 0;
+- current integrated S07 metrics: production source 16,670 LOC; production seam 113 LOC / 1 file; framework core 4,000 / 4,000 LOC / 10 modules; scenario catalog 70 / 1,524 LOC; BVP PowerShell 4 / 1,477 LOC; scenario-specific production / PowerShell 0 / 0; `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Deterministic S07 requirement/evidence assignment to reconcile:
+
+- S07A: `STATE-009`, `STATE-010`, `XFER-004`, `INV-004`; crash before dispatch/effect, after effect before canonical commit, around canonical state commit, ambiguous applied/not-applied remote outcomes, and fresh-runtime restart/recovery;
+- S07B: corrupt/truncated/incompatible authoritative state, lost/invalid Drive cursor, partial change-page/listing completeness, missing managed root, root identity/protocol mismatch, and fail-closed recovery rather than empty-state authority;
+- S07C: `STATE-003`, `STATE-007`, `STATE-016`, `PLAN-009`; cloned/restored device-state authority plus cancellation before effect, after effect, and repeated cancellation;
+- S07D: `XFER-001`, `XFER-002`, `XFER-003`, `XFER-004`, `XFER-008`, `FILE-013`, `FAIL-002`, `FAIL-003`; transfer integrity, changing-during-transfer, safe replacement, retry-safe mutation, bounded retry/backoff/rate-limit behavior;
+- S07E: `FAIL-004`, `FAIL-005`, `DELETE-005` through `DELETE-010`, applicable deterministic `CONFIG-001` through `CONFIG-009`, `LIFE-001`, `LIFE-002`, and `INV-020`; quota/disk failures, destructive circuit breaker/review checkpoint, protected configuration, and deterministic reconstruction/lifecycle preservation;
+- S07F: `XFER-005`, `XFER-006`, `XFER-007`; bounded large-run handling, bounded host resource evidence, no arbitrary small file-size ceiling, large-file and large-vault correctness/measurement.
+
+Target-system §13.2 reconciliation semantics remain owned/closed by S06V and are not reassigned to S07. S07V must nevertheless prove the complete repository suite still preserves that accepted coverage while validating the §13.3, §13.4, §13.5, and applicable deterministic §13.7 additions above.
+
+Physical-only evidence remains out of scope: actual iOS/WebView constrained-resource behavior stays S09D; physical disable/uninstall/device unlink behavior stays S09E; S07V must not claim those checks.
+
+Focused S07 stage command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-build/bvp/test-platform/test/s07a-crash-commit-ambiguity.test.js .test-build/bvp/test-platform/test/s07b-state-cursor-listing-root-recovery.test.js .test-build/bvp/test-platform/test/s07c-device-authority-cancellation.test.js .test-build/bvp/test-platform/test/s07d-transfer-integrity-retry-backoff.test.js .test-build/bvp/test-platform/test/s07e-quota-disk-destructive-config-lifecycle.test.js .test-build/bvp/test-platform/test/s07f-deterministic-scale-resource-measurement.test.js && node --test --test-name-pattern="S07D|transport honors Retry-After|quota exhaustion" .test-build/test/phase3-transport.test.js && node --test .test-build/test/s07f-large-transfer-resource.test.js`
+
+S07V has no implementation-repair authority. Its writable handoff surface before PHX-CI is limited to this task record and the session index; canonical PHX-CI evidence files are generated by the existing verification path. Any discovered product or architecture defect must be routed to its causal owner rather than repaired inside S07V.
+
 
 ## 1. Objective
 

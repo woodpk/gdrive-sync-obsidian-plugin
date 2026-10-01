@@ -81,6 +81,29 @@ Unavailable by design:
 
 - actual iOS/WebView constrained-resource behavior and physical large-transfer evidence remain S09D.
 
+## 0.3 Acceptance / Closure Record
+
+BVP-S07F is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `70207ca23c71153f7831b14fad1dd3a155729b42`;
+- authoritative PHX-CI evidence: `3ed9973aba739626239ad5bc010bdd2a256dec71`;
+- complete persisted JSON, Markdown, and 7,019-line execution log reviewed before acceptance;
+- focused S07F verification: 4/4 PASS across the virtual scale and production large-transfer cases;
+- complete repository suite: 835/835 PASS;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC / 1 file;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted scale evidence proves content/state correctness for a 16-MiB virtual transfer, a 256-file managed vault plus 64-file update batch, and production 16-MiB upload/download transfer through the current 256-KiB chunk boundary. Host elapsed/memory measurements remain construction evidence only; no unsupported performance SLA was introduced.
+
+The authoritative evidence was promoted to `phase6-integration` before the later accepted dependency-security maintenance that changed only `package.json` / `package-lock.json` and left product/architecture/artifact state unchanged.
+
 ## 1. Objective
 
 Add bounded host-side deterministic large-file/large-vault execution and resource measurements sufficient to prove required algorithmic/behavioral scale characteristics without turning the BVP into a benchmark framework.
