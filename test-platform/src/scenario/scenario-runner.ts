@@ -261,8 +261,8 @@ export class DeterministicScenarioRunner {
       return { status: "completed" };
     }
     if (step.transition === "request-cancellation") {
-      const result = await (await context.device(step.device)).controller.request({ kind: "cancel-active-sync" });
-      return result.status === "accepted" ? { status: "completed" } : fail("failed", "production-request-rejected", result.reason);
+      const device = await context.device(step.device); if (step.boundary) { context.world.armCancellationBoundary(step.device, step.boundary, () => { void device.controller.request({ kind: "cancel-active-sync" }); }); return { status: "completed" }; }
+      const result = await device.controller.request({ kind: "cancel-active-sync" }); return result.status === "accepted" ? { status: "completed" } : fail("failed", "production-request-rejected", result.reason);
     }
     if (step.transition === "inject-crash-boundary") {
       context.world.armCrashBoundary(step.device, step.boundary);
@@ -273,7 +273,7 @@ export class DeterministicScenarioRunner {
       return { status: "completed" };
     }
     if (step.transition === "fault-device-state") {
-      const backing = context.world.deviceBacking(step.device); if (step.fault === "corrupt-checksum") backing.corruptChecksum(); else if (step.fault === "truncate") backing.truncateStateBytes(); else await backing.installIncompatibleSchemaVersion(step.schemaVersion!);
+      const backing = context.world.deviceBacking(step.device); if (step.fault === "copy-from-device") { const bytes = context.world.deviceBacking(step.sourceDevice!).persistedBytes(); if (!bytes) return fail("failed", "source-device-state-unavailable"); await backing.storage.write(bytes); } else if (step.fault === "corrupt-checksum") backing.corruptChecksum(); else if (step.fault === "truncate") backing.truncateStateBytes(); else await backing.installIncompatibleSchemaVersion(step.schemaVersion!);
       return { status: "completed" };
     }
     if (step.transition === "invalidate-change-cursor") {
