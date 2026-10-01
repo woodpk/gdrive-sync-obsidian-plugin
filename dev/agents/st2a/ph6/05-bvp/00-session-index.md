@@ -614,3 +614,6 @@ Hard constraints:
 
 
 S07E is **BLOCKED** on prerequisite `bvp-s07e-prereq-resource-fault-controls` from base `c47efae7b1785e0d5a89e482044fcf5811785bce`. The prerequisite is limited to preserving `quota-exhausted` in the existing remote mutation fault and adding a device-level `disk-full` write-capacity state to the existing local-access fault family with zero net framework-core LOC growth. S07E proper remains scenario/test-only after prerequisite acceptance.
+
+
+S07E resource-fault prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic implementation `a583b9de46ed6effe28f0431154c3f693e981fdf`; base `c47efae7b1785e0d5a89e482044fcf5811785bce`. The bounded changes preserve `quota-exhausted` through the virtual V1.3 mutation path and model local `disk-full` as a write-capacity failure while retaining readable existing data. Framework core remains exactly 4,000/4,000 with zero net LOC growth; production/seam/scenario/PowerShell/PHX-CI implementation surfaces are unchanged.
