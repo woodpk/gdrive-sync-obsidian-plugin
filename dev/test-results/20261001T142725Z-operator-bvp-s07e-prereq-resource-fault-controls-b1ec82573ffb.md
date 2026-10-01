@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07e-prereq-resource-fault-controls
+- Source build HEAD requested: b1ec82573ffb0289f92f3830db97d69669602810
+- Verification checkout HEAD: b1ec82573ffb0289f92f3830db97d69669602810
+- Evidence publication target: origin/bvp-s07e-prereq-resource-fault-controls
