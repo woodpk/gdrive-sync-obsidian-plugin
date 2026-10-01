@@ -45,6 +45,7 @@ Writable implementation allowlist:
 
 - `test-platform/scenarios/07d/*.ts`;
 - `test-platform/test/s07d-transfer-integrity-retry-backoff.test.ts`;
+- `test/phase3-transport.test.ts` (S07D transport regression additions only);
 - this task file;
 - `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
 
@@ -52,16 +53,16 @@ No platform-core or production implementation change is authorized. Framework-co
 
 Focused command:
 
-`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07d-transfer-integrity-retry-backoff.test.js`
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-build/bvp/test-platform/test/s07d-transfer-integrity-retry-backoff.test.js && node --test --test-name-pattern="S07D|transport honors Retry-After|quota exhaustion" .test-build/test/phase3-transport.test.js`
 
 ## 0.2 Ready-for-Verification Record
 
 S07D is **READY FOR LOCAL PHX-CI VERIFICATION**.
 
-- semantic scenario/test implementation HEAD: `edf153f7ac29cdc4e3bfb48933c39bac6ef09499`;
+- semantic scenario/test implementation HEAD: `032df1f82e6a3eeda226027114ae7e9a3327ddbc`;
 - PHX-CI base: `4ab412c149a9986347a1e75a2e00909e2e7624d4`;
-- changed implementation surface: five S07D scenario files plus one focused test only;
-- framework-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- changed implementation surface: five S07D scenario files, one platform focused test, and bounded additions to the existing production transport regression test only;
+- framework-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0; the root transport test is test-only and remains outside test-platform architecture imports;
 - framework core remains 4,000 / 4,000;
 - scenario catalog projects to 64 scenarios / 1,311 logical LOC;
 - all five S07D scenarios remain below the 200-LOC hard limit.
