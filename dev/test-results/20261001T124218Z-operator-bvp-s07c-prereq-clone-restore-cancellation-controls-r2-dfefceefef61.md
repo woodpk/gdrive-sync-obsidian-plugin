@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07c-prereq-clone-restore-cancellation-controls-r2
+- Source build HEAD requested: dfefceefef61a6afde6c0b6b4aa6ffdaca535d5f
+- Verification checkout HEAD: dfefceefef61a6afde6c0b6b4aa6ffdaca535d5f
+- Evidence publication target: origin/bvp-s07c-prereq-clone-restore-cancellation-controls-r2
