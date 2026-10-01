@@ -3,13 +3,56 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07C
+**Predecessor:** architecture-reviewed accepted S07C closure `4ab412c149a9986347a1e75a2e00909e2e7624d4`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Final Dispatch Binding
+
+S07D is **BOUND / EXECUTABLE** from the architecture-reviewed accepted S07C closure.
+
+- exact PHX-CI base: `4ab412c149a9986347a1e75a2e00909e2e7624d4`;
+- branch: `bvp-s07d-transfer-integrity-retry-backoff`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC / 1 file;
+- scenario catalog: 59 scenarios / 1,223 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC.
+
+Requirement mappings:
+
+- `XFER-001` — verify transfer content before authoritative commit;
+- `XFER-002` and `FILE-013` — unstable/changing local source invalidates the planned transfer;
+- `XFER-003` — safe local replacement for downloads;
+- `XFER-004` — retry-safe upload/update semantics;
+- `XFER-008` — bounded retry/backoff/rate-limit handling;
+- `FAIL-002` — bounded transient network retry;
+- `FAIL-003` — rate-limit/quota terminal classification.
+
+Accepted existing controls used without framework growth:
+
+- local/remote fixture mutation between preview and reviewed execution for stale-source/revision detection;
+- one-shot `inject-remote-mutation-fault` for retryable remote mutation classification;
+- deterministic production `reconcile`;
+- existing `GoogleHttpTransport` dependency injection for deterministic sleeper/random/clock verification in the focused test.
+
+Writable implementation allowlist:
+
+- `test-platform/scenarios/07d/*.ts`;
+- `test-platform/test/s07d-transfer-integrity-retry-backoff.test.ts`;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No platform-core or production implementation change is authorized. Framework-core headroom is zero.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07d-transfer-integrity-retry-backoff.test.js`
 
 ## 1. Objective
 
