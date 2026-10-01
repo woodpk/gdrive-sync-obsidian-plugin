@@ -49,7 +49,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
-| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
+| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
 | 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
@@ -499,3 +499,6 @@ Hard architecture constraints:
 - S07C proper remains scenario/test-only after prerequisite acceptance.
 
 If these controls cannot fit the existing 4,000-LOC ceiling without weakening behavior, stop BLOCKED rather than increasing the budget.
+
+
+S07C is **BLOCKED / MISSING GENERIC CAPABILITY** after repository grounding against accepted S07B closure `2516bb33a286b9f7fa6c3ad667d4d6328acebdb5`. Production already detects copied-state device identity mismatch and supports cancellation, but the declarative platform lacks persisted-state copy and deterministic in-flight cancellation-boundary controls. Bounded prerequisite `07c-prerequisite-clone-restore-cancellation-controls.md` is authorized from pre-S07C architecture review `124b7cb59505ca17ac9d80eab989d7b3160bc222`, with <=1 net framework-core LOC and zero production/seam/PowerShell/PHX-CI delta.
