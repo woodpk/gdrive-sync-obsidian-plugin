@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07e-quota-disk-destructive-config-lifecycle
+- Source build HEAD requested: abda511c8f2d701fbb4b285634a4baf43fad87f4
+- Verification checkout HEAD: abda511c8f2d701fbb4b285634a4baf43fad87f4
+- Evidence publication target: origin/bvp-s07e-quota-disk-destructive-config-lifecycle
