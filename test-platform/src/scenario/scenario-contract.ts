@@ -39,7 +39,7 @@ export type ScenarioProductionStep = Step<
 
 export type ScenarioExternalStateStep = Step<
   | { readonly kind: "external-state"; readonly transition: "set-device-connectivity"; readonly device: string; readonly state: "online" | "offline" }
-  | { readonly kind: "external-state"; readonly transition: "set-local-access"; readonly device: string; readonly path: string; readonly state: "readable" | "unreadable" | "inaccessible" }
+  | { readonly kind: "external-state"; readonly transition: "set-local-access"; readonly device: string; readonly path: string; readonly state: "readable" | "unreadable" | "inaccessible" | "disk-full" }
   | { readonly kind: "external-state"; readonly transition: "advance-device-time"; readonly device: string; readonly deltaMs: number }
   | { readonly kind: "external-state"; readonly transition: "set-remote-listing-completeness" | "set-remote-change-completeness"; readonly completeness: "complete" | "partial"; readonly reason?: string }
   | { readonly kind: "external-state"; readonly transition: "inject-remote-mutation-fault"; readonly operation: "create" | "update" | "move" | "trash"; readonly effect: "not-applied" | "applied-before-failure"; readonly classification: string }
@@ -165,7 +165,7 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   }
   if (step.kind === "external-state" && String(step.transition).includes("completeness") && step.completeness !== "complete" && step.completeness !== "partial") issues.push(`${at}.completeness is invalid`);
   if (step.kind === "external-state" && step.transition === "set-device-connectivity" && step.state !== "online" && step.state !== "offline") issues.push(`${at}.state is invalid`);
-  if (step.kind === "external-state" && step.transition === "set-local-access" && !["readable", "unreadable", "inaccessible"].includes(String(step.state))) issues.push(`${at}.state is invalid`);
+  if (step.kind === "external-state" && step.transition === "set-local-access" && !["readable", "unreadable", "inaccessible", "disk-full"].includes(String(step.state))) issues.push(`${at}.state is invalid`);
   if (step.kind === "external-state" && step.transition === "advance-device-time" && (typeof step.deltaMs !== "number" || !Number.isFinite(step.deltaMs) || step.deltaMs < 0)) issues.push(`${at}.deltaMs must be finite and non-negative`);
   if (step.kind === "external-state" && ((step.transition === "inject-crash-boundary" && !["before-remote-dispatch", "after-remote-effect", "before-canonical-state-write", "after-canonical-state-write"].includes(String(step.boundary))) || (step.transition === "request-cancellation" && step.boundary !== undefined && !["before-remote-dispatch", "after-remote-effect"].includes(String(step.boundary))))) issues.push(`${at}.boundary is invalid`);
   if (step.kind === "external-state" && step.transition === "inject-remote-mutation-fault" && (!["create", "update", "move", "trash"].includes(String(step.operation)) || !["not-applied", "applied-before-failure"].includes(String(step.effect)))) issues.push(`${at} remote mutation fault is invalid`);
