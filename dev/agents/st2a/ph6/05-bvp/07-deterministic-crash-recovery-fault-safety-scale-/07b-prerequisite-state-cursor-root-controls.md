@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07B  
 **Predecessor:** accepted S07A closure `62b91e21d8d9be43f98a0e4cdd49081b750e13dc`  
 **Architecture-review base:** `93262366c749b27f95f973f1c6db04673f7f8fcb`  
@@ -25,6 +25,33 @@ The bounded prerequisite implementation is complete and ready for authoritative 
 - managed-root faulting reuses existing validation semantics and mutates only deterministic virtual Drive root authority.
 
 Authoritative PHX-CI and architecture metrics remain the acceptance authority.
+
+## 0.2 Acceptance / Closure Record
+
+The S07B recovery-control prerequisite is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `7a0c13b7af67f317e870c4b85063561413c20776`;
+- authoritative PHX-CI evidence: `058a931e64320ea2982efe938d246211ef70be5e`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- complete persisted evidence set reviewed before acceptance:
+  - JSON: `dev/test-results/20261001T030404Z-operator-bvp-s07b-prereq-state-cursor-root-controls-7a0c13b7af67.json`;
+  - Markdown: matching `.md` report;
+  - execution log: matching `.log` report, 6,423 lines;
+- focused prerequisite verification: 8/8 PASS;
+- complete repository suite: 830/830 PASS;
+- all PHX-CI stages: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,994 / 4,000 logical TypeScript LOC (+24 from accepted base), 10 runtime modules;
+- production source: unchanged at 16,668 LOC;
+- production seam: unchanged at 113 LOC / 1 file;
+- scenario catalog: unchanged at 45 scenarios / 952 LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- production artifact remains unchanged: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`;
+- no genuine `not ok`, hidden nonzero stage, hidden BLOCKED/FAIL verdict, or artifact discrepancy exists in the full execution log;
+- only non-pass diagnostic is the existing npm audit notice for 2 moderate vulnerabilities, which did not affect verification.
+
+The accepted prerequisite adds only generic declarative recovery-control exposure through existing platform families. It introduces no production behavior, new runtime module, new fault framework, persistence subsystem, evidence family, PowerShell, or PHX-CI change.
 
 ## 1. Objective
 
