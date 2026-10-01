@@ -4,6 +4,22 @@ import { test } from "node:test";
 import { defineScenario } from "../src/scenario/scenario-contract";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 
+test("state copy fails closed when the source device has no persisted synchronization state", async () => {
+  const scenario = defineScenario({
+    id: "s07c-prereq-copy-missing-source",
+    description: "copying from an uninitialized source backing fails closed without fabricating state",
+    traceability: { targets: [{ kind: "requirement", id: "STATE-016" }] },
+    executionModes: ["deterministic"],
+    steps: [
+      { id: "copy-missing", kind: "external-state", transition: "fault-device-state", device: "device-a", fault: "copy-from-device", sourceDevice: "device-b", expect: { status: "failed", classification: "source-device-state-unavailable" } },
+      { id: "target-state", kind: "observe", subject: "device-state", device: "device-a", captureAs: "target-state" },
+      { id: "assert-uninitialized-recovery", kind: "assert", assertion: "status", observationRef: "target-state", expectedStatus: "recovery-required" },
+    ],
+  });
+  const result = await DeterministicScenarioRunner.canonical().run(scenario);
+  strictEqual(result.status, "completed", JSON.stringify(result, null, 2));
+});
+
 test("copied persisted state is detected as clone/restore authority mismatch on another device", async () => {
   const scenario = defineScenario({
     id: "s07c-prereq-clone-state",
