@@ -388,3 +388,25 @@ S07B automatic/incremental invocation prerequisite is **READY FOR PHX-CI**. Sema
 
 
 S07B automatic/incremental invocation prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `626f6a48f4580f28c8fa527596bf982a55d4522a` passed authoritative PHX-CI; evidence is `cd28debaff771c3a344d4918a27fac06e93bd417`. Acceptance followed complete review of the persisted JSON, Markdown, and 6,387-line execution log. Focused verification passed 2/2; full repository verification passed 830/830; all stages passed with exit 0; architecture guard recorded 0 violations; framework core is 3,996/4,000 (+2); production/seam/scenario/PowerShell metrics and production artifact remain unchanged.
+
+
+### Recurring Architecture Review — after S07B automatic/incremental prerequisite
+
+BVP-GOV-008 repository-level architecture review completed against accepted prerequisite closure `86492943400d20c93cbff846b533bbf3a2775d0d`: **PASS**.
+
+- accepted implementation HEAD: `626f6a48f4580f28c8fa527596bf982a55d4522a`;
+- authoritative evidence: `cd28debaff771c3a344d4918a27fac06e93bd417`;
+- acceptance was based on complete review of the persisted JSON, Markdown, and 6,387-line execution log;
+- framework core is now 3,996 logical TypeScript LOC / 10 runtime modules against the frozen 4,000-LOC ceiling, leaving 4 LOC headroom;
+- the only accepted delta is one generic declarative `production:automatic-sync` operation routed to existing production `runAutomatic("local-change")`;
+- existing `production:synchronize` semantics remain unchanged;
+- no new runtime module, runner, router, persistence subsystem, fault framework, observation family, evidence family, coordination protocol, or production testing bypass was introduced;
+- production source remains 16,668 logical LOC; approved production seam remains 113 LOC / 1 file;
+- scenario catalog remains 45 scenarios / 952 logical LOC;
+- scenario-specific production and PowerShell remain 0;
+- BVP PowerShell remains 4 scripts / 1,477 logical LOC;
+- architecture guard PASS with 0 violations; repository metrics PASS;
+- focused prerequisite verification passed 2/2; complete repository suite passed 830/830;
+- production artifact remains unchanged at 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+This review authorizes S07B proper only as declarative scenario/test coverage. S07B proper has zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes. Any newly discovered generic-capability gap blocks S07B for supervisor re-grounding; no budget increase is authorized.
