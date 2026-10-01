@@ -3,13 +3,26 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / RESOURCE-FAULT PREREQUISITE UNDER VERIFICATION  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted S07D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Current Binding Blocker
+
+S07E proper remains blocked until prerequisite `bvp-s07e-prereq-resource-fault-controls` passes authoritative PHX-CI and architecture review.
+
+The prerequisite is bounded to the two generic resource-fault gaps identified at accepted S07D closure:
+
+- preserve `quota-exhausted` through the existing remote mutation fault control;
+- model local `disk-full` as a write-capacity failure through the existing local-access fault family without making existing readable content disappear.
+
+Prerequisite base: `c47efae7b1785e0d5a89e482044fcf5811785bce`.
+
+S07E proper retains zero authority for platform-core or production changes.
 
 ## 1. Objective
 
