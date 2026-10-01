@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-governance-metrics-base-policy-repair
+- Source build HEAD requested: 516fd7f4866284732dde003e90b26b1caec1d629
+- Verification checkout HEAD: 516fd7f4866284732dde003e90b26b1caec1d629
+- Evidence publication target: origin/bvp-governance-metrics-base-policy-repair
