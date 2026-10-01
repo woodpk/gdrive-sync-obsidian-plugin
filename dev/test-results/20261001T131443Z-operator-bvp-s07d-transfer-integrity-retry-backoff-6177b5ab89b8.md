@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07d-transfer-integrity-retry-backoff
+- Source build HEAD requested: 6177b5ab89b8bcece88cd85f761b37b7c79e77ac
+- Verification checkout HEAD: 6177b5ab89b8bcece88cd85f761b37b7c79e77ac
+- Evidence publication target: origin/bvp-s07d-transfer-integrity-retry-backoff
