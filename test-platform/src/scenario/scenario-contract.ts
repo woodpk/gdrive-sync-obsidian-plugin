@@ -34,7 +34,7 @@ export type ScenarioFixtureStep = Step<
 
 export type ScenarioProductionStep = Step<
   | { readonly kind: "production"; readonly device: string; readonly operation: "execute-reviewed-plan"; readonly inputRef: string; readonly captureAs?: string }
-  | { readonly kind: "production"; readonly device: string; readonly operation: "preview" | "synchronize" | "reconcile"; readonly inputRef?: string; readonly captureAs?: string }
+  | { readonly kind: "production"; readonly device: string; readonly operation: "preview" | "synchronize" | "reconcile" | "automatic-sync"; readonly inputRef?: string; readonly captureAs?: string }
 >;
 
 export type ScenarioExternalStateStep = Step<
@@ -108,6 +108,7 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "production:execute-reviewed-plan": { discriminator: "operation", required: ["device", "inputRef"], allowed: ["device", "inputRef", "captureAs"] },
   "production:synchronize": { discriminator: "operation", required: ["device"], allowed: ["device", "inputRef", "captureAs"] },
   "production:reconcile": { discriminator: "operation", required: ["device"], allowed: ["device", "inputRef", "captureAs"] },
+  "production:automatic-sync": { discriminator: "operation", required: ["device"], allowed: ["device", "captureAs"] },
   "external-state:set-device-connectivity": { discriminator: "transition", required: ["device", "state"], allowed: ["device", "state"] },
   "external-state:set-local-access": { discriminator: "transition", required: ["device", "path", "state"], allowed: ["device", "path", "state"] },
   "external-state:advance-device-time": { discriminator: "transition", required: ["device", "deltaMs"], allowed: ["device", "deltaMs"] },
