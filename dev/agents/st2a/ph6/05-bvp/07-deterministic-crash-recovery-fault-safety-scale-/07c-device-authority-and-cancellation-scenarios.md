@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** architecture-reviewed accepted S07C prerequisite closure `884373811369841cf8ef2cbb03a00505ce706001`
 
@@ -83,6 +83,24 @@ S07C proper is **READY FOR LOCAL PHX-CI VERIFICATION**.
 - framework core remains 4,000 / 4,000;
 - scenario catalog projects to 59 scenarios / 1,223 logical LOC;
 - no platform-core or production implementation changes.
+
+## 0.4 Acceptance / Closure Record
+
+BVP-S07C is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `1e5e7896df8e8288dad18831687cb21654197488`;
+- authoritative PHX-CI evidence: `5fd3ff789a564935b4eed38732af0cd7aa0aecf6`;
+- complete persisted JSON, Markdown, and 6,716-line execution log reviewed before acceptance;
+- focused S07C verification: 9/9 PASS;
+- complete repository suite: 830/830 PASS;
+- every PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC / 1 file;
+- scenario catalog: 59 scenarios / 1,223 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
 
 ## 1. Objective
 
