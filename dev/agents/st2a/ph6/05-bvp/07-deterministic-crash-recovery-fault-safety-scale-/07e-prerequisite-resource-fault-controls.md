@@ -53,3 +53,24 @@ Required proof:
 - full repository verification and architecture guard/metrics pass.
 
 Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+
+## 6. Ready-for-Verification Record
+
+The prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `a583b9de46ed6effe28f0431154c3f693e981fdf`;
+- exact base: `c47efae7b1785e0d5a89e482044fcf5811785bce`;
+- framework-core delta:
+  - scenario contract: 190 → 190;
+  - scenario runner: 280 → 280;
+  - in-memory local vault: 508 → 508;
+  - virtual world: 980 → 980;
+  - net framework-core delta: 0;
+- projected framework core: 4,000 / 4,000;
+- production source/seam delta: 0;
+- scenario catalog delta: 0;
+- PowerShell / PHX-CI delta: 0;
+- no new runtime module.
+
+Focused proof contains three tests: declarative quota preservation, declarative disk-full preservation, and direct V1.3 production-disposition proof for quota exhaustion.
