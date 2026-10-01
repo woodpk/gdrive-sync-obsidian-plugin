@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: security/moment-2.31.0-override
+- Source build HEAD requested: f996086a7b8b1c3fc1e898bc3034ae4d5d719bdf
+- Verification checkout HEAD: f996086a7b8b1c3fc1e898bc3034ae4d5d719bdf
+- Evidence publication target: origin/security/moment-2.31.0-override
