@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07e-quota-disk-destructive-config-lifecycle
+- Source build HEAD requested: 957383efd4bd6a3c1a891490255a4b416cfe9067
+- Verification checkout HEAD: 957383efd4bd6a3c1a891490255a4b416cfe9067
+- Evidence publication target: origin/bvp-s07e-quota-disk-destructive-config-lifecycle
