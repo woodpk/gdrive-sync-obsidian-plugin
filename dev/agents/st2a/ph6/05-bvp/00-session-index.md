@@ -382,3 +382,6 @@ This review authorizes S07B proper only as declarative scenario/test coverage ag
 
 
 S07B remains **BLOCKED / MISSING GENERIC CAPABILITY** after acceptance of the state/cursor/root control prerequisite. The frozen `production:synchronize` step intentionally uses reviewed full/manual planning and therefore cannot prove invalid-cursor detection on the real incremental path. A final micro-prerequisite `07b-prerequisite-automatic-incremental-sync.md` is authorized from architecture-reviewed integration `436b0d902c463adc78819344b715ae0fd3ac1605`, limited to <=6 net framework-core LOC and zero production/seam/PowerShell/PHX-CI delta.
+
+
+S07B automatic/incremental invocation prerequisite is **READY FOR PHX-CI**. Semantic implementation `fdd9258f676454d06c4f5f4cf456176a442ae302` adds one generic `production:automatic-sync` operation through the existing controller and projects framework core at 3,996/4,000 (+2). No production/seam/PowerShell/PHX-CI implementation change exists. Acceptance requires authoritative PHX-CI and complete review of the persisted JSON, Markdown, and full log reports.
