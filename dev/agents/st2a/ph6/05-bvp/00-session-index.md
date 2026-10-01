@@ -469,3 +469,33 @@ S07B R2 is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic scenario/test HEAD 
 
 
 S07B — State, Cursor, Listing, and Remote-Root Recovery Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation HEAD `25212a5101f02926348edaa6e5d7e32618c6bade` passed authoritative PHX-CI; evidence is `680f3671769ba145f953a95b34804089942fd2ad`. Acceptance followed complete review of the persisted JSON, Markdown, and 6,597-line execution log. Focused S07B verification passed 13/13; full repository verification passed 830/830; every stage passed with exit 0; architecture guard recorded 0 violations; framework core remained 3,999/4,000; production/seam/PowerShell metrics were unchanged; scenario catalog is now 54 scenarios / 1,131 logical LOC; production artifact remained 880,512 bytes with SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+
+### Pre-S07C Architecture Review — clone/restore + in-flight cancellation controls
+
+BVP-GOV-008 repository-level architecture review completed against accepted S07B closure `2516bb33a286b9f7fa6c3ad667d4d6328acebdb5`: **PASS WITH BOUNDED PREREQUISITE AUTHORIZATION**.
+
+Repository grounding for S07C shows:
+
+- production persisted-state load already detects copied state whose embedded device identity disagrees with the installation identity and returns `recovery-required / clone-or-restore-suspected`;
+- virtual device backing already exposes copied persisted bytes safely via `persistedBytes()` and copy-on-write `MemoryStateByteStorage.write(...)`;
+- S06C already covers ordinary stale-device return/deletion reconciliation and must not be duplicated as a second stale-authority mechanism;
+- `request-cancellation` already exists declaratively, but it only affects an active/acquiring run; sequential scenario execution cannot request cancellation while `execute-reviewed-plan` is awaited;
+- the accepted crash-boundary wrapper already intercepts `before-remote-dispatch` and `after-remote-effect`, which are exactly the physical boundaries S07C needs for deterministic cancellation.
+
+One bounded prerequisite is authorized to extend the existing external-state/boundary family only:
+
+1. permit the existing `fault-device-state` transition to copy persisted synchronization-state bytes from one named virtual device backing to another, solely as an external clone/restore fixture;
+2. permit `request-cancellation` to be armed at `before-remote-dispatch` or `after-remote-effect`, reusing the existing boundary interception machinery and production `cancel-active-sync` request.
+
+Hard architecture constraints:
+
+- framework core baseline: 3,999 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- net framework-core delta MUST be <=1 LOC;
+- no new runtime module, runner, router, state machine, persistence family, device-authority subsystem, cancellation subsystem, fault framework, observation family, production seam, production code, PowerShell, PHX-CI, or governance mechanism;
+- existing immediate `request-cancellation` behavior remains unchanged;
+- existing crash-boundary semantics remain unchanged when no cancellation action is supplied;
+- state-copy control copies only persisted test backing bytes and implements no authority decision;
+- S07C proper remains scenario/test-only after prerequisite acceptance.
+
+If these controls cannot fit the existing 4,000-LOC ceiling without weakening behavior, stop BLOCKED rather than increasing the budget.
