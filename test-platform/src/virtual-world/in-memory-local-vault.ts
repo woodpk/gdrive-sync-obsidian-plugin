@@ -21,7 +21,7 @@ import {
 } from "../../../src/product/local-vault-boundary-seam";
 
 type EntryKind = "file" | "folder";
-type EntryAccess = "readable" | "unreadable" | "inaccessible";
+type EntryAccess = "readable" | "unreadable" | "inaccessible" | "disk-full";
 type EntryStability = "stable" | "unstable";
 
 interface InMemoryEntry {
@@ -110,7 +110,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
   private readonly exclusionPolicy: LocalExclusionPolicy;
   private readonly configurationDirectory: VaultPath;
   private nextEntityId = 1;
-  private ready: boolean;
+  private ready: boolean; private writeFailure?: "disk-full";
 
   constructor(options: InMemoryLocalVaultOptions = {}) {
     const configDirectory = options.activeConfigurationDirectory ?? ".obsidian";
@@ -142,9 +142,8 @@ export class InMemoryLocalVault implements LocalVaultPort {
   }
 
   setAccess(path: string | VaultPath, access: EntryAccess): void {
-    const entry = this.requiredEntry(path);
-    entry.access = access;
-    entry.revision += 1;
+    if (access === "disk-full") { this.writeFailure = access; return; }
+    const entry = this.requiredEntry(path); entry.access = access; entry.revision += 1;
   }
 
   setStability(path: string | VaultPath, stability: EntryStability): void {
@@ -268,7 +267,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
     content: BinaryContentSource,
   ): Promise<LocalMutationReceipt> {
     const normalized = this.assertCreateTarget(path);
-    const bytes = await collectContent(content);
+    this.assertWritable(); const bytes = await collectContent(content);
     const entry = this.newEntry("file", bytes);
     this.entries.set(normalized, entry);
     const vaultPath = virtualVaultPath(normalized);
@@ -299,7 +298,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
           `Local path is incompatible (${validation.reason}): ${String(path)}`,
         );
       }
-      const bytes = await collectContent(content);
+      this.assertWritable(); const bytes = await collectContent(content);
       const created = this.newEntry("file", bytes);
       this.entries.set(normalized, created);
       const vaultPath = virtualVaultPath(normalized);
@@ -314,7 +313,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
     }
     this.assertReadable(normalized, existing);
     this.assertExpectedToken(normalized, existing, expectedToken);
-    const bytes = await collectContent(content);
+    this.assertWritable(); const bytes = await collectContent(content);
     existing.bytes = bytes;
     existing.revision += 1;
     existing.stability = "stable";
@@ -492,6 +491,8 @@ export class InMemoryLocalVault implements LocalVaultPort {
     }
     return normalized;
   }
+
+  private assertWritable(): void { if (this.writeFailure === "disk-full") throw new InMemoryLocalVaultError("Local disk capacity exhausted"); }
 
   private assertReadable(path: string, entry: InMemoryEntry): void {
     if (entry.access !== "readable") {
