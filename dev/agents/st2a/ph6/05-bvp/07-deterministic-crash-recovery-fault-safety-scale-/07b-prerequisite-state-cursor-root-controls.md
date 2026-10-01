@@ -8,6 +8,24 @@
 **Architecture-review base:** `93262366c749b27f95f973f1c6db04673f7f8fcb`  
 **Branch:** `bvp-s07b-prereq-state-cursor-root-controls`
 
+## 0.1 Ready-for-Verification Record
+
+The bounded prerequisite implementation is complete and ready for authoritative PHX-CI.
+
+- semantic implementation HEAD: `77ed363738e2b4aa32e2c93fe22a10da3073e69e`;
+- PHX-CI base: `93262366c749b27f95f973f1c6db04673f7f8fcb`;
+- branch: `bvp-s07b-prereq-state-cursor-root-controls`;
+- implementation paths changed: exactly `scenario-contract.ts`, `scenario-runner.ts`, `in-memory-google-drive.ts`, plus the prerequisite focused test;
+- projected framework-core delta using the repository's logical-LOC algorithm: +24 LOC, from 3,970 to 3,994 / 4,000;
+- no new runtime module;
+- production source/seam/PowerShell/PHX-CI/governance implementation delta: 0;
+- existing partial listing/change completeness controls are unchanged;
+- state corruption/truncation/incompatible schema reuse `VirtualDeviceBacking`;
+- cursor invalidation reuses the currently persisted device cursor and `InMemoryGoogleDriveCore.invalidateCursor(...)`;
+- managed-root faulting reuses existing validation semantics and mutates only deterministic virtual Drive root authority.
+
+Authoritative PHX-CI and architecture metrics remain the acceptance authority.
+
 ## 1. Objective
 
 Expose the already-planned deterministic recovery fault capabilities required by S07B through the existing declarative `external-state` family, without creating a new runner, fault framework, persistence subsystem, production seam, or production behavior.
