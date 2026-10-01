@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BLOCKED / RESOURCE-FAULT PREREQUISITE UNDER VERIFICATION  
+**Prompt maturity:** UNBLOCKED / NOT STARTED  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted S07D
 
@@ -13,7 +13,7 @@ This is a complete prewritten semantic contract. Dispatch binding supplies hard 
 
 ## 0.1 Current Binding Blocker
 
-S07E proper remains blocked until prerequisite `bvp-s07e-prereq-resource-fault-controls` passes authoritative PHX-CI and architecture review.
+S07E proper is unblocked by accepted prerequisite closure `2606062068afe1da3b0a3d152637e19c70c0d9b7`, but implementation has not started.
 
 The prerequisite is bounded to the two generic resource-fault gaps identified at accepted S07D closure:
 
@@ -21,6 +21,10 @@ The prerequisite is bounded to the two generic resource-fault gaps identified at
 - model local `disk-full` as a write-capacity failure through the existing local-access fault family without making existing readable content disappear.
 
 Prerequisite base: `c47efae7b1785e0d5a89e482044fcf5811785bce`.
+
+Accepted prerequisite evidence: `70f8dba093c00ae2ac3917e73168bb9b43b2e0d3`.
+
+Post-prerequisite architecture review: PASS.
 
 S07E proper retains zero authority for platform-core or production changes.
 
