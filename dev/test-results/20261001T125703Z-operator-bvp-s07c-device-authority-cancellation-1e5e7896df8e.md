@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880742 bytes; SHA-256 9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07c-device-authority-cancellation
+- Source build HEAD requested: 1e5e7896df8e8288dad18831687cb21654197488
+- Verification checkout HEAD: 1e5e7896df8e8288dad18831687cb21654197488
+- Evidence publication target: origin/bvp-s07c-device-authority-cancellation
