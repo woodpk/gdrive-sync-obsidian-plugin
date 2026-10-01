@@ -502,3 +502,6 @@ If these controls cannot fit the existing 4,000-LOC ceiling without weakening be
 
 
 S07C is **BLOCKED / MISSING GENERIC CAPABILITY** after repository grounding against accepted S07B closure `2516bb33a286b9f7fa6c3ad667d4d6328acebdb5`. Production already detects copied-state device identity mismatch and supports cancellation, but the declarative platform lacks persisted-state copy and deterministic in-flight cancellation-boundary controls. Bounded prerequisite `07c-prerequisite-clone-restore-cancellation-controls.md` is authorized from pre-S07C architecture review `124b7cb59505ca17ac9d80eab989d7b3160bc222`, with <=1 net framework-core LOC and zero production/seam/PowerShell/PHX-CI delta.
+
+
+S07C clone/restore + in-flight cancellation prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic implementation HEAD `23fe1dc4c829672a5b6bf0deb68ce6a278380b74`; PHX-CI base `124b7cb59505ca17ac9d80eab989d7b3160bc222`. Scope audit confirms +1 framework-core LOC exactly, projecting 4,000/4,000, with no production/seam/PowerShell/PHX-CI implementation delta and no new runtime module. Acceptance requires authoritative PHX-CI and complete review of all persisted JSON, Markdown, and full log reports.
