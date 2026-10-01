@@ -3,13 +3,56 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07E
+**Predecessor:** architecture-reviewed accepted S07E closure `556a58d96b9387fae799c4e10d8cd9476f7348ed`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Final Dispatch Binding
+
+S07F is **BOUND / EXECUTABLE** from the architecture-reviewed accepted S07E closure.
+
+- exact PHX-CI base: `556a58d96b9387fae799c4e10d8cd9476f7348ed`;
+- branch: `bvp-s07f-deterministic-scale-resource-measurement`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework core baseline: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production source baseline: 16,670 logical LOC;
+- production seam baseline: 113 LOC / 1 file;
+- scenario catalog baseline: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell baseline: 4 scripts / 1,477 logical LOC;
+- production artifact baseline: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Current product authority defines no hard wall-clock, RSS, heap, file-count, or maximum-file-size pass/fail SLA for deterministic host execution. Measurements therefore remain construction evidence only and MUST NOT become invented performance requirements.
+
+Current implementation facts relevant to bounded transfer behavior:
+
+- production Drive upload/download chunk size: 256 KiB;
+- default HTTP transport concurrency cap: 3;
+- target requirements `XFER-005`, `XFER-006`, and `XFER-007` require checkpointed/bounded large-run handling, bounded memory/concurrency, and no arbitrary small product-level file-size ceiling;
+- actual iOS constrained-resource proof remains S09D.
+
+Representative deterministic scale cases selected for this child:
+
+- 16 MiB file transfer/content-integrity case, exercising 64 production 256-KiB upload chunks in the root Drive-port focused test;
+- 256-file managed-vault case using 4-KiB deterministic files;
+- a second 64-file update batch over that same 256-file trusted vault to prove bounded multi-operation synchronization while preserving identity/state;
+- host measurements: elapsed milliseconds plus sampled RSS/heap-used before, during, and after each scale case, with Node/platform/architecture context.
+
+Writable implementation allowlist:
+
+- `test-platform/test/s07f-deterministic-scale-resource-measurement.test.ts`;
+- `test/s07f-large-transfer-resource.test.ts`;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No framework-core, scenario-definition, production, production-seam, PowerShell, PHX-CI, persistence, benchmark framework, or architecture implementation change is authorized.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-build/bvp/test-platform/test/s07f-deterministic-scale-resource-measurement.test.js && node --test .test-build/test/s07f-large-transfer-resource.test.js`
 
 ## 1. Objective
 
