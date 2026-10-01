@@ -579,4 +579,7 @@ S07C — Device Authority and Cancellation Scenarios is **COMPLETE / ACCEPTED**.
 S07D proper is **BOUND / EXECUTABLE** from `4ab412c149a9986347a1e75a2e00909e2e7624d4` on branch `bvp-s07d-transfer-integrity-retry-backoff`. Work is scenario/test-only; framework core remains at 4,000/4,000 and no production implementation changes are authorized.
 
 
-S07D proper is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `edf153f7ac29cdc4e3bfb48933c39bac6ef09499`; PHX-CI base `4ab412c149a9986347a1e75a2e00909e2e7624d4`. Five S07D scenarios plus one focused test; framework core remains 4,000/4,000; scenario catalog projects to 64 / 1,311 logical LOC; no platform-core or production implementation changes.
+S07D proper is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `032df1f82e6a3eeda226027114ae7e9a3327ddbc`; PHX-CI base `4ab412c149a9986347a1e75a2e00909e2e7624d4`. Five S07D scenarios, one platform focused test, and bounded additions to the existing root transport regression test; framework core remains 4,000/4,000; scenario catalog projects to 64 / 1,311 logical LOC; no platform-core or production implementation changes.
+
+
+S07D repository-gate repair: direct production imports were removed from `test-platform/test/s07d-transfer-integrity-retry-backoff.test.ts`; deterministic transport retry/backoff assertions now live in the existing root `test/phase3-transport.test.ts`, preserving the architecture boundary while retaining focused production retry coverage.
