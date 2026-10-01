@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** UNBLOCKED / NOT STARTED  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07D
+**Predecessor:** architecture-reviewed accepted S07E prerequisite closure `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -27,6 +27,50 @@ Accepted prerequisite evidence: `70f8dba093c00ae2ac3917e73168bb9b43b2e0d3`.
 Post-prerequisite architecture review: PASS.
 
 S07E proper retains zero authority for platform-core or production changes.
+
+## 0.2 Final Dispatch Binding
+
+S07E proper is **BOUND / EXECUTABLE** from the architecture-reviewed prerequisite closure.
+
+- exact PHX-CI base: `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`;
+- branch: `bvp-s07e-quota-disk-destructive-config-lifecycle`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework core baseline: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production source baseline: 16,670 logical LOC;
+- production seam baseline: 113 LOC / 1 file;
+- scenario baseline: 64 scenarios / 1,311 logical LOC;
+- BVP PowerShell baseline: 4 scripts / 1,477 logical LOC;
+- production artifact baseline: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Bound production authority:
+
+- `FAIL-004` remote quota exhaustion preserves local changes and blocks affected remote writes;
+- `FAIL-005` local disk exhaustion preserves the previously valid local file and blocks affected writes;
+- `DELETE-005` through `DELETE-010` destructive circuit breaker and recovery-checkpoint requirements;
+- production default destructive thresholds remain authoritative: absolute count 25, affected fraction 0.20, abnormal multiple 3;
+- `CONFIG-001` through `CONFIG-009` selective configuration boundaries;
+- `LIFE-001`, `LIFE-002`, and `INV-020` non-destructive lifecycle invariants, limited here to deterministic reconstruction/re-enable semantics rather than physical install/uninstall evidence.
+
+Accepted generic controls:
+
+- `inject-remote-mutation-fault` with preserved `quota-exhausted`;
+- `set-local-access: disk-full`;
+- persisted restart/reconstruction through `checkpoint:restart-device`;
+- ordinary production preview/execute/reconcile;
+- exact production destructive approval through the existing controller action and recovery checkpoint in focused verification only.
+
+Writable implementation allowlist:
+
+- `test-platform/scenarios/07e/*.ts`;
+- `test-platform/test/s07e-quota-disk-destructive-config-lifecycle.test.ts`;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No framework-core, production, production-seam, PowerShell, PHX-CI, persistence, safety-policy, configuration-policy, or lifecycle implementation change is authorized.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07e-quota-disk-destructive-config-lifecycle.test.js`
 
 ## 1. Objective
 
