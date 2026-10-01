@@ -27,6 +27,20 @@ Prerequisite branch:
 
 S07B proper remains frozen until that prerequisite is accepted and architecture-reviewed.
 
+## 0.2 Cursor-Path Invocation Blocker / Final Prerequisite
+
+After acceptance of the state/cursor/root fault-control prerequisite, repository grounding found one remaining capability gap: the frozen declarative `synchronize` step is intentionally implemented through reviewed `previewManual()` + execution and therefore performs a full/manual plan. It cannot prove that an invalid persisted Drive cursor is detected by the production incremental path.
+
+Production already exposes `ProductController.runAutomatic(...)` and `currentSurface()`. A final micro-prerequisite is authorized to expose that existing path as one generic declarative production operation without changing the meaning of `synchronize`:
+
+`07b-prerequisite-automatic-incremental-sync.md`
+
+Branch:
+
+`bvp-s07b-prereq-automatic-incremental-sync`
+
+The prerequisite is limited to <=6 net framework-core LOC, preserving the 4,000-LOC frozen ceiling. S07B proper remains blocked until this prerequisite is accepted and architecture-reviewed.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for fail-closed recovery from corrupt/incompatible durable state, lost/invalid change cursors, incomplete remote coverage, and loss/replacement of the managed remote root.
