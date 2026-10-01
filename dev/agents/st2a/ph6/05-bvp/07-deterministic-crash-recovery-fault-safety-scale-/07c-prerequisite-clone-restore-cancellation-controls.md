@@ -7,6 +7,29 @@
 **Predecessor / PHX-CI base:** `124b7cb59505ca17ac9d80eab989d7b3160bc222`  
 **Branch:** `bvp-s07c-prereq-clone-restore-cancellation-controls`
 
+## 0.1 Ready-for-Verification Record
+
+The bounded S07C prerequisite implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `23fe1dc4c829672a5b6bf0deb68ce6a278380b74`;
+- PHX-CI base: `124b7cb59505ca17ac9d80eab989d7b3160bc222`;
+- branch: `bvp-s07c-prereq-clone-restore-cancellation-controls`;
+- implementation paths changed: existing scenario contract, existing scenario runner, existing virtual-world boundary controller, plus one focused test;
+- framework-core delta: +1 logical TypeScript LOC;
+- projected framework core: 4,000 / 4,000;
+- runtime module count unchanged at 10;
+- production source / production seam / PowerShell / PHX-CI implementation delta: 0;
+- no new runner, state machine, persistence subsystem, device-authority subsystem, cancellation subsystem, fault framework, or observation family.
+
+Implemented controls:
+
+- `fault-device-state: copy-from-device` copies persisted synchronization-state bytes only;
+- `request-cancellation` accepts optional `before-remote-dispatch` / `after-remote-effect` boundary arming;
+- immediate cancellation behavior remains unchanged;
+- ordinary crash-boundary behavior remains unchanged.
+
+Authoritative PHX-CI and architecture metrics remain the acceptance authority.
+
 ## 1. Objective
 
 Expose two already-supported production semantics through the existing deterministic external-state/boundary family so S07C can model:
