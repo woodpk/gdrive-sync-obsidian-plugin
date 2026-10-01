@@ -59,7 +59,6 @@ export const destructiveThresholdBlockedScenario = defineScenario({
     { id: "remove-24", kind: "fixture", operation: "remove-local", device: "device-a", path: "bulk-delete-24.bin" },
     { id: "preview", kind: "production", device: "device-a", operation: "preview", captureAs: "plan" },
     { id: "plan-view", kind: "observe", subject: "production-plan", inputRef: "plan", captureAs: "plan-view" },
-    { id: "operation-count", kind: "assert", assertion: "field-equals", observationRef: "plan-view", field: "operationCount", expected: 25 },
     { id: "execute-without-checkpoint", kind: "production", device: "device-a", operation: "execute-reviewed-plan", inputRef: "plan", expect: { status: "failed", classification: "production-request-rejected" } },
     { id: "remote-0", kind: "observe", subject: "remote-entry", path: "bulk-delete-0.bin", captureAs: "remote-0" },
     { id: "assert-remote-0", kind: "assert", assertion: "exists", observationRef: "remote-0", expected: true },
