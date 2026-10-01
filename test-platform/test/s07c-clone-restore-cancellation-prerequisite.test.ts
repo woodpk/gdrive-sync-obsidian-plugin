@@ -13,7 +13,7 @@ test("state copy fails closed when the source backing is unavailable", async () 
     steps: [
       { id: "copy-missing", kind: "external-state", transition: "fault-device-state", device: "device-a", fault: "copy-from-device", sourceDevice: "missing-device", expect: { status: "failed", classification: "step-exception" } },
       { id: "target-state", kind: "observe", subject: "device-state", device: "device-a", captureAs: "target-state" },
-      { id: "assert-uninitialized-recovery", kind: "assert", assertion: "status", observationRef: "target-state", expectedStatus: "recovery-required" },
+      { id: "assert-target-unchanged", kind: "assert", assertion: "status", observationRef: "target-state", expectedStatus: "trusted" },
     ],
   });
   const result = await DeterministicScenarioRunner.canonical().run(scenario);
