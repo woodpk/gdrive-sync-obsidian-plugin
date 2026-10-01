@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07a-crash-commit-ambiguity-r2
+- Source build HEAD requested: e243922afdabd49f42f94395243191231ff89ada
+- Verification checkout HEAD: e243922afdabd49f42f94395243191231ff89ada
+- Evidence publication target: origin/bvp-s07a-crash-commit-ambiguity-r2
