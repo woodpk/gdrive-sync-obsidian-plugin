@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BLOCKED / PREREQUISITE R2 UNDER VERIFICATION  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07B
+**Predecessor:** architecture-reviewed accepted S07C prerequisite closure `884373811369841cf8ef2cbb03a00505ce706001`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -30,6 +30,48 @@ PHX-CI base:
 R1 evidence `facccead7ed9bf56377c8f448bab5ac8b6076f87` proved the generic clone/restore controls and after-effect cancellation behavior but exposed a production V1.3 cancellation-signal propagation defect. R2 carries the accepted generic-control design and the bounded successor-seam production repair authorized by supervisor re-grounding.
 
 S07C proper remains scenario/test-only after prerequisite acceptance. Do not implement S07C scenarios until R2 is accepted and architecture-reviewed.
+
+## 0.2 Final Dispatch Binding
+
+S07C proper is **BOUND / EXECUTABLE** from the architecture-reviewed accepted prerequisite closure.
+
+- exact PHX-CI base: `884373811369841cf8ef2cbb03a00505ce706001`;
+- branch: `bvp-s07c-device-authority-cancellation`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework-core baseline: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production source baseline: 16,670 logical LOC;
+- production seam baseline: 113 LOC / 1 file;
+- scenario baseline: 54 scenarios / 1,131 logical LOC;
+- BVP PowerShell baseline: 4 scripts / 1,477 logical LOC;
+- artifact baseline: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted generic controls available to S07C:
+
+- persisted state copy via `fault-device-state: copy-from-device`;
+- device restart through the accepted checkpoint control;
+- boundary-armed cancellation at `before-remote-dispatch` and `after-remote-effect`;
+- immediate `request-cancellation`;
+- reviewed `preview` / `execute-reviewed-plan` / full `reconcile`.
+
+Requirement mappings:
+
+- `STATE-003` — stable per-installation device identity;
+- `STATE-007` — stale restored device must reconcile before stale state can authorize destructive propagation;
+- `STATE-016` — conservative clone/restore detection;
+- `PLAN-009` — safe cancellation before/during/after bounded work.
+
+Writable implementation allowlist:
+
+- `test-platform/scenarios/07c/*.ts`;
+- `test-platform/test/s07c-device-authority-cancellation.test.ts`;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No platform-core, production, production-seam, PowerShell, PHX-CI, persistence, governance, or architecture implementation change is authorized.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07c-device-authority-cancellation.test.js`
 
 ## 1. Objective
 
