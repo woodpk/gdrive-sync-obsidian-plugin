@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { deepStrictEqual, equal } from "node:assert/strict";
+import { test } from "node:test";
 
 import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
 import { GoogleHttpTransport } from "../../src/drive/transport";
@@ -46,39 +46,39 @@ const scenarios = [
 for (const scenario of scenarios) {
   test(`${scenario.id} executes transfer safety semantics through production logic`, async () => {
     const result = await DeterministicScenarioRunner.canonical().run(scenario);
-    assert.equal(result.status, "completed", JSON.stringify(result, null, 2));
-    assert.equal(result.steps.every(step => step.matchedExpectation), true);
+    equal(result.status, "completed", JSON.stringify(result, null, 2));
+    equal(result.steps.every(step => step.matchedExpectation), true);
   });
 }
 
 test("upload and download observations prove end-to-end content identity", async () => {
   for (const scenario of [uploadIntegrityScenario, downloadIntegrityScenario]) {
     const result = await DeterministicScenarioRunner.canonical().run(scenario);
-    assert.equal(result.status, "completed", JSON.stringify(result, null, 2));
+    equal(result.status, "completed", JSON.stringify(result, null, 2));
     const local = result.captures.local as { hash?: string; sizeBytes?: number };
     const remote = result.captures.remote as { hash?: string; sizeBytes?: number };
-    assert.equal(typeof local.hash, "string");
-    assert.equal(local.hash, remote.hash);
-    assert.equal(local.sizeBytes, remote.sizeBytes);
+    equal(typeof local.hash, "string");
+    equal(local.hash, remote.hash);
+    equal(local.sizeBytes, remote.sizeBytes);
   }
 });
 
 test("source changes after preview are rejected as stale and later reconcile transfers only current bytes", async () => {
   const localRace = await DeterministicScenarioRunner.canonical().run(localSourceChangedAfterPreviewScenario);
-  assert.equal(localRace.status, "completed", JSON.stringify(localRace, null, 2));
+  equal(localRace.status, "completed", JSON.stringify(localRace, null, 2));
   const localAfter = localRace.captures["local-after"] as { hash?: string; sizeBytes?: number };
   const remoteAfter = localRace.captures["remote-after"] as { hash?: string; sizeBytes?: number };
-  assert.equal(localAfter.hash, remoteAfter.hash);
-  assert.equal(localAfter.sizeBytes, 2);
-  assert.equal(remoteAfter.sizeBytes, 2);
+  equal(localAfter.hash, remoteAfter.hash);
+  equal(localAfter.sizeBytes, 2);
+  equal(remoteAfter.sizeBytes, 2);
 
   const remoteRace = await DeterministicScenarioRunner.canonical().run(remoteSourceChangedAfterPreviewScenario);
-  assert.equal(remoteRace.status, "completed", JSON.stringify(remoteRace, null, 2));
+  equal(remoteRace.status, "completed", JSON.stringify(remoteRace, null, 2));
   const remoteCurrent = remoteRace.captures["remote-after"] as { hash?: string; sizeBytes?: number };
   const localCurrent = remoteRace.captures["local-after"] as { hash?: string; sizeBytes?: number };
-  assert.equal(localCurrent.hash, remoteCurrent.hash);
-  assert.equal(localCurrent.sizeBytes, 2);
-  assert.equal(remoteCurrent.sizeBytes, 2);
+  equal(localCurrent.hash, remoteCurrent.hash);
+  equal(localCurrent.sizeBytes, 2);
+  equal(remoteCurrent.sizeBytes, 2);
 });
 
 test("retry-safe transient failures use deterministic bounded exponential backoff", async () => {
@@ -97,9 +97,9 @@ test("retry-safe transient failures use deterministic bounded exponential backof
     () => 0,
   );
   const result = await transport.request("https://www.googleapis.com/drive/v3/files/file-id", { method: "GET" });
-  assert.equal(result.ok, true);
-  assert.equal(calls, 3);
-  assert.deepEqual(sleeps, [50, 100]);
+  equal(result.ok, true);
+  equal(calls, 3);
+  deepStrictEqual(sleeps, [50, 100]);
 });
 
 test("retry exhaustion is bounded and remains a transient terminal classification", async () => {
@@ -117,10 +117,10 @@ test("retry exhaustion is bounded and remains a transient terminal classificatio
     () => 0,
   );
   const result = await transport.request("https://www.googleapis.com/drive/v3/files/file-id", { method: "GET" });
-  assert.equal(result.ok, false);
-  if (!result.ok) assert.equal(result.signal.kind, "transient-failure");
-  assert.equal(calls, 3);
-  assert.deepEqual(sleeps, [50, 100]);
+  equal(result.ok, false);
+  if (!result.ok) equal(result.signal.kind, "transient-failure");
+  equal(calls, 3);
+  deepStrictEqual(sleeps, [50, 100]);
 });
 
 test("permanent permission failure is not retried", async () => {
@@ -137,9 +137,9 @@ test("permanent permission failure is not retried", async () => {
     () => 0,
   );
   const result = await transport.request("https://www.googleapis.com/drive/v3/files/file-id", { method: "GET" });
-  assert.equal(result.ok, false);
-  if (!result.ok) assert.equal(result.signal.kind, "permission-denied");
-  assert.equal(calls, 1);
+  equal(result.ok, false);
+  if (!result.ok) equal(result.signal.kind, "permission-denied");
+  equal(calls, 1);
 });
 
 test("rate limit honors provider Retry-After and quota exhaustion is not retried", async () => {
@@ -159,9 +159,9 @@ test("rate limit honors provider Retry-After and quota exhaustion is not retried
     () => 0,
   );
   const rateResult = await rateTransport.request("https://www.googleapis.com/drive/v3/files/file-id", { method: "GET" });
-  assert.equal(rateResult.ok, true);
-  assert.equal(rateCalls, 2);
-  assert.deepEqual(sleeps, [2000]);
+  equal(rateResult.ok, true);
+  equal(rateCalls, 2);
+  deepStrictEqual(sleeps, [2000]);
 
   let quotaCalls = 0;
   const quotaTransport = new GoogleHttpTransport(session(), async () => {
@@ -169,9 +169,9 @@ test("rate limit honors provider Retry-After and quota exhaustion is not retried
     return new Response(JSON.stringify({ error: { errors: [{ reason: "storageQuotaExceeded" }] } }), { status: 403, headers: { "content-type": "application/json" } });
   });
   const quotaResult = await quotaTransport.request("https://www.googleapis.com/drive/v3/files/file-id", { method: "GET" });
-  assert.equal(quotaResult.ok, false);
-  if (!quotaResult.ok) assert.equal(quotaResult.signal.kind, "quota-exhausted");
-  assert.equal(quotaCalls, 1);
+  equal(quotaResult.ok, false);
+  if (!quotaResult.ok) equal(quotaResult.signal.kind, "quota-exhausted");
+  equal(quotaCalls, 1);
 });
 
 test("wrong retry expectation fails deterministically", async () => {
@@ -180,6 +180,6 @@ test("wrong retry expectation fails deterministically", async () => {
   ) as unknown as ScenarioDefinition["steps"];
   const wrong = { ...transientRemoteFailureScenario, id: "s07d-wrong-retry-expectation", steps } as ScenarioDefinition;
   const result = await DeterministicScenarioRunner.canonical().run(wrong);
-  assert.equal(result.status, "failed");
-  assert.equal(result.classification, "assertion-mismatch");
+  equal(result.status, "failed");
+  equal(result.classification, "assertion-mismatch");
 });
