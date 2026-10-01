@@ -51,7 +51,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
-| 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
+| 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
 | 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
 | 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
 | 08A | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08a-narrow-production-run-receipt-seam.md` |
@@ -639,3 +639,6 @@ BVP-GOV-006 / repository-level review result: **PASS** at prerequisite closure `
 - artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
 
 The prerequisite stayed within the existing generic fault-control architecture with zero net framework-core growth and no production or production-seam change. S07E proper is now unblocked but remains scenario/test-only. Framework-core headroom remains zero; any further generic platform capability gap must BLOCK rather than silently grow the core.
+
+
+S07E proper is **BOUND / EXECUTABLE** from `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a` on branch `bvp-s07e-quota-disk-destructive-config-lifecycle`. Work is scenario/test-only against accepted quota/disk fault controls and existing production destructive/configuration/lifecycle authority. Framework core remains 4,000/4,000; no core or production implementation change is authorized.
