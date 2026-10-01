@@ -256,6 +256,13 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
     this.invalidCursors.set(String(cursor), reason);
   }
 
+  faultManagedRoot(rootId: RemoteObjectId, state: "missing" | "identity-mismatch" | "incompatible-protocol"): void {
+    const root = this.roots.get(String(rootId)); if (!root) throw new Error(`Unknown managed root: ${String(rootId)}`);
+    if (state === "missing") { this.roots.delete(String(rootId)); return; }
+    const identity = state === "identity-mismatch" ? { ...root.identity, vaultIdentity: virtualVaultIdentity(`${String(root.identity.vaultIdentity)}:replacement`) } : { ...root.identity, protocolVersion: virtualProtocolVersion("2") };
+    this.roots.set(String(rootId), { ...root, identity });
+  }
+
   scriptNextListing(control: InMemoryDriveListingControl): void {
     this.assertIncompleteIfOmitting(
       control.completeness,
