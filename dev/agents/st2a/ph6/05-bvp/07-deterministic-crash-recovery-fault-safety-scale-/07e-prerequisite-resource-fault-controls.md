@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07E — Quota / Disk, Destructive Safety, Configuration, and Lifecycle Deterministic Scenarios  
 **Base:** `c47efae7b1785e0d5a89e482044fcf5811785bce`  
 **Branch:** `bvp-s07e-prereq-resource-fault-controls`
@@ -74,3 +74,24 @@ The prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**.
 - no new runtime module.
 
 Focused proof contains three tests: declarative quota preservation, declarative disk-full preservation, and direct V1.3 production-disposition proof for quota exhaustion.
+
+
+## 7. Acceptance / Closure Record
+
+The S07E resource-fault prerequisite is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `b1ec82573ffb0289f92f3830db97d69669602810`;
+- authoritative PHX-CI evidence: `70f8dba093c00ae2ac3917e73168bb9b43b2e0d3`;
+- complete persisted evidence reviewed before acceptance: JSON, Markdown, and complete 6,848-line execution log;
+- focused prerequisite verification: 3/3 PASS;
+- complete repository suite: 833/833 PASS;
+- every PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC;
+- scenario catalog: 64 scenarios / 1,311 logical LOC;
+- BVP PowerShell: 1,477 logical LOC;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted behavior preserves `quota-exhausted` through the virtual V1.3 mutation path and models local `disk-full` as a write-capacity failure without making existing readable content unavailable.
