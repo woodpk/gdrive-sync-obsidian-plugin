@@ -48,7 +48,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
-| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
+| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
@@ -410,3 +410,6 @@ BVP-GOV-008 repository-level architecture review completed against accepted prer
 - production artifact remains unchanged at 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
 
 This review authorizes S07B proper only as declarative scenario/test coverage. S07B proper has zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes. Any newly discovered generic-capability gap blocks S07B for supervisor re-grounding; no budget increase is authorized.
+
+
+S07B proper is **BOUND / EXECUTABLE** from architecture-reviewed prerequisite closure `3bdb68172a5d5791ad10fd42decd5a06d6468a82` on branch `bvp-s07b-state-cursor-listing-root-recovery`. All required generic state/cursor/listing/root and automatic-incremental controls are accepted. S07B is now strictly scenario/test-only; platform-core baseline is 3,996/4,000 and no core/production/seam/PowerShell/PHX-CI changes are authorized.
