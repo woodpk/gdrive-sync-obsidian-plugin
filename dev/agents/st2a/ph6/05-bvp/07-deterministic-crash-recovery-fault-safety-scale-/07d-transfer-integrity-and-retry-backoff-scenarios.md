@@ -54,6 +54,20 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07d-transfer-integrity-retry-backoff.test.js`
 
+## 0.2 Ready-for-Verification Record
+
+S07D is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic scenario/test implementation HEAD: `edf153f7ac29cdc4e3bfb48933c39bac6ef09499`;
+- PHX-CI base: `4ab412c149a9986347a1e75a2e00909e2e7624d4`;
+- changed implementation surface: five S07D scenario files plus one focused test only;
+- framework-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- framework core remains 4,000 / 4,000;
+- scenario catalog projects to 64 scenarios / 1,311 logical LOC;
+- all five S07D scenarios remain below the 200-LOC hard limit.
+
+Focused proof includes deterministic direct transport verification for transient retry/backoff, bounded exhaustion, non-retryable permission failure, Retry-After/rate-limit behavior, quota exhaustion, plus declarative transfer-integrity/source-mutation scenarios and a wrong-expectation negative canary.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for transfer integrity, files changing during transfer, provider/network retry classification, backoff, and rate-limit behavior.
