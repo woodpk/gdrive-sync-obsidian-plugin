@@ -951,6 +951,7 @@ export class VirtualSynchronizationWorld {
     const crash = this.crashController(name);
     const state = crash.wrapStateStore(runtime.stateStore());
     const context = runtime.loadContext();
+    let recoveryActive = (await state.load(context)).status === "recovery-required";
     const remoteMutations = crash.wrapRemote(new InMemoryReliableRemoteMutationPort(
       this.drive,
       this.managedRemote,
@@ -1031,6 +1032,8 @@ export class VirtualSynchronizationWorld {
       audit: new BoundedAuditHistory(new MemoryAuditPersistence()),
       holderId: `virtual-world:${name}`,
       firstSyncActive: () => false,
+      recoveryActive: () => recoveryActive,
+      onRecoveryGateChanged: async active => { recoveryActive = active; },
       onFullReconciliationCompleted: async () => undefined,
     });
     return new VirtualProductionDevice(
