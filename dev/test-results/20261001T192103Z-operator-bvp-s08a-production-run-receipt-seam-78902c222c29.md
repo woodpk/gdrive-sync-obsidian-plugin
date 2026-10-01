@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08a-production-run-receipt-seam
+- Source build HEAD requested: 78902c222c29410cbfd53776141e964afcc34a66
+- Verification checkout HEAD: 78902c222c29410cbfd53776141e964afcc34a66
+- Evidence publication target: origin/bvp-s08a-production-run-receipt-seam
