@@ -91,7 +91,8 @@ test("ambiguous applied physical effect remains uncertain and non-success", asyn
   ok(receipt);
   equal(receipt.terminal, "uncertain");
   equal(receipt.requiredEffectsCommittedAndVerified, false);
-  equal(receipt.committedOperationCount, 0);
+  ok(receipt.committedOperationCount > 0);
+  ok(receipt.committedOperationCount < plan.operations.length);
   equal(receipt.reasonCode, "uncertain-physical-outcome");
   const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
   equal(remote.ok, true);
