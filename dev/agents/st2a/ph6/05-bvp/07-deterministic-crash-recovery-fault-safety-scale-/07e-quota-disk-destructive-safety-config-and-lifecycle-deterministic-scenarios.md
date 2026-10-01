@@ -76,13 +76,13 @@ Focused command:
 
 S07E proper is **READY FOR LOCAL PHX-CI VERIFICATION**.
 
-- semantic scenario/test implementation HEAD: `b98c1e91f2c6764c0fa5261017b13ebc5819375a`;
+- semantic scenario/test implementation HEAD: `676abf52928721c6bd1fa16cc20b7cf3942ff414`;
 - exact PHX-CI base: `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`;
 - implementation delta: six `test-platform/scenarios/07e/*.ts` files plus one focused S07E test only;
 - framework-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
 - framework core remains 4,000 / 4,000;
-- scenario catalog projects to 70 scenarios / 1,525 logical LOC;
-- S07E scenario logical LOC: 26, 114, 21, 19, 17, 17; every scenario remains below the 200-LOC hard limit.
+- scenario catalog projects to 70 scenarios / 1,524 logical LOC;
+- S07E scenario logical LOC remains below the 200-LOC hard limit for all six scenarios.
 
 Requirement coverage:
 
@@ -90,12 +90,21 @@ Requirement coverage:
 - `FAIL-005`: disk-full blocks local replacement and preserves the prior valid file;
 - `DELETE-005` / `DELETE-006` / `DELETE-010`: one deletion among ten managed paths remains below production thresholds;
 - `DELETE-005` through `DELETE-008` / `DELETE-010`: 25-item destructive plan is blocked before effect, requires the exact production recovery checkpoint, rejects a mismatched checkpoint, and completes only after exact reviewed approval;
-- `CONFIG-001` / `CONFIG-002` / `CONFIG-003` / `CONFIG-008`: portable `.obsidian/app.json` change converges through the dedicated logical configuration namespace;
+- `CONFIG-001` / `CONFIG-003` / `CONFIG-005`: repeated protected authentication-configuration changes remain local and never enter ordinary remote synchronization;
 - `LIFE-001` / `LIFE-002` / `INV-020`: deterministic runtime reconstruction preserves trusted state and shared/local data and resumes synchronization.
 
 Negative proof changes the blocked-plan expectation and must fail with stable `assertion-mismatch`.
 
 Physical uninstall/reinstall/device unlink and installed-runtime lifecycle evidence remain explicitly unavailable here and stay assigned to S09E.
+
+### First S07E PHX-CI correction
+
+Authoritative evidence `1679b310395ae215c89a6787f4bf666f9c0e177f` exposed two focused-test assumptions, not production regressions:
+
+- the suspicious plan contains 25 destructive operations plus four harmless portable-configuration no-op operations, so total plan operation count is 29; the corrected proof asserts the destructive-operation count rather than total plan length;
+- the virtual Drive core does not model the production Google Drive adapter's dedicated portable-configuration remote-domain root, so a declarative portable-file transfer is not an admissible S07E proper proof without a new platform prerequisite. S07E instead exercises an already-supported configuration invariant: a protected authentication artifact can change repeatedly while remaining local and excluded from ordinary remote synchronization.
+
+No production, framework-core, safety-policy, or configuration-policy change is made.
 
 ## 1. Objective
 
