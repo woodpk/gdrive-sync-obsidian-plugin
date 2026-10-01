@@ -73,6 +73,17 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07c-device-authority-cancellation.test.js`
 
+## 0.3 Ready-for-Verification Record
+
+S07C proper is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic HEAD: `e1a7a7e250e801cc9dc82e25c3c00346cdfe911c`;
+- PHX-CI base: `884373811369841cf8ef2cbb03a00505ce706001`;
+- implementation delta: five S07C scenario files plus one focused test only;
+- framework core remains 4,000 / 4,000;
+- scenario catalog projects to 59 scenarios / 1,223 logical LOC;
+- no platform-core or production implementation changes.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for device identity/authority hazards and safe cancellation of in-progress synchronization behavior.
