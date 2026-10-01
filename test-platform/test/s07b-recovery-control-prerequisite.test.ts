@@ -5,7 +5,7 @@ import { defineScenario, validateScenarioDefinition, type ScenarioDefinition } f
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 import { VirtualSynchronizationWorld } from "../src/virtual-world/virtual-world";
 
-const traceability = { targets: [{ kind: "requirement" as const, id: "STATE-011" }] };
+const traceability = { targets: [{ kind: "requirement", id: "STATE-011" }] } as const;
 
 const stateFaultScenario = (id: string, fault: "corrupt-checksum" | "truncate" | "incompatible-schema") => defineScenario({
   id,
