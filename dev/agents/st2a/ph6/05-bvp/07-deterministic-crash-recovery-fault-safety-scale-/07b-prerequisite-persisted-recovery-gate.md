@@ -7,6 +7,21 @@
 **Predecessor / PHX-CI base:** `3269ad831878be7e399871eb7d229a613c9d8db0`  
 **Branch:** `bvp-s07b-prereq-persisted-recovery-gate`
 
+## 0.1 Ready-for-Verification Record
+
+The bounded prerequisite implementation is complete and ready for authoritative PHX-CI.
+
+- semantic implementation HEAD: `69b039d3d018303bd4624962935211fffdc56679`;
+- PHX-CI base: `3269ad831878be7e399871eb7d229a613c9d8db0`;
+- framework-core delta: +3 logical TypeScript LOC;
+- projected framework core: 3,999 / 4,000;
+- runtime module count unchanged;
+- production/seam/PowerShell/PHX-CI implementation delta: 0;
+- changed implementation surface: only `test-platform/src/virtual-world/virtual-world.ts`;
+- focused proof: `test-platform/test/s07b-persisted-recovery-gate-prerequisite.test.ts`.
+
+Authoritative PHX-CI remains the acceptance authority.
+
 ## 1. Objective
 
 Make reconstructed virtual production devices model the already-existing production recovery gate from persisted synchronization state.
