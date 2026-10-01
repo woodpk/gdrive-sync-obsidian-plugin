@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07f-deterministic-scale-resource-measurement
+- Source build HEAD requested: a3646dac1a4ddf34220ef80c7257bae4020efea5
+- Verification checkout HEAD: a3646dac1a4ddf34220ef80c7257bae4020efea5
+- Evidence publication target: origin/bvp-s07f-deterministic-scale-resource-measurement
