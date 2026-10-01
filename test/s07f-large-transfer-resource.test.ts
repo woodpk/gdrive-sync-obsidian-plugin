@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { deepStrictEqual, equal, ok } from "node:assert/strict";
+import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../src/contracts/common";
