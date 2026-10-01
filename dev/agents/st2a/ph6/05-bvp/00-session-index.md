@@ -354,3 +354,6 @@ S07B is **BLOCKED / MISSING GENERIC CAPABILITY** after repository grounding agai
 
 
 S07B generic recovery-control prerequisite is **READY FOR PHX-CI**. Semantic implementation HEAD `77ed363738e2b4aa32e2c93fe22a10da3073e69e` adds only three generic `external-state` recovery controls through existing platform families and one focused test. Static architecture accounting projects framework core at 3,994/4,000 (+24), with no production/seam/PowerShell/PHX-CI implementation delta. Acceptance requires authoritative PHX-CI and complete review of all three persisted evidence reports (.json, .md, .log).
+
+
+S07B generic recovery-control prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `7a0c13b7af67f317e870c4b85063561413c20776` passed authoritative PHX-CI; evidence is `058a931e64320ea2982efe938d246211ef70be5e`. Acceptance followed complete review of the persisted JSON, Markdown, and 6,423-line execution log. Focused verification passed 8/8; full repository verification passed 830/830; all stages passed with exit 0; architecture guard recorded 0 violations; framework core is 3,994/4,000 (+24); production/seam/scenario/PowerShell metrics and production artifact remain unchanged.
