@@ -48,7 +48,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
-| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
+| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
@@ -466,3 +466,6 @@ S07B proper is **REBOUND / EXECUTABLE R2** against architecture-reviewed integra
 
 
 S07B R2 is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic scenario/test HEAD `20f199cd4acd15c07a8e22dd31d75b5c1debbe1b`; PHX-CI base `be226f6008eb7d26fa7c9df574dfde27180d8c73`. Scope audit shows exactly nine S07B scenarios + one focused test + task/index, zero platform-core/production/seam/PowerShell/PHX-CI implementation changes, framework core 3,999/4,000, and projected scenario catalog 54 / 1,131 logical LOC. Acceptance requires complete review of all persisted PHX-CI JSON, Markdown, and full log reports.
+
+
+S07B — State, Cursor, Listing, and Remote-Root Recovery Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation HEAD `25212a5101f02926348edaa6e5d7e32618c6bade` passed authoritative PHX-CI; evidence is `680f3671769ba145f953a95b34804089942fd2ad`. Acceptance followed complete review of the persisted JSON, Markdown, and 6,597-line execution log. Focused S07B verification passed 13/13; full repository verification passed 830/830; every stage passed with exit 0; architecture guard recorded 0 violations; framework core remained 3,999/4,000; production/seam/PowerShell metrics were unchanged; scenario catalog is now 54 scenarios / 1,131 logical LOC; production artifact remained 880,512 bytes with SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
