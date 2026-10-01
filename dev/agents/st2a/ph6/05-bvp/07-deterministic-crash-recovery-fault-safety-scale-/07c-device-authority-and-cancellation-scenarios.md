@@ -3,13 +3,32 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted S07B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Grounding Blocker / Prerequisite
+
+Repository grounding against accepted S07B closure `2516bb33a286b9f7fa6c3ad667d4d6328acebdb5` found two generic deterministic controls required by the prewritten S07C contract are not yet declaratively expressible:
+
+- persisted per-device synchronization state cannot be copied between virtual device backings to model clone/restore conditions;
+- existing `request-cancellation` can cancel an already-active run, but sequential scenario execution cannot arm cancellation to occur while an awaited production operation is in flight.
+
+Production behavior already exists for both authority validation and cancellation. A bounded prerequisite is authorized:
+
+`07c-prerequisite-clone-restore-cancellation-controls.md`
+
+Branch:
+
+`bvp-s07c-prereq-clone-restore-cancellation-controls`
+
+The prerequisite must reuse existing state backing, production cancellation, and boundary interception machinery and remain within the frozen 4,000-LOC framework ceiling.
+
+S07C proper remains frozen until the prerequisite is accepted and architecture-reviewed.
 
 ## 1. Objective
 
