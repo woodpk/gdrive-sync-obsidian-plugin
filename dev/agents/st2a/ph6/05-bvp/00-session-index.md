@@ -49,7 +49,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
-| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | EXECUTABLE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
+| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
 | 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
@@ -571,3 +571,6 @@ S07C proper is **BOUND / EXECUTABLE** from `884373811369841cf8ef2cbb03a00505ce70
 
 
 S07C proper is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `e1a7a7e250e801cc9dc82e25c3c00346cdfe911c`; PHX-CI base `884373811369841cf8ef2cbb03a00505ce706001`. Five S07C scenarios plus one focused test; framework core remains 4,000/4,000; scenario catalog projects to 59 / 1,223 logical LOC; no platform-core or production implementation changes.
+
+
+S07C — Device Authority and Cancellation Scenarios is **COMPLETE / ACCEPTED**. Accepted HEAD `1e5e7896df8e8288dad18831687cb21654197488`; evidence `5fd3ff789a564935b4eed38732af0cd7aa0aecf6`. Full persisted JSON, Markdown, and 6,716-line log reviewed. Focused 9/9 PASS; full suite 830/830 PASS; architecture guard 0; framework core 4,000/4,000; scenario catalog 59/1,223; artifact `main.js` 880,742 bytes SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
