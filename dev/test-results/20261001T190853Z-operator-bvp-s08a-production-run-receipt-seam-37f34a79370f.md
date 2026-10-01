@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08a-production-run-receipt-seam
+- Source build HEAD requested: 37f34a79370f0d845aee5d0a48cefd3a9f1f5d6c
+- Verification checkout HEAD: 37f34a79370f0d845aee5d0a48cefd3a9f1f5d6c
+- Evidence publication target: origin/bvp-s08a-production-run-receipt-seam
