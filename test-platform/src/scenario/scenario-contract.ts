@@ -46,6 +46,9 @@ export type ScenarioExternalStateStep = Step<
   | { readonly kind: "external-state"; readonly transition: "inject-post-mutation-observation-failure"; readonly device: string; readonly classification: string }
   | { readonly kind: "external-state"; readonly transition: "request-cancellation"; readonly device: string }
   | { readonly kind: "external-state"; readonly transition: "inject-crash-boundary"; readonly device: string; readonly boundary: "before-remote-dispatch" | "after-remote-effect" | "before-canonical-state-write" | "after-canonical-state-write" }
+  | { readonly kind: "external-state"; readonly transition: "fault-device-state"; readonly device: string; readonly fault: "corrupt-checksum" | "truncate" | "incompatible-schema"; readonly schemaVersion?: number }
+  | { readonly kind: "external-state"; readonly transition: "invalidate-change-cursor"; readonly device: string; readonly reason: "invalid" | "lost" | "stale" }
+  | { readonly kind: "external-state"; readonly transition: "fault-managed-root"; readonly state: "missing" | "identity-mismatch" | "incompatible-protocol" }
 >;
 
 export type ScenarioCheckpointStep = Step<
@@ -114,6 +117,9 @@ const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
   "external-state:inject-post-mutation-observation-failure": { discriminator: "transition", required: ["device", "classification"], allowed: ["device", "classification"] },
   "external-state:request-cancellation": { discriminator: "transition", required: ["device"], allowed: ["device"] },
   "external-state:inject-crash-boundary": { discriminator: "transition", required: ["device", "boundary"], allowed: ["device", "boundary"] },
+  "external-state:fault-device-state": { discriminator: "transition", required: ["device", "fault"], allowed: ["device", "fault", "schemaVersion"] },
+  "external-state:invalidate-change-cursor": { discriminator: "transition", required: ["device", "reason"], allowed: ["device", "reason"] },
+  "external-state:fault-managed-root": { discriminator: "transition", required: ["state"], allowed: ["state"] },
   "checkpoint:capture": { discriminator: "operation", required: ["checkpointId"], allowed: ["checkpointId"] },
   "checkpoint:restart-device": { discriminator: "operation", required: ["device"], allowed: ["device", "checkpointRef"] },
   "observe:local-entry": { discriminator: "subject", required: ["captureAs", "device", "path"], allowed: ["captureAs", "device", "path", "inputRef"] },
@@ -162,6 +168,9 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   if (step.kind === "external-state" && step.transition === "advance-device-time" && (typeof step.deltaMs !== "number" || !Number.isFinite(step.deltaMs) || step.deltaMs < 0)) issues.push(`${at}.deltaMs must be finite and non-negative`);
   if (step.kind === "external-state" && step.transition === "inject-crash-boundary" && !["before-remote-dispatch", "after-remote-effect", "before-canonical-state-write", "after-canonical-state-write"].includes(String(step.boundary))) issues.push(`${at}.boundary is invalid`);
   if (step.kind === "external-state" && step.transition === "inject-remote-mutation-fault" && (!["create", "update", "move", "trash"].includes(String(step.operation)) || !["not-applied", "applied-before-failure"].includes(String(step.effect)))) issues.push(`${at} remote mutation fault is invalid`);
+  if (step.kind === "external-state" && step.transition === "fault-device-state" && (!["corrupt-checksum", "truncate", "incompatible-schema"].includes(String(step.fault)) || (step.fault === "incompatible-schema" && (typeof step.schemaVersion !== "number" || !Number.isSafeInteger(step.schemaVersion) || step.schemaVersion <= 1)))) issues.push(`${at} state fault is invalid`);
+  if (step.kind === "external-state" && step.transition === "invalidate-change-cursor" && !["invalid", "lost", "stale"].includes(String(step.reason))) issues.push(`${at}.reason is invalid`);
+  if (step.kind === "external-state" && step.transition === "fault-managed-root" && !["missing", "identity-mismatch", "incompatible-protocol"].includes(String(step.state))) issues.push(`${at}.state is invalid`);
   if (step.kind === "assert" && step.assertion === "exists" && typeof step.expected !== "boolean") issues.push(`${at}.expected must be boolean`);
   if (step.kind === "assert" && step.assertion === "count") {
     const expectedCount = step.expectedCount;
