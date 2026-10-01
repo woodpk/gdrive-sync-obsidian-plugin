@@ -3,13 +3,78 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted BVP-S07 primary-stage gate and mandatory architecture review
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Final Dispatch Binding
+
+BVP-S08A is **BOUND / EXECUTABLE** from the accepted S07 closure.
+
+Repository coordinates:
+
+- exact accepted S07 predecessor / PHX-CI base: `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- task branch: `bvp-s08a-production-run-receipt-seam`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI framework version: `0.2.0-dev.2`;
+- accepted S07 production artifact baseline: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`;
+- current production-seam baseline: 113 logical LOC / 1 approved file (`src/product/local-vault-boundary-seam.ts`);
+- hard production-seam budget remains 350 logical LOC / 4 files;
+- framework core is frozen at 4,000 / 4,000 logical TypeScript LOC / 10 modules and S08A has no authority to change it;
+- live-device agent/relay surface remains 0 LOC / 0 files and S08A has no authority to begin that surface.
+
+Current production authority grounding:
+
+- `src/core/execution-coordinator-base.ts` already returns authoritative per-operation `CoordinatedExecutionResult` values and commits only verified execution receipts;
+- `src/contracts/execution.ts` already distinguishes durable verified success, retryable failure, blocking failure, uncertainty, recovery requirement, cancellation, and stale authority;
+- `src/product/product-controller-base.ts` already owns the production run lifecycle, exact plan/trigger authority, committed/skipped counts, cancellation state, run outcome, and terminal surface transitions;
+- `src/diagnostics/diagnostic-logger.ts` supplies run IDs and structured terminal diagnostics, but diagnostics are corroborative only and may not serve as the sole success protocol;
+- `ProductControllerBase.executePlanned(...)` currently keeps `RunOutcome` private, and `ProductSurfaceState` does not expose a correlated authoritative terminal run receipt.
+
+Existing product capability therefore satisfies the underlying execution authority but **does not fully satisfy BVP-EVID-002**. S08A must add only the minimum read-only receipt observation over that existing authority; it must not create a second execution/result system or derive success from diagnostic text.
+
+Authorized production implementation surface:
+
+- NEW `src/product/run-receipt-seam.ts` — one narrow, generally safe, read-only production receipt contract/reader; no mutation, scenario, transport, persistence, or orchestration authority;
+- `src/product/product-controller-base.ts` — minimal receipt capture/read state at the existing production run terminal boundary only.
+
+Authorized governance/test surface:
+
+- `dev/governance/testing-platform-boundary.yaml` — add only the new run-receipt seam path to `production_seam.approved_imports`; budgets and all other governance rules remain frozen;
+- NEW `test-platform/test/s08a-production-run-receipt-seam.test.ts` — focused receipt semantics/budget-boundary tests through existing virtual production composition;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+Exact writable-path allowlist:
+
+- `src/product/run-receipt-seam.ts`;
+- `src/product/product-controller-base.ts`;
+- `dev/governance/testing-platform-boundary.yaml`;
+- `test-platform/test/s08a-production-run-receipt-seam.test.ts`;
+- `dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08a-narrow-production-run-receipt-seam.md`;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No other path is writable. In particular, S08A may not change `src/main.ts`, `src/product/runtime.ts`, `test-platform/src/**`, PHX-CI files, PowerShell, shipping build configuration, OAuth/authentication code, command transport, or live-device agent code.
+
+Required focused proof must establish through real production controller execution authority:
+
+- a completed run yields a correlated receipt with unique production run identity, trigger, plan identity, terminal success, committed-count evidence, and `requiredEffectsCommittedAndVerified=true`;
+- a blocked/deferred/failed production attempt cannot report authoritative success;
+- an uncertain/unverified physical result remains a non-success terminal classification;
+- reading the same completed receipt is stable/idempotent;
+- a later run produces a distinct run identity so stale prior receipts can be rejected by later live validation;
+- the receipt remains available without parsing diagnostic text and cannot itself trigger mutation;
+- the new seam is imported by test-platform only through the explicit boundary allowlist and remains inside the 350-LOC / 4-file seam budget.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08a-production-run-receipt-seam.test.js`
+
+BVP-GOV-010 size gate: PASS. This child introduces one bounded contract family, is expected to touch two substantive production implementation files, and is well below the non-test file/LOC split threshold.
 
 ## 1. Objective
 
