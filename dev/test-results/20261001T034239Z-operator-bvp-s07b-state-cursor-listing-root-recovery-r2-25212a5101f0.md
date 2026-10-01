@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-state-cursor-listing-root-recovery-r2
+- Source build HEAD requested: 25212a5101f02926348edaa6e5d7e32618c6bade
+- Verification checkout HEAD: 25212a5101f02926348edaa6e5d7e32618c6bade
+- Evidence publication target: origin/bvp-s07b-state-cursor-listing-root-recovery-r2
