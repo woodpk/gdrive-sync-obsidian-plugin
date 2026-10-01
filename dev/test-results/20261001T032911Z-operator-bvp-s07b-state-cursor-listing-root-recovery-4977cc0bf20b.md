@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-state-cursor-listing-root-recovery
+- Source build HEAD requested: 4977cc0bf20b4c40c59cf7663bc7edeead139e2a
+- Verification checkout HEAD: 4977cc0bf20b4c40c59cf7663bc7edeead139e2a
+- Evidence publication target: origin/bvp-s07b-state-cursor-listing-root-recovery
