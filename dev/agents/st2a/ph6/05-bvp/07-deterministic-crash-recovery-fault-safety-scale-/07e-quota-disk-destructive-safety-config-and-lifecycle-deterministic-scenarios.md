@@ -72,6 +72,31 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07e-quota-disk-destructive-config-lifecycle.test.js`
 
+## 0.3 Ready-for-Verification Record
+
+S07E proper is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic scenario/test implementation HEAD: `b98c1e91f2c6764c0fa5261017b13ebc5819375a`;
+- exact PHX-CI base: `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`;
+- implementation delta: six `test-platform/scenarios/07e/*.ts` files plus one focused S07E test only;
+- framework-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- framework core remains 4,000 / 4,000;
+- scenario catalog projects to 70 scenarios / 1,525 logical LOC;
+- S07E scenario logical LOC: 26, 114, 21, 19, 17, 17; every scenario remains below the 200-LOC hard limit.
+
+Requirement coverage:
+
+- `FAIL-004`: quota exhaustion blocks remote write and preserves local content;
+- `FAIL-005`: disk-full blocks local replacement and preserves the prior valid file;
+- `DELETE-005` / `DELETE-006` / `DELETE-010`: one deletion among ten managed paths remains below production thresholds;
+- `DELETE-005` through `DELETE-008` / `DELETE-010`: 25-item destructive plan is blocked before effect, requires the exact production recovery checkpoint, rejects a mismatched checkpoint, and completes only after exact reviewed approval;
+- `CONFIG-001` / `CONFIG-002` / `CONFIG-003` / `CONFIG-008`: portable `.obsidian/app.json` change converges through the dedicated logical configuration namespace;
+- `LIFE-001` / `LIFE-002` / `INV-020`: deterministic runtime reconstruction preserves trusted state and shared/local data and resumes synchronization.
+
+Negative proof changes the blocked-plan expectation and must fail with stable `assertion-mismatch`.
+
+Physical uninstall/reinstall/device unlink and installed-runtime lifecycle evidence remain explicitly unavailable here and stay assigned to S09E.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for modeled resource failures, destructive-safety/circuit-breaker behavior, recovery checkpoints, and configuration/lifecycle invariants that do not intrinsically require a real installed Windows/iOS runtime.
