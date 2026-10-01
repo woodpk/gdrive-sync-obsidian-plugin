@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** architecture-reviewed accepted S07C closure `4ab412c149a9986347a1e75a2e00909e2e7624d4`
 
@@ -68,6 +68,27 @@ S07D is **READY FOR LOCAL PHX-CI VERIFICATION**.
 - all five S07D scenarios remain below the 200-LOC hard limit.
 
 Focused proof includes deterministic direct transport verification for transient retry/backoff, bounded exhaustion, non-retryable permission failure, Retry-After/rate-limit behavior, quota exhaustion, plus declarative transfer-integrity/source-mutation scenarios and a wrong-expectation negative canary.
+
+## 0.3 Acceptance / Closure Record
+
+BVP-S07D is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `b8f08eb08422006a636260dcb10163e2fa5d8437`;
+- authoritative PHX-CI evidence: `19421e7816d881707c1d02a4d86fa6e9b8aee08b`;
+- complete persisted JSON, Markdown, and 6,883-line execution log reviewed before acceptance;
+- focused S07D verification: platform scenarios 8/8 PASS and transport-focused tests 5/5 PASS;
+- complete repository suite: 833/833 PASS;
+- every PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC / 1 file;
+- scenario catalog: 64 scenarios / 1,311 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted coverage includes transfer content identity, stale local/remote source detection across preview-to-execution, retryable remote failure handling, deterministic bounded exponential backoff, retry exhaustion, non-retryable permission failure, Retry-After/rate-limit handling, quota exhaustion, and negative expectation proof.
 
 ## 1. Objective
 
