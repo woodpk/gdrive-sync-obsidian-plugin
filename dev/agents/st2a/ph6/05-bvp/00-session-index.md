@@ -49,7 +49,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
 | 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
-| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
+| 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
 | 07F | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07f-deterministic-scale-and-resource-measurement.md` |
@@ -540,3 +540,6 @@ Hard constraints:
 - framework-core test-platform budget remains frozen at 4,000/4,000; the production repair must not add test-platform core LOC.
 
 S07C proper remains blocked until the combined R2 prerequisite passes authoritative PHX-CI and architecture review.
+
+
+S07C remains **BLOCKED** on prerequisite R2 `bvp-s07c-prereq-clone-restore-cancellation-controls-r2` from base `4e51ffc187f99183fed0ba77b03d72e533e87621`. R1 authoritative evidence `facccead7ed9bf56377c8f448bab5ac8b6076f87` was reviewed across JSON, Markdown, and the complete 5,350-line log and isolated one real production defect: the V1.3 authoritative mutation adapter dropped the active run cancellation signal. R2 carries the bounded generic controls plus signal propagation through existing successor mutation ports; S07C proper remains frozen until R2 acceptance.
