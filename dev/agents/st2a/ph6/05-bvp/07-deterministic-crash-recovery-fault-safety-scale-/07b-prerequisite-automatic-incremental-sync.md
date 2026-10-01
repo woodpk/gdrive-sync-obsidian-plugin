@@ -7,6 +7,22 @@
 **Predecessor:** architecture-reviewed accepted recovery-control integration `436b0d902c463adc78819344b715ae0fd3ac1605`  
 **Branch:** `bvp-s07b-prereq-automatic-incremental-sync`
 
+## 0.1 Ready-for-Verification Record
+
+The micro-prerequisite implementation is complete and ready for authoritative PHX-CI.
+
+- semantic implementation HEAD: `fdd9258f676454d06c4f5f4cf456176a442ae302`;
+- PHX-CI base: `436b0d902c463adc78819344b715ae0fd3ac1605`;
+- branch: `bvp-s07b-prereq-automatic-incremental-sync`;
+- framework-core delta: +2 logical TypeScript LOC;
+- projected framework core: 3,996 / 4,000;
+- runtime module count unchanged at 10;
+- production/seam/PowerShell/PHX-CI implementation delta: 0;
+- existing `synchronize` semantics are unchanged;
+- new `automatic-sync` invokes only the existing production `runAutomatic("local-change")` path and surfaces hard terminal controller states.
+
+Authoritative PHX-CI remains the acceptance authority.
+
 ## 1. Objective
 
 Expose the existing production automatic/incremental synchronization path through the frozen declarative production-step family so S07B can prove that an invalid persisted Drive cursor is detected by the incremental path and leads to conservative recovery/reconciliation behavior.
