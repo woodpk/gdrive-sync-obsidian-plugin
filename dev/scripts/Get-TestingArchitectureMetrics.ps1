@@ -21,6 +21,9 @@ function Test-Under([string]$Path, [string]$Root) {
 function Get-BoundaryManifestLines([string]$Sha = '') {
     $relativePath = 'dev/governance/testing-platform-boundary.yaml'
     if ($Sha) {
+        $probe = @(& git -C $RepoRoot cat-file -e "$Sha^{commit}" 2>&1)
+        $probeCode = $LASTEXITCODE
+        if ($probeCode -ne 0) { throw "BASE_SHA_UNREADABLE: git cat-file exited ${probeCode}: $($probe -join ' ')" }
         $spec = '{0}:{1}' -f $Sha, $relativePath
         $output = @(& git -C $RepoRoot show $spec 2>&1)
         $code = $LASTEXITCODE
