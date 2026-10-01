@@ -642,3 +642,6 @@ The prerequisite stayed within the existing generic fault-control architecture w
 
 
 S07E proper is **BOUND / EXECUTABLE** from `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a` on branch `bvp-s07e-quota-disk-destructive-config-lifecycle`. Work is scenario/test-only against accepted quota/disk fault controls and existing production destructive/configuration/lifecycle authority. Framework core remains 4,000/4,000; no core or production implementation change is authorized.
+
+
+S07E proper is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `b98c1e91f2c6764c0fa5261017b13ebc5819375a`; PHX-CI base `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`. Six declarative S07E scenarios plus one focused test cover quota, disk-full, below-threshold deletion, threshold-blocked deletion with exact recovery-checkpoint approval, portable configuration change, deterministic reconstruction, and a wrong-unsafe-expectation canary. Framework core remains 4,000/4,000; projected scenario catalog 70 / 1,525 logical LOC; no core or production implementation changes.
