@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-governance-metrics-base-policy-repair
+- Source build HEAD requested: 5ba64aebf0af9ffc567aa2502bd5604b70399d1f
+- Verification checkout HEAD: 5ba64aebf0af9ffc567aa2502bd5604b70399d1f
+- Evidence publication target: origin/bvp-governance-metrics-base-policy-repair
