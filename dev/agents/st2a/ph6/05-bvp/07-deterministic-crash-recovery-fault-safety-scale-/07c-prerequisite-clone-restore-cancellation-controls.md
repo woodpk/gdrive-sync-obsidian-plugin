@@ -41,6 +41,20 @@ Frozen root cause:
 
 Do not rediagnose this root cause from scratch.
 
+## 0.2 Ready-for-Verification Record
+
+R2 implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- PHX-CI base: `4e51ffc187f99183fed0ba77b03d72e533e87621`;
+- branch: `bvp-s07c-prereq-clone-restore-cancellation-controls-r2`;
+- generic platform control delta remains constrained to the existing scenario contract/runner/virtual-world files;
+- production repair is constrained to `authoritative-production-executor.ts` and `product-controller-base.ts`;
+- frozen mutation contracts are unchanged;
+- no new module or subsystem exists;
+- focused proof now additionally covers fail-closed copy from a source with no persisted state.
+
+Authoritative PHX-CI and complete persisted JSON/Markdown/full-log review are required before acceptance.
+
 ## 1. Objective
 
 Complete the two generic deterministic controls required by S07C and repair only the demonstrated production cancellation-signal propagation defect.
