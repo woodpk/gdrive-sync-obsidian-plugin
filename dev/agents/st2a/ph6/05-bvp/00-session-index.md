@@ -410,3 +410,26 @@ BVP-GOV-008 repository-level architecture review completed against accepted prer
 - production artifact remains unchanged at 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
 
 This review authorizes S07B proper only as declarative scenario/test coverage. S07B proper has zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes. Any newly discovered generic-capability gap blocks S07B for supervisor re-grounding; no budget increase is authorized.
+
+
+### S07B Re-grounding — persisted recovery-gate reconstruction prerequisite
+
+S07B proper PHX-CI evidence `0690eee537eed5819c3b5e6ced39b31739dd085a` exposed a bounded virtual-platform composition gap after complete review of the persisted JSON, Markdown, and 5,539-line execution log.
+
+Observed facts:
+
+- corrupt-checksum, truncated, and incompatible-schema state faults correctly load as `recovery-required`;
+- accepted production regression `C1-R1 recovery-required reconstruction reaches reviewed planning without preview-time authority recovery or state replacement` proves the production controller supports reviewed reconstruction when its recovery gate is active;
+- `VirtualSynchronizationWorld.reconstructDevice(...)` currently supplies neither `recoveryActive` nor `onRecoveryGateChanged`, so a reconstructed virtual device cannot model persisted recovery-gate state;
+- S07B cursor, partial-listing, partial-change-page, and all three managed-root scenarios already pass;
+- full repository verification remains 830/830 PASS.
+
+A final bounded prerequisite is authorized from architecture-reviewed integration `3bdb68172a5d5791ad10fd42decd5a06d6468a82` to initialize virtual-controller recovery-gate state from the persisted state load performed during device reconstruction and wire the existing `onRecoveryGateChanged` callback.
+
+Hard constraints:
+
+- framework-core baseline: 3,996 / 4,000 logical TypeScript LOC;
+- net framework-core delta MUST be <=4 LOC;
+- no new module, runner, state machine, recovery engine, persistence family, production seam, PowerShell, PHX-CI, or product behavior;
+- only existing `VirtualSynchronizationWorld.reconstructDevice(...)` composition may change, plus one focused test and prerequisite/binding documentation;
+- S07B proper remains scenario/test-only after prerequisite acceptance.
