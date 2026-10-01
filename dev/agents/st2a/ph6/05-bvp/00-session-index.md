@@ -463,3 +463,6 @@ This review authorizes S07B proper only as declarative scenario/test coverage. S
 
 
 S07B proper is **REBOUND / EXECUTABLE R2** against architecture-reviewed integration `be226f6008eb7d26fa7c9df574dfde27180d8c73` on branch `bvp-s07b-state-cursor-listing-root-recovery-r2`. R2 carries only the nine declarative S07B scenarios plus one focused test. The three state-fault scenarios now restart after persisted-state fault injection so the accepted recovery gate is restored on reconstruction; the negative assertion expects stable runner classification `assertion-mismatch`. S07B proper retains zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes.
+
+
+S07B R2 is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic scenario/test HEAD `20f199cd4acd15c07a8e22dd31d75b5c1debbe1b`; PHX-CI base `be226f6008eb7d26fa7c9df574dfde27180d8c73`. Scope audit shows exactly nine S07B scenarios + one focused test + task/index, zero platform-core/production/seam/PowerShell/PHX-CI implementation changes, framework core 3,999/4,000, and projected scenario catalog 54 / 1,131 logical LOC. Acceptance requires complete review of all persisted PHX-CI JSON, Markdown, and full log reports.
