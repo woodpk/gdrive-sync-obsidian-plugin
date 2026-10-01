@@ -379,3 +379,6 @@ BVP-GOV-008 repository-level architecture review completed against accepted prer
 - production artifact remains unchanged at 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
 
 This review authorizes S07B proper only as declarative scenario/test coverage against the now-frozen platform. S07B proper has zero authority for platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture changes. With only 6 framework-core LOC of headroom remaining, any newly discovered generic capability gap blocks S07B and requires supervisor re-grounding; no budget increase is authorized.
+
+
+S07B remains **BLOCKED / MISSING GENERIC CAPABILITY** after acceptance of the state/cursor/root control prerequisite. The frozen `production:synchronize` step intentionally uses reviewed full/manual planning and therefore cannot prove invalid-cursor detection on the real incremental path. A final micro-prerequisite `07b-prerequisite-automatic-incremental-sync.md` is authorized from architecture-reviewed integration `436b0d902c463adc78819344b715ae0fd3ac1605`, limited to <=6 net framework-core LOC and zero production/seam/PowerShell/PHX-CI delta.
