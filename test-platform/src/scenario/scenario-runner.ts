@@ -271,6 +271,15 @@ export class DeterministicScenarioRunner {
       (await context.device(step.device)).remoteMutations.queuePostMutationObservationFailure(step.classification);
       return { status: "completed" };
     }
+    if (step.transition === "fault-device-state") {
+      const backing = context.world.deviceBacking(step.device); if (step.fault === "corrupt-checksum") backing.corruptChecksum(); else if (step.fault === "truncate") backing.truncateStateBytes(); else await backing.installIncompatibleSchemaVersion(step.schemaVersion!);
+      return { status: "completed" };
+    }
+    if (step.transition === "invalidate-change-cursor") {
+      const loaded = await context.world.deviceBacking(step.device).load(); if (loaded.status !== "trusted" || !loaded.state.changeCursor) return fail("failed", "change-cursor-unavailable");
+      context.world.drive.invalidateCursor(loaded.state.changeCursor, step.reason); return { status: "completed" };
+    }
+    if (step.transition === "fault-managed-root") { context.world.drive.faultManagedRoot(context.world.managedRemote.rootId, step.state); return { status: "completed" }; }
     if (step.transition !== "inject-remote-mutation-fault") {
       return fail("unsupported", "external-state-transition-unsupported");
     }
