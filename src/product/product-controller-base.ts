@@ -555,7 +555,7 @@ export class ProductControllerBase implements ProductControlPort {
       const v1_3OperationalCapture: V1_3OperationalCapture = {};
       const capturedV1_3Dependencies = v1_3Dependencies ? capturingMutationDependenciesV1_3(v1_3Dependencies, v1_3OperationalCapture) : undefined;
       const v1_3Executor = authorityStore && capturedV1_3Dependencies
-        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, capturedV1_3Dependencies)
+        ? createAuthoritativeProductExecutorV1_3(this.options.executor, authorityStore, this.options.stateStore, this.options.stateContext, planned.assembly.managedRemote, capturedV1_3Dependencies, this.runs.cancellationSignal())
         : undefined;
       const coordinatorExecutor: AuthoritativeSynchronizationExecutor | undefined = v1_3Executor ? {
         validatePreconditions: operation => v1_3Executor.validatePreconditions(operation),
