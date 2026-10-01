@@ -519,7 +519,7 @@ export class ProductControllerBase implements ProductControlPort {
   private async executePlanned(userInitiated: boolean, approvedCheckpoint?: CheckpointId, diagnosticRunId?: number, automaticPlanned?: PlannedRun): Promise<RunOutcome> {
     const planned = automaticPlanned ?? this.planned;
     if (!planned) return "failed";
-    const receiptRunId = `product-run:${this.nextReceiptRunSequence++}`;
+    const receiptRunId = `product-run:${globalThis.crypto?.randomUUID?.() ?? `${this.options.holderId}:${this.nextReceiptRunSequence++}`}`;
     const planGate = globalExecutionGate(planned.plan);
     if (!userInitiated && planGate !== "none") {
       this.recordProductionRunReceipt(receiptRunId, planned, "blocked", 0, 0, `plan-gate:${planGate}`);
@@ -606,7 +606,7 @@ export class ProductControllerBase implements ProductControlPort {
         if (globalFailure || !coordinator) break;
         if (!this.runs.canStartNextOperation()) { partial = true; break; }
         if (operation.kind === "unresolved-conflict" || operation.kind === "blocked-unsafe") { partial = true; skippedCount += 1; for (const reason of operation.reasons) skippedReasonCodes.add(reason.code); continue; }
-        if (operation.kind === "recovery-required") { globalFailure = true; break; }
+        if (operation.kind === "recovery-required") { terminalClassification = "recovery-required"; terminalReason = "plan-recovery-required"; globalFailure = true; break; }
         if (operation.destructive && planned.plan.recoveryCheckpointRequired && !approvedCheckpoint) { partial = true; continue; }
         if (dependsOnSkippedOperation(operation, skippedOperations)) {
           partial = true; skippedCount += 1; skippedOperations.push(operation); skippedReasonCodes.add("dependency-on-skipped-operation");
@@ -639,28 +639,28 @@ export class ProductControllerBase implements ProductControlPort {
           const uncertain = exactV1_3.status === "uncertain";
           if (disposition.primary === "authentication-required") {
             terminalClassification = uncertain ? "uncertain" : "blocked";
-            terminalReason = surfaceReason ?? "authorization-required";
+            terminalReason = uncertain ? "uncertain-physical-outcome" : "authentication-required";
             this.setStatus({ kind: "authentication-required", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "deferred") {
             terminalClassification = uncertain ? "uncertain" : "deferred";
-            terminalReason = surfaceReason ?? "remote synchronization deferred";
+            terminalReason = uncertain ? "uncertain-physical-outcome" : "retryable-failure";
             this.setStatus({ kind: "offline-deferred", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "recovery-required") {
             terminalClassification = uncertain ? "uncertain" : "recovery-required";
-            terminalReason = exactV1_3.reason ?? "physical reconciliation is required";
+            terminalReason = uncertain ? "uncertain-physical-outcome" : "recovery-required";
             this.setStatus({ kind: "recovery-required", reason: terminalReason });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "blocking-failure") {
             terminalClassification = uncertain ? "uncertain" : "blocked";
-            terminalReason = exactV1_3.reason ?? "operation blocked";
+            terminalReason = uncertain ? "uncertain-physical-outcome" : "blocking-failure";
             this.setStatus({ kind: "error", code: "operation-blocked", message: terminalReason });
             globalFailure = true;
             break;
@@ -688,15 +688,15 @@ export class ProductControllerBase implements ProductControlPort {
           needsReplan = true; globalFailure = true; this.runs.noteLocalOrRemoteChangeDuringRun(); break;
         }
         if (result.status === "recovery-required" || result.status === "uncertain") {
-          terminalClassification = result.status; terminalReason = result.reason;
+          terminalClassification = result.status; terminalReason = result.status;
           this.setStatus({ kind: "recovery-required", reason: result.reason }); globalFailure = true; break;
         }
         if (result.status === "retryable-failure") {
-          terminalClassification = "deferred"; terminalReason = result.reason;
+          terminalClassification = "deferred"; terminalReason = "retryable-failure";
           this.setStatus({ kind: "offline-deferred", reason: result.reason }); globalFailure = true; break;
         }
         if (result.status === "blocked") {
-          terminalClassification = "blocked"; terminalReason = result.reason;
+          terminalClassification = "blocked"; terminalReason = "blocking-failure";
           this.setStatus({ kind: "error", code: "operation-blocked", message: result.reason }); globalFailure = true; break;
         }
         terminalClassification = result.status === "cancelled" ? "cancelled" : "failed";
@@ -1031,7 +1031,7 @@ export class ProductControllerBase implements ProductControlPort {
       requiredEffectsCommittedAndVerified: terminal === "complete",
       committedOperationCount,
       skippedOperationCount,
-      ...(reason ? { reason } : {}),
+      ...(reason ? { reasonCode: reason } : {}),
     };
   }
   private syncInfo(runId: number | undefined, event: string, fields?: SafeDiagnosticFields): void {

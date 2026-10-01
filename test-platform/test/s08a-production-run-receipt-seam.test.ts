@@ -25,7 +25,7 @@ test("authoritative completed receipt is stable, correlated, and advances run id
 
   const first = readLatestProductionRunReceipt(device.controller);
   ok(first);
-  match(first.runId, /^product-run:\d+$/);
+  match(first.runId, /^product-run:/);
   equal(first.trigger, "manual");
   equal(String(first.planId), String(firstPlan.planId));
   equal(first.terminal, "complete");
@@ -52,26 +52,23 @@ test("authoritative completed receipt is stable, correlated, and advances run id
   await device.dispose();
 });
 
-test("quota-blocked production run cannot manufacture authoritative success", async () => {
+test("paused production run is deferred and cannot manufacture authoritative success", async () => {
   const world = await VirtualSynchronizationWorld.create();
   const device = await world.reconstructDevice("device-a");
-  const path = "s08a-blocked.bin";
+  const path = "s08a-deferred.bin";
 
-  world.drive.queueBoundaryFault({
-    boundary: "create",
-    signal: { kind: "quota-exhausted", detail: "s08a quota fixture" },
-    mutationEffect: "not-applied",
-  });
   await world.deviceBacking("device-a").local.replaceFile(virtualVaultPath(path), source([7, 8, 9]));
   const plan = await device.controller.previewManual();
   ok(plan);
+  equal((await device.controller.request({ kind: "pause" })).status, "accepted");
   await device.controller.request({ kind: "execute-plan", planId: plan.planId });
 
   const receipt = readLatestProductionRunReceipt(device.controller);
   ok(receipt);
-  equal(receipt.terminal, "blocked");
+  equal(receipt.terminal, "deferred");
   equal(receipt.requiredEffectsCommittedAndVerified, false);
   equal(receipt.committedOperationCount, 0);
+  equal(receipt.reasonCode, "run-start:paused");
   const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
   equal(remote.ok, true);
   if (remote.ok) equal(remote.value.status, "absent");
@@ -98,6 +95,7 @@ test("ambiguous applied physical effect remains uncertain and non-success", asyn
   equal(receipt.terminal, "uncertain");
   equal(receipt.requiredEffectsCommittedAndVerified, false);
   equal(receipt.committedOperationCount, 0);
+  equal(receipt.reasonCode, "uncertain-physical-outcome");
   const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
   equal(remote.ok, true);
   if (remote.ok) equal(remote.value.status, "present");

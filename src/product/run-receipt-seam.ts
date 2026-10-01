@@ -26,7 +26,7 @@ export interface ProductionRunReceipt {
   readonly requiredEffectsCommittedAndVerified: boolean;
   readonly committedOperationCount: number;
   readonly skippedOperationCount: number;
-  readonly reason?: string;
+  readonly reasonCode?: string;
 }
 
 export interface ProductionRunReceiptSource {
