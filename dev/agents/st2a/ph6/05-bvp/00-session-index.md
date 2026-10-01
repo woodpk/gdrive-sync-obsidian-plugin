@@ -499,3 +499,44 @@ Hard architecture constraints:
 - S07C proper remains scenario/test-only after prerequisite acceptance.
 
 If these controls cannot fit the existing 4,000-LOC ceiling without weakening behavior, stop BLOCKED rather than increasing the budget.
+
+
+### S07C Re-grounding — authoritative cancellation-signal propagation defect
+
+Authoritative prerequisite PHX-CI evidence `facccead7ed9bf56377c8f448bab5ac8b6076f87` exposed a bounded production cancellation defect after complete review of the persisted JSON, Markdown, and 5,350-line execution log.
+
+Observed facts:
+
+- copied-state clone detection PASS;
+- same-device old-state restore fixture PASS;
+- cancellation after a verified remote effect PASS and prevents later plan operations;
+- repeated immediate cancellation PASS;
+- existing virtual crash-boundary behavior PASS;
+- cancellation armed at `before-remote-dispatch` FAILS because the current remote create still executes;
+- complete repository suite remains 830/830 PASS.
+
+Root cause is established in the active V1.3 authoritative execution path:
+
+- `ReliableRemoteMutationPortV1_3` and `LocalTransactionalMutationPortV1_3` already accept an optional `SynchronizationCancellationSignal`;
+- `CoreRunCoordinator` already owns the live per-run signal;
+- `ProductController.executePlanned(...)` constructs the V1.3 authoritative executor only after `beginRun()` succeeds;
+- `createAuthoritativeProductExecutorV1_3(...)` currently adapts all successor remote/local mutation ports but never supplies the active run cancellation signal;
+- therefore a cancellation accepted while the current physical operation is in flight can stop later operations but cannot be observed by the current mutation port before dispatch.
+
+A bounded production repair is authorized:
+
+1. add an optional `SynchronizationCancellationSignal` input to the V1.3 authoritative executor factory;
+2. have the V1.3 dependency adapter pass that signal to all successor remote mutation calls and local transactional mutation calls;
+3. have `ProductController.executePlanned(...)` pass `this.runs.cancellationSignal()` when constructing the V1.3 executor.
+
+Hard constraints:
+
+- do not modify frozen mutation-port contracts;
+- do not modify predecessor durable execution semantics;
+- do not redesign cancellation, run coordination, recovery, retry, or durable-intent behavior;
+- no new module or subsystem;
+- production repair writable surface is limited to `src/product/authoritative-production-executor.ts`, `src/product/product-controller-base.ts`, focused regression coverage, and S07C prerequisite/binding documentation;
+- existing after-effect semantics remain: a physical effect already verified before cancellation is preserved, and no later operation starts;
+- framework-core test-platform budget remains frozen at 4,000/4,000; the production repair must not add test-platform core LOC.
+
+S07C proper remains blocked until the combined R2 prerequisite passes authoritative PHX-CI and architecture review.
