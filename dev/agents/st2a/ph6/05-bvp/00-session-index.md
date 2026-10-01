@@ -654,3 +654,6 @@ S07E — Quota / Disk, Destructive Safety, Configuration, and Lifecycle Determin
 
 
 S07F is **BOUND / EXECUTABLE** from `556a58d96b9387fae799c4e10d8cd9476f7348ed` on branch `bvp-s07f-deterministic-scale-resource-measurement`. It is test-only: a 16-MiB production Drive chunking/integrity case plus a 256-file deterministic virtual-vault case with a 64-file update batch and host elapsed/RSS/heap measurements. No performance SLA is invented; framework core remains 4,000/4,000 and no production change is authorized.
+
+
+S07F is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic HEAD `7c21441a4c5ebbf3cfe5372d23919baff3c101fe`; base `556a58d96b9387fae799c4e10d8cd9476f7348ed`. Test-only coverage measures a 16-MiB end-to-end virtual transfer, a 256-file vault with a 64-file update batch, and production 16-MiB upload/download chunking at the current 256-KiB boundary. Measurements emit environment, elapsed, and sampled memory evidence without inventing a performance SLA. Framework core remains 4,000/4,000; scenario catalog remains 70/1,524; no production or architecture implementation changed.
