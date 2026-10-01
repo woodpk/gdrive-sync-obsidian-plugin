@@ -115,14 +115,14 @@ function parentPath(path: VaultPath): VaultPath {
 export type VirtualCrashBoundary = "before-remote-dispatch" | "after-remote-effect" | "before-canonical-state-write" | "after-canonical-state-write";
 
 class VirtualCrashController {
-  private armed?: VirtualCrashBoundary;
+  private armed?: VirtualCrashBoundary; private action?: () => void;
 
-  arm(boundary: VirtualCrashBoundary): void { this.armed = boundary; }
+  arm(boundary: VirtualCrashBoundary, action?: () => void): void { this.armed = boundary; this.action = action; }
 
   private hit(boundary: VirtualCrashBoundary): void {
     if (this.armed !== boundary) return;
     this.armed = undefined;
-    throw new Error(`virtual-crash:${boundary}`);
+    const action = this.action; this.action = undefined; if (action) { action(); return; } throw new Error(`virtual-crash:${boundary}`);
   }
 
   wrapRemote<T extends object>(target: T): T {
@@ -938,6 +938,7 @@ export class VirtualSynchronizationWorld {
     this.deviceBacking(name);
     this.crashController(name).arm(boundary);
   }
+  armCancellationBoundary(name: string, boundary: Extract<VirtualCrashBoundary, "before-remote-dispatch" | "after-remote-effect">, action: () => void): void { this.deviceBacking(name); this.crashController(name).arm(boundary, action); }
 
   private crashController(name: string): VirtualCrashController {
     let controller = this.crashControllers.get(name);
