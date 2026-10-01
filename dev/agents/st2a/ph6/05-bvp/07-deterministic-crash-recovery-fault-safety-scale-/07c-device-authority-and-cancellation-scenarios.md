@@ -3,13 +3,33 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / PREREQUISITE R2 UNDER VERIFICATION  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted S07B
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 R2 Grounding Blocker
+
+S07C proper remains blocked pending acceptance of the combined clone/restore + in-flight cancellation prerequisite R2.
+
+Prerequisite:
+
+`07c-prerequisite-clone-restore-cancellation-controls.md`
+
+Branch:
+
+`bvp-s07c-prereq-clone-restore-cancellation-controls-r2`
+
+PHX-CI base:
+
+`4e51ffc187f99183fed0ba77b03d72e533e87621`
+
+R1 evidence `facccead7ed9bf56377c8f448bab5ac8b6076f87` proved the generic clone/restore controls and after-effect cancellation behavior but exposed a production V1.3 cancellation-signal propagation defect. R2 carries the accepted generic-control design and the bounded successor-seam production repair authorized by supervisor re-grounding.
+
+S07C proper remains scenario/test-only after prerequisite acceptance. Do not implement S07C scenarios until R2 is accepted and architecture-reviewed.
 
 ## 1. Objective
 
