@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-prereq-automatic-incremental-sync
+- Source build HEAD requested: 626f6a48f4580f28c8fa527596bf982a55d4522a
+- Verification checkout HEAD: 626f6a48f4580f28c8fa527596bf982a55d4522a
+- Evidence publication target: origin/bvp-s07b-prereq-automatic-incremental-sync
