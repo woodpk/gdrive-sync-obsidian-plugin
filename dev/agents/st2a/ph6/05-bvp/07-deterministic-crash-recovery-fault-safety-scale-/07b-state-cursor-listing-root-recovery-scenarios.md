@@ -41,6 +41,20 @@ Branch:
 
 The prerequisite is limited to <=6 net framework-core LOC, preserving the 4,000-LOC frozen ceiling. S07B proper remains blocked until this prerequisite is accepted and architecture-reviewed.
 
+## 0.3 Persisted Recovery-Gate Blocker / Final Prerequisite
+
+Authoritative S07B PHX-CI evidence `0690eee537eed5819c3b5e6ced39b31739dd085a` proved that corrupt/truncated/incompatible persisted state is correctly classified as recovery-required, but the virtual production device does not restore the existing production recovery gate during device reconstruction. This prevents reviewed recovery planning in S07B despite the passing production C1-R1 regression.
+
+Bounded prerequisite:
+
+`07b-prerequisite-persisted-recovery-gate.md`
+
+Branch:
+
+`bvp-s07b-prereq-persisted-recovery-gate`
+
+S07B proper remains blocked until this prerequisite is accepted and architecture-reviewed.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for fail-closed recovery from corrupt/incompatible durable state, lost/invalid change cursors, incomplete remote coverage, and loss/replacement of the managed remote root.
