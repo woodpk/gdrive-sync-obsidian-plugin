@@ -3,6 +3,14 @@ import { test } from "node:test";
 
 import { defineScenario } from "../src/scenario/scenario-contract";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
+import { virtualDrivePath } from "../src/virtual-world/in-memory-google-drive";
+import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
+import { VirtualSynchronizationWorld } from "../src/virtual-world/virtual-world";
+
+const source = (values: readonly number[]) => ({
+  sizeBytes: values.length,
+  async *openChunks(): AsyncIterable<Uint8Array> { yield Uint8Array.from(values); },
+});
 
 test("quota-exhausted mutation fault reaches production as a blocking resource failure without creating remote content", async () => {
   const scenario = defineScenario({
@@ -51,4 +59,23 @@ test("disk-full local write fault leaves prior local bytes intact while the newe
   strictEqual(local.sizeBytes, 1);
   strictEqual(remote.sizeBytes, 2);
   notStrictEqual(local.hash, remote.hash);
+});
+
+
+test("quota-exhausted provenance reaches the V1.3 production disposition as a blocking resource failure", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  await world.deviceBacking("device-a").local.replaceFile(virtualVaultPath("quota-surface.bin"), source([9]));
+  const device = await world.reconstructDevice("device-a");
+  const plan = await device.controller.previewManual();
+  if (!plan) throw new Error("expected quota prerequisite plan");
+  world.drive.queueBoundaryFault({
+    boundary: "create",
+    signal: { kind: "quota-exhausted", detail: "quota-exhausted" },
+    mutationEffect: "not-applied",
+  });
+  const result = await device.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
+  strictEqual(result.status, "rejected");
+  strictEqual(device.controller.currentSurface().status.kind, "error");
+  strictEqual(world.drive.inspectObjectsAtPath(world.managedRemote.rootId, virtualDrivePath("quota-surface.bin")).length, 0);
+  await device.dispose();
 });
