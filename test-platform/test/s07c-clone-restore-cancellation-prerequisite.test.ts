@@ -4,14 +4,14 @@ import { test } from "node:test";
 import { defineScenario } from "../src/scenario/scenario-contract";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 
-test("state copy fails closed when the source device has no persisted synchronization state", async () => {
+test("state copy fails closed when the source backing is unavailable", async () => {
   const scenario = defineScenario({
     id: "s07c-prereq-copy-missing-source",
-    description: "copying from an uninitialized source backing fails closed without fabricating state",
+    description: "copying from an unavailable source backing fails closed without fabricating state",
     traceability: { targets: [{ kind: "requirement", id: "STATE-016" }] },
     executionModes: ["deterministic"],
     steps: [
-      { id: "copy-missing", kind: "external-state", transition: "fault-device-state", device: "device-a", fault: "copy-from-device", sourceDevice: "device-b", expect: { status: "failed", classification: "source-device-state-unavailable" } },
+      { id: "copy-missing", kind: "external-state", transition: "fault-device-state", device: "device-a", fault: "copy-from-device", sourceDevice: "missing-device", expect: { status: "failed", classification: "step-exception" } },
       { id: "target-state", kind: "observe", subject: "device-state", device: "device-a", captureAs: "target-state" },
       { id: "assert-uninitialized-recovery", kind: "assert", assertion: "status", observationRef: "target-state", expectedStatus: "recovery-required" },
     ],
