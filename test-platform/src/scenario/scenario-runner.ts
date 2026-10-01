@@ -221,6 +221,7 @@ export class DeterministicScenarioRunner {
       if (step.captureAs) captures.set(step.captureAs, result);
       return result.status === "accepted" ? { status: "completed", value: result } : fail("failed", "production-request-rejected", result.reason);
     }
+    if (step.operation === "automatic-sync") { await device.controller.runAutomatic("local-change"); const kind = device.controller.currentSurface().status.kind; return ["recovery-required", "authentication-required", "offline-deferred", "error"].includes(kind) ? fail("blocked", kind) : { status: "completed" }; }
     if (step.inputRef) return fail("unsupported", "production-input-reference-unsupported");
 
     const plan = step.operation === "reconcile"
