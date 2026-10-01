@@ -286,7 +286,7 @@ export class DeterministicScenarioRunner {
     }
     context.world.drive.queueBoundaryFault({
       boundary: step.operation,
-      signal: { kind: "transient-failure", detail: step.classification },
+      signal: step.classification === "quota-exhausted" ? { kind: "quota-exhausted", detail: step.classification } : { kind: "transient-failure", detail: step.classification },
       mutationEffect: step.effect,
     });
     return { status: "completed" };
