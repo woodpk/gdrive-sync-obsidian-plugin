@@ -351,3 +351,6 @@ Authorized prerequisite implementation surfaces are limited to the existing scen
 
 
 S07B is **BLOCKED / MISSING GENERIC CAPABILITY** after repository grounding against accepted S07A closure `62b91e21d8d9be43f98a0e4cdd49081b750e13dc`. Existing S04 backing/core mechanics already support durable-state corruption/truncation/incompatible schema and cursor invalidation, while listing/change completeness is already declarative. The frozen DSL does not expose the state/cursor controls, and the virtual Drive core lacks a deterministic managed-root loss/replacement mutation control. A bounded prerequisite `07b-prerequisite-state-cursor-root-controls.md` is authorized under the pre-S07B architecture review at `93262366c749b27f95f973f1c6db04673f7f8fcb`, with <=30 net framework-core LOC and no production/seam/PowerShell/PHX-CI delta.
+
+
+S07B generic recovery-control prerequisite is **READY FOR PHX-CI**. Semantic implementation HEAD `77ed363738e2b4aa32e2c93fe22a10da3073e69e` adds only three generic `external-state` recovery controls through existing platform families and one focused test. Static architecture accounting projects framework core at 3,994/4,000 (+24), with no production/seam/PowerShell/PHX-CI implementation delta. Acceptance requires authoritative PHX-CI and complete review of all three persisted evidence reports (.json, .md, .log).
