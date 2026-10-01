@@ -21,7 +21,7 @@ import {
 } from "../../../src/product/local-vault-boundary-seam";
 
 type EntryKind = "file" | "folder";
-type EntryAccess = "readable" | "unreadable" | "inaccessible" | "disk-full";
+type EntryAccess = "readable" | "unreadable" | "inaccessible";
 type EntryStability = "stable" | "unstable";
 
 interface InMemoryEntry {
@@ -141,7 +141,7 @@ export class InMemoryLocalVault implements LocalVaultPort {
     this.seed(path, "folder", undefined, options);
   }
 
-  setAccess(path: string | VaultPath, access: EntryAccess): void {
+  setAccess(path: string | VaultPath, access: EntryAccess | "disk-full"): void {
     if (access === "disk-full") { this.writeFailure = access; return; }
     const entry = this.requiredEntry(path); entry.access = access; entry.revision += 1;
   }
