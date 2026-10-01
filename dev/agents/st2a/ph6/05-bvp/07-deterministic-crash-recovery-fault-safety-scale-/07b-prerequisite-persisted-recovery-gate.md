@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07B  
 **Predecessor / PHX-CI base:** `3269ad831878be7e399871eb7d229a613c9d8db0`  
 **Branch:** `bvp-s07b-prereq-persisted-recovery-gate`
@@ -21,6 +21,33 @@ The bounded prerequisite implementation is complete and ready for authoritative 
 - focused proof: `test-platform/test/s07b-persisted-recovery-gate-prerequisite.test.ts`.
 
 Authoritative PHX-CI remains the acceptance authority.
+
+## 0.2 Acceptance / Closure Record
+
+The S07B persisted recovery-gate prerequisite is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `77d18a1fa3736b7c4fa502a0ed01b1dd08dd88f8`;
+- authoritative PHX-CI evidence: `b362d6f5b803033d148ef519d1a4e10f133a4ca6`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- complete persisted evidence set reviewed before acceptance:
+  - JSON: `dev/test-results/20261001T033610Z-operator-bvp-s07b-prereq-persisted-recovery-gate-77d18a1fa373.json`;
+  - Markdown: matching `.md`;
+  - execution log: matching `.log`, 6,381 lines;
+- focused prerequisite verification: 1/1 PASS;
+- complete repository suite: 830/830 PASS;
+- all PHX-CI stages: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 3,999 / 4,000 logical TypeScript LOC (+3), 10 runtime modules;
+- production source: unchanged at 16,668 LOC;
+- approved production seam: unchanged at 113 LOC / 1 file;
+- scenario catalog: unchanged at 45 scenarios / 952 LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,477 LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- production artifact unchanged: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`;
+- no genuine `not ok`, hidden nonzero stage, hidden BLOCKED/FAIL verdict, or artifact discrepancy exists in the complete log;
+- only non-pass diagnostic is the existing npm audit notice for 2 moderate vulnerabilities.
+
+The accepted prerequisite changes only virtual production-device composition so reconstructed devices initialize the already-existing product recovery gate from persisted state. No production behavior, recovery policy, persistence semantics, or new runtime module was introduced.
 
 ## 1. Objective
 
