@@ -586,3 +586,28 @@ S07D repository-gate repair: direct production imports were removed from `test-p
 
 
 S07D — Transfer Integrity and Retry / Backoff Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation `b8f08eb08422006a636260dcb10163e2fa5d8437`; authoritative evidence `19421e7816d881707c1d02a4d86fa6e9b8aee08b`. Complete persisted JSON, Markdown, and 6,883-line log reviewed. Focused verification passed 8/8 platform tests plus 5/5 transport tests; full suite 833/833 PASS; architecture guard 0; framework core 4,000/4,000; scenario catalog 64/1,311; production source 16,670; artifact `main.js` 880,742 bytes SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+
+### Pre-S07E Architecture Review — resource-failure controls
+
+Repository-level architecture review completed against accepted S07D closure `8e0738610801f0d1fa8c4e50476d8274c4421cdc`: **PASS WITH BOUNDED PREREQUISITE AUTHORIZATION**.
+
+Accepted S07D evidence `19421e7816d881707c1d02a4d86fa6e9b8aee08b` records focused verification 8/8 + 5/5 PASS, full suite 833/833 PASS, architecture guard 0 violations, framework core 4,000/4,000, production source 16,670, scenario catalog 64/1,311, BVP PowerShell 4/1,477, and unchanged production artifact `main.js` 880,742 bytes SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+S07E grounding confirms existing production/platform capability for destructive thresholds/checkpoints, selective configuration scope, and device reconstruction, but two generic resource-fault controls are incomplete:
+
+1. `inject-remote-mutation-fault` accepts a classification string but currently materializes every injected mutation failure as `transient-failure`, so it cannot faithfully model production `quota-exhausted`;
+2. the existing virtual local-access control has no deterministic device-level write-capacity failure, so FAIL-005 cannot be exercised through the production local staging path.
+
+One bounded prerequisite is authorized to extend the existing fault family only:
+
+- preserve `quota-exhausted` as a Drive signal when explicitly supplied to the existing remote mutation fault control;
+- extend the existing local-access fault state with `disk-full`, interpreted as a device-level write-capacity failure while reads/observations remain valid and existing bytes remain untouched.
+
+Hard constraints:
+
+- framework core MUST remain at or below 4,000 logical TypeScript LOC; net framework-core growth is not authorized;
+- no new module, runner, router, resource manager, safety engine, persistence family, production seam, production code, PowerShell, PHX-CI, or governance mechanism;
+- ordinary readable/unreadable/inaccessible local-access behavior remains unchanged;
+- ordinary transient remote-mutation fault behavior remains unchanged;
+- S07E proper remains scenario/test-only after prerequisite acceptance.
