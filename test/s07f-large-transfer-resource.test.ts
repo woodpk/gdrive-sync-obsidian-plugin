@@ -233,6 +233,7 @@ test("16 MiB production download remains lazy and range-bounded across the compl
   const started = process.hrtime.bigint();
 
   const drive = adapter(async (url, init) => {
+    if (url.includes("/about")) return okResponse({ user: { permissionId: "acct" } });
     if (url.includes("/files/large-download-id?") && !url.includes("alt=media")) {
       return okResponse({
         id: "large-download-id",
