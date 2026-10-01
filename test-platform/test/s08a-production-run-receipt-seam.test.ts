@@ -30,7 +30,8 @@ test("authoritative completed receipt is stable, correlated, and advances run id
   equal(String(first.planId), String(firstPlan.planId));
   equal(first.terminal, "complete");
   equal(first.requiredEffectsCommittedAndVerified, true);
-  equal(first.committedOperationCount, 1);
+  equal(first.committedOperationCount, firstPlan.operations.length);
+  ok(first.committedOperationCount > 0);
   equal(first.skippedOperationCount, 0);
   deepEqual(readLatestProductionRunReceipt(device.controller), first);
 
@@ -80,11 +81,7 @@ test("ambiguous applied physical effect remains uncertain and non-success", asyn
   const device = await world.reconstructDevice("device-a");
   const path = "s08a-uncertain.bin";
 
-  world.drive.queueBoundaryFault({
-    boundary: "create",
-    signal: { kind: "transient-failure", detail: "s08a ambiguous fixture" },
-    mutationEffect: "applied-before-failure",
-  });
+  device.remoteMutations.queuePostMutationObservationFailure("s08a-post-effect-observation-unavailable");
   await world.deviceBacking("device-a").local.replaceFile(virtualVaultPath(path), source([10, 11, 12]));
   const plan = await device.controller.previewManual();
   ok(plan);
