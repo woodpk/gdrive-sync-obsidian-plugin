@@ -13,7 +13,7 @@ Complete the two missing generic deterministic resource-fault controls required 
 
 ## 2. Authorized Behavior
 
-1. Existing `external-state:inject-remote-mutation-fault` preserves an explicitly supplied `quota-exhausted` classification as a Drive `quota-exhausted` signal rather than collapsing it to `transient-failure`.
+1. Existing `external-state:inject-remote-mutation-fault` preserves an explicitly supplied `quota-exhausted` classification as a Drive `quota-exhausted` signal rather than collapsing it to `transient-failure`, and the existing virtual reliable-mutation adapter preserves that operational provenance into the V1.3 production execution path.
 2. Existing `external-state:set-local-access` accepts `disk-full` as a device-level write-capacity fault. While armed:
    - observations and reads of existing valid content remain available;
    - file writes/staging fail before new bytes are committed;
@@ -26,6 +26,7 @@ All existing transient remote-fault and readable/unreadable/inaccessible behavio
 - `test-platform/src/scenario/scenario-contract.ts`
 - `test-platform/src/scenario/scenario-runner.ts`
 - `test-platform/src/virtual-world/in-memory-local-vault.ts`
+- `test-platform/src/virtual-world/virtual-world.ts`
 - `test-platform/test/s07e-resource-fault-prerequisite.test.ts`
 - this prerequisite record
 - `07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md`
