@@ -322,3 +322,29 @@ S07A is **REBOUND / EXECUTABLE** against architecture-reviewed integration `e15a
 
 
 S07A — Crash, Commit-Order, and Ambiguous-Result Scenarios is **COMPLETE / ACCEPTED**. Accepted implementation HEAD `e243922afdabd49f42f94395243191231ff89ada` passed authoritative PHX-CI; evidence is `d836055376110f02a415fa5b8cf0e8c58e9ed6bd`. Acceptance was made only after complete review of the persisted JSON, Markdown, and 6,410-line execution-log reports. Focused S07A verification passed 13/13; full repository verification passed 830/830; every PHX-CI stage passed with exit 0; architecture guard recorded 0 violations; framework core remained 3,970/4,000; production/seam/PowerShell metrics were unchanged; scenario catalog is now 45 scenarios / 952 logical LOC; production artifact remained 880,512 bytes with SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+
+### Pre-S07B Architecture Review — generic recovery-control prerequisite
+
+BVP-GOV-006 / BVP-GOV-008 supervisor architecture review completed against accepted S07A closure `62b91e21d8d9be43f98a0e4cdd49081b750e13dc`: **PASS WITH BOUNDED PREREQUISITE AUTHORIZATION**.
+
+Repository grounding for S07B shows the frozen declarative runner does not expose several already-planned deterministic recovery controls required by BVP-SIM-007 and S07B:
+
+- per-device corrupt checksum, truncated state bytes, and incompatible state schema already exist in `VirtualDeviceBacking`;
+- cursor invalidation already exists in `InMemoryGoogleDriveCore.invalidateCursor(...)`;
+- partial listing/change-page controls are already declaratively exposed and require no core change;
+- managed-root validation already distinguishes `missing-root`, `identity-mismatch`, and `incompatible-protocol`, but the virtual Drive core has no deterministic external mutation method that can place the accepted managed root into those states.
+
+A single bounded prerequisite is authorized to extend only the existing `external-state` control family and existing in-memory Drive core. It may add no new runtime module, persistence family, runner, fault framework, evidence family, production seam, production code, PowerShell, PHX-CI, or governance mechanism.
+
+Hard architecture constraints:
+
+- current framework core: 3,970 / 4,000 logical TypeScript LOC / 10 modules;
+- prerequisite net framework-core delta MUST remain <=30 LOC;
+- production source remains 16,668 LOC and is not writable;
+- approved production seam remains 113 LOC / 1 file and is not writable;
+- scenario-specific production/PowerShell remain 0;
+- BVP PowerShell remains 4 scripts / 1,477 LOC and is not writable.
+
+Authorized prerequisite implementation surfaces are limited to the existing scenario contract/runner family, the existing in-memory Drive core, one focused test, and prerequisite/binding documentation. If the complete S07B control set cannot fit the residual framework budget without weakening behavior, stop BLOCKED rather than increasing the budget.
+
