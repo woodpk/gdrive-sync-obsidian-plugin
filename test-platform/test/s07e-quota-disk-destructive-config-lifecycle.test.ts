@@ -10,7 +10,7 @@ import { remoteQuotaExhaustionScenario } from "../scenarios/07e/remote-quota-exh
 import { localDiskFullScenario } from "../scenarios/07e/local-disk-full";
 import { destructiveBelowThresholdScenario } from "../scenarios/07e/destructive-below-threshold";
 import { destructiveThresholdBlockedScenario } from "../scenarios/07e/destructive-threshold-blocked";
-import { portableConfigChangeScenario } from "../scenarios/07e/portable-config-change";
+import { protectedConfigChangeScenario } from "../scenarios/07e/protected-config-change";
 import { lifecycleReconstructionScenario } from "../scenarios/07e/lifecycle-reconstruction";
 
 const scenarios = [
@@ -18,7 +18,7 @@ const scenarios = [
   localDiskFullScenario,
   destructiveBelowThresholdScenario,
   destructiveThresholdBlockedScenario,
-  portableConfigChangeScenario,
+  protectedConfigChangeScenario,
   lifecycleReconstructionScenario,
 ];
 
@@ -59,7 +59,7 @@ test("production destructive thresholds block the 25-delete plan and require the
     executionDisposition?: string;
     globalExecutionGate?: string;
   };
-  equal(capturedPlan.operations?.length, 25);
+  equal(capturedPlan.operations?.filter(operation => (operation as { destructive?: boolean }).destructive).length, 25);
   equal(capturedPlan.recoveryCheckpointRequired, true);
   equal(capturedPlan.executionDisposition, "requires-user-approval");
   equal(capturedPlan.globalExecutionGate, "destructive-approval-required");
@@ -79,7 +79,7 @@ test("production destructive thresholds block the 25-delete plan and require the
   for (const path of paths) await world.deviceBacking("device-a").local.trash(virtualVaultPath(path));
   const plan = await device.controller.previewManual();
   ok(plan);
-  equal(plan.operations.length, 25);
+  equal(plan.operations.filter(operation => operation.destructive).length, 25);
   equal(plan.recoveryCheckpointRequired, true);
   equal(plan.executionDisposition, "requires-user-approval");
   equal(plan.globalExecutionGate, "destructive-approval-required");
@@ -117,14 +117,13 @@ test("production destructive thresholds block the 25-delete plan and require the
   await device.dispose();
 });
 
-test("portable configuration change converges through the dedicated logical namespace", async () => {
-  const result = await DeterministicScenarioRunner.canonical().run(portableConfigChangeScenario);
+test("protected configuration changes remain local and never enter ordinary remote synchronization", async () => {
+  const result = await DeterministicScenarioRunner.canonical().run(protectedConfigChangeScenario);
   equal(result.status, "completed", JSON.stringify(result, null, 2));
   const local = result.captures.local as { hash?: string; sizeBytes?: number };
-  const remote = result.captures.remote as { hash?: string; sizeBytes?: number };
-  equal(local.hash, remote.hash);
-  equal(local.sizeBytes, remote.sizeBytes);
-  ok((local.sizeBytes ?? 0) > 2);
+  const remote = result.captures.remote as { exists?: boolean };
+  ok((local.sizeBytes ?? 0) > 15);
+  equal(remote.exists, false);
 });
 
 test("deterministic reconstruction retains trusted state and resumes synchronization without deleting shared data", async () => {
