@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-prereq-state-cursor-root-controls
+- Source build HEAD requested: 7a0c13b7af67f317e870c4b85063561413c20776
+- Verification checkout HEAD: 7a0c13b7af67f317e870c4b85063561413c20776
+- Evidence publication target: origin/bvp-s07b-prereq-state-cursor-root-controls
