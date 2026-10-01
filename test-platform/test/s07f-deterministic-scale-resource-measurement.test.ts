@@ -198,20 +198,49 @@ test("256-file vault plus 64-file update batch preserves identity/state and emit
   const updateElapsedMs = elapsedMs(updateStarted);
   samples.push(sampleMemory());
 
+  const postUpdateIds = new Map<string, string>();
   for (let index = 0; index < UPDATE_FILE_COUNT; index += 1) {
     const path = `scale-file-${String(index).padStart(3, "0")}.bin`;
     const observed = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
     equal(observed.ok, true);
     if (!observed.ok || observed.value.status !== "present") throw new Error(`missing updated scale file: ${path}`);
-    equal(String(observed.value.remoteObjectId), initialIds.get(path));
+    const updatedId = String(observed.value.remoteObjectId);
+    ok(updatedId !== initialIds.get(path), `updated path must converge on its immutable candidate identity: ${path}`);
+    postUpdateIds.set(path, updatedId);
     equal(String(observed.value.content?.hash), expectedHash(VAULT_FILE_BYTES, 0x80 + index));
   }
+
+  for (let index = UPDATE_FILE_COUNT; index < VAULT_FILE_COUNT; index += 1) {
+    const path = `scale-file-${String(index).padStart(3, "0")}.bin`;
+    const observed = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
+    equal(observed.ok, true);
+    if (!observed.ok || observed.value.status !== "present") throw new Error(`missing unchanged scale file: ${path}`);
+    const unchangedId = String(observed.value.remoteObjectId);
+    equal(unchangedId, initialIds.get(path));
+    postUpdateIds.set(path, unchangedId);
+    equal(String(observed.value.content?.hash), expectedHash(VAULT_FILE_BYTES, index));
+  }
+  equal(postUpdateIds.size, VAULT_FILE_COUNT);
+  equal(new Set(postUpdateIds.values()).size, VAULT_FILE_COUNT);
 
   const trustedAfterUpdate = await world.deviceBacking("device-a").load();
   equal(trustedAfterUpdate.status, "trusted");
   if (trustedAfterUpdate.status === "trusted") {
     equal(trustedAfterUpdate.state.base.length, VAULT_FILE_COUNT);
     equal(trustedAfterUpdate.state.remoteMappings.length, VAULT_FILE_COUNT);
+    const mappedIds = new Map(
+      trustedAfterUpdate.state.remoteMappings.map(mapping => [String(mapping.path), String(mapping.remoteObjectId)]),
+    );
+    const baseIds = new Map(
+      trustedAfterUpdate.state.base.map(entry => [
+        String(entry.path),
+        entry.remoteObjectId === undefined ? undefined : String(entry.remoteObjectId),
+      ]),
+    );
+    for (const [path, remoteObjectId] of postUpdateIds) {
+      equal(mappedIds.get(path), remoteObjectId);
+      equal(baseIds.get(path), remoteObjectId);
+    }
   }
 
   const measurement = {
