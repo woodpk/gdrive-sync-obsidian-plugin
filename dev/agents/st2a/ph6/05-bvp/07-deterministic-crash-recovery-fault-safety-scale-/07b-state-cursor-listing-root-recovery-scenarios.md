@@ -79,6 +79,21 @@ Focused command:
 
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07b-state-cursor-listing-root-recovery.test.js`
 
+## 0.5 R2 Ready-for-Verification Record
+
+S07B R2 implementation is complete and **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic scenario/test implementation HEAD: `20f199cd4acd15c07a8e22dd31d75b5c1debbe1b`;
+- PHX-CI base: `be226f6008eb7d26fa7c9df574dfde27180d8c73`;
+- branch: `bvp-s07b-state-cursor-listing-root-recovery-r2`;
+- changed paths: exactly task/index, nine `test-platform/scenarios/07b/*.ts` scenario definitions, and one focused test;
+- platform-core / production / production-seam / PowerShell / PHX-CI implementation delta: 0;
+- framework core remains 3,999 / 4,000;
+- scenario catalog projects to 54 scenarios / 1,131 logical LOC;
+- S07B R2 scenario logical LOC: 23, 23, 23, 22, 20, 19, 15, 17, 17; every scenario remains below the 200-LOC hard limit.
+
+Authoritative PHX-CI plus complete review of the persisted JSON, Markdown, and full execution log are required before acceptance.
+
 ## 1. Objective
 
 Add declarative deterministic coverage for fail-closed recovery from corrupt/incompatible durable state, lost/invalid change cursors, incomplete remote coverage, and loss/replacement of the managed remote root.
