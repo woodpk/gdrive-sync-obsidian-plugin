@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07c-prereq-clone-restore-cancellation-controls
+- Source build HEAD requested: dd4d2234b31b7abcbef2f0c23273c5220cf6c2e2
+- Verification checkout HEAD: dd4d2234b31b7abcbef2f0c23273c5220cf6c2e2
+- Evidence publication target: origin/bvp-s07c-prereq-clone-restore-cancellation-controls
