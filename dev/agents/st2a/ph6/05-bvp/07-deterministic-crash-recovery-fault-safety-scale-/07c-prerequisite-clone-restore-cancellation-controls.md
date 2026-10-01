@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** EXECUTABLE / ACTIVE CONTRACT  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Parent:** BVP-S07C  
 **Predecessor / PHX-CI base:** `4e51ffc187f99183fed0ba77b03d72e533e87621`  
 **Branch:** `bvp-s07c-prereq-clone-restore-cancellation-controls-r2`
@@ -67,6 +67,29 @@ Pre-PHX audit:
 - BVP PowerShell: unchanged at 4 scripts / 1,477 logical LOC;
 - frozen `src/contracts/**`: unchanged;
 - focused test now contains six prerequisite proofs, including fail-closed missing-source state copy.
+
+## 0.3 Acceptance / Closure Record
+
+The S07C clone/restore + in-flight cancellation prerequisite R2 is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `745f2932a5762859a6a7fb039c625c7c6c0c948a`;
+- authoritative PHX-CI evidence: `70b3ff145001b2e6049753174b11b26012dbffc8`;
+- complete persisted evidence set reviewed before acceptance: JSON, Markdown, and complete 6,618-line execution log;
+- focused prerequisite verification: 6/6 PASS;
+- complete repository suite: 830/830 PASS;
+- every PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- approved production seam: 113 LOC / 1 file;
+- scenario catalog: 54 scenarios / 1,131 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`;
+- no hidden nonzero stage, `not ok`, BLOCKED/FAIL verdict, or artifact discrepancy exists in the complete log;
+- only existing diagnostic: 2 moderate npm vulnerabilities.
+
+Accepted behavior includes copied-state clone detection, same-device old-state restore fixture capability, before-dispatch cancellation preventing physical mutation, after-effect cancellation preserving verified reality while stopping later work, repeated cancellation determinism, and unchanged crash-boundary semantics.
 
 ## 1. Objective
 
