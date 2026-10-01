@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-prereq-state-cursor-root-controls
+- Source build HEAD requested: 577c23d12b4c3f5ae54ae59b78a19982e00985e3
+- Verification checkout HEAD: 577c23d12b4c3f5ae54ae59b78a19982e00985e3
+- Evidence publication target: origin/bvp-s07b-prereq-state-cursor-root-controls
