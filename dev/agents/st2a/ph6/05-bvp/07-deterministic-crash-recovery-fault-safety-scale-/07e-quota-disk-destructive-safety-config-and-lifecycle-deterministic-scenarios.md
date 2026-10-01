@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** architecture-reviewed accepted S07E prerequisite closure `db444c5430be19ac2ccaf7c4c5ef822a9675ab4a`
 
@@ -105,6 +105,27 @@ Authoritative evidence `1679b310395ae215c89a6787f4bf666f9c0e177f` exposed two fo
 - the virtual Drive core does not model the production Google Drive adapter's dedicated portable-configuration remote-domain root, so a declarative portable-file transfer is not an admissible S07E proper proof without a new platform prerequisite. S07E instead exercises an already-supported configuration invariant: a protected authentication artifact can change repeatedly while remaining local and excluded from ordinary remote synchronization.
 
 No production, framework-core, safety-policy, or configuration-policy change is made.
+
+## 0.4 Acceptance / Closure Record
+
+BVP-S07E is **COMPLETE / ACCEPTED**.
+
+- accepted implementation HEAD: `abda511c8f2d701fbb4b285634a4baf43fad87f4`;
+- authoritative PHX-CI evidence: `5420a270e024d4a2c639c6d4023ce21e0bb21a5d`;
+- complete persisted JSON, Markdown, and 6,992-line execution log reviewed before acceptance;
+- focused S07E verification: 11/11 PASS;
+- complete repository suite: 833/833 PASS;
+- every PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS, 0 violations;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source: 16,670 logical LOC;
+- production seam: 113 LOC / 1 file;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,477 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- artifact: `main.js` 880,742 bytes, SHA-256 `9745d590e8348ce896f11b90321706546afded1b837fe12702e59b9b51452df4`.
+
+Accepted coverage includes quota exhaustion, local disk exhaustion, below-threshold deletion, mass-deletion blocking with exact recovery-checkpoint approval, protected configuration changes remaining local, deterministic reconstruction/lifecycle preservation, and a negative unsafe-expectation proof.
 
 ## 1. Objective
 
