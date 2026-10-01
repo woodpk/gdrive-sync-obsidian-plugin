@@ -76,6 +76,39 @@ Focused command:
 
 BVP-GOV-010 size gate: PASS. This child introduces one bounded contract family, is expected to touch two substantive production implementation files, and is well below the non-test file/LOC split threshold.
 
+## 0.2 Ready-for-Verification Record
+
+BVP-S08A is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `2de387bf064edd274a6cc7081d34dd7789ae754c`;
+- exact PHX-CI base / accepted S07 closure: `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- implementation branch: `bvp-s08a-production-run-receipt-seam`;
+- implementation delta from the bound tasking commit is exactly:
+  - `src/product/run-receipt-seam.ts` — new read-only receipt contract/reader;
+  - `src/product/product-controller-base.ts` — bounded capture of authoritative terminal run state at the existing execution boundary;
+  - `dev/governance/testing-platform-boundary.yaml` — one approved-import enumeration for the new seam, with no budget/rule change;
+  - `test-platform/test/s08a-production-run-receipt-seam.test.ts` — focused production-path proof;
+- projected production-seam metric: 140 logical LOC / 2 approved files (existing 113-LOC seam + new 27-LOC receipt seam), below the frozen 350-LOC / 4-file limit;
+- framework-core implementation delta: 0; framework core remains 4,000 / 4,000 LOC / 10 modules;
+- live-device agent/relay delta: 0; S08B–S08F have not begun;
+- PowerShell / PHX-CI / shipping-build / OAuth / runtime-composition delta: 0.
+
+Receipt semantics implemented:
+
+- each production execution attempt that reaches the existing execution boundary receives a product-owned run identity independent of diagnostic text;
+- receipt correlates that run to the authoritative plan ID and trigger;
+- terminal classifications preserve `complete`, `partial`, `failed`, `cancelled`, `blocked`, `deferred`, `recovery-required`, and `uncertain` distinctly;
+- `requiredEffectsCommittedAndVerified` is true only for authoritative complete runs after required operation commit/verification and final trusted-state/cursor completion;
+- committed/skipped operation counts are captured from the real production execution lifecycle;
+- uncertainty remains non-success even when an external physical effect may have occurred;
+- receipt reason codes are bounded classifications and do not replace or weaken existing production-facing status/error detail;
+- repeated reads return stable copied receipt data and expose no mutation API;
+- later runs receive distinct run identities, enabling stale-receipt rejection by later validation layers.
+
+Focused proof covers authoritative complete correlation/idempotence, distinct subsequent run identity, paused/deferred non-success, ambiguous-applied non-success with physical effect preserved, and read-only observation that cannot trigger mutation.
+
+The boundary manifest is changed only because S08A is the explicitly authorized seam-change session; authoritative PHX-CI MUST run with `BVP_CHANGE_CLASS=authorized-governance`. Acceptance still requires full PHX-CI plus supervisor review of the persisted JSON, Markdown, and complete execution log.
+
 ## 1. Objective
 
 Introduce only the minimum production-owned terminal run receipt/control observation required for later live validation to identify an actual production synchronization run and its authoritative terminal outcome without reconstructing success from test logs.
