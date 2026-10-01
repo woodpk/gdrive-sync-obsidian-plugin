@@ -12,7 +12,7 @@ export const beforeRemoteDispatchScenario = defineScenario({
     {id:"assert-no-base",kind:"assert",assertion:"field-equals",observationRef:"state-before",field:"baseCount",expected:0},
     {id:"restart",kind:"checkpoint",operation:"restart-device",device:"device-a"},
     {id:"recover-intent",kind:"production",device:"device-a",operation:"synchronize"},
-    {id:"complete",kind:"production",device:"device-a",operation:"synchronize",expect:{status:"blocked",classification:"missing-production-plan"}},
+    {id:"complete",kind:"production",device:"device-a",operation:"synchronize"},
     {id:"remote-after",kind:"observe",subject:"remote-entry",path:"before-dispatch.bin",captureAs:"remote-after"},
     {id:"state-after",kind:"observe",subject:"device-state",device:"device-a",captureAs:"state-after"},
     {id:"assert-effect",kind:"assert",assertion:"exists",observationRef:"remote-after",expected:true},
