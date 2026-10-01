@@ -3,13 +3,29 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
 **Predecessor:** accepted S07A
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Grounding Blocker / Prerequisite
+
+Repository grounding against accepted S07A closure `62b91e21d8d9be43f98a0e4cdd49081b750e13dc` found that S07B cannot yet express all required deterministic recovery faults through the frozen declarative DSL.
+
+The underlying state corruption/truncation/incompatible-schema controls and cursor invalidation already exist. Partial listing/change completeness is already exposed. Managed-root validation already distinguishes missing/mismatch/incompatible states, but the virtual Drive core lacks a deterministic external root mutation control.
+
+Bounded prerequisite:
+
+`07b-prerequisite-state-cursor-root-controls.md`
+
+Prerequisite branch:
+
+`bvp-s07b-prereq-state-cursor-root-controls`
+
+S07B proper remains frozen until that prerequisite is accepted and architecture-reviewed.
 
 ## 1. Objective
 
