@@ -3,9 +3,9 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s07-resilience-safety-scale-01`  
-**Prompt maturity:** BLOCKED / MISSING GENERIC CAPABILITY  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage  
-**Predecessor:** accepted S07A
+**Predecessor:** architecture-reviewed accepted S07B prerequisite closure `be226f6008eb7d26fa7c9df574dfde27180d8c73`
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
@@ -54,6 +54,30 @@ Branch:
 `bvp-s07b-prereq-persisted-recovery-gate`
 
 S07B proper remains blocked until this prerequisite is accepted and architecture-reviewed.
+
+## 0.4 Final R2 Dispatch Binding
+
+All three S07B generic prerequisites are accepted and architecture-reviewed. S07B proper is **BOUND / EXECUTABLE** on a clean R2 branch.
+
+- exact predecessor / PHX-CI base: `be226f6008eb7d26fa7c9df574dfde27180d8c73`;
+- task branch: `bvp-s07b-state-cursor-listing-root-recovery-r2`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework-core baseline: 3,999 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- production source baseline: 16,668 LOC;
+- production seam baseline: 113 LOC / 1 file;
+- scenario baseline: 45 scenarios / 952 logical LOC;
+- BVP PowerShell baseline: 4 scripts / 1,477 logical LOC;
+- production artifact baseline: `main.js` 880,512 bytes, SHA-256 `cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860`.
+
+R2 incorporates the accepted persisted-recovery-gate prerequisite and carries forward only the nine S07B scenarios plus the focused S07B test. Relative to failed evidence `0690eee537eed5819c3b5e6ced39b31739dd085a`:
+
+- the three persisted-state corruption scenarios now restart the virtual device immediately after fault injection so the accepted recovery gate is restored from persisted state before recovery planning;
+- the negative assertion test expects the runner's actual stable classification `assertion-mismatch`;
+- no platform-core, production, seam, PowerShell, PHX-CI, persistence, governance, or architecture implementation change is authorized on S07B proper.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s07b-state-cursor-listing-root-recovery.test.js`
 
 ## 1. Objective
 
