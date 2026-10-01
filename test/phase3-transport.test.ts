@@ -64,3 +64,25 @@ test("Drive 401 invalidates only access token, refreshes, and retries a safe GET
   const persisted=JSON.parse(backing.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID)!) as {refreshToken?:string;accessToken?:string};
   assert.equal(persisted.refreshToken,"refresh-authority"); assert.equal(persisted.accessToken,"fresh");
 });
+
+
+test("S07D retry-safe transient failures use deterministic bounded exponential backoff", async()=>{
+  let calls=0; const sleeps:number[]=[];
+  const transport=new GoogleHttpTransport(session(),async()=>{calls++; if(calls<3) throw new TypeError("temporary network failure"); return new Response("{}",{status:200});},{maxAttempts:3,baseDelayMs:100,maxDelayMs:1000,maxConcurrency:1},async ms=>{sleeps.push(ms);},()=>0,()=>0);
+  const result=await transport.request("https://www.googleapis.com/drive/v3/files/file-id",{method:"GET"});
+  assert.equal(result.ok,true); assert.equal(calls,3); assert.deepEqual(sleeps,[50,100]);
+});
+
+test("S07D retry exhaustion is bounded and remains transient", async()=>{
+  let calls=0; const sleeps:number[]=[];
+  const transport=new GoogleHttpTransport(session(),async()=>{calls++; return new Response(JSON.stringify({error:{message:"unavailable"}}),{status:503,headers:{"content-type":"application/json"}});},{maxAttempts:3,baseDelayMs:100,maxDelayMs:1000,maxConcurrency:1},async ms=>{sleeps.push(ms);},()=>0,()=>0);
+  const result=await transport.request("https://www.googleapis.com/drive/v3/files/file-id",{method:"GET"});
+  assert.equal(result.ok,false); if(!result.ok) assert.equal(result.signal.kind,"transient-failure"); assert.equal(calls,3); assert.deepEqual(sleeps,[50,100]);
+});
+
+test("S07D permanent permission failure is not retried", async()=>{
+  let calls=0;
+  const transport=new GoogleHttpTransport(session(),async()=>{calls++; return new Response(JSON.stringify({error:{message:"forbidden"}}),{status:403,headers:{"content-type":"application/json"}});},{maxAttempts:5,baseDelayMs:100,maxDelayMs:1000,maxConcurrency:1},async()=>{throw new Error("permanent failure must not sleep");},()=>0,()=>0);
+  const result=await transport.request("https://www.googleapis.com/drive/v3/files/file-id",{method:"GET"});
+  assert.equal(result.ok,false); if(!result.ok) assert.equal(result.signal.kind,"permission-denied"); assert.equal(calls,1);
+});
