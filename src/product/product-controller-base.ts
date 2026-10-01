@@ -640,28 +640,28 @@ export class ProductControllerBase implements ProductControlPort {
           if (disposition.primary === "authentication-required") {
             terminalClassification = uncertain ? "uncertain" : "blocked";
             terminalReason = uncertain ? "uncertain-physical-outcome" : "authentication-required";
-            this.setStatus({ kind: "authentication-required", reason: terminalReason });
+            this.setStatus({ kind: "authentication-required", reason: surfaceReason ?? "authorization-required" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "deferred") {
             terminalClassification = uncertain ? "uncertain" : "deferred";
             terminalReason = uncertain ? "uncertain-physical-outcome" : "retryable-failure";
-            this.setStatus({ kind: "offline-deferred", reason: terminalReason });
+            this.setStatus({ kind: "offline-deferred", reason: surfaceReason ?? "remote synchronization deferred" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "recovery-required") {
             terminalClassification = uncertain ? "uncertain" : "recovery-required";
             terminalReason = uncertain ? "uncertain-physical-outcome" : "recovery-required";
-            this.setStatus({ kind: "recovery-required", reason: terminalReason });
+            this.setStatus({ kind: "recovery-required", reason: exactV1_3.reason ?? "physical reconciliation is required" });
             globalFailure = true;
             break;
           }
           if (disposition.primary === "blocking-failure") {
             terminalClassification = uncertain ? "uncertain" : "blocked";
             terminalReason = uncertain ? "uncertain-physical-outcome" : "blocking-failure";
-            this.setStatus({ kind: "error", code: "operation-blocked", message: terminalReason });
+            this.setStatus({ kind: "error", code: "operation-blocked", message: exactV1_3.reason ?? "operation blocked" });
             globalFailure = true;
             break;
           }
