@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 880512 bytes; SHA-256 cee1da879b4c5c73894cb7dee84e55ea434f9dd66a54f59174d9893657f7a860
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s07b-prereq-persisted-recovery-gate
+- Source build HEAD requested: 77d18a1fa3736b7c4fa502a0ed01b1dd08dd88f8
+- Verification checkout HEAD: 77d18a1fa3736b7c4fa502a0ed01b1dd08dd88f8
+- Evidence publication target: origin/bvp-s07b-prereq-persisted-recovery-gate
