@@ -48,7 +48,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 06E | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06e-exclusions-unknown-files-and-empty-folder-scenarios.md` |
 | 06V | S06 — Deterministic Reconciliation / Conflict / Move / Deletion Coverage | COMPLETE | `06-deterministic-reconciliation-conflict-move-delet/06v-primary-stage-phx-ci-acceptance-and-coverage-reconciliation.md` |
 | 07A | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07a-crash-commit-order-and-ambiguous-result-scenarios.md` |
-| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
+| 07B | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | BLOCKED | `07-deterministic-crash-recovery-fault-safety-scale-/07b-state-cursor-listing-root-recovery-scenarios.md` |
 | 07C | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07c-device-authority-and-cancellation-scenarios.md` |
 | 07D | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07d-transfer-integrity-and-retry-backoff-scenarios.md` |
 | 07E | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | PREPLANNED | `07-deterministic-crash-recovery-fault-safety-scale-/07e-quota-disk-destructive-safety-config-and-lifecycle-deterministic-scenarios.md` |
@@ -348,3 +348,6 @@ Hard architecture constraints:
 
 Authorized prerequisite implementation surfaces are limited to the existing scenario contract/runner family, the existing in-memory Drive core, one focused test, and prerequisite/binding documentation. If the complete S07B control set cannot fit the residual framework budget without weakening behavior, stop BLOCKED rather than increasing the budget.
 
+
+
+S07B is **BLOCKED / MISSING GENERIC CAPABILITY** after repository grounding against accepted S07A closure `62b91e21d8d9be43f98a0e4cdd49081b750e13dc`. Existing S04 backing/core mechanics already support durable-state corruption/truncation/incompatible schema and cursor invalidation, while listing/change completeness is already declarative. The frozen DSL does not expose the state/cursor controls, and the virtual Drive core lacks a deterministic managed-root loss/replacement mutation control. A bounded prerequisite `07b-prerequisite-state-cursor-root-controls.md` is authorized under the pre-S07B architecture review at `93262366c749b27f95f973f1c6db04673f7f8fcb`, with <=30 net framework-core LOC and no production/seam/PowerShell/PHX-CI delta.
