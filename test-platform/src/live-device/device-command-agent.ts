@@ -101,7 +101,7 @@ function boundedString(value: unknown, max = 256): value is string {
 
 function canonical(value: unknown): string {
   if (value === undefined) return "undefined";
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "undefined";
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   const record = value as Record<string, unknown>;
   return "{" + Object.keys(record).sort().map(key => JSON.stringify(key) + ":" + canonical(record[key])).join(",") + "}";
@@ -134,7 +134,7 @@ function parseCommand(value: unknown): DeviceCommand | undefined {
     case "production-execute":
       return boundedString(record.planId, 256) ? base as DeviceCommand : undefined;
     case "production-control":
-      return ["pause", "resume", "cancel-active-sync"].includes(String(record.action)) ? base as DeviceCommand : undefined;
+      return typeof record.action === "string" && ["pause", "resume", "cancel-active-sync"].includes(record.action) ? base as DeviceCommand : undefined;
     case "observe-product":
       return base as DeviceCommand;
     default:
@@ -204,7 +204,9 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
           ? { ...base, classification: "fixture-removal-verified", fixture: copy(observed) }
           : resultFor(options, command, "failed", "fixture-removal-unverified");
       }
-      return { ...base, classification: "fixture-observed", fixture: copy(await options.fixtures.observe(path)) };
+      const observed = await options.fixtures.observe(path);
+      if (observed.exists && !verifiedFixture(observed, true)) return resultFor(options, command, "failed", "fixture-observation-incomplete");
+      return { ...base, classification: "fixture-observed", fixture: copy(observed) };
     }
 
     const production = options.production;
