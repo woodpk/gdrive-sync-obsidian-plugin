@@ -23,10 +23,12 @@ class RecordingExecutor implements ScenarioStepExecutor {
   readonly executionMode = "live" as const;
   readonly deviceIdentities = ["device:ios", "device:windows"];
   readonly seen: string[] = [];
+  readonly indexes: number[] = [];
   disposed = 0;
   constructor(private readonly results: Record<string, ScenarioCapabilityResult>) {}
   async execute(step: ScenarioStep, context: ScenarioExecutorContext): Promise<ScenarioCapabilityResult> {
     this.seen.push(step.id);
+    this.indexes.push(context.stepIndex);
     if (step.kind === "assert") {
       strictEqual(context.readCapture(step.observationRef) !== undefined, true);
     }
@@ -48,6 +50,7 @@ test("same runner owns live step order, captures, verdict, evidence mode, and di
   ]));
   strictEqual(result.status, "completed");
   deepStrictEqual(executor.seen, ["fixture", "observe", "assert"]);
+  deepStrictEqual(executor.indexes, [0, 1, 2]);
   deepStrictEqual(result.captures.observed, { status: "present", exists: true });
   strictEqual(executor.disposed, 1);
   strictEqual(result.evidence?.machine.executionMode, "live");
@@ -90,4 +93,20 @@ test("execution mode applicability remains runner-owned", async () => {
   strictEqual(result.classification, "execution-mode-not-applicable");
   strictEqual(executor.seen.length, 0);
   strictEqual(result.evidence?.machine.executionMode, "live");
+});
+
+
+test("deterministic path retains deterministic evidence mode and observation capture ownership", async () => {
+  const deterministic = defineScenario({
+    id: "deterministic-mode-proof",
+    description: "deterministic mode preservation",
+    traceability: { targets: [{ kind: "requirement", id: "REQ-S08E-DETERMINISTIC" }] },
+    executionModes: ["deterministic"],
+    steps: [{ id: "observe", kind: "observe", subject: "remote-change-state", captureAs: "empty" }],
+  });
+  const result = await new DeterministicScenarioRunner({ observe: async () => ({ status: "completed" }) }).run(deterministic);
+  strictEqual(result.status, "completed");
+  strictEqual(result.evidence?.machine.executionMode, "deterministic");
+  strictEqual(Object.prototype.hasOwnProperty.call(result.captures, "empty"), true);
+  strictEqual(result.captures.empty, undefined);
 });

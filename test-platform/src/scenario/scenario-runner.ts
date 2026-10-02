@@ -38,7 +38,7 @@ export interface ScenarioRunnerHooks {
   assert?(step: ScenarioAssertionStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;
   checkpoint?(step: ScenarioCheckpointStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;
 }
-export interface ScenarioExecutorContext { readCapture(ref: string): unknown | undefined; }
+export interface ScenarioExecutorContext { readonly stepIndex: number; readCapture(ref: string): unknown | undefined; }
 export interface ScenarioStepExecutor {
   readonly executionMode: ScenarioExecutionMode;
   readonly deviceIdentities: readonly string[];
@@ -77,6 +77,7 @@ export class DeterministicScenarioRunner {
     const executionMode = this.executor?.executionMode ?? "deterministic";
     if (!scenario.executionModes.includes(executionMode)) {
       const core = { scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {}, classification: "execution-mode-not-applicable" };
+      await this.executor?.dispose?.();
       return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: [], executionMode }) };
     }
 
@@ -105,12 +106,12 @@ export class DeterministicScenarioRunner {
       let actual: StepOutcome;
       try {
         actual = this.executor
-          ? await this.executor.execute(step, { readCapture: ref => captures.get(ref) })
+          ? await this.executor.execute(step, { stepIndex: index, readCapture: ref => captures.get(ref) })
           : await this.execute(step, context!, devices, captures);
       } catch (error) {
         actual = fail("failed", "step-exception", error instanceof Error ? error.message : String(error));
       }
-      if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && "value" in actual) captures.set(step.captureAs, actual.value);
+      if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && ("value" in actual || step.kind === "observe")) captures.set(step.captureAs, "value" in actual ? actual.value : undefined);
       const matchedExpectation = expectedMatches(step.expect, actual);
       steps.push({
         index, stepId: step.id, kind: step.kind, status: actual.status, matchedExpectation,
