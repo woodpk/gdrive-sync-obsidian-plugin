@@ -241,7 +241,7 @@ async function observe(step: ScenarioObservationStep, context: ScenarioRunnerHoo
 
 const same = (left: unknown, right: unknown): boolean => JSON.stringify(left) === JSON.stringify(right);
 
-async function assertObservation(step: ScenarioAssertionStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult> {
+export async function assertScenarioObservation(step: ScenarioAssertionStep, context: Pick<ScenarioRunnerHookContext, "readCapture">): Promise<ScenarioCapabilityResult> {
   const observed = context.readCapture(step.observationRef);
   if (observed === undefined) return { status: "blocked", classification: "missing-observation", reason: step.observationRef };
   const record = isRecord(observed) ? observed : undefined;
@@ -274,7 +274,7 @@ async function assertObservation(step: ScenarioAssertionStep, context: ScenarioR
 }
 
 export function createScenarioEvidenceHooks(): ScenarioRunnerHooks {
-  return { observe, assert: assertObservation };
+  return { observe, assert: assertScenarioObservation };
 }
 
 export function buildScenarioEvidence(
