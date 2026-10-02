@@ -3,13 +3,81 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08D
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+
+## 0.1 Dispatch Binding
+
+Repository coordinates:
+
+- exact post-prerequisite architecture-confirmed predecessor / PHX-CI base: `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6`;
+- task branch: `bvp-s08e-external-live-executor-checkpoints`;
+- accepted single-runner executor seam: `test-platform/src/scenario/scenario-runner.ts`;
+- accepted bounded checkpoint representation: `test-platform/src/scenario/scenario-checkpoint.ts`;
+- accepted S08C command/result contract: `test-platform/src/live-device/device-command-agent.ts`;
+- accepted S08D external-controller transport boundary: protected relay files under `.obsidian/plugins/brain-google-drive-sync/.bvp-relay/{outbox,sent,inbox}`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework version: `0.2.0-dev.2`;
+- framework core baseline: 3,996 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device/relay baseline: 572 / 750 logical TypeScript LOC;
+- production seam baseline: 187 / 350 logical LOC / 3 of 4 files;
+- BVP PowerShell baseline: 4 scripts / 1,492 logical LOC.
+
+Selected live capability mapping for S09 physical use:
+
+- `fixture:put-local-file` with UTF-8 content -> S08C `fixture-put{text}`;
+- `fixture:remove-local` -> S08C `fixture-remove`;
+- `production:preview` -> S08C manual production preview;
+- `production:reconcile` -> verify/reconcile preview followed by production execute;
+- `production:synchronize` -> manual preview followed by production execute;
+- `production:execute-reviewed-plan` -> S08C production execute using runner-owned prior plan capture;
+- `external-state:request-cancellation` -> S08C `production-control:cancel-active-sync`;
+- `observe:local-entry` -> S08C `observe-file`;
+- `observe:device-state` -> S08C `observe-product`;
+- `observe:production-plan` / `observe:production-result` -> prior runner capture observation;
+- `assert:*` -> the existing generic scenario assertion semantics;
+- `checkpoint:capture` and live `checkpoint:restart-device` -> explicit human checkpoint instructions plus persisted S05D checkpoint state.
+
+Fail-closed mappings:
+
+- arbitrary remote fixture mutation, local move/folder fixture, deterministic fault injection, provider simulation, automatic-sync triggering, remote-entry/change-feed observation, and arbitrary bytes content are unsupported unless a later task binds an already-authorized physical mechanism;
+- transport completion is never synchronization success;
+- production execute succeeds only when the correlated S08A receipt terminal is `complete`; partial/failed/cancelled/uncertain propagate as failure, while blocked/deferred/recovery-required propagate as blocked;
+- missing, stale, or mismatched result correlation blocks/fails rather than continuing.
+
+Human checkpoint binding:
+
+- checkpoint instructions are bound externally by checkpoint ID and contain exact operator action, target device, stop condition, required resume-evidence kinds, and next safe command/observation;
+- instruction text is not persisted in checkpoint state;
+- only encoded S05D checkpoint data is durable;
+- resume must validate scenario, run, live execution mode, and exact bound device identities;
+- required resume-evidence kinds must be supplied before the checkpoint step can complete;
+- a checkpoint crossing a prior capture dependency required after resume fails closed instead of replaying physical mutations or persisting arbitrary capture state;
+- controller restart is supported by deterministic command IDs/sequences and the existing S08C duplicate/sequence safety rather than device-local scenario state.
+
+Exact writable-path allowlist:
+
+- NEW `test-platform/src/live-device/live-scenario-executor.ts`;
+- `test-platform/src/scenario/scenario-evidence.ts` only to expose the existing generic assertion helper without changing semantics;
+- NEW `test-platform/test/s08e-external-live-executor.test.ts`;
+- `test-platform/test/architecture-metrics.test.ts` only to freeze the measured live-device baseline after implementation;
+- `test-platform/test/s08b-validation-build-entrypoint.test.ts` only if needed to prove the external executor remains outside the device validation bundle;
+- this task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No production, scenario definition, scenario runner, checkpoint implementation, device command-agent, mailbox/relay implementation, PowerShell, PHX-CI, governance-budget, package, manifest, OAuth, or S08F path is writable.
+
+Focused verification command after implementation:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08e-external-live-executor.test.js .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-checkpoint.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`; do not begin S08F.
 
 ## 1. Objective
 

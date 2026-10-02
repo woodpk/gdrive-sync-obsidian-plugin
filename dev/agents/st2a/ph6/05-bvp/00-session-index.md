@@ -58,7 +58,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 08B | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08b-validation-only-obsidian-build-entrypoint.md` |
 | 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
-| 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
+| 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
 | 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
 | 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
 | 09A | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md` |
@@ -854,3 +854,6 @@ Architecture findings:
 - no new runner, workflow engine, scenario language, checkpoint model, persistence family, evidence family, coordination protocol, transport, production policy, or governance budget was introduced.
 
 S08E proper is therefore **UNBLOCKED FOR DISPATCH BINDING**. It must consume the accepted single-runner executor seam, S05D checkpoint representation, S08C device commands, and S08D mailbox/relay rather than create parallel authority.
+
+
+S08E — External Live Executor and Human Checkpoints is **BOUND / EXECUTABLE** from post-prerequisite architecture-confirmed integration `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6` on branch `bvp-s08e-external-live-executor-checkpoints`. It must use the single accepted runner executor seam, S05D bounded checkpoint representation, S08C commands/results, and the protected S08D local relay boundary. Device credentials remain inside validation plugins. Supported live mappings are bounded to local text fixture put/remove, production preview/synchronize/reconcile/execute, cancellation control, local/product observations, prior-capture observation, existing generic assertions, and explicit human checkpoints. Unsupported physical capabilities fail closed. Framework core baseline is 3,996/4,000 / 10 modules; live-device/relay 572/750; production seam 187/350 and 3/4; BVP PowerShell 4/1,492.
