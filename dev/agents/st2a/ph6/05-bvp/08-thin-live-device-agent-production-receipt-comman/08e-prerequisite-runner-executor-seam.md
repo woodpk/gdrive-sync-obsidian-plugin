@@ -33,6 +33,48 @@ Grounded gap:
 - no other runner/executor abstraction exists;
 - canonical evidence hard-codes `executionMode: "deterministic"`.
 
+
+## 0.2 Ready-for-Verification Record
+
+The S08E single-runner executor prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `a234f6b611c1cded1d2ae60b02531ed9888dfc4c`;
+- exact architecture-reviewed predecessor / PHX-CI base: `bdd34c5e32d42cdfe20bc82fe97a17cce4e9f171`;
+- branch: `bvp-s08e-prereq-runner-executor-seam`;
+- no new framework-core runtime module was added;
+- `DeterministicScenarioRunner` remains the sole scenario runner;
+- optional `ScenarioStepExecutor` declares one execution mode, bounded device identities, one-step execution, bounded prior-capture reads, current step index, and optional disposal;
+- executor-driven runs do not construct the deterministic virtual world and cannot invoke deterministic fixture/production/external-state mechanics for the same step;
+- runner-owned capture handling is centralized for deterministic and executor-driven completed results;
+- deterministic observation hooks retain the accepted historical behavior of recording an explicit undefined capture when a completed observation returns no value;
+- runner-owned expected-outcome matching, early termination, final verdict, evidence creation, and executor disposal are preserved;
+- invalid scenario and execution-mode mismatch dispose an injected executor without dispatching a step;
+- canonical evidence schemaVersion remains 1 and now records the actual existing `ScenarioExecutionMode` union;
+- deterministic evidence still records `deterministic`; executor-driven live evidence records `live`;
+- framework core is **3,996 / 4,000 logical TypeScript LOC across exactly 10 modules**;
+- live-device/relay remains 572 / 750 LOC;
+- production source/seam, PowerShell, governance, transport, mailbox, checkpoint implementation, scenario definitions, and evidence family count are unchanged.
+
+Focused proof includes:
+
+- existing deterministic runner tests;
+- existing canonical-evidence tests;
+- live-only scenario execution through the same runner;
+- strict step-index/order delivery to the injected executor;
+- runner-owned captures;
+- expected blocked continuation;
+- failed and unsupported early-terminal propagation;
+- live evidence mode/device identities;
+- deterministic evidence-mode/capture compatibility;
+- executor disposal on completion, early terminal, invalid input, and mode rejection;
+- architecture metrics/budgets.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+S08E proper remains blocked until authoritative PHX-CI passes, the full evidence triad is reviewed, this prerequisite is accepted/promoted, and post-prerequisite architecture confirmation passes.
+
 ## 1. Objective
 
 Refactor the existing S05 runner into one runner with a narrow injected step-executor seam so later S08E can supply live step mechanics without creating a second runner or changing declarative scenario authority.
