@@ -110,6 +110,60 @@ Focused command:
 
 BVP-GOV-010 size gate: PASS. This child adds one bounded validation-only runtime module, extends one existing validation-only entry module, and adds one focused contract test. It creates no second runner, router/plugin framework, distributed workflow engine, persistence/evidence family, production seam, PowerShell, or transport implementation.
 
+
+## 0.2 Ready-for-Verification Record
+
+BVP-S08C is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `47b02e4fa72a9fd5a32f1a6e60513e102f51997b`;
+- exact accepted predecessor / PHX-CI base: `975c211d74fdad04c58e2fc6d4d35b3ab66c9460`;
+- branch: `bvp-s08c-device-command-agent`;
+- implementation adds one validation-only runtime module `test-platform/src/live-device/device-command-agent.ts`;
+- `validation-entrypoint.ts` exposes the agent factory only in the validation artifact;
+- S08B regression proof is updated to the accepted prerequisite production hash and the enlarged validation-only input set;
+- architecture-metrics actual-repository baseline is 482 live-device/relay logical TypeScript LOC;
+- live-device/relay budget remaining after S08C: 268 LOC;
+- production seam remains 187 / 350 LOC and 3 / 4 files;
+- framework core remains 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- BVP PowerShell remains 4 scripts / 1,492 LOC;
+- scenario-specific production and PowerShell remain 0 / 0;
+- production, governance, PowerShell, PHX-CI, package, manifest, OAuth, scenario, mailbox/relay, and external-runner implementation are unchanged.
+
+The implemented command set is exactly:
+
+- `fixture-put`;
+- `fixture-remove`;
+- `observe-file`;
+- `production-preview`;
+- `production-execute`;
+- `production-control`;
+- `observe-product`.
+
+Safety proof encoded in the focused tests includes:
+
+- run/device mismatch rejection before mutation;
+- first/next sequence enforcement;
+- gap and stale sequence rejection;
+- exact duplicate replay without repeated effect;
+- altered duplicate sequence conflict;
+- write-ahead sequence claim before side effects;
+- restart behavior that leaves an unfinished claimed command outcome-uncertain and non-replayable;
+- malformed and unsupported command rejection;
+- fixture-root escape prevention and bounded text/pattern generation;
+- objective fixture verification;
+- bounded manual and Verify/Reconcile plan summaries;
+- production execution requiring a newly correlated production receipt;
+- propagation of `uncertain` without upgrading it;
+- pause/resume/cancel delegation;
+- copied product observation;
+- validation artifact factory inclusion and ordinary production bundle isolation.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+S08C remains unaccepted until authoritative PHX-CI passes and the complete persisted JSON, Markdown, and execution log are reviewed.
+
 ## 1. Objective
 
 Implement the validation-only device agent that executes one bounded addressed command at a time inside Obsidian and returns one typed bounded result/observation, while rejecting stale, duplicate, misaddressed, or invalid commands.
