@@ -46,7 +46,7 @@ function fixtureHarness() {
   return { port, calls };
 }
 
-function command(sequence: number, body: Omit<DeviceCommand, "runId" | "deviceId" | "sequence" | "commandId"> & { commandId?: string }): DeviceCommand {
+function command(sequence: number, body: any): DeviceCommand {
   return {
     runId,
     deviceId,
@@ -114,9 +114,6 @@ test("run/device/sequence safety executes one fixture command once and replays e
   equal(altered.classification, "sequence-conflict");
   equal(fixtures.calls.length, callsAfterFirst);
 
-  const stale = await agent.execute(command(0 as any, { kind: "observe-file", path: "note.md" }));
-  equal(stale.classification, "invalid-command");
-
   const gap = await agent.execute(command(3, { kind: "observe-file", path: "note.md" }));
   equal(gap.classification, "sequence-gap");
 
@@ -125,6 +122,17 @@ test("run/device/sequence safety executes one fixture command once and replays e
   const wrongDevice = await agent.execute({ ...command(2, { kind: "observe-file", path: "note.md" }), deviceId: "other-device" });
   equal(wrongDevice.classification, "device-mismatch");
   equal(fixtures.calls.length, callsAfterFirst);
+
+  const observed = await agent.execute(command(2, { kind: "observe-file", path: "note.md" }));
+  equal(observed.classification, "fixture-observed");
+  const callsAfterSecond = fixtures.calls.length;
+  const stale = await agent.execute(command(1, { kind: "observe-file", path: "note.md", commandId: "old-different-command" }));
+  equal(stale.classification, "stale-sequence");
+  equal(fixtures.calls.length, callsAfterSecond);
+
+  const removed = await agent.execute(command(3, { kind: "fixture-remove", path: "note.md" }));
+  equal(removed.classification, "fixture-removal-verified");
+  equal(removed.fixture?.exists, false);
 });
 
 test("write-ahead claim prevents ambiguous command replay across agent reconstruction", async () => {
@@ -150,6 +158,7 @@ test("malformed input, fixture escape, and bounded fixture sizes fail closed bef
     sequenceState: new MemorySequenceStore(), maxInlineTextChars: 5, maxPatternBytes: 16,
   });
   equal((await agent.execute({ nope: true })).classification, "invalid-command");
+  equal((await agent.execute({ runId, deviceId, sequence: 1, commandId: "unsupported", kind: "unsupported-command" })).classification, "invalid-command");
   equal((await agent.execute(command(1, { kind: "fixture-put", path: "../escape.md", content: { type: "text", text: "x" } }))).classification, "fixture-path-out-of-scope");
   equal(fixtures.calls.length, 0);
 
@@ -185,20 +194,24 @@ test("production commands remain bounded and terminal receipt authority is propa
     globalExecutionGate: "none",
   });
 
-  const execute = await agent.execute(command(2, { kind: "production-execute", planId: "plan-manual" }));
+  const verify = await agent.execute(command(2, { kind: "production-preview", mode: "verify-reconcile" }));
+  equal(verify.plan?.planId, "plan-verify");
+  equal(verify.plan?.trigger, "verify-reconcile");
+
+  const execute = await agent.execute(command(3, { kind: "production-execute", planId: "plan-manual" }));
   equal(execute.status, "completed");
   equal(execute.classification, "production-uncertain");
   equal(execute.receipt?.terminal, "uncertain");
   equal(execute.receipt?.requiredEffectsCommittedAndVerified, false);
 
-  const pause = await agent.execute(command(3, { kind: "production-control", action: "pause" }));
+  const pause = await agent.execute(command(4, { kind: "production-control", action: "pause" }));
   equal(pause.classification, "production-control-accepted");
-  const resume = await agent.execute(command(4, { kind: "production-control", action: "resume" }));
+  const resume = await agent.execute(command(5, { kind: "production-control", action: "resume" }));
   equal(resume.classification, "production-control-accepted");
-  const cancel = await agent.execute(command(5, { kind: "production-control", action: "cancel-active-sync" }));
+  const cancel = await agent.execute(command(6, { kind: "production-control", action: "cancel-active-sync" }));
   equal(cancel.classification, "production-control-accepted");
 
-  const observed = await agent.execute(command(6, { kind: "observe-product" }));
+  const observed = await agent.execute(command(7, { kind: "observe-product" }));
   equal(observed.classification, "product-observed");
   deepEqual(observed.productStatus, { kind: "idle-ready" });
   notEqual(observed.productStatus, production.control.currentStatus());

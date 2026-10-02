@@ -100,6 +100,7 @@ function boundedString(value: unknown, max = 256): value is string {
 }
 
 function canonical(value: unknown): string {
+  if (value === undefined) return "undefined";
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   const record = value as Record<string, unknown>;
@@ -258,11 +259,12 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
       };
     }
 
+    const receipt = production.latestProductionRunReceipt();
     return {
       ...base,
       classification: "product-observed",
       productStatus: copy(production.currentStatus()),
-      ...(production.latestProductionRunReceipt() ? { receipt: copy(production.latestProductionRunReceipt()!) } : {}),
+      ...(receipt ? { receipt: copy(receipt) } : {}),
     };
   }
 
