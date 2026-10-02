@@ -110,7 +110,7 @@ export class DeterministicScenarioRunner {
       } catch (error) {
         actual = fail("failed", "step-exception", error instanceof Error ? error.message : String(error));
       }
-      if (this.executor && actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && "value" in actual) captures.set(step.captureAs, actual.value);
+      if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && "value" in actual) captures.set(step.captureAs, actual.value);
       const matchedExpectation = expectedMatches(step.expect, actual);
       steps.push({
         index, stepId: step.id, kind: step.kind, status: actual.status, matchedExpectation,
@@ -132,8 +132,7 @@ export class DeterministicScenarioRunner {
     step: ScenarioStep, context: ScenarioRunnerHookContext,
     devices: Map<string, VirtualProductionDevice>, captures: Map<string, unknown>,
   ): Promise<StepOutcome> {
-    try {
-      switch (step.kind) {
+    switch (step.kind) {
         case "fixture": return await this.fixture(step, context.world);
         case "production": return await this.production(step, context, captures);
         case "external-state": return await this.external(step, context);
@@ -145,16 +144,11 @@ export class DeterministicScenarioRunner {
           return { status: "completed" };
         case "observe": {
           if (!this.hooks.observe) return fail("blocked", "observation-capability-unavailable");
-          const result = await this.hooks.observe(step, context);
-          if (result.status === "completed") captures.set(step.captureAs, result.value);
-          return result;
+          return await this.hooks.observe(step, context);
         }
         case "assert":
           return this.hooks.assert ? await this.hooks.assert(step, context) : fail("blocked", "assertion-capability-unavailable");
-        default: return assertNeverScenarioStep(step);
-      }
-    } catch (error) {
-      return fail("failed", "step-exception", error instanceof Error ? error.message : String(error));
+      default: return assertNeverScenarioStep(step);
     }
   }
 
@@ -222,7 +216,6 @@ export class DeterministicScenarioRunner {
       const result = await device.controller.requestPreviewAction({
         kind: "execute-plan", planId: (plan as { readonly planId: never }).planId,
       });
-      if (step.captureAs) captures.set(step.captureAs, result);
       return result.status === "accepted" ? { status: "completed", value: result } : fail("failed", "production-request-rejected", result.reason);
     }
     if (step.operation === "automatic-sync") { await device.controller.runAutomatic("local-change"); const kind = device.controller.currentSurface().status.kind; return ["recovery-required", "authentication-required", "offline-deferred", "error"].includes(kind) ? fail("blocked", kind) : { status: "completed" }; }
@@ -232,12 +225,8 @@ export class DeterministicScenarioRunner {
       ? await device.controller.previewVerifyReconcile()
       : await device.controller.previewManual();
     if (!plan) return fail("blocked", "missing-production-plan");
-    if (step.operation === "preview") {
-      if (step.captureAs) captures.set(step.captureAs, plan);
-      return { status: "completed", value: plan };
-    }
+    if (step.operation === "preview") return { status: "completed", value: plan };
     const result = await device.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
-    if (step.captureAs) captures.set(step.captureAs, result);
     return result.status === "accepted" ? { status: "completed", value: result } : fail("failed", "production-request-rejected", result.reason);
   }
 
