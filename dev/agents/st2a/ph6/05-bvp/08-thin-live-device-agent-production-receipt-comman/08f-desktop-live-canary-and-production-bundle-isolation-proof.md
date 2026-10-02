@@ -16,7 +16,8 @@ This is a complete prewritten semantic contract. Dispatch binding supplies hard 
 
 Repository coordinates:
 
-- exact accepted S08E predecessor / runtime source: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- exact accepted S08E predecessor closure: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- exact accepted S08E runtime / validation-artifact source: `e1067f5159a316f328c492837b8c6ff59e08d226`;
 - task branch: `bvp-s08f-desktop-live-canary`;
 - package / manifest version: `0.1.18`;
 - accepted ordinary production artifact baseline: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
@@ -45,14 +46,14 @@ Disposable canary identity:
 - fixture relative path: `canary.md`;
 - fixture vault path: `BVP-VALIDATION/s08f-desktop-canary-4f9c69c/canary.md`;
 - fixture content exactly:
-  `BVP S08F desktop live canary\nsource=4f9c69c38c12c09d2f06f3f966dc8519ed45a99f\n`;
+  `BVP S08F desktop live canary\nsource=e1067f5159a316f328c492837b8c6ff59e08d226\n`;
 - fixture UTF-8 byte length: 77;
-- fixture SHA-256: `77c2d998d79fa0bd9f26f7f20aa1a7f6e9ea638f12eb138409b8f2b97e837ce7`;
+- fixture SHA-256: `db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d`;
 - no permanent user file may be used or modified as canary content.
 
 Selected bounded canary:
 
-1. build the validation artifact from exact accepted S08E source `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+1. build the validation artifact from exact accepted S08E runtime source `e1067f5159a316f328c492837b8c6ff59e08d226`;
 2. back up installed `main.js` and `manifest.json` only; preserve `data.json` and all local authentication/pairing state;
 3. install the validation artifact into the established Windows plugin directory and reload Obsidian;
 4. confirm validation build identity and existing authenticated/paired product state;
