@@ -9,7 +9,13 @@ import {
   pollDeviceMailboxOnce,
   type AuthenticatedDriveRequest,
 } from "../src/live-device/drive-mailbox";
-import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "../src/live-device/device-command-agent";
+import {
+  createBoundedDeviceCommandAgent,
+  type BoundedDeviceCommandAgent,
+  type DeviceCommand,
+  type DeviceCommandResult,
+  type DeviceSequenceState,
+} from "../src/live-device/device-command-agent";
 
 class FakeDrive {
   next=1; files=new Map<string,{meta:any;content:string}>();
@@ -39,3 +45,6 @@ test("Windows relay survives reconstruction using only exact sent command files"
 
 
 test("unavailable relay stays pending and relay path is protected from managed synchronization",async()=>{const files=new Files(),root=".obsidian/plugins/brain-google-drive-sync/.bvp-relay",c=command();for(const p of [root,root+"/outbox"])files.dirs.add(p);await files.write(root+"/outbox/cmd.json",JSON.stringify(c));const mailbox=createDriveCommandMailbox(async()=>{throw new Error("offline");});const relay=createWindowsMailboxRelay(mailbox,files,root);deepEqual(await relay.pumpOnce(),{status:"unavailable",published:0,completed:0});equal(await files.exists(root+"/outbox/cmd.json"),true);const policy=readFileSync(resolve(process.cwd(),"src/local/config-policy.ts"),"utf8");equal(policy.includes('lower.startsWith("plugins/brain-google-drive-sync/")'),true);equal(policy.includes('{ classification: "protected", reason: "sync-operational-state" }'),true);});
+
+
+test("reordered and duplicate mailbox delivery cannot bypass S08C sequence safety",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),calls:string[]=[];let state:DeviceSequenceState|undefined;const agent=createBoundedDeviceCommandAgent({runId:"run-a",deviceId:"device-a",fixtureRoot:"BVP-VALIDATION/run-a",fixtures:{async putText(path,text){calls.push("put:"+path+":"+text);},async putPattern(){throw new Error("unused");},async remove(){throw new Error("unused");},async observe(path){return{exists:true,sizeBytes:1,sha256:"a".repeat(64)};}},sequenceState:{async load(){return state?structuredClone(state):undefined;},async save(_run,_device,value){state=structuredClone(value);}}});const one={runId:"run-a",deviceId:"device-a",sequence:1,commandId:"one",kind:"fixture-put",path:"one.md",content:{type:"text",text:"1"}} as DeviceCommand;const two={runId:"run-a",deviceId:"device-a",sequence:2,commandId:"two",kind:"fixture-put",path:"two.md",content:{type:"text",text:"2"}} as DeviceCommand;await mailbox.publishCommand(two);await mailbox.publishCommand(one);await mailbox.publishCommand(one);deepEqual(await pollDeviceMailboxOnce(mailbox,agent,"run-a","device-a"),{status:"ok",processed:2});deepEqual(calls,["put:BVP-VALIDATION/run-a/one.md:1","put:BVP-VALIDATION/run-a/two.md:2"]);deepEqual(await pollDeviceMailboxOnce(mailbox,agent,"run-a","device-a"),{status:"ok",processed:0});equal(calls.length,2);});
