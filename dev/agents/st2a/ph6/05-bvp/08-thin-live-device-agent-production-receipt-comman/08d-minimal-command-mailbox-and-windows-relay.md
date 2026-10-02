@@ -97,6 +97,58 @@ Focused command:
 
 BVP-GOV-010 size gate: PASS. This child is limited to one compact validation-only Drive-mailbox/relay module plus bounded validation-composition wiring and focused tests; it creates no general message broker, backend, queue platform, scenario engine, second evidence schema, new OAuth scope, or production transport.
 
+
+## 0.2 Ready-for-Verification Record
+
+BVP-S08D is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `91f667d502e3fc418c15636954d87e2527b317a3`;
+- exact accepted S08C predecessor / PHX-CI base: `03d0d8da3c860a35943f214c9b90c83bfdb9a132`;
+- branch: `bvp-s08d-minimal-command-mailbox`;
+- selected transport is one separately tagged app-created ordinary-Drive mailbox under the already-authorized exact `drive.file` scope;
+- `appDataFolder`, new OAuth scopes, token export, developer-hosted backend, and production synchronization transport are absent;
+- device authentication is reused only inside the generated validation composition through existing shipping OAuth/HTTP classes and device-local Obsidian SecretStorage;
+- Windows external-controller bridging is validation-only through `.obsidian/plugins/brain-google-drive-sync/.bvp-relay/{outbox,sent,inbox}`;
+- the relay directory is covered by the production configuration policy's protected `plugins/brain-google-drive-sync/**` sync-operational-state rule;
+- the relay stores only exact pending command/result records and reconstructs no scenario graph, final verdict, or future-step state.
+
+Runtime implementation delta:
+
+- NEW `test-platform/src/live-device/drive-mailbox.ts`;
+- `test-platform/src/live-device/validation-entrypoint.ts` installs a bounded mailbox runtime;
+- `test-platform/src/live-device/build-validation-artifact.ts` composes device-local OAuth/Drive request authority into the validation-only plugin subclass;
+- no production source, production seam, governance, PowerShell, PHX-CI, package, manifest, OAuth-scope, scenario, or external-runner implementation changes.
+
+Safety proof includes:
+
+- separately tagged mailbox root with no BRAIN managed-sync role;
+- bounded 128 KiB command/result records;
+- sensitive credential-key rejection and unknown-command-field sanitization;
+- exact run/device/sequence/command result correlation;
+- wrong-run/wrong-device filtering;
+- conflicting duplicate result rejection;
+- explicit Drive-unavailable state;
+- device pump preservation of typed S08C results;
+- reordered and duplicate mailbox delivery through the real S08C agent without repeated effects;
+- Windows outbox -> Drive -> sent and correlated result -> inbox transitions;
+- relay restart reconstruction from exact `sent/` records only;
+- unavailable relay leaves the pending local command intact;
+- ordinary production bundle excludes mailbox markers while validation bundle includes them.
+
+Architecture projection:
+
+- production source/seam: unchanged at 16,813 logical LOC and 187 / 350 seam LOC across 3 / 4 seam files;
+- framework core: unchanged at 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device agent/relay: **572 / 750 logical TypeScript LOC**, leaving 178 LOC;
+- BVP PowerShell: unchanged at 4 scripts / 1,492 LOC;
+- scenario-specific production and PowerShell: 0 / 0.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+S08D is not accepted until authoritative PHX-CI passes and the exact persisted JSON, Markdown, and complete execution log are reviewed.
+
 ## 1. Objective
 
 Implement the simplest no-backend transport that can move bounded S08C commands/results between the external controller and live validation participants, using only already-permitted user-owned authority and an optional thin Windows relay where host credential access requires it.
