@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Purpose:** prerequisite only; S08C proper remains PREPLANNED / NOT-YET-EXECUTABLE.
 
@@ -65,6 +65,48 @@ Focused command:
 Authoritative PHX-CI MUST use `BVP_CHANGE_CLASS=authorized-governance`.
 
 This prerequisite is not accepted until PHX-CI passes and the persisted JSON, Markdown, and complete execution log are reviewed. S08C proper remains blocked.
+
+
+## 0.3 Acceptance Record
+
+The S08C production-control prerequisite is **COMPLETE / ACCEPTED**.
+
+Authoritative acceptance lineage:
+
+- accepted implementation HEAD: `24a5f94518679254d4855a4a2f0d42e15e939c64`;
+- authoritative PHX-CI evidence commit: `d4cfef6a48e257ca2d7b43c74400134175406c2f`;
+- authoritative PHX-CI run ID: `327eb380-d50b-4295-9bb7-53cf684c00cc`;
+- exact verification base: `c31f99dd5e2ea0cbf6443ba3110f377f4292f67b`;
+- complete persisted JSON, Markdown, and 7,235-line execution log reviewed before acceptance;
+- focused prerequisite + architecture-metrics proof: 40/40 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS / 0 violations;
+- repository check: PASS with authoritative verification context and `authorized-governance`;
+- shipping artifact: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Accepted prerequisite semantics:
+
+- one bounded production-owned control facade delegates only existing production manual preview, Verify/Reconcile preview, execute-plan, pause, resume, and cancel-active-sync actions;
+- the facade exposes no generic request surface, synchronization policy, scenario authority, transport, persistence, fixture mutation, evidence aggregation, OAuth authority, or alternate synchronization engine;
+- plugin access to the facade is explicit and fail-closed when the real production controller is unavailable;
+- current product status and latest S08A receipt are returned as defensive copies, preserving read-only observation;
+- `src/main.ts` imports no `test-platform/**` implementation;
+- the boundary allowlist adds only `src/product/live-validation-control-seam.ts`, with no rule or budget increase.
+
+Accepted architecture state:
+
+- production source: 16,813 logical LOC;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device agent/relay: 176 / 750 logical TypeScript LOC / 2 files;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files.
+
+This closes the prerequisite. S08C proper may be bound only after the required post-prerequisite architecture confirmation on the promoted state.
 
 ## 1. Objective
 
