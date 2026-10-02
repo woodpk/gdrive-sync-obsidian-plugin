@@ -687,3 +687,50 @@ S08B is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic implementation HEAD `7
 
 
 S08B — Validation-Only Obsidian Build / Entrypoint is **COMPLETE / ACCEPTED**. Accepted implementation `3189e0646402273aeb33a25acf0a538b15137b7b`; authoritative PHX-CI evidence `ac8a666fff361d49d610f5bae1d0f0aae5fa6c19`; run `790851a4-353d-46ed-98c6-14b337838bc2`; exact base `b2a009e140a03c2aa94499024f38828fe3e2e78a`. Complete JSON, Markdown, and 7,002-line log reviewed. Focused S08B proof 1/1 PASS; full repository suite 835/835 PASS; all stages PASS; architecture guard 0; npm vulnerabilities 0. Ordinary production artifact remains exactly 884,300 bytes / SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`. Validation artifact is 885,374 bytes / SHA-256 `c493cb3e534d8b6623175d1388e72fb528fc201e6bcc84fe71f668ebc14fa5c1` and reproduces deterministically. Current architecture: production seam 140/2; framework core 4,000/4,000 / 10 modules; live-device/relay 176/750 / 2 files; BVP PowerShell 4/1,492; scenario-specific production/PowerShell 0/0. S08B is closed. BVP-GOV-008 architecture review is mandatory before S08C dispatch.
+
+
+### Recurring Architecture Review — after S08A / S08B
+
+BVP-GOV-008 repository-level architecture review completed against accepted S08B closure `0cd22758ad095302c0487f289e90a834ec79325c`: **PASS WITH BOUNDED S08C PREREQUISITE AUTHORIZATION**.
+
+Accepted evidence and metrics:
+
+- S08B authoritative evidence: `ac8a666fff361d49d610f5bae1d0f0aae5fa6c19`; complete JSON, Markdown, and 7,002-line log reviewed;
+- architecture guard: PASS / 0 violations;
+- production source: 16,762 logical LOC;
+- approved production seam: 140 logical LOC / 2 files versus 350 / 4 maximum;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- live-device agent/relay: 176 / 750 logical TypeScript LOC / 2 files;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files;
+- ordinary production artifact remains 884,300 bytes / SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`.
+
+Repository-level findings:
+
+- production `src/**` still imports no `test-platform/**` implementation;
+- the accepted validation-only build is rooted under `test-platform/src/live-device/**`, uses a generated composition wrapper around the real `src/main.ts`, and does not alter the ordinary production build path;
+- shipping `main.js` remains free of the BVP non-shipping sentinel and is byte-identical to the accepted S08A artifact;
+- no new scenario runner, router, state machine, persistence/evidence family, distributed coordination protocol, command transport, mailbox, relay, alternate synchronization engine, or validation UI exists;
+- S08A adds only the accepted read-only production run-receipt seam; S08B adds only the accepted validation-artifact build/identity surface;
+- the separately accepted historical-base architecture-metrics repair changes measurement correctness only and introduces no BVP runtime architecture.
+
+S08C grounding gap:
+
+- `ProductRuntime.productController()` already exposes the real production controller internally;
+- `BrainGoogleDriveSyncPlugin` owns the `ProductRuntime` instance in a private `runtime` field, so validation-only code has no supported production-path access to the controller;
+- the approved S08A `run-receipt-seam.ts` is intentionally read-only and cannot invoke synchronization;
+- the frozen boundary manifest expressly permits a bounded production seam for invocation of already-authorized production actions, but no such approved invocation seam currently exists;
+- S08C must not depend on reflective/private-field access, monkey-patching, duplicate synchronization logic, or broad import of `src/main.ts` as a BVP seam.
+
+Therefore S08C proper remains **BLOCKED ON ONE BOUNDED PREREQUISITE**. The prerequisite is authorized to:
+
+- add one new production control-seam file under `src/product/**`, strictly a read/control facade over the existing `ProductController` authority;
+- expose only the production operations required by S08C/S09: manual preview, verify/reconcile preview, execution of an already-produced plan, pause/resume/cancel controls, current production surface observation, and latest S08A run receipt;
+- add one minimal public accessor on `BrainGoogleDriveSyncPlugin` that returns that bounded facade when the real production controller is available;
+- add the new seam path to `production_seam.approved_imports` with no budget increase and update the corresponding architecture-metrics expectation;
+- add focused regression proof for facade delegation/fail-closed unavailability and shipping-build integrity;
+- make no test-platform framework-core, command-agent, sequence-state, transport, mailbox, relay, OAuth, scenario, alternate synchronization, or product-policy change.
+
+The prerequisite must remain within the existing 350-LOC / 4-file production-seam budget and use `BVP_CHANGE_CLASS=authorized-governance` because the frozen boundary manifest is intentionally re-frozen. S08C proper may be bound only after this prerequisite passes authoritative PHX-CI, supervisor acceptance, and post-prerequisite architecture confirmation.
