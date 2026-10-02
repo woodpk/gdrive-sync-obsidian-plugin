@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08C production-control prerequisite + post-prerequisite architecture confirmation
 
@@ -163,6 +163,59 @@ Focused command:
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
 
 S08C remains unaccepted until authoritative PHX-CI passes and the complete persisted JSON, Markdown, and execution log are reviewed.
+
+
+## 0.3 Acceptance Record
+
+BVP-S08C is **COMPLETE / ACCEPTED**.
+
+Authoritative acceptance lineage:
+
+- accepted implementation HEAD: `441e7cdd3bfe215b2d47d27c9a1eb4efe90711f8`;
+- authoritative PHX-CI evidence commit: `ac039c73b72afa3f9bf8a9f1e5bb1cb1d35179d6`;
+- authoritative PHX-CI run ID: `340a0f70-b945-42f1-a4a4-1e735f06f1cb`;
+- exact verification base: `975c211d74fdad04c58e2fc6d4d35b3ab66c9460`;
+- complete persisted JSON, Markdown, and 7,271-line execution log reviewed before acceptance;
+- focused S08B/S08C/architecture-metrics proof: 44/44 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS / 0 violations;
+- ordinary shipping artifact: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- validation artifact: 897,431 bytes / SHA-256 `f7a0bf1cfcc958e0b55de83fede7fadcbc254da12f3f092b8490fc8bee29786b`, reproduced deterministically twice.
+
+Accepted S08C semantics:
+
+- exactly one bounded command executes at a time;
+- run/device mismatch rejects before fixture or production mutation;
+- sequence 1 is the first admissible sequence and only the next sequence may execute;
+- stale and gap sequences reject;
+- exact duplicate delivery returns the stored bounded result without repeating the effect;
+- altered duplicate sequence is a conflict and does not execute;
+- the sequence claim is persisted before side effects;
+- an interrupted claimed command remains `prior-outcome-uncertain` after agent reconstruction and is not retried;
+- malformed/unsupported commands fail closed;
+- fixture mutation is constrained to the constructor-bound `BVP-VALIDATION/<run-scope>` root and rejects path escape;
+- inline and deterministic-pattern fixture generation are bounded;
+- production preview returns bounded plan metadata only;
+- production execute requires a newly correlated S08A terminal receipt and never treats transport/action acknowledgement as synchronization success;
+- production terminal classifications, including `uncertain`, are propagated rather than upgraded;
+- pause/resume/cancel delegate only to the accepted production-control seam;
+- product/receipt observations are bounded copies;
+- validation artifact exposes the S08C factory while ordinary shipping `main.js` remains free of validation-only implementation.
+
+Accepted architecture state:
+
+- production source: 16,813 logical LOC;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device agent/relay: 482 / 750 logical TypeScript LOC, leaving 268 LOC for S08D;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files.
+
+This closes S08C. S08D remains separately bound and verified work; S08C acceptance does not authorize transport to alter production synchronization authority.
 
 ## 1. Objective
 
