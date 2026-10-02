@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted BVP-S07 primary-stage gate and mandatory architecture review
 
@@ -108,6 +108,54 @@ Receipt semantics implemented:
 Focused proof covers authoritative complete correlation/idempotence, distinct subsequent run identity, paused/deferred non-success, ambiguous-applied non-success with physical effect preserved, and read-only observation that cannot trigger mutation.
 
 The boundary manifest is changed only because S08A is the explicitly authorized seam-change session; authoritative PHX-CI MUST run with `BVP_CHANGE_CLASS=authorized-governance`. Acceptance still requires full PHX-CI plus supervisor review of the persisted JSON, Markdown, and complete execution log.
+
+
+## 0.3 Acceptance Record
+
+BVP-S08A is **COMPLETE / ACCEPTED**.
+
+Authoritative acceptance lineage:
+
+- accepted implementation HEAD: `cd0e3225295b76287133d30a2787ae7cfcc69d43`;
+- authoritative PHX-CI evidence commit: `3ff8fa27d25d0de260403047550aa6bbd609c60a`;
+- authoritative PHX-CI run ID: `ee7fcafc-ee53-4381-972d-0711fb39a731`;
+- exact verification base: `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- complete persisted JSON, Markdown, and 7,232-line execution log reviewed before acceptance;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE;
+- every required PHX-CI stage: PASS / exit 0;
+- combined focused S08A + architecture-metrics suite: 42/42 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- production build verification: PASS;
+- artifact: `main.js` 884,300 bytes, SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`.
+
+Accepted S08A semantics:
+
+- the receipt is production-owned and captured from the real `ProductControllerBase` execution authority rather than reconstructed from diagnostics;
+- run identity, trigger, plan identity, terminal classification, committed/skipped counts, and bounded reason classification are correlated in the receipt;
+- `requiredEffectsCommittedAndVerified` is true only for an authoritative `complete` terminal result;
+- uncertainty remains explicitly non-success even when an external physical effect may already have occurred, while earlier verified durable work remains truthfully counted;
+- blocked, deferred, cancelled, recovery-required, failed, partial, and complete outcomes remain distinct;
+- receipt observation is read-only and repeated reads are stable copies;
+- later production runs receive distinct product-owned run identity;
+- existing product-facing status/error detail remains authoritative and is not replaced by receipt reason codes.
+
+Accepted architecture state:
+
+- architecture guard: PASS / 0 violations;
+- approved production seam: 140 logical LOC / 2 files versus 350 / 4 maximum;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device agent/relay: 0 LOC / 0 files;
+- BVP PowerShell: 4 scripts / 1,492 LOC versus 4 / 1,500 maximum;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files;
+- no `src/main.ts`, product runtime-composition, command-transport, OAuth/authentication, shipping-build, or S08B+ implementation was introduced by S08A.
+
+The separately accepted architecture-metrics base-policy repair is included in the accepted integrated state. Its historical-base measurement now uses the historical boundary manifest rather than the current allowlist, and the final S08A repository-baseline test correctly expects the two approved current production seam files.
+
+This acceptance closes S08A. It does not authorize S08B implementation until S08B is separately repository-grounded and bound from the accepted post-S08A integration state.
 
 ## 1. Objective
 
