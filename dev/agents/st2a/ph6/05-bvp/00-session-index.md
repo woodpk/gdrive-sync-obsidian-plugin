@@ -734,3 +734,6 @@ Therefore S08C proper remains **BLOCKED ON ONE BOUNDED PREREQUISITE**. The prere
 - make no test-platform framework-core, command-agent, sequence-state, transport, mailbox, relay, OAuth, scenario, alternate synchronization, or product-policy change.
 
 The prerequisite must remain within the existing 350-LOC / 4-file production-seam budget and use `BVP_CHANGE_CLASS=authorized-governance` because the frozen boundary manifest is intentionally re-frozen. S08C proper may be bound only after this prerequisite passes authoritative PHX-CI, supervisor acceptance, and post-prerequisite architecture confirmation.
+
+
+S08C prerequisite — Bounded Production Control Seam is **BOUND / EXECUTABLE** from architecture-reviewed integration `c31f99dd5e2ea0cbf6443ba3110f377f4292f67b` on branch `bvp-s08c-prereq-production-control-seam`. It is limited to one new production control-seam file, one minimal `src/main.ts` accessor, one boundary-manifest allowlist entry, one focused test, and the architecture-metrics baseline expectation. It may delegate only existing production manual preview, Verify/Reconcile preview, execute-plan, pause/resume/cancel, surface observation, and S08A receipt observation. Framework core and live-device command/transport implementation are frozen; S08C proper remains PREPLANNED.
