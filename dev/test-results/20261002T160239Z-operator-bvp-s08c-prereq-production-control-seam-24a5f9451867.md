@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 885307 bytes; SHA-256 8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08c-prereq-production-control-seam
+- Source build HEAD requested: 24a5f94518679254d4855a4a2f0d42e15e939c64
+- Verification checkout HEAD: 24a5f94518679254d4855a4a2f0d42e15e939c64
+- Evidence publication target: origin/bvp-s08c-prereq-production-control-seam
