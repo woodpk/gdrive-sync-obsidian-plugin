@@ -56,7 +56,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 07V | S07 — Deterministic Crash / Recovery / Fault / Safety / Scale Coverage | COMPLETE | `07-deterministic-crash-recovery-fault-safety-scale-/07v-primary-stage-phx-ci-acceptance-and-mandatory-architecture-review.md` |
 | 08A | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08a-narrow-production-run-receipt-seam.md` |
 | 08B | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08b-validation-only-obsidian-build-entrypoint.md` |
-| 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
+| 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
 | 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
 | 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
@@ -760,3 +760,6 @@ The accepted S08C production-control prerequisite at `ce9151afdd9798daec4af54b28
 - shipping artifact remains a normal production bundle and no `test-platform/**` implementation is imported from `src/**`.
 
 S08C proper is therefore unblocked. S08C must remain validation-only and must consume the accepted production-control seam rather than add another production surface.
+
+
+S08C — Bounded Device Command Agent and Sequence Safety is **BOUND / EXECUTABLE** from post-prerequisite architecture-confirmed integration `975c211d74fdad04c58e2fc6d4d35b3ab66c9460` on branch `bvp-s08c-device-command-agent`. The device command vocabulary is fixed to fixture put/remove/observe, production preview/execute/control, and product observation. Sequence safety uses a write-ahead claim plus last bounded result so duplicate delivery cannot repeat an unsafe effect and an interrupted claimed command remains outcome-uncertain rather than re-executing. S08C is validation-only; production/governance/PowerShell/PHX-CI/transport/scenario paths are frozen.

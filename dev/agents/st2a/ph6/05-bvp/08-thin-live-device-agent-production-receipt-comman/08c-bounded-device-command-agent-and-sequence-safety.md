@@ -3,13 +3,112 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
-**Predecessor:** accepted S08B
+**Predecessor:** accepted S08C production-control prerequisite + post-prerequisite architecture confirmation
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+
+## 0.1 Final Dispatch Binding
+
+Repository coordinates:
+
+- exact accepted predecessor / PHX-CI base: `975c211d74fdad04c58e2fc6d4d35b3ab66c9460`;
+- task branch: `bvp-s08c-device-command-agent`;
+- accepted production-control prerequisite implementation: `24a5f94518679254d4855a4a2f0d42e15e939c64`;
+- accepted prerequisite evidence: `d4cfef6a48e257ca2d7b43c74400134175406c2f`;
+- accepted production control seam: `src/product/live-validation-control-seam.ts`;
+- accepted validation composition: `test-platform/src/live-device/validation-entrypoint.ts` + `build-validation-artifact.ts`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework version: `0.2.0-dev.2`;
+- shipping production artifact baseline: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- current live-device/relay baseline: 176 / 750 logical TypeScript LOC / 2 files;
+- framework core remains frozen at 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production seam remains 187 / 350 logical LOC / 3 of 4 files and S08C has no authority to expand it.
+
+Bound command vocabulary:
+
+1. `fixture-put` — bounded disposable fixture write, either inline text or deterministic generated pattern;
+2. `fixture-remove` — remove one bounded disposable fixture path;
+3. `observe-file` — objective bounded file existence/size/SHA-256 observation;
+4. `production-preview` — `manual` or `verify-reconcile`, returning bounded plan summary only;
+5. `production-execute` — execute one already-produced plan ID and return the authoritative new S08A terminal receipt;
+6. `production-control` — `pause`, `resume`, or `cancel-active-sync`;
+7. `observe-product` — copied production status plus latest copied production receipt.
+
+Each command includes exact `runId`, `deviceId`, positive integer `sequence`, and non-empty `commandId`.
+
+Sequence policy:
+
+- first admitted command must be sequence 1;
+- after a completed sequence N, only N+1 may execute;
+- exact duplicate delivery of N with the same canonical command body returns the stored bounded result without re-executing;
+- N with a different command body is a sequence conflict;
+- sequence < N is stale;
+- sequence > N+1 is a gap;
+- before any side effect, sequence state is durably claimed through the injected sequence-state store;
+- if a claimed command has no completed result after restart, it is classified outcome-uncertain and MUST NOT re-execute;
+- only the most recent run/device sequence claim/result is required; no scenario graph, future-step state, or final verdict may be stored.
+
+Fixture boundary:
+
+- all fixture paths must be relative descendants of one constructor-bound `BVP-VALIDATION/<run-scope>` root;
+- absolute paths, backslashes, empty/dot/dot-dot segments, and escape attempts fail closed before the fixture port is called;
+- inline text is bounded;
+- deterministic-pattern generation is bounded by an injected maximum and exists only to permit later large-transfer fixtures without transmitting large payloads through the mailbox;
+- fixture results are objective existence/size/SHA-256 observations, not scenario verdicts.
+
+Production-result authority:
+
+- an accepted `production-execute` acknowledgement is NOT synchronization success;
+- the agent snapshots the pre-execution receipt, awaits the existing production `executePlan` call, then requires a newly produced receipt correlated to the requested plan ID;
+- missing, stale, or mismatched receipt is command failure;
+- receipt terminal `uncertain`, `failed`, `blocked`, `partial`, etc. is propagated verbatim and never upgraded to success.
+
+Exact writable-path allowlist:
+
+- NEW `test-platform/src/live-device/device-command-agent.ts`;
+- `test-platform/src/live-device/validation-entrypoint.ts`;
+- NEW `test-platform/test/s08c-device-command-agent.test.ts`;
+- `test-platform/test/s08b-validation-build-entrypoint.test.ts` only to update the accepted shipping-artifact baseline and expected validation bundle inputs;
+- `test-platform/test/architecture-metrics.test.ts` only to update the actual live-device LOC baseline after S08C;
+- this S08C task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No production, governance, PowerShell, PHX-CI, package, manifest, OAuth, scenario, mailbox/relay, or external-runner path is writable.
+
+Validation-artifact composition:
+
+- `validation-entrypoint.ts` must install a non-enumerable validation-only command-agent factory alongside the existing build identity;
+- this inclusion must cause the accepted S08B validation artifact to contain the S08C agent while ordinary production `main.js` remains free of `test-platform/**` implementation;
+- S08B focused regression expectations must be updated to the accepted prerequisite shipping artifact hash and the new live-device validation input set.
+
+Focused proof must cover:
+
+- correct next command executes once;
+- wrong run and wrong device reject without fixture/production calls;
+- stale and gap sequences reject;
+- exact duplicate returns stored result without repeated mutation;
+- duplicate sequence with altered command body rejects;
+- claimed-but-unfinished prior sequence remains outcome-uncertain after agent reconstruction and is not retried;
+- malformed/unsupported input fails closed;
+- fixture path escape fails before fixture mutation;
+- bounded text/pattern validation;
+- production preview summary remains bounded;
+- production execute requires a newly correlated terminal receipt and propagates non-success terminal classifications unchanged;
+- pause/resume/cancel delegation;
+- product observation is copied/read-only;
+- validation artifact includes the S08C agent/factory and ordinary production artifact retains the accepted predecessor shipping hash;
+- architecture metrics remain within the 750-LOC live-device/relay limit.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+BVP-GOV-010 size gate: PASS. This child adds one bounded validation-only runtime module, extends one existing validation-only entry module, and adds one focused contract test. It creates no second runner, router/plugin framework, distributed workflow engine, persistence/evidence family, production seam, PowerShell, or transport implementation.
 
 ## 1. Objective
 
