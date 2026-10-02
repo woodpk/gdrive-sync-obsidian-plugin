@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 884300 bytes; SHA-256 0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08a-production-run-receipt-seam
+- Source build HEAD requested: cd0e3225295b76287133d30a2787ae7cfcc69d43
+- Verification checkout HEAD: cd0e3225295b76287133d30a2787ae7cfcc69d43
+- Evidence publication target: origin/bvp-s08a-production-run-receipt-seam
