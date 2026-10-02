@@ -48,7 +48,7 @@ test("bounded production verification control delegates exact existing controlle
   ok(control);
   deepEqual(Object.keys(control).sort(), [
     "cancelActiveSync",
-    "currentSurface",
+    "currentStatus",
     "executePlan",
     "latestProductionRunReceipt",
     "pause",
@@ -69,7 +69,9 @@ test("bounded production verification control delegates exact existing controlle
     { kind: "resume" },
     { kind: "cancel-active-sync" },
   ]);
-  equal(control.currentSurface(), surface);
+  const observedStatus = control.currentStatus();
+  deepEqual(observedStatus, surface.status);
+  notEqual(observedStatus, surface.status);
 
   const observedReceipt = control.latestProductionRunReceipt();
   deepEqual(observedReceipt, receipt);

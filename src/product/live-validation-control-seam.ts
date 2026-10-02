@@ -9,6 +9,7 @@ import type {
   PlanId,
   ProductSurfaceState,
   SynchronizationPlan,
+  SynchronizationStatus,
   UserAction,
   UserActionResult,
 } from "../contracts";
@@ -32,7 +33,7 @@ export interface ProductionVerificationControl {
   pause(): Promise<UserActionResult>;
   resume(): Promise<UserActionResult>;
   cancelActiveSync(): Promise<UserActionResult>;
-  currentSurface(): ProductSurfaceState;
+  currentStatus(): SynchronizationStatus;
   latestProductionRunReceipt(): ProductionRunReceipt | undefined;
 }
 
@@ -47,7 +48,7 @@ export function createProductionVerificationControl(
     pause: () => source.request({ kind: "pause" }),
     resume: () => source.request({ kind: "resume" }),
     cancelActiveSync: () => source.request({ kind: "cancel-active-sync" }),
-    currentSurface: () => source.currentSurface(),
+    currentStatus: () => ({ ...source.currentSurface().status }),
     latestProductionRunReceipt: () => {
       const receipt = readLatestProductionRunReceipt(source);
       return receipt ? { ...receipt } : undefined;

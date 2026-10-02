@@ -45,7 +45,7 @@ A new approved production seam exposes only:
 - pause;
 - resume;
 - cancel-active-sync;
-- current production surface observation;
+- current production status observation;
 - latest S08A production run receipt.
 
 `BrainGoogleDriveSyncPlugin` exposes one explicit public accessor returning this facade only when the real production controller exists.
@@ -109,7 +109,7 @@ Focused tests must establish:
 - manual and Verify/Reconcile previews delegate exactly;
 - execute-plan delegates the exact plan ID;
 - pause/resume/cancel delegate exact production actions;
-- current surface observation comes from the source;
+- current status observation is copied from the source;
 - latest receipt is production-derived and remains non-mutating;
 - unsupported scenario/transport/test mutation authority is absent from the facade;
 - `src/main.ts` exposes the accessor without importing `test-platform/**`;
