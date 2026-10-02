@@ -77,6 +77,14 @@ test("runner applies existing expected-outcome rules to executor results and ter
   deepStrictEqual(failure.seen, ["first"]);
   strictEqual(failure.disposed, 1);
   strictEqual("missing" in stopped.captures, false);
+
+  const unsupported = new RecordingExecutor({ first: { status: "unsupported", classification: "live-capability-unsupported" } });
+  const unsupportedResult = await new DeterministicScenarioRunner({}, unsupported).run(liveScenario([
+    { id: "first", kind: "external-state", transition: "set-device-connectivity", device: "device-a", state: "offline" },
+  ]));
+  strictEqual(unsupportedResult.status, "unsupported");
+  strictEqual(unsupportedResult.classification, "live-capability-unsupported");
+  strictEqual(unsupported.disposed, 1);
 });
 
 test("execution mode applicability remains runner-owned", async () => {
@@ -92,6 +100,7 @@ test("execution mode applicability remains runner-owned", async () => {
   strictEqual(result.status, "unsupported");
   strictEqual(result.classification, "execution-mode-not-applicable");
   strictEqual(executor.seen.length, 0);
+  strictEqual(executor.disposed, 1);
   strictEqual(result.evidence?.machine.executionMode, "live");
 });
 
@@ -109,4 +118,15 @@ test("deterministic path retains deterministic evidence mode and observation cap
   strictEqual(result.evidence?.machine.executionMode, "deterministic");
   strictEqual(Object.prototype.hasOwnProperty.call(result.captures, "empty"), true);
   strictEqual(result.captures.empty, undefined);
+});
+
+
+test("invalid scenario input disposes an injected executor without dispatching a step", async () => {
+  const executor = new RecordingExecutor({});
+  const malformed = { id: "bad", executionModes: ["live"], steps: [{ id: "bad", kind: "unknown" }] } as unknown as ScenarioDefinition;
+  const result = await new DeterministicScenarioRunner({}, executor).run(malformed);
+  strictEqual(result.status, "unsupported");
+  strictEqual(result.classification, "invalid-scenario");
+  strictEqual(executor.seen.length, 0);
+  strictEqual(executor.disposed, 1);
 });
