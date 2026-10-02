@@ -92,6 +92,8 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   const productionHash = sha256(productionBytes);
   equal(productionHash, acceptedProductionSha256);
   equal(productionText.includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), false);
+  equal(productionText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), false);
+  equal(productionText.includes("BRAIN BVP Mailbox"), false);
 
   const first = await buildValidationArtifact(repositoryRoot);
   ok(existsSync(first.artifactPath));
@@ -99,7 +101,10 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   ok(existsSync(first.identityPath));
   match(first.sourceCommit, /^[0-9a-f]{40}$/);
   notEqual(first.artifactSha256, productionHash);
-  equal(readFileSync(first.artifactPath, "utf8").includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), true);
+  const validationText = readFileSync(first.artifactPath, "utf8");
+  equal(validationText.includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), true);
+  equal(validationText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), true);
+  equal(validationText.includes("BRAIN BVP Mailbox"), true);
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
   deepEqual(first.testPlatformInputs, [
     "test-platform/src/live-device/device-command-agent.ts",
