@@ -59,7 +59,7 @@ function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
 function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{
   const prior=new Set<string>();
   for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}
-  for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;for(const key of ["inputRef","observationRef"] as const)if(key in step&&typeof step[key]==="string"&&prior.has(step[key] as string))return step[key] as string;}
+  for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}
   return undefined;
 }
 
