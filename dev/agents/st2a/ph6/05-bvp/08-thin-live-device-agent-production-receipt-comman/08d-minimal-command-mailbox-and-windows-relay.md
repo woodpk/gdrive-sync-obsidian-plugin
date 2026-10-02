@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08C
 
@@ -148,6 +148,53 @@ Focused command:
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
 
 S08D is not accepted until authoritative PHX-CI passes and the exact persisted JSON, Markdown, and complete execution log are reviewed.
+
+
+## 0.3 Acceptance Record
+
+BVP-S08D is **COMPLETE / ACCEPTED**.
+
+Authoritative acceptance lineage:
+
+- accepted implementation HEAD: `62cd8fcdac1fe2f1aa424b10db5ad2e450fdd65b`;
+- authoritative PHX-CI evidence commit: `dd71266d19f2b2d0c58973b4cff7d2f18712696e`;
+- authoritative PHX-CI run ID: `5a0856cb-067f-45ad-a32f-c35a02b058ae`;
+- exact verification base: `03d0d8da3c860a35943f214c9b90c83bfdb9a132`;
+- complete persisted JSON, Markdown, and 7,304-line execution log reviewed before acceptance;
+- focused S08B/S08C/S08D/architecture-metrics proof: 49/49 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS / 0 violations;
+- ordinary shipping artifact: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- validation artifact: 909,821 bytes / SHA-256 `a496aa5a84561062348e0530341fae92d71c06481806f41cf3a8e1cb75841cd9`, reproduced deterministically twice.
+
+Accepted S08D semantics:
+
+- transport authority is one separately tagged app-created ordinary-Drive mailbox under the existing exact `drive.file` OAuth scope;
+- `appDataFolder`, new OAuth scopes, developer-hosted backend state, and production synchronization transport are not introduced;
+- device OAuth credentials remain device-local and are reused only by generated validation-only composition;
+- mailbox records are bounded, sanitize unknown command fields, reject sensitive credential-key payloads, and require exact run/device/sequence/command result correlation;
+- wrong-run/wrong-device records are filtered before device-agent execution;
+- conflicting duplicate results fail closed;
+- Drive unavailability is explicit rather than optimistic;
+- reordered/duplicate mailbox delivery is proven through the real S08C agent and cannot repeat effects;
+- Windows relay persists only exact pending command/result files in protected plugin-local configuration state;
+- relay restart reconstructs only from exact `sent/` files and stores no scenario graph, verdict, or future-step state;
+- ordinary production bundle excludes mailbox markers while the validation artifact includes the S08D mailbox/relay wiring.
+
+Accepted architecture state:
+
+- production source: 16,813 logical LOC;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device agent/relay: 572 / 750 logical TypeScript LOC, leaving 178 LOC;
+- scenario catalog: 70 scenarios / 1,524 logical LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files.
+
+This closes S08D. Because S08C and S08D are two implementation sessions since the post-prerequisite architecture confirmation, BVP-GOV-008 requires a repository-level architecture review before S08E may be dispatched.
 
 ## 1. Objective
 
