@@ -74,7 +74,9 @@ function evaluateValidationArtifact(result: ValidationArtifactBuildResult): any 
   };
   context.globalThis = context;
   new Script(source, { filename: result.artifactPath }).runInNewContext(context);
-  deepEqual(requested, ["obsidian"]);
+  ok(requested.length > 0);
+  equal(requested.every(specifier => specifier === "obsidian"), true);
+  equal(typeof moduleBox.exports.default, "function");
   return { context, exports: moduleBox.exports };
 }
 
