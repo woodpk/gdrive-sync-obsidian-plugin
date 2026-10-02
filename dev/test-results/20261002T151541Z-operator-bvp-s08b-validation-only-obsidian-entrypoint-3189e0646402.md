@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 884300 bytes; SHA-256 0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08b-validation-only-obsidian-entrypoint
+- Source build HEAD requested: 3189e0646402273aeb33a25acf0a538b15137b7b
+- Verification checkout HEAD: 3189e0646402273aeb33a25acf0a538b15137b7b
+- Evidence publication target: origin/bvp-s08b-validation-only-obsidian-entrypoint
