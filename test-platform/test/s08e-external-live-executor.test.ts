@@ -64,8 +64,12 @@ test("stale checkpoint identity and cross-checkpoint capture dependency fail clo
   const dep=scenario("dep",[{id:"preview",kind:"production",device:"device-a",operation:"preview",captureAs:"plan"},{id:"cp",kind:"checkpoint",operation:"capture",checkpointId:"cp"},{id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"}]),depRelay=join(dir,"relay-dep"),depFile=join(dir,"dep.json"),depExec=await createLiveScenarioExecutor(options(dep,"run-dep",depRelay,depFile,{checkpoints:{cp:instruction}})),depRun=new DeterministicScenarioRunner({},depExec).run(dep);await respond(depRelay,c=>baseResult(c,{classification:"production-preview-ready",plan:{planId:"p",trigger:"manual",operationCount:0,executionDisposition:"reviewable",recoveryCheckpointRequired:false,globalExecutionGate:"open"}}));const depResult=await depRun;strictEqual(depResult.status,"unsupported");strictEqual(depResult.classification,"checkpoint-crosses-capture-dependency");strictEqual(await readFile(depFile,"utf8").then(()=>true,()=>false),false);await rm(dir,{recursive:true,force:true});
 });
 
-test("cancellation maps to production control while arbitrary bytes remain unsupported without sequence consumption",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("cancel",[
-  {id:"bytes",kind:"fixture",operation:"put-local-file",device:"device-a",path:"binary.bin",content:{encoding:"bytes",value:[0,1]},expect:{status:"failed",classification:"live-capability-unsupported"}},
+test("cancellation maps to production control",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("cancel",[
   {id:"cancel",kind:"external-state",transition:"request-cancellation",device:"device-a"},
 ]);const executor=await createLiveScenarioExecutor(options(s,"run-x",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);const command=await respond(relay,c=>baseResult(c,{classification:"production-control-accepted"}));strictEqual(command.kind,"production-control");strictEqual((command as any).action,"cancel-active-sync");strictEqual(command.sequence,1);const result=await run;strictEqual(result.status,"completed");await rm(dir,{recursive:true,force:true});
+});
+
+test("arbitrary bytes remain unsupported without emitting a device command",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("bytes",[
+  {id:"bytes",kind:"fixture",operation:"put-local-file",device:"device-a",path:"binary.bin",content:{encoding:"bytes",value:[0,1]}},
+]);const executor=await createLiveScenarioExecutor(options(s,"run-b",relay,join(dir,"cp.json"))),result=await new DeterministicScenarioRunner({},executor).run(s);strictEqual(result.status,"unsupported");strictEqual(result.classification,"live-capability-unsupported");strictEqual((await readdir(join(relay,"outbox"))).length,0);await rm(dir,{recursive:true,force:true});
 });
