@@ -44,3 +44,10 @@ STATUS: COMPLETE
 - main.js: 885307 bytes; SHA-256 8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08c-device-command-agent
+- Source build HEAD requested: 441e7cdd3bfe215b2d47d27c9a1eb4efe90711f8
+- Verification checkout HEAD: 441e7cdd3bfe215b2d47d27c9a1eb4efe90711f8
+- Evidence publication target: origin/bvp-s08c-device-command-agent
