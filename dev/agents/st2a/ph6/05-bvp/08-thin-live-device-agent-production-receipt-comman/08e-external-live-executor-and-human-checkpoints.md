@@ -79,6 +79,67 @@ Focused verification command after implementation:
 
 Stop at `READY FOR LOCAL PHX-CI VERIFICATION`; do not begin S08F.
 
+
+## 0.2 Ready-for-Verification Record
+
+BVP-S08E is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `db3b2e037dd072f92f3e6ab4b93c6e5ac34291bf`;
+- exact post-prerequisite architecture-confirmed PHX-CI base: `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6`;
+- branch: `bvp-s08e-external-live-executor-checkpoints`;
+- the existing `DeterministicScenarioRunner` remains the only scenario runner;
+- the accepted S08E prerequisite executor seam is consumed without runner modification;
+- external live execution uses only protected S08D local relay files; it has no Google credential/token access;
+- command IDs are deterministic hashes of run/scenario/step/subcommand identity and stay within S08C bounds;
+- sequence numbers are deterministic across controller reconstruction for supported physical command mappings;
+- exact result correlation requires run/device/sequence/command/kind equality;
+- malformed, stale-sequence, wrong-device, and missing results fail/block rather than becoming success;
+- production transport completion is not synchronization success: only a correlated S08A receipt terminal `complete` returns completed; blocked/deferred/recovery-required propagate blocked and partial/failed/cancelled/uncertain propagate failed;
+- human checkpoint instructions remain bound external metadata and are not persisted;
+- durable checkpoint state is exactly encoded S05D schemaVersion-1 state;
+- resume validates scenario/run/live-mode/device identities and exact checkpoint position;
+- controller reconstruction replays bounded prior step statuses without replaying physical mutations;
+- required resume-evidence kinds are mandatory before the checkpoint completes;
+- cross-checkpoint prior-capture dependencies fail closed rather than persisting arbitrary runner captures;
+- iOS termination/restart is proven with a brand-new executor instance and no device-local runner state;
+- arbitrary bytes/remote/fault-injection capabilities remain unsupported rather than being falsely mapped.
+
+Measured architecture:
+
+- production source: 16,813 logical LOC;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: **3,996 / 4,000 logical TypeScript LOC / 10 modules**;
+- live-device agent/relay/executor: **727 / 750 logical TypeScript LOC**, leaving 23 LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production/PowerShell: 0 / 0.
+
+Focused proof covers:
+
+- exact local fixture -> preview -> execute -> observation -> assertion command order and sequence;
+- correlated production-complete receipt success;
+- production-uncertain failure propagation;
+- wrong-device and stale-sequence result rejection;
+- missing result blocking;
+- S05D checkpoint serialization with instruction text excluded from persisted state;
+- missing resume evidence blocking;
+- new-executor checkpoint resume without fixture replay;
+- stale run checkpoint rejection;
+- cross-checkpoint capture dependency rejection;
+- iOS terminate/relaunch checkpoint with no device-local runner state;
+- cancellation -> production-control mapping;
+- arbitrary byte fixture unsupported with no device command;
+- accepted S08E prerequisite runner behavior;
+- S05D checkpoint regressions;
+- S08D mailbox/relay regressions;
+- S08B device-bundle isolation;
+- architecture metrics.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08e-external-live-executor.test.js .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-checkpoint.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+S08E is not accepted until authoritative PHX-CI passes and the exact persisted JSON, Markdown, and complete execution log are reviewed. S08F has not begun.
+
 ## 1. Objective
 
 Extend the external BVP runner with a live executor that maps the same declarative capability concepts to bounded device commands/results and uses explicit external checkpoints for OS/provider actions that cannot safely be automated.
