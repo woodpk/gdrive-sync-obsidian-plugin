@@ -818,3 +818,6 @@ The prerequisite is authorized to refactor the existing S05 scenario runner into
 - the prerequisite must provide focused regression proof that deterministic execution is byte-for-byte/semantically unchanged and that a live executor can receive one generic scenario step at a time without owning scenario order or verdict.
 
 S08E may be bound only after this prerequisite passes authoritative PHX-CI, supervisor acceptance, and post-prerequisite architecture confirmation.
+
+
+S08E prerequisite — Single-Runner Executor Seam is **BOUND / EXECUTABLE** from architecture-review commit `bdd34c5e32d42cdfe20bc82fe97a17cce4e9f171` on branch `bvp-s08e-prereq-runner-executor-seam`. It may modify only the existing scenario runner/evidence mode plumbing plus focused tests/docs. The runner must remain singular and retain scenario validation/order/captures/expectation matching/verdict/evidence authority; an injected executor receives one step at a time only. Framework core must remain <=4,000 LOC / exactly 10 modules with no budget increase. S08E live capability mapping/checkpoints remain PREPLANNED.
