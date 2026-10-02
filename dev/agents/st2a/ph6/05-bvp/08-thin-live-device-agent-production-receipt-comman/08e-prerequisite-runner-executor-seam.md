@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Purpose:** prerequisite only; S08E proper remains PREPLANNED / NOT-YET-EXECUTABLE.
 
@@ -74,6 +74,51 @@ Focused command:
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
 
 S08E proper remains blocked until authoritative PHX-CI passes, the full evidence triad is reviewed, this prerequisite is accepted/promoted, and post-prerequisite architecture confirmation passes.
+
+
+## 0.3 Acceptance Record
+
+The S08E single-runner executor prerequisite is **COMPLETE / ACCEPTED**.
+
+Authoritative lineage:
+
+- accepted implementation HEAD: `7d261698ec83cebeee6063524e57802955600b23`;
+- authoritative PHX-CI evidence commit: `5828e0c251758d05c171ad8f2a0ba6a5db15d674`;
+- authoritative run ID: `e8590eae-5d13-4149-9a4a-21b5e8081953`;
+- exact verification base: `bdd34c5e32d42cdfe20bc82fe97a17cce4e9f171`;
+- complete persisted JSON, Markdown, and 7,411-line execution log reviewed before acceptance;
+- focused prerequisite + runner + evidence + metrics suite: 68/68 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS / 0 violations;
+- repository gate: PASS;
+- shipping artifact: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Accepted semantics:
+
+- `DeterministicScenarioRunner` remains the only scenario runner;
+- optional `ScenarioStepExecutor` receives exactly one selected generic scenario step at a time plus current step index and read-only prior-capture access;
+- runner retains scenario validation, mode applicability, order, captures, expected-outcome matching, final verdict, canonical evidence creation, and disposal lifecycle;
+- executor-driven execution does not construct or invoke deterministic virtual-world mechanics for the same step;
+- deterministic observation capture behavior is preserved;
+- invalid input, mode mismatch, early terminal outcomes, and successful completion dispose an injected executor;
+- failed/blocked/unsupported executor outcomes pass through existing runner expectation/verdict rules;
+- canonical evidence remains schemaVersion 1 and truthfully records the selected existing execution mode union;
+- deterministic evidence remains deterministic; live executor evidence records live;
+- no second runner, second evidence family, live-only scenario language, transport authority, checkpoint implementation, production code, PowerShell, or governance-budget change was introduced.
+
+Accepted architecture state:
+
+- production source: 16,813 logical LOC;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: **3,996 / 4,000 logical TypeScript LOC across exactly 10 modules**;
+- live-device agent/relay: 572 / 750 logical TypeScript LOC;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files.
+
+S08E proper remains blocked only until post-prerequisite architecture confirmation is recorded.
 
 ## 1. Objective
 
