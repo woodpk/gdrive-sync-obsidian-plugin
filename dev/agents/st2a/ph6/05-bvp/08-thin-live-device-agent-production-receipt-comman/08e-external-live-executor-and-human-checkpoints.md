@@ -140,6 +140,38 @@ Focused command:
 
 S08E is not accepted until authoritative PHX-CI passes and the exact persisted JSON, Markdown, and complete execution log are reviewed. S08F has not begun.
 
+
+## 0.3 Failed Verification Diagnosis and Repair
+
+The first authoritative S08E PHX-CI run was **BLOCKED**.
+
+Failed-run lineage:
+
+- failed readiness HEAD: `c8678f1eb5a128dd810531a9fd3c9a1e53d3cfdf`;
+- evidence commit: `5ea4186a9ea7bbc153c98a9f18475db8f1df1764`;
+- run ID: `8ac2d728-ffc6-4107-83d0-8c7fe176f01a`;
+- exact base: `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6`;
+- complete persisted JSON, Markdown, and 5,092-line execution log reviewed before repair;
+- repository verification: PASS, full product suite 835/835 PASS;
+- change-set verification: FAIL at `test-focused` before runtime tests;
+- causal failure: three TypeScript TS7053 errors in one expression inside `crossCheckpointCapture()`, caused by indexing the `ScenarioStep` union through a generic `"inputRef" | "observationRef"` key variable.
+
+Minimum repair:
+
+- repaired implementation HEAD: `60866a6d5a9c00ba283cc416a14ef2beece65d55`;
+- changed exactly one logical source line in `test-platform/src/live-device/live-scenario-executor.ts`;
+- replaced generic key indexing with explicit `"inputRef" in step` / `"observationRef" in step` type guards;
+- no runtime behavior, command mapping, checkpoint semantics, transport, production code, scenario runner, evidence schema, test vocabulary, or governance surface changed;
+- repair-only diff: 1 insertion / 1 deletion in one authorized runtime file;
+- framework core remains 3,996 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device/relay/executor remains 727 / 750 logical TypeScript LOC;
+- production seam remains 187 / 350 logical LOC / 3 of 4 files;
+- BVP PowerShell remains 4 scripts / 1,492 logical LOC.
+
+S08E is again **READY FOR LOCAL PHX-CI RE-VERIFICATION** at repaired HEAD `60866a6d5a9c00ba283cc416a14ef2beece65d55`.
+
+The focused command remains unchanged from the prior readiness record. S08E is not accepted until a new authoritative PHX-CI run passes and its exact persisted JSON, Markdown, and complete execution log are reviewed.
+
 ## 1. Objective
 
 Extend the external BVP runner with a live executor that maps the same declarative capability concepts to bounded device commands/results and uses explicit external checkpoints for OS/provider actions that cannot safely be automated.
