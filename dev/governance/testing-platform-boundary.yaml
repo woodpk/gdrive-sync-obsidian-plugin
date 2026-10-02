@@ -26,6 +26,7 @@ production_seam:
   approved_imports:
     - src/product/local-vault-boundary-seam.ts
     - src/product/run-receipt-seam.ts
+    - src/product/live-validation-control-seam.ts
   max_logical_loc: 350
   max_files: 4
   may_expose:

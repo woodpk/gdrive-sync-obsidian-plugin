@@ -8,6 +8,7 @@ import { beginManualSyncDiagnostics, presentManualSyncPreview } from "./diagnost
 import { PlanPreviewModal } from "./product/plan-modal";
 import { AuditHistoryModal, SyncAttentionModal } from "./product/history-modal";
 import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "./product/plugin-data";
+import { createProductionVerificationControl, type ProductionVerificationControl } from "./product/live-validation-control-seam";
 import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
@@ -110,6 +111,10 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     this.unsubscribeStatus?.(); this.unsubscribeStatus = undefined;
     await this.runtime?.disposeProduct();
     await this.diagnostics?.flush();
+  }
+
+  productionVerificationControl(): ProductionVerificationControl | undefined {
+    return createProductionVerificationControl(this.runtime?.productController());
   }
 
 
