@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type {
   ScenarioAssertionStep,
   ScenarioDefinition,
+  ScenarioExecutionMode,
   ScenarioFixtureContent,
   ScenarioObservationStep,
 } from "./scenario-contract";
@@ -30,6 +31,7 @@ export interface ScenarioEvidenceInput {
   readonly steps: readonly ScenarioEvidenceStepRecord[];
   readonly captures: Readonly<Record<string, unknown>>;
   readonly deviceIdentities: readonly string[];
+  readonly executionMode: ScenarioExecutionMode;
   readonly classification?: string;
   readonly reason?: string;
 }
@@ -37,7 +39,7 @@ export interface ScenarioEvidenceInput {
 export interface CanonicalScenarioEvidenceMachine {
   readonly schemaVersion: 1;
   readonly scenarioId: string;
-  readonly executionMode: "deterministic";
+  readonly executionMode: ScenarioExecutionMode;
   readonly traceability: readonly { readonly kind: string; readonly id: string }[];
   readonly fixtures: readonly {
     readonly stepId: string;
@@ -286,7 +288,7 @@ export function buildScenarioEvidence(
   const machine: CanonicalScenarioEvidenceMachine = {
     schemaVersion: 1,
     scenarioId: execution.scenarioId,
-    executionMode: "deterministic",
+    executionMode: execution.executionMode,
     traceability: scenario.traceability.targets.map(target => ({ kind: target.kind, id: target.id })),
     fixtures: scenario.steps.map(fixtureIdentity).filter((value): value is NonNullable<typeof value> => value !== undefined),
     deviceIdentities: [...execution.deviceIdentities].sort(),

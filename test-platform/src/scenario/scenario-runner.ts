@@ -1,8 +1,8 @@
 import {
   assertNeverScenarioStep, validateScenarioDefinition,
   type ScenarioAssertionStep, type ScenarioCheckpointStep, type ScenarioDefinition,
-  type ScenarioExpectedOutcome, type ScenarioFixtureContent, type ScenarioObservationStep,
-  type ScenarioStep,
+  type ScenarioExecutionMode, type ScenarioExpectedOutcome, type ScenarioFixtureContent,
+  type ScenarioObservationStep, type ScenarioStep,
 } from "./scenario-contract";
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../virtual-world/virtual-world";
 import { virtualDrivePath, type InMemoryGoogleDriveCore } from "../virtual-world/in-memory-google-drive";
@@ -38,6 +38,13 @@ export interface ScenarioRunnerHooks {
   assert?(step: ScenarioAssertionStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;
   checkpoint?(step: ScenarioCheckpointStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;
 }
+export interface ScenarioExecutorContext { readCapture(ref: string): unknown | undefined; }
+export interface ScenarioStepExecutor {
+  readonly executionMode: ScenarioExecutionMode;
+  readonly deviceIdentities: readonly string[];
+  execute(step: ScenarioStep, context: ScenarioExecutorContext): Promise<ScenarioCapabilityResult>;
+  dispose?(): Promise<void>;
+}
 
 type StepOutcome = ScenarioCapabilityResult;
 type DriveSignal = Parameters<InMemoryGoogleDriveCore["queueBoundaryFault"]>[0]["signal"];
@@ -57,11 +64,9 @@ const expectedMatches = (expected: ScenarioExpectedOutcome | undefined, actual: 
     : actual.status === expected.status && "classification" in actual && actual.classification === expected.classification;
 
 export class DeterministicScenarioRunner {
-  constructor(private readonly hooks: ScenarioRunnerHooks = {}) {}
+  constructor(private readonly hooks: ScenarioRunnerHooks = {}, private readonly executor?: ScenarioStepExecutor) {}
 
-  static canonical(): DeterministicScenarioRunner {
-    return new DeterministicScenarioRunner(createScenarioEvidenceHooks());
-  }
+  static canonical(): DeterministicScenarioRunner { return new DeterministicScenarioRunner(createScenarioEvidenceHooks()); }
 
   async run(scenario: ScenarioDefinition): Promise<ScenarioExecutionResult> {
     const validated = validateScenarioDefinition(scenario);
@@ -69,44 +74,43 @@ export class DeterministicScenarioRunner {
       scenarioId: scenario.id ?? "<invalid>", status: "unsupported", steps: [], captures: {},
       classification: "invalid-scenario", reason: validated.issues.join("; "),
     };
-    if (!scenario.executionModes.includes("deterministic")) {
-      const core = {
-        scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {},
-        classification: "execution-mode-not-applicable",
-      };
-      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: [] }) };
+    const executionMode = this.executor?.executionMode ?? "deterministic";
+    if (!scenario.executionModes.includes(executionMode)) {
+      const core = { scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {}, classification: "execution-mode-not-applicable" };
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: [], executionMode }) };
     }
 
     const names = new Set(["device-a", "device-b"]);
     for (const step of scenario.steps) if ("device" in step && typeof step.device === "string") names.add(step.device);
-    const world = await VirtualSynchronizationWorld.create([...names]);
-    const devices = new Map<string, VirtualProductionDevice>();
-    const captures = new Map<string, unknown>();
+    const world = this.executor ? undefined : await VirtualSynchronizationWorld.create([...names]);
+    const devices = new Map<string, VirtualProductionDevice>(), captures = new Map<string, unknown>();
     const steps: ScenarioStepExecution[] = [];
-    const context: ScenarioRunnerHookContext = {
-      world,
-      readCapture: ref => captures.get(ref),
+    const context: ScenarioRunnerHookContext | undefined = world ? {
+      world, readCapture: ref => captures.get(ref),
       device: async name => {
-        const current = devices.get(name);
-        if (current) return current;
-        const created = await world.reconstructDevice(name);
-        devices.set(name, created);
-        return created;
+        const current = devices.get(name); if (current) return current;
+        const created = await world.reconstructDevice(name); devices.set(name, created); return created;
       },
-    };
+    } : undefined;
     const finish = async (status: ScenarioExecutionStatus, classification?: string, reason?: string): Promise<ScenarioExecutionResult> => {
       for (const device of devices.values()) await device.dispose();
-      const core = {
-        scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
-        ...(classification === undefined ? {} : { classification }),
-        ...(reason === undefined ? {} : { reason }),
-      };
-      const deviceIdentities = [...names].map(name => String(world.deviceBacking(name).deviceIdentity));
-      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities }) };
+      await this.executor?.dispose?.();
+      const core = { scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
+        ...(classification === undefined ? {} : { classification }), ...(reason === undefined ? {} : { reason }) };
+      const deviceIdentities = this.executor?.deviceIdentities ?? [...names].map(name => String(world!.deviceBacking(name).deviceIdentity));
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities, executionMode }) };
     };
 
     for (const [index, step] of scenario.steps.entries()) {
-      const actual = await this.execute(step, context, devices, captures);
+      let actual: StepOutcome;
+      try {
+        actual = this.executor
+          ? await this.executor.execute(step, { readCapture: ref => captures.get(ref) })
+          : await this.execute(step, context!, devices, captures);
+      } catch (error) {
+        actual = fail("failed", "step-exception", error instanceof Error ? error.message : String(error));
+      }
+      if (this.executor && actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && "value" in actual) captures.set(step.captureAs, actual.value);
       const matchedExpectation = expectedMatches(step.expect, actual);
       steps.push({
         index, stepId: step.id, kind: step.kind, status: actual.status, matchedExpectation,
