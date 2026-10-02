@@ -3,13 +3,77 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08A
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+
+## 0.1 Final Dispatch Binding
+
+BVP-S08B is **BOUND / EXECUTABLE** from accepted S08A closure.
+
+Repository coordinates:
+
+- exact accepted S08A predecessor / PHX-CI base: `b2a009e140a03c2aa94499024f38828fe3e2e78a`;
+- task branch: `bvp-s08b-validation-only-obsidian-entrypoint`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI framework version: `0.2.0-dev.2`;
+- accepted production artifact baseline: `main.js` 884,300 bytes, SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`;
+- current live-device agent/relay metric baseline: 0 logical TypeScript LOC / 0 files;
+- hard live-device agent/relay budget remains 750 logical TypeScript LOC;
+- framework core remains frozen at 4,000 / 4,000 logical TypeScript LOC / 10 modules and S08B has no authority to increase it;
+- approved production seam remains 140 logical LOC / 2 files and S08B has no authority to add or broaden a production seam.
+
+Current build grounding:
+
+- ordinary production build remains `node scripts/build.mjs && node scripts/verify-build.mjs`;
+- `scripts/build.mjs` bundles only `src/main.ts` to root `main.js` with the existing browser/CJS/ES2022 Obsidian externalization;
+- root `manifest.json` is the authoritative ordinary plugin manifest and must remain unchanged;
+- `.test-build/` is already ignored/disposable and is the validation-artifact output root;
+- `test-platform/tsconfig.json` already compiles `test-platform/src/**/*.ts` and `test-platform/test/**/*.ts` into `.test-build/bvp`;
+- the architecture guard already hard-fails if ordinary root `main.js` contains `BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL`;
+- production `src/**` may not import `test-platform/**`, and S08B must not reclassify `src/main.ts` as a production seam.
+
+Bound validation composition:
+
+- NEW `test-platform/src/live-device/validation-entrypoint.ts` owns only validation-artifact identity/non-shipping marking; it imports no production source and no scenario/test infrastructure;
+- NEW `test-platform/src/live-device/build-validation-artifact.ts` is the validation-only build owner. It must use the existing esbuild dependency to generate a temporary/virtual composition entry that wraps the real `src/main.ts` production entrypoint together with the validation-only entry module, without modifying production build configuration;
+- validation output is disposable under `.test-build/bvp-live-device/plugin/`, containing validation `main.js`, an unchanged copy of root `manifest.json`, and machine-readable build identity;
+- the validation bundle must record exact Git source HEAD, artifact size/hash, production entrypoint identity, and included test-platform inputs;
+- esbuild metafile input inspection must reject any included `test-platform/**` source outside `test-platform/src/live-device/**`, preventing scenario catalog, tests, fixtures, or virtual-world implementation from leaking into the validation artifact;
+- normal production `main.js` must retain the accepted S08A hash because S08B changes no production source/build path.
+
+Exact writable-path allowlist:
+
+- `test-platform/src/live-device/validation-entrypoint.ts`;
+- `test-platform/src/live-device/build-validation-artifact.ts`;
+- `test-platform/test/s08b-validation-build-entrypoint.test.ts`;
+- this S08B task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No other path is writable. In particular, S08B may not change `src/**`, `scripts/**`, `package.json`, `package-lock.json`, `manifest.json`, `phx-ci.json`, Taskfiles, PowerShell, the architecture boundary/guard/metrics, OAuth/authentication code, S08A receipt semantics, command-agent/transport code, or scenario catalog.
+
+Required focused proof:
+
+- build and verify ordinary production `main.js` through the existing production build scripts;
+- build the validation artifact independently through the compiled validation-only builder;
+- prove production `main.js` lacks the non-shipping sentinel and retains the accepted S08A SHA-256;
+- prove validation `main.js` contains/executes the validation build identity while loading the real production entrypoint path;
+- prove validation artifact manifest bytes equal the authoritative root manifest;
+- prove build identity reports exact source HEAD and exact validation artifact SHA-256;
+- prove validation bundle test-platform inputs are restricted to `test-platform/src/live-device/**`;
+- delete disposable validation output and prove the already-built production artifact remains independently valid and unchanged;
+- rebuild validation output and prove deterministic validation artifact identity for the same source HEAD.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js`
+
+BVP-GOV-010 size gate: PASS. The child adds one validation-build/entrypoint contract family, two substantive validation-only implementation files, and one focused test. It introduces no production, framework-core, PowerShell, PHX-CI, governance, command-agent, transport, or scenario implementation.
 
 ## 1. Objective
 
