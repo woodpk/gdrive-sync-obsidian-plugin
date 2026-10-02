@@ -1,11 +1,11 @@
 import { doesNotMatch, deepStrictEqual, strictEqual } from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import { decodeScenarioCheckpoint } from "../src/scenario/scenario-checkpoint";
-import { defineScenario, type ScenarioDefinition, type ScenarioStep } from "../src/scenario/scenario-contract";
+import { defineScenario, type ScenarioDefinition } from "../src/scenario/scenario-contract";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "../src/live-device/device-command-agent";
 import { createLiveScenarioExecutor, type HumanCheckpointInstruction } from "../src/live-device/live-scenario-executor";
@@ -45,6 +45,15 @@ test("production uncertainty propagates as failure rather than transport success
 test("wrong-device result fails correlation and missing result blocks",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("correlation",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-c",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
   await respond(relay,c=>({...baseResult(c,{classification:"fixture-observed",fixture:{exists:false}}),deviceId:"wrong"}));const bad=await run;strictEqual(bad.status,"failed");strictEqual(bad.classification,"result-correlation-mismatch");
   const missingExec=await createLiveScenarioExecutor({...options(s,"run-missing",join(dir,"relay2"),join(dir,"cp2.json")),resultTimeoutMs:5});const missing=await new DeterministicScenarioRunner({},missingExec).run(s);strictEqual(missing.status,"blocked");strictEqual(missing.classification,"device-result-unavailable");await rm(dir,{recursive:true,force:true});
+});
+
+test("stale-sequence result also fails exact correlation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("stale-sequence",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-s",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
+  await respond(relay,c=>({...baseResult(c,{classification:"fixture-observed",fixture:{exists:false}}),sequence:c.sequence+1}));const result=await run;strictEqual(result.status,"failed");strictEqual(result.classification,"result-correlation-mismatch");await rm(dir,{recursive:true,force:true});
+});
+
+test("iOS termination checkpoint resumes with no device-local runner state",async()=>{const dir=await root(),relay=join(dir,"relay"),cp=join(dir,"ios.json"),s=scenario("ios-lifecycle",[{id:"restart",kind:"checkpoint",operation:"restart-device",device:"device-b",checkpointRef:"ios-restart"}]),instruction:HumanCheckpointInstruction={action:"Terminate and relaunch Obsidian on iOS",device:"physical-b",stopCondition:"Obsidian process is terminated",requiredEvidence:["human-confirmation"],nextSafeAction:"Resume the external runner"};
+  const firstExec=await createLiveScenarioExecutor(options(s,"run-ios",relay,cp,{checkpoints:{"ios-restart":instruction}}));const first=await new DeterministicScenarioRunner({},firstExec).run(s);strictEqual(first.status,"blocked");strictEqual(first.classification,"human-checkpoint-required");
+  const resumedExec=await createLiveScenarioExecutor(options(s,"run-ios",relay,cp,{checkpoints:{"ios-restart":instruction},resumeEvidence:["human-confirmation"]}));const resumed=await new DeterministicScenarioRunner({},resumedExec).run(s);strictEqual(resumed.status,"completed");strictEqual((await readdir(join(relay,"outbox"))).length,0);await rm(dir,{recursive:true,force:true});
 });
 
 test("human checkpoint persists only S05D state and resumes in a new executor without replaying mutation",async()=>{const dir=await root(),relay=join(dir,"relay"),cp=join(dir,"state","checkpoint.json"),s=scenario("resume",[
