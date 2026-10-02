@@ -3,13 +3,119 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08E
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository/device coordinates only.
+
+
+## 0.1 Dispatch Binding
+
+Repository coordinates:
+
+- exact accepted S08E predecessor / runtime source: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- task branch: `bvp-s08f-desktop-live-canary`;
+- package / manifest version: `0.1.18`;
+- accepted ordinary production artifact baseline: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- accepted validation artifact baseline SHA-256: `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework version: `0.2.0-dev.2`;
+- framework core: 3,996 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device/relay/executor: 727 / 750 logical TypeScript LOC;
+- production seam: 187 / 350 logical LOC / 3 of 4 files;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC.
+
+Windows physical-validation coordinates:
+
+- validation device: the established real Windows Obsidian installation hosting the BRAIN vault;
+- validation command device ID: `windows-brain-patrick`;
+- development repository: `D:\obsidian-brain-dev`;
+- BRAIN vault: `C:\Users\woodpk\Phoenix Rising Counseling Services\brain-patrick\BRAIN`;
+- installed plugin directory: `C:\Users\woodpk\Phoenix Rising Counseling Services\brain-patrick\BRAIN\.obsidian\plugins\brain-google-drive-sync`;
+- protected relay root: `.obsidian/plugins/brain-google-drive-sync/.bvp-relay` within that vault;
+- install procedure preserves `data.json`, Google authentication/client secret, managed remote identity, vault identity, and pairing state; only validated `main.js` / `manifest.json` are replaced for the canary.
+
+Disposable canary identity:
+
+- run ID: `s08f-desktop-canary-4f9c69c`;
+- fixture root: `BVP-VALIDATION/s08f-desktop-canary-4f9c69c`;
+- fixture relative path: `canary.md`;
+- fixture vault path: `BVP-VALIDATION/s08f-desktop-canary-4f9c69c/canary.md`;
+- fixture content exactly:
+  `BVP S08F desktop live canary\nsource=4f9c69c38c12c09d2f06f3f966dc8519ed45a99f\n`;
+- fixture UTF-8 byte length: 77;
+- fixture SHA-256: `77c2d998d79fa0bd9f26f7f20aa1a7f6e9ea638f12eb138409b8f2b97e837ce7`;
+- no permanent user file may be used or modified as canary content.
+
+Selected bounded canary:
+
+1. build the validation artifact from exact accepted S08E source `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+2. back up installed `main.js` and `manifest.json` only; preserve `data.json` and all local authentication/pairing state;
+3. install the validation artifact into the established Windows plugin directory and reload Obsidian;
+4. confirm validation build identity and existing authenticated/paired product state;
+5. instantiate one bounded device agent in the running validation artifact for run `s08f-desktop-canary-4f9c69c`, device `windows-brain-patrick`, fixture root `BVP-VALIDATION/s08f-desktop-canary-4f9c69c`, using the real vault adapter, accepted production verification control, bounded sequence state, and existing mailbox runtime;
+6. run an external S08E live scenario through the protected local relay:
+   - put the exact disposable local fixture;
+   - request manual production preview;
+   - execute the returned plan;
+   - require a fresh correlated S08A terminal receipt whose terminal is `complete`;
+   - observe the local fixture objectively and require size/hash identity;
+   - retain canonical live scenario evidence;
+7. physically demonstrate safe command identity behavior without broadening scope:
+   - exact duplicate command returns/reuses the accepted bounded result without repeating mutation;
+   - a stale sequence is rejected;
+   - wrong run/device input is rejected or left unprocessed before mutation;
+8. cleanup:
+   - remove the disposable fixture through the bounded agent;
+   - run a bounded production synchronization to reconcile the deletion;
+   - require a fresh terminal `complete` receipt;
+   - objectively verify local fixture absence;
+   - leave relay/canary state documented for cleanup or remove only canary-owned relay state after evidence capture;
+9. restore the ordinary production artifact after canary evidence is complete and verify exact ordinary production `main.js` identity.
+
+Validation artifact build command from an exact-source detached checkout:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/live-device/build-validation-artifact.js`
+
+Expected validation artifact directory:
+
+`.test-build/bvp-live-device/plugin`
+
+Expected validation artifact files:
+
+- `main.js`;
+- `manifest.json`;
+- `build-identity.json`.
+
+Physical evidence root:
+
+`dev/evidence/2026-10-02-BVP-S08F-4f9c69c/`
+
+Required physical evidence files:
+
+- `build-identity.json` — copied validation build identity;
+- `installed-validation-identity.md` — installed file sizes/hashes and preserved-state confirmation;
+- `canary-scenario-evidence.json` — canonical S08E live scenario evidence;
+- `canary-command-results.json` — exact bounded command/result records used for duplicate/stale/mismatch proof;
+- `canary-production-receipts.json` — production terminal receipt(s), including cleanup synchronization;
+- `canary-observations.json` — objective fixture observations before/after cleanup;
+- `production-bundle-isolation.md` — ordinary shipping hash plus source/artifact exclusion proof;
+- `S08F-PASS.md` or `S08F-BLOCKED.md` — bounded physical verdict and exact device/build/run identities.
+
+S08F requires no new runtime implementation by default. If the accepted validation artifact cannot be composed into a real bounded device agent from its already-exposed factory/mailbox/runtime and production seam on the Windows device, stop as `BLOCKED`; do not silently add another device runtime, transport, runner, persistence family, or production seam.
+
+Writable paths for repository recording:
+
+- this S08F task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`;
+- files only under `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/**`.
+
+No production, test-platform runtime, scenario catalog, PowerShell, governance, PHX-CI, package, manifest, or S09 implementation path is writable unless S08F proves the accepted stack is materially incapable and supervisor re-grounding explicitly authorizes a prerequisite.
+
+Authoritative repository verification after physical evidence capture uses PHX-CI with exact base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, ordinary change class, and a unique GUID-suffixed temp root.
 
 ## 1. Objective
 
