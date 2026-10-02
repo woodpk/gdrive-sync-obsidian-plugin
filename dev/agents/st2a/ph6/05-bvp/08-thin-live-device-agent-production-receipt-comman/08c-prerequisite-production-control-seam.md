@@ -31,6 +31,41 @@ Grounded gap:
 - the frozen boundary manifest explicitly allows a bounded invocation seam over already-authorized production actions;
 - reflective/private-field access, monkey-patching, broad `src/main.ts` BVP imports, or duplicate synchronization behavior are prohibited.
 
+
+## 0.2 Ready-for-Verification Record
+
+The S08C production-control prerequisite is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `acbde733bc137b38ad18933604b883207d923e62`;
+- exact architecture-reviewed predecessor / PHX-CI base: `c31f99dd5e2ea0cbf6443ba3110f377f4292f67b`;
+- branch: `bvp-s08c-prereq-production-control-seam`;
+- exact implementation/governance delta:
+  - NEW `src/product/live-validation-control-seam.ts` — bounded delegation facade over existing production controller authority;
+  - `src/main.ts` — one explicit accessor returning the facade when the real controller exists;
+  - `dev/governance/testing-platform-boundary.yaml` — one approved-import entry, with no budget/rule increase;
+  - NEW `test-platform/test/s08c-prerequisite-production-control-seam.test.ts` — exact delegation, fail-closed availability, defensive read-only observation, and shipping-source wiring proof;
+  - `test-platform/test/architecture-metrics.test.ts` — actual-repository baseline updated to three production seam files and the already-accepted S08B live-device baseline of 176 LOC;
+- task/index documentation are the only additional changed paths;
+- production seam file count projects to 3 / 4 with substantial LOC headroom under 350;
+- framework core remains 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device/relay remains 176 / 750 logical TypeScript LOC / 2 files;
+- BVP PowerShell remains 4 scripts / 1,492 LOC;
+- scenario-specific production and PowerShell remain 0.
+
+The facade exposes no generic `request` method. Its public surface is limited to manual preview, Verify/Reconcile preview, execute an already-produced plan ID, pause, resume, cancel-active-sync, copied production status observation, and copied S08A terminal receipt observation.
+
+The status and receipt observations are defensively copied so validation code receives no mutable reference to the controller's in-memory surface/receipt state.
+
+The production identifiers intentionally avoid the architecture guard's prohibited scenario/validation-control naming patterns, and `src/main.ts` imports no `test-platform/**` implementation.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08c-prerequisite-production-control-seam.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+Authoritative PHX-CI MUST use `BVP_CHANGE_CLASS=authorized-governance`.
+
+This prerequisite is not accepted until PHX-CI passes and the persisted JSON, Markdown, and complete execution log are reviewed. S08C proper remains blocked.
+
 ## 1. Objective
 
 Add the smallest production-owned control facade required for later validation-only command execution to invoke existing production synchronization authority safely and observe the S08A terminal receipt, without adding synchronization policy, scenario authority, transport, persistence, or test-only mutation bypass.
