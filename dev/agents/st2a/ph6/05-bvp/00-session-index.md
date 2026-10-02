@@ -827,3 +827,30 @@ S08E single-runner executor prerequisite is **READY FOR LOCAL PHX-CI VERIFICATIO
 
 
 S08E single-runner executor prerequisite is **COMPLETE / ACCEPTED**. Accepted implementation `7d261698ec83cebeee6063524e57802955600b23`; evidence `5828e0c251758d05c171ad8f2a0ba6a5db15d674`; run `e8590eae-5d13-4149-9a4a-21b5e8081953`; exact base `bdd34c5e32d42cdfe20bc82fe97a17cce4e9f171`. Complete JSON, Markdown, and 7,411-line log reviewed. Focused 68/68 PASS; full repository 835/835 PASS; all stages PASS; guard 0; repository gate PASS; vulnerabilities 0. Framework core is 3,996/4,000 LOC / 10 modules; live-device/relay 572/750; production seam 187/350 and 3/4; BVP PowerShell 4/1,492; scenario-specific production/PowerShell 0/0. Shipping artifact remains 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`. Post-prerequisite architecture confirmation is required before S08E proper.
+
+
+### Post-Prerequisite Architecture Confirmation — before S08E
+
+The accepted S08E single-runner executor prerequisite at `e3a53042a265bb9fb8205d0dafa3fcabeb7c8abc` is **ARCHITECTURALLY CONFIRMED / PASS**.
+
+- authoritative prerequisite evidence: `5828e0c251758d05c171ad8f2a0ba6a5db15d674`;
+- authoritative run: `e8590eae-5d13-4149-9a4a-21b5e8081953`;
+- architecture guard: PASS / 0 violations;
+- framework core: **3,996 / 4,000 logical TypeScript LOC / exactly 10 runtime modules**, a net reduction of 4 LOC from the 4,000-LOC predecessor;
+- live-device agent/relay: 572 / 750 logical TypeScript LOC, unchanged;
+- production source: 16,813 logical LOC, unchanged;
+- production seam: 187 / 350 logical LOC and 3 / 4 files, unchanged;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC, unchanged;
+- scenario catalog: 70 scenarios / 1,524 logical LOC, unchanged;
+- scenario-specific production/PowerShell: 0 / 0;
+- shipping artifact remains 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Architecture findings:
+
+- `DeterministicScenarioRunner` remains the single scenario runner and still owns validation, execution-mode applicability, step order, captures, expected-outcome matching, final verdict, canonical evidence, and executor lifecycle;
+- the injected `ScenarioStepExecutor` receives one selected generic step at a time plus step index and read-only prior-capture access; it cannot own scenario ordering or verdict;
+- executor-driven runs do not construct or invoke deterministic virtual-world mechanics for the same step;
+- canonical evidence remains one schemaVersion-1 family and now truthfully records the existing deterministic/live execution-mode union;
+- no new runner, workflow engine, scenario language, checkpoint model, persistence family, evidence family, coordination protocol, transport, production policy, or governance budget was introduced.
+
+S08E proper is therefore **UNBLOCKED FOR DISPATCH BINDING**. It must consume the accepted single-runner executor seam, S05D checkpoint representation, S08C device commands, and S08D mailbox/relay rather than create parallel authority.
