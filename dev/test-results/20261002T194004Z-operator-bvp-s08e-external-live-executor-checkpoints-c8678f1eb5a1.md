@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08e-external-live-executor-checkpoints
+- Source build HEAD requested: c8678f1eb5a128dd810531a9fd3c9a1e53d3cfdf
+- Verification checkout HEAD: c8678f1eb5a128dd810531a9fd3c9a1e53d3cfdf
+- Evidence publication target: origin/bvp-s08e-external-live-executor-checkpoints
