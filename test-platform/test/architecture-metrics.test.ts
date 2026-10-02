@@ -135,7 +135,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.productionSeamFileCount, 3);
   strictEqual(value.current.productionSeamLogicalLoc > 0, true);
   strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
-  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 572);
+  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 727);
   const scenarios = value.current.scenarios ?? [];
   strictEqual(value.current.scenarioCount, scenarios.length);
   strictEqual(

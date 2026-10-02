@@ -28,7 +28,7 @@ const exists=async(path:string):Promise<boolean>=>stat(path).then(()=>true,()=>f
 const checkpointKey=(step:ScenarioCheckpointStep):string=>step.operation==="capture"?step.checkpointId:step.checkpointRef??step.id;
 const stepDevice=(step:ScenarioStep):string|undefined=>"device" in step&&typeof step.device==="string"?step.device:undefined;
 const commandCount=(step:ScenarioStep):number=>
-  step.kind==="fixture"&&(step.operation==="put-local-file"||step.operation==="remove-local")?1:
+  step.kind==="fixture"&&((step.operation==="put-local-file"&&step.content.encoding==="utf8")||step.operation==="remove-local")?1:
   step.kind==="production"&&(step.operation==="synchronize"||step.operation==="reconcile")?2:
   step.kind==="production"&&step.operation!=="automatic-sync"?1:
   step.kind==="external-state"&&step.transition==="request-cancellation"&&!step.boundary?1:
@@ -76,7 +76,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   if(await exists(options.checkpointFile)){
     const decoded=decodeScenarioCheckpoint(await readFile(options.checkpointFile,"utf8"));
     if(!decoded.ok)resumeFailure=decoded.classification;
-    else{const checked=validateScenarioCheckpointForResume(decoded.value,{scenario:options.scenario,runId:options.runId,executionMode:"live",deviceIdentities});if(!checked.ok)resumeFailure=checked.classification;else resume=checked.value;}
+    else{const checked=validateScenarioCheckpointForResume(decoded.value,{scenario:options.scenario,runId:options.runId,executionMode:"live",deviceIdentities});if(!checked.ok)resumeFailure=checked.classification;else{const i=checked.value.nextStepIndex-1,target=options.scenario.steps[i];if(i<0||target?.kind!=="checkpoint"||checkpointKey(target)!==checked.value.checkpointId)resumeFailure="checkpoint-execution-context-mismatch";else resume=checked.value;}}
   }
 
   async function roundTrip(command:DeviceCommand):Promise<RelayResult>{
@@ -104,7 +104,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     history.push({index,stepId:step.id,kind:step.kind,status:result.status,...("classification" in result?{classification:result.classification}:{}),matchedExpectation:true});return result;
   }
   function replay(index:number):ScenarioCapabilityResult{
-    const prior=resume?.results.find(item=>item.index===index);return prior?{status:prior.status,...(prior.classification?{classification:prior.classification}:{})}:{status:"completed"};
+    const prior=resume?.results.find(item=>item.index===index);if(!prior||prior.status==="completed")return{status:"completed"};return fail(prior.status,prior.classification??"checkpoint-prior-result");
   }
   async function humanCheckpoint(step:ScenarioCheckpointStep,context:ScenarioExecutorContext):Promise<ScenarioCapabilityResult>{
     const key=checkpointKey(step),instruction=options.checkpoints?.[key];
