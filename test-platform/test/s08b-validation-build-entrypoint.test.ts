@@ -12,6 +12,7 @@ import {
 } from "../src/live-device/build-validation-artifact";
 import {
   BVP_DEVICE_AGENT_FACTORY_GLOBAL,
+  BVP_MAILBOX_RUNTIME_GLOBAL,
   BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL,
   BVP_VALIDATION_BUILD_GLOBAL,
 } from "../src/live-device/validation-entrypoint";
@@ -102,6 +103,7 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
   deepEqual(first.testPlatformInputs, [
     "test-platform/src/live-device/device-command-agent.ts",
+    "test-platform/src/live-device/drive-mailbox.ts",
     "test-platform/src/live-device/validation-entrypoint.ts",
   ]);
 
@@ -120,6 +122,7 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(runtimeIdentity.sourceCommit, first.sourceCommit);
   equal(runtimeIdentity.sentinel, BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL);
   equal(typeof evaluated.context[BVP_DEVICE_AGENT_FACTORY_GLOBAL], "function");
+  equal(evaluated.context[BVP_MAILBOX_RUNTIME_GLOBAL], undefined);
   ok(evaluated.exports);
 
   rmSync(first.outputDirectory, { recursive: true, force: true });

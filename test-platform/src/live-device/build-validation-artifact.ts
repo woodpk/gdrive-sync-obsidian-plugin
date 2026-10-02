@@ -82,9 +82,18 @@ export async function buildValidationArtifact(repositoryRoot = resolve(process.c
 
   const virtualSource = [
     `import ProductionPlugin from "./${productionEntrypoint}";`,
-    `import { installBvpValidationBuildIdentity } from "./${validationEntrypoint}";`,
+    'import { Platform, requestUrl } from "obsidian";',
+    'import { GOOGLE_OAUTH_CLIENT_SECRET_ID, GoogleOAuthSession, ObsidianSecretStore } from "./src/drive/auth";',
+    'import { createObsidianRequestUrlFetcher } from "./src/drive/obsidian-http";',
+    'import { GoogleHttpTransport } from "./src/drive/transport";',
+    `import { installBvpMailboxRuntime, installBvpValidationBuildIdentity } from "./${validationEntrypoint}";`,
     `installBvpValidationBuildIdentity(${JSON.stringify(sourceCommit)});`,
-    "export default ProductionPlugin;",
+    'class BvpValidationPlugin extends ProductionPlugin {',
+    '  private bvpRelayTimer?: number;',
+    '  async onload() { await super.onload(); const raw = await this.loadData() as any; const settings = raw?.settings ?? {}; if (!settings.oauthClientId || !settings.oauthRedirectUri) return; const fetcher = createObsidianRequestUrlFetcher(requestUrl); const oauth = new GoogleOAuthSession({ clientId: settings.oauthClientId, redirectUri: settings.oauthRedirectUri, clientSecretStorageKey: GOOGLE_OAUTH_CLIENT_SECRET_ID }, new ObsidianSecretStore(this.app.secretStorage), fetcher); const transport = new GoogleHttpTransport(oauth, fetcher); const requester = async (url: string, init?: RequestInit) => { const response = await transport.request(url, init); if (!response.ok) throw new Error("bvp-mailbox-drive-" + response.signal.kind); return response.value; }; const relay = Platform.isDesktopApp ? { adapter: this.app.vault.adapter, root: this.app.vault.configDir + "/plugins/" + this.manifest.id + "/.bvp-relay" } : undefined; const runtime = installBvpMailboxRuntime(requester, relay); if (runtime.relay) this.bvpRelayTimer = window.setInterval(() => void runtime.relay!.pumpOnce().catch(() => undefined), 1000); }',
+    '  async onunload() { if (this.bvpRelayTimer !== undefined) window.clearInterval(this.bvpRelayTimer); await super.onunload(); }',
+    '}',
+    "export default BvpValidationPlugin;",
     "",
   ].join("\n");
 

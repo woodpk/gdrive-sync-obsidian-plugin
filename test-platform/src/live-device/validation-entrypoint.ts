@@ -1,8 +1,10 @@
 import { createBoundedDeviceCommandAgent } from "./device-command-agent";
+import { createDriveCommandMailbox, createWindowsMailboxRelay, pollDeviceMailboxOnce, type AuthenticatedDriveRequest } from "./drive-mailbox";
 export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL =
   "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL";
 export const BVP_VALIDATION_BUILD_GLOBAL = "__BRAIN_BVP_VALIDATION_BUILD__";
 export const BVP_DEVICE_AGENT_FACTORY_GLOBAL = "__BRAIN_BVP_DEVICE_AGENT_FACTORY__";
+export const BVP_MAILBOX_RUNTIME_GLOBAL = "__BRAIN_BVP_MAILBOX_RUNTIME__";
 
 export interface BvpValidationBuildIdentity {
   readonly schemaVersion: 1;
@@ -32,4 +34,11 @@ export function installBvpValidationBuildIdentity(sourceCommit: string): BvpVali
     writable: false,
   });
   return identity;
+}
+
+export function installBvpMailboxRuntime(request: AuthenticatedDriveRequest, relay?: { adapter: Parameters<typeof createWindowsMailboxRelay>[1]; root: string }) {
+  const mailbox = createDriveCommandMailbox(request);
+  const value = Object.freeze({ mailbox, pollDeviceOnce: (agent: Parameters<typeof pollDeviceMailboxOnce>[1], runId: string, deviceId: string) => pollDeviceMailboxOnce(mailbox, agent, runId, deviceId), relay: relay ? createWindowsMailboxRelay(mailbox, relay.adapter, relay.root) : undefined });
+  Object.defineProperty(globalThis, BVP_MAILBOX_RUNTIME_GLOBAL, { value, configurable: true, enumerable: false, writable: false });
+  return value;
 }
