@@ -3,13 +3,99 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08C
 
 Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
 
 This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+
+## 0.1 Final Dispatch Binding
+
+Repository coordinates:
+
+- exact accepted S08C predecessor / PHX-CI base: `03d0d8da3c860a35943f214c9b90c83bfdb9a132`;
+- task branch: `bvp-s08d-minimal-command-mailbox`;
+- accepted S08C command protocol: `test-platform/src/live-device/device-command-agent.ts`;
+- accepted validation composition: `test-platform/src/live-device/build-validation-artifact.ts` + `validation-entrypoint.ts`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- framework version: `0.2.0-dev.2`;
+- ordinary shipping artifact baseline: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- current live-device/relay surface: 482 / 750 logical TypeScript LOC, leaving 268 LOC;
+- framework core remains frozen at 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- production seam remains 187 / 350 logical LOC / 3 of 4 files and is frozen for this child.
+
+Selected transport authority:
+
+- ordinary Google Drive `drive` space under the already-frozen exact OAuth scope `https://www.googleapis.com/auth/drive.file`;
+- one dedicated app-created folder named `BRAIN BVP Mailbox`, outside the managed BRAIN Sync remote, marked with private Drive `appProperties` `brainBvpMailbox=1`;
+- mailbox record files are likewise marked `brainBvpRecord=1` plus bounded record kind metadata;
+- `appDataFolder` is explicitly not used because it requires an additional OAuth scope, which is forbidden.
+
+Credential boundary:
+
+- test-platform source may not import production Drive/OAuth modules directly;
+- the generated validation-only composition wrapper may reuse the already-shipping production OAuth classes `GoogleOAuthSession`, `ObsidianSecretStore`, `createObsidianRequestUrlFetcher`, and `GoogleHttpTransport`;
+- that wrapper reads only persisted public plugin settings via `Plugin.loadData()`, uses the device's own `app.secretStorage`, and passes a narrow authenticated Drive-request closure into validation-only mailbox code;
+- no access/refresh token, authorization code, client secret, or OAuth transaction value may be placed in mailbox records, relay files, results, logs, or external-runner state.
+
+Windows relay:
+
+- required because the external controller must not receive the device OAuth token;
+- the relay is validation-only and runs inside the Windows validation artifact using Obsidian's vault adapter;
+- local relay root is `.obsidian/plugins/<plugin-id>/.bvp-relay`, with `outbox/`, `sent/`, and `inbox/`;
+- the external controller writes one bounded S08C command JSON file to `outbox/`;
+- the relay publishes it to Drive and moves the exact local file to `sent/`;
+- after an exact correlated Drive result appears, the relay writes it to `inbox/` and removes the corresponding `sent/` record;
+- relay restart reconstructs only from the exact files in `sent/`; it stores no scenario graph, branch state, verdict, or future-step intent.
+
+Drive mailbox semantics:
+
+- record payload is the exact bounded S08C command/result JSON, maximum 128 KiB;
+- metadata creation and media upload are separate Drive operations; incomplete/invalid files are ignored rather than interpreted optimistically;
+- mailbox listing is bounded and fails closed if the record set exceeds one page;
+- duplicate command records are allowed by transport; S08C sequence safety prevents repeated effects;
+- conflicting duplicate result payloads for the same run/device/sequence/command identity fail closed;
+- result lookup requires exact run/device/sequence/command identity;
+- a device pump processes addressed commands through the accepted S08C agent and publishes its typed bounded result;
+- transport acknowledgement or mailbox presence never becomes synchronization success.
+
+Exact writable-path allowlist:
+
+- NEW `test-platform/src/live-device/drive-mailbox.ts`;
+- `test-platform/src/live-device/validation-entrypoint.ts`;
+- `test-platform/src/live-device/build-validation-artifact.ts`;
+- NEW `test-platform/test/s08d-drive-mailbox-relay.test.ts`;
+- `test-platform/test/s08b-validation-build-entrypoint.test.ts` only for validation-input/runtime wiring expectations;
+- `test-platform/test/architecture-metrics.test.ts` only for the actual post-S08D live-device/relay baseline;
+- this S08D task file;
+- `dev/agents/st2a/ph6/05-bvp/00-session-index.md`.
+
+No production, governance, PowerShell, PHX-CI, package, manifest, OAuth-scope, scenario, or external-runner implementation path is writable.
+
+Focused proof must cover:
+
+- Drive mailbox root is a separately tagged app-created folder and never a managed BRAIN Sync content/config root;
+- command/result round trip and exact correlation;
+- wrong-run and wrong-device records are filtered before agent execution;
+- duplicate/reordered command delivery cannot repeat effects when passed through S08C;
+- conflicting duplicate result fails closed;
+- unavailable Drive requester yields explicit unavailable/failure rather than optimistic success;
+- Windows relay outbox -> Drive -> sent transition;
+- relay reconstruction from `sent/` after restart;
+- correlated result -> inbox transition with exact command removal;
+- device pump publishes the S08C typed result;
+- mailbox record size/privacy bounds;
+- validation artifact contains mailbox/relay wiring while ordinary production artifact retains the accepted S08C shipping hash;
+- architecture metrics remain at or below 750 live-device/relay LOC.
+
+Focused command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js`
+
+BVP-GOV-010 size gate: PASS. This child is limited to one compact validation-only Drive-mailbox/relay module plus bounded validation-composition wiring and focused tests; it creates no general message broker, backend, queue platform, scenario engine, second evidence schema, new OAuth scope, or production transport.
 
 ## 1. Objective
 
