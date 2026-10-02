@@ -1,6 +1,8 @@
+import { createBoundedDeviceCommandAgent } from "./device-command-agent";
 export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL =
   "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL";
 export const BVP_VALIDATION_BUILD_GLOBAL = "__BRAIN_BVP_VALIDATION_BUILD__";
+export const BVP_DEVICE_AGENT_FACTORY_GLOBAL = "__BRAIN_BVP_DEVICE_AGENT_FACTORY__";
 
 export interface BvpValidationBuildIdentity {
   readonly schemaVersion: 1;
@@ -19,6 +21,12 @@ export function installBvpValidationBuildIdentity(sourceCommit: string): BvpVali
   });
   Object.defineProperty(globalThis, BVP_VALIDATION_BUILD_GLOBAL, {
     value: identity,
+    configurable: true,
+    enumerable: false,
+    writable: false,
+  });
+  Object.defineProperty(globalThis, BVP_DEVICE_AGENT_FACTORY_GLOBAL, {
+    value: createBoundedDeviceCommandAgent,
     configurable: true,
     enumerable: false,
     writable: false,

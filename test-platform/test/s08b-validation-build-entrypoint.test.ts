@@ -11,13 +11,14 @@ import {
   type ValidationArtifactBuildResult,
 } from "../src/live-device/build-validation-artifact";
 import {
+  BVP_DEVICE_AGENT_FACTORY_GLOBAL,
   BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL,
   BVP_VALIDATION_BUILD_GLOBAL,
 } from "../src/live-device/validation-entrypoint";
 
 const repositoryRoot = resolve(process.cwd());
 const acceptedProductionSha256 =
-  "0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411";
+  "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074";
 
 function sha256(content: Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
@@ -99,7 +100,10 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   notEqual(first.artifactSha256, productionHash);
   equal(readFileSync(first.artifactPath, "utf8").includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), true);
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
-  deepEqual(first.testPlatformInputs, ["test-platform/src/live-device/validation-entrypoint.ts"]);
+  deepEqual(first.testPlatformInputs, [
+    "test-platform/src/live-device/device-command-agent.ts",
+    "test-platform/src/live-device/validation-entrypoint.ts",
+  ]);
 
   const identity = readIdentity(first);
   equal(identity.sourceCommit, first.sourceCommit);
@@ -115,6 +119,7 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(runtimeIdentity.schemaVersion, 1);
   equal(runtimeIdentity.sourceCommit, first.sourceCommit);
   equal(runtimeIdentity.sentinel, BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL);
+  equal(typeof evaluated.context[BVP_DEVICE_AGENT_FACTORY_GLOBAL], "function");
   ok(evaluated.exports);
 
   rmSync(first.outputDirectory, { recursive: true, force: true });
