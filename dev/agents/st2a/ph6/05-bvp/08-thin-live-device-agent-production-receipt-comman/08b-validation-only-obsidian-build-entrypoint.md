@@ -75,6 +75,42 @@ Focused command:
 
 BVP-GOV-010 size gate: PASS. The child adds one validation-build/entrypoint contract family, two substantive validation-only implementation files, and one focused test. It introduces no production, framework-core, PowerShell, PHX-CI, governance, command-agent, transport, or scenario implementation.
 
+
+## 0.2 Ready-for-Verification Record
+
+BVP-S08B is **READY FOR LOCAL PHX-CI VERIFICATION**.
+
+- semantic implementation HEAD: `7dc7be83c15b1ffebe873ea27688d8c6e779867d`;
+- exact accepted S08A predecessor / PHX-CI base: `b2a009e140a03c2aa94499024f38828fe3e2e78a`;
+- implementation branch: `bvp-s08b-validation-only-obsidian-entrypoint`;
+- implementation delta is exactly:
+  - `test-platform/src/live-device/validation-entrypoint.ts` — validation-only non-shipping/build identity installation;
+  - `test-platform/src/live-device/build-validation-artifact.ts` — validation-only esbuild composition over the real `src/main.ts` entrypoint, exact source/artifact identity, manifest copy, and test-platform input containment;
+  - `test-platform/test/s08b-validation-build-entrypoint.test.ts` — focused production/validation separation, load, identity, disposal, and deterministic-rebuild proof;
+- production source/build/config delta: 0;
+- production seam remains 140 logical LOC / 2 files;
+- framework core remains 4,000 / 4,000 logical TypeScript LOC / 10 modules;
+- projected live-device/relay contribution: 176 logical TypeScript LOC / 2 files versus the frozen 750-LOC maximum;
+- BVP PowerShell remains 4 scripts / 1,492 LOC;
+- no architecture boundary/guard/metrics, PHX-CI, package, manifest, OAuth, command-agent, transport, scenario, or production file was changed.
+
+Validation build behavior:
+
+- the validation artifact is emitted only beneath ignored `.test-build/bvp-live-device/plugin/`;
+- its generated virtual wrapper bundles the real production `src/main.ts` and the validation-only entry module without modifying ordinary production build configuration;
+- ordinary production `main.js` is independently rebuilt/verified and must retain accepted S08A SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`;
+- validation `main.js` carries `BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL` plus exact source HEAD at runtime;
+- validation `build-identity.json` records source commit, artifact size/SHA-256, manifest SHA-256, production/validation entrypoints, and included test-platform inputs;
+- esbuild metafile inspection fails closed if any bundled test-platform source lies outside `test-platform/src/live-device/**`;
+- root `manifest.json` is copied byte-for-byte into the validation artifact;
+- focused proof removes the disposable validation output, re-verifies the untouched production artifact, rebuilds validation output, and requires deterministic validation artifact identity for the same source HEAD.
+
+Focused command remains:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js`
+
+S08B is not accepted until authoritative PHX-CI passes and the persisted JSON, Markdown, and complete execution log are reviewed.
+
 ## 1. Objective
 
 Create a physically separate validation-only Obsidian artifact/entrypoint under `test-platform/**` that can compose later live validation code with the real production plugin path without changing the ordinary shipping bundle.
