@@ -778,3 +778,43 @@ S08D is **READY FOR LOCAL PHX-CI VERIFICATION**. Semantic implementation HEAD `9
 
 
 S08D — Minimal Command Mailbox and Windows Relay is **COMPLETE / ACCEPTED**. Accepted implementation `62cd8fcdac1fe2f1aa424b10db5ad2e450fdd65b`; evidence `dd71266d19f2b2d0c58973b4cff7d2f18712696e`; run `5a0856cb-067f-45ad-a32f-c35a02b058ae`; exact base `03d0d8da3c860a35943f214c9b90c83bfdb9a132`. Complete JSON, Markdown, and 7,304-line log reviewed. Focused 49/49 PASS; full repository 835/835 PASS; all stages PASS; architecture guard 0; npm vulnerabilities 0. Validation artifact is deterministic at 909,821 bytes / SHA-256 `a496aa5a84561062348e0530341fae92d71c06481806f41cf3a8e1cb75841cd9`; ordinary shipping artifact remains 885,307 bytes / `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`. Current live-device/relay surface is 572/750 LOC; framework core 4,000/4,000; production seam 187/350 and 3/4 files; BVP PowerShell 4/1,492; scenario-specific production/PowerShell 0/0. BVP-GOV-008 architecture review is mandatory before S08E.
+
+
+### Recurring Architecture Review — after S08C / S08D
+
+BVP-GOV-008 repository-level architecture review completed against accepted S08D closure `c6cdd825859cd63ba0d002c85ab88a5acc099611`: **PASS WITH BOUNDED S08E PREREQUISITE AUTHORIZATION**.
+
+Accepted architecture state:
+
+- production source: 16,813 logical LOC;
+- approved production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 runtime modules;
+- live-device agent/relay: 572 / 750 logical TypeScript LOC / 4 files;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files;
+- architecture guard: PASS / 0 violations;
+- ordinary shipping artifact remains 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Repository-level findings:
+
+- S08C and S08D growth is confined to validation-only live-device/relay code;
+- production synchronization authority, production seam count/LOC, framework-core module count, PowerShell, and scenario catalog did not grow;
+- there is still exactly one scenario runner: `test-platform/src/scenario/scenario-runner.ts`;
+- the accepted runner is structurally deterministic: it constructs `VirtualSynchronizationWorld` internally, rejects scenarios lacking deterministic execution mode, and owns fixture/production/external-state execution directly;
+- existing runner hooks cover observation, assertion, and checkpoint only; no existing generic executor seam can select a live implementation for fixture/production/external-state steps;
+- no other test-platform source contains a runner/executor abstraction that can satisfy S08E without duplication.
+
+Therefore S08E proper remains **BLOCKED ON ONE BOUNDED PREREQUISITE**.
+
+The prerequisite is authorized to refactor the existing S05 scenario runner into one runner with a narrow injected step-executor seam such that:
+
+- deterministic behavior and all accepted deterministic scenarios remain unchanged;
+- the same runner can select deterministic or live execution without creating a second runner or live-only scenario language;
+- scenario step ordering, capture state, expected-outcome matching, final verdict, and canonical evidence remain owned by the existing runner;
+- live implementations remain outside framework core, preferably under the already-budgeted live-device surface;
+- framework core MUST remain at or below 4,000 logical TypeScript LOC and 10 runtime modules; any added runner seam LOC must be offset by genuine simplification/refactoring within the same core, not by increasing the budget;
+- no production, PowerShell, governance-budget, scenario-definition, evidence-schema, transport, mailbox, or device-agent authority is added by the prerequisite;
+- the prerequisite must provide focused regression proof that deterministic execution is byte-for-byte/semantically unchanged and that a live executor can receive one generic scenario step at a time without owning scenario order or verdict.
+
+S08E may be bound only after this prerequisite passes authoritative PHX-CI, supervisor acceptance, and post-prerequisite architecture confirmation.
