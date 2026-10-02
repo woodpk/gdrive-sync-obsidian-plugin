@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08A
 
@@ -110,6 +110,52 @@ Focused command remains:
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js`
 
 S08B is not accepted until authoritative PHX-CI passes and the persisted JSON, Markdown, and complete execution log are reviewed.
+
+
+## 0.3 Acceptance Record
+
+BVP-S08B is **COMPLETE / ACCEPTED**.
+
+Authoritative acceptance lineage:
+
+- accepted implementation HEAD: `3189e0646402273aeb33a25acf0a538b15137b7b`;
+- authoritative PHX-CI evidence commit: `ac8a666fff361d49d610f5bae1d0f0aae5fa6c19`;
+- authoritative PHX-CI run ID: `790851a4-353d-46ed-98c6-14b337838bc2`;
+- exact verification base: `b2a009e140a03c2aa94499024f38828fe3e2e78a`;
+- complete persisted JSON, Markdown, and 7,002-line execution log reviewed before acceptance;
+- focused S08B proof: 1/1 PASS;
+- complete repository suite: 835/835 PASS;
+- `npm ci`: 0 vulnerabilities;
+- every required PHX-CI stage: PASS / exit 0;
+- architecture guard: PASS / 0 violations;
+- production build verification: PASS;
+- ordinary production artifact: `main.js` 884,300 bytes, SHA-256 `0d4f755dfd85da9a66180ed38cededd37168ea9f46ae1aa4ee3c15cdb8341411`;
+- validation artifact: `main.js` 885,374 bytes, SHA-256 `c493cb3e534d8b6623175d1388e72fb528fc201e6bcc84fe71f668ebc14fa5c1`, reproduced deterministically twice from the same source HEAD.
+
+Accepted S08B semantics:
+
+- ordinary production continues to build exclusively through the unchanged `src/main.ts -> main.js` path;
+- validation-only composition is physically rooted under `test-platform/src/live-device/**`;
+- the validation builder wraps the real production `src/main.ts` entrypoint rather than implementing alternate product behavior;
+- the validation artifact carries the required non-shipping sentinel and exact source commit identity;
+- its copied manifest is byte-identical to the authoritative production manifest;
+- esbuild metafile inspection rejects any bundled test-platform input outside `test-platform/src/live-device/**`;
+- the focused proof deletes the validation artifact, re-verifies the independently built production artifact, and then reproduces the exact same validation artifact hash;
+- shipping `main.js` remains byte-identical to accepted S08A and does not contain the BVP non-shipping sentinel.
+
+Accepted architecture state:
+
+- production source: 16,762 logical LOC, unchanged;
+- production seam: 140 logical LOC / 2 files, unchanged;
+- framework core: 4,000 / 4,000 logical TypeScript LOC / 10 modules, unchanged;
+- live-device agent/relay: 176 / 750 logical TypeScript LOC / 2 files;
+- scenario catalog: 70 scenarios / 1,524 logical LOC, unchanged;
+- BVP PowerShell: 4 scripts / 1,492 logical LOC, unchanged;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files;
+- production-module import count: 2, unchanged.
+
+This acceptance closes S08B. Because S08A and S08B are two implementation sessions since the mandatory pre-S08 architecture review, BVP-GOV-008 requires a repository-level architecture review before S08C may be dispatched.
 
 ## 1. Objective
 
