@@ -20,6 +20,9 @@ $overall = 'BLOCKED'
 $evidenceCommit = ''
 $preserve = $true
 $physicalExit = $null
+$git = $null
+$node = $null
+$npm = $null
 
 function Add-Result {
     param(
