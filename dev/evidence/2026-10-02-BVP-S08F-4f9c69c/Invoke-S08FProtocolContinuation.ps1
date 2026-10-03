@@ -157,7 +157,16 @@ try {
     }
 
     if ($ready) {
-        $install = Invoke-Native $npm.Source @('ci','--no-audit','--no-fund') $worktree
+        $npmVersion = Invoke-Native $npm.Source @('--version') $worktree
+        $npmRegistry = Invoke-Native $npm.Source @('config','get','registry') $worktree
+        $lockCheckScript = "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'));const r=l.packages&&l.packages[''];let code=0;if(!r){console.error('package-lock root package missing');code=31}else if(JSON.stringify(p.devDependencies||{})!==JSON.stringify(r.devDependencies||{})){console.error('root devDependencies differ between package.json and package-lock.json');code=32}else{const m=l.packages&&l.packages['node_modules/moment'];if(p.overrides&&p.overrides.moment&&(!m||m.version!==p.overrides.moment)){console.error('moment override mismatch');code=33}};if(code===0)console.log('lockfileVersion='+l.lockfileVersion+' root-devDependencies=match');process.exitCode=code"
+        $lockCheck = Invoke-Native $node.Source @('-e',$lockCheckScript) $worktree
+        if ($npmVersion.exitCode -eq 0 -and $npmRegistry.exitCode -eq 0 -and $lockCheck.exitCode -eq 0) {
+            Add-Result 'dependency-preflight' 'PASS' 'npm --version ; npm config get registry ; static package-lock consistency' 0 'DEPENDENCY CONFIG READY' ('npm {0}; registry {1}; lock/package root consistency passed.' -f $npmVersion.stdout.Trim(),$npmRegistry.stdout.Trim()) $lockCheck.stdout.Trim()
+        } else {
+            Add-Result 'dependency-preflight' 'FAIL' 'npm --version ; npm config get registry ; static package-lock consistency' 1 'DEPENDENCY CONFIGURATION FAILURE' 'Independent dependency preflight found a tool/config/lockfile problem.' ($npmVersion.stdout + $npmVersion.stderr + $npmRegistry.stdout + $npmRegistry.stderr + $lockCheck.stdout + $lockCheck.stderr)
+        }
+        $install = Invoke-Native $npm.Source @('ci','--no-audit','--no-fund','--loglevel','verbose') $worktree
         if ($install.exitCode -eq 0) {
             Add-Result 'dependencies' 'PASS' $install.command 0 'DEPENDENCIES READY' 'npm ci completed in the disposable worktree.' $null
         } else {
