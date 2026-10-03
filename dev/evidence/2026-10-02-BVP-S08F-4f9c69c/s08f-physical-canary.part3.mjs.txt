@@ -267,7 +267,7 @@ function canonicalValue(value) {
 }
 
 function expectedRetrySequenceOne() {
-  const commandId = 'bvp-' + createHash('sha256').update(`${retryRunId}\0${scenarioId}\00\00`).digest('hex').slice(0,32);
+  const commandId = 'bvp-' + createHash('sha256').update([retryRunId,scenarioId,'0','0'].join(String.fromCharCode(0))).digest('hex').slice(0,32);
   return {
     runId: retryRunId,
     deviceId,
