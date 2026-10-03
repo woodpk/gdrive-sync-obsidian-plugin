@@ -293,7 +293,7 @@ Write-Output ('Disposable S08F Obsidian window transitioned: ' + $p.Id + ' / ' +
   return { stdout: String(result.stdout || '').trim(), exitCode: result.status };
 }
 
-function agentBootstrapExpression(runId, controlKey, requireFreshState) {
+function agentBootstrapExpression(runId, controlKey, requireFreshState, recoveryDirectPollFirst = false) {
   return `(async () => {
     const out={ok:false};
     try {
@@ -303,6 +303,7 @@ function agentBootstrapExpression(runId, controlKey, requireFreshState) {
       const deviceId=${JSON.stringify(deviceId)};
       const fixtureRoot=${JSON.stringify(fixtureRoot)};
       const controlKey=${JSON.stringify(controlKey)};
+      const recoveryDirectPollFirst=${recoveryDirectPollFirst ? 'true' : 'false'};
       const pluginId='brain-google-drive-sync';
       const actualVaultRaw=typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'';
       const actualVault=String(actualVaultRaw).replace(/\\\\/g,'/').toLowerCase();
@@ -356,26 +357,34 @@ function agentBootstrapExpression(runId, controlKey, requireFreshState) {
         runId,deviceId,fixtureRoot,relayRoot,statePath,
         status:()=>({stopped,busy,visibility:globalThis.document?.visibilityState??'unknown',lastPoll:structuredClone(lastPoll),productStatus:production.currentStatus()}),
         pumpNow:()=>pump(),
+        pollDeviceNow:()=>runtime.pollDeviceOnce(agent,runId,deviceId),
+        pumpRelayNow:()=>runtime.relay.pumpOnce(),
         executeDirect:input=>agent.execute(input),
         observe:relative=>fixtures.observe(\`${'${fixtureRoot}'}/${'${relative}'}\`),
         stop:()=>{stopped=true;if(timer!==undefined)globalThis.clearInterval(timer);globalThis.document?.removeEventListener?.('visibilitychange',visibility)}
       });
       Object.defineProperty(globalThis,controlKey,{value:control,configurable:true,enumerable:false,writable:false});
-      timer=globalThis.setInterval(()=>void pump(),400);
-      const firstPoll=await pump();
-      return{ok:true,runId,deviceId,fixtureRoot,statePath,visibility:globalThis.document?.visibilityState??'unknown',productStatus:production.currentStatus(),firstPoll,identity};
+      let firstPoll={status:'deferred-recovery',processed:0};
+      if(!recoveryDirectPollFirst){timer=globalThis.setInterval(()=>void pump(),400);firstPoll=await pump()}
+      return{ok:true,runId,deviceId,fixtureRoot,statePath,visibility:globalThis.document?.visibilityState??'unknown',productStatus:production.currentStatus(),firstPoll,recoveryDirectPollFirst,identity};
     }catch(error){return{...out,reason:'bootstrap-exception',error:error instanceof Error?(error.stack??error.message):String(error)}}
   })()`;
 }
 
-async function injectAgent(runId, controlKey, requireFreshState = true) {
-  const expression = agentBootstrapExpression(runId, controlKey, requireFreshState);
+async function injectAgent(runId, controlKey, requireFreshState = true, recoveryDirectPollFirst = false) {
+  const expression = agentBootstrapExpression(runId, controlKey, requireFreshState, recoveryDirectPollFirst);
   try { new Function(`return ${expression};`); } catch (error) { throw new Error(`Generated agent bootstrap failed syntax validation: ${error}`); }
   const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 30000);
   if (!result?.ok) throw new Error(`Renderer rejected S08F agent bootstrap: ${result?.reason ?? 'unknown'}${result?.error ? ` - ${result.error}` : ''}`);
   return result;
 }
 
+async function invokeControlMethod(controlKey, method) {
+  const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c[${JSON.stringify(method)}]!=='function')return{__error:'control-method-unavailable'};try{return await c[${JSON.stringify(method)}]()}catch(error){return{__error:error instanceof Error?(error.stack??error.message):String(error)}}})()`;
+  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 60000);
+  if (result?.__error) throw new Error(result.__error);
+  return result;
+}
 async function directExecute(controlKey, command) {
   const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c.executeDirect!=='function')return{__error:'control-unavailable'};return await c.executeDirect(${JSON.stringify(command)})})()`;
   const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 30000);
