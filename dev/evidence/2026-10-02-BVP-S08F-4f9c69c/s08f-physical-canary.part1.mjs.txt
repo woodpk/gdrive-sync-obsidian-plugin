@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { createServer } from 'node:net';
 
 const require = createRequire(import.meta.url);
 
@@ -94,6 +95,87 @@ function psQuote(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+
+function pwshPath() {
+  return process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
+}
+
+function obsidianExeCandidates() {
+  return [
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Obsidian', 'Obsidian.exe') : '',
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Obsidian', 'Obsidian.exe') : '',
+    process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'Obsidian', 'Obsidian.exe') : '',
+  ].filter(Boolean);
+}
+
+async function findObsidianExe() {
+  for (const candidate of obsidianExeCandidates()) if (await exists(candidate)) return candidate;
+  return undefined;
+}
+
+function inspectObsidianRuntime() {
+  const script = [
+    "$ErrorActionPreference='SilentlyContinue'",
+    "$items=@(Get-CimInstance Win32_Process -Filter \"Name='Obsidian.exe'\" | Select-Object ProcessId,ParentProcessId,CommandLine)",
+    "$pids=@($items | ForEach-Object { [int]$_.ProcessId })",
+    "$windows=@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object Id,MainWindowTitle)",
+    "$listeners=@()",
+    "if(Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue){ $listeners=@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $pids -contains [int]$_.OwningProcess } | Select-Object LocalAddress,LocalPort,OwningProcess) }",
+    "[pscustomobject]@{processes=$items;windows=$windows;listeners=$listeners}|ConvertTo-Json -Depth 6 -Compress"
+  ].join(';');
+  const result = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',script], { encoding:'utf8', windowsHide:true });
+  if (result.status !== 0) {
+    return { ok:false, error:String(result.stderr || result.stdout || '').trim(), processes:[], windows:[], listeners:[] };
+  }
+  try {
+    const value = JSON.parse(String(result.stdout || '{}').trim() || '{}');
+    const asArray = input => input === undefined || input === null ? [] : Array.isArray(input) ? input : [input];
+    return { ok:true, processes:asArray(value.processes), windows:asArray(value.windows), listeners:asArray(value.listeners) };
+  } catch (error) {
+    return { ok:false, error:`Unable to parse Obsidian runtime snapshot: ${error}`, processes:[], windows:[], listeners:[] };
+  }
+}
+
+async function allocateLoopbackPort() {
+  return await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      server.close(error => error ? reject(error) : resolve(port));
+    });
+  });
+}
+
+async function launchDebugEnabledDisposableObsidian() {
+  const executable = await findObsidianExe();
+  if (!executable) return { ok:false, classification:'obsidian-executable-unavailable', reason:'Obsidian.exe was not found in approved install locations.' };
+  const port = await allocateLoopbackPort();
+  const child = spawn(executable, ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`], {
+    detached:true, stdio:'ignore', windowsHide:false,
+  });
+  child.unref();
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  const vaultUri = `obsidian://open?path=${encodeURIComponent(vaultPath)}`;
+  const openResult = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',`Start-Process ${psQuote(vaultUri)}`], { encoding:'utf8', windowsHide:true });
+  if (openResult.status !== 0) {
+    return { ok:false, classification:'disposable-vault-open-failed', reason:String(openResult.stderr || openResult.stdout || '').trim(), executable, port, pid:child.pid };
+  }
+  const deadline = Date.now() + 45000;
+  let lastError = '';
+  while (Date.now() < deadline) {
+    try {
+      const match = await findRenderer([port]);
+      return { ok:true, executable, port, pid:child.pid, target:match };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+  }
+  return { ok:false, classification:'devtools-bootstrap-timeout', reason:lastError || 'No disposable-vault renderer became reachable.', executable, port, pid:child.pid };
+}
+
 async function cdpEval(webSocketUrl, expression, timeoutMs = 20000) {
   return await new Promise((resolve, reject) => {
     const ws = new WebSocket(webSocketUrl);
@@ -127,31 +209,19 @@ async function rendererSnapshot(candidate) {
   return await cdpEval(candidate.webSocketDebuggerUrl, expression);
 }
 
-function discoverObsidianDebugPorts() {
-  const pwsh = process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
-  const script = [
-    "$ErrorActionPreference='SilentlyContinue'",
-    "$ports=[System.Collections.Generic.HashSet[int]]::new()",
-    "$items=@(Get-CimInstance Win32_Process -Filter \"Name='Obsidian.exe'\" | Select-Object ProcessId,CommandLine)",
-    "$pids=@($items | ForEach-Object { [int]$_.ProcessId })",
-    "foreach($item in $items){",
-    "  $line=[string]$item.CommandLine",
-    "  foreach($m in [regex]::Matches($line,'--remote-debugging-port(?:=|\\s+)(\\d{2,5})')){ [void]$ports.Add([int]$m.Groups[1].Value) }",
-    "}",
-    "if(Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue){",
-    "  foreach($conn in @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue)){",
-    "    if($pids -contains [int]$conn.OwningProcess){ [void]$ports.Add([int]$conn.LocalPort) }",
-    "  }",
-    "}",
-    "$ports | Sort-Object"
-  ].join(';');
-  const result = spawnSync(pwsh, ['-NoProfile','-NonInteractive','-Command',script], { encoding:'utf8', windowsHide:true });
-  if (result.status !== 0) return [];
-  return String(result.stdout || '').split(/\\r?\\n/).map(value => Number(value.trim())).filter(value => Number.isInteger(value) && value > 0 && value <= 65535);
+function discoverObsidianDebugPorts(runtime = inspectObsidianRuntime()) {
+  const ports = new Set();
+  for (const item of runtime.processes ?? []) {
+    const line = String(item.CommandLine ?? item.commandLine ?? '');
+    for (const match of line.matchAll(/--remote-debugging-port(?:=|\\s+)(\\d{2,5})/g)) ports.add(Number(match[1]));
+  }
+  for (const listener of runtime.listeners ?? []) ports.add(Number(listener.LocalPort ?? listener.localPort));
+  return [...ports].filter(value => Number.isInteger(value) && value > 0 && value <= 65535).sort((a,b) => a-b);
 }
 
-async function findRenderer() {
-  const ports = [...new Set([configuredDebugPort, ...discoverObsidianDebugPorts()].filter(value => Number.isInteger(value) && value > 0 && value <= 65535))];
+async function findRenderer(extraPorts = []) {
+  const runtime = inspectObsidianRuntime();
+  const ports = [...new Set([configuredDebugPort, ...extraPorts, ...discoverObsidianDebugPorts(runtime)].filter(value => Number.isInteger(value) && value > 0 && value <= 65535))];
   const attempts = [];
   const matches = [];
   for (const port of ports) {
@@ -176,9 +246,9 @@ async function findRenderer() {
     }
   }
   if (matches.length !== 1) {
-    throw new Error(`Expected exactly one reachable disposable-vault renderer; observed ${matches.length}. DevTools attempts=${JSON.stringify(attempts)}`);
+    throw new Error(`Expected exactly one reachable disposable-vault renderer; observed ${matches.length}. Runtime=${JSON.stringify(runtime)} DevTools attempts=${JSON.stringify(attempts)}`);
   }
-  return matches[0];
+  return { ...matches[0], runtime, attempts };
 }
 
 function realSuspendResumeTransition() {
