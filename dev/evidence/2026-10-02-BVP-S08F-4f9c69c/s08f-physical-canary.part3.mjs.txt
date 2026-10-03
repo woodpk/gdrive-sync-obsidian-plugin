@@ -387,11 +387,14 @@ async function recoverRetrySequenceOne(priorVerdict) {
   const oldStateExact=oldState&&!oldState.__error&&oldState.sequence===3&&oldState.phase==='completed'&&oldState.result?.kind==='production-execute'&&oldState.result?.status==='rejected'&&oldState.result?.classification==='production-action-rejected';
   note('attempt1-state',oldStateExact,'attempt1-state',oldStateExact?'Attempt-1 terminal rejected sequence-3 state remains preserved.':'Attempt-1 terminal state no longer matches its frozen safe identity.',oldState);
 
-  const retryState=await readJson(retryStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const retryStatePresent=await exists(retryStatePath);
+  const retryState=retryStatePresent?await readJson(retryStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)})):null;
   const fixtureExists=await exists(canaryPath);
   const fixture=fixtureExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
   const relayBefore=await relayRecoverySnapshot(command);
-  note('retry-state-readable',!retryState?.__error,'retry-state',retryState?.__error?'Retry state could not be read.':'Retry sequence state was read successfully.',retryState);
+  note('retry-state-readable',!retryState?.__error,'retry-state',
+    retryState?.__error?'Retry state exists but could not be read.':retryStatePresent?'Retry sequence state was read successfully.':'Retry sequence state file is absent.',
+    {present:retryStatePresent,state:retryState});
 
   const allowedRelayNames = {
     outbox:new Set([`${command.commandId}.json`]),
@@ -402,6 +405,13 @@ async function recoverRetrySequenceOne(priorVerdict) {
   for(const name of ['outbox','sent','inbox']) unexpectedRelay[name]=(relayBefore[name]??[]).filter(file=>!allowedRelayNames[name].has(file));
   const relayBounded=Object.values(unexpectedRelay).every(items=>items.length===0);
   note('relay-bounded',relayBounded,'relay-state',relayBounded?'Local relay contains only sequence-1 recovery records, if any.':'Local relay contains unexpected records.',{relay:relayBefore,unexpected:unexpectedRelay});
+  const outboxExact=!relayBefore.outboxRecord||canonicalValue(relayBefore.outboxRecord)===expectedCommandKey;
+  const sentExact=!relayBefore.sentRecord||canonicalValue(relayBefore.sentRecord)===expectedCommandKey;
+  const inboxExactBefore=!relayBefore.inboxRecord||exactSequenceOneResult(relayBefore.inboxRecord,command);
+  const relayRecordsExact=outboxExact&&sentExact&&inboxExactBefore&&!relayBefore.outboxReadError&&!relayBefore.sentReadError&&!relayBefore.inboxReadError;
+  note('relay-record-identity',relayRecordsExact,'relay-record-identity',
+    relayRecordsExact?'All present sequence-1 relay records exactly match the deterministic command/result contract.':'One or more sequence-1 relay records are malformed or do not match the deterministic contract.',
+    {outboxExact,sentExact,inboxExact:inboxExactBefore,relay:relayBefore});
 
   let retryStateSafe=false;
   if (!retryState) {
@@ -444,6 +454,8 @@ async function recoverRetrySequenceOne(priorVerdict) {
     note('mailbox-inspection',mailboxBefore?.ok===true,'drive-mailbox-state',mailboxBefore?.ok===true?'Drive mailbox state was inspected without mutation.':'Drive mailbox inspection failed.',mailboxBefore);
   }
 
+  let exactDriveCommandCount=0;
+  let exactDriveResultCount=0;
   if(mailboxBefore?.ok){
     const addressed=mailboxBefore.commands??[];
     const later=addressed.filter(item=>Number(item.sequence)>1);
@@ -453,6 +465,8 @@ async function recoverRetrySequenceOne(priorVerdict) {
     const resultErrors=(mailboxBefore.commandResults??[]).filter(item=>item.resultError);
     const exactResults=(mailboxBefore.commandResults??[]).filter(item=>canonicalValue(item.command)===expectedCommandKey&&exactSequenceOneResult(item.result,command));
     const wrongResults=(mailboxBefore.commandResults??[]).filter(item=>item.result&&canonicalValue(item.command)===expectedCommandKey&&!exactSequenceOneResult(item.result,command));
+    exactDriveCommandCount=exactCommands.length;
+    exactDriveResultCount=exactResults.length;
     note('mailbox-command-bounds',later.length===0&&conflictingSeq1.length===0,'drive-mailbox-command-state',
       later.length===0&&conflictingSeq1.length===0?`Mailbox has ${exactCommands.length} exact sequence-1 command record(s) and no later/conflicting retry commands.`:'Mailbox contains later-sequence or conflicting sequence-1 commands.',
       {exactCommandCount:exactCommands.length,laterCommands:later,conflictingSequenceOne:conflictingSeq1});
@@ -466,6 +480,18 @@ async function recoverRetrySequenceOne(priorVerdict) {
   record('recovery-diagnostic-summary',blockers.length===0?'PASS':'FAIL',blockers.length===0?'recovery-diagnostics-safe':'recovery-diagnostics-blocked',
     `Sequence-1 recovery diagnostics found ${defects.length} defect(s), including ${blockers.length} blocker(s).`,{defectCount:defects.length,blockerCount:blockers.length,defects});
   if(blockers.length>0) fail('BLOCKED','device-result-recovery-precondition-blocked',`Recovery diagnostics found ${blockers.length} blocker(s): ${blockers.map(item=>item.name+'='+item.summary).join(' | ')}`);
+
+  const commandName=`${command.commandId}.json`;
+  const localHasCommand=(relayBefore.outbox??[]).includes(commandName)||(relayBefore.sent??[]).includes(commandName);
+  const localHasResult=(relayBefore.inbox??[]).includes(`${commandName}.result.json`);
+  if(exactDriveCommandCount>0&&!localHasCommand&&!localHasResult){
+    const sentDir=path.join(relayRoot,'sent');
+    await fs.mkdir(sentDir,{recursive:true});
+    await fs.writeFile(path.join(sentDir,commandName),JSON.stringify(command),'utf8');
+    record('relay-sent-reconstitution','PASS','exact-transport-state-repair',
+      exactDriveResultCount>0?'Reconstituted only the exact local sent record so the accepted relay can retrieve the already-existing Drive result.':'Reconstituted only the exact local sent record for an already-published Drive command; the accepted agent may safely publish/replay its terminal result.',
+      {command,exactDriveCommandCount,exactDriveResultCount});
+  }
 
   target=renderer;
   const agentBootstrap=await injectAgent(retryRunId,controlKey,false);
