@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "status": "BLOCKED",
-  "classification": "device-result-recovery-precondition-blocked",
-  "primaryReason": "Recovery diagnostics found 3 blocker(s): relay-bounded=Local relay contains unexpected records. | sequence-state-safety=Retry sequence state is already at sequence 2; this recovery path will not replay earlier commands. | mailbox-command-bounds=Mailbox contains later-sequence or conflicting sequence-1 commands.",
+  "classification": "harness-error",
+  "primaryReason": "Error: mailbox-conflicting-result\n    at Object.resultFor (plugin:brain-google-drive-sync:15466:66)\n    at async pollDeviceMailboxOnce (plugin:brain-google-drive-sync:15475:11)\n    at async <anonymous>:1:167",
   "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
-  "branchHead": "12a2223df5b89736846d4fffc09951c232f1b1dd",
+  "branchHead": "2033aa30c3de198e7fce6465cd471fc52888d9fc",
   "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
   "deviceId": "windows-brain-patrick",
   "oldRunId": "s08f-desktop-canary-4f9c69c",
@@ -21,16 +21,16 @@
       "name": "continuation-mode",
       "status": "PASS",
       "classification": "device-result-recovery",
-      "summary": "Prior evidence binds this execution to safe recovery of the existing attempt-2 device-result timeout.",
+      "summary": "Prior evidence binds this execution to safe continuation of the existing attempt-2 transport/result recovery.",
       "details": {
-        "priorBranchHead": "19eafcd6489593628e0c81b64d020a2d65f8ea52",
-        "priorClassification": "device-result-unavailable",
+        "priorBranchHead": "12a2223df5b89736846d4fffc09951c232f1b1dd",
+        "priorClassification": "device-result-recovery-precondition-blocked",
         "retryRunId": "s08f-desktop-canary-4f9c69c-r2",
         "scenarioId": "s08f-desktop-live-canary-r2"
       }
     },
     {
-      "name": "recovery-validation-install",
+      "name": "recovery3-validation-install",
       "status": "PASS",
       "classification": "validation-install",
       "summary": "Disposable validation installation remains present.",
@@ -41,7 +41,7 @@
       }
     },
     {
-      "name": "recovery-validation-artifact",
+      "name": "recovery3-validation-artifact",
       "status": "PASS",
       "classification": "validation-artifact-identity",
       "summary": "Installed validation artifact remains exact at 909821 bytes.",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "name": "recovery-production-restoration-artifacts",
+      "name": "recovery3-production-restoration-artifacts",
       "status": "PASS",
       "classification": "production-restoration-precondition",
       "summary": "Exact-SHA production restoration artifacts remain available.",
@@ -62,7 +62,7 @@
       }
     },
     {
-      "name": "recovery-production-baseline",
+      "name": "recovery3-production-baseline",
       "status": "PASS",
       "classification": "production-bundle-isolation",
       "summary": "Production restoration baseline remains exact and validation-code-free.",
@@ -73,7 +73,7 @@
       }
     },
     {
-      "name": "recovery-attempt1-state",
+      "name": "recovery3-attempt1-state",
       "status": "PASS",
       "classification": "attempt1-state",
       "summary": "Attempt-1 terminal rejected sequence-3 state remains preserved.",
@@ -97,119 +97,46 @@
       }
     },
     {
-      "name": "recovery-retry-state-readable",
+      "name": "recovery3-sequence2-state",
       "status": "PASS",
-      "classification": "retry-state",
-      "summary": "Retry sequence state was read successfully.",
+      "classification": "retry-sequence-state",
+      "summary": "Retry sequence 2 is durably completed with the exact manual-preview contract and seven-operation safe plan.",
       "details": {
-        "present": true,
-        "state": {
+        "sequence": 2,
+        "commandKey": "{\"commandId\":\"bvp-792a80a21804db9de35aefa42e72fb2e\",\"deviceId\":\"windows-brain-patrick\",\"kind\":\"production-preview\",\"mode\":\"manual\",\"runId\":\"s08f-desktop-canary-4f9c69c-r2\",\"sequence\":2}",
+        "phase": "completed",
+        "result": {
+          "runId": "s08f-desktop-canary-4f9c69c-r2",
+          "deviceId": "windows-brain-patrick",
           "sequence": 2,
-          "commandKey": "{\"commandId\":\"bvp-792a80a21804db9de35aefa42e72fb2e\",\"deviceId\":\"windows-brain-patrick\",\"kind\":\"production-preview\",\"mode\":\"manual\",\"runId\":\"s08f-desktop-canary-4f9c69c-r2\",\"sequence\":2}",
-          "phase": "completed",
-          "result": {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 2,
-            "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-            "kind": "production-preview",
-            "status": "completed",
-            "classification": "production-preview-ready",
-            "plan": {
-              "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-              "trigger": "manual",
-              "operationCount": 7,
-              "executionDisposition": "safe-auto-eligible",
-              "recoveryCheckpointRequired": false,
-              "globalExecutionGate": "none"
-            }
+          "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
+          "kind": "production-preview",
+          "status": "completed",
+          "classification": "production-preview-ready",
+          "plan": {
+            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+            "trigger": "manual",
+            "operationCount": 7,
+            "executionDisposition": "safe-auto-eligible",
+            "recoveryCheckpointRequired": false,
+            "globalExecutionGate": "none"
           }
         }
       }
     },
     {
-      "name": "recovery-relay-bounded",
-      "status": "FAIL",
-      "classification": "relay-state",
-      "summary": "Local relay contains unexpected records.",
-      "details": {
-        "relay": {
-          "outbox": [],
-          "sent": [
-            "bvp-aca71ac570493c0f817e97dcf652c682.json"
-          ],
-          "inbox": [
-            "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
-          ]
-        },
-        "unexpected": {
-          "outbox": [],
-          "sent": [
-            "bvp-aca71ac570493c0f817e97dcf652c682.json"
-          ],
-          "inbox": [
-            "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
-          ]
-        }
-      }
-    },
-    {
-      "name": "recovery-relay-record-identity",
+      "name": "recovery3-fixture-state",
       "status": "PASS",
-      "classification": "relay-record-identity",
-      "summary": "All present sequence-1 relay records exactly match the deterministic command/result contract.",
+      "classification": "retry-fixture-state",
+      "summary": "Retry canary fixture remains exact before production execution.",
       "details": {
-        "outboxExact": true,
-        "sentExact": true,
-        "inboxExact": true,
-        "relay": {
-          "outbox": [],
-          "sent": [
-            "bvp-aca71ac570493c0f817e97dcf652c682.json"
-          ],
-          "inbox": [
-            "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
-          ]
-        }
+        "exists": true,
+        "sizeBytes": 77,
+        "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
       }
     },
     {
-      "name": "recovery-sequence-state-safety",
-      "status": "FAIL",
-      "classification": "recovery-state-beyond-sequence1",
-      "summary": "Retry sequence state is already at sequence 2; this recovery path will not replay earlier commands.",
-      "details": {
-        "retryState": {
-          "sequence": 2,
-          "commandKey": "{\"commandId\":\"bvp-792a80a21804db9de35aefa42e72fb2e\",\"deviceId\":\"windows-brain-patrick\",\"kind\":\"production-preview\",\"mode\":\"manual\",\"runId\":\"s08f-desktop-canary-4f9c69c-r2\",\"sequence\":2}",
-          "phase": "completed",
-          "result": {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 2,
-            "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-            "kind": "production-preview",
-            "status": "completed",
-            "classification": "production-preview-ready",
-            "plan": {
-              "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-              "trigger": "manual",
-              "operationCount": 7,
-              "executionDisposition": "safe-auto-eligible",
-              "recoveryCheckpointRequired": false,
-              "globalExecutionGate": "none"
-            }
-          }
-        },
-        "fixture": {
-          "exists": true,
-          "sizeBytes": 77,
-          "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
-        }
-      }
-    },
-    {
-      "name": "recovery-renderer-environment",
+      "name": "recovery3-renderer-environment",
       "status": "PASS",
       "classification": "exact-disposable-renderer",
       "summary": "Existing disposable renderer is reachable.",
@@ -229,7 +156,7 @@
       }
     },
     {
-      "name": "recovery-renderer-capabilities",
+      "name": "recovery3-renderer-capabilities",
       "status": "PASS",
       "classification": "renderer-capabilities",
       "summary": "Renderer exposes all accepted recovery capabilities.",
@@ -249,7 +176,25 @@
       }
     },
     {
-      "name": "recovery-mailbox-inspection",
+      "name": "recovery3-product-ready",
+      "status": "PASS",
+      "classification": "production-lifecycle",
+      "summary": "Production lifecycle is idle-ready before sequence-3 execution.",
+      "details": {
+        "kind": "idle-ready"
+      }
+    },
+    {
+      "name": "recovery3-renderer-visible",
+      "status": "FAIL",
+      "classification": "renderer-visibility",
+      "summary": "Renderer is currently hidden; a real restore transition is required before sequence-3 execution.",
+      "details": {
+        "visibility": "hidden"
+      }
+    },
+    {
+      "name": "recovery3-mailbox-inspection",
       "status": "PASS",
       "classification": "drive-mailbox-state",
       "summary": "Drive mailbox state was inspected without mutation.",
@@ -563,208 +508,150 @@
       }
     },
     {
-      "name": "recovery-mailbox-command-bounds",
-      "status": "FAIL",
+      "name": "recovery3-mailbox-command-contract",
+      "status": "PASS",
       "classification": "drive-mailbox-command-state",
-      "summary": "Mailbox contains later-sequence or conflicting sequence-1 commands.",
+      "summary": "Drive contains only expected logical retry commands through sequence 3 (duplicates: seq1=3, seq2=3, seq3=3).",
       "details": {
-        "exactCommandCount": 3,
-        "laterCommands": [
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 2,
-            "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-            "kind": "production-preview",
-            "mode": "manual"
-          },
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 2,
-            "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-            "kind": "production-preview",
-            "mode": "manual"
-          },
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 2,
-            "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-            "kind": "production-preview",
-            "mode": "manual"
-          },
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 3,
-            "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-            "kind": "production-execute",
-            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-          },
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 3,
-            "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-            "kind": "production-execute",
-            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-          },
-          {
-            "runId": "s08f-desktop-canary-4f9c69c-r2",
-            "deviceId": "windows-brain-patrick",
-            "sequence": 3,
-            "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-            "kind": "production-execute",
-            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-          }
-        ],
-        "conflictingSequenceOne": []
+        "counts": {
+          "seq1": 3,
+          "seq2": 3,
+          "seq3": 3
+        },
+        "unexpected": []
       }
     },
     {
-      "name": "recovery-mailbox-result-bounds",
+      "name": "recovery3-mailbox-result-contract",
       "status": "PASS",
       "classification": "drive-mailbox-result-state",
-      "summary": "Mailbox has 3 exact sequence-1 result view(s) and no conflicting result.",
+      "summary": "Sequence 1 and 2 have exact Drive results; sequence 3 has no result yet; no conflicting result exists.",
       "details": {
-        "exactResultCount": 3,
-        "resultErrors": [],
-        "wrongResults": []
+        "seq1ExactResultViews": 3,
+        "seq2ExactResultViews": 3,
+        "seq3NonNullResults": [],
+        "badResults": []
       }
     },
     {
-      "name": "recovery-diagnostic-summary",
-      "status": "FAIL",
-      "classification": "recovery-diagnostics-blocked",
-      "summary": "Sequence-1 recovery diagnostics found 3 defect(s), including 3 blocker(s).",
+      "name": "recovery3-relay-name-bounds",
+      "status": "PASS",
+      "classification": "relay-state",
+      "summary": "Local relay contains only expected retry command/result names through sequence 3.",
       "details": {
-        "defectCount": 3,
-        "blockerCount": 3,
+        "relayFiles": {
+          "outbox": [],
+          "sent": [
+            "bvp-aca71ac570493c0f817e97dcf652c682.json"
+          ],
+          "inbox": [
+            "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
+          ]
+        },
+        "unexpectedRelay": {
+          "outbox": [],
+          "sent": [],
+          "inbox": []
+        }
+      }
+    },
+    {
+      "name": "recovery3-relay-record-identity",
+      "status": "PASS",
+      "classification": "relay-record-identity",
+      "summary": "All present local relay records exactly match their deterministic command/result identities.",
+      "details": {
+        "problems": [],
+        "relayFiles": {
+          "outbox": [],
+          "sent": [
+            "bvp-aca71ac570493c0f817e97dcf652c682.json"
+          ],
+          "inbox": [
+            "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
+          ]
+        }
+      }
+    },
+    {
+      "name": "recovery3-diagnostic-summary",
+      "status": "PASS",
+      "classification": "sequence3-recovery-safe",
+      "summary": "Sequence-3 recovery diagnostics observed 1 issue(s), including 0 blocker(s).",
+      "details": {
+        "defectCount": 1,
+        "blockerCount": 0,
         "defects": [
           {
-            "name": "relay-bounded",
-            "classification": "relay-state",
-            "summary": "Local relay contains unexpected records.",
+            "name": "renderer-visible",
+            "classification": "renderer-visibility",
+            "summary": "Renderer is currently hidden; a real restore transition is required before sequence-3 execution.",
             "details": {
-              "relay": {
-                "outbox": [],
-                "sent": [
-                  "bvp-aca71ac570493c0f817e97dcf652c682.json"
-                ],
-                "inbox": [
-                  "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
-                ]
-              },
-              "unexpected": {
-                "outbox": [],
-                "sent": [
-                  "bvp-aca71ac570493c0f817e97dcf652c682.json"
-                ],
-                "inbox": [
-                  "bvp-792a80a21804db9de35aefa42e72fb2e.json.result.json"
-                ]
-              }
+              "visibility": "hidden"
             },
-            "blocking": true
-          },
-          {
-            "name": "sequence-state-safety",
-            "classification": "recovery-state-beyond-sequence1",
-            "summary": "Retry sequence state is already at sequence 2; this recovery path will not replay earlier commands.",
-            "details": {
-              "retryState": {
-                "sequence": 2,
-                "commandKey": "{\"commandId\":\"bvp-792a80a21804db9de35aefa42e72fb2e\",\"deviceId\":\"windows-brain-patrick\",\"kind\":\"production-preview\",\"mode\":\"manual\",\"runId\":\"s08f-desktop-canary-4f9c69c-r2\",\"sequence\":2}",
-                "phase": "completed",
-                "result": {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 2,
-                  "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-                  "kind": "production-preview",
-                  "status": "completed",
-                  "classification": "production-preview-ready",
-                  "plan": {
-                    "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-                    "trigger": "manual",
-                    "operationCount": 7,
-                    "executionDisposition": "safe-auto-eligible",
-                    "recoveryCheckpointRequired": false,
-                    "globalExecutionGate": "none"
-                  }
-                }
-              },
-              "fixture": {
-                "exists": true,
-                "sizeBytes": 77,
-                "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
-              }
-            },
-            "blocking": true
-          },
-          {
-            "name": "mailbox-command-bounds",
-            "classification": "drive-mailbox-command-state",
-            "summary": "Mailbox contains later-sequence or conflicting sequence-1 commands.",
-            "details": {
-              "exactCommandCount": 3,
-              "laterCommands": [
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 2,
-                  "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-                  "kind": "production-preview",
-                  "mode": "manual"
-                },
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 2,
-                  "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-                  "kind": "production-preview",
-                  "mode": "manual"
-                },
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 2,
-                  "commandId": "bvp-792a80a21804db9de35aefa42e72fb2e",
-                  "kind": "production-preview",
-                  "mode": "manual"
-                },
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 3,
-                  "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-                  "kind": "production-execute",
-                  "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-                },
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 3,
-                  "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-                  "kind": "production-execute",
-                  "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-                },
-                {
-                  "runId": "s08f-desktop-canary-4f9c69c-r2",
-                  "deviceId": "windows-brain-patrick",
-                  "sequence": 3,
-                  "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
-                  "kind": "production-execute",
-                  "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399"
-                }
-              ],
-              "conflictingSequenceOne": []
-            },
-            "blocking": true
+            "blocking": false
           }
         ]
       }
+    },
+    {
+      "name": "sequence3-lifecycle-recovery",
+      "status": "PASS",
+      "classification": "real-suspend-resume",
+      "summary": "Real Windows restore returned the disposable renderer visible and production lifecycle idle-ready before sequence-3 execution.",
+      "details": {
+        "transition": {
+          "stdout": "Disposable S08F Obsidian window transitioned: 23488 / New tab - bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b - Obsidian 1.13.7",
+          "exitCode": 0
+        },
+        "after": {
+          "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+          "visibility": "visible",
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "deviceAgentFactory": true,
+          "mailboxPoll": true,
+          "relayPump": true,
+          "pluginPresent": true,
+          "productionControl": true,
+          "productionStatus": {
+            "kind": "idle-ready"
+          },
+          "productionError": null
+        }
+      }
+    },
+    {
+      "name": "sequence3-agent-reattach",
+      "status": "PASS",
+      "classification": "accepted-device-agent",
+      "summary": "Accepted retry agent reattached without automatic relay-first pumping.",
+      "details": {
+        "ok": true,
+        "runId": "s08f-desktop-canary-4f9c69c-r2",
+        "deviceId": "windows-brain-patrick",
+        "fixtureRoot": "BVP-VALIDATION/s08f-desktop-canary-4f9c69c",
+        "statePath": ".obsidian/plugins/brain-google-drive-sync/.bvp-relay/device-state/s08f-desktop-canary-4f9c69c-r2--windows-brain-patrick.json",
+        "visibility": "visible",
+        "productStatus": {
+          "kind": "idle-ready"
+        },
+        "firstPoll": {
+          "status": "deferred-recovery",
+          "processed": 0
+        },
+        "recoveryDirectPollFirst": true,
+        "identity": {
+          "schemaVersion": 1,
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+        }
+      }
+    },
+    {
+      "name": "harness-terminal",
+      "status": "FAIL",
+      "classification": "harness-error",
+      "summary": "Error: mailbox-conflicting-result\n    at Object.resultFor (plugin:brain-google-drive-sync:15466:66)\n    at async pollDeviceMailboxOnce (plugin:brain-google-drive-sync:15475:11)\n    at async <anonymous>:1:167"
     }
   ]
 }
