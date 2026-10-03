@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED",
+  "classification": "harness-error",
+  "primaryReason": "fetch failed",
+  "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+  "branchHead": "7825d08338721d8716c4c5d9e941eec621558071",
+  "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+  "deviceId": "windows-brain-patrick",
+  "oldRunId": "s08f-desktop-canary-4f9c69c",
+  "retryRunId": "s08f-desktop-canary-4f9c69c-r2",
+  "scenarioId": "s08f-desktop-live-canary-r2",
+  "fixtureRoot": "BVP-VALIDATION/s08f-desktop-canary-4f9c69c",
+  "canary": {
+    "path": "BVP-VALIDATION/s08f-desktop-canary-4f9c69c/canary.md",
+    "sizeBytes": 77,
+    "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
+  },
+  "stages": [
+    {
+      "name": "validation-artifact-identity",
+      "status": "PASS",
+      "classification": "exact-validation-artifact",
+      "summary": "Validation artifact verified at 909821 bytes / 4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351."
+    },
+    {
+      "name": "harness-terminal",
+      "status": "FAIL",
+      "classification": "harness-error",
+      "summary": "fetch failed"
+    }
+  ]
+}
