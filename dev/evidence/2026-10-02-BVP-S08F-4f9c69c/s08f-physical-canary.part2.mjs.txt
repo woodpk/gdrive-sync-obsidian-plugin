@@ -30,6 +30,10 @@ async function writeEvidenceFile(name, content) {
 
 async function persistVerdict() {
   await fs.mkdir(evidenceDir, { recursive: true });
+  const opposite = physicalStatus === 'PASS'
+    ? ['S08F-BLOCKED.json','S08F-BLOCKED.md']
+    : ['S08F-PASS.json','S08F-PASS.md'];
+  for (const name of opposite) await fs.rm(path.join(evidenceDir, name), { force: true });
   const summary = {
     schemaVersion: 1,
     status: physicalStatus,
