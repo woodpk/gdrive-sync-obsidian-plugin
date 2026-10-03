@@ -14,7 +14,7 @@ function arg(name, fallback) {
 const vaultPath = arg('--vault');
 const repoWorktree = arg('--worktree');
 const evidenceDir = arg('--evidence-dir');
-const debugPort = Number(arg('--debug-port', '63311'));
+const configuredDebugPort = Number(arg('--debug-port', '63311'));
 const sourceCommit = arg('--source-commit', 'e1067f5159a316f328c492837b8c6ff59e08d226');
 const branchHead = arg('--branch-head');
 const oldRunId = 's08f-desktop-canary-4f9c69c';
@@ -127,16 +127,51 @@ async function rendererSnapshot(candidate) {
   return await cdpEval(candidate.webSocketDebuggerUrl, expression);
 }
 
+function discoverObsidianDebugPorts() {
+  const pwsh = process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
+  const script = [
+    "$ErrorActionPreference='SilentlyContinue'",
+    "$ports=[System.Collections.Generic.HashSet[int]]::new()",
+    "$items=@(Get-CimInstance Win32_Process -Filter \"Name='Obsidian.exe'\" | Select-Object ProcessId,CommandLine)",
+    "foreach($item in $items){",
+    "  $line=[string]$item.CommandLine",
+    "  foreach($m in [regex]::Matches($line,'--remote-debugging-port(?:=|\\s+)(\\d{2,5})')){ [void]$ports.Add([int]$m.Groups[1].Value) }",
+    "}",
+    "$ports | Sort-Object"
+  ].join(';');
+  const result = spawnSync(pwsh, ['-NoProfile','-NonInteractive','-Command',script], { encoding:'utf8', windowsHide:true });
+  if (result.status !== 0) return [];
+  return String(result.stdout || '').split(/\\r?\\n/).map(value => Number(value.trim())).filter(value => Number.isInteger(value) && value > 0 && value <= 65535);
+}
+
 async function findRenderer() {
-  const response = await fetch(`http://127.0.0.1:${debugPort}/json`, { signal: AbortSignal.timeout(5000) });
-  if (!response.ok) throw new Error(`DevTools endpoint returned HTTP ${response.status}.`);
-  const candidates = (await response.json()).filter(item => item?.type === 'page' && item.webSocketDebuggerUrl);
+  const ports = [...new Set([configuredDebugPort, ...discoverObsidianDebugPorts()].filter(value => Number.isInteger(value) && value > 0 && value <= 65535))];
+  const attempts = [];
   const matches = [];
-  for (const candidate of candidates) {
-    const snapshot = await rendererSnapshot(candidate).catch(() => null);
-    if (snapshot && normalized(snapshot.vault) === normalized(vaultPath)) matches.push({ candidate, snapshot });
+  for (const port of ports) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(2500) });
+      if (!response.ok) {
+        attempts.push({ port, status: `http-${response.status}` });
+        continue;
+      }
+      const candidates = (await response.json()).filter(item => item?.type === 'page' && item.webSocketDebuggerUrl);
+      let portMatches = 0;
+      for (const candidate of candidates) {
+        const snapshot = await rendererSnapshot(candidate).catch(() => null);
+        if (snapshot && normalized(snapshot.vault) === normalized(vaultPath)) {
+          matches.push({ candidate, snapshot, debugPort: port });
+          portMatches += 1;
+        }
+      }
+      attempts.push({ port, status: 'reachable', pageTargets: candidates.length, disposableMatches: portMatches });
+    } catch (error) {
+      attempts.push({ port, status: 'unreachable', error: error instanceof Error ? error.message : String(error) });
+    }
   }
-  if (matches.length !== 1) throw new Error(`Expected exactly one disposable-vault renderer; observed ${matches.length}.`);
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one reachable disposable-vault renderer; observed ${matches.length}. DevTools attempts=${JSON.stringify(attempts)}`);
+  }
   return matches[0];
 }
 
