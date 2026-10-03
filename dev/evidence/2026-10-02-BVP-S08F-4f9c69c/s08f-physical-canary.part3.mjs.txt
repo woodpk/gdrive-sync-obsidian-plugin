@@ -256,6 +256,260 @@ async function ensureRendererEnvironment(initialRenderer) {
   return { ok:true, target:repair.target, repaired:true, port:repair.port, pid:repair.pid };
 }
 
+
+const controlKey = '__BRAIN_BVP_S08F_PROTOCOL_R2__';
+
+function canonicalValue(value) {
+  if (value === undefined) return 'undefined';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'undefined';
+  if (Array.isArray(value)) return '[' + value.map(canonicalValue).join(',') + ']';
+  return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonicalValue(value[key])).join(',') + '}';
+}
+
+function expectedRetrySequenceOne() {
+  const commandId = 'bvp-' + createHash('sha256').update(`${retryRunId}\0${scenarioId}\00\00`).digest('hex').slice(0,32);
+  return {
+    runId: retryRunId,
+    deviceId,
+    sequence: 1,
+    commandId,
+    kind: 'fixture-put',
+    path: canaryRelative,
+    content: { type:'text', text:canaryText },
+  };
+}
+
+function exactSequenceOneResult(result, command) {
+  return Boolean(result &&
+    result.runId === command.runId &&
+    result.deviceId === command.deviceId &&
+    result.sequence === command.sequence &&
+    result.commandId === command.commandId &&
+    result.kind === command.kind &&
+    result.status === 'completed' &&
+    result.classification === 'fixture-verified' &&
+    result.fixture?.exists === true &&
+    result.fixture?.sizeBytes === 77 &&
+    result.fixture?.sha256 === expectedCanaryHash);
+}
+
+async function relayRecoverySnapshot(command) {
+  const dirs = {
+    outbox:path.join(relayRoot,'outbox'),
+    sent:path.join(relayRoot,'sent'),
+    inbox:path.join(relayRoot,'inbox'),
+  };
+  const output = {};
+  for (const [name,dir] of Object.entries(dirs)) {
+    const files = await fs.readdir(dir).catch(() => []);
+    output[name] = files.sort();
+  }
+  const commandName = `${command.commandId}.json`;
+  const resultName = `${commandName}.result.json`;
+  const locations = {
+    outbox:path.join(dirs.outbox,commandName),
+    sent:path.join(dirs.sent,commandName),
+    inbox:path.join(dirs.inbox,resultName),
+  };
+  for (const [name,file] of Object.entries(locations)) {
+    if (await exists(file)) {
+      try { output[`${name}Record`] = JSON.parse(await fs.readFile(file,'utf8')); }
+      catch (error) { output[`${name}ReadError`] = error instanceof Error ? error.message : String(error); }
+    }
+  }
+  return output;
+}
+
+async function mailboxRecoverySnapshot(renderer, command) {
+  const expression = `(async()=>{
+    const out={ok:false};
+    try{
+      const runtime=globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__;
+      const plugin=globalThis.app?.plugins?.plugins?.['brain-google-drive-sync'];
+      out.vault=typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'';
+      out.visibility=globalThis.document?.visibilityState??'unknown';
+      out.sourceCommit=globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit??null;
+      out.controlStatus=globalThis[${JSON.stringify(controlKey)}]?.status?.()??null;
+      out.productStatus=(()=>{try{return plugin?.productionVerificationControl?.()?.currentStatus?.()??null}catch(error){return{error:error instanceof Error?error.message:String(error)}}})();
+      if(!runtime?.mailbox){out.reason='mailbox-runtime-unavailable';return out;}
+      const commands=await runtime.mailbox.commands(${JSON.stringify(retryRunId)},${JSON.stringify(deviceId)});
+      out.commands=commands;
+      out.commandResults=[];
+      for(const item of commands){
+        try{out.commandResults.push({command:item,result:await runtime.mailbox.resultFor(item)??null});}
+        catch(error){out.commandResults.push({command:item,resultError:error instanceof Error?error.message:String(error)});}
+      }
+      out.ok=true;
+      return out;
+    }catch(error){return{...out,reason:'mailbox-inspection-failed',error:error instanceof Error?(error.stack??error.message):String(error)}}
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 45000);
+}
+
+async function recoverRetrySequenceOne(priorVerdict) {
+  const command = expectedRetrySequenceOne();
+  const expectedCommandKey = canonicalValue(command);
+  const defects = [];
+  const note = (name, pass, classificationValue, summary, details = undefined, blocking = true) => {
+    record(`recovery-${name}`, pass ? 'PASS' : 'FAIL', classificationValue, summary, details);
+    if (!pass) defects.push({name,classification:classificationValue,summary,details,blocking});
+  };
+
+  const mainJs = path.join(pluginDir,'main.js');
+  const manifest = path.join(pluginDir,'manifest.json');
+  const dataJson = path.join(pluginDir,'data.json');
+  const productionMainSource = path.join(repoWorktree,'main.js');
+  const productionManifestSource = path.join(repoWorktree,'manifest.json');
+
+  const installPresence = {mainJs:await exists(mainJs),manifest:await exists(manifest),dataJson:await exists(dataJson)};
+  note('validation-install',installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson,'validation-install',
+    installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson?'Disposable validation installation remains present.':'Disposable validation installation is incomplete.',installPresence);
+  if (installPresence.mainJs) {
+    const hash=await sha256File(mainJs),size=(await fs.stat(mainJs)).size;
+    note('validation-artifact',hash===expectedValidationHash,'validation-artifact-identity',
+      hash===expectedValidationHash?`Installed validation artifact remains exact at ${size} bytes.`:`Installed validation artifact mismatch: size=${size} hash=${hash}`,
+      {sizeBytes:size,sha256:hash,expectedSha256:expectedValidationHash});
+  }
+
+  const productionPresence={mainJs:await exists(productionMainSource),manifest:await exists(productionManifestSource)};
+  note('production-restoration-artifacts',productionPresence.mainJs&&productionPresence.manifest,'production-restoration-precondition',
+    productionPresence.mainJs&&productionPresence.manifest?'Exact-SHA production restoration artifacts remain available.':'Production restoration artifacts are unavailable.',productionPresence);
+  if (productionPresence.mainJs) {
+    const hash=await sha256File(productionMainSource),size=(await fs.stat(productionMainSource)).size;
+    const text=await fs.readFile(productionMainSource,'utf8');
+    const hits=['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'].filter(marker=>text.includes(marker));
+    note('production-baseline',hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0,'production-bundle-isolation',
+      hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0?'Production restoration baseline remains exact and validation-code-free.':`Production baseline mismatch: size=${size} hash=${hash} markers=${JSON.stringify(hits)}`,
+      {sizeBytes:size,sha256:hash,forbiddenMarkerHits:hits});
+  }
+
+  const oldState=await readJson(oldStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const oldStateExact=oldState&&!oldState.__error&&oldState.sequence===3&&oldState.phase==='completed'&&oldState.result?.kind==='production-execute'&&oldState.result?.status==='rejected'&&oldState.result?.classification==='production-action-rejected';
+  note('attempt1-state',oldStateExact,'attempt1-state',oldStateExact?'Attempt-1 terminal rejected sequence-3 state remains preserved.':'Attempt-1 terminal state no longer matches its frozen safe identity.',oldState);
+
+  const retryState=await readJson(retryStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const fixtureExists=await exists(canaryPath);
+  const fixture=fixtureExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
+  const relayBefore=await relayRecoverySnapshot(command);
+  note('retry-state-readable',!retryState?.__error,'retry-state',retryState?.__error?'Retry state could not be read.':'Retry sequence state was read successfully.',retryState);
+
+  const allowedRelayNames = {
+    outbox:new Set([`${command.commandId}.json`]),
+    sent:new Set([`${command.commandId}.json`]),
+    inbox:new Set([`${command.commandId}.json.result.json`]),
+  };
+  const unexpectedRelay={};
+  for(const name of ['outbox','sent','inbox']) unexpectedRelay[name]=(relayBefore[name]??[]).filter(file=>!allowedRelayNames[name].has(file));
+  const relayBounded=Object.values(unexpectedRelay).every(items=>items.length===0);
+  note('relay-bounded',relayBounded,'relay-state',relayBounded?'Local relay contains only sequence-1 recovery records, if any.':'Local relay contains unexpected records.',{relay:relayBefore,unexpected:unexpectedRelay});
+
+  let retryStateSafe=false;
+  if (!retryState) {
+    retryStateSafe=!fixture.exists;
+    note('sequence-state-safety',retryStateSafe,'retry-sequence-state',
+      retryStateSafe?'No retry sequence state exists and the retry fixture is absent; sequence 1 has not durably executed locally.':'Retry state is absent but the fixture exists, so prior outcome is ambiguous.',
+      {retryState:null,fixture});
+  } else if (retryState?.__error) {
+    note('sequence-state-safety',false,'retry-sequence-state','Retry sequence state is unreadable.',{retryState,fixture});
+  } else if (retryState.sequence!==1) {
+    note('sequence-state-safety',false,'recovery-state-beyond-sequence1',`Retry sequence state is already at sequence ${retryState.sequence}; this recovery path will not replay earlier commands.`,{retryState,fixture});
+  } else if (retryState.phase==='claimed') {
+    note('sequence-state-safety',false,'prior-outcome-uncertain','Retry sequence 1 remains claimed without a terminal result; mutation outcome is uncertain.',{retryState,fixture});
+  } else {
+    const exact=retryState.phase==='completed'&&retryState.commandKey===expectedCommandKey&&exactSequenceOneResult(retryState.result,command)&&fixture.exists&&fixture.sizeBytes===77&&fixture.sha256===expectedCanaryHash;
+    retryStateSafe=exact;
+    note('sequence-state-safety',exact,'retry-sequence-state',
+      exact?'Retry sequence 1 is durably completed with the exact fixture result and exact current fixture identity.':'Retry sequence 1 state/result/current fixture do not exactly match the deterministic sequence-1 contract.',
+      {retryState,fixture,expectedCommandKey});
+  }
+
+  let renderer;
+  try { renderer=await findRenderer(); }
+  catch { renderer=null; }
+  const rendererEnvironment=await ensureRendererEnvironment(renderer);
+  if(!rendererEnvironment.ok) note('renderer-environment',false,rendererEnvironment.classification??'devtools-environment-repair-failed',rendererEnvironment.reason??'Disposable renderer unavailable.',rendererEnvironment);
+  else {
+    renderer=rendererEnvironment.target;
+    note('renderer-environment',true,'exact-disposable-renderer',rendererEnvironment.repaired?'Disposable renderer was re-established for recovery.':'Existing disposable renderer is reachable.',{repaired:rendererEnvironment.repaired,snapshot:renderer.snapshot,debugPort:renderer.debugPort});
+  }
+
+  let capabilities=null,mailboxBefore=null;
+  if(renderer){
+    try{capabilities=await inspectRendererCapabilities(renderer);}
+    catch(error){capabilities={__error:error instanceof Error?error.message:String(error)};}
+    const capPass=!capabilities.__error&&normalized(capabilities.vault)===normalized(vaultPath)&&capabilities.sourceCommit===sourceCommit&&capabilities.deviceAgentFactory===true&&capabilities.mailboxPoll===true&&capabilities.relayPump===true&&capabilities.pluginPresent===true&&capabilities.productionControl===true;
+    note('renderer-capabilities',capPass,'renderer-capabilities',capPass?'Renderer exposes all accepted recovery capabilities.':'Renderer is missing one or more required recovery capabilities.',capabilities);
+    try{mailboxBefore=await mailboxRecoverySnapshot(renderer,command);}
+    catch(error){mailboxBefore={ok:false,error:error instanceof Error?error.message:String(error)};}
+    note('mailbox-inspection',mailboxBefore?.ok===true,'drive-mailbox-state',mailboxBefore?.ok===true?'Drive mailbox state was inspected without mutation.':'Drive mailbox inspection failed.',mailboxBefore);
+  }
+
+  if(mailboxBefore?.ok){
+    const addressed=mailboxBefore.commands??[];
+    const later=addressed.filter(item=>Number(item.sequence)>1);
+    const seq1=addressed.filter(item=>Number(item.sequence)===1);
+    const exactCommands=seq1.filter(item=>canonicalValue(item)===expectedCommandKey);
+    const conflictingSeq1=seq1.filter(item=>canonicalValue(item)!==expectedCommandKey);
+    const resultErrors=(mailboxBefore.commandResults??[]).filter(item=>item.resultError);
+    const exactResults=(mailboxBefore.commandResults??[]).filter(item=>canonicalValue(item.command)===expectedCommandKey&&exactSequenceOneResult(item.result,command));
+    const wrongResults=(mailboxBefore.commandResults??[]).filter(item=>item.result&&canonicalValue(item.command)===expectedCommandKey&&!exactSequenceOneResult(item.result,command));
+    note('mailbox-command-bounds',later.length===0&&conflictingSeq1.length===0,'drive-mailbox-command-state',
+      later.length===0&&conflictingSeq1.length===0?`Mailbox has ${exactCommands.length} exact sequence-1 command record(s) and no later/conflicting retry commands.`:'Mailbox contains later-sequence or conflicting sequence-1 commands.',
+      {exactCommandCount:exactCommands.length,laterCommands:later,conflictingSequenceOne:conflictingSeq1});
+    note('mailbox-result-bounds',resultErrors.length===0&&wrongResults.length===0,'drive-mailbox-result-state',
+      resultErrors.length===0&&wrongResults.length===0?`Mailbox has ${exactResults.length} exact sequence-1 result view(s) and no conflicting result.`:'Mailbox result state is conflicting or unreadable.',
+      {exactResultCount:exactResults.length,resultErrors,wrongResults});
+    if(!retryState&&exactResults.length>0) note('result-without-state',false,'sequence-state-result-inconsistency','Drive contains a sequence-1 result but no durable retry sequence state exists.',{exactResults});
+  }
+
+  const blockers=defects.filter(item=>item.blocking);
+  record('recovery-diagnostic-summary',blockers.length===0?'PASS':'FAIL',blockers.length===0?'recovery-diagnostics-safe':'recovery-diagnostics-blocked',
+    `Sequence-1 recovery diagnostics found ${defects.length} defect(s), including ${blockers.length} blocker(s).`,{defectCount:defects.length,blockerCount:blockers.length,defects});
+  if(blockers.length>0) fail('BLOCKED','device-result-recovery-precondition-blocked',`Recovery diagnostics found ${blockers.length} blocker(s): ${blockers.map(item=>item.name+'='+item.summary).join(' | ')}`);
+
+  target=renderer;
+  const agentBootstrap=await injectAgent(retryRunId,controlKey,false);
+  record('retry-agent-recovery-bootstrap','PASS','accepted-device-agent','Accepted retry agent was reattached using the existing retry sequence state.',agentBootstrap);
+
+  const hadPriorSequenceOne=Boolean(retryState)||(relayBefore.outbox?.length??0)>0||(relayBefore.sent?.length??0)>0||(relayBefore.inbox?.length??0)>0||((mailboxBefore?.commands??[]).some(item=>Number(item.sequence)===1));
+  if(hadPriorSequenceOne){
+    const deadline=Date.now()+30000;
+    let finalState=null,finalFixture=null,finalRelay=null,finalMailbox=null;
+    while(Date.now()<=deadline){
+      finalState=await readJson(retryStatePath).catch(()=>null);
+      const currentFixtureExists=await exists(canaryPath);
+      finalFixture=currentFixtureExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
+      finalRelay=await relayRecoverySnapshot(command);
+      finalMailbox=await mailboxRecoverySnapshot(target,command).catch(()=>null);
+      const inboxExact=exactSequenceOneResult(finalRelay?.inboxRecord,command);
+      const stateExact=finalState?.sequence===1&&finalState?.phase==='completed'&&finalState?.commandKey===expectedCommandKey&&exactSequenceOneResult(finalState?.result,command);
+      const fixtureExact=finalFixture.exists&&finalFixture.sizeBytes===77&&finalFixture.sha256===expectedCanaryHash;
+      const localPending=(finalRelay?.outbox??[]).includes(`${command.commandId}.json`)||(finalRelay?.sent??[]).includes(`${command.commandId}.json`);
+      if(inboxExact&&stateExact&&fixtureExact&&!localPending) break;
+      await new Promise(resolve=>setTimeout(resolve,250));
+    }
+    const inboxExact=exactSequenceOneResult(finalRelay?.inboxRecord,command);
+    const stateExact=finalState?.sequence===1&&finalState?.phase==='completed'&&finalState?.commandKey===expectedCommandKey&&exactSequenceOneResult(finalState?.result,command);
+    const fixtureExact=finalFixture?.exists&&finalFixture?.sizeBytes===77&&finalFixture?.sha256===expectedCanaryHash;
+    const localPending=(finalRelay?.outbox??[]).includes(`${command.commandId}.json`)||(finalRelay?.sent??[]).includes(`${command.commandId}.json`);
+    if(!(inboxExact&&stateExact&&fixtureExact&&!localPending)){
+      fail('BLOCKED','device-result-recovery-incomplete',`Sequence-1 recovery did not reach the exact resumable state. stateExact=${stateExact} fixtureExact=${fixtureExact} inboxExact=${inboxExact} localPending=${localPending} state=${JSON.stringify(finalState)} relay=${JSON.stringify(finalRelay)} mailbox=${JSON.stringify(finalMailbox)}`);
+    }
+    record('device-result-recovery','PASS','sequence1-result-return-restored','Exact sequence-1 terminal result is durable, fixture identity is exact, and the verified result is present in local inbox for deterministic executor consumption.',{state:finalState,fixture:finalFixture,relay:finalRelay,mailbox:finalMailbox});
+  } else {
+    record('device-result-recovery','PASS','sequence1-not-yet-executed','No durable/local/Drive evidence of sequence-1 execution exists; canonical executor may safely issue deterministic sequence 1.',{retryState,fixture,relayBefore,mailboxBefore});
+  }
+
+  const validationHash=await sha256File(mainJs);
+  const validationSize=(await fs.stat(mainJs)).size;
+  const dataHashBeforeRestore=await sha256File(dataJson);
+  validationIdentity=target.snapshot.identity;
+  buildIdentity=validationIdentity;
+  attempt1SafeState={sequenceState:oldState,fixture:{historicallyVerified:true,sizeBytes:77,sha256:expectedCanaryHash},relay:'attempt1 previously drained'};
+  lifecycleEvidence=priorVerdict?.stages?.find(stage=>stage.name==='lifecycle-recovery')?.details??null;
+  return {validationHash,validationSize,dataHashBeforeRestore};
+}
+
 if (process.argv.includes('--self-check')) {
   const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
   new Function(`return ${expression};`);
@@ -264,89 +518,110 @@ if (process.argv.includes('--self-check')) {
 }
 
 try {
-  const preflight = await collectPreMutationPreflight();
-  const staticBlockers = preflight.blockers.filter(item => item.name !== 'renderer-capabilities');
-  if (staticBlockers.length > 0) {
-    fail('BLOCKED','pre-mutation-preflight-blocked',`Pre-mutation diagnostics found ${staticBlockers.length} blocking defect(s): ${staticBlockers.map(item => item.name + '=' + item.summary).join(' | ')}`);
-  }
-
-  const rendererEnvironment = await ensureRendererEnvironment(preflight.initialRenderer);
-  if (!rendererEnvironment.ok) {
-    fail('BLOCKED',rendererEnvironment.classification ?? 'devtools-environment-repair-failed',rendererEnvironment.reason ?? 'Unable to establish the disposable renderer.');
-  }
-  target = rendererEnvironment.target;
-
-  let capabilities;
-  try {
-    capabilities = await inspectRendererCapabilities(target);
-  } catch (error) {
-    fail('BLOCKED','renderer-capability-inspection-failed',error instanceof Error?error.message:String(error));
-  }
-  const capabilityIssues = [];
-  if (normalized(capabilities.vault) !== normalized(vaultPath)) capabilityIssues.push('vault-mismatch');
-  if (capabilities.sourceCommit !== sourceCommit) capabilityIssues.push('validation-source-mismatch');
-  if (capabilities.deviceAgentFactory !== true) capabilityIssues.push('device-agent-factory-unavailable');
-  if (capabilities.mailboxPoll !== true) capabilityIssues.push('mailbox-poll-unavailable');
-  if (capabilities.relayPump !== true) capabilityIssues.push('relay-pump-unavailable');
-  if (capabilities.pluginPresent !== true) capabilityIssues.push('plugin-unavailable');
-  if (capabilities.productionControl !== true) capabilityIssues.push('production-control-unavailable');
-  if (capabilityIssues.length > 0) {
-    fail('BLOCKED','renderer-capability-precondition-failed',`Renderer capability defects: ${capabilityIssues.join(', ')}. Details=${JSON.stringify(capabilities)}`);
-  }
-  record('pre-mutation-gate','PASS','all-required-preconditions-satisfied','All independently observable pre-mutation checks passed or were repaired; physical mutation is now authorized.',{
-    repairedRenderer:rendererEnvironment.repaired,
-    renderer:capabilities,
-    preflightStageCount:stages.length,
-    initialDefectCount:preflight.observedDefects.length,
-    unresolvedBlockerCount:0,
-  });
-
   const mainJs = path.join(pluginDir, 'main.js');
   const manifest = path.join(pluginDir, 'manifest.json');
   const dataJson = path.join(pluginDir, 'data.json');
-  const validationHash = await sha256File(mainJs);
-  const validationSize = (await fs.stat(mainJs)).size;
-  const dataHashBeforeRestore = await sha256File(dataJson);
-  record('validation-artifact-identity','PASS','exact-validation-artifact',`Validation artifact verified at ${validationSize} bytes / ${validationHash}.`);
+  let validationHash;
+  let validationSize;
+  let dataHashBeforeRestore;
+  const priorVerdictPath = path.join(evidenceDir,'S08F-BLOCKED.json');
+  const priorVerdict = await readJson(priorVerdictPath).catch(()=>null);
+  const recoveryMode = priorVerdict?.classification === 'device-result-unavailable' &&
+    priorVerdict?.retryRunId === retryRunId &&
+    priorVerdict?.scenarioId === scenarioId;
 
-  validationIdentity = target.snapshot.identity;
-  if (target.snapshot.sourceCommit !== sourceCommit) fail('BLOCKED','validation-source-mismatch',`Renderer source ${target.snapshot.sourceCommit ?? '<missing>'} does not match ${sourceCommit}.`);
-  buildIdentity = validationIdentity;
-  record('renderer-identity','PASS','exact-disposable-renderer',`Disposable renderer matched ${vaultPath}.`,target.snapshot);
+  if (recoveryMode) {
+    record('continuation-mode','PASS','device-result-recovery','Prior evidence binds this execution to safe recovery of the existing attempt-2 device-result timeout.',{
+      priorBranchHead:priorVerdict.branchHead,
+      priorClassification:priorVerdict.classification,
+      retryRunId:priorVerdict.retryRunId,
+      scenarioId:priorVerdict.scenarioId,
+    });
+    const recovered = await recoverRetrySequenceOne(priorVerdict);
+    validationHash = recovered.validationHash;
+    validationSize = recovered.validationSize;
+    dataHashBeforeRestore = recovered.dataHashBeforeRestore;
+  } else {
+    const preflight = await collectPreMutationPreflight();
+    const staticBlockers = preflight.blockers.filter(item => item.name !== 'renderer-capabilities');
+    if (staticBlockers.length > 0) {
+      fail('BLOCKED','pre-mutation-preflight-blocked',`Pre-mutation diagnostics found ${staticBlockers.length} blocking defect(s): ${staticBlockers.map(item => item.name + '=' + item.summary).join(' | ')}`);
+    }
 
-  const oldState = await readJson(oldStatePath).catch(() => null);
-  if (!oldState || oldState.sequence !== 3 || oldState.phase !== 'completed' || oldState.result?.kind !== 'production-execute' || oldState.result?.status !== 'rejected' || oldState.result?.classification !== 'production-action-rejected') {
-    fail('BLOCKED','attempt1-state-mismatch','Attempt-1 sequence state is not the exact completed rejected sequence-3 state.');
+    const rendererEnvironment = await ensureRendererEnvironment(preflight.initialRenderer);
+    if (!rendererEnvironment.ok) {
+      fail('BLOCKED',rendererEnvironment.classification ?? 'devtools-environment-repair-failed',rendererEnvironment.reason ?? 'Unable to establish the disposable renderer.');
+    }
+    target = rendererEnvironment.target;
+
+    let capabilities;
+    try {
+      capabilities = await inspectRendererCapabilities(target);
+    } catch (error) {
+      fail('BLOCKED','renderer-capability-inspection-failed',error instanceof Error?error.message:String(error));
+    }
+    const capabilityIssues = [];
+    if (normalized(capabilities.vault) !== normalized(vaultPath)) capabilityIssues.push('vault-mismatch');
+    if (capabilities.sourceCommit !== sourceCommit) capabilityIssues.push('validation-source-mismatch');
+    if (capabilities.deviceAgentFactory !== true) capabilityIssues.push('device-agent-factory-unavailable');
+    if (capabilities.mailboxPoll !== true) capabilityIssues.push('mailbox-poll-unavailable');
+    if (capabilities.relayPump !== true) capabilityIssues.push('relay-pump-unavailable');
+    if (capabilities.pluginPresent !== true) capabilityIssues.push('plugin-unavailable');
+    if (capabilities.productionControl !== true) capabilityIssues.push('production-control-unavailable');
+    if (capabilityIssues.length > 0) {
+      fail('BLOCKED','renderer-capability-precondition-failed',`Renderer capability defects: ${capabilityIssues.join(', ')}. Details=${JSON.stringify(capabilities)}`);
+    }
+    record('pre-mutation-gate','PASS','all-required-preconditions-satisfied','All independently observable pre-mutation checks passed or were repaired; physical mutation is now authorized.',{
+      repairedRenderer:rendererEnvironment.repaired,
+      renderer:capabilities,
+      preflightStageCount:stages.length,
+      initialDefectCount:preflight.observedDefects.length,
+      unresolvedBlockerCount:0,
+    });
+
+    validationHash = await sha256File(mainJs);
+    validationSize = (await fs.stat(mainJs)).size;
+    dataHashBeforeRestore = await sha256File(dataJson);
+    record('validation-artifact-identity','PASS','exact-validation-artifact',`Validation artifact verified at ${validationSize} bytes / ${validationHash}.`);
+
+    validationIdentity = target.snapshot.identity;
+    if (target.snapshot.sourceCommit !== sourceCommit) fail('BLOCKED','validation-source-mismatch',`Renderer source ${target.snapshot.sourceCommit ?? '<missing>'} does not match ${sourceCommit}.`);
+    buildIdentity = validationIdentity;
+    record('renderer-identity','PASS','exact-disposable-renderer',`Disposable renderer matched ${vaultPath}.`,target.snapshot);
+
+    const oldState = await readJson(oldStatePath).catch(() => null);
+    if (!oldState || oldState.sequence !== 3 || oldState.phase !== 'completed' || oldState.result?.kind !== 'production-execute' || oldState.result?.status !== 'rejected' || oldState.result?.classification !== 'production-action-rejected') {
+      fail('BLOCKED','attempt1-state-mismatch','Attempt-1 sequence state is not the exact completed rejected sequence-3 state.');
+    }
+    const fixtureExists = await exists(canaryPath);
+    const fixtureSize = fixtureExists ? (await fs.stat(canaryPath)).size : 0;
+    const fixtureHash = fixtureExists ? await sha256File(canaryPath) : null;
+    if (!fixtureExists || fixtureSize !== 77 || fixtureHash !== expectedCanaryHash) fail('BLOCKED','attempt1-fixture-mismatch',`Attempt-1 fixture identity mismatch: exists=${fixtureExists} size=${fixtureSize} hash=${fixtureHash}`);
+    const relayBefore = await relayEmpty();
+    if (Object.values(relayBefore).some(files => files.length !== 0)) fail('BLOCKED','attempt1-relay-not-drained',`Attempt-1 relay is not drained: ${JSON.stringify(relayBefore)}`);
+    attempt1SafeState = { sequenceState: oldState, fixture: { exists:true,sizeBytes:fixtureSize,sha256:fixtureHash }, relay: relayBefore };
+    record('attempt1-safe-state','PASS','exact-failed-run-state','Attempt 1 re-proved: sequence 3 rejected, exact fixture present, relay drained, no replay performed.');
+
+    await fs.rm(canaryPath, { force: false });
+    if (await exists(canaryPath)) fail('FAIL','attempt1-cleanup-failed','Attempt-1 canary fixture remained after bounded host cleanup.');
+    record('attempt1-bounded-cleanup','PASS','canary-owned-cleanup','Removed only the exact attempt-1 disposable fixture; attempt-1 sequence state was preserved.');
+
+    const transition = realSuspendResumeTransition();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    target = await findRenderer();
+    lifecycleEvidence = { transition, after: target.snapshot };
+    if (target.snapshot.visibility !== 'visible') fail('BLOCKED','renderer-not-visible-after-resume',`Renderer visibility is ${target.snapshot.visibility}.`);
+    record('lifecycle-recovery','PASS','real-suspend-resume','Real Windows minimize/restore transition completed and renderer returned visible.',lifecycleEvidence);
+
+    if (await exists(retryStatePath)) fail('BLOCKED','retry-sequence-state-not-fresh',`Retry state already exists: ${retryStatePath}`);
+    if (await exists(canaryPath)) fail('BLOCKED','retry-fixture-not-fresh','Canary fixture unexpectedly exists before retry.');
+    const relayRetry = await relayEmpty();
+    if (Object.values(relayRetry).some(files => files.length !== 0)) fail('BLOCKED','retry-relay-not-empty',`Retry relay is not empty: ${JSON.stringify(relayRetry)}`);
+
+    const agentBootstrap = await injectAgent(retryRunId, controlKey, true);
+    if (agentBootstrap.visibility !== 'visible') fail('BLOCKED','agent-bootstrap-hidden','Retry agent bootstrapped while renderer was not visible.');
+    record('retry-agent-bootstrap','PASS','accepted-device-agent','Fresh attempt-2 bounded device agent composed from accepted validation artifact.',agentBootstrap);
   }
-  const fixtureExists = await exists(canaryPath);
-  const fixtureSize = fixtureExists ? (await fs.stat(canaryPath)).size : 0;
-  const fixtureHash = fixtureExists ? await sha256File(canaryPath) : null;
-  if (!fixtureExists || fixtureSize !== 77 || fixtureHash !== expectedCanaryHash) fail('BLOCKED','attempt1-fixture-mismatch',`Attempt-1 fixture identity mismatch: exists=${fixtureExists} size=${fixtureSize} hash=${fixtureHash}`);
-  const relayBefore = await relayEmpty();
-  if (Object.values(relayBefore).some(files => files.length !== 0)) fail('BLOCKED','attempt1-relay-not-drained',`Attempt-1 relay is not drained: ${JSON.stringify(relayBefore)}`);
-  attempt1SafeState = { sequenceState: oldState, fixture: { exists:true,sizeBytes:fixtureSize,sha256:fixtureHash }, relay: relayBefore };
-  record('attempt1-safe-state','PASS','exact-failed-run-state','Attempt 1 re-proved: sequence 3 rejected, exact fixture present, relay drained, no replay performed.');
-
-  await fs.rm(canaryPath, { force: false });
-  if (await exists(canaryPath)) fail('FAIL','attempt1-cleanup-failed','Attempt-1 canary fixture remained after bounded host cleanup.');
-  record('attempt1-bounded-cleanup','PASS','canary-owned-cleanup','Removed only the exact attempt-1 disposable fixture; attempt-1 sequence state was preserved.');
-
-  const transition = realSuspendResumeTransition();
-  await new Promise(resolve => setTimeout(resolve, 500));
-  target = await findRenderer();
-  lifecycleEvidence = { transition, after: target.snapshot };
-  if (target.snapshot.visibility !== 'visible') fail('BLOCKED','renderer-not-visible-after-resume',`Renderer visibility is ${target.snapshot.visibility}.`);
-  record('lifecycle-recovery','PASS','real-suspend-resume','Real Windows minimize/restore transition completed and renderer returned visible.',lifecycleEvidence);
-
-  if (await exists(retryStatePath)) fail('BLOCKED','retry-sequence-state-not-fresh',`Retry state already exists: ${retryStatePath}`);
-  if (await exists(canaryPath)) fail('BLOCKED','retry-fixture-not-fresh','Canary fixture unexpectedly exists before retry.');
-  const relayRetry = await relayEmpty();
-  if (Object.values(relayRetry).some(files => files.length !== 0)) fail('BLOCKED','retry-relay-not-empty',`Retry relay is not empty: ${JSON.stringify(relayRetry)}`);
-
-  const controlKey = '__BRAIN_BVP_S08F_PROTOCOL_R2__';
-  const agentBootstrap = await injectAgent(retryRunId, controlKey, true);
-  if (agentBootstrap.visibility !== 'visible') fail('BLOCKED','agent-bootstrap-hidden','Retry agent bootstrapped while renderer was not visible.');
-  record('retry-agent-bootstrap','PASS','accepted-device-agent','Fresh attempt-2 bounded device agent composed from accepted validation artifact.',agentBootstrap);
 
   const compiledRoot = path.join(repoWorktree, '.test-build', 'bvp');
   const { defineScenario } = require(path.join(compiledRoot, 'test-platform', 'src', 'scenario', 'scenario-contract.js'));
