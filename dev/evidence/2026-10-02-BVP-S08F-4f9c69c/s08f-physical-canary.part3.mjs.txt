@@ -1,0 +1,70 @@
+}
+
+
+if (process.argv.includes('--self-check')) {
+  const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
+  new Function(`return ${expression};`);
+  console.log('S08F helper self-check PASS');
+  process.exit(0);
+}
+
+try {
+  if (!vaultPath || !repoWorktree || !evidenceDir || !branchHead) fail('BLOCKED','input-invalid','Required harness arguments are missing.');
+  if (canaryHash !== expectedCanaryHash || canaryBytes.length !== 77) fail('FAIL','harness-integrity-failure',`Canary identity mismatch in harness: size=${canaryBytes.length} hash=${canaryHash}`);
+
+  const mainJs = path.join(pluginDir, 'main.js');
+  const manifest = path.join(pluginDir, 'manifest.json');
+  const dataJson = path.join(pluginDir, 'data.json');
+  if (!await exists(mainJs) || !await exists(manifest) || !await exists(dataJson)) fail('BLOCKED','validation-install-missing','Disposable validation plugin installation is incomplete.');
+  const validationHash = await sha256File(mainJs);
+  const validationSize = (await fs.stat(mainJs)).size;
+  if (validationHash !== expectedValidationHash) fail('BLOCKED','validation-artifact-mismatch',`Installed validation main.js hash ${validationHash} does not match ${expectedValidationHash}.`);
+  const dataHashBeforeRestore = await sha256File(dataJson);
+  record('validation-artifact-identity','PASS','exact-validation-artifact',`Validation artifact verified at ${validationSize} bytes / ${validationHash}.`);
+
+  target = await findRenderer();
+  validationIdentity = target.snapshot.identity;
+  if (target.snapshot.sourceCommit !== sourceCommit) fail('BLOCKED','validation-source-mismatch',`Renderer source ${target.snapshot.sourceCommit ?? '<missing>'} does not match ${sourceCommit}.`);
+  buildIdentity = validationIdentity;
+  record('renderer-identity','PASS','exact-disposable-renderer',`Disposable renderer matched ${vaultPath}.`,target.snapshot);
+
+  const oldState = await readJson(oldStatePath).catch(() => null);
+  if (!oldState || oldState.sequence !== 3 || oldState.phase !== 'completed' || oldState.result?.kind !== 'production-execute' || oldState.result?.status !== 'rejected' || oldState.result?.classification !== 'production-action-rejected') {
+    fail('BLOCKED','attempt1-state-mismatch','Attempt-1 sequence state is not the exact completed rejected sequence-3 state.');
+  }
+  const fixtureExists = await exists(canaryPath);
+  const fixtureSize = fixtureExists ? (await fs.stat(canaryPath)).size : 0;
+  const fixtureHash = fixtureExists ? await sha256File(canaryPath) : null;
+  if (!fixtureExists || fixtureSize !== 77 || fixtureHash !== expectedCanaryHash) fail('BLOCKED','attempt1-fixture-mismatch',`Attempt-1 fixture identity mismatch: exists=${fixtureExists} size=${fixtureSize} hash=${fixtureHash}`);
+  const relayBefore = await relayEmpty();
+  if (Object.values(relayBefore).some(files => files.length !== 0)) fail('BLOCKED','attempt1-relay-not-drained',`Attempt-1 relay is not drained: ${JSON.stringify(relayBefore)}`);
+  attempt1SafeState = { sequenceState: oldState, fixture: { exists:true,sizeBytes:fixtureSize,sha256:fixtureHash }, relay: relayBefore };
+  record('attempt1-safe-state','PASS','exact-failed-run-state','Attempt 1 re-proved: sequence 3 rejected, exact fixture present, relay drained, no replay performed.');
+
+  await fs.rm(canaryPath, { force: false });
+  if (await exists(canaryPath)) fail('FAIL','attempt1-cleanup-failed','Attempt-1 canary fixture remained after bounded host cleanup.');
+  record('attempt1-bounded-cleanup','PASS','canary-owned-cleanup','Removed only the exact attempt-1 disposable fixture; attempt-1 sequence state was preserved.');
+
+  const transition = realSuspendResumeTransition();
+  await new Promise(resolve => setTimeout(resolve, 500));
+  target = await findRenderer();
+  lifecycleEvidence = { transition, after: target.snapshot };
+  if (target.snapshot.visibility !== 'visible') fail('BLOCKED','renderer-not-visible-after-resume',`Renderer visibility is ${target.snapshot.visibility}.`);
+  record('lifecycle-recovery','PASS','real-suspend-resume','Real Windows minimize/restore transition completed and renderer returned visible.',lifecycleEvidence);
+
+  if (await exists(retryStatePath)) fail('BLOCKED','retry-sequence-state-not-fresh',`Retry state already exists: ${retryStatePath}`);
+  if (await exists(canaryPath)) fail('BLOCKED','retry-fixture-not-fresh','Canary fixture unexpectedly exists before retry.');
+  const relayRetry = await relayEmpty();
+  if (Object.values(relayRetry).some(files => files.length !== 0)) fail('BLOCKED','retry-relay-not-empty',`Retry relay is not empty: ${JSON.stringify(relayRetry)}`);
+
+  const controlKey = '__BRAIN_BVP_S08F_PROTOCOL_R2__';
+  const agentBootstrap = await injectAgent(retryRunId, controlKey, true);
+  if (agentBootstrap.visibility !== 'visible') fail('BLOCKED','agent-bootstrap-hidden','Retry agent bootstrapped while renderer was not visible.');
+  record('retry-agent-bootstrap','PASS','accepted-device-agent','Fresh attempt-2 bounded device agent composed from accepted validation artifact.',agentBootstrap);
+
+  const compiledRoot = path.join(repoWorktree, '.test-build', 'bvp');
+  const { defineScenario } = require(path.join(compiledRoot, 'test-platform', 'src', 'scenario', 'scenario-contract.js'));
+  const { DeterministicScenarioRunner } = require(path.join(compiledRoot, 'test-platform', 'src', 'scenario', 'scenario-runner.js'));
+  const { createLiveScenarioExecutor } = require(path.join(compiledRoot, 'test-platform', 'src', 'live-device', 'live-scenario-executor.js'));
+  const scenario = defineScenario({
+    id: scenarioId,
