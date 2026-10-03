@@ -33,6 +33,7 @@ async function inspectRendererCapabilities(renderer) {
 
 async function collectPreMutationPreflight() {
   const blockers = [];
+  const observedDefects = [];
   let initialRenderer = null;
   let installedDataHash = null;
   let productionBaseline = null;
@@ -41,6 +42,7 @@ async function collectPreMutationPreflight() {
 
   const finding = (name, pass, classificationValue, summary, details = undefined, blocking = true) => {
     record(`preflight-${name}`, pass ? 'PASS' : 'FAIL', classificationValue, summary, details);
+    if (!pass) observedDefects.push({ name, classification: classificationValue, summary, details, blocking });
     if (!pass && blocking) blockers.push({ name, classification: classificationValue, summary, details });
   };
 
@@ -190,8 +192,9 @@ async function collectPreMutationPreflight() {
   finding('obsidian-executable',
     Boolean(obsidianExe),
     'environment-precondition',
-    obsidianExe ? `Obsidian executable located at ${obsidianExe}.` : 'Obsidian executable was not found in approved install locations.',
-    { executable:obsidianExe ?? null });
+    obsidianExe ? `Obsidian executable located at ${obsidianExe}.` : 'Obsidian executable was not found in approved install locations; this matters only if a renderer must be bootstrapped.',
+    { executable:obsidianExe ?? null },
+    false);
 
   try {
     initialRenderer = await findRenderer();
@@ -202,7 +205,9 @@ async function collectPreMutationPreflight() {
       runtime:initialRenderer.runtime,
     });
   } catch (error) {
-    record('preflight-renderer','FAIL','devtools-environment-not-ready',error instanceof Error?error.message:String(error),runtimeSnapshot);
+    const summary = error instanceof Error?error.message:String(error);
+    record('preflight-renderer','FAIL','devtools-environment-not-ready',summary,runtimeSnapshot);
+    observedDefects.push({ name:'renderer', classification:'devtools-environment-not-ready', summary, details:runtimeSnapshot, blocking:false });
   }
 
   if (initialRenderer) {
@@ -229,7 +234,12 @@ async function collectPreMutationPreflight() {
       capabilities);
   }
 
-  return { blockers, initialRenderer, installedDataHash, productionBaseline, attempt1, runtimeSnapshot };
+  record('preflight-summary',
+    observedDefects.length === 0 ? 'PASS' : 'FAIL',
+    observedDefects.length === 0 ? 'preflight-clean' : 'preflight-defects-observed',
+    `Pre-mutation diagnostics observed ${observedDefects.length} defect(s), including ${blockers.length} unresolved mutation blocker(s).`,
+    { defectCount:observedDefects.length, blockerCount:blockers.length, defects:observedDefects });
+  return { blockers, observedDefects, initialRenderer, installedDataHash, productionBaseline, attempt1, runtimeSnapshot };
 }
 
 async function ensureRendererEnvironment(initialRenderer) {
@@ -287,6 +297,8 @@ try {
     repairedRenderer:rendererEnvironment.repaired,
     renderer:capabilities,
     preflightStageCount:stages.length,
+    initialDefectCount:preflight.observedDefects.length,
+    unresolvedBlockerCount:0,
   });
 
   const mainJs = path.join(pluginDir, 'main.js');
