@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** BOUND / BLOCKED — DISPOSABLE VALIDATION ENVIRONMENT REQUIRED  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08E
 
@@ -117,6 +117,37 @@ Writable paths for repository recording:
 No production, test-platform runtime, scenario catalog, PowerShell, governance, PHX-CI, package, manifest, or S09 implementation path is writable unless S08F proves the accepted stack is materially incapable and supervisor re-grounding explicitly authorizes a prerequisite.
 
 Authoritative repository verification after physical evidence capture uses PHX-CI with exact base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, ordinary change class, and a unique GUID-suffixed temp root.
+
+
+## 0.2 Supervisor Binding Correction — Working Vault Prohibited
+
+The previously bound working BRAIN vault is **not an authorized S08F canary target**.
+
+Observed physical bootstrap result before correction:
+
+- validation artifact source: `e1067f5159a316f328c492837b8c6ff59e08d226`;
+- validation artifact SHA-256: `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`;
+- validation artifact loaded in Windows Obsidian;
+- bounded S08 device agent composed successfully;
+- agent reported `S08F_DEVICE_AGENT_READY`;
+- product status was `idle-ready`;
+- **no mailbox command was sent**;
+- **no disposable fixture was created**;
+- **no production preview or synchronization execution occurred**;
+- **no S08F product-behavior verdict was claimed**.
+
+The working vault path previously named in section 0.1 is withdrawn as an execution target. It may be retained only as historical context for the aborted bootstrap and MUST NOT receive further S08F canary commands.
+
+S08F remains semantically bound by its original requirement for one bounded Windows/Obsidian live canary, but execution is now **BLOCKED** until a dedicated disposable validation environment is explicitly bound. That environment must:
+
+- be a separate disposable Obsidian vault, not the user's working BRAIN vault;
+- contain no permanent user content;
+- use an isolated validation plugin install;
+- use isolated validation authentication/pairing/remote state or another supervisor-approved non-production equivalent consistent with the original S08F contract;
+- permit complete removal after the canary;
+- preserve the distinction between S08F platform smoke validation and S09 product-validation coverage.
+
+No further physical command execution is authorized under the old working-vault binding.
 
 ## 1. Objective
 
