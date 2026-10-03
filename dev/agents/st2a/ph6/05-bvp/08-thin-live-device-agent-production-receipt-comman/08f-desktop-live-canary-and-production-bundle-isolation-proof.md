@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / BLOCKED — DISPOSABLE VALIDATION ENVIRONMENT REQUIRED  
+**Prompt maturity:** BOUND / EXECUTABLE — DISPOSABLE VALIDATION ENVIRONMENT  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08E
 
@@ -148,6 +148,34 @@ S08F remains semantically bound by its original requirement for one bounded Wind
 - preserve the distinction between S08F platform smoke validation and S09 product-validation coverage.
 
 No further physical command execution is authorized under the old working-vault binding.
+
+
+## 0.3 Disposable Windows Validation Environment Binding
+
+The S08F environment blocker is resolved.
+
+Exact disposable validation vault:
+
+- vault root: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`;
+- plugin directory: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync`;
+- validation artifact source: `e1067f5159a316f328c492837b8c6ff59e08d226`;
+- validation artifact SHA-256: `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`;
+- ordinary working BRAIN vault is not an authorized S08F execution target;
+- no working-vault content, plugin `data.json`, OAuth token, pairing identity, remote identity, or synchronization authority was copied into this disposable vault;
+- this vault exists only for the single S08F testing-platform smoke canary and is not S09 product-validation evidence.
+
+Permitted setup before the S08F canary:
+
+- non-secret OAuth application configuration (`oauthClientId` and `oauthRedirectUri`) may be copied from the existing installation or entered manually;
+- OAuth authorization for this disposable vault must be performed independently if required by the real production path;
+- the disposable vault must create or pair only to a disposable managed remote identity created for this S08F canary;
+- no existing production/working BRAIN remote root or vault identity may be reused;
+- all automatic synchronization modes remain disabled;
+- no permanent user content may be introduced.
+
+The previous working-vault bootstrap result remains evidence only that the validation artifact and bounded agent could compose in Windows Obsidian. It does not authorize working-vault execution and is not a canary PASS.
+
+S08F may now proceed only against the disposable vault bound above.
 
 ## 1. Objective
 
