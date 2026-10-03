@@ -332,4 +332,6 @@ try {
         [Environment]::ExitCode = 21
     }
     Write-Host '============================================================'
+    $finalExitCode = if ($overall -eq 'READY FOR LOCAL PHX-CI VERIFICATION') { 0 } elseif ($overall -eq 'BLOCKED') { 20 } else { 21 }
 }
+exit $finalExitCode
