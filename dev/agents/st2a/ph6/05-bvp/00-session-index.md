@@ -59,7 +59,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
 | 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
-| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | BLOCKED | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
+| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
 | 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
 | 09A | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md` |
 | 09B | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09b-physical-bidirectional-synchronization-and-representative-conflict.md` |
@@ -872,3 +872,6 @@ S08F — Desktop Live Canary and Production-Bundle Isolation Proof is **BOUND / 
 
 
 S08F execution correction: the previously bound working BRAIN vault is no longer an authorized canary target. The installed validation artifact successfully reached `S08F_DEVICE_AGENT_READY` with product status `idle-ready`, but no command, fixture, preview, or synchronization execution occurred. S08F is now BLOCKED pending a dedicated disposable Windows/Obsidian validation environment. This preserves the original S08F smoke-canary contract without beginning S09 product-validation coverage against permanent user state.
+
+
+S08F environment blocker resolved: disposable validation vault `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` is bound as the sole authorized Windows canary target. It contains validation artifact `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351` from `e1067f5159a316f328c492837b8c6ff59e08d226`, with no copied working-vault content, data.json, OAuth token, pairing identity, remote identity, or synchronization authority. Working BRAIN vault remains prohibited for S08F execution.
