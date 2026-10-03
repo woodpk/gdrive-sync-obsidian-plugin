@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "status": "BLOCKED",
-  "classification": "devtools-endpoint-unavailable",
-  "primaryReason": "Expected exactly one reachable disposable-vault renderer; observed 0. DevTools attempts=[{\"port\":63311,\"status\":\"unreachable\",\"error\":\"fetch failed\"}]",
+  "classification": "pre-mutation-preflight-blocked",
+  "primaryReason": "Pre-mutation diagnostics found 1 blocking defect(s): production-restore-artifacts=Ordinary production restoration artifacts are missing.",
   "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
-  "branchHead": "143a87015174aeb800e4fa89577d67d8fb0f81d8",
+  "branchHead": "a7eeb11532f9a78094f4ca3e7a896192cc973add",
   "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
   "deviceId": "windows-brain-patrick",
   "oldRunId": "s08f-desktop-canary-4f9c69c",
@@ -18,10 +18,203 @@
   },
   "stages": [
     {
-      "name": "validation-artifact-identity",
+      "name": "preflight-input-identity",
       "status": "PASS",
-      "classification": "exact-validation-artifact",
-      "summary": "Validation artifact verified at 909821 bytes / 4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351."
+      "classification": "input-identity",
+      "summary": "Required helper identities are present.",
+      "details": {
+        "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+        "repoWorktree": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-26a0c4bd66854112964645b5a192cb10\\w",
+        "evidenceDir": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-26a0c4bd66854112964645b5a192cb10\\w\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c",
+        "branchHead": "a7eeb11532f9a78094f4ca3e7a896192cc973add"
+      }
+    },
+    {
+      "name": "preflight-canary-identity",
+      "status": "PASS",
+      "classification": "harness-integrity",
+      "summary": "Canary content identity is exact.",
+      "details": {
+        "sizeBytes": 77,
+        "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
+      }
+    },
+    {
+      "name": "preflight-validation-install",
+      "status": "PASS",
+      "classification": "validation-install",
+      "summary": "Disposable validation plugin files are present.",
+      "details": {
+        "mainJs": true,
+        "manifest": true,
+        "dataJson": true
+      }
+    },
+    {
+      "name": "preflight-validation-artifact",
+      "status": "PASS",
+      "classification": "validation-artifact-identity",
+      "summary": "Installed validation artifact is exact at 909821 bytes.",
+      "details": {
+        "sizeBytes": 909821,
+        "sha256": "4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351",
+        "expectedSha256": "4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351"
+      }
+    },
+    {
+      "name": "preflight-production-restore-artifacts",
+      "status": "FAIL",
+      "classification": "production-restoration-precondition",
+      "summary": "Ordinary production restoration artifacts are missing.",
+      "details": {
+        "mainJs": false,
+        "manifest": true
+      }
+    },
+    {
+      "name": "preflight-attempt1-sequence-state",
+      "status": "PASS",
+      "classification": "attempt1-state",
+      "summary": "Attempt-1 sequence state is the exact completed rejected sequence-3 state.",
+      "details": {
+        "sequence": 3,
+        "commandKey": "{\"commandId\":\"bvp-29f7ffff8adfe63157abe96710516f5c\",\"deviceId\":\"windows-brain-patrick\",\"kind\":\"production-execute\",\"planId\":\"plan:b88beef467124f6703004f3782d9027dae97220539ec2811815bc1e59c1136f5\",\"runId\":\"s08f-desktop-canary-4f9c69c\",\"sequence\":3}",
+        "phase": "completed",
+        "result": {
+          "runId": "s08f-desktop-canary-4f9c69c",
+          "deviceId": "windows-brain-patrick",
+          "sequence": 3,
+          "commandId": "bvp-29f7ffff8adfe63157abe96710516f5c",
+          "kind": "production-execute",
+          "status": "rejected",
+          "classification": "production-action-rejected",
+          "actionResult": {
+            "status": "rejected",
+            "reason": "reviewed plan failed before safe progress could complete"
+          }
+        }
+      }
+    },
+    {
+      "name": "preflight-attempt1-fixture",
+      "status": "PASS",
+      "classification": "attempt1-fixture",
+      "summary": "Attempt-1 fixture is present with exact size/hash.",
+      "details": {
+        "exists": true,
+        "sizeBytes": 77,
+        "sha256": "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
+      }
+    },
+    {
+      "name": "preflight-relay-cleanliness",
+      "status": "PASS",
+      "classification": "relay-state",
+      "summary": "Protected local relay is drained.",
+      "details": {
+        "outbox": [],
+        "sent": [],
+        "inbox": []
+      }
+    },
+    {
+      "name": "preflight-retry-sequence-freshness",
+      "status": "PASS",
+      "classification": "retry-state",
+      "summary": "Retry sequence state is fresh.",
+      "details": {
+        "path": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay\\device-state\\s08f-desktop-canary-4f9c69c-r2--windows-brain-patrick.json",
+        "exists": false
+      }
+    },
+    {
+      "name": "preflight-probe-fixture-freshness",
+      "status": "PASS",
+      "classification": "retry-fixture-state",
+      "summary": "Duplicate-replay probe fixture is absent.",
+      "details": {
+        "path": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\BVP-VALIDATION\\s08f-desktop-canary-4f9c69c\\duplicate-probe.md",
+        "exists": false
+      }
+    },
+    {
+      "name": "preflight-evidence-state",
+      "status": "PASS",
+      "classification": "evidence-state",
+      "summary": "No prior PASS evidence exists; prior BLOCKED evidence may be superseded by a successful retry.",
+      "details": {
+        "passJson": false,
+        "passMd": false,
+        "blockedJson": true,
+        "blockedMd": true
+      }
+    },
+    {
+      "name": "preflight-obsidian-runtime-inspection",
+      "status": "PASS",
+      "classification": "environment-inspection",
+      "summary": "Observed 0 Obsidian processes, 0 top-level windows, and 0 owned listeners.",
+      "details": {
+        "ok": true,
+        "processes": [],
+        "windows": [],
+        "listeners": []
+      }
+    },
+    {
+      "name": "preflight-obsidian-executable",
+      "status": "PASS",
+      "classification": "environment-precondition",
+      "summary": "Obsidian executable located at C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe.",
+      "details": {
+        "executable": "C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe"
+      }
+    },
+    {
+      "name": "preflight-renderer",
+      "status": "FAIL",
+      "classification": "devtools-environment-not-ready",
+      "summary": "Expected exactly one reachable disposable-vault renderer; observed 0. Runtime={\"ok\":true,\"processes\":[],\"windows\":[],\"listeners\":[]} DevTools attempts=[{\"port\":63311,\"status\":\"unreachable\",\"error\":\"fetch failed\"}]",
+      "details": {
+        "ok": true,
+        "processes": [],
+        "windows": [],
+        "listeners": []
+      }
+    },
+    {
+      "name": "preflight-summary",
+      "status": "FAIL",
+      "classification": "preflight-defects-observed",
+      "summary": "Pre-mutation diagnostics observed 2 defect(s), including 1 unresolved mutation blocker(s).",
+      "details": {
+        "defectCount": 2,
+        "blockerCount": 1,
+        "defects": [
+          {
+            "name": "production-restore-artifacts",
+            "classification": "production-restoration-precondition",
+            "summary": "Ordinary production restoration artifacts are missing.",
+            "details": {
+              "mainJs": false,
+              "manifest": true
+            },
+            "blocking": true
+          },
+          {
+            "name": "renderer",
+            "classification": "devtools-environment-not-ready",
+            "summary": "Expected exactly one reachable disposable-vault renderer; observed 0. Runtime={\"ok\":true,\"processes\":[],\"windows\":[],\"listeners\":[]} DevTools attempts=[{\"port\":63311,\"status\":\"unreachable\",\"error\":\"fetch failed\"}]",
+            "details": {
+              "ok": true,
+              "processes": [],
+              "windows": [],
+              "listeners": []
+            },
+            "blocking": false
+          }
+        ]
+      }
     }
   ]
 }
