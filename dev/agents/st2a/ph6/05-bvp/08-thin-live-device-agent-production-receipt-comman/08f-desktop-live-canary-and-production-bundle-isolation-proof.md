@@ -177,6 +177,22 @@ The previous working-vault bootstrap result remains evidence only that the valid
 
 S08F may now proceed only against the disposable vault bound above.
 
+
+## 0.4 Disposable Environment Live Identity Binding
+
+The disposable S08F vault completed independent OAuth authentication and created its own managed remote.
+
+Bound non-secret identities:
+
+- disposable product device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- disposable BRAIN vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`;
+- disposable managed remote root ID: `1ELFZgG55vMW7Fcl1DGBjc2MAqtctN2_-`;
+- first synchronization: not yet executed;
+- automatic synchronization: disabled;
+- working BRAIN vault/remote identities remain prohibited for S08F.
+
+These identities belong only to the disposable S08F environment and are not S09 product-validation evidence.
+
 ## 1. Objective
 
 Prove the complete S08 live path on Windows with one bounded disposable canary before S09 broad physical validation, while independently proving the ordinary production bundle remains free of validation-only agent/transport/scenario code.
