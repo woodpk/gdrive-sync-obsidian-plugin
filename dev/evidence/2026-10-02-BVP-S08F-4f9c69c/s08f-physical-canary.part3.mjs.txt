@@ -1,6 +1,251 @@
 }
 
 
+
+async function inspectRendererCapabilities(renderer) {
+  const expression = `(() => {
+    const pluginId='brain-google-drive-sync';
+    const runtime=globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__;
+    const plugin=globalThis.app?.plugins?.plugins?.[pluginId];
+    let productionStatus=null;
+    let productionError=null;
+    try {
+      const production=plugin&&typeof plugin.productionVerificationControl==='function'?plugin.productionVerificationControl():undefined;
+      productionStatus=production?production.currentStatus():null;
+    } catch(error) {
+      productionError=error instanceof Error?error.message:String(error);
+    }
+    return {
+      vault:typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'',
+      visibility:globalThis.document?.visibilityState??'unknown',
+      sourceCommit:globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit??null,
+      deviceAgentFactory:typeof globalThis.__BRAIN_BVP_DEVICE_AGENT_FACTORY__==='function',
+      mailboxPoll:!!runtime&&typeof runtime.pollDeviceOnce==='function',
+      relayPump:!!runtime?.relay&&typeof runtime.relay.pumpOnce==='function',
+      pluginPresent:!!plugin,
+      productionControl:!!plugin&&typeof plugin.productionVerificationControl==='function',
+      productionStatus,
+      productionError,
+    };
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression);
+}
+
+async function collectPreMutationPreflight() {
+  const blockers = [];
+  let initialRenderer = null;
+  let installedDataHash = null;
+  let productionBaseline = null;
+  let attempt1 = null;
+  let runtimeSnapshot = inspectObsidianRuntime();
+
+  const finding = (name, pass, classificationValue, summary, details = undefined, blocking = true) => {
+    record(`preflight-${name}`, pass ? 'PASS' : 'FAIL', classificationValue, summary, details);
+    if (!pass && blocking) blockers.push({ name, classification: classificationValue, summary, details });
+  };
+
+  finding('input-identity',
+    Boolean(vaultPath && repoWorktree && evidenceDir && branchHead),
+    'input-identity',
+    'Required helper identities are present.',
+    { vaultPath, repoWorktree, evidenceDir, branchHead });
+
+  finding('canary-identity',
+    canaryHash === expectedCanaryHash && canaryBytes.length === 77,
+    'harness-integrity',
+    canaryHash === expectedCanaryHash && canaryBytes.length === 77
+      ? 'Canary content identity is exact.'
+      : `Canary identity mismatch: size=${canaryBytes.length} hash=${canaryHash}`,
+    { sizeBytes:canaryBytes.length, sha256:canaryHash });
+
+  const mainJs = path.join(pluginDir, 'main.js');
+  const manifest = path.join(pluginDir, 'manifest.json');
+  const dataJson = path.join(pluginDir, 'data.json');
+  const installPresence = {
+    mainJs:await exists(mainJs),
+    manifest:await exists(manifest),
+    dataJson:await exists(dataJson),
+  };
+  finding('validation-install',
+    installPresence.mainJs && installPresence.manifest && installPresence.dataJson,
+    'validation-install',
+    installPresence.mainJs && installPresence.manifest && installPresence.dataJson
+      ? 'Disposable validation plugin files are present.'
+      : 'Disposable validation plugin installation is incomplete.',
+    installPresence);
+  if (installPresence.mainJs) {
+    const hash = await sha256File(mainJs);
+    const size = (await fs.stat(mainJs)).size;
+    finding('validation-artifact',
+      hash === expectedValidationHash,
+      'validation-artifact-identity',
+      hash === expectedValidationHash
+        ? `Installed validation artifact is exact at ${size} bytes.`
+        : `Installed validation main.js hash ${hash} does not match ${expectedValidationHash}.`,
+      { sizeBytes:size, sha256:hash, expectedSha256:expectedValidationHash });
+  }
+  if (installPresence.dataJson) installedDataHash = await sha256File(dataJson);
+
+  const productionMainSource = path.join(repoWorktree, 'main.js');
+  const productionManifestSource = path.join(repoWorktree, 'manifest.json');
+  const productionPresence = {
+    mainJs:await exists(productionMainSource),
+    manifest:await exists(productionManifestSource),
+  };
+  finding('production-restore-artifacts',
+    productionPresence.mainJs && productionPresence.manifest,
+    'production-restoration-precondition',
+    productionPresence.mainJs && productionPresence.manifest
+      ? 'Ordinary production restoration artifacts are present in the exact-SHA worktree.'
+      : 'Ordinary production restoration artifacts are missing.',
+    productionPresence);
+  if (productionPresence.mainJs) {
+    const hash = await sha256File(productionMainSource);
+    const size = (await fs.stat(productionMainSource)).size;
+    const text = await fs.readFile(productionMainSource,'utf8');
+    const forbiddenMarkers = ['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'];
+    const markerHits = forbiddenMarkers.filter(value => text.includes(value));
+    productionBaseline = { sizeBytes:size, sha256:hash, forbiddenMarkerHits:markerHits };
+    finding('production-baseline',
+      hash === expectedProductionHash && size === expectedProductionSize && markerHits.length === 0,
+      'production-bundle-isolation',
+      hash === expectedProductionHash && size === expectedProductionSize && markerHits.length === 0
+        ? 'Ordinary production bundle baseline and validation-code exclusion are exact.'
+        : `Production baseline mismatch or forbidden markers present: size=${size} hash=${hash} markers=${JSON.stringify(markerHits)}`,
+      productionBaseline);
+  }
+
+  const oldState = await readJson(oldStatePath).catch(error => ({ __readError:error instanceof Error?error.message:String(error) }));
+  const oldStateExact = oldState && !oldState.__readError && oldState.sequence === 3 && oldState.phase === 'completed' &&
+    oldState.result?.kind === 'production-execute' && oldState.result?.status === 'rejected' &&
+    oldState.result?.classification === 'production-action-rejected';
+  finding('attempt1-sequence-state',
+    oldStateExact,
+    'attempt1-state',
+    oldStateExact
+      ? 'Attempt-1 sequence state is the exact completed rejected sequence-3 state.'
+      : 'Attempt-1 sequence state is missing or does not match the bound rejected sequence-3 state.',
+    oldState);
+  attempt1 = oldStateExact ? oldState : null;
+
+  const fixtureExists = await exists(canaryPath);
+  const fixtureState = fixtureExists
+    ? { exists:true, sizeBytes:(await fs.stat(canaryPath)).size, sha256:await sha256File(canaryPath) }
+    : { exists:false };
+  finding('attempt1-fixture',
+    fixtureState.exists === true && fixtureState.sizeBytes === 77 && fixtureState.sha256 === expectedCanaryHash,
+    'attempt1-fixture',
+    fixtureState.exists === true && fixtureState.sizeBytes === 77 && fixtureState.sha256 === expectedCanaryHash
+      ? 'Attempt-1 fixture is present with exact size/hash.'
+      : 'Attempt-1 fixture identity does not match the bound safe state.',
+    fixtureState);
+
+  const relayState = await relayEmpty();
+  const relayClean = Object.values(relayState).every(files => files.length === 0);
+  finding('relay-cleanliness',
+    relayClean,
+    'relay-state',
+    relayClean ? 'Protected local relay is drained.' : 'Protected local relay contains stale records.',
+    relayState);
+
+  const retryStateExists = await exists(retryStatePath);
+  finding('retry-sequence-freshness',
+    !retryStateExists,
+    'retry-state',
+    retryStateExists ? `Retry sequence state already exists at ${retryStatePath}.` : 'Retry sequence state is fresh.',
+    { path:retryStatePath, exists:retryStateExists });
+
+  const probeExists = await exists(probePath);
+  finding('probe-fixture-freshness',
+    !probeExists,
+    'retry-fixture-state',
+    probeExists ? `Duplicate-replay probe fixture already exists at ${probePath}.` : 'Duplicate-replay probe fixture is absent.',
+    { path:probePath, exists:probeExists });
+
+  const passJson = await exists(path.join(evidenceDir,'S08F-PASS.json'));
+  const passMd = await exists(path.join(evidenceDir,'S08F-PASS.md'));
+  const blockedJson = await exists(path.join(evidenceDir,'S08F-BLOCKED.json'));
+  const blockedMd = await exists(path.join(evidenceDir,'S08F-BLOCKED.md'));
+  const priorPass = passJson || passMd;
+  const contradictory = priorPass && (blockedJson || blockedMd);
+  finding('evidence-state',
+    !priorPass && !contradictory,
+    'evidence-state',
+    priorPass
+      ? 'Prior S08F PASS evidence already exists; retry mutation is not authorized.'
+      : 'No prior PASS evidence exists; prior BLOCKED evidence may be superseded by a successful retry.',
+    { passJson,passMd,blockedJson,blockedMd },
+    true);
+
+  finding('obsidian-runtime-inspection',
+    runtimeSnapshot.ok === true,
+    'environment-inspection',
+    runtimeSnapshot.ok
+      ? `Observed ${runtimeSnapshot.processes.length} Obsidian processes, ${runtimeSnapshot.windows.length} top-level windows, and ${runtimeSnapshot.listeners.length} owned listeners.`
+      : `Unable to inspect Obsidian runtime: ${runtimeSnapshot.error}`,
+    runtimeSnapshot,
+    false);
+
+  const obsidianExe = await findObsidianExe();
+  finding('obsidian-executable',
+    Boolean(obsidianExe),
+    'environment-precondition',
+    obsidianExe ? `Obsidian executable located at ${obsidianExe}.` : 'Obsidian executable was not found in approved install locations.',
+    { executable:obsidianExe ?? null });
+
+  try {
+    initialRenderer = await findRenderer();
+    record('preflight-renderer','PASS','exact-disposable-renderer','A reachable renderer already matches the disposable vault.',{
+      debugPort:initialRenderer.debugPort,
+      snapshot:initialRenderer.snapshot,
+      attempts:initialRenderer.attempts,
+      runtime:initialRenderer.runtime,
+    });
+  } catch (error) {
+    record('preflight-renderer','FAIL','devtools-environment-not-ready',error instanceof Error?error.message:String(error),runtimeSnapshot);
+  }
+
+  if (initialRenderer) {
+    let capabilities;
+    try {
+      capabilities = await inspectRendererCapabilities(initialRenderer);
+    } catch (error) {
+      capabilities = { __error:error instanceof Error?error.message:String(error) };
+    }
+    const capabilityPass = !capabilities.__error &&
+      normalized(capabilities.vault) === normalized(vaultPath) &&
+      capabilities.sourceCommit === sourceCommit &&
+      capabilities.deviceAgentFactory === true &&
+      capabilities.mailboxPoll === true &&
+      capabilities.relayPump === true &&
+      capabilities.pluginPresent === true &&
+      capabilities.productionControl === true;
+    finding('renderer-capabilities',
+      capabilityPass,
+      'renderer-capabilities',
+      capabilityPass
+        ? 'Disposable renderer exposes the accepted validation identity, device-agent factory, mailbox/relay runtime, and production-control seam.'
+        : 'Disposable renderer is reachable but one or more required validation/runtime capabilities are unavailable.',
+      capabilities);
+  }
+
+  return { blockers, initialRenderer, installedDataHash, productionBaseline, attempt1, runtimeSnapshot };
+}
+
+async function ensureRendererEnvironment(initialRenderer) {
+  if (initialRenderer) return { ok:true, target:initialRenderer, repaired:false };
+  const repair = await launchDebugEnabledDisposableObsidian();
+  if (!repair.ok) {
+    record('environment-repair','FAIL',repair.classification,'Unable to establish a debug-enabled disposable Obsidian renderer.',repair);
+    return repair;
+  }
+  record('environment-repair','PASS','debug-enabled-disposable-renderer','Established a debug-enabled Obsidian renderer for the disposable S08F vault.',{
+    executable:repair.executable, port:repair.port, pid:repair.pid,
+    snapshot:repair.target.snapshot, runtime:repair.target.runtime, attempts:repair.target.attempts,
+  });
+  return { ok:true, target:repair.target, repaired:true, port:repair.port, pid:repair.pid };
+}
+
 if (process.argv.includes('--self-check')) {
   const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
   new Function(`return ${expression};`);
@@ -9,24 +254,49 @@ if (process.argv.includes('--self-check')) {
 }
 
 try {
-  if (!vaultPath || !repoWorktree || !evidenceDir || !branchHead) fail('BLOCKED','input-invalid','Required harness arguments are missing.');
-  if (canaryHash !== expectedCanaryHash || canaryBytes.length !== 77) fail('FAIL','harness-integrity-failure',`Canary identity mismatch in harness: size=${canaryBytes.length} hash=${canaryHash}`);
+  const preflight = await collectPreMutationPreflight();
+  const staticBlockers = preflight.blockers.filter(item => item.name !== 'renderer-capabilities');
+  if (staticBlockers.length > 0) {
+    fail('BLOCKED','pre-mutation-preflight-blocked',`Pre-mutation diagnostics found ${staticBlockers.length} blocking defect(s): ${staticBlockers.map(item => item.name + '=' + item.summary).join(' | ')}`);
+  }
+
+  const rendererEnvironment = await ensureRendererEnvironment(preflight.initialRenderer);
+  if (!rendererEnvironment.ok) {
+    fail('BLOCKED',rendererEnvironment.classification ?? 'devtools-environment-repair-failed',rendererEnvironment.reason ?? 'Unable to establish the disposable renderer.');
+  }
+  target = rendererEnvironment.target;
+
+  let capabilities;
+  try {
+    capabilities = await inspectRendererCapabilities(target);
+  } catch (error) {
+    fail('BLOCKED','renderer-capability-inspection-failed',error instanceof Error?error.message:String(error));
+  }
+  const capabilityIssues = [];
+  if (normalized(capabilities.vault) !== normalized(vaultPath)) capabilityIssues.push('vault-mismatch');
+  if (capabilities.sourceCommit !== sourceCommit) capabilityIssues.push('validation-source-mismatch');
+  if (capabilities.deviceAgentFactory !== true) capabilityIssues.push('device-agent-factory-unavailable');
+  if (capabilities.mailboxPoll !== true) capabilityIssues.push('mailbox-poll-unavailable');
+  if (capabilities.relayPump !== true) capabilityIssues.push('relay-pump-unavailable');
+  if (capabilities.pluginPresent !== true) capabilityIssues.push('plugin-unavailable');
+  if (capabilities.productionControl !== true) capabilityIssues.push('production-control-unavailable');
+  if (capabilityIssues.length > 0) {
+    fail('BLOCKED','renderer-capability-precondition-failed',`Renderer capability defects: ${capabilityIssues.join(', ')}. Details=${JSON.stringify(capabilities)}`);
+  }
+  record('pre-mutation-gate','PASS','all-required-preconditions-satisfied','All independently observable pre-mutation checks passed or were repaired; physical mutation is now authorized.',{
+    repairedRenderer:rendererEnvironment.repaired,
+    renderer:capabilities,
+    preflightStageCount:stages.length,
+  });
 
   const mainJs = path.join(pluginDir, 'main.js');
   const manifest = path.join(pluginDir, 'manifest.json');
   const dataJson = path.join(pluginDir, 'data.json');
-  if (!await exists(mainJs) || !await exists(manifest) || !await exists(dataJson)) fail('BLOCKED','validation-install-missing','Disposable validation plugin installation is incomplete.');
   const validationHash = await sha256File(mainJs);
   const validationSize = (await fs.stat(mainJs)).size;
-  if (validationHash !== expectedValidationHash) fail('BLOCKED','validation-artifact-mismatch',`Installed validation main.js hash ${validationHash} does not match ${expectedValidationHash}.`);
   const dataHashBeforeRestore = await sha256File(dataJson);
   record('validation-artifact-identity','PASS','exact-validation-artifact',`Validation artifact verified at ${validationSize} bytes / ${validationHash}.`);
 
-  try {
-    target = await findRenderer();
-  } catch (error) {
-    fail('BLOCKED','devtools-endpoint-unavailable',error instanceof Error ? error.message : String(error));
-  }
   validationIdentity = target.snapshot.identity;
   if (target.snapshot.sourceCommit !== sourceCommit) fail('BLOCKED','validation-source-mismatch',`Renderer source ${target.snapshot.sourceCommit ?? '<missing>'} does not match ${sourceCommit}.`);
   buildIdentity = validationIdentity;
