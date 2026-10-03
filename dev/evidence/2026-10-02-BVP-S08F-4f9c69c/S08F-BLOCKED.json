@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "status": "BLOCKED",
-  "classification": "pre-mutation-preflight-blocked",
-  "primaryReason": "Pre-mutation diagnostics found 1 blocking defect(s): production-restore-artifacts=Ordinary production restoration artifacts are missing.",
+  "classification": "device-result-unavailable",
+  "primaryReason": "Scenario ended blocked.",
   "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
-  "branchHead": "a7eeb11532f9a78094f4ca3e7a896192cc973add",
+  "branchHead": "19eafcd6489593628e0c81b64d020a2d65f8ea52",
   "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
   "deviceId": "windows-brain-patrick",
   "oldRunId": "s08f-desktop-canary-4f9c69c",
@@ -24,9 +24,9 @@
       "summary": "Required helper identities are present.",
       "details": {
         "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
-        "repoWorktree": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-26a0c4bd66854112964645b5a192cb10\\w",
-        "evidenceDir": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-26a0c4bd66854112964645b5a192cb10\\w\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c",
-        "branchHead": "a7eeb11532f9a78094f4ca3e7a896192cc973add"
+        "repoWorktree": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-ed78f34567b34a3788da70d9254664cf\\w",
+        "evidenceDir": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-ed78f34567b34a3788da70d9254664cf\\w\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c",
+        "branchHead": "19eafcd6489593628e0c81b64d020a2d65f8ea52"
       }
     },
     {
@@ -63,12 +63,23 @@
     },
     {
       "name": "preflight-production-restore-artifacts",
-      "status": "FAIL",
+      "status": "PASS",
       "classification": "production-restoration-precondition",
-      "summary": "Ordinary production restoration artifacts are missing.",
+      "summary": "Ordinary production restoration artifacts are present in the exact-SHA worktree.",
       "details": {
-        "mainJs": false,
+        "mainJs": true,
         "manifest": true
+      }
+    },
+    {
+      "name": "preflight-production-baseline",
+      "status": "PASS",
+      "classification": "production-bundle-isolation",
+      "summary": "Ordinary production bundle baseline and validation-code exclusion are exact.",
+      "details": {
+        "sizeBytes": 885307,
+        "sha256": "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074",
+        "forbiddenMarkerHits": []
       }
     },
     {
@@ -186,21 +197,11 @@
       "name": "preflight-summary",
       "status": "FAIL",
       "classification": "preflight-defects-observed",
-      "summary": "Pre-mutation diagnostics observed 2 defect(s), including 1 unresolved mutation blocker(s).",
+      "summary": "Pre-mutation diagnostics observed 1 defect(s), including 0 unresolved mutation blocker(s).",
       "details": {
-        "defectCount": 2,
-        "blockerCount": 1,
+        "defectCount": 1,
+        "blockerCount": 0,
         "defects": [
-          {
-            "name": "production-restore-artifacts",
-            "classification": "production-restoration-precondition",
-            "summary": "Ordinary production restoration artifacts are missing.",
-            "details": {
-              "mainJs": false,
-              "manifest": true
-            },
-            "blocking": true
-          },
           {
             "name": "renderer",
             "classification": "devtools-environment-not-ready",
@@ -214,6 +215,186 @@
             "blocking": false
           }
         ]
+      }
+    },
+    {
+      "name": "environment-repair",
+      "status": "PASS",
+      "classification": "debug-enabled-disposable-renderer",
+      "summary": "Established a debug-enabled Obsidian renderer for the disposable S08F vault.",
+      "details": {
+        "executable": "C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe",
+        "port": 53855,
+        "pid": 23488,
+        "snapshot": {
+          "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+          "visibility": "visible",
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "identity": {
+            "schemaVersion": 1,
+            "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+            "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+          }
+        },
+        "runtime": {
+          "ok": true,
+          "processes": [
+            {
+              "ProcessId": 23488,
+              "ParentProcessId": 75612,
+              "CommandLine": "C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe --remote-debugging-address=127.0.0.1 --remote-debugging-port=53855"
+            },
+            {
+              "ProcessId": 35476,
+              "ParentProcessId": 23488,
+              "CommandLine": "\"C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\woodpk\\AppData\\Roaming\\obsidian\" --gpu-preferences=UAAAAAAAAADgAAAEAAAAAAAAAAAAAAAAAABgAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --field-trial-handle=1748,i,18384607346909693686,11922712638658424904,262144 --enable-features=SharedArrayBuffer --disable-features=SpareRendererForSitePerProcess,WinDelaySpellcheckServiceInit,WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --log-level=3 --mojo-platform-channel-handle=1740 /prefetch:2"
+            },
+            {
+              "ProcessId": 67768,
+              "ParentProcessId": 23488,
+              "CommandLine": "\"C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --user-data-dir=\"C:\\Users\\woodpk\\AppData\\Roaming\\obsidian\" --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --field-trial-handle=2196,i,18384607346909693686,11922712638658424904,262144 --enable-features=SharedArrayBuffer --disable-features=SpareRendererForSitePerProcess,WinDelaySpellcheckServiceInit,WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --log-level=3 --mojo-platform-channel-handle=2192 /prefetch:11"
+            },
+            {
+              "ProcessId": 63624,
+              "ParentProcessId": 23488,
+              "CommandLine": "\"C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe\" --type=renderer --user-data-dir=\"C:\\Users\\woodpk\\AppData\\Roaming\\obsidian\" --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --app-path=\"C:\\Users\\woodpk\\AppData\\Local\\Programs\\Obsidian\\resources\\app.asar\" --no-sandbox --no-zygote --node-integration-in-worker --remote-debugging-port=53855 --video-capture-use-gpu-memory-buffer --lang=en-US --device-scale-factor=1 --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=4 --time-ticks-at-unix-epoch=-1790352851359385 --launch-time-ticks=700276520230 --field-trial-handle=2588,i,18384607346909693686,11922712638658424904,262144 --enable-features=SharedArrayBuffer --disable-features=SpareRendererForSitePerProcess,WinDelaySpellcheckServiceInit,WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --log-level=3 --mojo-platform-channel-handle=2584 /prefetch:1"
+            }
+          ],
+          "windows": [
+            {
+              "Id": 23488,
+              "MainWindowTitle": "New tab - bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b - Obsidian 1.13.7"
+            }
+          ],
+          "listeners": [
+            {
+              "LocalAddress": "127.0.0.1",
+              "LocalPort": 53855,
+              "OwningProcess": 23488
+            }
+          ]
+        },
+        "attempts": [
+          {
+            "port": 63311,
+            "status": "unreachable",
+            "error": "fetch failed"
+          },
+          {
+            "port": 53855,
+            "status": "reachable",
+            "pageTargets": 1,
+            "disposableMatches": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "pre-mutation-gate",
+      "status": "PASS",
+      "classification": "all-required-preconditions-satisfied",
+      "summary": "All independently observable pre-mutation checks passed or were repaired; physical mutation is now authorized.",
+      "details": {
+        "repairedRenderer": true,
+        "renderer": {
+          "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+          "visibility": "visible",
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "deviceAgentFactory": true,
+          "mailboxPoll": true,
+          "relayPump": true,
+          "pluginPresent": true,
+          "productionControl": true,
+          "productionStatus": {
+            "kind": "idle-ready"
+          },
+          "productionError": null
+        },
+        "preflightStageCount": 17,
+        "initialDefectCount": 1,
+        "unresolvedBlockerCount": 0
+      }
+    },
+    {
+      "name": "validation-artifact-identity",
+      "status": "PASS",
+      "classification": "exact-validation-artifact",
+      "summary": "Validation artifact verified at 909821 bytes / 4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351."
+    },
+    {
+      "name": "renderer-identity",
+      "status": "PASS",
+      "classification": "exact-disposable-renderer",
+      "summary": "Disposable renderer matched D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b.",
+      "details": {
+        "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+        "visibility": "visible",
+        "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+        "identity": {
+          "schemaVersion": 1,
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+        }
+      }
+    },
+    {
+      "name": "attempt1-safe-state",
+      "status": "PASS",
+      "classification": "exact-failed-run-state",
+      "summary": "Attempt 1 re-proved: sequence 3 rejected, exact fixture present, relay drained, no replay performed."
+    },
+    {
+      "name": "attempt1-bounded-cleanup",
+      "status": "PASS",
+      "classification": "canary-owned-cleanup",
+      "summary": "Removed only the exact attempt-1 disposable fixture; attempt-1 sequence state was preserved."
+    },
+    {
+      "name": "lifecycle-recovery",
+      "status": "PASS",
+      "classification": "real-suspend-resume",
+      "summary": "Real Windows minimize/restore transition completed and renderer returned visible.",
+      "details": {
+        "transition": {
+          "stdout": "Disposable S08F Obsidian window transitioned: 23488 / New tab - bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b - Obsidian 1.13.7",
+          "exitCode": 0
+        },
+        "after": {
+          "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+          "visibility": "visible",
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "identity": {
+            "schemaVersion": 1,
+            "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+            "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+          }
+        }
+      }
+    },
+    {
+      "name": "retry-agent-bootstrap",
+      "status": "PASS",
+      "classification": "accepted-device-agent",
+      "summary": "Fresh attempt-2 bounded device agent composed from accepted validation artifact.",
+      "details": {
+        "ok": true,
+        "runId": "s08f-desktop-canary-4f9c69c-r2",
+        "deviceId": "windows-brain-patrick",
+        "fixtureRoot": "BVP-VALIDATION/s08f-desktop-canary-4f9c69c",
+        "statePath": ".obsidian/plugins/brain-google-drive-sync/.bvp-relay/device-state/s08f-desktop-canary-4f9c69c-r2--windows-brain-patrick.json",
+        "visibility": "visible",
+        "productStatus": {
+          "kind": "idle-ready"
+        },
+        "firstPoll": {
+          "status": "ok",
+          "processed": 0
+        },
+        "identity": {
+          "schemaVersion": 1,
+          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+        }
       }
     }
   ]
