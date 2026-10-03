@@ -186,7 +186,7 @@ Bound non-secret identities:
 
 - disposable product device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`;
 - disposable BRAIN vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`;
-- disposable managed remote root ID: `1ELFZgG55vMW7Fcl1DGBjc2MAqtctN2_-`;
+- disposable managed remote root ID: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`;
 - first synchronization: not yet executed;
 - automatic synchronization: disabled;
 - working BRAIN vault/remote identities remain prohibited for S08F.
