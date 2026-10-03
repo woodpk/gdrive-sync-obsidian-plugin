@@ -223,7 +223,7 @@ try {
     }
 
     if (Test-Path -LiteralPath $worktree -PathType Container) {
-        $changes = Changed-Paths $git.Source
+        $changes = @(Changed-Paths $git.Source)
         $unexpected = @($changes | Where-Object { -not $_.Replace('\','/').StartsWith($evidenceRelative + '/') })
         if ($unexpected.Count -eq 0) {
             Add-Result 'repository-mutation-audit' 'PASS' 'git diff --name-only ; git ls-files --others --exclude-standard' 0 'AUTHORIZED EVIDENCE-ONLY MUTATION' 'All worktree changes are confined to the authorized S08F evidence root.' ($changes -join [Environment]::NewLine)
@@ -236,7 +236,7 @@ try {
 
     $auditPass = @($results | Where-Object { $_.stage -eq 'repository-mutation-audit' -and $_.status -eq 'PASS' }).Count -eq 1
     if ($auditPass -and (Test-Path -LiteralPath $worktree -PathType Container)) {
-        $changes = Changed-Paths $git.Source
+        $changes = @(Changed-Paths $git.Source)
         if ($changes.Count -gt 0) {
             $refresh = Invoke-Native $git.Source @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune')
             $remote = if ($refresh.exitCode -eq 0) { Remote-Head $git.Source } else { $null }
@@ -301,6 +301,10 @@ try {
         Write-Host ('  Summary: {0}' -f $result.summary)
         Write-Host ('  Command: {0}' -f $result.command)
         Write-Host ('  Exit: {0}' -f $(if ($null -eq $result.exitCode) { '<none>' } else { $result.exitCode }))
+        if ($result.status -ne 'PASS' -and -not [string]::IsNullOrWhiteSpace([string]$result.evidence)) {
+            Write-Host '  Evidence:'
+            Write-Host ([string]$result.evidence)
+        }
     }
     Write-Host '------------------------------------------------------------'
     Write-Host ('OVERALL: {0}' -f $overall)
