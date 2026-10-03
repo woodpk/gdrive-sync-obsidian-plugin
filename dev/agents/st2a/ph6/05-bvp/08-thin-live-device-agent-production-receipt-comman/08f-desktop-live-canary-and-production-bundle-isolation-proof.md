@@ -306,3 +306,46 @@ Report exact source/build SHA, validation artifact identity, Windows device/vaul
 Stop at `READY FOR LOCAL PHX-CI VERIFICATION` for code changes and supervisor physical-evidence review.
 
 Do not begin S09.
+
+
+## 0.5 Supervisor Retry Binding — Lifecycle-Aware Attempt 2
+
+Attempt 1 is terminal and MUST NOT be replayed.
+
+The physical sequence-3 diagnostic established the following bounded state before any retry authorization:
+
+- run `s08f-desktop-canary-4f9c69c` reached sequence 3 exactly once;
+- sequence 3 was `production-execute` and completed as `rejected / production-action-rejected`;
+- the production terminal receipt was `deferred` with reason `run-start:stopping`;
+- zero operations were committed and `requiredEffectsCommittedAndVerified=false`;
+- the exact 77-byte canary fixture remained present with SHA-256 `db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d`;
+- local relay outbox/sent/inbox were drained;
+- repository inspection localized the rejection to the existing production lifecycle gate: a non-active Obsidian synchronization lifecycle correctly causes `CoreRunCoordinator.beginRun()` to return `stopping` before mutation authority is granted.
+
+This is an **S08F physical execution-harness/environment defect**, not authorization to modify production synchronization semantics. The fail-closed production lifecycle behavior remains required.
+
+Authorized retry identity:
+
+- retry run ID: `s08f-desktop-canary-4f9c69c-r2`;
+- scenario ID: `s08f-desktop-live-canary-r2`;
+- device command ID remains `windows-brain-patrick`;
+- disposable vault, managed remote, fixture root/content, accepted S08E runtime source, validation artifact, and production artifact identities remain unchanged from sections 0.1–0.4.
+
+Retry preconditions and execution rules:
+
+1. Re-prove the exact attempt-1 safe state above before any retry mutation.
+2. Establish a **real Windows/Obsidian suspend→resume lifecycle transition** and require the renderer to be visible before retry commands may execute.
+3. Use a fresh sequence-state file for the retry run; do not reuse, rewrite, delete, or replay attempt-1 sequence state.
+4. The retry device poller must not execute commands while the renderer is hidden/non-active.
+5. Use the accepted S08C/S08D/S08E agent, Drive mailbox, local relay, production-control seam, and single scenario runner. No parallel runtime or production control path is authorized.
+6. Demonstrate the complete bounded canary, objective observation, cleanup synchronization, exact-duplicate replay, stale-sequence rejection, wrong-run rejection, and wrong-device rejection.
+7. Restore the ordinary production `main.js` / `manifest.json`, preserve `data.json`, and remove validation-only build identity from the installed disposable plugin after a successful physical canary.
+8. Preserve failed diagnostic state when useful; do not blindly replay a failed sequence.
+9. Physical PASS means **READY FOR LOCAL PHX-CI VERIFICATION**, not final S08F acceptance.
+
+Protocol-compliant repository-controlled continuation harness:
+
+`dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FProtocolContinuation.ps1`
+
+This harness location is inside S08F's already-authorized evidence root. It does not add a fifth `dev/scripts` BVP PowerShell verifier and does not modify production, test-platform runtime, governance, or PHX-CI surfaces.
+
