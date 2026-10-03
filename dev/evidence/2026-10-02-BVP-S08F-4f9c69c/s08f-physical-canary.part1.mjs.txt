@@ -152,10 +152,24 @@ async function launchDebugEnabledDisposableObsidian() {
   const executable = await findObsidianExe();
   if (!executable) return { ok:false, classification:'obsidian-executable-unavailable', reason:'Obsidian.exe was not found in approved install locations.' };
   const port = await allocateLoopbackPort();
-  const child = spawn(executable, ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`], {
-    detached:true, stdio:'ignore', windowsHide:false,
-  });
-  child.unref();
+  let child;
+  try {
+    child = spawn(executable, ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`], {
+      detached:true, stdio:'ignore', windowsHide:false,
+    });
+    const launchError = await new Promise(resolve => {
+      let settled = false;
+      const finish = value => { if (!settled) { settled = true; resolve(value); } };
+      child.once('error', error => finish(error));
+      child.once('spawn', () => globalThis.setTimeout(() => finish(null), 250));
+    });
+    if (launchError) {
+      return { ok:false, classification:'obsidian-process-launch-failed', reason:launchError instanceof Error?launchError.message:String(launchError), executable, port };
+    }
+    child.unref();
+  } catch (error) {
+    return { ok:false, classification:'obsidian-process-launch-failed', reason:error instanceof Error?error.message:String(error), executable, port };
+  }
   await new Promise(resolve => setTimeout(resolve, 1200));
   const vaultUri = `obsidian://open?path=${encodeURIComponent(vaultPath)}`;
   const openResult = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',`Start-Process ${psQuote(vaultUri)}`], { encoding:'utf8', windowsHide:true });
