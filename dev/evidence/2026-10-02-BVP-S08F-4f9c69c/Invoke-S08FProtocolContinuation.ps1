@@ -115,7 +115,7 @@ try {
     }
 
     if ($ready -and (Test-Path -LiteralPath $RepositoryRoot -PathType Container)) {
-        $fetch = Invoke-Native $git.Source @('-C',$RepositoryRoot,'fetch','origin',$Branch,'--prune')
+        $fetch = Invoke-Native $git.Source @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune')
         $remote = if ($fetch.exitCode -eq 0) { Remote-Head $git.Source } else { $null }
         if ($fetch.exitCode -eq 0 -and $remote -eq $CandidateSha) {
             $dirty = Invoke-Native $git.Source @('-C',$RepositoryRoot,'status','--porcelain=v1','--untracked-files=all')
@@ -238,7 +238,7 @@ try {
     if ($auditPass -and (Test-Path -LiteralPath $worktree -PathType Container)) {
         $changes = Changed-Paths $git.Source
         if ($changes.Count -gt 0) {
-            $refresh = Invoke-Native $git.Source @('-C',$RepositoryRoot,'fetch','origin',$Branch,'--prune')
+            $refresh = Invoke-Native $git.Source @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune')
             $remote = if ($refresh.exitCode -eq 0) { Remote-Head $git.Source } else { $null }
             if ($refresh.exitCode -eq 0 -and $remote -eq $CandidateSha) {
                 $add = Invoke-Native $git.Source @('-C',$worktree,'add','--',$evidenceRelative)
