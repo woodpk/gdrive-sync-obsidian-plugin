@@ -381,7 +381,7 @@ async function injectAgent(runId, controlKey, requireFreshState = true, recovery
 
 async function invokeControlMethod(controlKey, method) {
   const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c[${JSON.stringify(method)}]!=='function')return{__error:'control-method-unavailable'};try{return await c[${JSON.stringify(method)}]()}catch(error){return{__error:error instanceof Error?(error.stack??error.message):String(error)}}})()`;
-  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 60000);
+  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 120000);
   if (result?.__error) throw new Error(result.__error);
   return result;
 }
