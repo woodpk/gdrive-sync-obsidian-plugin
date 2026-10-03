@@ -133,9 +133,15 @@ function discoverObsidianDebugPorts() {
     "$ErrorActionPreference='SilentlyContinue'",
     "$ports=[System.Collections.Generic.HashSet[int]]::new()",
     "$items=@(Get-CimInstance Win32_Process -Filter \"Name='Obsidian.exe'\" | Select-Object ProcessId,CommandLine)",
+    "$pids=@($items | ForEach-Object { [int]$_.ProcessId })",
     "foreach($item in $items){",
     "  $line=[string]$item.CommandLine",
     "  foreach($m in [regex]::Matches($line,'--remote-debugging-port(?:=|\\s+)(\\d{2,5})')){ [void]$ports.Add([int]$m.Groups[1].Value) }",
+    "}",
+    "if(Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue){",
+    "  foreach($conn in @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue)){",
+    "    if($pids -contains [int]$conn.OwningProcess){ [void]$ports.Add([int]$conn.LocalPort) }",
+    "  }",
     "}",
     "$ports | Sort-Object"
   ].join(';');
