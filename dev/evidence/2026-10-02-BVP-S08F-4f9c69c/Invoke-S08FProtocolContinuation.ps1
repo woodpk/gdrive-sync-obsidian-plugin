@@ -20,6 +20,7 @@ $overall = 'BLOCKED'
 $evidenceCommit = ''
 $preserve = $true
 $physicalExit = $null
+$productionReady = $false
 $git = $null
 $node = $null
 $npm = $null
@@ -209,6 +210,24 @@ try {
     }
 
     if ($ready) {
+        $productionBuild = Invoke-Native $npm.Source @('run','build') $worktree
+        if ($productionBuild.exitCode -eq 0) {
+            $productionIdentityScript = "const fs=require('fs');const crypto=require('crypto');const p='main.js';if(!fs.existsSync(p)){console.error('main.js missing after production build');process.exitCode=41}else{const b=fs.readFileSync(p);const h=crypto.createHash('sha256').update(b).digest('hex');const expectedSize=885307;const expectedHash='8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074';const text=b.toString('utf8');const forbidden=['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'].filter(x=>text.includes(x));console.log(JSON.stringify({sizeBytes:b.length,sha256:h,forbiddenMarkerHits:forbidden}));if(b.length!==expectedSize||h!==expectedHash||forbidden.length)process.exitCode=42}"
+            $productionIdentity = Invoke-Native $node.Source @('-e',$productionIdentityScript) $worktree
+            if ($productionIdentity.exitCode -eq 0) {
+                $productionReady = $true
+                Add-Result 'production-restoration-artifact' 'PASS' ($productionBuild.command + ' ; ' + $productionIdentity.command) 0 'EXACT PRODUCTION RESTORATION ARTIFACT' 'Ordinary production main.js was deterministically rebuilt and matches the frozen size/hash with validation markers absent.' $productionIdentity.stdout.Trim()
+            } else {
+                Add-Result 'production-restoration-artifact' 'FAIL' ($productionBuild.command + ' ; ' + $productionIdentity.command) $productionIdentity.exitCode 'PRODUCTION ARTIFACT IDENTITY FAILURE' 'Production build completed but the generated restoration artifact does not match the frozen accepted identity.' ($productionBuild.stdout + $productionBuild.stderr + $productionIdentity.stdout + $productionIdentity.stderr)
+            }
+        } else {
+            Add-Result 'production-restoration-artifact' 'FAIL' $productionBuild.command $productionBuild.exitCode 'PRODUCTION BUILD FAILURE' 'Ordinary production artifact build failed in the disposable exact-SHA worktree.' ($productionBuild.stdout + $productionBuild.stderr)
+        }
+    } else {
+        Add-Result 'production-restoration-artifact' 'BLOCKED' 'npm run build ; exact production identity check' $null 'UPSTREAM PREREQUISITE BLOCKED' 'Production restoration artifact construction was blocked.' $null
+    }
+
+    if ($ready) {
         $builder = [System.Text.StringBuilder]::new()
         foreach ($index in 1..5) {
             $part = Join-Path (Join-Path $worktree $evidenceRelative) ('s08f-physical-canary.part' + $index + '.mjs.txt')
@@ -230,7 +249,7 @@ try {
         Add-Result 'harness-self-review' 'BLOCKED' 'node --check helper ; node helper --self-check' $null 'UPSTREAM PREREQUISITE BLOCKED' 'Harness self-review was blocked.' $null
     }
 
-    if ($ready) {
+    if ($ready -and $productionReady) {
         $evidenceDir = Join-Path $worktree $evidenceRelative
         $physical = Invoke-Native $node.Source @(
             $helper,'--vault',$VaultPath,'--worktree',$worktree,'--evidence-dir',$evidenceDir,
@@ -247,7 +266,8 @@ try {
             Add-Result 'physical-canary' 'FAIL' $physical.command $physical.exitCode 'PHYSICAL CANARY FAILURE' 'Physical helper demonstrated a canary or harness failure.' ($physical.stdout + $physical.stderr)
         }
     } else {
-        Add-Result 'physical-canary' 'BLOCKED' 'node repository-controlled-S08F-helper' $null 'UPSTREAM PREREQUISITE BLOCKED' 'Physical mutation was not attempted.' $null
+        $reason = if (-not $ready) { 'An upstream repository/toolchain/helper prerequisite failed.' } elseif (-not $productionReady) { 'The exact ordinary production restoration artifact is unavailable or invalid.' } else { 'A required physical prerequisite is unavailable.' }
+        Add-Result 'physical-canary' 'BLOCKED' 'node repository-controlled-S08F-helper' $null 'UPSTREAM PREREQUISITE BLOCKED' ('Physical mutation was not attempted. ' + $reason) $null
     }
 
     if (Test-Path -LiteralPath $worktree -PathType Container) {
