@@ -23,6 +23,7 @@ $physicalExit = $null
 $git = $null
 $node = $null
 $npm = $null
+$script:nativePathOverride = $null
 
 function Add-Result {
     param(
@@ -55,6 +56,9 @@ function Invoke-Native {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
+    if (-not [string]::IsNullOrWhiteSpace([string]$script:nativePathOverride)) {
+        $psi.Environment['PATH'] = $script:nativePathOverride
+    }
     foreach ($argument in $Arguments) { [void]$psi.ArgumentList.Add($argument) }
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $psi
@@ -100,6 +104,21 @@ try {
     $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
     if ($null -eq $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
     $ready = $null -ne $git -and $null -ne $node -and $null -ne $npm
+    if ($ready) {
+        $pathParts = [System.Collections.Generic.List[string]]::new()
+        foreach ($candidatePath in @(
+            (Split-Path -Parent $node.Source),
+            (Split-Path -Parent $git.Source),
+            (Join-Path $env:SystemRoot 'System32'),
+            $env:SystemRoot,
+            (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0')
+        )) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$candidatePath) -and (Test-Path -LiteralPath $candidatePath -PathType Container) -and -not $pathParts.Contains($candidatePath)) {
+                [void]$pathParts.Add($candidatePath)
+            }
+        }
+        $script:nativePathOverride = $pathParts -join [System.IO.Path]::PathSeparator
+    }
 
     if (-not $ready) {
         Add-Result 'toolchain' 'BLOCKED' 'Get-Command git,node,npm' $null 'ENVIRONMENT FAILURE' 'Required Git/Node/npm toolchain is unavailable.' $null
@@ -107,7 +126,7 @@ try {
         $nodeVersion = Invoke-Native $node.Source @('--version')
         $webSocket = Invoke-Native $node.Source @('-e','process.stdout.write(typeof WebSocket)')
         if ($nodeVersion.exitCode -eq 0 -and $webSocket.exitCode -eq 0 -and $webSocket.stdout.Trim() -eq 'function') {
-            Add-Result 'toolchain' 'PASS' ($nodeVersion.command + ' ; ' + $webSocket.command) 0 'TOOLCHAIN READY' ('Node {0}; WebSocket available.' -f $nodeVersion.stdout.Trim()) $null
+            Add-Result 'toolchain' 'PASS' ($nodeVersion.command + ' ; ' + $webSocket.command) 0 'TOOLCHAIN READY' ('Node {0}; WebSocket available; controlled child PATH established.' -f $nodeVersion.stdout.Trim()) $script:nativePathOverride
         } else {
             $ready = $false
             Add-Result 'toolchain' 'BLOCKED' ($nodeVersion.command + ' ; ' + $webSocket.command) $webSocket.exitCode 'ENVIRONMENT FAILURE' 'Node WebSocket runtime requirement is not satisfied.' ($nodeVersion.stderr + $webSocket.stderr)
