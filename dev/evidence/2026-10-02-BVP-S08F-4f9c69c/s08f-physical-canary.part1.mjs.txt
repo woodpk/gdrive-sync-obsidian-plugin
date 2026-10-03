@@ -141,6 +141,7 @@ async function findRenderer() {
 }
 
 function realSuspendResumeTransition() {
+  const vaultWindowToken = path.basename(vaultPath);
   const script = `
 Add-Type @"
 using System;
@@ -150,13 +151,16 @@ public static class S08FWindow {
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
 }
 "@;
-$windows=@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 });
-if ($windows.Count -lt 1) { Write-Error 'No Obsidian top-level window was found.'; [Environment]::ExitCode=41; return };
-foreach ($p in $windows) { [void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,6) };
+$token=${psQuote(path.basename(vaultPath))};
+$windows=@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like ("*" + $token + "*") });
+if ($windows.Count -ne 1) { Write-Error ('Expected exactly one disposable S08F Obsidian window containing title token ' + $token + '; observed ' + $windows.Count + '.'); [Environment]::ExitCode=41; return };
+$p=$windows[0];
+[void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,6);
 Start-Sleep -Milliseconds 900;
-foreach ($p in $windows) { [void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,9); [void][S08FWindow]::SetForegroundWindow($p.MainWindowHandle) };
+[void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,9);
+[void][S08FWindow]::SetForegroundWindow($p.MainWindowHandle);
 Start-Sleep -Milliseconds 1200;
-Write-Output ('Obsidian windows transitioned: ' + $windows.Count);
+Write-Output ('Disposable S08F Obsidian window transitioned: ' + $p.Id + ' / ' + $p.MainWindowTitle);
 `;
   const pwsh = process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
   const result = spawnSync(pwsh, ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', windowsHide: false });
