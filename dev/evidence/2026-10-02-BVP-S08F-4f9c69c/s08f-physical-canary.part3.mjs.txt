@@ -22,7 +22,11 @@ try {
   const dataHashBeforeRestore = await sha256File(dataJson);
   record('validation-artifact-identity','PASS','exact-validation-artifact',`Validation artifact verified at ${validationSize} bytes / ${validationHash}.`);
 
-  target = await findRenderer();
+  try {
+    target = await findRenderer();
+  } catch (error) {
+    fail('BLOCKED','devtools-endpoint-unavailable',error instanceof Error ? error.message : String(error));
+  }
   validationIdentity = target.snapshot.identity;
   if (target.snapshot.sourceCommit !== sourceCommit) fail('BLOCKED','validation-source-mismatch',`Renderer source ${target.snapshot.sourceCommit ?? '<missing>'} does not match ${sourceCommit}.`);
   buildIdentity = validationIdentity;
