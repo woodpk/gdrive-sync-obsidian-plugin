@@ -398,6 +398,7 @@ async function quiesceControlAndObserve(renderer, controlKey) {
     return{
       vault:typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'',
       visibility:globalThis.document?.visibilityState??'unknown',
+      sourceCommit:globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit??null,
       controlStatus,
       productStatus:production?.currentStatus?.()??null,
       latestReceipt:production?.latestProductionRunReceipt?.()??null,
