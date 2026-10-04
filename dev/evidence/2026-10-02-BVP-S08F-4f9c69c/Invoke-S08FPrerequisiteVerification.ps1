@@ -529,31 +529,31 @@ function Invoke-PublicationLeaseRaceSelfCheck {
         return $result
     }
 
-    $initWork=Run-LeaseStep @('init',$work) $root
+    $initWork=Run-LeaseStep -Arguments @('init',$work) -WorkingDirectory $root
     if ($initWork.exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='work-init';steps=@($steps)} }
-    if ((Run-LeaseStep @('-C',$work,'config','user.email','s08f-verifier@example.invalid') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-email';steps=@($steps)} }
-    if ((Run-LeaseStep @('-C',$work,'config','user.name','S08F Verifier') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-name';steps=@($steps)} }
-    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','base') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='base-commit';steps=@($steps)} }
-    $baseProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    if ((Run-LeaseStep -Arguments @('-C',$work,'config','user.email','s08f-verifier@example.invalid') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-email';steps=@($steps)} }
+    if ((Run-LeaseStep -Arguments @('-C',$work,'config','user.name','S08F Verifier') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-name';steps=@($steps)} }
+    if ((Run-LeaseStep -Arguments @('-C',$work,'commit','--allow-empty','-m','base') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='base-commit';steps=@($steps)} }
+    $baseProbe=Run-LeaseStep -Arguments @('-C',$work,'rev-parse','HEAD') -WorkingDirectory $work
     $base=$baseProbe.stdout.Trim()
-    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','candidate') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='candidate-commit';steps=@($steps)} }
-    $candidateProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    if ((Run-LeaseStep -Arguments @('-C',$work,'commit','--allow-empty','-m','candidate') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='candidate-commit';steps=@($steps)} }
+    $candidateProbe=Run-LeaseStep -Arguments @('-C',$work,'rev-parse','HEAD') -WorkingDirectory $work
     $candidate=$candidateProbe.stdout.Trim()
 
-    if ((Run-LeaseStep @('init','--bare',$origin) $root).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='origin-init';steps=@($steps)} }
-    if ((Run-LeaseStep @('-C',$work,'remote','add','origin',$origin) $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='remote-add';steps=@($steps)} }
-    if ((Run-LeaseStep @('-C',$work,'push','origin','HEAD:refs/heads/lease') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='initial-push';steps=@($steps)} }
+    if ((Run-LeaseStep -Arguments @('init','--bare',$origin) -WorkingDirectory $root).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='origin-init';steps=@($steps)} }
+    if ((Run-LeaseStep -Arguments @('-C',$work,'remote','add','origin',$origin) -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='remote-add';steps=@($steps)} }
+    if ((Run-LeaseStep -Arguments @('-C',$work,'push','origin','HEAD:refs/heads/lease') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='initial-push';steps=@($steps)} }
 
-    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','evidence') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='evidence-commit';steps=@($steps)} }
-    $evidenceProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    if ((Run-LeaseStep -Arguments @('-C',$work,'commit','--allow-empty','-m','evidence') -WorkingDirectory $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='evidence-commit';steps=@($steps)} }
+    $evidenceProbe=Run-LeaseStep -Arguments @('-C',$work,'rev-parse','HEAD') -WorkingDirectory $work
     $evidence=$evidenceProbe.stdout.Trim()
-    $fastForwardProof=Run-LeaseStep @('-C',$work,'merge-base','--is-ancestor',$base,$evidence) $work
+    $fastForwardProof=Run-LeaseStep -Arguments @('-C',$work,'merge-base','--is-ancestor',$base,$evidence) -WorkingDirectory $work
 
-    $reset=Run-LeaseStep @('--git-dir=' + $origin,'update-ref','refs/heads/lease',$base,$candidate) $root
+    $reset=Run-LeaseStep -Arguments @('--git-dir=' + $origin,'update-ref','refs/heads/lease',$base,$candidate) -WorkingDirectory $root
     if ($reset.exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='race-reset';steps=@($steps)} }
 
-    $leasedPush=Run-LeaseStep @('-C',$work,'push',('--force-with-lease=refs/heads/lease:' + $candidate),'origin','HEAD:refs/heads/lease') $work
-    $remoteAfterProbe=Run-LeaseStep @('--git-dir=' + $origin,'rev-parse','refs/heads/lease') $root
+    $leasedPush=Run-LeaseStep -Arguments @('-C',$work,'push',('--force-with-lease=refs/heads/lease:' + $candidate),'origin','HEAD:refs/heads/lease') -WorkingDirectory $work
+    $remoteAfterProbe=Run-LeaseStep -Arguments @('--git-dir=' + $origin,'rev-parse','refs/heads/lease') -WorkingDirectory $root
     $remoteAfter=$remoteAfterProbe.stdout.Trim()
 
     return [pscustomobject]@{
@@ -898,16 +898,26 @@ try {
             $candidateSource.stdout.Contains('const expectedParent=await this.getFile(descriptor.parentRemoteObjectId)') -and
             $candidateSource.stdout.Contains('if(!expectedParent.ok)return') -and
             -not $candidateSource.stdout.Contains($forbiddenFallback) -and
+            $candidateSource.stdout.Contains('expected-parent-identity-incomplete') -and
+            $candidateSource.stdout.Contains('expected-parent-identity-mismatch') -and
+            $candidateSource.stdout.Contains('expected-parent-live-state-incomplete') -and
+            $candidateSource.stdout.Contains('observedExpectedParentTrashed!==false') -and
             $candidateSource.stdout.Contains('target-parent-identity-mismatch') -and
             $candidateTest.stdout.Contains('expected-parent-unobservable:not-found') -and
+            $candidateTest.stdout.Contains('mismatched exact-parent response identity remains unobservable') -and
+            $candidateTest.stdout.Contains('missing exact-parent response identity remains unobservable') -and
+            $candidateTest.stdout.Contains('missing explicit exact-parent live state remains unobservable') -and
             $candidateTest.stdout.Contains('parentPathSearch.value,0') -and
             $candidateTest.stdout.Contains('rootSearch.value,0') -and
             $candidateTest.stdout.Contains('mutations.value,0') -and
             $downstreamTest.stdout.Contains('missing or replaced expected parent remains recovery-pending and non-redispatchable') -and
+            $downstreamTest.stdout.Contains('expected-parent-identity-mismatch') -and
+            $downstreamTest.stdout.Contains('expected-parent-identity-incomplete') -and
+            $downstreamTest.stdout.Contains('expected-parent-live-state-incomplete') -and
             $downstreamTest.stdout.Contains('assert.equal(result.status, "recovery-required")')
 
         if ($causalPass) {
-            Add-Stage -Name 'defect-causality' -Status 'PASS' -Classification 'OWNING DEFECT REPAIRED' -Summary 'Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry; regression asserts no global root search and no Drive mutation.' | Out-Null
+            Add-Stage -Name 'defect-causality' -Status 'PASS' -Classification 'OWNING DEFECT REPAIRED' -Summary 'Candidate requires successful exact-parent JSON to prove requested identity, explicit live state, folder shape, ancestry, and resolved path identity; malformed/missing/replaced parent regressions remain read-only and recovery-pending.' | Out-Null
         } else {
             Add-Stage -Name 'defect-causality' -Status 'FAIL' -Classification 'CAUSAL REPAIR PROOF INCOMPLETE' -Summary 'Base-to-candidate causal markers do not prove the assigned repair and regression boundaries.' | Out-Null
         }
@@ -1005,8 +1015,9 @@ try {
             $forbiddenFallback = 'else if(expectedParent.signal.kind==="not-found"){const root=await this.uniqueManagedRoot()'
             $postCause = $postBaseSource.exitCode -eq 0 -and $postSource.exitCode -eq 0 -and $postTest.exitCode -eq 0 -and $postDownstream.exitCode -eq 0 -and $postRebindTest.exitCode -eq 0 -and
                 $postBaseSource.stdout.Contains('const root=await this.uniqueManagedRoot()') -and $postSource.stdout.Contains('if(!expectedParent.ok)return') -and -not $postSource.stdout.Contains($forbiddenFallback) -and
-                $postTest.stdout.Contains('expected-parent-unobservable:not-found') -and $postTest.stdout.Contains('parentPathSearch.value,0') -and $postTest.stdout.Contains('rootSearch.value,0') -and $postTest.stdout.Contains('mutations.value,0') -and
-                $postDownstream.stdout.Contains('missing or replaced expected parent remains recovery-pending and non-redispatchable') -and $postDownstream.stdout.Contains('assert.equal(result.status, "recovery-required")') -and
+                $postSource.stdout.Contains('expected-parent-identity-incomplete') -and $postSource.stdout.Contains('expected-parent-identity-mismatch') -and $postSource.stdout.Contains('expected-parent-live-state-incomplete') -and $postSource.stdout.Contains('observedExpectedParentTrashed!==false') -and
+                $postTest.stdout.Contains('expected-parent-unobservable:not-found') -and $postTest.stdout.Contains('mismatched exact-parent response identity remains unobservable') -and $postTest.stdout.Contains('missing exact-parent response identity remains unobservable') -and $postTest.stdout.Contains('missing explicit exact-parent live state remains unobservable') -and $postTest.stdout.Contains('parentPathSearch.value,0') -and $postTest.stdout.Contains('rootSearch.value,0') -and $postTest.stdout.Contains('mutations.value,0') -and
+                $postDownstream.stdout.Contains('missing or replaced expected parent remains recovery-pending and non-redispatchable') -and $postDownstream.stdout.Contains('expected-parent-identity-mismatch') -and $postDownstream.stdout.Contains('expected-parent-identity-incomplete') -and $postDownstream.stdout.Contains('expected-parent-live-state-incomplete') -and $postDownstream.stdout.Contains('assert.equal(result.status, "recovery-required")') -and
                 $postRebindTest.stdout.Contains($AcceptedProductionSha256)
             if ($postCause) { Add-Stage -Name 'post-rebind-causality' -Status 'PASS' -Classification 'FINAL CANDIDATE CAUSAL REPAIR PROOF' -Summary 'Final candidate preserves the CRITICAL fail-closed parent-observation repair, downstream recovery-pending proof, and exact observed production hash rebind.' | Out-Null }
             else { Add-Stage -Name 'post-rebind-causality' -Status 'FAIL' -Classification 'FINAL CANDIDATE CAUSAL PROOF INCOMPLETE' -Summary 'Final candidate does not prove all review-correction and artifact-rebind invariants.' | Out-Null }
