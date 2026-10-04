@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)][string]$RepositoryRoot,
-  [Parameter(Mandatory = $true)][string]$Branch,
-  [Parameter(Mandatory = $true)][string]$CandidateSha
+    [Parameter(Mandatory = $true)][string]$RepositoryRoot,
+    [Parameter(Mandatory = $true)][string]$Branch,
+    [Parameter(Mandatory = $true)][string]$CandidateSha
 )
 
 Set-StrictMode -Version Latest
@@ -14,561 +14,816 @@ $TaskRel = 'dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-rece
 $SourceRel = 'src/drive/google-drive-port.ts'
 $TestRel = 'test/workstreams/drive/phase6-remote-protocol.test.ts'
 $VerifierRel = $EvidenceRel + '/Invoke-S08FPrerequisiteVerification.ps1'
-$AllowedImplementationPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, 'main.js')
-$Results = [System.Collections.Generic.List[object]]::new()
+$PassJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json'
+$PassMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.md'
+$PassLogRel = $EvidenceRel + '/S08F-PREREQ-VERIFY.log'
+$FailJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.json'
+$FailMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.md'
+
+$AllowedChangedPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel)
+$SourceDiffCheckPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel)
+
+$Stages = [System.Collections.Generic.List[object]]::new()
 $Log = [System.Text.StringBuilder]::new()
-$ProductionIdentity = $null
-$ValidationIdentity = $null
-$VerifiedCandidateSha = $CandidateSha
-$ArtifactCommit = $null
+$NativePathOverride = $null
+$GitPath = $null
+$NodePath = $null
+$NpmPath = $null
+$PwshPath = $null
+$WorktreeCreated = $false
 $EvidenceCommit = $null
-$script:NativePathOverride = $null
+$ExistingEvidenceCommit = $null
+$ExistingEvidence = $null
+$ProductionArtifact = $null
+$ValidationArtifact = $null
+$AlreadyVerified = $false
+$HarnessError = $null
+$FinalOverall = 'FAIL'
+
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('brain-s08f-prereq-' + [guid]::NewGuid().ToString('N'))
-$Worktree = Join-Path $TempRoot 'w'
+$Worktree = Join-Path $TempRoot 'worktree'
+$LocalReportDir = Join-Path $TempRoot 'report'
+$LocalJson = Join-Path $LocalReportDir 'result.json'
+$LocalMd = Join-Path $LocalReportDir 'result.md'
+$LocalLog = Join-Path $LocalReportDir 'result.log'
 
 function Write-LogLine {
-  param([string]$Text = '')
-  Write-Host $Text
-  [void]$script:Log.AppendLine($Text)
+    param([string]$Text = '')
+    Write-Host $Text
+    [void]$script:Log.AppendLine($Text)
 }
 
 function Add-Stage {
-  param(
-    [string]$Name,
-    [ValidateSet('PASS','FAIL','BLOCKED','SKIPPED')][string]$Status,
-    [string]$Classification,
-    [string]$Summary,
-    [string]$Command = '',
-    [Nullable[int]]$ExitCode = $null,
-    [object]$Evidence = $null
-  )
-  $entry = [pscustomobject]@{
-    name = $Name
-    status = $Status
-    classification = $Classification
-    summary = $Summary
-    command = $Command
-    exitCode = $ExitCode
-    evidence = $Evidence
-  }
-  $script:Results.Add($entry)
-  Write-LogLine ('[{0}] {1}: {2}' -f $Status, $Name, $Summary)
+    param(
+        [string]$Name,
+        [ValidateSet('PASS','FAIL','BLOCKED','SKIPPED','INDETERMINATE')][string]$Status,
+        [string]$Classification,
+        [string]$Summary,
+        [string]$Command = '',
+        [Nullable[int]]$ExitCode = $null,
+        [object]$Evidence = $null
+    )
+    $entry = [pscustomobject]@{
+        name = $Name
+        status = $Status
+        classification = $Classification
+        summary = $Summary
+        command = $Command
+        exitCode = $ExitCode
+        evidence = $Evidence
+    }
+    $script:Stages.Add($entry)
+    Write-LogLine ('[{0}] {1}: {2}' -f $Status, $Name, $Summary)
+    return $entry
+}
+
+function Get-Stage {
+    param([string]$Name)
+    return @($script:Stages | Where-Object { $_.name -eq $Name } | Select-Object -Last 1)
+}
+
+function Stage-Passed {
+    param([string]$Name)
+    $stage = @(Get-Stage $Name)
+    return $stage.Count -eq 1 -and $stage[0].status -eq 'PASS'
+}
+
+function Has-BlockingResult {
+    return @($script:Stages | Where-Object { $_.status -in @('FAIL','BLOCKED','INDETERMINATE') }).Count -gt 0
 }
 
 function Invoke-Native {
-  param(
-    [string]$File,
-    [string[]]$Arguments,
-    [string]$WorkingDirectory
-  )
-  $psi = [System.Diagnostics.ProcessStartInfo]::new()
-  $psi.FileName = $File
-  $psi.WorkingDirectory = $WorkingDirectory
-  $psi.UseShellExecute = $false
-  $psi.RedirectStandardOutput = $true
-  $psi.RedirectStandardError = $true
-  $psi.CreateNoWindow = $true
-  if (-not [string]::IsNullOrWhiteSpace([string]$script:NativePathOverride)) {
-    $psi.Environment['PATH'] = $script:NativePathOverride
-  }
-  foreach ($argument in $Arguments) { [void]$psi.ArgumentList.Add($argument) }
-  $process = [System.Diagnostics.Process]::new()
-  $process.StartInfo = $psi
-  [void]$process.Start()
-  $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-  $stderrTask = $process.StandardError.ReadToEndAsync()
-  $process.WaitForExit()
-  return [pscustomobject]@{
-    exitCode = $process.ExitCode
-    stdout = $stdoutTask.GetAwaiter().GetResult()
-    stderr = $stderrTask.GetAwaiter().GetResult()
-    command = $File + ' ' + ($Arguments -join ' ')
-  }
+    param(
+        [string]$File,
+        [string[]]$Arguments,
+        [string]$WorkingDirectory,
+        [hashtable]$Environment = @{}
+    )
+
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = $File
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$script:NativePathOverride)) {
+        $psi.Environment['PATH'] = $script:NativePathOverride
+    }
+    foreach ($key in @($Environment.Keys)) {
+        $psi.Environment[[string]$key] = [string]$Environment[$key]
+    }
+    foreach ($argument in @($Arguments)) {
+        [void]$psi.ArgumentList.Add([string]$argument)
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $psi
+    [void]$process.Start()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+
+    return [pscustomobject]@{
+        exitCode = [int]$process.ExitCode
+        stdout = $stdoutTask.GetAwaiter().GetResult()
+        stderr = $stderrTask.GetAwaiter().GetResult()
+        command = $File + ' ' + (@($Arguments) -join ' ')
+    }
 }
 
-function Invoke-External {
-  param(
-    [string]$Name,
-    [string]$Classification,
-    [string]$File,
-    [string[]]$Arguments,
-    [string]$WorkingDirectory,
-    [bool]$Enabled = $true
-  )
-  $commandText = $File + ' ' + (($Arguments | ForEach-Object {
-    if ($_ -match '[\s"]') { '"' + $_.Replace('"','\"') + '"' } else { $_ }
-  }) -join ' ')
-  if (-not $Enabled) {
-    Add-Stage -Name $Name -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Stage was not executed because a required dependency stage was unavailable.' -Command $commandText
-    return 125
-  }
-
-  Write-LogLine
-  Write-LogLine ('===== {0} =====' -f $Name.ToUpperInvariant())
-  Write-LogLine ('Command: {0}' -f $commandText)
-  try {
-    $result = Invoke-Native -File $File -Arguments $Arguments -WorkingDirectory $WorkingDirectory
-    if (-not [string]::IsNullOrEmpty($result.stdout)) {
-      $result.stdout.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+function Write-NativeResult {
+    param([object]$Result)
+    if (-not [string]::IsNullOrEmpty([string]$Result.stdout)) {
+        $Result.stdout.TrimEnd() -split '\r?\n' | ForEach-Object { Write-LogLine ([string]$_) }
     }
-    if (-not [string]::IsNullOrEmpty($result.stderr)) {
-      $result.stderr.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+    if (-not [string]::IsNullOrEmpty([string]$Result.stderr)) {
+        $Result.stderr.TrimEnd() -split '\r?\n' | ForEach-Object { Write-LogLine ([string]$_) }
     }
-    $code = [int]$result.exitCode
-  } catch {
-    Write-LogLine ('EXCEPTION: ' + $_.Exception.ToString())
-    $code = 99
-  }
-
-  if ($code -eq 0) {
-    Add-Stage -Name $Name -Status 'PASS' -Classification $Classification -Summary 'Stage completed successfully.' -Command $commandText -ExitCode $code
-  } else {
-    Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('Stage failed with exit code {0}.' -f $code) -Command $commandText -ExitCode $code
-  }
-  return $code
 }
-function Invoke-TestTree {
-  param(
-    [string]$Name,
-    [string]$Classification,
-    [string]$NodePath,
-    [string]$Root,
-    [string]$WorkingDirectory,
-    [bool]$Enabled = $true
-  )
-  if (-not $Enabled) {
-    Add-Stage -Name $Name -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Compiled test tree was unavailable.'
-    return 125
-  }
-  if (-not (Test-Path -LiteralPath $Root -PathType Container)) {
-    Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('Compiled test root is missing: ' + $Root)
-    return 126
-  }
 
-  $files = @([System.IO.Directory]::EnumerateFiles($Root, '*.test.js', [System.IO.SearchOption]::AllDirectories) | Sort-Object)
-  if ($files.Count -eq 0) {
-    Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('No compiled tests found under ' + $Root)
-    return 127
-  }
+function Invoke-ProcessStage {
+    param(
+        [string]$Name,
+        [string]$Classification,
+        [string]$File,
+        [string[]]$Arguments,
+        [string]$WorkingDirectory,
+        [bool]$Enabled = $true,
+        [string]$BlockedReason = 'A required prerequisite did not pass.',
+        [hashtable]$Environment = @{}
+    )
 
-  Write-LogLine
-  Write-LogLine ('===== {0} =====' -f $Name.ToUpperInvariant())
-  Write-LogLine ('Discovered tests: {0}' -f $files.Count)
-  $batchSize = 40
-  $batchCount = [int][Math]::Ceiling($files.Count / [double]$batchSize)
-  $failedBatches = [System.Collections.Generic.List[object]]::new()
+    $commandText = $File + ' ' + (@($Arguments) -join ' ')
+    if (-not $Enabled) {
+        Add-Stage -Name $Name -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary $BlockedReason -Command $commandText | Out-Null
+        return 125
+    }
 
-  Push-Location $WorkingDirectory
-  try {
+    Write-LogLine
+    Write-LogLine ('===== {0} =====' -f $Name.ToUpperInvariant())
+    Write-LogLine ('Command: {0}' -f $commandText)
+
+    try {
+        $result = Invoke-Native -File $File -Arguments $Arguments -WorkingDirectory $WorkingDirectory -Environment $Environment
+        Write-NativeResult $result
+        if ($result.exitCode -eq 0) {
+            Add-Stage -Name $Name -Status 'PASS' -Classification $Classification -Summary 'Stage completed successfully.' -Command $commandText -ExitCode 0 | Out-Null
+        } else {
+            Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('Stage failed with exit code {0}.' -f $result.exitCode) -Command $commandText -ExitCode $result.exitCode | Out-Null
+        }
+        return [int]$result.exitCode
+    } catch {
+        Add-Stage -Name $Name -Status 'INDETERMINATE' -Classification 'HARNESS PROCESS ERROR' -Summary $_.Exception.Message -Command $commandText | Out-Null
+        return 126
+    }
+}
+
+function Invoke-TestTreeStage {
+    param(
+        [string]$Name,
+        [string]$Classification,
+        [string]$Root,
+        [bool]$Enabled,
+        [string]$BlockedReason
+    )
+
+    if (-not $Enabled) {
+        Add-Stage -Name $Name -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary $BlockedReason | Out-Null
+        return 125
+    }
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) {
+        Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('Compiled test root is missing: ' + $Root) | Out-Null
+        return 126
+    }
+
+    $files = @([System.IO.Directory]::EnumerateFiles($Root, '*.test.js', [System.IO.SearchOption]::AllDirectories) | Sort-Object)
+    if ($files.Count -eq 0) {
+        Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('No compiled test files were found under ' + $Root) | Out-Null
+        return 127
+    }
+
+    Write-LogLine
+    Write-LogLine ('===== {0} =====' -f $Name.ToUpperInvariant())
+    Write-LogLine ('Discovered test files: {0}' -f $files.Count)
+
+    $batchSize = 40
+    $batchCount = [int][Math]::Ceiling($files.Count / [double]$batchSize)
+    $failures = [System.Collections.Generic.List[object]]::new()
+
     for ($offset = 0; $offset -lt $files.Count; $offset += $batchSize) {
-      $last = [Math]::Min($offset + $batchSize - 1, $files.Count - 1)
-      $batch = @($files[$offset..$last])
-      $batchNumber = [int]($offset / $batchSize) + 1
-      Write-LogLine ('--- {0} batch {1}/{2}: {3} test files ---' -f $Name, $batchNumber, $batchCount, $batch.Count)
-      $nodeArguments = @('--test') + $batch
-      $batchResult = Invoke-Native -File $NodePath -Arguments $nodeArguments -WorkingDirectory $WorkingDirectory
-      if (-not [string]::IsNullOrEmpty($batchResult.stdout)) {
-        $batchResult.stdout.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
-      }
-      if (-not [string]::IsNullOrEmpty($batchResult.stderr)) {
-        $batchResult.stderr.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
-      }
-      $code = [int]$batchResult.exitCode
-      if ($code -ne 0) {
-        $failedBatches.Add([pscustomobject]@{ batch = $batchNumber; exitCode = $code; files = $batch })
-      }
+        $last = [Math]::Min($offset + $batchSize - 1, $files.Count - 1)
+        $batch = @($files[$offset..$last])
+        $batchNumber = [int]($offset / $batchSize) + 1
+        Write-LogLine ('--- batch {0}/{1}: {2} files ---' -f $batchNumber, $batchCount, $batch.Count)
+        try {
+            $result = Invoke-Native -File $script:NodePath -Arguments (@('--test') + $batch) -WorkingDirectory $script:Worktree
+            Write-NativeResult $result
+            if ($result.exitCode -ne 0) {
+                $failures.Add([pscustomobject]@{
+                    batch = $batchNumber
+                    exitCode = $result.exitCode
+                    files = $batch
+                })
+            }
+        } catch {
+            $failures.Add([pscustomobject]@{
+                batch = $batchNumber
+                exitCode = 126
+                files = $batch
+                error = $_.Exception.Message
+            })
+            Write-LogLine ('HARNESS PROCESS ERROR: ' + $_.Exception.Message)
+        }
     }
-  } catch {
-    $failedBatches.Add([pscustomobject]@{ batch = -1; exitCode = 99; files = @(); exception = $_.Exception.ToString() })
-    Write-LogLine ('EXCEPTION: ' + $_.Exception.ToString())
-  } finally {
-    Pop-Location
-  }
 
-  if ($failedBatches.Count -eq 0) {
-    Add-Stage -Name $Name -Status 'PASS' -Classification $Classification -Summary ('All {0} compiled test files passed across {1} batch(es).' -f $files.Count, $batchCount) -ExitCode 0 -Evidence ([pscustomobject]@{ testFileCount = $files.Count; batchCount = $batchCount })
-    return 0
-  }
+    if ($failures.Count -eq 0) {
+        Add-Stage -Name $Name -Status 'PASS' -Classification $Classification -Summary ('All {0} compiled test files passed across {1} batch(es).' -f $files.Count, $batchCount) -ExitCode 0 -Evidence ([pscustomobject]@{ testFileCount = $files.Count; batchCount = $batchCount }) | Out-Null
+        return 0
+    }
 
-  Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('{0} of {1} test batch(es) failed; all batches were still attempted.' -f $failedBatches.Count, $batchCount) -ExitCode 1 -Evidence ([pscustomobject]@{ testFileCount = $files.Count; batchCount = $batchCount; failedBatches = @($failedBatches) })
-  return 1
+    Add-Stage -Name $Name -Status 'FAIL' -Classification $Classification -Summary ('{0} of {1} test batch(es) failed; all batches were attempted.' -f $failures.Count, $batchCount) -ExitCode 1 -Evidence ([pscustomobject]@{ testFileCount = $files.Count; batchCount = $batchCount; failedBatches = @($failures) }) | Out-Null
+    return 1
 }
 
 function Get-Sha256 {
-  param([string]$Path)
-  return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    param([string]$Path)
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-function Current-Failures {
-  return @($script:Results | Where-Object { $_.status -in @('FAIL','BLOCKED') })
+function Convert-StagesForReport {
+    return @($script:Stages | ForEach-Object {
+        [ordered]@{
+            name = $_.name
+            status = $_.status
+            classification = $_.classification
+            summary = $_.summary
+            command = $_.command
+            exitCode = $_.exitCode
+            evidence = $_.evidence
+        }
+    })
 }
 
-Write-LogLine '============================================================'
-Write-LogLine 'S08F MULTI-ROOT FOLDER RECOVERY PREREQUISITE VERIFIER'
-Write-LogLine '============================================================'
-Write-LogLine ('Input candidate: {0}' -f $CandidateSha)
-Write-LogLine ('Verification base: {0}' -f $VerificationBase)
-Write-LogLine ('Repository: {0}' -f $RepositoryRoot)
+function Write-ReportFiles {
+    param(
+        [string]$Directory,
+        [string]$Overall,
+        [string]$JsonName,
+        [string]$MdName,
+        [string]$LogName
+    )
 
-$git = Get-Command git -ErrorAction SilentlyContinue
-$node = Get-Command node -ErrorAction SilentlyContinue
-$npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-if ($null -eq $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
-$pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-
-$toolIssues = [System.Collections.Generic.List[string]]::new()
-if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container)) { $toolIssues.Add('repository-root-unavailable') }
-if ($null -eq $git) { $toolIssues.Add('git-unavailable') }
-if ($null -eq $node) { $toolIssues.Add('node-unavailable') }
-if ($null -eq $npm) { $toolIssues.Add('npm-unavailable') }
-if ($null -eq $pwsh) { $toolIssues.Add('pwsh-unavailable') }
-
-if ($toolIssues.Count -eq 0) {
-  $pathParts = [System.Collections.Generic.List[string]]::new()
-  foreach ($candidatePath in @(
-    (Split-Path -Parent $node.Source),
-    (Split-Path -Parent $git.Source),
-    (Split-Path -Parent $pwsh.Source),
-    (Join-Path $env:SystemRoot 'System32'),
-    $env:SystemRoot,
-    (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0')
-  )) {
-    if (-not [string]::IsNullOrWhiteSpace([string]$candidatePath) -and (Test-Path -LiteralPath $candidatePath -PathType Container) -and -not $pathParts.Contains($candidatePath)) {
-      [void]$pathParts.Add($candidatePath)
-    }
-  }
-  $script:NativePathOverride = $pathParts -join [System.IO.Path]::PathSeparator
-  $nodeProbe = Invoke-Native -File $node.Source -Arguments @('--version') -WorkingDirectory $RepositoryRoot
-  $npmProbe = Invoke-Native -File $npm.Source -Arguments @('--version') -WorkingDirectory $RepositoryRoot
-  if ($nodeProbe.exitCode -ne 0 -or $npmProbe.exitCode -ne 0) {
-    $toolIssues.Add('controlled-child-path-probe-failed')
-    Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN UNAVAILABLE' -Summary ('Controlled child PATH probe failed. Node exit={0}; npm exit={1}; PATH={2}' -f $nodeProbe.exitCode, $npmProbe.exitCode, $script:NativePathOverride)
-  } else {
-    Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; deterministic native child PATH={2}' -f $nodeProbe.stdout.Trim(), $npmProbe.stdout.Trim(), $script:NativePathOverride)
-  }
-} else {
-  Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN UNAVAILABLE' -Summary ($toolIssues -join ', ')
-}
-
-$identityReady = $toolIssues.Count -eq 0
-$remoteHead = ''
-if ($identityReady) {
-  Write-LogLine
-  Write-LogLine '===== REPOSITORY IDENTITY ====='
-  $refspec = '+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch
-  & $git.Source -C $RepositoryRoot fetch origin $refspec --prune 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-  $fetchCode = $LASTEXITCODE
-  if ($fetchCode -ne 0) {
-    Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'FETCH FAILED' -Summary ('git fetch failed with exit ' + $fetchCode) -ExitCode $fetchCode
-    $identityReady = $false
-  } else {
-    $remoteHead = ((& $git.Source -C $RepositoryRoot rev-parse ('refs/remotes/origin/' + $Branch) 2>&1) -join [Environment]::NewLine).Trim()
-    $resolveCode = $LASTEXITCODE
-    if ($resolveCode -ne 0 -or $remoteHead -ne $CandidateSha) {
-      Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'SOURCE IDENTITY MISMATCH' -Summary ('Expected ' + $CandidateSha + '; observed ' + $remoteHead) -ExitCode $resolveCode
-      $identityReady = $false
-    } else {
-      Add-Stage -Name 'repository-identity' -Status 'PASS' -Classification 'EXACT SOURCE IDENTITY' -Summary ('Remote task branch is exactly ' + $CandidateSha + '.')
-    }
-  }
-}
-
-$scopeReady = $false
-if ($identityReady) {
-  Write-LogLine
-  Write-LogLine '===== CHANGE SCOPE / CONTRACT FREEZE ====='
-  & $git.Source -C $RepositoryRoot merge-base --is-ancestor $VerificationBase $CandidateSha 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-  $ancestorCode = $LASTEXITCODE
-  $changed = @(& $git.Source -C $RepositoryRoot diff --name-only $VerificationBase $CandidateSha --)
-  $diffCheckPaths = @($TaskRel,$SourceRel,$TestRel,$VerifierRel)
-  $diffCheckOutput = ((& $git.Source -C $RepositoryRoot diff --check $VerificationBase $CandidateSha -- @diffCheckPaths 2>&1) -join [Environment]::NewLine)
-  $diffCheckCode = $LASTEXITCODE
-  $unexpected = @($changed | Where-Object {
-    $value = [string]$_
-    ($script:AllowedImplementationPaths -notcontains $value) -and (-not $value.StartsWith($script:EvidenceRel + '/', [System.StringComparison]::Ordinal))
-  })
-  $contractChanges = @($changed | Where-Object { ([string]$_).StartsWith('src/contracts/', [System.StringComparison]::Ordinal) })
-  $scopeReady = $ancestorCode -eq 0 -and $diffCheckCode -eq 0 -and $unexpected.Count -eq 0 -and $contractChanges.Count -eq 0
-  $scopeEvidence = [pscustomobject]@{
-    changedPaths = $changed
-    unexpectedPaths = $unexpected
-    contractChanges = $contractChanges
-    ancestorExitCode = $ancestorCode
-    diffCheckExitCode = $diffCheckCode
-    diffCheckPaths = $diffCheckPaths
-    diffCheckOutput = $diffCheckOutput
-  }
-  if ($scopeReady) {
-    Add-Stage -Name 'change-scope' -Status 'PASS' -Classification 'BOUNDED PREREQUISITE' -Summary 'Candidate is descended from the blocked physical-evidence anchor; changed paths are authorized; frozen synchronization contracts are unchanged; source/task/verifier diff-check passes while raw evidence is preserved verbatim.' -Evidence $scopeEvidence
-  } else {
-    Add-Stage -Name 'change-scope' -Status 'FAIL' -Classification 'SCOPE OR CONTRACT VIOLATION' -Summary 'Candidate failed ancestry, path-boundary, contract-freeze, or diff-check validation.' -Evidence $scopeEvidence
-  }
-
-  $baseSource = ((& $git.Source -C $RepositoryRoot show ($VerificationBase + ':' + $SourceRel) 2>&1) -join [Environment]::NewLine)
-  $baseShowCode = $LASTEXITCODE
-  $candidateSource = ((& $git.Source -C $RepositoryRoot show ($CandidateSha + ':' + $SourceRel) 2>&1) -join [Environment]::NewLine)
-  $candidateShowCode = $LASTEXITCODE
-  $candidateTest = ((& $git.Source -C $RepositoryRoot show ($CandidateSha + ':' + $TestRel) 2>&1) -join [Environment]::NewLine)
-  $testShowCode = $LASTEXITCODE
-  $causalPass = $baseShowCode -eq 0 -and $candidateShowCode -eq 0 -and $testShowCode -eq 0 -and
-    $baseSource.Contains('const root=await this.uniqueManagedRoot()') -and
-    $candidateSource.Contains('const expectedParent=await this.getFile(descriptor.parentRemoteObjectId)') -and
-    $candidateSource.Contains('target-parent-identity-mismatch') -and
-    $candidateTest.Contains('rootSearch.value,0') -and
-    $candidateTest.Contains('mutations.value,0')
-  if ($causalPass) {
-    Add-Stage -Name 'defect-causality' -Status 'PASS' -Classification 'OWNING DEFECT REPAIRED' -Summary 'Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry and regression asserts no global root search or mutation.'
-  } else {
-    Add-Stage -Name 'defect-causality' -Status 'FAIL' -Classification 'CAUSAL REPAIR PROOF INCOMPLETE' -Summary 'Static base-to-candidate causal markers did not all match expected repair boundaries.'
-  }
-}
-
-$worktreeReady = $false
-if ($identityReady -and $scopeReady) {
-  [void][System.IO.Directory]::CreateDirectory($TempRoot)
-  Write-LogLine
-  Write-LogLine '===== DISPOSABLE WORKTREE ====='
-  & $git.Source -C $RepositoryRoot worktree add --detach $Worktree $CandidateSha 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-  $worktreeCode = $LASTEXITCODE
-  if ($worktreeCode -eq 0) {
-    $worktreeReady = $true
-    Add-Stage -Name 'disposable-worktree' -Status 'PASS' -Classification 'EXACT-SHA DISPOSABLE WORKTREE' -Summary ('Created ' + $Worktree + '.') -ExitCode 0
-  } else {
-    Add-Stage -Name 'disposable-worktree' -Status 'BLOCKED' -Classification 'WORKTREE CREATION FAILED' -Summary ('git worktree add failed with exit ' + $worktreeCode) -ExitCode $worktreeCode
-  }
-} else {
-  Add-Stage -Name 'disposable-worktree' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Source identity/scope preconditions did not pass.'
-}
-
-$depsCode = 125
-$typeCode = 125
-$productCompileCode = 125
-$focusedCode = 125
-$productSuiteCode = 125
-$bvpCompileCode = 125
-$bvpSuiteCode = 125
-$architectureGuardCode = 125
-$architectureMetricsCode = 125
-$repositoryCheckCode = 125
-$buildCode = 125
-
-if ($worktreeReady) {
-  $depsCode = Invoke-External -Name 'dependencies' -Classification 'DEPENDENCY INSTALL' -File $npm.Source -Arguments @('ci','--no-audit','--no-fund','--loglevel','info') -WorkingDirectory $Worktree
-  $depsReady = $depsCode -eq 0
-
-  $typeCode = Invoke-External -Name 'typecheck' -Classification 'TYPECHECK' -File $npm.Source -Arguments @('run','typecheck') -WorkingDirectory $Worktree -Enabled $depsReady
-  $productCompileCode = Invoke-External -Name 'product-test-compile' -Classification 'PRODUCT TEST COMPILE' -File $node.Source -Arguments @('node_modules/typescript/bin/tsc','-p','tsconfig.test.json') -WorkingDirectory $Worktree -Enabled $depsReady
-
-  $focusedReady = $depsReady -and $productCompileCode -eq 0
-  $focusedCode = Invoke-External -Name 'focused-folder-recovery' -Classification 'FOCUSED RECOVERY REGRESSION' -File $node.Source -Arguments @(
-    '--test',
-    '.test-build/test/workstreams/drive/phase6-remote-protocol.test.js',
-    '.test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js',
-    '.test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js'
-  ) -WorkingDirectory $Worktree -Enabled $focusedReady
-
-  $productSuiteCode = Invoke-TestTree -Name 'complete-product-suite' -Classification 'COMPLETE PRODUCT TEST SUITE' -NodePath $node.Source -Root (Join-Path $Worktree '.test-build/test') -WorkingDirectory $Worktree -Enabled $focusedReady
-
-  $bvpCompileCode = Invoke-External -Name 'bvp-compile' -Classification 'BVP COMPILE' -File $node.Source -Arguments @('node_modules/typescript/bin/tsc','-p','test-platform/tsconfig.json') -WorkingDirectory $Worktree -Enabled $depsReady
-  $bvpReady = $depsReady -and $bvpCompileCode -eq 0
-  $bvpSuiteCode = Invoke-TestTree -Name 'complete-bvp-suite' -Classification 'COMPLETE BVP TEST SUITE' -NodePath $node.Source -Root (Join-Path $Worktree '.test-build/bvp/test-platform/test') -WorkingDirectory $Worktree -Enabled $bvpReady
-
-  $architectureGuardCode = Invoke-External -Name 'architecture-guard' -Classification 'ARCHITECTURE GUARD' -File $node.Source -Arguments @('--test','.test-build/bvp/test-platform/test/architecture-guard.test.js') -WorkingDirectory $Worktree -Enabled $bvpReady
-  $architectureMetricsCode = Invoke-External -Name 'architecture-metrics' -Classification 'ARCHITECTURE METRICS' -File $node.Source -Arguments @('--test','.test-build/bvp/test-platform/test/architecture-metrics.test.js') -WorkingDirectory $Worktree -Enabled $bvpReady
-  $repositoryCheckCode = Invoke-External -Name 'repository-check' -Classification 'REPOSITORY CHECK' -File $node.Source -Arguments @('.test-build/bvp/test-platform/src/repository-check.js') -WorkingDirectory $Worktree -Enabled $bvpReady
-
-  $buildCode = Invoke-External -Name 'production-build' -Classification 'PRODUCTION BUILD' -File $npm.Source -Arguments @('run','build') -WorkingDirectory $Worktree -Enabled $depsReady
-
-  if ($buildCode -eq 0) {
-    try {
-      $mainJs = Join-Path $Worktree 'main.js'
-      if (-not (Test-Path -LiteralPath $mainJs -PathType Leaf)) { throw 'main.js missing after successful production build.' }
-      $sourceText = [System.IO.File]::ReadAllText($mainJs)
-      $forbidden = @(@('BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox') | Where-Object { $sourceText.Contains($_) })
-      $ProductionIdentity = [pscustomobject]@{
-        sizeBytes = (Get-Item -LiteralPath $mainJs).Length
-        sha256 = Get-Sha256 $mainJs
-        forbiddenMarkerHits = @($forbidden)
-      }
-      if ($ProductionIdentity.sizeBytes -le 0 -or $forbidden.Count -ne 0) { throw ('Production artifact isolation failed: ' + ($ProductionIdentity | ConvertTo-Json -Compress)) }
-      Add-Stage -Name 'production-artifact-identity' -Status 'PASS' -Classification 'PRODUCTION BUNDLE ISOLATED' -Summary ('Production main.js size={0}; sha256={1}; validation marker hits=0.' -f $ProductionIdentity.sizeBytes, $ProductionIdentity.sha256) -Evidence $ProductionIdentity
-    } catch {
-      Add-Stage -Name 'production-artifact-identity' -Status 'FAIL' -Classification 'PRODUCTION ARTIFACT INVALID' -Summary $_.Exception.Message
-    }
-  } else {
-    Add-Stage -Name 'production-artifact-identity' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Production build did not pass.'
-  }
-
-  $preArtifactFailures = @(Current-Failures)
-  $canMaterialize = $preArtifactFailures.Count -eq 0 -and $buildCode -eq 0
-  if ($canMaterialize) {
-    $VerifiedCandidateSha = $CandidateSha
-    Add-Stage -Name 'production-artifact-materialization' -Status 'PASS' -Classification 'EPHEMERAL EXACT-SHA ARTIFACT' -Summary 'Production main.js was built and identity-verified in the exact-SHA disposable worktree. Repository policy intentionally ignores main.js, so no tracked artifact commit is created.' -Evidence $ProductionIdentity
-  } else {
-    Add-Stage -Name 'production-artifact-materialization' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Implementation/test/build gates did not all pass; generated production artifact is not accepted for S08F rebinding.'
-    if (Test-Path -LiteralPath (Join-Path $Worktree 'main.js')) {
-      Remove-Item -LiteralPath (Join-Path $Worktree 'main.js') -Force -ErrorAction SilentlyContinue
-    }
-  }
-
-  $artifactReady = @($Results | Where-Object { $_.name -eq 'production-artifact-materialization' -and $_.status -eq 'PASS' }).Count -eq 1
-  $validationCode = Invoke-External -Name 'validation-artifact-build' -Classification 'VALIDATION ARTIFACT BUILD' -File $node.Source -Arguments @('.test-build/bvp/test-platform/src/live-device/build-validation-artifact.js') -WorkingDirectory $Worktree -Enabled ($artifactReady -and $bvpReady)
-
-  if ($validationCode -eq 0) {
-    try {
-      $validationDir = Join-Path $Worktree '.test-build/bvp-live-device/plugin'
-      $identityPath = Join-Path $validationDir 'build-identity.json'
-      $artifactPath = Join-Path $validationDir 'main.js'
-      if (-not (Test-Path -LiteralPath $identityPath -PathType Leaf)) { throw 'Validation build identity missing.' }
-      if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { throw 'Validation artifact main.js missing.' }
-      $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
-      $actualHash = Get-Sha256 $artifactPath
-      $actualSize = (Get-Item -LiteralPath $artifactPath).Length
-      $ValidationIdentity = [pscustomobject]@{
-        sourceCommit = [string]$identity.sourceCommit
-        artifactSize = [int64]$identity.artifactSize
-        artifactSha256 = [string]$identity.artifactSha256
-        actualSize = $actualSize
-        actualSha256 = $actualHash
-        manifestSha256 = [string]$identity.manifestSha256
-        testPlatformInputs = @($identity.testPlatformInputs)
-      }
-      if ($ValidationIdentity.sourceCommit -ne $VerifiedCandidateSha) { throw ('Validation source commit mismatch. Expected ' + $VerifiedCandidateSha + '; observed ' + $ValidationIdentity.sourceCommit) }
-      if ($ValidationIdentity.artifactSize -ne $actualSize -or $ValidationIdentity.artifactSha256 -ne $actualHash) { throw 'Validation artifact identity does not match actual validation main.js.' }
-      Add-Stage -Name 'validation-artifact-identity' -Status 'PASS' -Classification 'EXACT VALIDATION ARTIFACT' -Summary ('Validation main.js source={0}; size={1}; sha256={2}.' -f $ValidationIdentity.sourceCommit, $actualSize, $actualHash) -Evidence $ValidationIdentity
-    } catch {
-      Add-Stage -Name 'validation-artifact-identity' -Status 'FAIL' -Classification 'VALIDATION ARTIFACT INVALID' -Summary $_.Exception.Message
-    }
-  } else {
-    Add-Stage -Name 'validation-artifact-identity' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Validation artifact build did not pass.'
-  }
-
-  $postArtifactRepositoryCheck = Invoke-External -Name 'post-artifact-repository-check' -Classification 'POST-ARTIFACT REPOSITORY CHECK' -File $node.Source -Arguments @('.test-build/bvp/test-platform/src/repository-check.js') -WorkingDirectory $Worktree -Enabled ($artifactReady -and $bvpReady)
-}
-
-if ($worktreeReady) {
-  $dirty = @(& $git.Source -C $Worktree status --porcelain --untracked-files=all)
-  $outsideEvidence = @($dirty | Where-Object {
-    $line = [string]$_
-    if ($line.Length -lt 4) { return $true }
-    $value = $line.Substring(3).Replace('\','/')
-    return -not $value.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal)
-  })
-  if ($outsideEvidence.Count -eq 0) {
-    Add-Stage -Name 'repository-mutation-audit' -Status 'PASS' -Classification 'EVIDENCE-ONLY RESIDUAL MUTATION' -Summary 'After derived artifact materialization, no residual tracked/untracked change exists outside the authorized S08F evidence root.' -Evidence ([pscustomobject]@{ status = $dirty })
-  } else {
-    Add-Stage -Name 'repository-mutation-audit' -Status 'FAIL' -Classification 'OUT-OF-SCOPE RESIDUAL MUTATION' -Summary ('Unexpected residual worktree changes: ' + ($outsideEvidence -join '; ')) -Evidence ([pscustomobject]@{ status = $dirty; outsideEvidence = $outsideEvidence })
-  }
-}
-
-$preEvidenceFailures = @(Current-Failures)
-$preEvidenceSkipped = @($Results | Where-Object { $_.status -eq 'SKIPPED' })
-$Overall = if ($preEvidenceFailures.Count -eq 0 -and $preEvidenceSkipped.Count -eq 0) { 'PASS' } else { 'FAIL' }
-
-if ($worktreeReady) {
-  try {
-    Write-LogLine
-    Write-LogLine '===== EVIDENCE PERSISTENCE ====='
-    $evidenceDir = Join-Path $Worktree ($EvidenceRel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
-    [void][System.IO.Directory]::CreateDirectory($evidenceDir)
-
-    $passJson = Join-Path $evidenceDir 'S08F-PREREQ-VERIFY-PASS.json'
-    $passMd = Join-Path $evidenceDir 'S08F-PREREQ-VERIFY-PASS.md'
-    $failJson = Join-Path $evidenceDir 'S08F-PREREQ-VERIFY-FAIL.json'
-    $failMd = Join-Path $evidenceDir 'S08F-PREREQ-VERIFY-FAIL.md'
-    $logPath = Join-Path $evidenceDir 'S08F-PREREQ-VERIFY.log'
-    Remove-Item -LiteralPath $passJson,$passMd,$failJson,$failMd,$logPath -Force -ErrorAction SilentlyContinue
+    [void][System.IO.Directory]::CreateDirectory($Directory)
 
     $report = [ordered]@{
-      schemaVersion = 1
-      generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
-      overall = $Overall
-      verificationBase = $VerificationBase
-      inputCandidateSha = $CandidateSha
-      verifiedCandidateSha = $VerifiedCandidateSha
-      branch = $Branch
-      productionArtifactCommit = $ArtifactCommit
-      productionArtifact = $ProductionIdentity
-      validationArtifact = $ValidationIdentity
-      stages = @($Results)
-      diagnosticWorkspace = $TempRoot
+        schemaVersion = 2
+        generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+        overall = $Overall
+        verificationBase = $VerificationBase
+        candidateSha = $CandidateSha
+        branch = $Branch
+        productionArtifact = $ProductionArtifact
+        validationArtifact = $ValidationArtifact
+        existingEvidenceCommit = $ExistingEvidenceCommit
+        stages = Convert-StagesForReport
+        diagnosticWorkspace = $TempRoot
+        physicalMutationAttempted = $false
     }
-    $jsonText = $report | ConvertTo-Json -Depth 30
-    $targetJson = if ($Overall -eq 'PASS') { $passJson } else { $failJson }
-    $targetMd = if ($Overall -eq 'PASS') { $passMd } else { $failMd }
-    [System.IO.File]::WriteAllText($targetJson, $jsonText + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
-    [System.IO.File]::WriteAllText($logPath, $Log.ToString(), [System.Text.UTF8Encoding]::new($false))
+
+    $jsonPath = Join-Path $Directory $JsonName
+    $mdPath = Join-Path $Directory $MdName
+    $logPath = Join-Path $Directory $LogName
+
+    [System.IO.File]::WriteAllText($jsonPath, (($report | ConvertTo-Json -Depth 30) + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
 
     $md = [System.Text.StringBuilder]::new()
     [void]$md.AppendLine('# S08F Multi-Root Folder Recovery Prerequisite Verification')
     [void]$md.AppendLine()
-    [void]$md.AppendLine('- Overall: **' + $Overall + '**')
+    [void]$md.AppendLine('- Overall: ' + $Overall)
+    [void]$md.AppendLine('- Candidate: ' + $CandidateSha)
     [void]$md.AppendLine('- Verification base: ' + $VerificationBase)
-    [void]$md.AppendLine('- Input candidate: ' + $CandidateSha)
-    [void]$md.AppendLine('- Verified candidate: ' + $VerifiedCandidateSha)
-    if ($null -ne $ProductionIdentity) {
-      [void]$md.AppendLine('- Production main.js: ' + $ProductionIdentity.sizeBytes + ' bytes / ' + $ProductionIdentity.sha256)
+    [void]$md.AppendLine('- Physical mutation attempted: false')
+    if ($null -ne $ProductionArtifact) {
+        [void]$md.AppendLine('- Production main.js: ' + $ProductionArtifact.sizeBytes + ' bytes / ' + $ProductionArtifact.sha256)
     }
-    if ($null -ne $ValidationIdentity) {
-      [void]$md.AppendLine('- Validation main.js: ' + $ValidationIdentity.actualSize + ' bytes / ' + $ValidationIdentity.actualSha256)
+    if ($null -ne $ValidationArtifact) {
+        [void]$md.AppendLine('- Validation main.js: ' + $ValidationArtifact.actualSize + ' bytes / ' + $ValidationArtifact.actualSha256)
     }
     [void]$md.AppendLine()
     [void]$md.AppendLine('| Stage | Status | Classification | Summary |')
     [void]$md.AppendLine('|---|---|---|---|')
-    foreach ($stage in $Results) {
-      $summary = ([string]$stage.summary).Replace('|','\|').Replace([char]13,' ').Replace([char]10,' ')
-      [void]$md.AppendLine('| ' + $stage.name + ' | ' + $stage.status + ' | ' + $stage.classification + ' | ' + $summary + ' |')
+    foreach ($stage in @($script:Stages)) {
+        $summary = ([string]$stage.summary).Replace('|','\|').Replace([char]13,' ').Replace([char]10,' ')
+        [void]$md.AppendLine('| ' + $stage.name + ' | ' + $stage.status + ' | ' + $stage.classification + ' | ' + $summary + ' |')
     }
-    [System.IO.File]::WriteAllText($targetMd, $md.ToString(), [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($mdPath, $md.ToString(), [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($logPath, $script:Log.ToString(), [System.Text.UTF8Encoding]::new($false))
 
-    $statusAfterEvidence = @(& $git.Source -C $Worktree status --porcelain --untracked-files=all)
-    $outside = @($statusAfterEvidence | Where-Object {
-      $line = [string]$_
-      if ($line.Length -lt 4) { return $true }
-      $value = $line.Substring(3).Replace('\','/')
-      return -not $value.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal)
-    })
-    if ($outside.Count -ne 0) { throw ('Evidence persistence produced out-of-scope changes: ' + ($outside -join '; ')) }
-
-    & $git.Source -C $RepositoryRoot fetch origin ('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch) --prune 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-    if ($LASTEXITCODE -ne 0) { throw 'Final branch refresh failed.' }
-    $remoteBeforePublish = ((& $git.Source -C $RepositoryRoot rev-parse ('refs/remotes/origin/' + $Branch) 2>&1) -join [Environment]::NewLine).Trim()
-    if ($remoteBeforePublish -ne $CandidateSha) { throw ('Branch drifted before publication. Expected ' + $CandidateSha + '; observed ' + $remoteBeforePublish) }
-
-    & $git.Source -C $Worktree add -- $EvidenceRel 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-    if ($LASTEXITCODE -ne 0) { throw 'git add evidence failed.' }
-    & $git.Source -C $Worktree commit -m 'test(bvp): record S08F multi-root recovery prerequisite verification' 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-    if ($LASTEXITCODE -ne 0) { throw 'Evidence commit failed.' }
-    $EvidenceCommit = ((& $git.Source -C $Worktree rev-parse HEAD 2>&1) -join [Environment]::NewLine).Trim()
-
-    & $git.Source -C $Worktree push origin ('HEAD:refs/heads/' + $Branch) 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-    if ($LASTEXITCODE -ne 0) { throw 'Evidence push failed.' }
-    Add-Stage -Name 'evidence-publication' -Status 'PASS' -Classification 'EVIDENCE COMMIT PUBLISHED' -Summary ('Published evidence commit ' + $EvidenceCommit + '.')
-  } catch {
-    Add-Stage -Name 'evidence-publication' -Status 'FAIL' -Classification 'EVIDENCE PUBLICATION FAILED' -Summary $_.Exception.Message
-    $Overall = 'FAIL'
-  }
-} else {
-  Add-Stage -Name 'evidence-publication' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'No disposable worktree was available for evidence generation.'
-  $Overall = 'FAIL'
+    return [pscustomobject]@{
+        json = $jsonPath
+        markdown = $mdPath
+        log = $logPath
+    }
 }
 
-Write-LogLine
-Write-LogLine '============================================================'
-Write-LogLine 'S08F PREREQUISITE VERIFICATION RESULT'
-Write-LogLine '============================================================'
-foreach ($stage in $Results) {
-  Write-LogLine ('{0,-34} {1,-8} {2}' -f $stage.name, $stage.status, $stage.summary)
-}
-Write-LogLine '------------------------------------------------------------'
-Write-LogLine ('OVERALL: {0}' -f $Overall)
-Write-LogLine ('INPUT CANDIDATE: {0}' -f $CandidateSha)
-Write-LogLine ('VERIFIED CANDIDATE: {0}' -f $VerifiedCandidateSha)
-Write-LogLine ('PRODUCTION ARTIFACT COMMIT: {0}' -f $(if ($ArtifactCommit) { $ArtifactCommit } else { '<not-applicable: main.js is repository-ignored>' }))
-Write-LogLine ('EVIDENCE COMMIT: {0}' -f $(if ($EvidenceCommit) { $EvidenceCommit } else { '<none>' }))
-Write-LogLine ('DIAGNOSTIC WORKSPACE: {0}' -f $TempRoot)
-if ($null -ne $ProductionIdentity) { Write-LogLine ('PRODUCTION MAIN.JS: {0} bytes / {1}' -f $ProductionIdentity.sizeBytes, $ProductionIdentity.sha256) }
-if ($null -ne $ValidationIdentity) { Write-LogLine ('VALIDATION MAIN.JS: {0} bytes / {1}' -f $ValidationIdentity.actualSize, $ValidationIdentity.actualSha256) }
-Write-LogLine '============================================================'
+function Print-FinalSummary {
+    param([string]$Overall)
 
-if ($Overall -eq 'PASS') { [System.Environment]::Exit(0) } else { [System.Environment]::Exit(20) }
+    Write-LogLine
+    Write-LogLine '============================================================'
+    Write-LogLine 'S08F PREREQUISITE VERIFICATION RESULT'
+    Write-LogLine '============================================================'
+    foreach ($stage in @($script:Stages)) {
+        Write-LogLine ('{0,-34} {1,-13} {2}' -f $stage.name, $stage.status, $stage.summary)
+    }
+    Write-LogLine '------------------------------------------------------------'
+    Write-LogLine ('OVERALL: {0}' -f $Overall)
+    Write-LogLine ('CANDIDATE: {0}' -f $CandidateSha)
+    Write-LogLine ('EVIDENCE COMMIT: {0}' -f $(if ($EvidenceCommit) { $EvidenceCommit } elseif ($ExistingEvidenceCommit) { $ExistingEvidenceCommit } else { '<none>' }))
+    if ($null -ne $ProductionArtifact) {
+        Write-LogLine ('PRODUCTION MAIN.JS: {0} bytes / {1}' -f $ProductionArtifact.sizeBytes, $ProductionArtifact.sha256)
+    }
+    if ($null -ne $ValidationArtifact) {
+        Write-LogLine ('VALIDATION MAIN.JS: {0} bytes / {1}' -f $ValidationArtifact.actualSize, $ValidationArtifact.actualSha256)
+    }
+    if ($Overall -eq 'PASS') {
+        Write-LogLine 'BLOCKING DEFECTS: NONE'
+        Write-LogLine 'RECOMMENDED NEXT ACTION: independent review of the bounded prerequisite repair before physical S08F recovery resumes.'
+    } else {
+        $blocking = @($script:Stages | Where-Object { $_.status -in @('FAIL','BLOCKED','INDETERMINATE') })
+        Write-LogLine ('BLOCKING DEFECT COUNT: {0}' -f $blocking.Count)
+        Write-LogLine ('DIAGNOSTIC WORKSPACE PRESERVED: {0}' -f $TempRoot)
+        Write-LogLine 'RECOMMENDED NEXT ACTION: engineering agent diagnoses and repairs the demonstrated blocker before another owner execution.'
+    }
+    Write-LogLine '============================================================'
+}
+
+try {
+    [void][System.IO.Directory]::CreateDirectory($TempRoot)
+    [void][System.IO.Directory]::CreateDirectory($LocalReportDir)
+
+    Write-LogLine '============================================================'
+    Write-LogLine 'S08F PROTOCOL-ALIGNED PREREQUISITE VERIFIER'
+    Write-LogLine '============================================================'
+    Write-LogLine ('Candidate: {0}' -f $CandidateSha)
+    Write-LogLine ('Verification base: {0}' -f $VerificationBase)
+    Write-LogLine ('Repository: {0}' -f $RepositoryRoot)
+    Write-LogLine 'Physical mutation authorized: NO'
+
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if ($null -eq $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+
+    $toolIssues = [System.Collections.Generic.List[string]]::new()
+    if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container)) { $toolIssues.Add('repository-root-unavailable') }
+    if ($null -eq $git) { $toolIssues.Add('git-unavailable') }
+    if ($null -eq $node) { $toolIssues.Add('node-unavailable') }
+    if ($null -eq $npm) { $toolIssues.Add('npm-unavailable') }
+    if ($null -eq $pwsh) { $toolIssues.Add('pwsh-unavailable') }
+
+    if ($toolIssues.Count -gt 0) {
+        Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN UNAVAILABLE' -Summary ($toolIssues -join ', ') | Out-Null
+    } else {
+        $script:GitPath = $git.Source
+        $script:NodePath = $node.Source
+        $script:NpmPath = $npm.Source
+        $script:PwshPath = $pwsh.Source
+
+        $pathParts = [System.Collections.Generic.List[string]]::new()
+        foreach ($candidatePath in @(
+            (Split-Path -Parent $script:NodePath),
+            (Split-Path -Parent $script:GitPath),
+            (Split-Path -Parent $script:PwshPath),
+            (Join-Path $env:SystemRoot 'System32'),
+            $env:SystemRoot,
+            (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0')
+        )) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$candidatePath) -and (Test-Path -LiteralPath $candidatePath -PathType Container) -and -not $pathParts.Contains($candidatePath)) {
+                [void]$pathParts.Add($candidatePath)
+            }
+        }
+        $script:NativePathOverride = $pathParts -join [System.IO.Path]::PathSeparator
+
+        $nodeProbe = Invoke-Native -File $script:NodePath -Arguments @('--version') -WorkingDirectory $RepositoryRoot
+        $npmProbe = Invoke-Native -File $script:NpmPath -Arguments @('--version') -WorkingDirectory $RepositoryRoot
+        $pwshProbe = Invoke-Native -File $script:PwshPath -Arguments @('-NoProfile','-Command','$PSVersionTable.PSVersion.ToString()') -WorkingDirectory $RepositoryRoot
+        $gitProbe = Invoke-Native -File $script:GitPath -Arguments @('--version') -WorkingDirectory $RepositoryRoot
+
+        if (@($nodeProbe,$npmProbe,$pwshProbe,$gitProbe | Where-Object { $_.exitCode -ne 0 }).Count -gt 0) {
+            Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN PROBE FAILED' -Summary ('One or more controlled child-process probes failed. PATH=' + $script:NativePathOverride) -Evidence ([pscustomobject]@{ node = $nodeProbe; npm = $npmProbe; pwsh = $pwshProbe; git = $gitProbe }) | Out-Null
+        } else {
+            Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; PowerShell {2}; Git {3}; deterministic child PATH established.' -f $nodeProbe.stdout.Trim(), $npmProbe.stdout.Trim(), $pwshProbe.stdout.Trim(), $gitProbe.stdout.Trim()) -Evidence ([pscustomobject]@{ path = $script:NativePathOverride }) | Out-Null
+        }
+    }
+
+    if (Stage-Passed 'toolchain') {
+        Write-LogLine
+        Write-LogLine '===== REPOSITORY IDENTITY / RERUN SAFETY ====='
+
+        $fetch = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune') -WorkingDirectory $RepositoryRoot
+        Write-NativeResult $fetch
+
+        if ($fetch.exitCode -ne 0) {
+            Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'FETCH FAILED' -Summary ('Unable to refresh task branch; git exit ' + $fetch.exitCode) -ExitCode $fetch.exitCode | Out-Null
+        } else {
+            $candidateProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'cat-file','-e',($CandidateSha + '^{commit}')) -WorkingDirectory $RepositoryRoot
+            $remoteProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-parse',('refs/remotes/origin/' + $Branch)) -WorkingDirectory $RepositoryRoot
+            $remoteHead = $remoteProbe.stdout.Trim()
+
+            if ($candidateProbe.exitCode -ne 0 -or $remoteProbe.exitCode -ne 0) {
+                Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'SOURCE IDENTITY UNAVAILABLE' -Summary 'Candidate commit or refreshed remote branch could not be resolved.' -Evidence ([pscustomobject]@{ candidateExit = $candidateProbe.exitCode; remoteExit = $remoteProbe.exitCode }) | Out-Null
+            } elseif ($remoteHead -eq $CandidateSha) {
+                Add-Stage -Name 'repository-identity' -Status 'PASS' -Classification 'EXACT CANDIDATE AT BRANCH HEAD' -Summary ('Remote task branch is exactly the requested candidate ' + $CandidateSha + '.') | Out-Null
+            } else {
+                $parentProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-parse',($remoteHead + '^')) -WorkingDirectory $RepositoryRoot
+                $parent = if ($parentProbe.exitCode -eq 0) { $parentProbe.stdout.Trim() } else { '' }
+                $evidenceProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($remoteHead + ':' + $PassJsonRel)) -WorkingDirectory $RepositoryRoot
+                $existing = $null
+                if ($evidenceProbe.exitCode -eq 0) {
+                    try { $existing = $evidenceProbe.stdout | ConvertFrom-Json } catch { $existing = $null }
+                }
+
+                if ($parent -eq $CandidateSha -and $null -ne $existing -and [string]$existing.overall -eq 'PASS' -and [string]$existing.candidateSha -eq $CandidateSha) {
+                    $script:AlreadyVerified = $true
+                    $script:ExistingEvidenceCommit = $remoteHead
+                    $script:ExistingEvidence = $existing
+                    Add-Stage -Name 'repository-identity' -Status 'PASS' -Classification 'ALREADY VERIFIED EVIDENCE CHILD' -Summary ('Remote head is the direct evidence-only child ' + $remoteHead + ' for requested candidate ' + $CandidateSha + '.') | Out-Null
+                    Add-Stage -Name 'existing-evidence' -Status 'PASS' -Classification 'CANONICAL PASS EVIDENCE' -Summary 'Existing canonical PASS evidence matches the requested candidate; verification rerun is unnecessary.' -Evidence $existing | Out-Null
+                } else {
+                    Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'UNEXPECTED BRANCH DRIFT' -Summary ('Requested candidate=' + $CandidateSha + '; remoteHead=' + $remoteHead + '; directParent=' + $parent + '. No matching canonical PASS evidence child was proven.') | Out-Null
+                }
+            }
+        }
+    } else {
+        Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
+    }
+
+    if ($script:AlreadyVerified) {
+        $script:ProductionArtifact = $script:ExistingEvidence.productionArtifact
+        $script:ValidationArtifact = $script:ExistingEvidence.validationArtifact
+        $script:FinalOverall = 'PASS'
+    } elseif (Stage-Passed 'repository-identity') {
+        Write-LogLine
+        Write-LogLine '===== SCOPE / CONTRACT / CAUSALITY ====='
+
+        $ancestor = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'merge-base','--is-ancestor',$VerificationBase,$CandidateSha) -WorkingDirectory $RepositoryRoot
+        $changedResult = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'diff','--name-only',$VerificationBase,$CandidateSha,'--') -WorkingDirectory $RepositoryRoot
+        $changed = @($changedResult.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+        $unexpected = @($changed | Where-Object {
+            $value = [string]$_
+            ($script:AllowedChangedPaths -notcontains $value) -and (-not $value.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal))
+        })
+        $contractChanges = @($changed | Where-Object { ([string]$_).StartsWith('src/contracts/', [System.StringComparison]::Ordinal) })
+
+        $diffArgs = @('-C',$RepositoryRoot,'diff','--check',$VerificationBase,$CandidateSha,'--') + $SourceDiffCheckPaths
+        $diffCheck = Invoke-Native -File $script:GitPath -Arguments $diffArgs -WorkingDirectory $RepositoryRoot
+        Write-NativeResult $diffCheck
+
+        $scopePass = $ancestor.exitCode -eq 0 -and $changedResult.exitCode -eq 0 -and $unexpected.Count -eq 0 -and $contractChanges.Count -eq 0 -and $diffCheck.exitCode -eq 0
+        $scopeEvidence = [pscustomobject]@{
+            changedPaths = $changed
+            unexpectedPaths = $unexpected
+            contractChanges = $contractChanges
+            ancestorExitCode = $ancestor.exitCode
+            diffCheckExitCode = $diffCheck.exitCode
+            diffCheckPaths = $SourceDiffCheckPaths
+        }
+        if ($scopePass) {
+            Add-Stage -Name 'change-scope' -Status 'PASS' -Classification 'BOUNDED PREREQUISITE' -Summary 'Candidate descends from the blocked physical-evidence anchor; changes are confined to authorized prerequisite/evidence paths; frozen contracts are unchanged; source/task/verifier diff-check passes.' -Evidence $scopeEvidence | Out-Null
+        } else {
+            Add-Stage -Name 'change-scope' -Status 'FAIL' -Classification 'SCOPE OR CONTRACT VIOLATION' -Summary 'Candidate failed ancestry, path-boundary, contract-freeze, or source diff-check validation.' -Evidence $scopeEvidence | Out-Null
+        }
+
+        $baseSource = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($VerificationBase + ':' + $SourceRel)) -WorkingDirectory $RepositoryRoot
+        $candidateSource = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $SourceRel)) -WorkingDirectory $RepositoryRoot
+        $candidateTest = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $TestRel)) -WorkingDirectory $RepositoryRoot
+
+        $causalPass = $baseSource.exitCode -eq 0 -and $candidateSource.exitCode -eq 0 -and $candidateTest.exitCode -eq 0 -and
+            $baseSource.stdout.Contains('const root=await this.uniqueManagedRoot()') -and
+            $candidateSource.stdout.Contains('const expectedParent=await this.getFile(descriptor.parentRemoteObjectId)') -and
+            $candidateSource.stdout.Contains('target-parent-identity-mismatch') -and
+            $candidateTest.stdout.Contains('rootSearch.value,0') -and
+            $candidateTest.stdout.Contains('mutations.value,0')
+
+        if ($causalPass) {
+            Add-Stage -Name 'defect-causality' -Status 'PASS' -Classification 'OWNING DEFECT REPAIRED' -Summary 'Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry; regression asserts no global root search and no Drive mutation.' | Out-Null
+        } else {
+            Add-Stage -Name 'defect-causality' -Status 'FAIL' -Classification 'CAUSAL REPAIR PROOF INCOMPLETE' -Summary 'Base-to-candidate causal markers do not prove the assigned repair and regression boundaries.' | Out-Null
+        }
+    } else {
+        Add-Stage -Name 'change-scope' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Repository identity did not pass.' | Out-Null
+        Add-Stage -Name 'defect-causality' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Repository identity did not pass.' | Out-Null
+    }
+
+    if (-not $script:AlreadyVerified) {
+        if (Stage-Passed 'repository-identity' -and Stage-Passed 'change-scope') {
+            Write-LogLine
+            Write-LogLine '===== DISPOSABLE EXACT-SHA WORKTREE ====='
+            $worktreeCreate = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'worktree','add','--detach',$Worktree,$CandidateSha) -WorkingDirectory $RepositoryRoot
+            Write-NativeResult $worktreeCreate
+            if ($worktreeCreate.exitCode -eq 0) {
+                $script:WorktreeCreated = $true
+                Add-Stage -Name 'disposable-worktree' -Status 'PASS' -Classification 'EXACT-SHA DISPOSABLE WORKTREE' -Summary ('Created GUID-isolated detached worktree at ' + $Worktree + '.') | Out-Null
+            } else {
+                Add-Stage -Name 'disposable-worktree' -Status 'BLOCKED' -Classification 'WORKTREE CREATION FAILED' -Summary ('git worktree add failed with exit ' + $worktreeCreate.exitCode) -ExitCode $worktreeCreate.exitCode | Out-Null
+            }
+        } else {
+            Add-Stage -Name 'disposable-worktree' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Repository identity and bounded scope must pass before detached execution.' | Out-Null
+        }
+
+        $worktreeReady = Stage-Passed 'disposable-worktree'
+
+        $dependencyCode = Invoke-ProcessStage -Name 'dependencies' -Classification 'DEPENDENCY INSTALL' -File $script:NpmPath -Arguments @('ci','--no-audit','--no-fund','--loglevel','info') -WorkingDirectory $Worktree -Enabled $worktreeReady -BlockedReason 'Disposable worktree is unavailable.'
+        $dependenciesReady = $dependencyCode -eq 0
+
+        [void](Invoke-ProcessStage -Name 'typecheck' -Classification 'TYPECHECK' -File $script:NpmPath -Arguments @('run','typecheck') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.')
+
+        $productCompileCode = Invoke-ProcessStage -Name 'product-test-compile' -Classification 'PRODUCT TEST COMPILE' -File $script:NodePath -Arguments @('node_modules/typescript/bin/tsc','-p','tsconfig.test.json') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.'
+        $productCompiled = $productCompileCode -eq 0
+
+        [void](Invoke-ProcessStage -Name 'focused-folder-recovery' -Classification 'FOCUSED RECOVERY REGRESSION' -File $script:NodePath -Arguments @(
+            '--test',
+            '.test-build/test/workstreams/drive/phase6-remote-protocol.test.js',
+            '.test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js',
+            '.test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js'
+        ) -WorkingDirectory $Worktree -Enabled $productCompiled -BlockedReason 'Product test compilation did not pass.')
+
+        [void](Invoke-TestTreeStage -Name 'complete-product-suite' -Classification 'COMPLETE PRODUCT TEST SUITE' -Root (Join-Path $Worktree '.test-build/test') -Enabled $productCompiled -BlockedReason 'Product test compilation did not pass.')
+
+        $bvpCompileCode = Invoke-ProcessStage -Name 'bvp-compile' -Classification 'BVP COMPILE' -File $script:NodePath -Arguments @('node_modules/typescript/bin/tsc','-p','test-platform/tsconfig.json') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.'
+        $bvpCompiled = $bvpCompileCode -eq 0
+
+        [void](Invoke-TestTreeStage -Name 'complete-bvp-suite' -Classification 'COMPLETE BVP TEST SUITE' -Root (Join-Path $Worktree '.test-build/bvp/test-platform/test') -Enabled $bvpCompiled -BlockedReason 'BVP compilation did not pass.')
+
+        [void](Invoke-ProcessStage -Name 'architecture-guard' -Classification 'ARCHITECTURE GUARD' -File $script:NodePath -Arguments @('--test','.test-build/bvp/test-platform/test/architecture-guard.test.js') -WorkingDirectory $Worktree -Enabled $bvpCompiled -BlockedReason 'BVP compilation did not pass.')
+
+        [void](Invoke-ProcessStage -Name 'architecture-metrics' -Classification 'ARCHITECTURE METRICS' -File $script:NodePath -Arguments @('--test','.test-build/bvp/test-platform/test/architecture-metrics.test.js') -WorkingDirectory $Worktree -Enabled $bvpCompiled -BlockedReason 'BVP compilation did not pass.')
+
+        $contextPath = Join-Path $TempRoot 'verification-context.json'
+        if ($worktreeReady) {
+            $context = [ordered]@{
+                schemaVersion = 1
+                targetHead = $CandidateSha
+                baseSha = $VerificationBase
+                changedPaths = @((Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'diff','--name-only',$VerificationBase,$CandidateSha,'--') -WorkingDirectory $RepositoryRoot).stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            }
+            [System.IO.File]::WriteAllText($contextPath, (($context | ConvertTo-Json -Depth 5) + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+        }
+
+        [void](Invoke-ProcessStage -Name 'repository-check' -Classification 'REPOSITORY CHECK' -File $script:NodePath -Arguments @('.test-build/bvp/test-platform/src/repository-check.js') -WorkingDirectory $Worktree -Enabled $bvpCompiled -BlockedReason 'BVP compilation did not pass.' -Environment @{
+            PHX_VERIFICATION_CONTEXT_PATH = $contextPath
+            BVP_CHANGE_CLASS = 'ordinary'
+            PWSH = $script:PwshPath
+        })
+
+        $buildCode = Invoke-ProcessStage -Name 'production-build' -Classification 'PRODUCTION BUILD' -File $script:NpmPath -Arguments @('run','build') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.'
+        $buildReady = $buildCode -eq 0
+
+        if ($buildReady) {
+            try {
+                $mainJs = Join-Path $Worktree 'main.js'
+                if (-not (Test-Path -LiteralPath $mainJs -PathType Leaf)) {
+                    Add-Stage -Name 'production-artifact' -Status 'FAIL' -Classification 'PRODUCTION ARTIFACT MISSING' -Summary 'Production build returned success but main.js is missing.' | Out-Null
+                } else {
+                    $mainText = [System.IO.File]::ReadAllText($mainJs)
+                    $forbiddenMarkers = @(@(
+                        'BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL',
+                        '__BRAIN_BVP_MAILBOX_RUNTIME__',
+                        '__BRAIN_BVP_DEVICE_AGENT_FACTORY__',
+                        'BRAIN BVP Mailbox'
+                    ) | Where-Object { $mainText.Contains($_) })
+                    $script:ProductionArtifact = [pscustomobject]@{
+                        sizeBytes = (Get-Item -LiteralPath $mainJs).Length
+                        sha256 = Get-Sha256 $mainJs
+                        forbiddenMarkerHits = $forbiddenMarkers
+                    }
+                    if ($script:ProductionArtifact.sizeBytes -gt 0 -and $forbiddenMarkers.Count -eq 0) {
+                        Add-Stage -Name 'production-artifact' -Status 'PASS' -Classification 'PRODUCTION BUNDLE ISOLATED' -Summary ('Generated main.js is {0} bytes / {1}; validation marker hits=0.' -f $script:ProductionArtifact.sizeBytes, $script:ProductionArtifact.sha256) -Evidence $script:ProductionArtifact | Out-Null
+                    } else {
+                        Add-Stage -Name 'production-artifact' -Status 'FAIL' -Classification 'PRODUCTION ARTIFACT INVALID' -Summary ('Production artifact isolation failed; forbidden marker count=' + $forbiddenMarkers.Count) -Evidence $script:ProductionArtifact | Out-Null
+                    }
+                }
+            } catch {
+                Add-Stage -Name 'production-artifact' -Status 'INDETERMINATE' -Classification 'ARTIFACT INSPECTION ERROR' -Summary $_.Exception.Message | Out-Null
+            }
+        } else {
+            Add-Stage -Name 'production-artifact' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Production build did not pass.' | Out-Null
+        }
+
+        $validationEnabled = $buildReady -and $bvpCompiled
+        $validationBuildCode = Invoke-ProcessStage -Name 'validation-artifact-build' -Classification 'VALIDATION ARTIFACT BUILD' -File $script:NodePath -Arguments @('.test-build/bvp/test-platform/src/live-device/build-validation-artifact.js') -WorkingDirectory $Worktree -Enabled $validationEnabled -BlockedReason 'Production build and BVP compilation must both pass.'
+
+        if ($validationBuildCode -eq 0) {
+            try {
+                $validationDir = Join-Path $Worktree '.test-build/bvp-live-device/plugin'
+                $identityPath = Join-Path $validationDir 'build-identity.json'
+                $artifactPath = Join-Path $validationDir 'main.js'
+                if (-not (Test-Path -LiteralPath $identityPath -PathType Leaf) -or -not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+                    Add-Stage -Name 'validation-artifact' -Status 'FAIL' -Classification 'VALIDATION ARTIFACT MISSING' -Summary 'Validation artifact or build identity is missing after successful builder execution.' | Out-Null
+                } else {
+                    $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
+                    $actualSize = (Get-Item -LiteralPath $artifactPath).Length
+                    $actualHash = Get-Sha256 $artifactPath
+                    $script:ValidationArtifact = [pscustomobject]@{
+                        sourceCommit = [string]$identity.sourceCommit
+                        artifactSize = [int64]$identity.artifactSize
+                        artifactSha256 = [string]$identity.artifactSha256
+                        actualSize = $actualSize
+                        actualSha256 = $actualHash
+                        manifestSha256 = [string]$identity.manifestSha256
+                        testPlatformInputs = @($identity.testPlatformInputs)
+                    }
+                    $validIdentity = $script:ValidationArtifact.sourceCommit -eq $CandidateSha -and
+                        $script:ValidationArtifact.artifactSize -eq $actualSize -and
+                        $script:ValidationArtifact.artifactSha256 -eq $actualHash
+                    if ($validIdentity) {
+                        Add-Stage -Name 'validation-artifact' -Status 'PASS' -Classification 'EXACT VALIDATION ARTIFACT' -Summary ('Validation main.js source={0}; size={1}; sha256={2}.' -f $CandidateSha, $actualSize, $actualHash) -Evidence $script:ValidationArtifact | Out-Null
+                    } else {
+                        Add-Stage -Name 'validation-artifact' -Status 'FAIL' -Classification 'VALIDATION ARTIFACT IDENTITY MISMATCH' -Summary 'Validation build identity does not exactly match the candidate and generated artifact.' -Evidence $script:ValidationArtifact | Out-Null
+                    }
+                }
+            } catch {
+                Add-Stage -Name 'validation-artifact' -Status 'INDETERMINATE' -Classification 'VALIDATION ARTIFACT INSPECTION ERROR' -Summary $_.Exception.Message | Out-Null
+            }
+        } else {
+            Add-Stage -Name 'validation-artifact' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Validation artifact builder did not pass.' | Out-Null
+        }
+
+        if ($worktreeReady) {
+            $status = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'status','--porcelain','--untracked-files=all') -WorkingDirectory $Worktree
+            $statusLines = @($status.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($status.exitCode -eq 0 -and $statusLines.Count -eq 0) {
+                Add-Stage -Name 'repository-mutation-audit' -Status 'PASS' -Classification 'NO UNEXPECTED REPOSITORY MUTATION' -Summary 'Verification left the detached candidate worktree clean; generated build/test artifacts are repository-ignored.' | Out-Null
+            } elseif ($status.exitCode -eq 0) {
+                Add-Stage -Name 'repository-mutation-audit' -Status 'FAIL' -Classification 'UNEXPECTED REPOSITORY MUTATION' -Summary ('Verification produced unexpected tracked/untracked changes: ' + ($statusLines -join '; ')) -Evidence $statusLines | Out-Null
+            } else {
+                Add-Stage -Name 'repository-mutation-audit' -Status 'INDETERMINATE' -Classification 'GIT STATUS FAILED' -Summary ('Unable to inspect detached worktree status; git exit ' + $status.exitCode) | Out-Null
+            }
+        } else {
+            Add-Stage -Name 'repository-mutation-audit' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Disposable worktree is unavailable.' | Out-Null
+        }
+
+        $requiredStageNames = @(
+            'toolchain',
+            'repository-identity',
+            'change-scope',
+            'defect-causality',
+            'disposable-worktree',
+            'dependencies',
+            'typecheck',
+            'product-test-compile',
+            'focused-folder-recovery',
+            'complete-product-suite',
+            'bvp-compile',
+            'complete-bvp-suite',
+            'architecture-guard',
+            'architecture-metrics',
+            'repository-check',
+            'production-build',
+            'production-artifact',
+            'validation-artifact-build',
+            'validation-artifact',
+            'repository-mutation-audit'
+        )
+
+        $missingRequired = [System.Collections.Generic.List[string]]::new()
+        $nonPassRequired = [System.Collections.Generic.List[string]]::new()
+        foreach ($name in $requiredStageNames) {
+            $stage = @(Get-Stage $name)
+            if ($stage.Count -eq 0) {
+                $missingRequired.Add($name)
+            } elseif ($stage[-1].status -ne 'PASS') {
+                $nonPassRequired.Add($name + '=' + $stage[-1].status)
+            }
+        }
+
+        if ($missingRequired.Count -eq 0 -and $nonPassRequired.Count -eq 0) {
+            Add-Stage -Name 'acceptance-gate' -Status 'PASS' -Classification 'ALL REQUIRED VERIFICATION PASSED' -Summary 'Every required verification layer passed; canonical evidence publication is authorized.' | Out-Null
+            $script:FinalOverall = 'PASS'
+        } else {
+            Add-Stage -Name 'acceptance-gate' -Status 'FAIL' -Classification 'REQUIRED VERIFICATION INCOMPLETE' -Summary ('Required stages not PASS. Missing=' + ($missingRequired -join ',') + '; nonPass=' + ($nonPassRequired -join ',')) -Evidence ([pscustomobject]@{ missing = @($missingRequired); nonPass = @($nonPassRequired) }) | Out-Null
+            $script:FinalOverall = 'FAIL'
+        }
+
+        if ($script:FinalOverall -eq 'PASS') {
+            Write-LogLine
+            Write-LogLine '===== PASS-ONLY CANONICAL EVIDENCE PUBLICATION ====='
+
+            $evidenceDir = Join-Path $Worktree ($EvidenceRel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+            [void][System.IO.Directory]::CreateDirectory($evidenceDir)
+
+            Remove-Item -LiteralPath (Join-Path $Worktree ($FailJsonRel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))) -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath (Join-Path $Worktree ($FailMdRel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))) -Force -ErrorAction SilentlyContinue
+
+            $canonical = Write-ReportFiles -Directory $evidenceDir -Overall 'PASS' -JsonName ([System.IO.Path]::GetFileName($PassJsonRel)) -MdName ([System.IO.Path]::GetFileName($PassMdRel)) -LogName ([System.IO.Path]::GetFileName($PassLogRel))
+
+            $evidenceStatus = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'status','--porcelain','--untracked-files=all') -WorkingDirectory $Worktree
+            $evidenceLines = @($evidenceStatus.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $outsideEvidence = @($evidenceLines | Where-Object {
+                $line = [string]$_
+                if ($line.Length -lt 4) { return $true }
+                $relative = $line.Substring(3).Replace('\','/')
+                return -not $relative.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal)
+            })
+
+            if ($evidenceStatus.exitCode -ne 0 -or $outsideEvidence.Count -gt 0) {
+                Add-Stage -Name 'evidence-preparation' -Status 'FAIL' -Classification 'EVIDENCE SCOPE VIOLATION' -Summary ('PASS evidence preparation produced out-of-scope changes: ' + ($outsideEvidence -join '; ')) -Evidence $evidenceLines | Out-Null
+                $script:FinalOverall = 'FAIL'
+            } else {
+                Add-Stage -Name 'evidence-preparation' -Status 'PASS' -Classification 'EVIDENCE-ONLY MUTATION' -Summary 'Canonical PASS evidence is the only residual repository mutation.' -Evidence $canonical | Out-Null
+
+                $remoteRefresh = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune') -WorkingDirectory $RepositoryRoot
+                $remoteNowProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-parse',('refs/remotes/origin/' + $Branch)) -WorkingDirectory $RepositoryRoot
+                $remoteNow = $remoteNowProbe.stdout.Trim()
+
+                if ($remoteRefresh.exitCode -ne 0 -or $remoteNowProbe.exitCode -ne 0 -or $remoteNow -ne $CandidateSha) {
+                    Add-Stage -Name 'evidence-publication' -Status 'BLOCKED' -Classification 'BRANCH LEASE LOST' -Summary ('Remote branch changed before PASS evidence publication. Expected ' + $CandidateSha + '; observed ' + $remoteNow + '. No evidence commit was published.') | Out-Null
+                    $script:FinalOverall = 'FAIL'
+                } else {
+                    $add = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'add','--',$EvidenceRel) -WorkingDirectory $Worktree
+                    if ($add.exitCode -ne 0) {
+                        Add-Stage -Name 'evidence-publication' -Status 'INDETERMINATE' -Classification 'EVIDENCE STAGING FAILED' -Summary ('git add failed with exit ' + $add.exitCode) | Out-Null
+                        $script:FinalOverall = 'FAIL'
+                    } else {
+                        $commit = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'commit','-m','test(bvp): record S08F prerequisite verification evidence') -WorkingDirectory $Worktree
+                        Write-NativeResult $commit
+                        if ($commit.exitCode -ne 0) {
+                            Add-Stage -Name 'evidence-publication' -Status 'INDETERMINATE' -Classification 'EVIDENCE COMMIT FAILED' -Summary ('Evidence commit failed with exit ' + $commit.exitCode) | Out-Null
+                            $script:FinalOverall = 'FAIL'
+                        } else {
+                            $headProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'rev-parse','HEAD') -WorkingDirectory $Worktree
+                            $script:EvidenceCommit = $headProbe.stdout.Trim()
+                            $parentProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'rev-parse','HEAD^') -WorkingDirectory $Worktree
+                            $committedPathsProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'diff-tree','--no-commit-id','--name-only','-r','HEAD') -WorkingDirectory $Worktree
+                            $committedPaths = @($committedPathsProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                            $nonEvidenceCommitted = @($committedPaths | Where-Object { -not ([string]$_).StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal) })
+
+                            if ($headProbe.exitCode -ne 0 -or $parentProbe.exitCode -ne 0 -or $parentProbe.stdout.Trim() -ne $CandidateSha -or $nonEvidenceCommitted.Count -gt 0) {
+                                Add-Stage -Name 'evidence-publication' -Status 'FAIL' -Classification 'EVIDENCE COMMIT INVARIANT FAILED' -Summary 'Prepared evidence commit is not a direct evidence-only child of the verified candidate; it was not pushed.' -Evidence ([pscustomobject]@{ parent = $parentProbe.stdout.Trim(); committedPaths = $committedPaths }) | Out-Null
+                                $script:FinalOverall = 'FAIL'
+                            } else {
+                                $push = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'push','--force-with-lease=refs/heads/' + $Branch + ':' + $CandidateSha,'origin',('HEAD:refs/heads/' + $Branch)) -WorkingDirectory $Worktree
+                                Write-NativeResult $push
+                                if ($push.exitCode -eq 0) {
+                                    Add-Stage -Name 'evidence-publication' -Status 'PASS' -Classification 'CANONICAL EVIDENCE PUBLISHED' -Summary ('Published direct evidence-only child ' + $script:EvidenceCommit + ' for verified candidate ' + $CandidateSha + '.') | Out-Null
+                                } else {
+                                    Add-Stage -Name 'evidence-publication' -Status 'INDETERMINATE' -Classification 'EVIDENCE PUSH FAILED' -Summary ('Evidence commit exists locally at ' + $script:EvidenceCommit + ' but push failed with exit ' + $push.exitCode + '. Diagnostic workspace is preserved.') | Out-Null
+                                    $script:FinalOverall = 'FAIL'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Add-Stage -Name 'evidence-publication' -Status 'SKIPPED' -Classification 'PASS-ONLY PUBLICATION' -Summary 'Canonical evidence publication is intentionally skipped because verification did not reach PASS.' | Out-Null
+        }
+    }
+
+    if ($script:AlreadyVerified) {
+        $script:FinalOverall = 'PASS'
+    } elseif ($script:FinalOverall -eq 'PASS' -and -not (Stage-Passed 'evidence-publication')) {
+        $script:FinalOverall = 'FAIL'
+    }
+
+} catch {
+    $script:HarnessError = $_.Exception.ToString()
+    Add-Stage -Name 'harness-terminal' -Status 'INDETERMINATE' -Classification 'HARNESS ERROR' -Summary $_.Exception.Message | Out-Null
+    $script:FinalOverall = 'FAIL'
+} finally {
+    try {
+        $local = Write-ReportFiles -Directory $LocalReportDir -Overall $script:FinalOverall -JsonName 'result.json' -MdName 'result.md' -LogName 'result.log'
+        if ($script:FinalOverall -eq 'FAIL') {
+            Write-LogLine ('Local structured report: ' + $local.json)
+        }
+    } catch {
+        Write-Host ('Unable to persist local structured report: ' + $_.Exception.Message)
+        $script:FinalOverall = 'FAIL'
+    }
+
+    Print-FinalSummary -Overall $script:FinalOverall
+
+    if ($script:FinalOverall -eq 'PASS') {
+        if ($script:WorktreeCreated) {
+            try {
+                $remove = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'worktree','remove','--force',$Worktree) -WorkingDirectory $RepositoryRoot
+                if ($remove.exitCode -ne 0) {
+                    Write-Host ('WARNING: successful verification worktree cleanup failed; preserved at ' + $Worktree)
+                }
+            } catch {
+                Write-Host ('WARNING: successful verification worktree cleanup failed: ' + $_.Exception.Message)
+            }
+        }
+        if (-not $script:AlreadyVerified) {
+            Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        [System.Environment]::Exit(0)
+    } else {
+        [System.Environment]::Exit(20)
+    }
+}
