@@ -214,18 +214,21 @@ $git = Get-Command git -ErrorAction SilentlyContinue
 $node = Get-Command node -ErrorAction SilentlyContinue
 $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
 if ($null -eq $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
+$pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
 
 $toolIssues = [System.Collections.Generic.List[string]]::new()
 if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container)) { $toolIssues.Add('repository-root-unavailable') }
 if ($null -eq $git) { $toolIssues.Add('git-unavailable') }
 if ($null -eq $node) { $toolIssues.Add('node-unavailable') }
 if ($null -eq $npm) { $toolIssues.Add('npm-unavailable') }
+if ($null -eq $pwsh) { $toolIssues.Add('pwsh-unavailable') }
 
 if ($toolIssues.Count -eq 0) {
   $pathParts = [System.Collections.Generic.List[string]]::new()
   foreach ($candidatePath in @(
     (Split-Path -Parent $node.Source),
     (Split-Path -Parent $git.Source),
+    (Split-Path -Parent $pwsh.Source),
     (Join-Path $env:SystemRoot 'System32'),
     $env:SystemRoot,
     (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0')
@@ -379,7 +382,7 @@ if ($worktreeReady) {
       $mainJs = Join-Path $Worktree 'main.js'
       if (-not (Test-Path -LiteralPath $mainJs -PathType Leaf)) { throw 'main.js missing after successful production build.' }
       $sourceText = [System.IO.File]::ReadAllText($mainJs)
-      $forbidden = @('BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox') | Where-Object { $sourceText.Contains($_) }
+      $forbidden = @(@('BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox') | Where-Object { $sourceText.Contains($_) })
       $ProductionIdentity = [pscustomobject]@{
         sizeBytes = (Get-Item -LiteralPath $mainJs).Length
         sha256 = Get-Sha256 $mainJs
@@ -397,40 +400,13 @@ if ($worktreeReady) {
   $preArtifactFailures = @(Current-Failures)
   $canMaterialize = $preArtifactFailures.Count -eq 0 -and $buildCode -eq 0
   if ($canMaterialize) {
-    try {
-      Write-LogLine
-      Write-LogLine '===== DERIVED PRODUCTION ARTIFACT COMMIT ====='
-      & $git.Source -C $Worktree diff --check -- main.js 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-      if ($LASTEXITCODE -ne 0) { throw 'main.js diff-check failed.' }
-      & $git.Source -C $Worktree diff --quiet -- main.js
-      $mainChanged = $LASTEXITCODE -ne 0
-      if ($mainChanged) {
-        $dirtyBeforeArtifact = @(& $git.Source -C $Worktree status --porcelain --untracked-files=all)
-        $unexpectedDirty = @($dirtyBeforeArtifact | Where-Object {
-          $line = [string]$_
-          if ($line.Length -lt 4) { return $true }
-          $value = $line.Substring(3).Replace('\','/')
-          return $value -ne 'main.js'
-        })
-        if ($unexpectedDirty.Count -ne 0) { throw ('Unexpected worktree changes before artifact commit: ' + ($unexpectedDirty -join '; ')) }
-
-        & $git.Source -C $Worktree add -- main.js 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-        if ($LASTEXITCODE -ne 0) { throw 'git add main.js failed.' }
-        & $git.Source -C $Worktree commit -m 'build(sync): refresh bundle for multi-root folder recovery' 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-        if ($LASTEXITCODE -ne 0) { throw 'derived production artifact commit failed.' }
-        $ArtifactCommit = ((& $git.Source -C $Worktree rev-parse HEAD 2>&1) -join [Environment]::NewLine).Trim()
-        $VerifiedCandidateSha = $ArtifactCommit
-        Add-Stage -Name 'production-artifact-materialization' -Status 'PASS' -Classification 'DERIVED ARTIFACT COMMIT' -Summary ('Created derived production artifact commit ' + $ArtifactCommit + '.') -Evidence ([pscustomobject]@{ parentCandidate = $CandidateSha; artifactCommit = $ArtifactCommit; productionArtifact = $ProductionIdentity })
-      } else {
-        $VerifiedCandidateSha = $CandidateSha
-        Add-Stage -Name 'production-artifact-materialization' -Status 'PASS' -Classification 'BUNDLE ALREADY CURRENT' -Summary 'Production build reproduced the tracked main.js exactly; no derived artifact commit was required.'
-      }
-    } catch {
-      Add-Stage -Name 'production-artifact-materialization' -Status 'FAIL' -Classification 'DERIVED ARTIFACT COMMIT FAILED' -Summary $_.Exception.Message
-    }
+    $VerifiedCandidateSha = $CandidateSha
+    Add-Stage -Name 'production-artifact-materialization' -Status 'PASS' -Classification 'EPHEMERAL EXACT-SHA ARTIFACT' -Summary 'Production main.js was built and identity-verified in the exact-SHA disposable worktree. Repository policy intentionally ignores main.js, so no tracked artifact commit is created.' -Evidence $ProductionIdentity
   } else {
-    Add-Stage -Name 'production-artifact-materialization' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Implementation/test/build gates did not all pass; no shipping artifact commit was created.'
-    & $git.Source -C $Worktree restore --worktree --staged -- main.js 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
+    Add-Stage -Name 'production-artifact-materialization' -Status 'SKIPPED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Implementation/test/build gates did not all pass; generated production artifact is not accepted for S08F rebinding.'
+    if (Test-Path -LiteralPath (Join-Path $Worktree 'main.js')) {
+      Remove-Item -LiteralPath (Join-Path $Worktree 'main.js') -Force -ErrorAction SilentlyContinue
+    }
   }
 
   $artifactReady = @($Results | Where-Object { $_.name -eq 'production-artifact-materialization' -and $_.status -eq 'PASS' }).Count -eq 1
@@ -586,11 +562,11 @@ Write-LogLine '------------------------------------------------------------'
 Write-LogLine ('OVERALL: {0}' -f $Overall)
 Write-LogLine ('INPUT CANDIDATE: {0}' -f $CandidateSha)
 Write-LogLine ('VERIFIED CANDIDATE: {0}' -f $VerifiedCandidateSha)
-Write-LogLine ('PRODUCTION ARTIFACT COMMIT: {0}' -f $(if ($ArtifactCommit) { $ArtifactCommit } else { '<none>' }))
+Write-LogLine ('PRODUCTION ARTIFACT COMMIT: {0}' -f $(if ($ArtifactCommit) { $ArtifactCommit } else { '<not-applicable: main.js is repository-ignored>' }))
 Write-LogLine ('EVIDENCE COMMIT: {0}' -f $(if ($EvidenceCommit) { $EvidenceCommit } else { '<none>' }))
 Write-LogLine ('DIAGNOSTIC WORKSPACE: {0}' -f $TempRoot)
 if ($null -ne $ProductionIdentity) { Write-LogLine ('PRODUCTION MAIN.JS: {0} bytes / {1}' -f $ProductionIdentity.sizeBytes, $ProductionIdentity.sha256) }
 if ($null -ne $ValidationIdentity) { Write-LogLine ('VALIDATION MAIN.JS: {0} bytes / {1}' -f $ValidationIdentity.actualSize, $ValidationIdentity.actualSha256) }
 Write-LogLine '============================================================'
 
-[Environment]::ExitCode = if ($Overall -eq 'PASS') { 0 } else { 20 }
+if ($Overall -eq 'PASS') { [System.Environment]::Exit(0) } else { [System.Environment]::Exit(20) }
