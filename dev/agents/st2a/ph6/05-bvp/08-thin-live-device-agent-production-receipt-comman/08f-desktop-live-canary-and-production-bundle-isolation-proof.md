@@ -522,3 +522,32 @@ Required next action:
 1. publish deployed PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` into the standard runtime store;
 2. run authoritative PHX-CI against the exact S08F task branch using base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, ordinary change class, and a GUID-isolated temp root under `C:\`;
 3. do not rerun the custom S08F prerequisite verifier solely because of this administrative/runtime repair.
+
+
+## 0.13 PHX-CI Evidence Recovery Acceptance
+
+Authoritative PHX-CI run `34a003cf-8277-4ba5-8831-c9019eb65596` at source build HEAD `06c9dbeb95ee5f0b0336745e8772074e1ace9b56` and runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` established:
+
+- change-set verification PASS;
+- repository verification PASS;
+- focused tests PASS;
+- full tests PASS;
+- build PASS;
+- artifact verification PASS;
+- production `main.js` 886635 bytes / SHA-256 `550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477`.
+
+The original PHX-CI evidence commit `ace5192897c08b4170407211260c89f71f74335f` reported Overall BLOCKED solely because the explicitly authorized `phx-ci.json` runtime rebind was evaluated under repository change class `ordinary`, producing exactly one architecture-guard violation: `FROZEN_SURFACE_CHANGED phx-ci.json`. Architecture metrics passed; no product/test/build/artifact failure was demonstrated.
+
+Under the governing owner-rerun prohibition and evidence-recovery rule, the SUT is not rerun for this administrative classification defect. Canonical recovered PASS evidence is:
+
+`dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PHX-CI-EVIDENCE-RECOVERY-PASS.md`
+
+Recovery evidence commit:
+
+`c744453d76eb5d39d442511c728c88b991a70639`
+
+The original PHX-CI evidence remains preserved unchanged. The unexecuted composite `check` wrapper is not falsely claimed PASS.
+
+Recovered authoritative repository verification verdict: **PASS**.
+
+Next required process step: independent review of the bounded S08F prerequisite repair using the accepted implementation, prerequisite evidence, original PHX-CI evidence, and recovered PHX-CI PASS evidence. Physical S08F recovery and S09 remain unauthorized pending review/acceptance.
