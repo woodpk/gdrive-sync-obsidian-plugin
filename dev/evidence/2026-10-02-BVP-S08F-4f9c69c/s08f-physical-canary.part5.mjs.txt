@@ -52,6 +52,11 @@
     record('harness-terminal','FAIL',classification,primaryReason);
   }
 } finally {
+  if (target) {
+    const shimCleanup = await restoreMailboxResultRecoveryShim(target).catch(error => ({ok:false,restored:false,error:error instanceof Error?error.message:String(error)}));
+    if (shimCleanup?.restored) record('mailbox-recovery-shim-finally','PASS','original-mailbox-restored','Finally path removed the temporary mailbox result recovery shim.',shimCleanup);
+    await stopControl(controlKey).catch(() => undefined);
+  }
   await persistVerdict().catch(error => console.error('Unable to persist final S08F verdict evidence:', error));
   console.log('============================================================');
   console.log('S08F PHYSICAL CANARY SUMMARY');
