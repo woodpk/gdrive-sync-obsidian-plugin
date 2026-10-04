@@ -133,7 +133,7 @@ function Invoke-TestTree {
       $batch = @($files[$offset..$last])
       $batchNumber = [int]($offset / $batchSize) + 1
       Write-LogLine ('--- {0} batch {1}/{2}: {3} test files ---' -f $Name, $batchNumber, $batchCount, $batch.Count)
-      & $NodePath @('--test') @batch 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
+      $nodeArguments = @('--test') + $batch; & $NodePath @nodeArguments 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
       $code = $LASTEXITCODE
       if ($null -eq $code) { $code = 0 }
       if ($code -ne 0) {
