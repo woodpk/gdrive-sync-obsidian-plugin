@@ -280,7 +280,8 @@ if ($identityReady) {
   & $git.Source -C $RepositoryRoot merge-base --is-ancestor $VerificationBase $CandidateSha 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
   $ancestorCode = $LASTEXITCODE
   $changed = @(& $git.Source -C $RepositoryRoot diff --name-only $VerificationBase $CandidateSha --)
-  $diffCheckOutput = ((& $git.Source -C $RepositoryRoot diff --check $VerificationBase $CandidateSha -- 2>&1) -join [Environment]::NewLine)
+  $diffCheckPaths = @($TaskRel,$SourceRel,$TestRel,$VerifierRel)
+  $diffCheckOutput = ((& $git.Source -C $RepositoryRoot diff --check $VerificationBase $CandidateSha -- @diffCheckPaths 2>&1) -join [Environment]::NewLine)
   $diffCheckCode = $LASTEXITCODE
   $unexpected = @($changed | Where-Object {
     $value = [string]$_
@@ -294,10 +295,11 @@ if ($identityReady) {
     contractChanges = $contractChanges
     ancestorExitCode = $ancestorCode
     diffCheckExitCode = $diffCheckCode
+    diffCheckPaths = $diffCheckPaths
     diffCheckOutput = $diffCheckOutput
   }
   if ($scopeReady) {
-    Add-Stage -Name 'change-scope' -Status 'PASS' -Classification 'BOUNDED PREREQUISITE' -Summary 'Candidate is descended from the blocked physical-evidence anchor; changed paths are authorized; frozen synchronization contracts are unchanged; diff-check passes.' -Evidence $scopeEvidence
+    Add-Stage -Name 'change-scope' -Status 'PASS' -Classification 'BOUNDED PREREQUISITE' -Summary 'Candidate is descended from the blocked physical-evidence anchor; changed paths are authorized; frozen synchronization contracts are unchanged; source/task/verifier diff-check passes while raw evidence is preserved verbatim.' -Evidence $scopeEvidence
   } else {
     Add-Stage -Name 'change-scope' -Status 'FAIL' -Classification 'SCOPE OR CONTRACT VIOLATION' -Summary 'Candidate failed ancestry, path-boundary, contract-freeze, or diff-check validation.' -Evidence $scopeEvidence
   }
