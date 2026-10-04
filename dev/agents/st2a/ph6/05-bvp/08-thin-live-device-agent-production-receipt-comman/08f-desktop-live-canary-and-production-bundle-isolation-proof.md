@@ -436,3 +436,23 @@ Required change:
 4. Re-run the same complete protocol-aligned prerequisite verifier. Acceptance still requires every required stage PASS.
 
 Do not begin S09.
+
+## 0.9 Independent Review Rejection — Required Corrections
+
+Independent review session `review-s08f-multi-root-recovery-prerequisite-01` REJECTED candidate `92d153b990ed0fca79eb76187d867cb272e5dadb` with three approval-blocking findings:
+
+- `S08F-R01` CRITICAL — missing expected-parent exact observation incorrectly falls back to account-global managed-root discovery and can manufacture recovery authority;
+- `S08F-R02` MAJOR — already-verified evidence-child recognition is insufficiently validated and can fail open;
+- `S08F-R03` MODERATE — post-publication local-report failure can convert a published PASS into process FAIL.
+
+Required correction binding:
+
+1. `src/drive/google-drive-port.ts`: remove the expected-parent `not-found` fallback entirely. Any unsuccessful exact expected-parent read, including `not-found`, must return `unobservable`. Continue only after observing that exact object as a live folder, proving managed-root ancestry, resolving the intended parent path under that observed root, and matching that resolved ID to the exact observed parent ID.
+2. `test/workstreams/drive/phase6-remote-protocol.test.ts`: add direct regressions for expected parent `not-found` and replacement-at-same-path. Both must remain unobservable, perform zero mutation, and perform zero account-global root enumeration.
+3. Add or strengthen downstream recovery coverage so an unobservable missing/replaced parent remains recovery-pending / non-redispatchable rather than becoming verified-not-applied or safe-retry-eligible.
+4. `Invoke-S08FPrerequisiteVerification.ps1`: already-verified recognition must require exactly one parent equal to the candidate, evidence-only changed paths, complete canonical PASS schema/identity, required stage presence with PASS status, matching verification base/branch/candidate, physicalMutationAttempted=false, and valid artifact identities.
+5. Synthetic/fail-closed verifier self-checks must demonstrate that an out-of-scope direct child or incomplete/fabricated PASS report cannot be accepted as already verified.
+6. Complete all verdict-affecting reporting before evidence publication, or make post-publication local reporting explicitly best-effort and incapable of changing a published PASS into FAIL.
+7. Re-run full protocol-aligned verification after correction, then repeat independent REVIEW before ACCEPT.
+
+No physical S08F execution is authorized while these review findings remain open. Do not begin S09.
