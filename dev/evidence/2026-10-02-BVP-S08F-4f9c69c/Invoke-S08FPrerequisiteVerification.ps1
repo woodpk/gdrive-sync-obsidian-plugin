@@ -820,10 +820,10 @@ try {
                         sha256 = Get-Sha256 $mainJs
                         forbiddenMarkerHits = $forbiddenMarkers
                     }
-                    if ($script:ProductionArtifact.sizeBytes -gt 0 -and $forbiddenMarkers.Count -eq 0) {
-                        Add-Stage -Name 'production-artifact' -Status 'PASS' -Classification 'PRODUCTION BUNDLE ISOLATED' -Summary ('Generated main.js is {0} bytes / {1}; validation marker hits=0.' -f $script:ProductionArtifact.sizeBytes, $script:ProductionArtifact.sha256) -Evidence $script:ProductionArtifact | Out-Null
+                    if ($script:ProductionArtifact.sizeBytes -gt 0 -and $forbiddenMarkers.Count -eq 0 -and $script:ProductionArtifact.sha256 -eq $AcceptedProductionSha256) {
+                        Add-Stage -Name 'production-artifact' -Status 'PASS' -Classification 'PRODUCTION BUNDLE ISOLATED AND DETERMINISTIC' -Summary ('Generated main.js is {0} bytes / {1}; validation marker hits=0; final hash exactly reproduces the S08B-bound pre-verification hash.' -f $script:ProductionArtifact.sizeBytes, $script:ProductionArtifact.sha256) -Evidence $script:ProductionArtifact | Out-Null
                     } else {
-                        Add-Stage -Name 'production-artifact' -Status 'FAIL' -Classification 'PRODUCTION ARTIFACT INVALID' -Summary ('Production artifact isolation failed; forbidden marker count=' + $forbiddenMarkers.Count) -Evidence $script:ProductionArtifact | Out-Null
+                        Add-Stage -Name 'production-artifact' -Status 'FAIL' -Classification 'PRODUCTION ARTIFACT INVALID OR NONDETERMINISTIC' -Summary ('Production artifact check failed; forbidden marker count={0}; expectedSha={1}; actualSha={2}.' -f $forbiddenMarkers.Count,$AcceptedProductionSha256,$script:ProductionArtifact.sha256) -Evidence $script:ProductionArtifact | Out-Null
                     }
                 }
             } catch {
