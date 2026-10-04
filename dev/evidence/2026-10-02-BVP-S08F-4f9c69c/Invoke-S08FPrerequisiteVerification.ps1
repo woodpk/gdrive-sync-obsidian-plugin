@@ -768,7 +768,8 @@ try {
             '--test',
             '.test-build/test/workstreams/drive/phase6-remote-protocol.test.js',
             '.test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js',
-            '.test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js'
+            '.test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js',
+            '.test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js'
         ) -WorkingDirectory $Worktree -Enabled $productCompiled -BlockedReason 'Product test compilation did not pass.')
 
         [void](Invoke-TestTreeStage -Name 'complete-product-suite' -Classification 'COMPLETE PRODUCT TEST SUITE' -Root (Join-Path $Worktree '.test-build/test') -Enabled $productCompiled -BlockedReason 'Product test compilation did not pass.')
