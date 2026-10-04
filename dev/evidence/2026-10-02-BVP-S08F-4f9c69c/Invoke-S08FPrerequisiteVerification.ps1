@@ -676,34 +676,55 @@ try {
     }
 
     if (Stage-Passed 'toolchain') {
-        $syntheticValid = New-SyntheticValidPassReport
-        $syntheticEvidencePath = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json'
-        $validModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $syntheticValid
-        $outOfScopeModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath,'src/drive/unexpected.ts') -Report $syntheticValid
-        $mergeModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha,'other-parent') -ChangedPaths @($syntheticEvidencePath) -Report $syntheticValid
-        $incomplete = New-SyntheticValidPassReport
-        $incomplete.stages = @($incomplete.stages | Where-Object { $_.name -ne 'complete-product-suite' })
-        $incompleteModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $incomplete
-        $fabricated = [pscustomobject]@{ schemaVersion=2; overall='PASS'; candidateSha=$CandidateSha }
-        $fabricatedModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $fabricated
-        $recognitionSelfCheckEvidence = [pscustomobject]@{
-            valid = $validModel
-            outOfScope = $outOfScopeModel
-            multiParent = $mergeModel
-            incomplete = $incompleteModel
-            fabricated = $fabricatedModel
+        $syntheticValid=New-SyntheticValidPassReport
+        $syntheticFacts=New-SyntheticCandidateFacts
+        $syntheticEvidencePaths=@($CanonicalEvidencePaths)
+
+        $validModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths $syntheticEvidencePaths -Report $syntheticValid -CandidateFacts $syntheticFacts
+        $outOfScopeModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths (@($syntheticEvidencePaths)+@('src/drive/unexpected.ts')) -Report $syntheticValid -CandidateFacts $syntheticFacts
+        $verifierMutationModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths (@($syntheticEvidencePaths)+@($VerifierRel)) -Report $syntheticValid -CandidateFacts $syntheticFacts
+        $mergeModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha,'other-parent') -ChangedPaths $syntheticEvidencePaths -Report $syntheticValid -CandidateFacts $syntheticFacts
+
+        $incomplete=New-SyntheticValidPassReport
+        $incomplete.stages=@($incomplete.stages | Where-Object { $_.name -ne 'complete-product-suite' })
+        $incompleteModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths $syntheticEvidencePaths -Report $incomplete -CandidateFacts $syntheticFacts
+
+        $fabricated=[pscustomobject]@{schemaVersion=2;overall='PASS';candidateSha=$CandidateSha}
+        $fabricatedModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths $syntheticEvidencePaths -Report $fabricated -CandidateFacts $syntheticFacts
+
+        $unrelatedInput=New-SyntheticValidPassReport
+        $unrelatedInput.inputCandidateSha='2222222222222222222222222222222222222222'
+        $unrelatedInputModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths $syntheticEvidencePaths -Report $unrelatedInput -CandidateFacts $syntheticFacts
+
+        $contradictoryProduction=New-SyntheticValidPassReport
+        $contradictoryProductionStage=@($contradictoryProduction.stages | Where-Object { $_.name -eq 'production-artifact' })
+        $contradictoryProductionStage[0].evidence.sha256='cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+        $contradictoryProductionModel=Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-evidence-child',$CandidateSha) -ChangedPaths $syntheticEvidencePaths -Report $contradictoryProduction -CandidateFacts $syntheticFacts
+
+        $recognitionSelfCheckEvidence=[pscustomobject]@{
+            valid=$validModel
+            outOfScope=$outOfScopeModel
+            verifierMutation=$verifierMutationModel
+            multiParent=$mergeModel
+            incomplete=$incompleteModel
+            fabricated=$fabricatedModel
+            unrelatedInput=$unrelatedInputModel
+            contradictoryProduction=$contradictoryProductionModel
         }
-        if ($validModel.ok -and -not $outOfScopeModel.ok -and -not $mergeModel.ok -and -not $incompleteModel.ok -and -not $fabricatedModel.ok) {
-            Add-Stage -Name 'rerun-recognition-self-check' -Status 'PASS' -Classification 'FAIL-CLOSED RERUN RECOGNITION' -Summary 'Valid synthetic evidence is accepted; out-of-scope, multi-parent, incomplete, and fabricated evidence is rejected.' -Evidence $recognitionSelfCheckEvidence | Out-Null
+
+        if ($validModel.ok -and
+            -not $outOfScopeModel.ok -and
+            -not $verifierMutationModel.ok -and
+            -not $mergeModel.ok -and
+            -not $incompleteModel.ok -and
+            -not $fabricatedModel.ok -and
+            -not $unrelatedInputModel.ok -and
+            -not $contradictoryProductionModel.ok) {
+            Add-Stage -Name 'rerun-recognition-self-check' -Status 'PASS' -Classification 'FAIL-CLOSED RERUN RECOGNITION' -Summary 'Coherent canonical evidence is accepted; out-of-scope, semantic-verifier, multi-parent, incomplete, fabricated, false-lineage, and contradictory-artifact evidence is rejected.' -Evidence $recognitionSelfCheckEvidence | Out-Null
         } else {
-            $recognitionSummary = 'valid=' + $validModel.ok +
-                '; outOfScope=' + $outOfScopeModel.ok +
-                '; multiParent=' + $mergeModel.ok +
-                '; incomplete=' + $incompleteModel.ok +
-                '; fabricated=' + $fabricatedModel.ok +
-                '; validReasons=' + (@($validModel.reasons) -join ',')
-            Add-Stage -Name 'rerun-recognition-self-check' -Status 'FAIL' -Classification 'RERUN RECOGNITION SELF-CHECK FAILED' -Summary $recognitionSummary -Evidence $recognitionSelfCheckEvidence | Out-Null
+            Add-Stage -Name 'rerun-recognition-self-check' -Status 'FAIL' -Classification 'RERUN RECOGNITION SELF-CHECK FAILED' -Summary 'One or more synthetic evidence attacks were not rejected, or the coherent model was rejected.' -Evidence $recognitionSelfCheckEvidence | Out-Null
         }
+
         if ((Resolve-LocalReportFailureVerdict -CurrentOverall 'PASS' -AuthoritativePassAlreadyExists $true) -eq 'PASS' -and
             (Resolve-LocalReportFailureVerdict -CurrentOverall 'PASS' -AuthoritativePassAlreadyExists $false) -eq 'FAIL' -and
             (Resolve-LocalReportFailureVerdict -CurrentOverall 'FAIL' -AuthoritativePassAlreadyExists $true) -eq 'FAIL') {
@@ -741,7 +762,12 @@ try {
                 $childPaths=@($pathsProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
                 $evidenceProbe=Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($remoteHead + ':' + $PassJsonRel)) -WorkingDirectory $RepositoryRoot
                 $existing=$null; if ($evidenceProbe.exitCode -eq 0) { try { $existing=$evidenceProbe.stdout | ConvertFrom-Json } catch { $existing=$null } }
-                if ($parentsProbe.exitCode -eq 0 -and $pathsProbe.exitCode -eq 0) { $recognition=Test-EvidenceChildRecognitionModel $commitTokens $childPaths $existing } else { $recognition=[pscustomobject]@{ok=$false;reasons=@('git-topology-inspection-failed');outsideEvidence=@()} }
+                $candidateFacts=Get-CandidateRecognitionFacts -Candidate $CandidateSha
+                if ($parentsProbe.exitCode -eq 0 -and $pathsProbe.exitCode -eq 0 -and $candidateFacts.ok) {
+                    $recognition=Test-EvidenceChildRecognitionModel -CommitLineTokens $commitTokens -ChangedPaths $childPaths -Report $existing -CandidateFacts $candidateFacts
+                } else {
+                    $recognition=[pscustomobject]@{ok=$false;reasons=@('git-topology-or-candidate-facts-inspection-failed');candidateFacts=$candidateFacts}
+                }
                 if ($recognition.ok) {
                     $script:AlreadyVerified=$true; $script:ExistingEvidenceCommit=$remoteHead; $script:ExistingEvidence=$existing
                     Add-Stage -Name 'repository-identity' -Status 'PASS' -Classification 'ALREADY VERIFIED EVIDENCE CHILD' -Summary ('Remote head is a single-parent evidence-only child ' + $remoteHead + ' with complete canonical PASS evidence for requested candidate ' + $CandidateSha + '.') -Evidence ([pscustomobject]@{changedPaths=$childPaths;recognition=$recognition}) | Out-Null
