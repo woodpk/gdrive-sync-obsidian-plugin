@@ -239,6 +239,7 @@ if ($toolIssues.Count -eq 0) {
   $npmProbe = Invoke-Native -File $npm.Source -Arguments @('--version') -WorkingDirectory $RepositoryRoot
   if ($nodeProbe.exitCode -ne 0 -or $npmProbe.exitCode -ne 0) {
     $toolIssues.Add('controlled-child-path-probe-failed')
+    Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN UNAVAILABLE' -Summary ('Controlled child PATH probe failed. Node exit={0}; npm exit={1}; PATH={2}' -f $nodeProbe.exitCode, $npmProbe.exitCode, $script:NativePathOverride)
   } else {
     Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; deterministic native child PATH={2}' -f $nodeProbe.stdout.Trim(), $npmProbe.stdout.Trim(), $script:NativePathOverride)
   }
