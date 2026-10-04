@@ -503,3 +503,22 @@ Required correction binding:
 9. Re-run full protocol-aligned verification after correction, then repeat independent REVIEW before ACCEPT.
 
 No physical S08F execution is authorized while these findings remain open. Do not begin S09.
+
+
+## 0.12 Supervisor PHX-CI Runtime Rebind — Frozen Tool Environment Repair
+
+Authoritative PHX-CI verification against runtime `192bc722bdd886c1b18731bf5fde35ec7cfe091c` reached the canonical PHX-CI runner but BLOCKED at `install` before any SUT test, build, repository-check, or artifact stage executed.
+
+Observed PHX-CI evidence commit: `927ad0899574415303e91a882162e6d6c097a571`.
+
+The blocker is a PHX-CI runtime/toolchain defect: `npm ci` launched successfully, but its lifecycle child `cmd.exe /c node install.js` could not resolve `node` from the inherited stage environment. The accepted product candidate was not implicated.
+
+PHX-CI implementation `69c4aa077d4a1a46d1e85e59f39d36285be99e83` is the authorized replacement runtime source for this S08F verification. Its committed Stage 3 correction evidence records PASS for the full PHX-CI regression, including the frozen tool-environment boundary and the Node adapter regression proving focused/full lifecycle survival under adversarial inherited PATH.
+
+This amendment supersedes the earlier S08F PHX-CI runtime binding only for authoritative repository verification. It does not modify product semantics, does not reopen the already-passed S08F prerequisite SUT verification, does not authorize physical S08F mutation, and does not authorize S09.
+
+Required next action:
+
+1. publish deployed PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` into the standard runtime store;
+2. run authoritative PHX-CI against the exact S08F task branch using base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, ordinary change class, and a GUID-isolated temp root under `C:\`;
+3. do not rerun the custom S08F prerequisite verifier solely because of this administrative/runtime repair.
