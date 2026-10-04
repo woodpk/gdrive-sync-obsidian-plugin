@@ -1030,6 +1030,219 @@ async function recoverPostMailboxConflict(priorVerdict) {
   return{validationHash,validationSize,dataHashBeforeRestore};
 }
 
+
+async function recoverR2ProductAuthority(priorVerdict) {
+  const defects=[];
+  const note=(name,pass,classificationValue,summary,details=undefined,blocking=true)=>{
+    record(`r2recovery-${name}`,pass?'PASS':'FAIL',classificationValue,summary,details);
+    if(!pass)defects.push({name,classification:classificationValue,summary,details,blocking});
+  };
+  const mainJs=path.join(pluginDir,'main.js');
+  const manifest=path.join(pluginDir,'manifest.json');
+  const dataJson=path.join(pluginDir,'data.json');
+  const productionMainSource=path.join(repoWorktree,'main.js');
+  const productionManifestSource=path.join(repoWorktree,'manifest.json');
+
+  const installPresence={mainJs:await exists(mainJs),manifest:await exists(manifest),dataJson:await exists(dataJson)};
+  note('validation-install',installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson,'validation-install',
+    installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson?'Disposable validation installation remains present.':'Disposable validation installation is incomplete.',installPresence);
+  if(installPresence.mainJs){
+    const hash=await sha256File(mainJs),size=(await fs.stat(mainJs)).size;
+    note('validation-artifact',hash===expectedValidationHash,'validation-artifact-identity',
+      hash===expectedValidationHash?`Installed validation artifact remains exact at ${size} bytes.`:`Installed validation artifact mismatch: size=${size} hash=${hash}`,
+      {sizeBytes:size,sha256:hash,expectedSha256:expectedValidationHash});
+  }
+  const productionPresence={mainJs:await exists(productionMainSource),manifest:await exists(productionManifestSource)};
+  note('production-restoration-artifacts',productionPresence.mainJs&&productionPresence.manifest,'production-restoration-precondition',
+    productionPresence.mainJs&&productionPresence.manifest?'Exact-SHA production restoration artifacts remain available.':'Production restoration artifacts are unavailable.',productionPresence);
+  if(productionPresence.mainJs){
+    const hash=await sha256File(productionMainSource),size=(await fs.stat(productionMainSource)).size;
+    const text=await fs.readFile(productionMainSource,'utf8');
+    const hits=['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'].filter(value=>text.includes(value));
+    note('production-baseline',hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0,'production-bundle-isolation',
+      hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0?'Production restoration baseline remains exact and validation-code-free.':`Production baseline mismatch: size=${size} hash=${hash} markers=${JSON.stringify(hits)}`,
+      {sizeBytes:size,sha256:hash,forbiddenMarkerHits:hits});
+  }
+
+  const oldState=await readJson(oldStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const oldStateExact=oldState&&!oldState.__error&&oldState.sequence===3&&oldState.phase==='completed'&&oldState.result?.kind==='production-execute'&&oldState.result?.status==='rejected'&&oldState.result?.classification==='production-action-rejected';
+  note('attempt1-state',oldStateExact,'attempt1-state',oldStateExact?'Attempt-1 terminal rejected sequence-3 state remains preserved.':'Attempt-1 terminal state no longer matches its frozen safe identity.',oldState);
+
+  const retryState=await readJson(retryStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  let retryCommand=null;
+  try{retryCommand=retryState?.commandKey?JSON.parse(retryState.commandKey):null;}catch{}
+  const retryRejectedExact=Boolean(retryState&&!retryState.__error&&retryState.sequence===3&&retryState.phase==='completed'&&retryCommand&&
+    retryCommand.runId===retryRunId&&retryCommand.deviceId===deviceId&&retryCommand.sequence===3&&retryCommand.kind==='production-execute'&&
+    retryState.result?.runId===retryRunId&&retryState.result?.deviceId===deviceId&&retryState.result?.sequence===3&&retryState.result?.commandId===retryCommand.commandId&&
+    retryState.result?.kind==='production-execute'&&retryState.result?.status==='rejected'&&retryState.result?.classification==='production-action-rejected'&&
+    retryState.result?.actionResult?.status==='rejected'&&retryState.result?.actionResult?.reason==='reviewed plan failed before safe progress could complete');
+  note('r2-terminal-state',retryRejectedExact,'r2-terminal-rejected',
+    retryRejectedExact?'Retry r2 sequence 3 is durably terminal as the exact rejected production execution; it will not be replayed.':'Retry r2 durable state is not the exact terminal rejected sequence-3 state required for bounded authority recovery.',
+    {retryState,retryCommand});
+
+  const fixtureExists=await exists(canaryPath);
+  const fixture=fixtureExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
+  const fixtureExact=fixture.exists&&fixture.sizeBytes===77&&fixture.sha256===expectedCanaryHash;
+  note('fixture-state',fixtureExact,'retry-fixture-state',fixtureExact?'Retry canary fixture remains exact before product-authority recovery.':'Retry canary fixture identity is not exact.',fixture);
+
+  let renderer;
+  try{renderer=await findRenderer();}catch{renderer=null;}
+  const rendererEnvironment=await ensureRendererEnvironment(renderer);
+  if(!rendererEnvironment.ok)note('renderer-environment',false,rendererEnvironment.classification??'devtools-environment-repair-failed',rendererEnvironment.reason??'Disposable renderer unavailable.',rendererEnvironment);
+  else{
+    renderer=rendererEnvironment.target;
+    target=renderer;
+    note('renderer-environment',true,'exact-disposable-renderer',rendererEnvironment.repaired?'Disposable renderer was re-established for recovery.':'Existing disposable renderer is reachable.',{repaired:rendererEnvironment.repaired,snapshot:renderer.snapshot,debugPort:renderer.debugPort});
+  }
+
+  let quiesced=null;
+  if(renderer){
+    quiesced=await quiesceControlAndObserve(renderer,controlKey).catch(error=>({error:error instanceof Error?error.message:String(error)}));
+    const quiescePass=!quiesced?.error&&normalized(quiesced?.vault)===normalized(vaultPath);
+    note('control-quiesce',quiescePass,'recovery-agent-quiesced',
+      quiescePass?'Any prior S08F control was stopped before product recovery and before visibility transition.':'Unable to quiesce/inspect the prior S08F control safely.',quiesced);
+  }
+
+  const uncertainReceipt=quiesced?.latestReceipt??null;
+  const uncertainExact=Boolean(retryCommand&&quiesced?.productStatus?.kind==='recovery-required'&&
+    uncertainReceipt&&String(uncertainReceipt.planId)===String(retryCommand.planId)&&uncertainReceipt.trigger==='manual'&&uncertainReceipt.terminal==='uncertain'&&
+    uncertainReceipt.requiredEffectsCommittedAndVerified===false&&uncertainReceipt.committedOperationCount===0&&uncertainReceipt.skippedOperationCount===0&&
+    uncertainReceipt.reasonCode==='uncertain-physical-outcome');
+  note('uncertain-production-authority',uncertainExact,'uncertain-physical-outcome',
+    uncertainExact?'Production authority independently confirms the r2 execution ended uncertain with zero committed operations and recovery required.':'Production authority does not match the exact expected uncertain r2 terminal state.',
+    {productStatus:quiesced?.productStatus??null,latestReceipt:uncertainReceipt,retryCommand});
+
+  let mailbox=null;
+  if(renderer&&retryCommand){
+    mailbox=await mailboxRecoverySnapshot(renderer,retryCommand).catch(error=>({ok:false,error:error instanceof Error?error.message:String(error)}));
+    note('mailbox-inspection',mailbox?.ok===true,'drive-mailbox-state',mailbox?.ok===true?'Drive mailbox was inspected without mutation.':'Drive mailbox inspection failed.',mailbox);
+  }
+  if(mailbox?.ok){
+    const expectedSeq1=expectedRetrySequenceOne();
+    const expectedSeq2={runId:retryRunId,deviceId,sequence:2,commandId:retryCommandId(1,0),kind:'production-preview',mode:'manual'};
+    const keys=new Set([canonicalValue(expectedSeq1),canonicalValue(expectedSeq2),canonicalValue(retryCommand)]);
+    const unexpected=(mailbox.commands??[]).filter(command=>!keys.has(canonicalValue(command)));
+    note('mailbox-command-bounds',unexpected.length===0,'drive-mailbox-command-state',
+      unexpected.length===0?'Drive mailbox contains no logical r2 command outside expected sequences 1-3.':'Drive mailbox contains an unexpected r2 command.',
+      {unexpected,commandCount:(mailbox.commands??[]).length});
+  }
+
+  const expectedIds=new Set([
+    expectedRetrySequenceOne().commandId,
+    retryCommandId(1,0),
+    ...(retryCommand?.commandId?[retryCommand.commandId]:[]),
+  ]);
+  const relayProblems=[];
+  for(const dirName of ['outbox','sent','inbox']){
+    const dir=path.join(relayRoot,dirName);
+    for(const file of await fs.readdir(dir).catch(()=>[])){
+      const commandId=file.endsWith('.json.result.json')?file.slice(0,-'.json.result.json'.length):file.endsWith('.json')?file.slice(0,-'.json'.length):'';
+      if(!expectedIds.has(commandId)){relayProblems.push({dirName,file,reason:'unexpected-name'});continue;}
+      if(dirName==='inbox'&&retryCommand&&commandId===retryCommand.commandId){
+        try{
+          const value=JSON.parse(await fs.readFile(path.join(dir,file),'utf8'));
+          if(canonicalValue(value)!==canonicalValue(retryState.result))relayProblems.push({dirName,file,reason:'r2-terminal-result-mismatch',value});
+        }catch(error){relayProblems.push({dirName,file,reason:'unreadable',error:error instanceof Error?error.message:String(error)});}
+      }
+    }
+  }
+  note('relay-bounds',relayProblems.length===0,'relay-record-identity',
+    relayProblems.length===0?'Local relay contains only bounded r2 transport records; the sequence-3 inbox record matches the durable rejected result when present.':'Local relay contains an unexpected or conflicting record.',
+    {relayProblems});
+
+  const blockers=defects.filter(item=>item.blocking);
+  record('r2recovery-diagnostic-summary',blockers.length===0?'PASS':'FAIL',blockers.length===0?'product-recovery-preconditions-safe':'product-recovery-preconditions-blocked',
+    `R2 product-authority recovery diagnostics observed ${defects.length} issue(s), including ${blockers.length} blocker(s).`,{defectCount:defects.length,blockerCount:blockers.length,defects});
+  if(blockers.length>0)fail('BLOCKED','r2-product-recovery-precondition-blocked',
+    `R2 product recovery found ${blockers.length} blocker(s): ${blockers.map(item=>item.name+'='+item.summary).join(' | ')}`);
+
+  let currentCaps=await inspectRendererCapabilities(target);
+  if(currentCaps.visibility!=='visible'){
+    const transition=realSuspendResumeTransition();
+    await new Promise(resolve=>setTimeout(resolve,500));
+    target=await findRenderer();
+    currentCaps=await inspectRendererCapabilities(target);
+    lifecycleEvidence={transition,after:currentCaps};
+    if(currentCaps.visibility!=='visible')fail('BLOCKED','r2-product-recovery-renderer-hidden',`Renderer remained ${currentCaps.visibility} after real restore.`);
+    record('r2recovery-lifecycle','PASS','real-suspend-resume','After quiescing the old control, a real Windows restore returned the disposable renderer visible for product recovery.',lifecycleEvidence);
+  }else{
+    lifecycleEvidence={transition:'already-visible-after-quiesce',after:currentCaps};
+  }
+
+  const previewExpression=`(async()=>{
+    try{
+      const plugin=globalThis.app?.plugins?.plugins?.['brain-google-drive-sync'];
+      const production=plugin?.productionVerificationControl?.();
+      if(!production)return{ok:false,reason:'production-control-unavailable'};
+      const beforeStatus=production.currentStatus();
+      const beforeReceipt=production.latestProductionRunReceipt();
+      const plan=await production.previewManual();
+      return{ok:true,beforeStatus,beforeReceipt,plan:plan?structuredClone(plan):null,afterStatus:production.currentStatus(),afterReceipt:production.latestProductionRunReceipt()??null};
+    }catch(error){return{ok:false,reason:'preview-exception',error:error instanceof Error?(error.stack??error.message):String(error)}}
+  })()`;
+  const preview=await cdpEval(target.candidate.webSocketDebuggerUrl,previewExpression,120000);
+  if(!preview?.ok)fail('BLOCKED','r2-product-recovery-preview-failed',`Product recovery preview failed: ${JSON.stringify(preview)}`);
+  record('r2recovery-preview','PASS','product-recovery-preview','Accepted production preview invoked the product recovery path and returned a full reviewed recovery plan.',preview);
+
+  const plan=preview.plan;
+  if(!plan||!Array.isArray(plan.operations))fail('BLOCKED','r2-product-recovery-plan-unavailable',`Recovery preview returned no executable plan: ${JSON.stringify(preview)}`);
+  const forbiddenKinds=new Set(['trash-local','trash-remote','blocked-unsafe','unresolved-conflict','recovery-required']);
+  const unsafeOperations=plan.operations.filter(operation=>operation?.destructive===true||forbiddenKinds.has(operation?.kind));
+  const planSafe=plan.trigger==='manual'&&plan.globalExecutionGate==='none'&&plan.recoveryCheckpointRequired===false&&
+    ['safe-auto-eligible','requires-user-approval'].includes(plan.executionDisposition)&&unsafeOperations.length===0;
+  record('r2recovery-plan-gate',planSafe?'PASS':'FAIL','reviewed-recovery-plan-safety',
+    planSafe?`Recovery plan is reviewed, ungated, non-destructive, conflict-free, and contains ${plan.operations.length} operation(s).`:
+      'Recovery plan is not safe for bounded automatic execution by this harness.',
+    {plan,unsafeOperations});
+  if(!planSafe)fail('BLOCKED','r2-product-recovery-plan-not-safe',`Recovery plan failed safety gate: ${JSON.stringify({plan,unsafeOperations})}`);
+
+  const executeExpression=`(async()=>{
+    try{
+      const plugin=globalThis.app?.plugins?.plugins?.['brain-google-drive-sync'];
+      const production=plugin?.productionVerificationControl?.();
+      if(!production)return{ok:false,reason:'production-control-unavailable'};
+      const beforeReceipt=production.latestProductionRunReceipt();
+      const actionResult=await production.executePlan(${JSON.stringify(String(plan.planId))});
+      return{ok:true,beforeReceipt,actionResult,afterStatus:production.currentStatus(),afterReceipt:production.latestProductionRunReceipt()??null};
+    }catch(error){return{ok:false,reason:'execute-exception',error:error instanceof Error?(error.stack??error.message):String(error)}}
+  })()`;
+  const execution=await cdpEval(target.candidate.webSocketDebuggerUrl,executeExpression,120000);
+  if(!execution?.ok)fail('BLOCKED','r2-product-recovery-execute-failed',`Product recovery execution failed: ${JSON.stringify(execution)}`);
+  record('r2recovery-execution','PASS','product-recovery-execution','Executed only the exact reviewed recovery plan through the accepted production-control seam.',execution);
+
+  const recoveredReceipt=execution.afterReceipt;
+  const recoveryComplete=execution.actionResult?.status==='accepted'&&recoveredReceipt&&
+    recoveredReceipt.runId!==execution.beforeReceipt?.runId&&String(recoveredReceipt.planId)===String(plan.planId)&&
+    recoveredReceipt.terminal==='complete'&&recoveredReceipt.requiredEffectsCommittedAndVerified===true&&execution.afterStatus?.kind==='idle-ready';
+  record('r2recovery-authority-restored',recoveryComplete?'PASS':'FAIL','product-authority-recovered',
+    recoveryComplete?'Product recovery completed authoritatively: new complete receipt, required effects verified, and recovery gate cleared to idle-ready.':'Product recovery did not reach the exact authoritative complete/idle-ready state.',
+    {execution,planId:plan.planId});
+  if(!recoveryComplete)fail('BLOCKED','r2-product-recovery-incomplete',`Product recovery did not complete authoritatively: ${JSON.stringify(execution)}`);
+
+  const fixtureAfterExists=await exists(canaryPath);
+  const fixtureAfter=fixtureAfterExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
+  const fixtureAfterExact=fixtureAfter.exists&&fixtureAfter.sizeBytes===77&&fixtureAfter.sha256===expectedCanaryHash;
+  record('r2recovery-fixture-postcondition',fixtureAfterExact?'PASS':'FAIL','retry-fixture-state',
+    fixtureAfterExact?'Retry canary fixture remained exact throughout product authority recovery.':'Retry canary fixture changed during product recovery.',
+    fixtureAfter);
+  if(!fixtureAfterExact)fail('BLOCKED','r2-product-recovery-fixture-changed',`Canary changed during product recovery: ${JSON.stringify(fixtureAfter)}`);
+
+  await writeJson(path.join(evidenceDir,'r2-product-authority-recovery.json'),{
+    retryRunId,
+    scenarioId,
+    rejectedSequenceState:retryState,
+    uncertainReceipt,
+    recoveryPlan:plan,
+    recoveryExecution:execution,
+    fixtureBefore:fixture,
+    fixtureAfter,
+  });
+  record('r2recovery-evidence','PASS','recovery-evidence-recorded','Recorded exact r2 rejected state, uncertain receipt, reviewed recovery plan, authoritative recovery receipt, and fixture preservation.');
+
+  fail('BLOCKED','r2-terminal-product-authority-recovered',
+    'Retry r2 remains terminal and must not be replayed. Product authority is recovered and idle-ready; bind a fresh supervisor-authorized retry identity before any new canary mutation.');
+}
+
 if (process.argv.includes('--self-check')) {
   const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
   new Function(`return ${expression};`);
@@ -1046,11 +1259,15 @@ try {
   let dataHashBeforeRestore;
   const priorVerdictPath = path.join(evidenceDir,'S08F-BLOCKED.json');
   const priorVerdict = await readJson(priorVerdictPath).catch(()=>null);
+  const productAuthorityRecovery = priorVerdict?.classification === 'postconflict-recovery-precondition-blocked' &&
+    String(priorVerdict?.primaryReason??'').includes('production-action-rejected') &&
+    priorVerdict?.retryRunId === retryRunId &&
+    priorVerdict?.scenarioId === scenarioId;
   const mailboxConflictRecovery = priorVerdict?.classification === 'harness-error' &&
     String(priorVerdict?.primaryReason??'').includes('mailbox-conflicting-result') &&
     priorVerdict?.retryRunId === retryRunId &&
     priorVerdict?.scenarioId === scenarioId;
-  const recoveryMode = mailboxConflictRecovery || (['device-result-unavailable','device-result-recovery-precondition-blocked'].includes(priorVerdict?.classification) &&
+  const recoveryMode = productAuthorityRecovery || mailboxConflictRecovery || (['device-result-unavailable','device-result-recovery-precondition-blocked'].includes(priorVerdict?.classification) &&
     priorVerdict?.retryRunId === retryRunId &&
     priorVerdict?.scenarioId === scenarioId);
 
@@ -1061,11 +1278,13 @@ try {
       retryRunId:priorVerdict.retryRunId,
       scenarioId:priorVerdict.scenarioId,
     });
-    const recovered = mailboxConflictRecovery
-      ? await recoverPostMailboxConflict(priorVerdict)
-      : priorVerdict.classification === 'device-result-recovery-precondition-blocked'
-        ? await recoverRetrySequenceThree(priorVerdict)
-        : await recoverRetrySequenceOne(priorVerdict);
+    const recovered = productAuthorityRecovery
+      ? await recoverR2ProductAuthority(priorVerdict)
+      : mailboxConflictRecovery
+        ? await recoverPostMailboxConflict(priorVerdict)
+        : priorVerdict.classification === 'device-result-recovery-precondition-blocked'
+          ? await recoverRetrySequenceThree(priorVerdict)
+          : await recoverRetrySequenceOne(priorVerdict);
     validationHash = recovered.validationHash;
     validationSize = recovered.validationSize;
     dataHashBeforeRestore = recovered.dataHashBeforeRestore;
