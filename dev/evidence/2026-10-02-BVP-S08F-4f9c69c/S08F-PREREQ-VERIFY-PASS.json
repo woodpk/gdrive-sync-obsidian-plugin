@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 2,
+  "generatedAtUtc": "2026-10-04T05:30:27.1457706+00:00",
+  "overall": "PASS",
+  "verificationBase": "39cf1ff62fb927aba9d2ee49f99724d9ce1f2856",
+  "candidateSha": "92d153b990ed0fca79eb76187d867cb272e5dadb",
+  "branch": "bvp-s08f-desktop-live-canary",
+  "productionArtifact": {
+    "sizeBytes": 886436,
+    "sha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
+    "forbiddenMarkerHits": []
+  },
+  "validationArtifact": {
+    "sourceCommit": "92d153b990ed0fca79eb76187d867cb272e5dadb",
+    "artifactSize": 910950,
+    "artifactSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+    "actualSize": 910950,
+    "actualSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+    "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
+    "testPlatformInputs": [
+      "test-platform/src/live-device/device-command-agent.ts",
+      "test-platform/src/live-device/drive-mailbox.ts",
+      "test-platform/src/live-device/validation-entrypoint.ts"
+    ]
+  },
+  "existingEvidenceCommit": null,
+  "stages": [
+    {
+      "name": "toolchain",
+      "status": "PASS",
+      "classification": "TOOLCHAIN READY",
+      "summary": "Node v22.23.2; npm 10.9.8; PowerShell 7.6.6; Git git version 2.52.0.windows.1; deterministic child PATH established.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "path": "C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;C:\\Program Files\\PowerShell\\7;C:\\WINDOWS\\System32;C:\\WINDOWS;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
+      }
+    },
+    {
+      "name": "repository-identity",
+      "status": "PASS",
+      "classification": "EXACT CANDIDATE AT BRANCH HEAD",
+      "summary": "Remote task branch is exactly the requested candidate 92d153b990ed0fca79eb76187d867cb272e5dadb.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "change-scope",
+      "status": "PASS",
+      "classification": "BOUNDED PREREQUISITE",
+      "summary": "Candidate descends from the blocked physical-evidence anchor; changes are confined to authorized prerequisite/evidence paths; frozen contracts are unchanged; source/task/verifier diff-check passes.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "changedPaths": [
+          "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-FAIL.json",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-FAIL.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY.log",
+          "src/drive/google-drive-port.ts",
+          "test-platform/test/s08b-validation-build-entrypoint.test.ts",
+          "test/workstreams/drive/phase6-remote-protocol.test.ts"
+        ],
+        "unexpectedPaths": [],
+        "contractChanges": [],
+        "ancestorExitCode": 0,
+        "diffCheckExitCode": 0,
+        "diffCheckPaths": [
+          "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md",
+          "src/drive/google-drive-port.ts",
+          "test/workstreams/drive/phase6-remote-protocol.test.ts",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
+          "test-platform/test/s08b-validation-build-entrypoint.test.ts"
+        ]
+      }
+    },
+    {
+      "name": "defect-causality",
+      "status": "PASS",
+      "classification": "OWNING DEFECT REPAIRED",
+      "summary": "Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry; regression asserts no global root search and no Drive mutation.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "disposable-worktree",
+      "status": "PASS",
+      "classification": "EXACT-SHA DISPOSABLE WORKTREE",
+      "summary": "Created GUID-isolated detached worktree at C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "dependencies",
+      "status": "PASS",
+      "classification": "DEPENDENCY INSTALL",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd ci --no-audit --no-fund --loglevel info",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "typecheck",
+      "status": "PASS",
+      "classification": "TYPECHECK",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd run typecheck",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "product-test-compile",
+      "status": "PASS",
+      "classification": "PRODUCT TEST COMPILE",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/typescript/bin/tsc -p tsconfig.test.json",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "focused-folder-recovery",
+      "status": "PASS",
+      "classification": "FOCUSED RECOVERY REGRESSION",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/test/workstreams/drive/phase6-remote-protocol.test.js .test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js .test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "complete-product-suite",
+      "status": "PASS",
+      "classification": "COMPLETE PRODUCT TEST SUITE",
+      "summary": "All 109 compiled test files passed across 3 batch(es).",
+      "command": "",
+      "exitCode": 0,
+      "evidence": {
+        "testFileCount": 109,
+        "batchCount": 3
+      }
+    },
+    {
+      "name": "bvp-compile",
+      "status": "PASS",
+      "classification": "BVP COMPILE",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/typescript/bin/tsc -p test-platform/tsconfig.json",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "complete-bvp-suite",
+      "status": "PASS",
+      "classification": "COMPLETE BVP TEST SUITE",
+      "summary": "All 36 compiled test files passed across 1 batch(es).",
+      "command": "",
+      "exitCode": 0,
+      "evidence": {
+        "testFileCount": 36,
+        "batchCount": 1
+      }
+    },
+    {
+      "name": "architecture-guard",
+      "status": "PASS",
+      "classification": "ARCHITECTURE GUARD",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/bvp/test-platform/test/architecture-guard.test.js",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "architecture-metrics",
+      "status": "PASS",
+      "classification": "ARCHITECTURE METRICS",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/bvp/test-platform/test/architecture-metrics.test.js",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "repository-check",
+      "status": "PASS",
+      "classification": "REPOSITORY CHECK",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe .test-build/bvp/test-platform/src/repository-check.js",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "production-build",
+      "status": "PASS",
+      "classification": "PRODUCTION BUILD",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd run build",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "production-artifact",
+      "status": "PASS",
+      "classification": "PRODUCTION BUNDLE ISOLATED",
+      "summary": "Generated main.js is 886436 bytes / 2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9; validation marker hits=0.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "sizeBytes": 886436,
+        "sha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
+        "forbiddenMarkerHits": []
+      }
+    },
+    {
+      "name": "validation-artifact-build",
+      "status": "PASS",
+      "classification": "VALIDATION ARTIFACT BUILD",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe .test-build/bvp/test-platform/src/live-device/build-validation-artifact.js",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "validation-artifact",
+      "status": "PASS",
+      "classification": "EXACT VALIDATION ARTIFACT",
+      "summary": "Validation main.js source=92d153b990ed0fca79eb76187d867cb272e5dadb; size=910950; sha256=d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "sourceCommit": "92d153b990ed0fca79eb76187d867cb272e5dadb",
+        "artifactSize": 910950,
+        "artifactSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+        "actualSize": 910950,
+        "actualSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+        "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
+        "testPlatformInputs": [
+          "test-platform/src/live-device/device-command-agent.ts",
+          "test-platform/src/live-device/drive-mailbox.ts",
+          "test-platform/src/live-device/validation-entrypoint.ts"
+        ]
+      }
+    },
+    {
+      "name": "repository-mutation-audit",
+      "status": "PASS",
+      "classification": "NO UNEXPECTED REPOSITORY MUTATION",
+      "summary": "Verification left the detached candidate worktree clean; generated build/test artifacts are repository-ignored.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "acceptance-gate",
+      "status": "PASS",
+      "classification": "ALL REQUIRED VERIFICATION PASSED",
+      "summary": "Every required verification layer passed; canonical evidence publication is authorized.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "evidence-preparation",
+      "status": "PASS",
+      "classification": "EVIDENCE-ONLY MUTATION",
+      "summary": "Canonical PASS evidence is the only residual repository mutation.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "json": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.json",
+        "markdown": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.md",
+        "log": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY.log"
+      }
+    }
+  ],
+  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078",
+  "physicalMutationAttempted": false
+}
