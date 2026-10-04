@@ -1097,10 +1097,56 @@ async function recoverR2ProductAuthority(priorVerdict) {
 
   let quiesced=null;
   if(renderer){
+    const beforeReload=await quiesceControlAndObserve(renderer,controlKey).catch(error=>({error:error instanceof Error?error.message:String(error)}));
+    const beforeReloadPass=!beforeReload?.error&&normalized(beforeReload?.vault)===normalized(vaultPath);
+    note('control-quiesce-before-reload',beforeReloadPass,'recovery-agent-quiesced',
+      beforeReloadPass?'Any prior S08F control was stopped before repaired validation reload.':'Unable to quiesce/inspect the prior S08F control safely before reload.',beforeReload);
+    if(!beforeReloadPass){
+      renderer=null;
+      target=null;
+    }
+  }
+
+  if(renderer){
+    const beforeSource=renderer.snapshot?.sourceCommit??null;
+    if(beforeSource!==sourceCommit){
+      const reloadExpression=`(async()=>{
+        try{
+          const id='brain-google-drive-sync';
+          const app=globalThis.app;
+          if(!app?.plugins)return{ok:false,reason:'plugin-manager-unavailable'};
+          if(typeof app.plugins.disablePlugin==='function')await app.plugins.disablePlugin(id);
+          if(typeof app.plugins.enablePlugin!=='function')return{ok:false,reason:'plugin-enable-unavailable'};
+          await app.plugins.enablePlugin(id);
+          await new Promise(resolve=>setTimeout(resolve,750));
+          return{ok:true,sourceCommit:globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit??null};
+        }catch(error){return{ok:false,reason:'plugin-reload-exception',error:error instanceof Error?(error.stack??error.message):String(error)}}
+      })()`;
+      const reload=await cdpEval(renderer.candidate.webSocketDebuggerUrl,reloadExpression,45000).catch(error=>({ok:false,reason:'plugin-reload-cdp-failed',error:error instanceof Error?error.message:String(error)}));
+      await new Promise(resolve=>setTimeout(resolve,500));
+      try{renderer=await findRenderer();target=renderer;}catch{renderer=null;target=null;}
+      const reloadedCaps=renderer?await inspectRendererCapabilities(renderer).catch(error=>({error:error instanceof Error?error.message:String(error)})):null;
+      const reloadPass=reload?.ok===true&&reloadedCaps?.sourceCommit===sourceCommit&&reloadedCaps?.productionControl===true;
+      note('validation-plugin-reload',reloadPass,'repaired-validation-loaded',
+        reloadPass?`Repaired validation artifact loaded from exact source ${sourceCommit}.`:'Repaired validation artifact did not load with the exact expected identity.',
+        {beforeSource,reload,reloadedCaps,expectedSource:sourceCommit});
+      if(!reloadPass){
+        renderer=null;
+        target=null;
+      }
+    }else{
+      note('validation-plugin-reload',true,'repaired-validation-already-loaded',
+        `Disposable renderer already runs repaired validation source ${sourceCommit}.`,{sourceCommit:beforeSource});
+    }
+  }
+
+  if(renderer){
     quiesced=await quiesceControlAndObserve(renderer,controlKey).catch(error=>({error:error instanceof Error?error.message:String(error)}));
-    const quiescePass=!quiesced?.error&&normalized(quiesced?.vault)===normalized(vaultPath);
+    const quiescePass=!quiesced?.error&&normalized(quiesced?.vault)===normalized(vaultPath)&&quiesced?.sourceCommit===sourceCommit;
     note('control-quiesce',quiescePass,'recovery-agent-quiesced',
-      quiescePass?'Any prior S08F control was stopped before product recovery and before visibility transition.':'Unable to quiesce/inspect the prior S08F control safely.',quiesced);
+      quiescePass?'Repaired validation renderer is exact and any S08F control is quiesced before product recovery.':'Unable to establish the repaired validation renderer/control state safely.',quiesced);
+  }else{
+    note('control-quiesce',false,'recovery-agent-quiesced','Repaired validation renderer is unavailable after reload.',null);
   }
 
   const uncertainReceipt=quiesced?.latestReceipt??null;
@@ -1259,8 +1305,11 @@ try {
   let dataHashBeforeRestore;
   const priorVerdictPath = path.join(evidenceDir,'S08F-BLOCKED.json');
   const priorVerdict = await readJson(priorVerdictPath).catch(()=>null);
-  const productAuthorityRecovery = priorVerdict?.classification === 'postconflict-recovery-precondition-blocked' &&
-    String(priorVerdict?.primaryReason??'').includes('production-action-rejected') &&
+  const productAuthorityRecovery = (
+    (priorVerdict?.classification === 'postconflict-recovery-precondition-blocked' &&
+      String(priorVerdict?.primaryReason??'').includes('production-action-rejected')) ||
+    priorVerdict?.classification === 'r2-product-recovery-plan-unavailable'
+  ) &&
     priorVerdict?.retryRunId === retryRunId &&
     priorVerdict?.scenarioId === scenarioId;
   const mailboxConflictRecovery = priorVerdict?.classification === 'harness-error' &&
