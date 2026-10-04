@@ -99,7 +99,7 @@ test("D-C11 outcome-unknown folder uses frozen recovery reader with no blind red
 });
 
 test("D-C11 missing or replaced expected parent remains recovery-pending and non-redispatchable", async () => {
-  for (const reason of ["expected-parent-unobservable:not-found","target-parent-identity-mismatch"] as const) {
+  for (const reason of ["expected-parent-unobservable:not-found","target-parent-identity-mismatch","expected-parent-identity-mismatch","expected-parent-identity-incomplete","expected-parent-live-state-incomplete"] as const) {
     const intent = folderIntent("outcome-unknown");
     const effect = intent.effects[0]!;
     const reader = { async observeFolderCreateRecovery() { return { status: "unobservable" as const, reason }; } };
