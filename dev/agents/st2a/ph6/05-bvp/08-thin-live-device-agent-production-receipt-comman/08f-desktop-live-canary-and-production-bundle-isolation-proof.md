@@ -349,3 +349,41 @@ Protocol-compliant repository-controlled continuation harness:
 
 This harness location is inside S08F's already-authorized evidence root. It does not add a fifth `dev/scripts` BVP PowerShell verifier and does not modify production, test-platform runtime, governance, or PHX-CI surfaces.
 
+
+
+## 0.6 Supervisor Prerequisite Binding — Multi-Root Remote Folder Recovery
+
+S08F has now proved the accepted stack materially incapable of completing one legitimate live recovery state without a bounded prerequisite repair.
+
+Observed physical evidence at evidence commit `39cf1ff62fb927aba9d2ee49f99724d9ce1f2856`:
+
+- retry `s08f-desktop-canary-4f9c69c-r2` is durably terminal at sequence 3 as `rejected / production-action-rejected` and MUST NOT be replayed;
+- production independently records terminal `uncertain`, reason `uncertain-physical-outcome`, zero committed operations, and `recovery-required`;
+- the exact canary fixture remains preserved;
+- accepted production recovery `previewManual()` reaches the existing durable-intent recovery path but returns no plan because the persisted remote-folder effect remains `outcome-unknown: managed-root-unobservable:recovery-required`;
+- repository grounding shows the concrete Drive recovery reader falls back from an absent reserved folder ID to `uniqueManagedRoot()`, which requires account-global managed-root uniqueness;
+- the disposable S08F managed root legitimately coexists with another managed root on the same authenticated Drive account, so account-global uniqueness is not a valid recovery prerequisite for this folder descriptor;
+- the frozen `RemoteFolderCreatePhysicalMutationDescriptor` already carries the intended parent remote object ID. That value remains expectation-only until exact Drive reads prove the parent object and its actual managed-root ancestry.
+
+This explicitly authorizes one bounded prerequisite repair inside the existing S08F task branch.
+
+Exact writable prerequisite paths:
+
+- `src/drive/google-drive-port.ts`;
+- `test/workstreams/drive/phase6-remote-protocol.test.ts`;
+- this S08F task file;
+- existing S08F evidence root `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/**` for repair evidence only.
+
+Repair semantic boundary:
+
+1. Do not change frozen synchronization contracts or descriptors.
+2. Do not widen OAuth scope or introduce a second recovery mechanism.
+3. For an absent reserved remote-folder ID, use the persisted parent ID only to select an exact read; treat no descriptor value as observed proof.
+4. Require the exact parent object to be remotely observed as a live folder.
+5. Prove that observed parent's actual ancestry reaches one managed root using existing Drive ancestry logic.
+6. Resolve the intended parent path under that observed root and require it to identify the same exact parent object before target absence/occupancy may be classified.
+7. Preserve conservative `unobservable` behavior for missing, moved, ambiguous, inaccessible, non-folder, or structurally inconsistent parent evidence.
+8. Add regression coverage proving recovery remains authoritative with multiple managed roots visible on the same account and performs no Drive mutation.
+9. Preserve all existing folder-recovery semantics and tests.
+
+After automated verification, rebuild the validation artifact from the exact repaired source SHA, rebind S08F artifact identity, and resume product-authority recovery from the preserved physical state. Do not begin S09.
