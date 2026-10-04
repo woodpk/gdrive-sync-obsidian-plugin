@@ -808,6 +808,227 @@ async function recoverRetrySequenceThree(priorVerdict) {
   return{validationHash,validationSize,dataHashBeforeRestore};
 }
 
+
+async function recoverPostMailboxConflict(priorVerdict) {
+  const defects=[];
+  const note=(name,pass,classificationValue,summary,details=undefined,blocking=true)=>{
+    record(`postconflict-${name}`,pass?'PASS':'FAIL',classificationValue,summary,details);
+    if(!pass)defects.push({name,classification:classificationValue,summary,details,blocking});
+  };
+  const mainJs=path.join(pluginDir,'main.js');
+  const manifest=path.join(pluginDir,'manifest.json');
+  const dataJson=path.join(pluginDir,'data.json');
+  const productionMainSource=path.join(repoWorktree,'main.js');
+  const productionManifestSource=path.join(repoWorktree,'manifest.json');
+
+  const installPresence={mainJs:await exists(mainJs),manifest:await exists(manifest),dataJson:await exists(dataJson)};
+  note('validation-install',installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson,'validation-install',
+    installPresence.mainJs&&installPresence.manifest&&installPresence.dataJson?'Disposable validation installation remains present.':'Disposable validation installation is incomplete.',installPresence);
+  if(installPresence.mainJs){
+    const hash=await sha256File(mainJs),size=(await fs.stat(mainJs)).size;
+    note('validation-artifact',hash===expectedValidationHash,'validation-artifact-identity',
+      hash===expectedValidationHash?`Installed validation artifact remains exact at ${size} bytes.`:`Installed validation artifact mismatch: size=${size} hash=${hash}`,
+      {sizeBytes:size,sha256:hash,expectedSha256:expectedValidationHash});
+  }
+  const productionPresence={mainJs:await exists(productionMainSource),manifest:await exists(productionManifestSource)};
+  note('production-restoration-artifacts',productionPresence.mainJs&&productionPresence.manifest,'production-restoration-precondition',
+    productionPresence.mainJs&&productionPresence.manifest?'Exact-SHA production restoration artifacts remain available.':'Production restoration artifacts are unavailable.',productionPresence);
+  if(productionPresence.mainJs){
+    const hash=await sha256File(productionMainSource),size=(await fs.stat(productionMainSource)).size;
+    const text=await fs.readFile(productionMainSource,'utf8');
+    const hits=['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'].filter(value=>text.includes(value));
+    note('production-baseline',hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0,'production-bundle-isolation',
+      hash===expectedProductionHash&&size===expectedProductionSize&&hits.length===0?'Production restoration baseline remains exact and validation-code-free.':`Production baseline mismatch: size=${size} hash=${hash} markers=${JSON.stringify(hits)}`,
+      {sizeBytes:size,sha256:hash,forbiddenMarkerHits:hits});
+  }
+
+  const oldState=await readJson(oldStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const oldStateExact=oldState&&!oldState.__error&&oldState.sequence===3&&oldState.phase==='completed'&&oldState.result?.kind==='production-execute'&&oldState.result?.status==='rejected'&&oldState.result?.classification==='production-action-rejected';
+  note('attempt1-state',oldStateExact,'attempt1-state',oldStateExact?'Attempt-1 terminal rejected sequence-3 state remains preserved.':'Attempt-1 terminal state no longer matches its frozen safe identity.',oldState);
+
+  let renderer;
+  try{renderer=await findRenderer();}catch{renderer=null;}
+  const rendererEnvironment=await ensureRendererEnvironment(renderer);
+  if(!rendererEnvironment.ok)note('renderer-environment',false,rendererEnvironment.classification??'devtools-environment-repair-failed',rendererEnvironment.reason??'Disposable renderer unavailable.',rendererEnvironment);
+  else{
+    renderer=rendererEnvironment.target;
+    target=renderer;
+    note('renderer-environment',true,'exact-disposable-renderer',rendererEnvironment.repaired?'Disposable renderer was re-established for recovery.':'Existing disposable renderer is reachable.',{repaired:rendererEnvironment.repaired,snapshot:renderer.snapshot,debugPort:renderer.debugPort});
+  }
+
+  let quiesced=null;
+  if(renderer){
+    quiesced=await quiesceControlAndObserve(renderer,controlKey).catch(error=>({error:error instanceof Error?error.message:String(error)}));
+    const quiescePass=!quiesced?.error&&normalized(quiesced?.vault)===normalized(vaultPath);
+    note('control-quiesce',quiescePass,'recovery-agent-quiesced',
+      quiescePass?'Any prior S08F control was stopped before post-conflict inspection and before any visibility transition.':'Unable to quiesce/inspect the prior S08F control safely.',
+      quiesced);
+  }
+
+  const retryState=await readJson(retryStatePath).catch(error=>({__error:error instanceof Error?error.message:String(error)}));
+  const seq1=expectedRetrySequenceOne();
+  const priorSeq2Stage=priorVerdict?.stages?.find(stage=>stage.name==='recovery3-sequence2-state');
+  const priorSeq2State=priorSeq2Stage?.details;
+  const seq2={runId:retryRunId,deviceId,sequence:2,commandId:retryCommandId(1,0),kind:'production-preview',mode:'manual'};
+  const priorSeq2Result=priorSeq2State?.result;
+  const seq2ResultExact=Boolean(priorSeq2Result&&priorSeq2Result.runId===retryRunId&&priorSeq2Result.deviceId===deviceId&&priorSeq2Result.sequence===2&&priorSeq2Result.commandId===seq2.commandId&&
+    priorSeq2Result.kind==='production-preview'&&priorSeq2Result.status==='completed'&&priorSeq2Result.classification==='production-preview-ready'&&
+    priorSeq2Result.plan?.trigger==='manual'&&priorSeq2Result.plan?.operationCount===7&&priorSeq2Result.plan?.executionDisposition==='safe-auto-eligible'&&
+    priorSeq2Result.plan?.recoveryCheckpointRequired===false&&priorSeq2Result.plan?.globalExecutionGate==='none'&&typeof priorSeq2Result.plan?.planId==='string');
+  note('prior-sequence2-evidence',seq2ResultExact,'retry-sequence2-evidence',
+    seq2ResultExact?'Prior evidence contains the exact completed sequence-2 seven-operation preview result.':'Prior evidence does not contain an exact recoverable sequence-2 preview result.',
+    priorSeq2Stage??null);
+  const plan=seq2ResultExact?priorSeq2Result.plan:null;
+  const seq3=plan?{runId:retryRunId,deviceId,sequence:3,commandId:retryCommandId(1,1),kind:'production-execute',planId:plan.planId}:null;
+  const seq3Key=seq3?canonicalValue(seq3):null;
+
+  function exactSeq3Result(result){
+    return Boolean(result&&seq3&&result.runId===retryRunId&&result.deviceId===deviceId&&result.sequence===3&&result.commandId===seq3.commandId&&result.kind==='production-execute'&&
+      result.status==='completed'&&result.classification==='production-complete'&&result.actionResult?.status==='accepted'&&result.receipt?.terminal==='complete'&&
+      result.receipt?.requiredEffectsCommittedAndVerified===true&&String(result.receipt?.planId)===seq3.planId);
+  }
+  const stateCompletedExact=retryState&&!retryState.__error&&retryState.sequence===3&&retryState.phase==='completed'&&retryState.commandKey===seq3Key&&exactSeq3Result(retryState.result);
+  const stateClaimed=retryState&&!retryState.__error&&retryState.sequence===3&&retryState.phase==='claimed';
+  note('sequence3-durable-state',stateCompletedExact,'retry-sequence3-state',
+    stateCompletedExact?'Retry sequence 3 is durably completed with the exact production-complete result.':
+      stateClaimed?'Retry sequence 3 is claimed without a terminal result; production outcome is uncertain.':
+      `Retry durable state is not the exact completed sequence-3 state: ${JSON.stringify(retryState)}`,
+    retryState);
+
+  const latestReceipt=quiesced?.latestReceipt??null;
+  const receiptExact=Boolean(stateCompletedExact&&latestReceipt&&String(latestReceipt.planId)===seq3.planId&&latestReceipt.terminal==='complete'&&latestReceipt.requiredEffectsCommittedAndVerified===true&&
+    latestReceipt.runId===retryState.result.receipt?.runId&&latestReceipt.committedOperationCount===retryState.result.receipt?.committedOperationCount&&latestReceipt.skippedOperationCount===retryState.result.receipt?.skippedOperationCount);
+  note('production-receipt-authority',receiptExact,'production-receipt',
+    receiptExact?'Production latest-receipt authority independently matches the durable sequence-3 complete result.':'Production latest receipt does not independently confirm the durable sequence-3 complete result.',
+    {latestReceipt,durableReceipt:retryState?.result?.receipt??null});
+
+  const fixtureExists=await exists(canaryPath);
+  const fixture=fixtureExists?{exists:true,sizeBytes:(await fs.stat(canaryPath)).size,sha256:await sha256File(canaryPath)}:{exists:false};
+  const fixtureExact=fixture.exists&&fixture.sizeBytes===77&&fixture.sha256===expectedCanaryHash;
+  note('fixture-state',fixtureExact,'retry-fixture-state',fixtureExact?'Retry canary fixture remains exact after sequence-3 race recovery.':'Retry canary fixture identity is not exact.',fixture);
+
+  let mailbox=null;
+  if(renderer&&seq3){
+    mailbox=await mailboxRecoverySnapshot(renderer,seq3).catch(error=>({ok:false,error:error instanceof Error?error.message:String(error)}));
+    note('mailbox-inspection',mailbox?.ok===true,'drive-mailbox-state',mailbox?.ok===true?'Drive mailbox command/result state was inspected without mutation.':'Drive mailbox inspection failed.',mailbox);
+  }
+  if(mailbox?.ok){
+    const expectedKeys=new Map([[canonicalValue(seq1),1],[canonicalValue(seq2),2],[canonicalValue(seq3),3]]);
+    const groups={seq1:[],seq2:[],seq3:[],unexpected:[]};
+    for(const command of mailbox.commands??[]){
+      const sequence=expectedKeys.get(canonicalValue(command));
+      if(sequence===1)groups.seq1.push(command);else if(sequence===2)groups.seq2.push(command);else if(sequence===3)groups.seq3.push(command);else groups.unexpected.push(command);
+    }
+    const nonConflictErrors=(mailbox.commandResults??[]).filter(entry=>entry.resultError&&entry.resultError!=='mailbox-conflicting-result');
+    const successfulUnexpected=(mailbox.commandResults??[]).filter(entry=>entry.result&&{
+      const sequence=expectedKeys.get(canonicalValue(entry.command));
+      if(sequence===1)return !exactSequenceOneResult(entry.result,seq1);
+      if(sequence===2)return !(entry.result.runId===priorSeq2Result?.runId&&entry.result.deviceId===priorSeq2Result?.deviceId&&entry.result.sequence===2&&entry.result.commandId===seq2.commandId&&entry.result.kind==='production-preview'&&entry.result.status==='completed'&&entry.result.classification==='production-preview-ready'&&entry.result.plan?.planId===plan?.planId);
+      if(sequence===3)return !exactSeq3Result(entry.result);
+      return true;
+    });
+    note('mailbox-command-bounds',groups.unexpected.length===0&&groups.seq1.length>0&&groups.seq2.length>0&&groups.seq3.length>0,'drive-mailbox-command-state',
+      groups.unexpected.length===0&&groups.seq1.length>0&&groups.seq2.length>0&&groups.seq3.length>0?
+        `Drive contains only expected logical r2 commands through sequence 3 (records: seq1=${groups.seq1.length}, seq2=${groups.seq2.length}, seq3=${groups.seq3.length}).`:
+        'Drive contains an unexpected command or is missing an expected logical command.',
+      groups);
+    note('mailbox-conflict-scope',nonConflictErrors.length===0&&successfulUnexpected.length===0,'drive-mailbox-result-state',
+      nonConflictErrors.length===0&&successfulUnexpected.length===0?'Any mailbox lookup failures are confined to strict same-header result conflicts; no successfully decoded conflicting payload was observed.':'Mailbox contains a non-conflict lookup failure or a successfully decoded result inconsistent with authoritative state.',
+      {nonConflictErrors,successfulUnexpected,resultViews:mailbox.commandResults});
+  }
+
+  const relayDirs={outbox:path.join(relayRoot,'outbox'),sent:path.join(relayRoot,'sent'),inbox:path.join(relayRoot,'inbox')};
+  const relayProblems=[];
+  const expectedCommands=[seq1,seq2,...(seq3?[seq3]:[])];
+  const expectedById=new Map(expectedCommands.map(command=>[command.commandId,command]));
+  for(const [dirName,dir] of Object.entries(relayDirs)){
+    for(const file of await fs.readdir(dir).catch(()=>[])){
+      const isResult=file.endsWith('.result.json');
+      const commandId=isResult?file.slice(0,-'.json.result.json'.length):file.slice(0,-'.json'.length);
+      const command=expectedById.get(commandId);
+      if(!command){relayProblems.push({dirName,file,reason:'unexpected-name'});continue;}
+      const full=path.join(dir,file);
+      try{
+        const value=JSON.parse(await fs.readFile(full,'utf8'));
+        if(isResult){
+          const ok=command.sequence===1?exactSequenceOneResult(value,seq1):command.sequence===2?
+            (value.runId===priorSeq2Result?.runId&&value.deviceId===priorSeq2Result?.deviceId&&value.sequence===2&&value.commandId===seq2.commandId&&value.kind==='production-preview'&&value.status==='completed'&&value.classification==='production-preview-ready'&&value.plan?.planId===plan?.planId):
+            exactSeq3Result(value);
+          if(!ok)relayProblems.push({dirName,file,reason:'result-mismatch',value});
+        }else if(canonicalValue(value)!==canonicalValue(command))relayProblems.push({dirName,file,reason:'command-mismatch',value});
+      }catch(error){relayProblems.push({dirName,file,reason:'unreadable',error:error instanceof Error?error.message:String(error)});}
+    }
+  }
+  note('relay-state',relayProblems.length===0,'relay-record-identity',
+    relayProblems.length===0?'All present local relay records are bounded to exact expected r2 commands/results through sequence 3.':'Local relay contains an unexpected or conflicting record.',
+    {relayProblems});
+
+  const blockers=defects.filter(item=>item.blocking);
+  record('postconflict-diagnostic-summary',blockers.length===0?'PASS':'FAIL',blockers.length===0?'postconflict-recovery-safe':'postconflict-recovery-blocked',
+    `Post-conflict diagnostics observed ${defects.length} issue(s), including ${blockers.length} blocker(s).`,{defectCount:defects.length,blockerCount:blockers.length,defects});
+  if(blockers.length>0)fail('BLOCKED',stateClaimed?'prior-outcome-uncertain':'postconflict-recovery-precondition-blocked',
+    `Post-conflict recovery found ${blockers.length} blocker(s): ${blockers.map(item=>item.name+'='+item.summary).join(' | ')}`);
+
+  const seq1Result={runId:retryRunId,deviceId,sequence:1,commandId:seq1.commandId,kind:'fixture-put',status:'completed',classification:'fixture-verified',fixture:{exists:true,sizeBytes:77,sha256:expectedCanaryHash}};
+  const known=[
+    {command:seq1,result:seq1Result},
+    {command:seq2,result:priorSeq2Result},
+    {command:seq3,result:retryState.result},
+  ];
+  const knownById=Object.fromEntries(known.map(entry=>[entry.command.commandId,entry]));
+
+  for(const {command,result} of known){
+    for(const dirName of ['outbox','sent']){
+      const file=path.join(relayDirs[dirName],`${command.commandId}.json`);
+      if(await exists(file)){
+        const value=JSON.parse(await fs.readFile(file,'utf8'));
+        if(canonicalValue(value)!==canonicalValue(command))fail('BLOCKED','relay-command-conflict',`Cannot remove conflicting ${dirName} record for ${command.commandId}.`);
+        await fs.rm(file,{force:true});
+        record(`postconflict-seq${command.sequence}-${dirName}-cleanup`,'PASS','exact-transport-dedup',`Removed only an exact already-published ${dirName} record for recovered sequence ${command.sequence}.`,command);
+      }
+    }
+    const inboxFile=path.join(relayDirs.inbox,`${command.commandId}.json.result.json`);
+    if(await exists(inboxFile)){
+      const value=JSON.parse(await fs.readFile(inboxFile,'utf8'));
+      const exact=command.sequence===1?exactSequenceOneResult(value,seq1):command.sequence===2?
+        (value.runId===priorSeq2Result.runId&&value.deviceId===priorSeq2Result.deviceId&&value.sequence===2&&value.commandId===seq2.commandId&&value.kind==='production-preview'&&value.status==='completed'&&value.classification==='production-preview-ready'&&value.plan?.planId===plan.planId):
+        exactSeq3Result(value);
+      if(!exact)fail('BLOCKED','relay-result-conflict',`Existing inbox result conflicts for sequence ${command.sequence}.`);
+    }else{
+      await fs.writeFile(inboxFile,JSON.stringify(result),'utf8');
+      record(`postconflict-seq${command.sequence}-inbox-reconstitution`,'PASS','authoritative-result-recovery',`Reconstituted exact local inbox result for already-completed sequence ${command.sequence} from verified authoritative state/evidence.`,result);
+    }
+  }
+
+  const shim=await installMailboxResultRecoveryShim(target,knownById);
+  record('postconflict-mailbox-shim','PASS','scoped-result-conflict-recovery','Installed a temporary mailbox result shim scoped only to exact already-completed r2 sequences 1-3; later commands retain original strict mailbox behavior.',shim);
+
+  const currentCaps=await inspectRendererCapabilities(target);
+  if(currentCaps.visibility!=='visible'){
+    const transition=realSuspendResumeTransition();
+    await new Promise(resolve=>setTimeout(resolve,500));
+    target=await findRenderer();
+    const after=await inspectRendererCapabilities(target);
+    lifecycleEvidence={transition,after};
+    if(after.visibility!=='visible'||after.productionStatus?.kind!=='idle-ready')fail('BLOCKED','postconflict-lifecycle-recovery-failed',`Renderer/product not ready after restore: ${JSON.stringify(after)}`);
+    record('postconflict-lifecycle-recovery','PASS','real-suspend-resume','After the old control was quiesced, a real Windows restore returned the disposable renderer visible and idle-ready.',lifecycleEvidence);
+  }else{
+    lifecycleEvidence={transition:'already-visible-after-quiesce',after:currentCaps};
+  }
+
+  const normalBootstrap=await injectAgent(retryRunId,controlKey,false,false);
+  if(normalBootstrap.visibility!=='visible')fail('BLOCKED','postconflict-agent-hidden',`Normal retry agent resumed while renderer visibility is ${normalBootstrap.visibility}.`);
+  record('postconflict-normal-agent-resume','PASS','accepted-device-agent','Accepted retry agent resumed normal visibility-aware relay/device polling with the scoped historical-result shim active.',normalBootstrap);
+
+  const validationHash=await sha256File(mainJs);
+  const validationSize=(await fs.stat(mainJs)).size;
+  const dataHashBeforeRestore=await sha256File(dataJson);
+  validationIdentity=target.snapshot.identity;
+  buildIdentity=validationIdentity;
+  attempt1SafeState={sequenceState:oldState,fixture:{historicallyVerified:true,sizeBytes:77,sha256:expectedCanaryHash},relay:'attempt1 previously drained'};
+  return{validationHash,validationSize,dataHashBeforeRestore};
+}
+
 if (process.argv.includes('--self-check')) {
   const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
   new Function(`return ${expression};`);
@@ -824,9 +1045,13 @@ try {
   let dataHashBeforeRestore;
   const priorVerdictPath = path.join(evidenceDir,'S08F-BLOCKED.json');
   const priorVerdict = await readJson(priorVerdictPath).catch(()=>null);
-  const recoveryMode = ['device-result-unavailable','device-result-recovery-precondition-blocked'].includes(priorVerdict?.classification) &&
+  const mailboxConflictRecovery = priorVerdict?.classification === 'harness-error' &&
+    String(priorVerdict?.primaryReason??'').includes('mailbox-conflicting-result') &&
     priorVerdict?.retryRunId === retryRunId &&
     priorVerdict?.scenarioId === scenarioId;
+  const recoveryMode = mailboxConflictRecovery || (['device-result-unavailable','device-result-recovery-precondition-blocked'].includes(priorVerdict?.classification) &&
+    priorVerdict?.retryRunId === retryRunId &&
+    priorVerdict?.scenarioId === scenarioId);
 
   if (recoveryMode) {
     record('continuation-mode','PASS','device-result-recovery','Prior evidence binds this execution to safe continuation of the existing attempt-2 transport/result recovery.',{
@@ -835,9 +1060,11 @@ try {
       retryRunId:priorVerdict.retryRunId,
       scenarioId:priorVerdict.scenarioId,
     });
-    const recovered = priorVerdict.classification === 'device-result-recovery-precondition-blocked'
-      ? await recoverRetrySequenceThree(priorVerdict)
-      : await recoverRetrySequenceOne(priorVerdict);
+    const recovered = mailboxConflictRecovery
+      ? await recoverPostMailboxConflict(priorVerdict)
+      : priorVerdict.classification === 'device-result-recovery-precondition-blocked'
+        ? await recoverRetrySequenceThree(priorVerdict)
+        : await recoverRetrySequenceOne(priorVerdict);
     validationHash = recovered.validationHash;
     validationSize = recovered.validationSize;
     dataHashBeforeRestore = recovered.dataHashBeforeRestore;
