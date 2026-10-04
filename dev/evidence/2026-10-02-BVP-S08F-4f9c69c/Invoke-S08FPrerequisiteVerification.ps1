@@ -539,16 +539,41 @@ try {
     }
 
     if (Stage-Passed 'toolchain') {
-        $syntheticValid=New-SyntheticValidPassReport
-        $validModel=Test-EvidenceChildRecognitionModel @('synthetic-child',$CandidateSha) @($EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json') $syntheticValid
-        $outOfScopeModel=Test-EvidenceChildRecognitionModel @('synthetic-child',$CandidateSha) @($EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json','src/drive/unexpected.ts') $syntheticValid
-        $mergeModel=Test-EvidenceChildRecognitionModel @('synthetic-child',$CandidateSha,'other-parent') @($EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json') $syntheticValid
-        $incomplete=New-SyntheticValidPassReport; $incomplete.stages=@($incomplete.stages | Where-Object { $_.name -ne 'complete-product-suite' })
-        $incompleteModel=Test-EvidenceChildRecognitionModel @('synthetic-child',$CandidateSha) @($EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json') $incomplete
-        $fabricated=[pscustomobject]@{schemaVersion=2;overall='PASS';candidateSha=$CandidateSha}
-        $fabricatedModel=Test-EvidenceChildRecognitionModel @('synthetic-child',$CandidateSha) @($EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json') $fabricated
-        if ($validModel.ok -and -not $outOfScopeModel.ok -and -not $mergeModel.ok -and -not $incompleteModel.ok -and -not $fabricatedModel.ok) { Add-Stage -Name 'rerun-recognition-self-check' -Status 'PASS' -Classification 'FAIL-CLOSED RERUN RECOGNITION' -Summary 'Valid synthetic evidence is accepted; out-of-scope, multi-parent, incomplete, and fabricated evidence is rejected.' | Out-Null } else { Add-Stage -Name 'rerun-recognition-self-check' -Status 'FAIL' -Classification 'RERUN RECOGNITION SELF-CHECK FAILED' -Summary 'Synthetic rerun recognition did not fail closed.' | Out-Null }
-        if ((Resolve-LocalReportFailureVerdict 'PASS' $true) -eq 'PASS' -and (Resolve-LocalReportFailureVerdict 'PASS' $false) -eq 'FAIL' -and (Resolve-LocalReportFailureVerdict 'FAIL' $true) -eq 'FAIL') { Add-Stage -Name 'publication-verdict-self-check' -Status 'PASS' -Classification 'POST-PUBLICATION VERDICT STABILITY' -Summary 'Injected report-failure decision model preserves authoritative published PASS and fails closed before publication.' | Out-Null } else { Add-Stage -Name 'publication-verdict-self-check' -Status 'FAIL' -Classification 'POST-PUBLICATION VERDICT SELF-CHECK FAILED' -Summary 'Post-publication report-failure decision model is unsafe.' | Out-Null }
+        $syntheticValid = New-SyntheticValidPassReport
+        $syntheticEvidencePath = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json'
+        $validModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $syntheticValid
+        $outOfScopeModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath,'src/drive/unexpected.ts') -Report $syntheticValid
+        $mergeModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha,'other-parent') -ChangedPaths @($syntheticEvidencePath) -Report $syntheticValid
+        $incomplete = New-SyntheticValidPassReport
+        $incomplete.stages = @($incomplete.stages | Where-Object { $_.name -ne 'complete-product-suite' })
+        $incompleteModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $incomplete
+        $fabricated = [pscustomobject]@{ schemaVersion=2; overall='PASS'; candidateSha=$CandidateSha }
+        $fabricatedModel = Test-EvidenceChildRecognitionModel -CommitLineTokens @('synthetic-child',$CandidateSha) -ChangedPaths @($syntheticEvidencePath) -Report $fabricated
+        $recognitionSelfCheckEvidence = [pscustomobject]@{
+            valid = $validModel
+            outOfScope = $outOfScopeModel
+            multiParent = $mergeModel
+            incomplete = $incompleteModel
+            fabricated = $fabricatedModel
+        }
+        if ($validModel.ok -and -not $outOfScopeModel.ok -and -not $mergeModel.ok -and -not $incompleteModel.ok -and -not $fabricatedModel.ok) {
+            Add-Stage -Name 'rerun-recognition-self-check' -Status 'PASS' -Classification 'FAIL-CLOSED RERUN RECOGNITION' -Summary 'Valid synthetic evidence is accepted; out-of-scope, multi-parent, incomplete, and fabricated evidence is rejected.' -Evidence $recognitionSelfCheckEvidence | Out-Null
+        } else {
+            $recognitionSummary = 'valid=' + $validModel.ok +
+                '; outOfScope=' + $outOfScopeModel.ok +
+                '; multiParent=' + $mergeModel.ok +
+                '; incomplete=' + $incompleteModel.ok +
+                '; fabricated=' + $fabricatedModel.ok +
+                '; validReasons=' + (@($validModel.reasons) -join ',')
+            Add-Stage -Name 'rerun-recognition-self-check' -Status 'FAIL' -Classification 'RERUN RECOGNITION SELF-CHECK FAILED' -Summary $recognitionSummary -Evidence $recognitionSelfCheckEvidence | Out-Null
+        }
+        if ((Resolve-LocalReportFailureVerdict -CurrentOverall 'PASS' -AuthoritativePassAlreadyExists $true) -eq 'PASS' -and
+            (Resolve-LocalReportFailureVerdict -CurrentOverall 'PASS' -AuthoritativePassAlreadyExists $false) -eq 'FAIL' -and
+            (Resolve-LocalReportFailureVerdict -CurrentOverall 'FAIL' -AuthoritativePassAlreadyExists $true) -eq 'FAIL') {
+            Add-Stage -Name 'publication-verdict-self-check' -Status 'PASS' -Classification 'POST-PUBLICATION VERDICT STABILITY' -Summary 'Injected report-failure decision model preserves authoritative published PASS and fails closed before publication.' | Out-Null
+        } else {
+            Add-Stage -Name 'publication-verdict-self-check' -Status 'FAIL' -Classification 'POST-PUBLICATION VERDICT SELF-CHECK FAILED' -Summary 'Post-publication report-failure decision model is unsafe.' | Out-Null
+        }
     } else {
         Add-Stage -Name 'rerun-recognition-self-check' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
         Add-Stage -Name 'publication-verdict-self-check' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
