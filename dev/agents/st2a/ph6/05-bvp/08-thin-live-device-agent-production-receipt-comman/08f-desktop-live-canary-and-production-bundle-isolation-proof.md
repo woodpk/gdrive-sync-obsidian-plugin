@@ -457,3 +457,26 @@ Required correction binding:
 7. Re-run full protocol-aligned verification after correction, then repeat independent REVIEW before ACCEPT.
 
 No physical S08F execution is authorized while these review findings remain open. Do not begin S09.
+
+## 0.10 Review-Correction Artifact Rebind Automation
+
+The CRITICAL review correction changes production source after the previously accepted S08B production SHA was frozen. A separate owner execution solely to discover and then manually rebind the deterministic bundle hash is prohibited by the operating protocol's one-execution / bounded-automatic-repair preference.
+
+The protocol-aligned prerequisite verifier is therefore authorized to perform exactly one bounded test-only artifact-identity rebind inside its GUID-isolated detached verification worktree before full verification:
+
+1. Start from the exact supervisor-bound review-correction input candidate and a remote branch still leased to that candidate.
+2. Install dependencies and build ordinary production `main.js` from that exact source before running the full suites.
+3. Compute the generated production SHA-256 directly from `main.js`.
+4. Read `test-platform/test/s08b-validation-build-entrypoint.test.ts` and identify exactly one frozen `acceptedProductionSha256` 64-hex constant.
+5. If that constant already equals the generated hash, create no implementation commit.
+6. If it differs, replace only that one constant; require the resulting Git diff to contain only that test file; require `git diff --check` PASS; and create one local test-only implementation child commit.
+7. After any such rebind, treat the resulting local commit as the exact verification candidate. Re-run typecheck, focused recovery tests, the complete product suite, complete BVP suite, architecture guard/metrics, repository check, production build/isolation, validation-artifact identity, and repository mutation audit against that exact resulting commit.
+8. The validation artifact must identify the resulting verified candidate SHA, not merely the input candidate.
+9. On any FAIL/BLOCKED/INDETERMINATE result, publish neither the implementation child nor evidence; preserve the diagnostic workspace and leave the remote branch unchanged.
+10. On complete PASS only, create one evidence-only child whose parent is the resulting verified candidate and push the local implementation child (if any) plus evidence child together as one fast-forward update while the remote branch is still leased to the input candidate.
+11. Canonical evidence must record both `inputCandidateSha` and `candidateSha` when they differ.
+12. A future rerun must recognize only the resulting verified candidate's strict canonical evidence child; the pre-rebind input SHA is not itself accepted as verified.
+
+This authorization does not permit any production-source modification, any other BVP-test change, or any physical S08F action.
+
+Do not begin S09.
