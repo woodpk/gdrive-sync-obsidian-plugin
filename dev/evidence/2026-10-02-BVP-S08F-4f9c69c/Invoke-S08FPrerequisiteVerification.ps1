@@ -549,11 +549,25 @@ function Invoke-PublicationLeaseRaceSelfCheck {
     $evidence=$evidenceProbe.stdout.Trim()
     $fastForwardProof=Run-LeaseStep -Arguments @('-C',$work,'merge-base','--is-ancestor',$base,$evidence) -WorkingDirectory $work
 
-    $reset=Run-LeaseStep -Arguments @('--git-dir=' + $origin,'update-ref','refs/heads/lease',$base,$candidate) -WorkingDirectory $root
-    if ($reset.exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='race-reset';steps=@($steps)} }
+    $remoteBeforeProbe=Run-LeaseStep -Arguments @('--git-dir',$origin,'rev-parse','refs/heads/lease') -WorkingDirectory $root
+    $remoteBefore=$remoteBeforeProbe.stdout.Trim()
+    if ($remoteBeforeProbe.exitCode -ne 0 -or $remoteBefore -ne $candidate) {
+        return [pscustomobject]@{ok=$false;reason='race-precondition';expectedRemote=$candidate;observedRemote=$remoteBefore;steps=@($steps)}
+    }
+
+    $reset=Run-LeaseStep -Arguments @('--git-dir',$origin,'update-ref','refs/heads/lease',$base,$candidate) -WorkingDirectory $root
+    if ($reset.exitCode -ne 0) {
+        return [pscustomobject]@{ok=$false;reason='race-reset';expectedOld=$candidate;newValue=$base;stderr=$reset.stderr;stdout=$reset.stdout;steps=@($steps)}
+    }
+
+    $remoteResetProbe=Run-LeaseStep -Arguments @('--git-dir',$origin,'rev-parse','refs/heads/lease') -WorkingDirectory $root
+    $remoteReset=$remoteResetProbe.stdout.Trim()
+    if ($remoteResetProbe.exitCode -ne 0 -or $remoteReset -ne $base) {
+        return [pscustomobject]@{ok=$false;reason='race-reset-observation';expectedRemote=$base;observedRemote=$remoteReset;steps=@($steps)}
+    }
 
     $leasedPush=Run-LeaseStep -Arguments @('-C',$work,'push',('--force-with-lease=refs/heads/lease:' + $candidate),'origin','HEAD:refs/heads/lease') -WorkingDirectory $work
-    $remoteAfterProbe=Run-LeaseStep -Arguments @('--git-dir=' + $origin,'rev-parse','refs/heads/lease') -WorkingDirectory $root
+    $remoteAfterProbe=Run-LeaseStep -Arguments @('--git-dir',$origin,'rev-parse','refs/heads/lease') -WorkingDirectory $root
     $remoteAfter=$remoteAfterProbe.stdout.Trim()
 
     return [pscustomobject]@{
@@ -562,7 +576,10 @@ function Invoke-PublicationLeaseRaceSelfCheck {
         base=$base
         candidate=$candidate
         evidence=$evidence
+        remoteBefore=$remoteBefore
+        remoteReset=$remoteReset
         leasedPushExit=$leasedPush.exitCode
+        leasedPushStderr=$leasedPush.stderr
         remoteAfter=$remoteAfter
         steps=@($steps)
     }
