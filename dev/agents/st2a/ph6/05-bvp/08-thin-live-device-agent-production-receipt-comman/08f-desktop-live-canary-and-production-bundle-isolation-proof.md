@@ -480,3 +480,26 @@ The protocol-aligned prerequisite verifier is therefore authorized to perform ex
 This authorization does not permit any production-source modification, any other BVP-test change, or any physical S08F action.
 
 Do not begin S09.
+
+## 0.11 Second Independent Review Rejection — Required Corrections
+
+Independent review session `review-s08f-multi-root-recovery-prerequisite-02` REJECTED verified candidate `15e61ac0b0e6a9a353ade24a50195751129b2326` with the following disposition:
+
+- `S08F-R01` remains CRITICAL: malformed successful exact-parent JSON can still manufacture recovery authority because returned object identity and explicit live-state evidence are not runtime-validated;
+- `S08F-R02` remains MAJOR: existing-evidence recognition still accepts semantic files under the evidence root and does not independently prove rebind lineage / candidate-bound artifact identity;
+- `S08F-R03` is CLOSED and must remain closed;
+- new `S08F-R04` MODERATE: publication checks the branch lease before push but does not enforce the expected old SHA atomically at push time.
+
+Required correction binding:
+
+1. In `src/drive/google-drive-port.ts`, after a successful exact read of `descriptor.parentRemoteObjectId`, require runtime proof that the returned object's `id` is a non-empty string exactly equal to the requested parent ID and that `trashed` is explicitly present as `false` before ancestry/path authority may be derived. Missing/mismatched ID, missing/invalid live-state evidence, wrong MIME type, moved/ambiguous/inaccessible structure, or any other incomplete evidence remains `unobservable`.
+2. In `test/workstreams/drive/phase6-remote-protocol.test.ts`, add direct malformed-success regressions for mismatched returned ID, missing returned ID, and missing explicit live-state (`trashed`) evidence. Each must remain `unobservable`, perform zero mutation, and perform no path/root authority fallback.
+3. In `test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts`, extend downstream coverage so those malformed-parent reasons remain `recovery-pending` / `recovery-required`, retain `outcome-unknown`, and perform zero redispatch.
+4. In `Invoke-S08FPrerequisiteVerification.ps1`, existing evidence recognition must accept only the exact canonical PASS JSON/Markdown/log paths; semantic verifier/harness files under the evidence directory are not evidence-only.
+5. When canonical evidence reports an artifact-rebind candidate, recognition must independently prove from Git that the verified candidate is a single-parent child of `inputCandidateSha`, that its only changed path is the authorized S08B test, and that the candidate's actual `acceptedProductionSha256` constant equals the reported accepted/production SHA.
+6. Canonical report validation must reconcile top-level production and validation artifact identities with their corresponding stage evidence and reject contradictory stage/top-level hashes or sizes.
+7. Synthetic fail-closed self-checks must additionally reject: a child changing the verifier, an unrelated input SHA / false rebind lineage, and contradictory production artifact evidence, while continuing to accept a genuine coherent canonical model.
+8. Evidence publication must retain a verified fast-forward topology and atomically enforce the exact expected remote old SHA during `git push` using an exact lease; a race/reset between pre-check and push must fail publication without moving the branch.
+9. Re-run full protocol-aligned verification after correction, then repeat independent REVIEW before ACCEPT.
+
+No physical S08F execution is authorized while these findings remain open. Do not begin S09.
