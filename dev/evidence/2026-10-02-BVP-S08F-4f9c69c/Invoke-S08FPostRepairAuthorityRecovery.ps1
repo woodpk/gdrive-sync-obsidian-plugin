@@ -325,20 +325,59 @@ try {
     }
 
     if ($ready) {
+        $installBackup = Join-Path $tempRoot 'installed-backup'
+        [void][System.IO.Directory]::CreateDirectory($installBackup)
+        $backupMain = Join-Path $installBackup 'main.js'
+        $backupManifest = Join-Path $installBackup 'manifest.json'
+        $backupIdentity = Join-Path $installBackup 'build-identity.json'
+        $identityPreviouslyPresent = Test-Path -LiteralPath $installedIdentity -PathType Leaf
+        Copy-Item -LiteralPath $installedMain -Destination $backupMain -Force
+        Copy-Item -LiteralPath $installedManifest -Destination $backupManifest -Force
+        if ($identityPreviouslyPresent) { Copy-Item -LiteralPath $installedIdentity -Destination $backupIdentity -Force }
         $dataHashBefore = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
-        Copy-Item -LiteralPath $validationMain -Destination $installedMain -Force
-        Copy-Item -LiteralPath $validationManifest -Destination $installedManifest -Force
-        Copy-Item -LiteralPath $validationIdentityPath -Destination $installedIdentity -Force
-        $dataHashAfter = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
-        $installedHashAfter = (Get-FileHash -LiteralPath $installedMain -Algorithm SHA256).Hash.ToLowerInvariant()
-        $installedIdentityModel = Get-Content -LiteralPath $installedIdentity -Raw | ConvertFrom-Json
-        if ($dataHashBefore -ceq $dataHashAfter -and
-            $installedHashAfter -ceq $expectedValidationHash -and
-            [string]$installedIdentityModel.sourceCommit -ceq $implementationSha) {
-            Add-Result 'repaired-validation-install' 'PASS' 'BOUNDED VALIDATION INSTALL' 'Installed only repaired validation main.js/manifest/build identity; data.json remained byte-identical.'
-        } else {
+        try {
+            Copy-Item -LiteralPath $validationMain -Destination $installedMain -Force
+            Copy-Item -LiteralPath $validationManifest -Destination $installedManifest -Force
+            Copy-Item -LiteralPath $validationIdentityPath -Destination $installedIdentity -Force
+            $dataHashAfter = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
+            $installedHashAfter = (Get-FileHash -LiteralPath $installedMain -Algorithm SHA256).Hash.ToLowerInvariant()
+            $installedManifestHashAfter = (Get-FileHash -LiteralPath $installedManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+            $installedIdentityModel = Get-Content -LiteralPath $installedIdentity -Raw | ConvertFrom-Json
+            $installPass = $dataHashBefore -ceq $dataHashAfter -and
+                $installedHashAfter -ceq $expectedValidationHash -and
+                $installedManifestHashAfter -ceq $expectedValidationManifestHash -and
+                [string]$installedIdentityModel.sourceCommit -ceq $implementationSha -and
+                [string]$installedIdentityModel.artifactSha256 -ceq $expectedValidationHash -and
+                [int64]$installedIdentityModel.artifactSize -eq $expectedValidationSize -and
+                [string]$installedIdentityModel.manifestSha256 -ceq $expectedValidationManifestHash
+            if ($installPass) {
+                Add-Result 'repaired-validation-install' 'PASS' 'BOUNDED VALIDATION INSTALL' 'Installed exact repaired validation main.js/manifest/build identity; data.json remained byte-identical.'
+            } else {
+                throw ('Install verification failed: dataBefore={0} dataAfter={1} main={2} manifest={3} source={4}' -f $dataHashBefore,$dataHashAfter,$installedHashAfter,$installedManifestHashAfter,[string]$installedIdentityModel.sourceCommit)
+            }
+        } catch {
+            Copy-Item -LiteralPath $backupMain -Destination $installedMain -Force
+            Copy-Item -LiteralPath $backupManifest -Destination $installedManifest -Force
+            if ($identityPreviouslyPresent) {
+                Copy-Item -LiteralPath $backupIdentity -Destination $installedIdentity -Force
+            } elseif (Test-Path -LiteralPath $installedIdentity -PathType Leaf) {
+                Remove-Item -LiteralPath $installedIdentity -Force
+            }
+            $rollbackMainHash = (Get-FileHash -LiteralPath $installedMain -Algorithm SHA256).Hash.ToLowerInvariant()
+            $rollbackManifestHash = (Get-FileHash -LiteralPath $installedManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+            $backupMainHash = (Get-FileHash -LiteralPath $backupMain -Algorithm SHA256).Hash.ToLowerInvariant()
+            $backupManifestHash = (Get-FileHash -LiteralPath $backupManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+            $dataHashRollback = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
+            $rollbackPass = $rollbackMainHash -ceq $backupMainHash -and
+                $rollbackManifestHash -ceq $backupManifestHash -and
+                $dataHashRollback -ceq $dataHashBefore -and
+                ((-not $identityPreviouslyPresent -and -not (Test-Path -LiteralPath $installedIdentity -PathType Leaf)) -or
+                 ($identityPreviouslyPresent -and
+                  (Test-Path -LiteralPath $installedIdentity -PathType Leaf) -and
+                  ((Get-FileHash -LiteralPath $installedIdentity -Algorithm SHA256).Hash.ToLowerInvariant() -ceq
+                   (Get-FileHash -LiteralPath $backupIdentity -Algorithm SHA256).Hash.ToLowerInvariant())))
             $ready = $false
-            Add-Result 'repaired-validation-install' 'FAIL' 'PHYSICAL INSTALL FAILURE' ('Install verification failed: dataBefore={0} dataAfter={1} main={2} source={3}' -f $dataHashBefore,$dataHashAfter,$installedHashAfter,[string]$installedIdentityModel.sourceCommit)
+            Add-Result 'repaired-validation-install' 'FAIL' 'PHYSICAL INSTALL FAILURE' ('Repaired validation install failed and rollback={0}: {1}' -f $rollbackPass,$_.Exception.Message)
         }
     }
 
