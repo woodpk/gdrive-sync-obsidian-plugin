@@ -385,6 +385,68 @@ async function invokeControlMethod(controlKey, method) {
   if (result?.__error) throw new Error(result.__error);
   return result;
 }
+async function quiesceControlAndObserve(renderer, controlKey) {
+  const expression = `(()=>{
+    const plugin=globalThis.app?.plugins?.plugins?.['brain-google-drive-sync'];
+    const production=plugin&&typeof plugin.productionVerificationControl==='function'?plugin.productionVerificationControl():undefined;
+    const prior=globalThis[${JSON.stringify(controlKey)}];
+    let controlStatus=null;
+    try{controlStatus=prior&&typeof prior.status==='function'?prior.status():null}catch(error){controlStatus={error:error instanceof Error?error.message:String(error)}}
+    try{if(prior&&typeof prior.stop==='function')prior.stop()}catch{}
+    try{delete globalThis[${JSON.stringify(controlKey)}]}catch{}
+    return{
+      vault:typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'',
+      visibility:globalThis.document?.visibilityState??'unknown',
+      controlStatus,
+      productStatus:production?.currentStatus?.()??null,
+      latestReceipt:production?.latestProductionRunReceipt?.()??null,
+    };
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000);
+}
+
+async function installMailboxResultRecoveryShim(renderer, known) {
+  const markerKey='__BRAIN_BVP_S08F_R2_MAILBOX_RESULT_RECOVERY__';
+  const expression = `(()=>{
+    const runtime=globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__;
+    if(!runtime?.mailbox||typeof runtime.mailbox.resultFor!=='function')return{ok:false,reason:'mailbox-runtime-unavailable'};
+    const markerKey=${JSON.stringify(markerKey)};
+    const known=${JSON.stringify(known)};
+    const prior=globalThis[markerKey];
+    if(prior?.installed===true)return{ok:true,alreadyInstalled:true,knownCommandIds:Object.keys(known)};
+    const original=runtime.mailbox.resultFor.bind(runtime.mailbox);
+    const headerExact=(a,b)=>a&&b&&a.runId===b.runId&&a.deviceId===b.deviceId&&a.sequence===b.sequence&&a.commandId===b.commandId&&a.kind===b.kind;
+    runtime.mailbox.resultFor=async command=>{
+      try{return await original(command)}
+      catch(error){
+        if(!(error instanceof Error)||error.message!=='mailbox-conflicting-result')throw error;
+        const entry=known[command?.commandId];
+        if(!entry||!headerExact(command,entry.command))throw error;
+        return structuredClone(entry.result);
+      }
+    };
+    Object.defineProperty(globalThis,markerKey,{value:{installed:true,original,mailbox:runtime.mailbox},configurable:true,enumerable:false,writable:false});
+    return{ok:true,alreadyInstalled:false,knownCommandIds:Object.keys(known)};
+  })()`;
+  const result=await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000);
+  if(!result?.ok)throw new Error(`Mailbox result recovery shim rejected: ${result?.reason??'unknown'}`);
+  return result;
+}
+
+async function restoreMailboxResultRecoveryShim(renderer) {
+  if(!renderer?.candidate?.webSocketDebuggerUrl)return {ok:true,restored:false,reason:'renderer-unavailable'};
+  const markerKey='__BRAIN_BVP_S08F_R2_MAILBOX_RESULT_RECOVERY__';
+  const expression = `(()=>{
+    const markerKey=${JSON.stringify(markerKey)};
+    const prior=globalThis[markerKey];
+    if(!prior?.installed)return{ok:true,restored:false};
+    try{prior.mailbox.resultFor=prior.original}catch(error){return{ok:false,restored:false,error:error instanceof Error?error.message:String(error)}}
+    try{delete globalThis[markerKey]}catch{}
+    return{ok:true,restored:true};
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000).catch(error=>({ok:false,restored:false,error:error instanceof Error?error.message:String(error)}));
+}
+
 async function directExecute(controlKey, command) {
   const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c.executeDirect!=='function')return{__error:'control-unavailable'};return await c.executeDirect(${JSON.stringify(command)})})()`;
   const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 30000);
