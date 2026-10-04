@@ -515,6 +515,59 @@ function Resolve-LocalReportFailureVerdict {
     if ($CurrentOverall -eq 'PASS' -and $AuthoritativePassAlreadyExists) { return 'PASS' }
     return 'FAIL'
 }
+function Invoke-PublicationLeaseRaceSelfCheck {
+    $root=Join-Path $TempRoot 'publication-lease-self-check'
+    $work=Join-Path $root 'work'
+    $origin=Join-Path $root 'origin.git'
+    [void][System.IO.Directory]::CreateDirectory($root)
+
+    $steps=[System.Collections.Generic.List[object]]::new()
+    function Run-LeaseStep {
+        param([string[]]$Arguments,[string]$WorkingDirectory)
+        $result=Invoke-Native -File $script:GitPath -Arguments $Arguments -WorkingDirectory $WorkingDirectory
+        $steps.Add($result)
+        return $result
+    }
+
+    $initWork=Run-LeaseStep @('init',$work) $root
+    if ($initWork.exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='work-init';steps=@($steps)} }
+    if ((Run-LeaseStep @('-C',$work,'config','user.email','s08f-verifier@example.invalid') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-email';steps=@($steps)} }
+    if ((Run-LeaseStep @('-C',$work,'config','user.name','S08F Verifier') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='user-name';steps=@($steps)} }
+    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','base') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='base-commit';steps=@($steps)} }
+    $baseProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    $base=$baseProbe.stdout.Trim()
+    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','candidate') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='candidate-commit';steps=@($steps)} }
+    $candidateProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    $candidate=$candidateProbe.stdout.Trim()
+
+    if ((Run-LeaseStep @('init','--bare',$origin) $root).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='origin-init';steps=@($steps)} }
+    if ((Run-LeaseStep @('-C',$work,'remote','add','origin',$origin) $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='remote-add';steps=@($steps)} }
+    if ((Run-LeaseStep @('-C',$work,'push','origin','HEAD:refs/heads/lease') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='initial-push';steps=@($steps)} }
+
+    if ((Run-LeaseStep @('-C',$work,'commit','--allow-empty','-m','evidence') $work).exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='evidence-commit';steps=@($steps)} }
+    $evidenceProbe=Run-LeaseStep @('-C',$work,'rev-parse','HEAD') $work
+    $evidence=$evidenceProbe.stdout.Trim()
+    $fastForwardProof=Run-LeaseStep @('-C',$work,'merge-base','--is-ancestor',$base,$evidence) $work
+
+    $reset=Run-LeaseStep @('--git-dir=' + $origin,'update-ref','refs/heads/lease',$base,$candidate) $root
+    if ($reset.exitCode -ne 0) { return [pscustomobject]@{ok=$false;reason='race-reset';steps=@($steps)} }
+
+    $leasedPush=Run-LeaseStep @('-C',$work,'push',('--force-with-lease=refs/heads/lease:' + $candidate),'origin','HEAD:refs/heads/lease') $work
+    $remoteAfterProbe=Run-LeaseStep @('--git-dir=' + $origin,'rev-parse','refs/heads/lease') $root
+    $remoteAfter=$remoteAfterProbe.stdout.Trim()
+
+    return [pscustomobject]@{
+        ok=($fastForwardProof.exitCode -eq 0 -and $leasedPush.exitCode -ne 0 -and $remoteAfterProbe.exitCode -eq 0 -and $remoteAfter -eq $base)
+        reason='race-injection'
+        base=$base
+        candidate=$candidate
+        evidence=$evidence
+        leasedPushExit=$leasedPush.exitCode
+        remoteAfter=$remoteAfter
+        steps=@($steps)
+    }
+}
+
 function Write-ReportFiles {
     param(
         [string]$Directory,
@@ -737,7 +790,22 @@ try {
         Add-Stage -Name 'publication-verdict-self-check' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
     }
 
-    if (Stage-Passed 'toolchain' -and Stage-Passed 'rerun-recognition-self-check' -and Stage-Passed 'publication-verdict-self-check') {
+    if (Stage-Passed 'toolchain') {
+        try {
+            $leaseSelfCheck=Invoke-PublicationLeaseRaceSelfCheck
+            if ($leaseSelfCheck.ok) {
+                Add-Stage -Name 'publication-lease-self-check' -Status 'PASS' -Classification 'ATOMIC BRANCH LEASE RACE REJECTION' -Summary 'Synthetic remote reset between pre-check and push was rejected by the exact lease while the local publication remained a fast-forward from the reset ancestor.' -Evidence $leaseSelfCheck | Out-Null
+            } else {
+                Add-Stage -Name 'publication-lease-self-check' -Status 'FAIL' -Classification 'ATOMIC BRANCH LEASE SELF-CHECK FAILED' -Summary ('Synthetic lease race test failed at ' + $leaseSelfCheck.reason + '.') -Evidence $leaseSelfCheck | Out-Null
+            }
+        } catch {
+            Add-Stage -Name 'publication-lease-self-check' -Status 'INDETERMINATE' -Classification 'ATOMIC BRANCH LEASE SELF-CHECK ERROR' -Summary $_.Exception.Message | Out-Null
+        }
+    } else {
+        Add-Stage -Name 'publication-lease-self-check' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
+    }
+
+    if (Stage-Passed 'toolchain' -and Stage-Passed 'rerun-recognition-self-check' -and Stage-Passed 'publication-verdict-self-check' -and Stage-Passed 'publication-lease-self-check') {
         Write-LogLine
         Write-LogLine '===== REPOSITORY IDENTITY / RERUN SAFETY ====='
 
@@ -1114,7 +1182,7 @@ try {
                 $line = [string]$_
                 if ($line.Length -lt 4) { return $true }
                 $relative = $line.Substring(3).Replace('\','/')
-                return -not $relative.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal)
+                return $CanonicalEvidencePaths -notcontains $relative
             })
 
             if ($evidenceStatus.exitCode -ne 0 -or $outsideEvidence.Count -gt 0) {
@@ -1148,19 +1216,27 @@ try {
                             $parentProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'rev-parse','HEAD^') -WorkingDirectory $Worktree
                             $committedPathsProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'diff-tree','--no-commit-id','--name-only','-r','HEAD') -WorkingDirectory $Worktree
                             $committedPaths = @($committedPathsProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-                            $nonEvidenceCommitted = @($committedPaths | Where-Object { -not ([string]$_).StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal) })
+                            $nonEvidenceCommitted = @($committedPaths | Where-Object { $CanonicalEvidencePaths -notcontains [string]$_ })
+                            $missingCanonicalCommitted = @($CanonicalEvidencePaths | Where-Object { $committedPaths -notcontains [string]$_ })
 
-                            if ($headProbe.exitCode -ne 0 -or $parentProbe.exitCode -ne 0 -or $parentProbe.stdout.Trim() -ne $CandidateSha -or $nonEvidenceCommitted.Count -gt 0) {
+                            if ($headProbe.exitCode -ne 0 -or $parentProbe.exitCode -ne 0 -or $parentProbe.stdout.Trim() -ne $CandidateSha -or $nonEvidenceCommitted.Count -gt 0 -or $missingCanonicalCommitted.Count -gt 0) {
                                 Add-Stage -Name 'evidence-publication' -Status 'FAIL' -Classification 'EVIDENCE COMMIT INVARIANT FAILED' -Summary 'Prepared evidence commit is not a direct evidence-only child of the verified candidate; it was not pushed.' -Evidence ([pscustomobject]@{ parent = $parentProbe.stdout.Trim(); committedPaths = $committedPaths }) | Out-Null
                                 $script:FinalOverall = 'FAIL'
                             } else {
-                                $push = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'push','origin',('HEAD:refs/heads/' + $Branch)) -WorkingDirectory $Worktree
-                                Write-NativeResult $push
-                                if ($push.exitCode -eq 0) {
+                                $publishFastForward = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'merge-base','--is-ancestor',$InputCandidateSha,'HEAD') -WorkingDirectory $Worktree
+                                if ($publishFastForward.exitCode -ne 0) {
+                                    Add-Stage -Name 'evidence-publication' -Status 'FAIL' -Classification 'PUBLICATION NOT FAST-FORWARD' -Summary ('Prepared publication HEAD is not a descendant of exact input lease ' + $InputCandidateSha + '; it was not pushed.') | Out-Null
+                                    $script:FinalOverall = 'FAIL'
+                                } else {
+                                    $leaseArgument='--force-with-lease=refs/heads/' + $Branch + ':' + $InputCandidateSha
+                                    $push = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'push',$leaseArgument,'origin',('HEAD:refs/heads/' + $Branch)) -WorkingDirectory $Worktree
+                                    Write-NativeResult $push
+                                    if ($push.exitCode -eq 0) {
                                     Add-Stage -Name 'evidence-publication' -Status 'PASS' -Classification 'CANONICAL EVIDENCE PUBLISHED' -Summary ('Published direct evidence-only child ' + $script:EvidenceCommit + ' for verified candidate ' + $CandidateSha + '.') | Out-Null
                                 } else {
                                     Add-Stage -Name 'evidence-publication' -Status 'INDETERMINATE' -Classification 'EVIDENCE PUSH FAILED' -Summary ('Evidence commit exists locally at ' + $script:EvidenceCommit + ' but push failed with exit ' + $push.exitCode + '. Diagnostic workspace is preserved.') | Out-Null
                                     $script:FinalOverall = 'FAIL'
+                                    }
                                 }
                             }
                         }
