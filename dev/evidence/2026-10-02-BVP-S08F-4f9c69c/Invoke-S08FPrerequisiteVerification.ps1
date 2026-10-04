@@ -21,8 +21,9 @@ $FailJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.json'
 $FailMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.md'
 
 $ArtifactRebindTestRel = 'test-platform/test/s08b-validation-build-entrypoint.test.ts'
-$AllowedChangedPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel)
-$SourceDiffCheckPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel)
+$DownstreamRecoveryTestRel = 'test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts'
+$AllowedChangedPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel, $DownstreamRecoveryTestRel)
+$SourceDiffCheckPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel, $DownstreamRecoveryTestRel)
 $RequiredVerificationStageNames = @(
     'toolchain',
     'rerun-recognition-self-check',
