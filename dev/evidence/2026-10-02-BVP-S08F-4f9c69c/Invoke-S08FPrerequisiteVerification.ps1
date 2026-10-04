@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$InputCandidateSha = $CandidateSha
 
 $VerificationBase = '39cf1ff62fb927aba9d2ee49f99724d9ce1f2856'
 $EvidenceRel = 'dev/evidence/2026-10-02-BVP-S08F-4f9c69c'
@@ -33,6 +34,10 @@ $CoreVerificationStageNames = @(
     'defect-causality',
     'disposable-worktree',
     'dependencies',
+    'artifact-rebind-build',
+    'artifact-rebind',
+    'post-rebind-scope',
+    'post-rebind-causality',
     'typecheck',
     'product-test-compile',
     'focused-folder-recovery',
@@ -63,6 +68,8 @@ $ExistingEvidenceCommit = $null
 $ExistingEvidence = $null
 $ProductionArtifact = $null
 $ValidationArtifact = $null
+$AcceptedProductionSha256 = $null
+$ArtifactRebindCommit = $null
 $AlreadyVerified = $false
 $HarnessError = $null
 $FinalOverall = 'FAIL'
@@ -308,14 +315,20 @@ function Test-CanonicalPassReport {
     param([object]$Report)
     $reasons=[System.Collections.Generic.List[string]]::new()
     if ($null -eq $Report) { $reasons.Add('report-missing'); return [pscustomobject]@{ok=$false;reasons=@($reasons)} }
-    foreach($requiredProperty in @('schemaVersion','overall','verificationBase','candidateSha','branch','physicalMutationAttempted','stages','productionArtifact','validationArtifact')) {
+    foreach($requiredProperty in @('schemaVersion','overall','verificationBase','inputCandidateSha','candidateSha','branch','physicalMutationAttempted','acceptedProductionSha256','artifactRebindCommit','stages','productionArtifact','validationArtifact')) {
         if (-not (Has-ObjectProperty $Report $requiredProperty)) { $reasons.Add('missing-property:' + $requiredProperty) }
     }
     if ($reasons.Count -gt 0) { return [pscustomobject]@{ok=$false;reasons=@($reasons)} }
     if ([int](Get-ObjectProperty $Report 'schemaVersion') -ne 2) { $reasons.Add('schema-version') }
     if ([string](Get-ObjectProperty $Report 'overall') -ne 'PASS') { $reasons.Add('overall') }
     if ([string](Get-ObjectProperty $Report 'verificationBase') -ne $VerificationBase) { $reasons.Add('verification-base') }
-    if ([string](Get-ObjectProperty $Report 'candidateSha') -ne $CandidateSha) { $reasons.Add('candidate-sha') }
+    $reportInputCandidate=[string](Get-ObjectProperty $Report 'inputCandidateSha')
+    $reportCandidate=[string](Get-ObjectProperty $Report 'candidateSha')
+    $reportRebind=[string](Get-ObjectProperty $Report 'artifactRebindCommit')
+    if ($reportInputCandidate -notmatch '^[0-9a-f]{40}$') { $reasons.Add('input-candidate-sha') }
+    if ($reportCandidate -ne $CandidateSha) { $reasons.Add('candidate-sha') }
+    if ([string]::IsNullOrWhiteSpace($reportRebind)) { if ($reportInputCandidate -ne $reportCandidate) { $reasons.Add('unexpected-input-candidate') } }
+    elseif ($reportRebind -ne $reportCandidate -or $reportInputCandidate -eq $reportCandidate) { $reasons.Add('artifact-rebind-identity') }
     if ([string](Get-ObjectProperty $Report 'branch') -ne $Branch) { $reasons.Add('branch') }
     if ((Get-ObjectProperty $Report 'physicalMutationAttempted') -ne $false) { $reasons.Add('physical-mutation-flag') }
     $stages=@((Get-ObjectProperty $Report 'stages'))
@@ -329,6 +342,7 @@ function Test-CanonicalPassReport {
         foreach($name in @('sizeBytes','sha256','forbiddenMarkerHits')) { if (-not (Has-ObjectProperty $production $name)) { $reasons.Add('production-missing:' + $name) } }
         if ((Has-ObjectProperty $production 'sizeBytes') -and [int64](Get-ObjectProperty $production 'sizeBytes') -le 0) { $reasons.Add('production-size') }
         if ((Has-ObjectProperty $production 'sha256') -and [string](Get-ObjectProperty $production 'sha256') -notmatch '^[0-9a-f]{64}$') { $reasons.Add('production-hash') }
+        if ([string](Get-ObjectProperty $Report 'acceptedProductionSha256') -ne [string](Get-ObjectProperty $production 'sha256')) { $reasons.Add('accepted-production-hash') }
         if ((Has-ObjectProperty $production 'forbiddenMarkerHits') -and @((Get-ObjectProperty $production 'forbiddenMarkerHits')).Count -ne 0) { $reasons.Add('production-markers') }
     }
     $validation=Get-ObjectProperty $Report 'validationArtifact'
@@ -356,7 +370,7 @@ function Test-EvidenceChildRecognitionModel {
 
 function New-SyntheticValidPassReport {
     $syntheticStages=@($CanonicalPassStageNames | ForEach-Object { [pscustomobject]@{name=$_;status='PASS'} })
-    return [pscustomobject]@{schemaVersion=2;overall='PASS';verificationBase=$VerificationBase;candidateSha=$CandidateSha;branch=$Branch;physicalMutationAttempted=$false;stages=$syntheticStages;productionArtifact=[pscustomobject]@{sizeBytes=1;sha256=('a' * 64);forbiddenMarkerHits=@()};validationArtifact=[pscustomobject]@{sourceCommit=$CandidateSha;artifactSize=1;artifactSha256=('b' * 64);actualSize=1;actualSha256=('b' * 64)}}
+    return [pscustomobject]@{schemaVersion=2;overall='PASS';verificationBase=$VerificationBase;inputCandidateSha=$CandidateSha;candidateSha=$CandidateSha;branch=$Branch;physicalMutationAttempted=$false;acceptedProductionSha256=('a' * 64);artifactRebindCommit=$null;stages=$syntheticStages;productionArtifact=[pscustomobject]@{sizeBytes=1;sha256=('a' * 64);forbiddenMarkerHits=@()};validationArtifact=[pscustomobject]@{sourceCommit=$CandidateSha;artifactSize=1;artifactSha256=('b' * 64);actualSize=1;actualSha256=('b' * 64)}}
 }
 
 function Resolve-LocalReportFailureVerdict {
@@ -380,8 +394,11 @@ function Write-ReportFiles {
         generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
         overall = $Overall
         verificationBase = $VerificationBase
+        inputCandidateSha = $InputCandidateSha
         candidateSha = $CandidateSha
         branch = $Branch
+        acceptedProductionSha256 = $AcceptedProductionSha256
+        artifactRebindCommit = $ArtifactRebindCommit
         productionArtifact = $ProductionArtifact
         validationArtifact = $ValidationArtifact
         existingEvidenceCommit = $ExistingEvidenceCommit
@@ -438,7 +455,9 @@ function Print-FinalSummary {
     }
     Write-LogLine '------------------------------------------------------------'
     Write-LogLine ('OVERALL: {0}' -f $Overall)
-    Write-LogLine ('CANDIDATE: {0}' -f $CandidateSha)
+    Write-LogLine ('INPUT CANDIDATE: {0}' -f $InputCandidateSha)
+    Write-LogLine ('VERIFIED CANDIDATE: {0}' -f $CandidateSha)
+    Write-LogLine ('ARTIFACT REBIND COMMIT: {0}' -f $(if ($ArtifactRebindCommit) { $ArtifactRebindCommit } else { '<none>' }))
     Write-LogLine ('EVIDENCE COMMIT: {0}' -f $(if ($EvidenceCommit) { $EvidenceCommit } elseif ($ExistingEvidenceCommit) { $ExistingEvidenceCommit } else { '<none>' }))
     if ($null -ne $ProductionArtifact) {
         Write-LogLine ('PRODUCTION MAIN.JS: {0} bytes / {1}' -f $ProductionArtifact.sizeBytes, $ProductionArtifact.sha256)
@@ -465,7 +484,7 @@ try {
     Write-LogLine '============================================================'
     Write-LogLine 'S08F PROTOCOL-ALIGNED PREREQUISITE VERIFIER'
     Write-LogLine '============================================================'
-    Write-LogLine ('Candidate: {0}' -f $CandidateSha)
+    Write-LogLine ('Input candidate: {0}' -f $InputCandidateSha)
     Write-LogLine ('Verification base: {0}' -f $VerificationBase)
     Write-LogLine ('Repository: {0}' -f $RepositoryRoot)
     Write-LogLine 'Physical mutation authorized: NO'
@@ -571,12 +590,14 @@ try {
             }
         }
     } else {
-        Add-Stage -Name 'repository-identity'        Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain or verifier self-check did not pass.' | Out-Null
+        Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain or verifier self-check did not pass.' | Out-Null
     }
 
     if ($script:AlreadyVerified) {
         $script:ProductionArtifact = $script:ExistingEvidence.productionArtifact
         $script:ValidationArtifact = $script:ExistingEvidence.validationArtifact
+        $script:AcceptedProductionSha256 = [string]$script:ExistingEvidence.acceptedProductionSha256
+        $script:ArtifactRebindCommit = [string]$script:ExistingEvidence.artifactRebindCommit
         $script:FinalOverall = 'PASS'
     } elseif (Stage-Passed 'repository-identity') {
         Write-LogLine
@@ -659,6 +680,84 @@ try {
 
         $dependencyCode = Invoke-ProcessStage -Name 'dependencies' -Classification 'DEPENDENCY INSTALL' -File $script:NpmPath -Arguments @('ci','--no-audit','--no-fund','--loglevel','info') -WorkingDirectory $Worktree -Enabled $worktreeReady -BlockedReason 'Disposable worktree is unavailable.'
         $dependenciesReady = $dependencyCode -eq 0
+
+        $rebindBuildCode = Invoke-ProcessStage -Name 'artifact-rebind-build' -Classification 'PRE-VERIFICATION PRODUCTION BUILD' -File $script:NodePath -Arguments @('scripts/build.mjs') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.'
+        $rebindBuildReady = $rebindBuildCode -eq 0
+        if ($rebindBuildReady) {
+            try {
+                $rebindMain = Join-Path $Worktree 'main.js'
+                $rebindTestPath = Join-Path $Worktree ($ArtifactRebindTestRel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+                if (-not (Test-Path -LiteralPath $rebindMain -PathType Leaf)) { throw 'pre-verification production build returned success but main.js is missing' }
+                if (-not (Test-Path -LiteralPath $rebindTestPath -PathType Leaf)) { throw 'S08B validation-build test is missing' }
+                $observedProductionHash = Get-Sha256 $rebindMain
+                $testText = [System.IO.File]::ReadAllText($rebindTestPath)
+                $hashPattern = '(?ms)(const\s+acceptedProductionSha256\s*=\s*\r?\n?\s*")([0-9a-f]{64})("\s*;)'
+                $hashMatches = @([regex]::Matches($testText,$hashPattern))
+                if ($hashMatches.Count -ne 1) { throw ('expected exactly one acceptedProductionSha256 constant; observed ' + $hashMatches.Count) }
+                $currentAcceptedHash = [string]$hashMatches[0].Groups[2].Value
+                if ($currentAcceptedHash -eq $observedProductionHash) {
+                    $script:AcceptedProductionSha256 = $observedProductionHash
+                    Add-Stage -Name 'artifact-rebind' -Status 'PASS' -Classification 'ARTIFACT IDENTITY ALREADY CURRENT' -Summary ('S08B accepted production SHA already equals deterministic build hash ' + $observedProductionHash + '; no implementation child commit required.') -Evidence ([pscustomobject]@{ inputCandidate=$InputCandidateSha; verifiedCandidate=$CandidateSha; productionSha256=$observedProductionHash; changed=$false }) | Out-Null
+                } else {
+                    $replacement = $hashMatches[0].Groups[1].Value + $observedProductionHash + $hashMatches[0].Groups[3].Value
+                    $newText = $testText.Substring(0,$hashMatches[0].Index) + $replacement + $testText.Substring($hashMatches[0].Index + $hashMatches[0].Length)
+                    [System.IO.File]::WriteAllText($rebindTestPath,$newText,[System.Text.UTF8Encoding]::new($false))
+                    $changedProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'diff','--name-only','--') -WorkingDirectory $Worktree
+                    $changedPaths = @($changedProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                    $diffCheckProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'diff','--check','--',$ArtifactRebindTestRel) -WorkingDirectory $Worktree
+                    if ($changedProbe.exitCode -ne 0 -or $diffCheckProbe.exitCode -ne 0 -or $changedPaths.Count -ne 1 -or $changedPaths[0] -ne $ArtifactRebindTestRel) { throw ('artifact rebind scope invariant failed: ' + ($changedPaths -join ',')) }
+                    $addProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'add','--',$ArtifactRebindTestRel) -WorkingDirectory $Worktree
+                    if ($addProbe.exitCode -ne 0) { throw 'unable to stage bounded artifact rebind' }
+                    $commitProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'commit','-m','test(bvp): rebind accepted S08F production bundle hash after review repair') -WorkingDirectory $Worktree
+                    Write-NativeResult $commitProbe
+                    if ($commitProbe.exitCode -ne 0) { throw ('artifact rebind commit failed with exit ' + $commitProbe.exitCode) }
+                    $headProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'rev-parse','HEAD') -WorkingDirectory $Worktree
+                    $parentProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'rev-parse','HEAD^') -WorkingDirectory $Worktree
+                    $pathsProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'diff-tree','--no-commit-id','--name-only','-r','HEAD') -WorkingDirectory $Worktree
+                    $commitPaths = @($pathsProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                    if ($headProbe.exitCode -ne 0 -or $parentProbe.exitCode -ne 0 -or $pathsProbe.exitCode -ne 0 -or $parentProbe.stdout.Trim() -ne $InputCandidateSha -or $commitPaths.Count -ne 1 -or $commitPaths[0] -ne $ArtifactRebindTestRel) { throw 'artifact rebind commit invariant failed' }
+                    $script:ArtifactRebindCommit = $headProbe.stdout.Trim()
+                    $script:CandidateSha = $script:ArtifactRebindCommit
+                    $script:AcceptedProductionSha256 = $observedProductionHash
+                    Add-Stage -Name 'artifact-rebind' -Status 'PASS' -Classification 'BOUNDED TEST-ONLY ARTIFACT REBIND' -Summary ('Created local test-only implementation child ' + $script:ArtifactRebindCommit + ' binding S08B production SHA ' + $currentAcceptedHash + ' -> ' + $observedProductionHash + '. Nothing has been pushed.') -Evidence ([pscustomobject]@{ inputCandidate=$InputCandidateSha; verifiedCandidate=$script:CandidateSha; previousSha256=$currentAcceptedHash; productionSha256=$observedProductionHash; changed=$true; changedPaths=$commitPaths }) | Out-Null
+                }
+            } catch {
+                Add-Stage -Name 'artifact-rebind' -Status 'FAIL' -Classification 'BOUNDED ARTIFACT REBIND FAILED' -Summary $_.Exception.Message | Out-Null
+            }
+        } else {
+            Add-Stage -Name 'artifact-rebind' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Pre-verification production build did not pass.' | Out-Null
+        }
+
+        if (Stage-Passed 'artifact-rebind') {
+            $postAncestor = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'merge-base','--is-ancestor',$VerificationBase,$CandidateSha) -WorkingDirectory $RepositoryRoot
+            $postChangedResult = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'diff','--name-only',$VerificationBase,$CandidateSha,'--') -WorkingDirectory $RepositoryRoot
+            $postChanged = @($postChangedResult.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $postUnexpected = @($postChanged | Where-Object { $value=[string]$_; ($script:AllowedChangedPaths -notcontains $value) -and (-not $value.StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal)) })
+            $postContracts = @($postChanged | Where-Object { ([string]$_).StartsWith('src/contracts/', [System.StringComparison]::Ordinal) })
+            $postDiffArgs = @('-C',$RepositoryRoot,'diff','--check',$VerificationBase,$CandidateSha,'--') + $SourceDiffCheckPaths
+            $postDiff = Invoke-Native -File $script:GitPath -Arguments $postDiffArgs -WorkingDirectory $RepositoryRoot
+            if ($postAncestor.exitCode -eq 0 -and $postChangedResult.exitCode -eq 0 -and $postUnexpected.Count -eq 0 -and $postContracts.Count -eq 0 -and $postDiff.exitCode -eq 0) {
+                Add-Stage -Name 'post-rebind-scope' -Status 'PASS' -Classification 'FINAL CANDIDATE SCOPE PROOF' -Summary ('Final verification candidate ' + $CandidateSha + ' remains within the authorized prerequisite/evidence/test surfaces and frozen contracts are unchanged.') -Evidence ([pscustomobject]@{ changedPaths=$postChanged; unexpectedPaths=$postUnexpected; contractChanges=$postContracts }) | Out-Null
+            } else {
+                Add-Stage -Name 'post-rebind-scope' -Status 'FAIL' -Classification 'FINAL CANDIDATE SCOPE VIOLATION' -Summary 'Final candidate failed ancestry, scope, contract-freeze, or diff-check validation.' -Evidence ([pscustomobject]@{ changedPaths=$postChanged; unexpectedPaths=$postUnexpected; contractChanges=$postContracts; ancestorExit=$postAncestor.exitCode; diffExit=$postDiff.exitCode }) | Out-Null
+            }
+            $postBaseSource = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($VerificationBase + ':' + $SourceRel)) -WorkingDirectory $RepositoryRoot
+            $postSource = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $SourceRel)) -WorkingDirectory $RepositoryRoot
+            $postTest = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $TestRel)) -WorkingDirectory $RepositoryRoot
+            $postDownstream = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $DownstreamRecoveryTestRel)) -WorkingDirectory $RepositoryRoot
+            $postRebindTest = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($CandidateSha + ':' + $ArtifactRebindTestRel)) -WorkingDirectory $RepositoryRoot
+            $forbiddenFallback = 'else if(expectedParent.signal.kind==="not-found"){const root=await this.uniqueManagedRoot()'
+            $postCause = $postBaseSource.exitCode -eq 0 -and $postSource.exitCode -eq 0 -and $postTest.exitCode -eq 0 -and $postDownstream.exitCode -eq 0 -and $postRebindTest.exitCode -eq 0 -and
+                $postBaseSource.stdout.Contains('const root=await this.uniqueManagedRoot()') -and $postSource.stdout.Contains('if(!expectedParent.ok)return') -and -not $postSource.stdout.Contains($forbiddenFallback) -and
+                $postTest.stdout.Contains('expected-parent-unobservable:not-found') -and $postTest.stdout.Contains('parentPathSearch.value,0') -and $postTest.stdout.Contains('rootSearch.value,0') -and $postTest.stdout.Contains('mutations.value,0') -and
+                $postDownstream.stdout.Contains('missing or replaced expected parent remains recovery-pending and non-redispatchable') -and $postDownstream.stdout.Contains('assert.equal(result.status, "recovery-required")') -and
+                $postRebindTest.stdout.Contains($AcceptedProductionSha256)
+            if ($postCause) { Add-Stage -Name 'post-rebind-causality' -Status 'PASS' -Classification 'FINAL CANDIDATE CAUSAL REPAIR PROOF' -Summary 'Final candidate preserves the CRITICAL fail-closed parent-observation repair, downstream recovery-pending proof, and exact observed production hash rebind.' | Out-Null }
+            else { Add-Stage -Name 'post-rebind-causality' -Status 'FAIL' -Classification 'FINAL CANDIDATE CAUSAL PROOF INCOMPLETE' -Summary 'Final candidate does not prove all review-correction and artifact-rebind invariants.' | Out-Null }
+        } else {
+            Add-Stage -Name 'post-rebind-scope' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Artifact rebind stage did not pass.' | Out-Null
+            Add-Stage -Name 'post-rebind-causality' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Artifact rebind stage did not pass.' | Out-Null
+        }
 
         [void](Invoke-ProcessStage -Name 'typecheck' -Classification 'TYPECHECK' -File $script:NpmPath -Arguments @('run','typecheck') -WorkingDirectory $Worktree -Enabled $dependenciesReady -BlockedReason 'Dependency installation did not pass.')
 
@@ -840,8 +939,8 @@ try {
                 $remoteNowProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-parse',('refs/remotes/origin/' + $Branch)) -WorkingDirectory $RepositoryRoot
                 $remoteNow = $remoteNowProbe.stdout.Trim()
 
-                if ($remoteRefresh.exitCode -ne 0 -or $remoteNowProbe.exitCode -ne 0 -or $remoteNow -ne $CandidateSha) {
-                    Add-Stage -Name 'evidence-publication' -Status 'BLOCKED' -Classification 'BRANCH LEASE LOST' -Summary ('Remote branch changed before PASS evidence publication. Expected ' + $CandidateSha + '; observed ' + $remoteNow + '. No evidence commit was published.') | Out-Null
+                if ($remoteRefresh.exitCode -ne 0 -or $remoteNowProbe.exitCode -ne 0 -or $remoteNow -ne $InputCandidateSha) {
+                    Add-Stage -Name 'evidence-publication' -Status 'BLOCKED' -Classification 'BRANCH LEASE LOST' -Summary ('Remote branch changed before PASS evidence publication. Expected input candidate lease ' + $InputCandidateSha + '; observed ' + $remoteNow + '. Neither local artifact-rebind child nor evidence was published.') | Out-Null
                     $script:FinalOverall = 'FAIL'
                 } else {
                     $add = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'add','--',$EvidenceRel) -WorkingDirectory $Worktree
