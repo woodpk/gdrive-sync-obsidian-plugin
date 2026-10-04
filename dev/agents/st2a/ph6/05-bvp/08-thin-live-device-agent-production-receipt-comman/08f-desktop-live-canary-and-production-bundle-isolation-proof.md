@@ -371,7 +371,7 @@ Exact writable prerequisite paths:
 
 - `src/drive/google-drive-port.ts`;
 - `test/workstreams/drive/phase6-remote-protocol.test.ts`;
-- derived shipping artifact `main.js`, but only as the deterministic output of the repaired production build after source/test verification passes;
+- generated production artifact identity/evidence for `main.js` from the exact repaired source SHA; `main.js` remains repository-ignored and MUST NOT be committed;
 - this S08F task file;
 - existing S08F evidence root `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/**` for repair evidence only.
 
@@ -386,6 +386,6 @@ Repair semantic boundary:
 7. Preserve conservative `unobservable` behavior for missing, moved, ambiguous, inaccessible, non-folder, or structurally inconsistent parent evidence.
 8. Add regression coverage proving recovery remains authoritative with multiple managed roots visible on the same account and performs no Drive mutation.
 9. Preserve all existing folder-recovery semantics and tests.
-10. Keep the semantic source/test candidate distinct from the derived `main.js` artifact commit and from the subsequent evidence-only commit.
+10. Keep the semantic source/test candidate distinct from generated `main.js`/validation artifacts and from the subsequent evidence-only commit; do not create a tracked `main.js` commit.
 
 After automated verification, rebuild the validation artifact from the exact repaired source SHA, rebind S08F artifact identity, and resume product-authority recovery from the preserved physical state. Do not begin S09.
