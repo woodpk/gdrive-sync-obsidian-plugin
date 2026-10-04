@@ -413,7 +413,8 @@ try {
         $pwshProbe = Invoke-Native -File $script:PwshPath -Arguments @('-NoProfile','-Command','$PSVersionTable.PSVersion.ToString()') -WorkingDirectory $RepositoryRoot
         $gitProbe = Invoke-Native -File $script:GitPath -Arguments @('--version') -WorkingDirectory $RepositoryRoot
 
-        if (@($nodeProbe,$npmProbe,$pwshProbe,$gitProbe | Where-Object { $_.exitCode -ne 0 }).Count -gt 0) {
+        $failedToolProbes = @(@($nodeProbe,$npmProbe,$pwshProbe,$gitProbe) | Where-Object { $_.exitCode -ne 0 })
+        if ($failedToolProbes.Count -gt 0) {
             Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN PROBE FAILED' -Summary ('One or more controlled child-process probes failed. PATH=' + $script:NativePathOverride) -Evidence ([pscustomobject]@{ node = $nodeProbe; npm = $npmProbe; pwsh = $pwshProbe; git = $gitProbe }) | Out-Null
         } else {
             Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; PowerShell {2}; Git {3}; deterministic child PATH established.' -f $nodeProbe.stdout.Trim(), $npmProbe.stdout.Trim(), $pwshProbe.stdout.Trim(), $gitProbe.stdout.Trim()) -Evidence ([pscustomobject]@{ path = $script:NativePathOverride }) | Out-Null
@@ -736,6 +737,7 @@ try {
                 $script:FinalOverall = 'FAIL'
             } else {
                 Add-Stage -Name 'evidence-preparation' -Status 'PASS' -Classification 'EVIDENCE-ONLY MUTATION' -Summary 'Canonical PASS evidence is the only residual repository mutation.' -Evidence $canonical | Out-Null
+                $canonical = Write-ReportFiles -Directory $evidenceDir -Overall 'PASS' -JsonName ([System.IO.Path]::GetFileName($PassJsonRel)) -MdName ([System.IO.Path]::GetFileName($PassMdRel)) -LogName ([System.IO.Path]::GetFileName($PassLogRel))
 
                 $remoteRefresh = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'fetch','origin',('+refs/heads/' + $Branch + ':refs/remotes/origin/' + $Branch),'--prune') -WorkingDirectory $RepositoryRoot
                 $remoteNowProbe = Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-parse',('refs/remotes/origin/' + $Branch)) -WorkingDirectory $RepositoryRoot
@@ -767,7 +769,7 @@ try {
                                 Add-Stage -Name 'evidence-publication' -Status 'FAIL' -Classification 'EVIDENCE COMMIT INVARIANT FAILED' -Summary 'Prepared evidence commit is not a direct evidence-only child of the verified candidate; it was not pushed.' -Evidence ([pscustomobject]@{ parent = $parentProbe.stdout.Trim(); committedPaths = $committedPaths }) | Out-Null
                                 $script:FinalOverall = 'FAIL'
                             } else {
-                                $push = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'push','--force-with-lease=refs/heads/' + $Branch + ':' + $CandidateSha,'origin',('HEAD:refs/heads/' + $Branch)) -WorkingDirectory $Worktree
+                                $push = Invoke-Native -File $script:GitPath -Arguments @('-C',$Worktree,'push','origin',('HEAD:refs/heads/' + $Branch)) -WorkingDirectory $Worktree
                                 Write-NativeResult $push
                                 if ($push.exitCode -eq 0) {
                                     Add-Stage -Name 'evidence-publication' -Status 'PASS' -Classification 'CANONICAL EVIDENCE PUBLISHED' -Summary ('Published direct evidence-only child ' + $script:EvidenceCommit + ' for verified candidate ' + $CandidateSha + '.') | Out-Null
@@ -807,6 +809,9 @@ try {
     }
 
     Print-FinalSummary -Overall $script:FinalOverall
+    if ($script:FinalOverall -eq 'FAIL') {
+        try { [System.IO.File]::WriteAllText($LocalLog, $script:Log.ToString(), [System.Text.UTF8Encoding]::new($false)) } catch {}
+    }
 
     if ($script:FinalOverall -eq 'PASS') {
         if ($script:WorktreeCreated) {
@@ -819,9 +824,7 @@ try {
                 Write-Host ('WARNING: successful verification worktree cleanup failed: ' + $_.Exception.Message)
             }
         }
-        if (-not $script:AlreadyVerified) {
-            Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
         [System.Environment]::Exit(0)
     } else {
         [System.Environment]::Exit(20)
