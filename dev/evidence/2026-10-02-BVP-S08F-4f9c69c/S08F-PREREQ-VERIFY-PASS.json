@@ -1,21 +1,24 @@
 {
   "schemaVersion": 2,
-  "generatedAtUtc": "2026-10-04T05:30:27.1457706+00:00",
+  "generatedAtUtc": "2026-10-04T15:17:48.2840052+00:00",
   "overall": "PASS",
   "verificationBase": "39cf1ff62fb927aba9d2ee49f99724d9ce1f2856",
-  "candidateSha": "92d153b990ed0fca79eb76187d867cb272e5dadb",
+  "inputCandidateSha": "a8284a29c7dc123cc51926d9c5f0d607b3a5031b",
+  "candidateSha": "15e61ac0b0e6a9a353ade24a50195751129b2326",
   "branch": "bvp-s08f-desktop-live-canary",
+  "acceptedProductionSha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+  "artifactRebindCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
   "productionArtifact": {
-    "sizeBytes": 886436,
-    "sha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
+    "sizeBytes": 886072,
+    "sha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
     "forbiddenMarkerHits": []
   },
   "validationArtifact": {
-    "sourceCommit": "92d153b990ed0fca79eb76187d867cb272e5dadb",
-    "artifactSize": 910950,
-    "artifactSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
-    "actualSize": 910950,
-    "actualSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+    "sourceCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
+    "artifactSize": 910586,
+    "artifactSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
+    "actualSize": 910586,
+    "actualSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
     "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
     "testPlatformInputs": [
       "test-platform/src/live-device/device-command-agent.ts",
@@ -37,10 +40,72 @@
       }
     },
     {
+      "name": "rerun-recognition-self-check",
+      "status": "PASS",
+      "classification": "FAIL-CLOSED RERUN RECOGNITION",
+      "summary": "Valid synthetic evidence is accepted; out-of-scope, multi-parent, incomplete, and fabricated evidence is rejected.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "valid": {
+          "ok": true,
+          "reasons": [],
+          "outsideEvidence": []
+        },
+        "outOfScope": {
+          "ok": false,
+          "reasons": [
+            "non-evidence-path"
+          ],
+          "outsideEvidence": [
+            "src/drive/unexpected.ts"
+          ]
+        },
+        "multiParent": {
+          "ok": false,
+          "reasons": [
+            "parent-count"
+          ],
+          "outsideEvidence": []
+        },
+        "incomplete": {
+          "ok": false,
+          "reasons": [
+            "report:required-stage:complete-product-suite"
+          ],
+          "outsideEvidence": []
+        },
+        "fabricated": {
+          "ok": false,
+          "reasons": [
+            "report:missing-property:verificationBase",
+            "report:missing-property:inputCandidateSha",
+            "report:missing-property:branch",
+            "report:missing-property:physicalMutationAttempted",
+            "report:missing-property:acceptedProductionSha256",
+            "report:missing-property:artifactRebindCommit",
+            "report:missing-property:stages",
+            "report:missing-property:productionArtifact",
+            "report:missing-property:validationArtifact"
+          ],
+          "outsideEvidence": []
+        }
+      }
+    },
+    {
+      "name": "publication-verdict-self-check",
+      "status": "PASS",
+      "classification": "POST-PUBLICATION VERDICT STABILITY",
+      "summary": "Injected report-failure decision model preserves authoritative published PASS and fails closed before publication.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
       "name": "repository-identity",
       "status": "PASS",
       "classification": "EXACT CANDIDATE AT BRANCH HEAD",
-      "summary": "Remote task branch is exactly the requested candidate 92d153b990ed0fca79eb76187d867cb272e5dadb.",
+      "summary": "Remote task branch is exactly the requested candidate a8284a29c7dc123cc51926d9c5f0d607b3a5031b.",
       "command": "",
       "exitCode": null,
       "evidence": null
@@ -56,12 +121,13 @@
         "changedPaths": [
           "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md",
           "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
-          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-FAIL.json",
-          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-FAIL.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-PASS.json",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-PASS.md",
           "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY.log",
           "src/drive/google-drive-port.ts",
           "test-platform/test/s08b-validation-build-entrypoint.test.ts",
-          "test/workstreams/drive/phase6-remote-protocol.test.ts"
+          "test/workstreams/drive/phase6-remote-protocol.test.ts",
+          "test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts"
         ],
         "unexpectedPaths": [],
         "contractChanges": [],
@@ -72,7 +138,8 @@
           "src/drive/google-drive-port.ts",
           "test/workstreams/drive/phase6-remote-protocol.test.ts",
           "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
-          "test-platform/test/s08b-validation-build-entrypoint.test.ts"
+          "test-platform/test/s08b-validation-build-entrypoint.test.ts",
+          "test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts"
         ]
       }
     },
@@ -89,7 +156,7 @@
       "name": "disposable-worktree",
       "status": "PASS",
       "classification": "EXACT-SHA DISPOSABLE WORKTREE",
-      "summary": "Created GUID-isolated detached worktree at C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree.",
+      "summary": "Created GUID-isolated detached worktree at C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree.",
       "command": "",
       "exitCode": null,
       "evidence": null
@@ -101,6 +168,65 @@
       "summary": "Stage completed successfully.",
       "command": "C:\\Program Files\\nodejs\\npm.cmd ci --no-audit --no-fund --loglevel info",
       "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "artifact-rebind-build",
+      "status": "PASS",
+      "classification": "PRE-VERIFICATION PRODUCTION BUILD",
+      "summary": "Stage completed successfully.",
+      "command": "C:\\Program Files\\nodejs\\node.exe scripts/build.mjs",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "artifact-rebind",
+      "status": "PASS",
+      "classification": "BOUNDED TEST-ONLY ARTIFACT REBIND",
+      "summary": "Created local test-only implementation child 15e61ac0b0e6a9a353ade24a50195751129b2326 binding S08B production SHA 2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9 -> 52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b. Nothing has been pushed.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "inputCandidate": "a8284a29c7dc123cc51926d9c5f0d607b3a5031b",
+        "verifiedCandidate": "15e61ac0b0e6a9a353ade24a50195751129b2326",
+        "previousSha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
+        "productionSha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+        "changed": true,
+        "changedPaths": [
+          "test-platform/test/s08b-validation-build-entrypoint.test.ts"
+        ]
+      }
+    },
+    {
+      "name": "post-rebind-scope",
+      "status": "PASS",
+      "classification": "FINAL CANDIDATE SCOPE PROOF",
+      "summary": "Final verification candidate 15e61ac0b0e6a9a353ade24a50195751129b2326 remains within the authorized prerequisite/evidence/test surfaces and frozen contracts are unchanged.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "changedPaths": [
+          "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-PASS.json",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY-PASS.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PREREQ-VERIFY.log",
+          "src/drive/google-drive-port.ts",
+          "test-platform/test/s08b-validation-build-entrypoint.test.ts",
+          "test/workstreams/drive/phase6-remote-protocol.test.ts",
+          "test/workstreams/orchestration/v1.2-durable-intent-recovery.test.ts"
+        ],
+        "unexpectedPaths": [],
+        "contractChanges": []
+      }
+    },
+    {
+      "name": "post-rebind-causality",
+      "status": "PASS",
+      "classification": "FINAL CANDIDATE CAUSAL REPAIR PROOF",
+      "summary": "Final candidate preserves the CRITICAL fail-closed parent-observation repair, downstream recovery-pending proof, and exact observed production hash rebind.",
+      "command": "",
+      "exitCode": null,
       "evidence": null
     },
     {
@@ -126,7 +252,7 @@
       "status": "PASS",
       "classification": "FOCUSED RECOVERY REGRESSION",
       "summary": "Stage completed successfully.",
-      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/test/workstreams/drive/phase6-remote-protocol.test.js .test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js .test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/test/workstreams/drive/phase6-remote-protocol.test.js .test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js .test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js .test-build/test/workstreams/orchestration/v1.2-durable-intent-recovery.test.js",
       "exitCode": 0,
       "evidence": null
     },
@@ -202,13 +328,13 @@
     {
       "name": "production-artifact",
       "status": "PASS",
-      "classification": "PRODUCTION BUNDLE ISOLATED",
-      "summary": "Generated main.js is 886436 bytes / 2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9; validation marker hits=0.",
+      "classification": "PRODUCTION BUNDLE ISOLATED AND DETERMINISTIC",
+      "summary": "Generated main.js is 886072 bytes / 52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b; validation marker hits=0; final hash exactly reproduces the S08B-bound pre-verification hash.",
       "command": "",
       "exitCode": null,
       "evidence": {
-        "sizeBytes": 886436,
-        "sha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
+        "sizeBytes": 886072,
+        "sha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
         "forbiddenMarkerHits": []
       }
     },
@@ -225,15 +351,15 @@
       "name": "validation-artifact",
       "status": "PASS",
       "classification": "EXACT VALIDATION ARTIFACT",
-      "summary": "Validation main.js source=92d153b990ed0fca79eb76187d867cb272e5dadb; size=910950; sha256=d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f.",
+      "summary": "Validation main.js source=15e61ac0b0e6a9a353ade24a50195751129b2326; size=910586; sha256=4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7.",
       "command": "",
       "exitCode": null,
       "evidence": {
-        "sourceCommit": "92d153b990ed0fca79eb76187d867cb272e5dadb",
-        "artifactSize": 910950,
-        "artifactSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
-        "actualSize": 910950,
-        "actualSha256": "d8908ded6e24b4fe201659d37bf0c5fccf5c26d8e716c7adc039dc65fffc211f",
+        "sourceCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
+        "artifactSize": 910586,
+        "artifactSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
+        "actualSize": 910586,
+        "actualSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
         "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
         "testPlatformInputs": [
           "test-platform/src/live-device/device-command-agent.ts",
@@ -268,12 +394,12 @@
       "command": "",
       "exitCode": null,
       "evidence": {
-        "json": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.json",
-        "markdown": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.md",
-        "log": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY.log"
+        "json": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.json",
+        "markdown": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.md",
+        "log": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY.log"
       }
     }
   ],
-  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-dd738ef004c44062aa18ec415abe8078",
+  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506",
   "physicalMutationAttempted": false
 }
