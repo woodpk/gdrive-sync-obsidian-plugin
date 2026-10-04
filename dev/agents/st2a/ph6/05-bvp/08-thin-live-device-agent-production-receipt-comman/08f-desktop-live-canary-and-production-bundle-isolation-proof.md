@@ -609,3 +609,62 @@ Authorized next scope:
 7. do not begin S09.
 
 This ACCEPT authorizes the physical-recovery phase; it does not itself constitute S08F final PASS.
+
+
+## 0.16 Post-Repair Physical Authority-Recovery Binding
+
+Human ACCEPT in section 0.15 authorizes resumption of the preserved physical S08F state. The first authorized physical action is **product-authority recovery only**. The terminal retry `s08f-desktop-canary-4f9c69c-r2` MUST NOT be replayed or reset.
+
+Verified repaired implementation:
+
+`57e5be079ded16ba50b4f95c49f78a9d90b47f3f`
+
+Required repaired ordinary production artifact:
+
+- `main.js`: 886635 bytes
+- SHA-256: `550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477`
+
+Required repaired validation artifact:
+
+- source: `57e5be079ded16ba50b4f95c49f78a9d90b47f3f`
+- `main.js`: 911149 bytes
+- SHA-256: `6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf`
+- manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`
+
+Preserved state that must be re-proved before mutation:
+
+- disposable vault remains `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`;
+- retry `r2` remains terminal at sequence 3 as `rejected / production-action-rejected`;
+- product authority remains the preserved uncertain/recovery-required state until the repaired validation runtime resolves it;
+- zero committed operations remain bound to the uncertain receipt;
+- the exact 77-byte canary fixture remains present with SHA-256 `db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d`;
+- the working BRAIN vault remains prohibited.
+
+Repository-controlled physical authority-recovery harness:
+
+`dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPostRepairAuthorityRecovery.ps1`
+
+The harness is authorized to:
+
+1. create exact-SHA disposable worktrees for the repaired implementation and current S08F task/evidence head;
+2. rebuild and verify the exact repaired production and validation artifacts;
+3. verify the preserved r2 terminal state and exact canary fixture before mutation;
+4. replace only disposable-vault validation `main.js`, `manifest.json`, and `build-identity.json`, while proving `data.json` remains byte-identical;
+5. reload the validation plugin only as needed to make the repaired implementation active;
+6. invoke the accepted production `previewManual()` recovery path against the preserved durable intent;
+7. execute only an exact reviewed recovery plan that passes the existing non-destructive safety gate;
+8. require a new authoritative complete receipt, `requiredEffectsCommittedAndVerified=true`, and final product status `idle-ready`;
+9. require the exact canary fixture to remain unchanged throughout authority recovery;
+10. record and publish evidence under the existing S08F evidence root using an exact branch lease.
+
+The harness MUST stop after successful product-authority recovery with:
+
+`READY FOR FRESH S08F CANARY IDENTITY BINDING`
+
+It MUST NOT create a fresh canary identity or perform another canary mutation in the same execution.
+
+A BLOCKED/FAIL result preserves the physical state and diagnostic workspace. The terminal r2 command remains non-replayable in every outcome.
+
+This physical-recovery execution is supplementary physical validation, not a replacement for PHX-CI. Final repository verification after resulting physical evidence remains governed by the mandatory PHX-CI authority and the protocol's no-administrative-rerun rule.
+
+S09 remains unauthorized.
