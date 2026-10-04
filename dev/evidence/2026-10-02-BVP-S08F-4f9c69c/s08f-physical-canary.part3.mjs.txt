@@ -920,7 +920,8 @@ async function recoverPostMailboxConflict(priorVerdict) {
       if(sequence===1)groups.seq1.push(command);else if(sequence===2)groups.seq2.push(command);else if(sequence===3)groups.seq3.push(command);else groups.unexpected.push(command);
     }
     const nonConflictErrors=(mailbox.commandResults??[]).filter(entry=>entry.resultError&&entry.resultError!=='mailbox-conflicting-result');
-    const successfulUnexpected=(mailbox.commandResults??[]).filter(entry=>entry.result&&{
+    const successfulUnexpected=(mailbox.commandResults??[]).filter(entry=>{
+      if(!entry.result)return false;
       const sequence=expectedKeys.get(canonicalValue(entry.command));
       if(sequence===1)return !exactSequenceOneResult(entry.result,seq1);
       if(sequence===2)return !(entry.result.runId===priorSeq2Result?.runId&&entry.result.deviceId===priorSeq2Result?.deviceId&&entry.result.sequence===2&&entry.result.commandId===seq2.commandId&&entry.result.kind==='production-preview'&&entry.result.status==='completed'&&entry.result.classification==='production-preview-ready'&&entry.result.plan?.planId===plan?.planId);
