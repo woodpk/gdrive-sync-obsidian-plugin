@@ -20,8 +20,9 @@ $PassLogRel = $EvidenceRel + '/S08F-PREREQ-VERIFY.log'
 $FailJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.json'
 $FailMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.md'
 
-$AllowedChangedPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel)
-$SourceDiffCheckPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel)
+$ArtifactRebindTestRel = 'test-platform/test/s08b-validation-build-entrypoint.test.ts'
+$AllowedChangedPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel)
+$SourceDiffCheckPaths = @($TaskRel, $SourceRel, $TestRel, $VerifierRel, $ArtifactRebindTestRel)
 
 $Stages = [System.Collections.Generic.List[object]]::new()
 $Log = [System.Text.StringBuilder]::new()
