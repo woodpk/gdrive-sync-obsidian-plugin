@@ -412,3 +412,27 @@ Required verifier behavior:
 14. Do not resume physical S08F recovery until this prerequisite verifier records PASS for the repaired source candidate.
 
 Do not begin S09.
+
+## 0.8 Supervisor Artifact-Identity Rebind Amendment
+
+The protocol-aligned prerequisite verifier at candidate `64785b7214e79344e6b6dd89a97904fa8bcda431` completed every independent verification branch and isolated one remaining test-only blocker:
+
+- the complete BVP suite executed 346 tests with 345 PASS / 1 FAIL;
+- the sole failure is `test-platform/test/s08b-validation-build-entrypoint.test.ts` comparing the repaired production bundle SHA-256 against the pre-repair accepted S08E production hash;
+- the exact repaired source deterministically builds production `main.js` SHA-256 `2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9` with the production build and isolation checks passing;
+- the earlier S08F prerequisite binding already requires rebuilding and rebinding artifact identity after the bounded source repair.
+
+This is a test-artifact identity rebind, not a production or architecture redesign.
+
+Additional writable path for this bounded rebind only:
+
+- `test-platform/test/s08b-validation-build-entrypoint.test.ts`.
+
+Required change:
+
+1. Rebind only the frozen accepted production SHA-256 constant from the pre-repair S08E production hash to `2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9`.
+2. Do not alter validation-artifact construction semantics, architecture, governance, PHX-CI configuration, production code, or any other BVP test.
+3. Update the prerequisite verifier's bounded changed-path allowlist to include exactly this test path.
+4. Re-run the same complete protocol-aligned prerequisite verifier. Acceptance still requires every required stage PASS.
+
+Do not begin S09.
