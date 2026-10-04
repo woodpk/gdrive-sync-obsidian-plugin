@@ -18,6 +18,7 @@ $VerifierRel = $EvidenceRel + '/Invoke-S08FPrerequisiteVerification.ps1'
 $PassJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.json'
 $PassMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-PASS.md'
 $PassLogRel = $EvidenceRel + '/S08F-PREREQ-VERIFY.log'
+$CanonicalEvidencePaths = @($PassJsonRel,$PassMdRel,$PassLogRel)
 $FailJsonRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.json'
 $FailMdRel = $EvidenceRel + '/S08F-PREREQ-VERIFY-FAIL.md'
 
@@ -29,6 +30,7 @@ $CoreVerificationStageNames = @(
     'toolchain',
     'rerun-recognition-self-check',
     'publication-verdict-self-check',
+    'publication-lease-self-check',
     'repository-identity',
     'change-scope',
     'defect-causality',
@@ -311,66 +313,201 @@ function Get-ObjectProperty {
     return $Object.PSObject.Properties[$Name].Value
 }
 
+function Get-CandidateRecognitionFacts {
+    param([string]$Candidate)
+
+    $reasons=[System.Collections.Generic.List[string]]::new()
+    $parentsProbe=Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'rev-list','--parents','-n','1',$Candidate) -WorkingDirectory $RepositoryRoot
+    $pathsProbe=Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'diff-tree','--no-commit-id','--name-only','-r',$Candidate) -WorkingDirectory $RepositoryRoot
+    $testProbe=Invoke-Native -File $script:GitPath -Arguments @('-C',$RepositoryRoot,'show',($Candidate + ':' + $ArtifactRebindTestRel)) -WorkingDirectory $RepositoryRoot
+
+    $parentTokens=@()
+    $changedPaths=@()
+    $acceptedHash=$null
+
+    if ($parentsProbe.exitCode -ne 0) { $reasons.Add('candidate-parent-inspection-failed') }
+    else { $parentTokens=@($parentsProbe.stdout.Trim() -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) }
+
+    if ($pathsProbe.exitCode -ne 0) { $reasons.Add('candidate-path-inspection-failed') }
+    else { $changedPaths=@($pathsProbe.stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) }
+
+    if ($testProbe.exitCode -ne 0) {
+        $reasons.Add('candidate-s08b-read-failed')
+    } else {
+        $hashPattern='(?ms)const\s+acceptedProductionSha256\s*=\s*\r?\n?\s*"([0-9a-f]{64})"\s*;'
+        $matches=@([regex]::Matches($testProbe.stdout,$hashPattern))
+        if ($matches.Count -ne 1) { $reasons.Add('candidate-s08b-hash-cardinality') }
+        else { $acceptedHash=[string]$matches[0].Groups[1].Value }
+    }
+
+    return [pscustomobject]@{
+        ok=($reasons.Count -eq 0)
+        reasons=@($reasons)
+        parentTokens=@($parentTokens)
+        changedPaths=@($changedPaths)
+        acceptedProductionSha256=$acceptedHash
+    }
+}
+
 function Test-CanonicalPassReport {
-    param([object]$Report)
+    param([object]$Report,[object]$CandidateFacts)
+
     $reasons=[System.Collections.Generic.List[string]]::new()
     if ($null -eq $Report) { $reasons.Add('report-missing'); return [pscustomobject]@{ok=$false;reasons=@($reasons)} }
     foreach($requiredProperty in @('schemaVersion','overall','verificationBase','inputCandidateSha','candidateSha','branch','physicalMutationAttempted','acceptedProductionSha256','artifactRebindCommit','stages','productionArtifact','validationArtifact')) {
         if (-not (Has-ObjectProperty $Report $requiredProperty)) { $reasons.Add('missing-property:' + $requiredProperty) }
     }
     if ($reasons.Count -gt 0) { return [pscustomobject]@{ok=$false;reasons=@($reasons)} }
+
     if ([int](Get-ObjectProperty $Report 'schemaVersion') -ne 2) { $reasons.Add('schema-version') }
     if ([string](Get-ObjectProperty $Report 'overall') -ne 'PASS') { $reasons.Add('overall') }
     if ([string](Get-ObjectProperty $Report 'verificationBase') -ne $VerificationBase) { $reasons.Add('verification-base') }
+
     $reportInputCandidate=[string](Get-ObjectProperty $Report 'inputCandidateSha')
     $reportCandidate=[string](Get-ObjectProperty $Report 'candidateSha')
     $reportRebind=[string](Get-ObjectProperty $Report 'artifactRebindCommit')
+    $acceptedHash=[string](Get-ObjectProperty $Report 'acceptedProductionSha256')
+
     if ($reportInputCandidate -notmatch '^[0-9a-f]{40}$') { $reasons.Add('input-candidate-sha') }
     if ($reportCandidate -ne $CandidateSha) { $reasons.Add('candidate-sha') }
-    if ([string]::IsNullOrWhiteSpace($reportRebind)) { if ($reportInputCandidate -ne $reportCandidate) { $reasons.Add('unexpected-input-candidate') } }
-    elseif ($reportRebind -ne $reportCandidate -or $reportInputCandidate -eq $reportCandidate) { $reasons.Add('artifact-rebind-identity') }
     if ([string](Get-ObjectProperty $Report 'branch') -ne $Branch) { $reasons.Add('branch') }
     if ((Get-ObjectProperty $Report 'physicalMutationAttempted') -ne $false) { $reasons.Add('physical-mutation-flag') }
+    if ($acceptedHash -notmatch '^[0-9a-f]{64}$') { $reasons.Add('accepted-production-hash-format') }
+
+    if ($null -eq $CandidateFacts -or -not (Has-ObjectProperty $CandidateFacts 'ok') -or $CandidateFacts.ok -ne $true) {
+        $reasons.Add('candidate-facts-unproven')
+    } else {
+        if ([string]$CandidateFacts.acceptedProductionSha256 -ne $acceptedHash) { $reasons.Add('candidate-s08b-hash-mismatch') }
+        if ([string]::IsNullOrWhiteSpace($reportRebind)) {
+            if ($reportInputCandidate -ne $reportCandidate) { $reasons.Add('unexpected-input-candidate') }
+        } else {
+            if ($reportRebind -ne $reportCandidate -or $reportInputCandidate -eq $reportCandidate) { $reasons.Add('artifact-rebind-identity') }
+            $candidateParents=@($CandidateFacts.parentTokens)
+            if ($candidateParents.Count -ne 2 -or [string]$candidateParents[0] -ne $reportCandidate -or [string]$candidateParents[1] -ne $reportInputCandidate) { $reasons.Add('artifact-rebind-lineage') }
+            $candidatePaths=@($CandidateFacts.changedPaths)
+            if ($candidatePaths.Count -ne 1 -or [string]$candidatePaths[0] -ne $ArtifactRebindTestRel) { $reasons.Add('artifact-rebind-scope') }
+        }
+    }
+
     $stages=@((Get-ObjectProperty $Report 'stages'))
     foreach($requiredName in $CanonicalPassStageNames) {
         $matches=@($stages | Where-Object { (Get-ObjectProperty $_ 'name') -eq $requiredName })
         if ($matches.Count -ne 1 -or [string](Get-ObjectProperty $matches[0] 'status') -ne 'PASS') { $reasons.Add('required-stage:' + $requiredName) }
     }
     if (@($stages | Where-Object { [string](Get-ObjectProperty $_ 'status') -ne 'PASS' }).Count -ne 0) { $reasons.Add('non-pass-stage-present') }
+
     $production=Get-ObjectProperty $Report 'productionArtifact'
-    if ($null -eq $production) { $reasons.Add('production-artifact-missing') } else {
+    if ($null -eq $production) {
+        $reasons.Add('production-artifact-missing')
+    } else {
         foreach($name in @('sizeBytes','sha256','forbiddenMarkerHits')) { if (-not (Has-ObjectProperty $production $name)) { $reasons.Add('production-missing:' + $name) } }
         if ((Has-ObjectProperty $production 'sizeBytes') -and [int64](Get-ObjectProperty $production 'sizeBytes') -le 0) { $reasons.Add('production-size') }
         if ((Has-ObjectProperty $production 'sha256') -and [string](Get-ObjectProperty $production 'sha256') -notmatch '^[0-9a-f]{64}$') { $reasons.Add('production-hash') }
-        if ([string](Get-ObjectProperty $Report 'acceptedProductionSha256') -ne [string](Get-ObjectProperty $production 'sha256')) { $reasons.Add('accepted-production-hash') }
+        if ($acceptedHash -ne [string](Get-ObjectProperty $production 'sha256')) { $reasons.Add('accepted-production-hash') }
         if ((Has-ObjectProperty $production 'forbiddenMarkerHits') -and @((Get-ObjectProperty $production 'forbiddenMarkerHits')).Count -ne 0) { $reasons.Add('production-markers') }
     }
+
+    $productionStage=@($stages | Where-Object { [string](Get-ObjectProperty $_ 'name') -eq 'production-artifact' })
+    if ($productionStage.Count -eq 1) {
+        $stageEvidence=Get-ObjectProperty $productionStage[0] 'evidence'
+        if ($null -eq $stageEvidence) { $reasons.Add('production-stage-evidence-missing') }
+        elseif ([string](Get-ObjectProperty $stageEvidence 'sha256') -ne [string](Get-ObjectProperty $production 'sha256') -or
+                [int64](Get-ObjectProperty $stageEvidence 'sizeBytes') -ne [int64](Get-ObjectProperty $production 'sizeBytes')) { $reasons.Add('production-stage-artifact-mismatch') }
+    }
+
     $validation=Get-ObjectProperty $Report 'validationArtifact'
-    if ($null -eq $validation) { $reasons.Add('validation-artifact-missing') } else {
+    if ($null -eq $validation) {
+        $reasons.Add('validation-artifact-missing')
+    } else {
         foreach($name in @('sourceCommit','artifactSize','artifactSha256','actualSize','actualSha256')) { if (-not (Has-ObjectProperty $validation $name)) { $reasons.Add('validation-missing:' + $name) } }
         if ((Has-ObjectProperty $validation 'sourceCommit') -and [string](Get-ObjectProperty $validation 'sourceCommit') -ne $CandidateSha) { $reasons.Add('validation-source') }
-        if ((Has-ObjectProperty $validation 'artifactSize') -and (Has-ObjectProperty $validation 'actualSize')) { $as=[int64](Get-ObjectProperty $validation 'artifactSize'); $xs=[int64](Get-ObjectProperty $validation 'actualSize'); if ($as -le 0 -or $xs -le 0 -or $as -ne $xs) { $reasons.Add('validation-size') } }
-        if ((Has-ObjectProperty $validation 'artifactSha256') -and (Has-ObjectProperty $validation 'actualSha256')) { $ah=[string](Get-ObjectProperty $validation 'artifactSha256'); $xh=[string](Get-ObjectProperty $validation 'actualSha256'); if ($ah -notmatch '^[0-9a-f]{64}$' -or $xh -ne $ah) { $reasons.Add('validation-hash') } }
+        if ((Has-ObjectProperty $validation 'artifactSize') -and (Has-ObjectProperty $validation 'actualSize')) {
+            $artifactSize=[int64](Get-ObjectProperty $validation 'artifactSize'); $actualSize=[int64](Get-ObjectProperty $validation 'actualSize')
+            if ($artifactSize -le 0 -or $actualSize -le 0 -or $artifactSize -ne $actualSize) { $reasons.Add('validation-size') }
+        }
+        if ((Has-ObjectProperty $validation 'artifactSha256') -and (Has-ObjectProperty $validation 'actualSha256')) {
+            $artifactHash=[string](Get-ObjectProperty $validation 'artifactSha256'); $actualHash=[string](Get-ObjectProperty $validation 'actualSha256')
+            if ($artifactHash -notmatch '^[0-9a-f]{64}$' -or $actualHash -ne $artifactHash) { $reasons.Add('validation-hash') }
+        }
     }
+
+    $validationStage=@($stages | Where-Object { [string](Get-ObjectProperty $_ 'name') -eq 'validation-artifact' })
+    if ($validationStage.Count -eq 1) {
+        $stageEvidence=Get-ObjectProperty $validationStage[0] 'evidence'
+        if ($null -eq $stageEvidence) { $reasons.Add('validation-stage-evidence-missing') }
+        elseif ([string](Get-ObjectProperty $stageEvidence 'sourceCommit') -ne [string](Get-ObjectProperty $validation 'sourceCommit') -or
+                [string](Get-ObjectProperty $stageEvidence 'actualSha256') -ne [string](Get-ObjectProperty $validation 'actualSha256') -or
+                [int64](Get-ObjectProperty $stageEvidence 'actualSize') -ne [int64](Get-ObjectProperty $validation 'actualSize')) { $reasons.Add('validation-stage-artifact-mismatch') }
+    }
+
+    $rebindStage=@($stages | Where-Object { [string](Get-ObjectProperty $_ 'name') -eq 'artifact-rebind' })
+    if ($rebindStage.Count -eq 1) {
+        $stageEvidence=Get-ObjectProperty $rebindStage[0] 'evidence'
+        if ($null -eq $stageEvidence) { $reasons.Add('artifact-rebind-stage-evidence-missing') }
+        elseif (-not [string]::IsNullOrWhiteSpace($reportRebind)) {
+            $stagePaths=@((Get-ObjectProperty $stageEvidence 'changedPaths'))
+            if ((Get-ObjectProperty $stageEvidence 'changed') -ne $true -or
+                [string](Get-ObjectProperty $stageEvidence 'inputCandidate') -ne $reportInputCandidate -or
+                [string](Get-ObjectProperty $stageEvidence 'verifiedCandidate') -ne $reportCandidate -or
+                [string](Get-ObjectProperty $stageEvidence 'productionSha256') -ne $acceptedHash -or
+                $stagePaths.Count -ne 1 -or [string]$stagePaths[0] -ne $ArtifactRebindTestRel) { $reasons.Add('artifact-rebind-stage-mismatch') }
+        }
+    }
+
     return [pscustomobject]@{ok=($reasons.Count -eq 0);reasons=@($reasons)}
 }
 
 function Test-EvidenceChildRecognitionModel {
-    param([string[]]$CommitLineTokens,[string[]]$ChangedPaths,[object]$Report)
+    param([string[]]$CommitLineTokens,[string[]]$ChangedPaths,[object]$Report,[object]$CandidateFacts)
+
     $reasons=[System.Collections.Generic.List[string]]::new()
-    if (@($CommitLineTokens).Count -ne 2) { $reasons.Add('parent-count') } elseif ([string]$CommitLineTokens[1] -ne $CandidateSha) { $reasons.Add('parent-identity') }
+    if (@($CommitLineTokens).Count -ne 2) { $reasons.Add('parent-count') }
+    elseif ([string]$CommitLineTokens[1] -ne $CandidateSha) { $reasons.Add('parent-identity') }
+
     $paths=@($ChangedPaths)
-    if ($paths.Count -eq 0) { $reasons.Add('empty-evidence-diff') }
-    $outside=@($paths | Where-Object { -not ([string]$_).StartsWith($EvidenceRel + '/', [System.StringComparison]::Ordinal) })
-    if ($outside.Count -ne 0) { $reasons.Add('non-evidence-path') }
-    $reportCheck=Test-CanonicalPassReport $Report
+    $unexpected=@($paths | Where-Object { $CanonicalEvidencePaths -notcontains [string]$_ })
+    $missing=@($CanonicalEvidencePaths | Where-Object { $paths -notcontains [string]$_ })
+    if ($unexpected.Count -ne 0) { $reasons.Add('noncanonical-evidence-path') }
+    if ($missing.Count -ne 0) { $reasons.Add('missing-canonical-evidence-path') }
+
+    $reportCheck=Test-CanonicalPassReport -Report $Report -CandidateFacts $CandidateFacts
     if (-not $reportCheck.ok) { foreach($reason in @($reportCheck.reasons)) { $reasons.Add('report:' + [string]$reason) } }
-    return [pscustomobject]@{ok=($reasons.Count -eq 0);reasons=@($reasons);outsideEvidence=@($outside)}
+
+    return [pscustomobject]@{ok=($reasons.Count -eq 0);reasons=@($reasons);unexpectedPaths=@($unexpected);missingPaths=@($missing)}
 }
 
 function New-SyntheticValidPassReport {
-    $syntheticStages=@($CanonicalPassStageNames | ForEach-Object { [pscustomobject]@{name=$_;status='PASS'} })
-    return [pscustomobject]@{schemaVersion=2;overall='PASS';verificationBase=$VerificationBase;inputCandidateSha=$CandidateSha;candidateSha=$CandidateSha;branch=$Branch;physicalMutationAttempted=$false;acceptedProductionSha256=('a' * 64);artifactRebindCommit=$null;stages=$syntheticStages;productionArtifact=[pscustomobject]@{sizeBytes=1;sha256=('a' * 64);forbiddenMarkerHits=@()};validationArtifact=[pscustomobject]@{sourceCommit=$CandidateSha;artifactSize=1;artifactSha256=('b' * 64);actualSize=1;actualSha256=('b' * 64)}}
+    $syntheticInput='1111111111111111111111111111111111111111'
+    $accepted='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    $validationHash='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+    $syntheticStages=@($CanonicalPassStageNames | ForEach-Object { [pscustomobject]@{name=$_;status='PASS';evidence=$null} })
+    (@($syntheticStages | Where-Object { $_.name -eq 'production-artifact' }))[0].evidence=[pscustomobject]@{sizeBytes=1;sha256=$accepted;forbiddenMarkerHits=@()}
+    (@($syntheticStages | Where-Object { $_.name -eq 'validation-artifact' }))[0].evidence=[pscustomobject]@{sourceCommit=$CandidateSha;artifactSize=1;artifactSha256=$validationHash;actualSize=1;actualSha256=$validationHash}
+    (@($syntheticStages | Where-Object { $_.name -eq 'artifact-rebind' }))[0].evidence=[pscustomobject]@{inputCandidate=$syntheticInput;verifiedCandidate=$CandidateSha;previousSha256=('d' * 64);productionSha256=$accepted;changed=$true;changedPaths=@($ArtifactRebindTestRel)}
+    return [pscustomobject]@{
+        schemaVersion=2
+        overall='PASS'
+        verificationBase=$VerificationBase
+        inputCandidateSha=$syntheticInput
+        candidateSha=$CandidateSha
+        branch=$Branch
+        physicalMutationAttempted=$false
+        acceptedProductionSha256=$accepted
+        artifactRebindCommit=$CandidateSha
+        stages=$syntheticStages
+        productionArtifact=[pscustomobject]@{sizeBytes=1;sha256=$accepted;forbiddenMarkerHits=@()}
+        validationArtifact=[pscustomobject]@{sourceCommit=$CandidateSha;artifactSize=1;artifactSha256=$validationHash;actualSize=1;actualSha256=$validationHash}
+    }
+}
+
+function New-SyntheticCandidateFacts {
+    return [pscustomobject]@{
+        ok=$true
+        reasons=@()
+        parentTokens=@($CandidateSha,'1111111111111111111111111111111111111111')
+        changedPaths=@($ArtifactRebindTestRel)
+        acceptedProductionSha256='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    }
 }
 
 function Resolve-LocalReportFailureVerdict {
