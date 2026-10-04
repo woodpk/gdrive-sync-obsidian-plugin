@@ -55,6 +55,9 @@
   safetyResults = { probePut:probePutResult, duplicate:duplicateResult, probeBeforeDuplicate, probeAfterDuplicate, probeRemove:probeRemoveResult, stale:staleResult, wrongRun:wrongRunResult, wrongDevice:wrongDeviceResult, finalObserve:finalObserveResult };
   record('command-identity-safety','PASS','duplicate-stale-identity-safe','Exact duplicate replayed without repeating mutation; stale, wrong-run, and wrong-device inputs rejected; probe fixture cleaned.');
 
+  const shimRestore = await restoreMailboxResultRecoveryShim(target);
+  if (!shimRestore?.ok) fail('FAIL','mailbox-recovery-shim-restore-failed',`Unable to restore original mailbox result behavior: ${JSON.stringify(shimRestore)}`);
+  record('mailbox-recovery-shim-restore','PASS','original-mailbox-restored','Temporary historical-result recovery shim removed; original strict mailbox result behavior restored.',shimRestore);
   await stopControl(controlKey);
   const relayAfter = await relayEmpty();
   if (Object.values(relayAfter).some(files => files.length !== 0)) fail('FAIL','relay-not-drained-after-canary',`Relay not drained after canary: ${JSON.stringify(relayAfter)}`);
