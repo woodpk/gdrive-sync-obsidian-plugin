@@ -534,7 +534,7 @@ try {
             }
         }
     } else {
-        Add-Stage -Name 'repository-identity'        Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain verification did not pass.' | Out-Null
+        Add-Stage -Name 'repository-identity' -Status 'BLOCKED' -Classification 'PREREQUISITE NOT SATISFIED' -Summary 'Toolchain or rerun-recognition self-check did not pass.' | Out-Null
     }
 
     if ($script:AlreadyVerified) {
