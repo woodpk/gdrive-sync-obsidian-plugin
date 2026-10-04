@@ -1,24 +1,24 @@
 {
   "schemaVersion": 2,
-  "generatedAtUtc": "2026-10-04T15:17:48.2840052+00:00",
+  "generatedAtUtc": "2026-10-04T20:39:34.8571319+00:00",
   "overall": "PASS",
   "verificationBase": "39cf1ff62fb927aba9d2ee49f99724d9ce1f2856",
-  "inputCandidateSha": "a8284a29c7dc123cc51926d9c5f0d607b3a5031b",
-  "candidateSha": "15e61ac0b0e6a9a353ade24a50195751129b2326",
+  "inputCandidateSha": "83833e7ce7973c38b76c89c2a11ae7ecb5272fb0",
+  "candidateSha": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
   "branch": "bvp-s08f-desktop-live-canary",
-  "acceptedProductionSha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
-  "artifactRebindCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
+  "acceptedProductionSha256": "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477",
+  "artifactRebindCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
   "productionArtifact": {
-    "sizeBytes": 886072,
-    "sha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+    "sizeBytes": 886635,
+    "sha256": "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477",
     "forbiddenMarkerHits": []
   },
   "validationArtifact": {
-    "sourceCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
-    "artifactSize": 910586,
-    "artifactSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
-    "actualSize": 910586,
-    "actualSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
+    "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
+    "artifactSize": 911149,
+    "artifactSha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf",
+    "actualSize": 911149,
+    "actualSha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf",
     "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
     "testPlatformInputs": [
       "test-platform/src/live-device/device-command-agent.ts",
@@ -43,37 +43,51 @@
       "name": "rerun-recognition-self-check",
       "status": "PASS",
       "classification": "FAIL-CLOSED RERUN RECOGNITION",
-      "summary": "Valid synthetic evidence is accepted; out-of-scope, multi-parent, incomplete, and fabricated evidence is rejected.",
+      "summary": "Coherent canonical evidence is accepted; out-of-scope, semantic-verifier, multi-parent, incomplete, fabricated, false-lineage, and contradictory-artifact evidence is rejected.",
       "command": "",
       "exitCode": null,
       "evidence": {
         "valid": {
           "ok": true,
           "reasons": [],
-          "outsideEvidence": []
+          "unexpectedPaths": [],
+          "missingPaths": []
         },
         "outOfScope": {
           "ok": false,
           "reasons": [
-            "non-evidence-path"
+            "noncanonical-evidence-path"
           ],
-          "outsideEvidence": [
+          "unexpectedPaths": [
             "src/drive/unexpected.ts"
-          ]
+          ],
+          "missingPaths": []
+        },
+        "verifierMutation": {
+          "ok": false,
+          "reasons": [
+            "noncanonical-evidence-path"
+          ],
+          "unexpectedPaths": [
+            "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1"
+          ],
+          "missingPaths": []
         },
         "multiParent": {
           "ok": false,
           "reasons": [
             "parent-count"
           ],
-          "outsideEvidence": []
+          "unexpectedPaths": [],
+          "missingPaths": []
         },
         "incomplete": {
           "ok": false,
           "reasons": [
             "report:required-stage:complete-product-suite"
           ],
-          "outsideEvidence": []
+          "unexpectedPaths": [],
+          "missingPaths": []
         },
         "fabricated": {
           "ok": false,
@@ -88,7 +102,25 @@
             "report:missing-property:productionArtifact",
             "report:missing-property:validationArtifact"
           ],
-          "outsideEvidence": []
+          "unexpectedPaths": [],
+          "missingPaths": []
+        },
+        "unrelatedInput": {
+          "ok": false,
+          "reasons": [
+            "report:artifact-rebind-lineage",
+            "report:artifact-rebind-stage-mismatch"
+          ],
+          "unexpectedPaths": [],
+          "missingPaths": []
+        },
+        "contradictoryProduction": {
+          "ok": false,
+          "reasons": [
+            "report:production-stage-artifact-mismatch"
+          ],
+          "unexpectedPaths": [],
+          "missingPaths": []
         }
       }
     },
@@ -102,10 +134,140 @@
       "evidence": null
     },
     {
+      "name": "publication-lease-self-check",
+      "status": "PASS",
+      "classification": "ATOMIC BRANCH LEASE RACE REJECTION",
+      "summary": "Synthetic remote reset between pre-check and push was rejected by the exact lease while the local publication remained a fast-forward from the reset ancestor.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "ok": true,
+        "reason": "race-injection",
+        "base": "ae80038f4a2138860b93a392622f8b9ef56275b4",
+        "candidate": "27ba44a8e0fb75db4c6b058bb8e815784d3633d1",
+        "evidence": "d29eaf4a262e492bc6753ca3fac6f85d5cb5d34c",
+        "remoteBefore": "27ba44a8e0fb75db4c6b058bb8e815784d3633d1",
+        "remoteReset": "ae80038f4a2138860b93a392622f8b9ef56275b4",
+        "leasedPushExit": 1,
+        "leasedPushStderr": "To C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git\n ! [rejected]        HEAD -> lease (stale info)\nerror: failed to push some refs to 'C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git'\n",
+        "remoteAfter": "ae80038f4a2138860b93a392622f8b9ef56275b4",
+        "steps": [
+          {
+            "exitCode": 0,
+            "stdout": "Initialized empty Git repository in C:/Users/woodpk/AppData/Local/Temp/brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f/publication-lease-self-check/work/.git/\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe init C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work config user.email s08f-verifier@example.invalid"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work config user.name S08F Verifier"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "[master (root-commit) ae80038] base\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work commit --allow-empty -m base"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "ae80038f4a2138860b93a392622f8b9ef56275b4\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work rev-parse HEAD"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "[master 27ba44a] candidate\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work commit --allow-empty -m candidate"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "27ba44a8e0fb75db4c6b058bb8e815784d3633d1\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work rev-parse HEAD"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "Initialized empty Git repository in C:/Users/woodpk/AppData/Local/Temp/brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f/publication-lease-self-check/origin.git/\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe init --bare C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work remote add origin C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "To C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git\n * [new branch]      HEAD -> lease\n",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work push origin HEAD:refs/heads/lease"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "[master d29eaf4] evidence\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work commit --allow-empty -m evidence"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "d29eaf4a262e492bc6753ca3fac6f85d5cb5d34c\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work rev-parse HEAD"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work merge-base --is-ancestor ae80038f4a2138860b93a392622f8b9ef56275b4 d29eaf4a262e492bc6753ca3fac6f85d5cb5d34c"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "27ba44a8e0fb75db4c6b058bb8e815784d3633d1\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe --git-dir C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git rev-parse refs/heads/lease"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe --git-dir C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git update-ref refs/heads/lease ae80038f4a2138860b93a392622f8b9ef56275b4 27ba44a8e0fb75db4c6b058bb8e815784d3633d1"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "ae80038f4a2138860b93a392622f8b9ef56275b4\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe --git-dir C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git rev-parse refs/heads/lease"
+          },
+          {
+            "exitCode": 1,
+            "stdout": "",
+            "stderr": "To C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git\n ! [rejected]        HEAD -> lease (stale info)\nerror: failed to push some refs to 'C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git'\n",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe -C C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\work push --force-with-lease=refs/heads/lease:27ba44a8e0fb75db4c6b058bb8e815784d3633d1 origin HEAD:refs/heads/lease"
+          },
+          {
+            "exitCode": 0,
+            "stdout": "ae80038f4a2138860b93a392622f8b9ef56275b4\n",
+            "stderr": "",
+            "command": "C:\\Program Files\\Git\\cmd\\git.exe --git-dir C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\publication-lease-self-check\\origin.git rev-parse refs/heads/lease"
+          }
+        ]
+      }
+    },
+    {
       "name": "repository-identity",
       "status": "PASS",
       "classification": "EXACT CANDIDATE AT BRANCH HEAD",
-      "summary": "Remote task branch is exactly the requested candidate a8284a29c7dc123cc51926d9c5f0d607b3a5031b.",
+      "summary": "Remote task branch is exactly the requested candidate 83833e7ce7973c38b76c89c2a11ae7ecb5272fb0.",
       "command": "",
       "exitCode": null,
       "evidence": null
@@ -147,7 +309,7 @@
       "name": "defect-causality",
       "status": "PASS",
       "classification": "OWNING DEFECT REPAIRED",
-      "summary": "Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry; regression asserts no global root search and no Drive mutation.",
+      "summary": "Candidate requires successful exact-parent JSON to prove requested identity, explicit live state, folder shape, ancestry, and resolved path identity; malformed/missing/replaced parent regressions remain read-only and recovery-pending.",
       "command": "",
       "exitCode": null,
       "evidence": null
@@ -156,7 +318,7 @@
       "name": "disposable-worktree",
       "status": "PASS",
       "classification": "EXACT-SHA DISPOSABLE WORKTREE",
-      "summary": "Created GUID-isolated detached worktree at C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree.",
+      "summary": "Created GUID-isolated detached worktree at C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\worktree.",
       "command": "",
       "exitCode": null,
       "evidence": null
@@ -183,14 +345,14 @@
       "name": "artifact-rebind",
       "status": "PASS",
       "classification": "BOUNDED TEST-ONLY ARTIFACT REBIND",
-      "summary": "Created local test-only implementation child 15e61ac0b0e6a9a353ade24a50195751129b2326 binding S08B production SHA 2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9 -> 52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b. Nothing has been pushed.",
+      "summary": "Created local test-only implementation child 57e5be079ded16ba50b4f95c49f78a9d90b47f3f binding S08B production SHA 52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b -> 550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477. Nothing has been pushed.",
       "command": "",
       "exitCode": null,
       "evidence": {
-        "inputCandidate": "a8284a29c7dc123cc51926d9c5f0d607b3a5031b",
-        "verifiedCandidate": "15e61ac0b0e6a9a353ade24a50195751129b2326",
-        "previousSha256": "2082c5d216e71306b78c7235f4ed75186a452738a78f81dffc9dda99d67a1dc9",
-        "productionSha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+        "inputCandidate": "83833e7ce7973c38b76c89c2a11ae7ecb5272fb0",
+        "verifiedCandidate": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
+        "previousSha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+        "productionSha256": "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477",
         "changed": true,
         "changedPaths": [
           "test-platform/test/s08b-validation-build-entrypoint.test.ts"
@@ -201,7 +363,7 @@
       "name": "post-rebind-scope",
       "status": "PASS",
       "classification": "FINAL CANDIDATE SCOPE PROOF",
-      "summary": "Final verification candidate 15e61ac0b0e6a9a353ade24a50195751129b2326 remains within the authorized prerequisite/evidence/test surfaces and frozen contracts are unchanged.",
+      "summary": "Final verification candidate 57e5be079ded16ba50b4f95c49f78a9d90b47f3f remains within the authorized prerequisite/evidence/test surfaces and frozen contracts are unchanged.",
       "command": "",
       "exitCode": null,
       "evidence": {
@@ -329,12 +491,12 @@
       "name": "production-artifact",
       "status": "PASS",
       "classification": "PRODUCTION BUNDLE ISOLATED AND DETERMINISTIC",
-      "summary": "Generated main.js is 886072 bytes / 52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b; validation marker hits=0; final hash exactly reproduces the S08B-bound pre-verification hash.",
+      "summary": "Generated main.js is 886635 bytes / 550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477; validation marker hits=0; final hash exactly reproduces the S08B-bound pre-verification hash.",
       "command": "",
       "exitCode": null,
       "evidence": {
-        "sizeBytes": 886072,
-        "sha256": "52febc999f0277606eccb5e964f74221dd6debff19f2ae6a5255a10f19cbb30b",
+        "sizeBytes": 886635,
+        "sha256": "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477",
         "forbiddenMarkerHits": []
       }
     },
@@ -351,15 +513,15 @@
       "name": "validation-artifact",
       "status": "PASS",
       "classification": "EXACT VALIDATION ARTIFACT",
-      "summary": "Validation main.js source=15e61ac0b0e6a9a353ade24a50195751129b2326; size=910586; sha256=4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7.",
+      "summary": "Validation main.js source=57e5be079ded16ba50b4f95c49f78a9d90b47f3f; size=911149; sha256=6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf.",
       "command": "",
       "exitCode": null,
       "evidence": {
-        "sourceCommit": "15e61ac0b0e6a9a353ade24a50195751129b2326",
-        "artifactSize": 910586,
-        "artifactSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
-        "actualSize": 910586,
-        "actualSha256": "4aa615a08793ece77c67b69afb3c96a7567dcc1cae9fe387ab4b7109e0d3d0b7",
+        "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
+        "artifactSize": 911149,
+        "artifactSha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf",
+        "actualSize": 911149,
+        "actualSha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf",
         "manifestSha256": "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc",
         "testPlatformInputs": [
           "test-platform/src/live-device/device-command-agent.ts",
@@ -394,12 +556,12 @@
       "command": "",
       "exitCode": null,
       "evidence": {
-        "json": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.json",
-        "markdown": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.md",
-        "log": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY.log"
+        "json": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.json",
+        "markdown": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY-PASS.md",
+        "log": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f\\worktree\\dev\\evidence\\2026-10-02-BVP-S08F-4f9c69c\\S08F-PREREQ-VERIFY.log"
       }
     }
   ],
-  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-fadbe00f89da497185c5acc64b546506",
+  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-382e621b40fd4da38a1402ae372a6d2f",
   "physicalMutationAttempted": false
 }
