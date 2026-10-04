@@ -1,0 +1,146 @@
+============================================================
+S08F MULTI-ROOT FOLDER RECOVERY PREREQUISITE VERIFIER
+============================================================
+Input candidate: 59e5ea3752b635263e88ae2496e5af5f76c2361c
+Verification base: 39cf1ff62fb927aba9d2ee49f99724d9ce1f2856
+Repository: D:\obsidian-brain-dev
+[PASS] toolchain: Node v22.23.2; npm 10.9.8; controlled child Node PATH established.
+
+===== REPOSITORY IDENTITY =====
+[PASS] repository-identity: Remote task branch is exactly 59e5ea3752b635263e88ae2496e5af5f76c2361c.
+
+===== CHANGE SCOPE / CONTRACT FREEZE =====
+[PASS] change-scope: Candidate is descended from the blocked physical-evidence anchor; changed paths are authorized; frozen synchronization contracts are unchanged; diff-check passes.
+[PASS] defect-causality: Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry and regression asserts no global root search or mutation.
+
+===== DISPOSABLE WORKTREE =====
+Preparing worktree (detached HEAD 59e5ea3)
+Updating files:  54% (617/1132)
+Updating files:  55% (623/1132)
+Updating files:  56% (634/1132)
+Updating files:  57% (646/1132)
+Updating files:  58% (657/1132)
+Updating files:  59% (668/1132)
+Updating files:  60% (680/1132)
+Updating files:  61% (691/1132)
+Updating files:  62% (702/1132)
+Updating files:  63% (714/1132)
+Updating files:  64% (725/1132)
+Updating files:  65% (736/1132)
+Updating files:  66% (748/1132)
+Updating files:  67% (759/1132)
+Updating files:  68% (770/1132)
+Updating files:  69% (782/1132)
+Updating files:  70% (793/1132)
+Updating files:  71% (804/1132)
+Updating files:  72% (816/1132)
+Updating files:  73% (827/1132)
+Updating files:  74% (838/1132)
+Updating files:  75% (849/1132)
+Updating files:  76% (861/1132)
+Updating files:  77% (872/1132)
+Updating files:  78% (883/1132)
+Updating files:  79% (895/1132)
+Updating files:  80% (906/1132)
+Updating files:  81% (917/1132)
+Updating files:  82% (929/1132)
+Updating files:  83% (940/1132)
+Updating files:  84% (951/1132)
+Updating files:  85% (963/1132)
+Updating files:  86% (974/1132)
+Updating files:  87% (985/1132)
+Updating files:  88% (997/1132)
+Updating files:  89% (1008/1132)
+Updating files:  90% (1019/1132)
+Updating files:  91% (1031/1132)
+Updating files:  92% (1042/1132)
+Updating files:  93% (1053/1132)
+Updating files:  94% (1065/1132)
+Updating files:  95% (1076/1132)
+Updating files:  96% (1087/1132)
+Updating files:  97% (1099/1132)
+Updating files:  98% (1110/1132)
+Updating files:  99% (1121/1132)
+Updating files: 100% (1132/1132)
+Updating files: 100% (1132/1132), done.
+HEAD is now at 59e5ea3 fix(bvp): correct prerequisite batched test invocation
+[PASS] disposable-worktree: Created C:\Users\woodpk\AppData\Local\Temp\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\w.
+
+===== DEPENDENCIES =====
+Command: C:\Program Files\nodejs\npm.cmd ci --no-audit --no-fund --loglevel info
+npm info using npm@10.9.8
+npm info using node@v22.23.2
+npm http cache undici-types@https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz 0ms (cache hit)
+npm http cache w3c-keyname@https://registry.npmjs.org/w3c-keyname/-/w3c-keyname-2.2.8.tgz 0ms (cache hit)
+npm http cache typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz 0ms (cache hit)
+npm http cache style-mod@https://registry.npmjs.org/style-mod/-/style-mod-4.1.3.tgz 0ms (cache hit)
+npm http cache obsidian@https://registry.npmjs.org/obsidian/-/obsidian-1.13.1.tgz 0ms (cache hit)
+npm http cache moment@https://registry.npmjs.org/moment/-/moment-2.31.0.tgz 0ms (cache hit)
+npm http cache crelt@https://registry.npmjs.org/crelt/-/crelt-1.0.7.tgz 0ms (cache hit)
+npm http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.28.2.tgz 0ms (cache hit)
+npm http cache @types/node@https://registry.npmjs.org/@types/node/-/node-20.19.43.tgz 0ms (cache hit)
+npm http cache @types/estree@https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz 0ms (cache hit)
+npm http cache @types/codemirror@https://registry.npmjs.org/@types/codemirror/-/codemirror-5.60.8.tgz 0ms (cache hit)
+npm http cache @esbuild/win32-x64@https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.28.2.tgz 0ms (cache hit)
+npm http cache @marijn/find-cluster-break@https://registry.npmjs.org/@marijn/find-cluster-break/-/find-cluster-break-1.0.4.tgz 0ms (cache hit)
+npm http cache @codemirror/view@https://registry.npmjs.org/@codemirror/view/-/view-6.38.6.tgz 0ms (cache hit)
+npm http cache @types/tern@https://registry.npmjs.org/@types/tern/-/tern-0.23.9.tgz 0ms (cache hit)
+npm http cache @codemirror/state@https://registry.npmjs.org/@codemirror/state/-/state-6.5.0.tgz 0ms (cache hit)
+npm info run esbuild@0.28.2 postinstall node_modules/esbuild node install.js
+npm info run esbuild@0.28.2 postinstall { code: 1, signal: null }
+npm warn cleanup Failed to remove some directories [
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules\\@esbuild\\win32-x64',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\woodpk\AppData\Local\Temp\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\w\node_modules\@esbuild\win32-x64'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules\\@esbuild\\win32-x64'
+npm warn cleanup     }
+npm warn cleanup   ],
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules\\@types\\node',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\woodpk\AppData\Local\Temp\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\w\node_modules\@types\node'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules\\@types\\node'
+npm warn cleanup     }
+npm warn cleanup   ],
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\woodpk\AppData\Local\Temp\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\w\node_modules\@types\codemirror\addon'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w\\node_modules\\@types\\codemirror\\addon'
+npm warn cleanup     }
+npm warn cleanup   ]
+npm warn cleanup ]
+npm error code 1
+npm error path C:\Users\woodpk\AppData\Local\Temp\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\w\node_modules\esbuild
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c node install.js
+npm error 'node' is not recognized as an internal or external command,
+npm error operable program or batch file.
+npm error A complete log of this run can be found in: C:\Users\woodpk\AppData\Local\npm-cache\_logs\2026-10-04T03_05_35_692Z-debug-0.log
+[FAIL] dependencies: Stage failed with exit code 1.
+[SKIPPED] typecheck: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] product-test-compile: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] focused-folder-recovery: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] complete-product-suite: Compiled test tree was unavailable.
+[SKIPPED] bvp-compile: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] complete-bvp-suite: Compiled test tree was unavailable.
+[SKIPPED] architecture-guard: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] architecture-metrics: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] repository-check: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] production-build: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] production-artifact-identity: Production build did not pass.
+[SKIPPED] production-artifact-materialization: Implementation/test/build gates did not all pass; no shipping artifact commit was created.
+error: pathspec 'main.js' did not match any file(s) known to git
+[SKIPPED] validation-artifact-build: Stage was not executed because a required dependency stage was unavailable.
+[SKIPPED] validation-artifact-identity: Validation artifact build did not pass.
+[SKIPPED] post-artifact-repository-check: Stage was not executed because a required dependency stage was unavailable.
+[PASS] repository-mutation-audit: After derived artifact materialization, no residual tracked/untracked change exists outside the authorized S08F evidence root.
+
+===== EVIDENCE PERSISTENCE =====

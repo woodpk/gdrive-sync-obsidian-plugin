@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-10-04T03:05:40.2354732+00:00",
+  "overall": "FAIL",
+  "verificationBase": "39cf1ff62fb927aba9d2ee49f99724d9ce1f2856",
+  "inputCandidateSha": "59e5ea3752b635263e88ae2496e5af5f76c2361c",
+  "verifiedCandidateSha": "59e5ea3752b635263e88ae2496e5af5f76c2361c",
+  "branch": "bvp-s08f-desktop-live-canary",
+  "productionArtifactCommit": null,
+  "productionArtifact": null,
+  "validationArtifact": null,
+  "stages": [
+    {
+      "name": "toolchain",
+      "status": "PASS",
+      "classification": "TOOLCHAIN READY",
+      "summary": "Node v22.23.2; npm 10.9.8; controlled child Node PATH established.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "repository-identity",
+      "status": "PASS",
+      "classification": "EXACT SOURCE IDENTITY",
+      "summary": "Remote task branch is exactly 59e5ea3752b635263e88ae2496e5af5f76c2361c.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "change-scope",
+      "status": "PASS",
+      "classification": "BOUNDED PREREQUISITE",
+      "summary": "Candidate is descended from the blocked physical-evidence anchor; changed paths are authorized; frozen synchronization contracts are unchanged; diff-check passes.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "changedPaths": [
+          "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md",
+          "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPrerequisiteVerification.ps1",
+          "src/drive/google-drive-port.ts",
+          "test/workstreams/drive/phase6-remote-protocol.test.ts"
+        ],
+        "unexpectedPaths": [],
+        "contractChanges": [],
+        "ancestorExitCode": 0,
+        "diffCheckExitCode": 0,
+        "diffCheckOutput": ""
+      }
+    },
+    {
+      "name": "defect-causality",
+      "status": "PASS",
+      "classification": "OWNING DEFECT REPAIRED",
+      "summary": "Base used account-global root uniqueness after reserved-ID absence; candidate anchors recovery to exact parent observation/root ancestry and regression asserts no global root search or mutation.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "disposable-worktree",
+      "status": "PASS",
+      "classification": "EXACT-SHA DISPOSABLE WORKTREE",
+      "summary": "Created C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53\\w.",
+      "command": "",
+      "exitCode": 0,
+      "evidence": null
+    },
+    {
+      "name": "dependencies",
+      "status": "FAIL",
+      "classification": "DEPENDENCY INSTALL",
+      "summary": "Stage failed with exit code 1.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd ci --no-audit --no-fund --loglevel info",
+      "exitCode": 1,
+      "evidence": null
+    },
+    {
+      "name": "typecheck",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd run typecheck",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "product-test-compile",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/typescript/bin/tsc -p tsconfig.test.json",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "focused-folder-recovery",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/test/workstreams/drive/phase6-remote-protocol.test.js .test-build/test/phase6-folder-remote-recovery-observation-foundation.test.js .test-build/test/workstreams/orchestration/v1.2-remote-folder-restart.test.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "complete-product-suite",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Compiled test tree was unavailable.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "bvp-compile",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/typescript/bin/tsc -p test-platform/tsconfig.json",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "complete-bvp-suite",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Compiled test tree was unavailable.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "architecture-guard",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/bvp/test-platform/test/architecture-guard.test.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "architecture-metrics",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test .test-build/bvp/test-platform/test/architecture-metrics.test.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "repository-check",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe .test-build/bvp/test-platform/src/repository-check.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "production-build",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\npm.cmd run build",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "production-artifact-identity",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Production build did not pass.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "production-artifact-materialization",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Implementation/test/build gates did not all pass; no shipping artifact commit was created.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "validation-artifact-build",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe .test-build/bvp/test-platform/src/live-device/build-validation-artifact.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "validation-artifact-identity",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Validation artifact build did not pass.",
+      "command": "",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "post-artifact-repository-check",
+      "status": "SKIPPED",
+      "classification": "PREREQUISITE NOT SATISFIED",
+      "summary": "Stage was not executed because a required dependency stage was unavailable.",
+      "command": "C:\\Program Files\\nodejs\\node.exe .test-build/bvp/test-platform/src/repository-check.js",
+      "exitCode": null,
+      "evidence": null
+    },
+    {
+      "name": "repository-mutation-audit",
+      "status": "PASS",
+      "classification": "EVIDENCE-ONLY RESIDUAL MUTATION",
+      "summary": "After derived artifact materialization, no residual tracked/untracked change exists outside the authorized S08F evidence root.",
+      "command": "",
+      "exitCode": null,
+      "evidence": {
+        "status": []
+      }
+    }
+  ],
+  "diagnosticWorkspace": "C:\\Users\\woodpk\\AppData\\Local\\Temp\\brain-s08f-prereq-490ffc5bc77d443eb6ba6ed1aa2b8a53"
+}
