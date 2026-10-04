@@ -584,3 +584,28 @@ Protocol state is now:
 `REVIEW → HUMAN ACCEPT`
 
 Physical S08F recovery remains unauthorized until the human software owner explicitly ACCEPTS resumption. S09 remains unauthorized.
+
+
+## 0.15 Human ACCEPT — Resume Preserved Physical S08F Recovery
+
+The human software owner explicitly authorized:
+
+`ACCEPT — resume physical S08F recovery`
+
+Acceptance prerequisites satisfied before this authorization:
+
+- bounded prerequisite repair verification PASS;
+- authoritative PHX-CI substantive verification PASS with canonical evidence recovery;
+- final independent review APPROVED with zero findings.
+
+Authorized next scope:
+
+1. resume only the preserved S08F physical recovery in the already-bound disposable Windows/Obsidian validation environment;
+2. preserve all prior terminal and uncertain physical state;
+3. do not replay attempt 1;
+4. do not replay retry `s08f-desktop-canary-4f9c69c-r2`;
+5. do not reset or discard uncertain physical evidence;
+6. do not use the working BRAIN vault;
+7. do not begin S09.
+
+This ACCEPT authorizes the physical-recovery phase; it does not itself constitute S08F final PASS.
