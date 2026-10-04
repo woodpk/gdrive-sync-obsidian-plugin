@@ -389,3 +389,26 @@ Repair semantic boundary:
 10. Keep the semantic source/test candidate distinct from generated `main.js`/validation artifacts and from the subsequent evidence-only commit; do not create a tracked `main.js` commit.
 
 After automated verification, rebuild the validation artifact from the exact repaired source SHA, rebind S08F artifact identity, and resume product-authority recovery from the preserved physical state. Do not begin S09.
+
+## 0.7 Protocol Reset — Prerequisite Verification Harness
+
+The prior incremental prerequisite-verifier implementation is superseded. The replacement verifier is governed directly by the Agent-Led Software Engineering Operating Protocol.
+
+Required verifier behavior:
+
+1. Treat the verifier as a repository-controlled engineering build unit and adversarially review it before owner execution.
+2. Use one owner execution to collect all safe independent diagnostics: exact candidate/repository state, bounded scope/contract freeze, toolchain/dependencies, static/type checks, focused recovery regressions, complete product tests, complete BVP tests, architecture/repository checks, production build, production artifact identity, validation artifact identity, and repository mutation audit.
+3. Ordinary failures are structured evidence. Record PASS/FAIL/BLOCKED/SKIPPED/INDETERMINATE; block only dependency-unsafe stages; continue every independent safe diagnostic.
+4. Use an exact-SHA GUID-isolated detached worktree. Never depend on or mutate the owner's active checkout.
+5. On FAIL, preserve the diagnostic workspace and report its exact path. Do not publish a failure/evidence commit and do not move the remote task branch.
+6. On PASS only, prepare canonical evidence under the authorized S08F evidence root, verify that evidence is the only residual tracked mutation, create one evidence-only child commit whose parent is the verified candidate, and push it under a branch lease.
+7. A rerun after a successful evidence commit must recognize a direct evidence child whose canonical PASS evidence names the requested candidate and return the existing PASS rather than report branch drift.
+8. main.js remains repository-ignored. Build and hash it from the exact candidate; do not attempt to track or commit it.
+9. Raw diagnostic logs are evidence, not source. Source whitespace/diff checks apply only to bounded task/source/test/verifier surfaces and must not rewrite preserved raw logs.
+10. Child-process execution must deterministically provide Node, npm, Git, PowerShell 7, and Windows system tools required by npm/BVP tests.
+11. The final process exit code must agree with the consolidated result.
+12. The chat launcher must remain small: retrieve the verifier from the exact candidate, invoke it, and propagate its status.
+13. No disposable-vault, plugin-install, Google Drive, mailbox, or other physical S08F mutation is authorized by this prerequisite verifier.
+14. Do not resume physical S08F recovery until this prerequisite verifier records PASS for the repaired source candidate.
+
+Do not begin S09.
