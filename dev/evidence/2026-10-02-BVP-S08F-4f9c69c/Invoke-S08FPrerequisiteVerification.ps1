@@ -22,6 +22,7 @@ $ValidationIdentity = $null
 $VerifiedCandidateSha = $CandidateSha
 $ArtifactCommit = $null
 $EvidenceCommit = $null
+$script:NativePathOverride = $null
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('brain-s08f-prereq-' + [guid]::NewGuid().ToString('N'))
 $Worktree = Join-Path $TempRoot 'w'
 
@@ -54,6 +55,37 @@ function Add-Stage {
   Write-LogLine ('[{0}] {1}: {2}' -f $Status, $Name, $Summary)
 }
 
+function Invoke-Native {
+  param(
+    [string]$File,
+    [string[]]$Arguments,
+    [string]$WorkingDirectory
+  )
+  $psi = [System.Diagnostics.ProcessStartInfo]::new()
+  $psi.FileName = $File
+  $psi.WorkingDirectory = $WorkingDirectory
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.CreateNoWindow = $true
+  if (-not [string]::IsNullOrWhiteSpace([string]$script:NativePathOverride)) {
+    $psi.Environment['PATH'] = $script:NativePathOverride
+  }
+  foreach ($argument in $Arguments) { [void]$psi.ArgumentList.Add($argument) }
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $psi
+  [void]$process.Start()
+  $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+  $stderrTask = $process.StandardError.ReadToEndAsync()
+  $process.WaitForExit()
+  return [pscustomobject]@{
+    exitCode = $process.ExitCode
+    stdout = $stdoutTask.GetAwaiter().GetResult()
+    stderr = $stderrTask.GetAwaiter().GetResult()
+    command = $File + ' ' + ($Arguments -join ' ')
+  }
+}
+
 function Invoke-External {
   param(
     [string]$Name,
@@ -74,17 +106,18 @@ function Invoke-External {
   Write-LogLine
   Write-LogLine ('===== {0} =====' -f $Name.ToUpperInvariant())
   Write-LogLine ('Command: {0}' -f $commandText)
-  $code = 99
-  Push-Location $WorkingDirectory
   try {
-    & $File @Arguments 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-    $code = $LASTEXITCODE
-    if ($null -eq $code) { $code = 0 }
+    $result = Invoke-Native -File $File -Arguments $Arguments -WorkingDirectory $WorkingDirectory
+    if (-not [string]::IsNullOrEmpty($result.stdout)) {
+      $result.stdout.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+    }
+    if (-not [string]::IsNullOrEmpty($result.stderr)) {
+      $result.stderr.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+    }
+    $code = [int]$result.exitCode
   } catch {
     Write-LogLine ('EXCEPTION: ' + $_.Exception.ToString())
     $code = 99
-  } finally {
-    Pop-Location
   }
 
   if ($code -eq 0) {
@@ -94,7 +127,6 @@ function Invoke-External {
   }
   return $code
 }
-
 function Invoke-TestTree {
   param(
     [string]$Name,
@@ -133,9 +165,15 @@ function Invoke-TestTree {
       $batch = @($files[$offset..$last])
       $batchNumber = [int]($offset / $batchSize) + 1
       Write-LogLine ('--- {0} batch {1}/{2}: {3} test files ---' -f $Name, $batchNumber, $batchCount, $batch.Count)
-      $nodeArguments = @('--test') + $batch; & $NodePath @nodeArguments 2>&1 | ForEach-Object { Write-LogLine ([string]$_) }
-      $code = $LASTEXITCODE
-      if ($null -eq $code) { $code = 0 }
+      $nodeArguments = @('--test') + $batch
+      $batchResult = Invoke-Native -File $NodePath -Arguments $nodeArguments -WorkingDirectory $WorkingDirectory
+      if (-not [string]::IsNullOrEmpty($batchResult.stdout)) {
+        $batchResult.stdout.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+      }
+      if (-not [string]::IsNullOrEmpty($batchResult.stderr)) {
+        $batchResult.stderr.TrimEnd() -split "\r?\n" | ForEach-Object { Write-LogLine ([string]$_) }
+      }
+      $code = [int]$batchResult.exitCode
       if ($code -ne 0) {
         $failedBatches.Add([pscustomobject]@{ batch = $batchNumber; exitCode = $code; files = $batch })
       }
@@ -184,11 +222,26 @@ if ($null -eq $node) { $toolIssues.Add('node-unavailable') }
 if ($null -eq $npm) { $toolIssues.Add('npm-unavailable') }
 
 if ($toolIssues.Count -eq 0) {
-  $nodeDir = Split-Path -Parent $node.Source
-  if (-not (($env:PATH -split ';') -contains $nodeDir)) { $env:PATH = $nodeDir + ';' + $env:PATH }
-  $nodeVersion = ((& $node.Source --version 2>&1) -join '').Trim()
-  $npmVersion = ((& $npm.Source --version 2>&1) -join '').Trim()
-  Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; controlled child Node PATH established.' -f $nodeVersion, $npmVersion)
+  $pathParts = [System.Collections.Generic.List[string]]::new()
+  foreach ($candidatePath in @(
+    (Split-Path -Parent $node.Source),
+    (Split-Path -Parent $git.Source),
+    (Join-Path $env:SystemRoot 'System32'),
+    $env:SystemRoot,
+    (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0')
+  )) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$candidatePath) -and (Test-Path -LiteralPath $candidatePath -PathType Container) -and -not $pathParts.Contains($candidatePath)) {
+      [void]$pathParts.Add($candidatePath)
+    }
+  }
+  $script:NativePathOverride = $pathParts -join [System.IO.Path]::PathSeparator
+  $nodeProbe = Invoke-Native -File $node.Source -Arguments @('--version') -WorkingDirectory $RepositoryRoot
+  $npmProbe = Invoke-Native -File $npm.Source -Arguments @('--version') -WorkingDirectory $RepositoryRoot
+  if ($nodeProbe.exitCode -ne 0 -or $npmProbe.exitCode -ne 0) {
+    $toolIssues.Add('controlled-child-path-probe-failed')
+  } else {
+    Add-Stage -Name 'toolchain' -Status 'PASS' -Classification 'TOOLCHAIN READY' -Summary ('Node {0}; npm {1}; deterministic native child PATH={2}' -f $nodeProbe.stdout.Trim(), $npmProbe.stdout.Trim(), $script:NativePathOverride)
+  }
 } else {
   Add-Stage -Name 'toolchain' -Status 'BLOCKED' -Classification 'TOOLCHAIN UNAVAILABLE' -Summary ($toolIssues -join ', ')
 }
