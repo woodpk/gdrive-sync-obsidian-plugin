@@ -298,24 +298,6 @@ try {
     }
 
     if ($ready) {
-        $dataHashBefore = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
-        Copy-Item -LiteralPath $validationMain -Destination $installedMain -Force
-        Copy-Item -LiteralPath $validationManifest -Destination $installedManifest -Force
-        Copy-Item -LiteralPath $validationIdentityPath -Destination $installedIdentity -Force
-        $dataHashAfter = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
-        $installedHashAfter = (Get-FileHash -LiteralPath $installedMain -Algorithm SHA256).Hash.ToLowerInvariant()
-        $installedIdentityModel = Get-Content -LiteralPath $installedIdentity -Raw | ConvertFrom-Json
-        if ($dataHashBefore -ceq $dataHashAfter -and
-            $installedHashAfter -ceq $expectedValidationHash -and
-            [string]$installedIdentityModel.sourceCommit -ceq $implementationSha) {
-            Add-Result 'repaired-validation-install' 'PASS' 'BOUNDED VALIDATION INSTALL' 'Installed only repaired validation main.js/manifest/build identity; data.json remained byte-identical.'
-        } else {
-            $ready = $false
-            Add-Result 'repaired-validation-install' 'FAIL' 'PHYSICAL INSTALL FAILURE' ('Install verification failed: dataBefore={0} dataAfter={1} main={2} source={3}' -f $dataHashBefore,$dataHashAfter,$installedHashAfter,[string]$installedIdentityModel.sourceCommit)
-        }
-    }
-
-    if ($ready) {
         $builder = [System.Text.StringBuilder]::new()
         foreach ($index in 1..5) {
             $relativePart = $evidenceRelative + '/s08f-physical-canary.part' + $index + '.mjs.txt'
@@ -339,6 +321,24 @@ try {
                 if ($null -ne $self) { $detail += $self.stdout + $self.stderr }
                 Add-Result 'helper-materialization' 'FAIL' 'VERIFICATION-HARNESS DEFECT' 'Physical helper syntax/self-check failed.' $detail
             }
+        }
+    }
+
+    if ($ready) {
+        $dataHashBefore = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
+        Copy-Item -LiteralPath $validationMain -Destination $installedMain -Force
+        Copy-Item -LiteralPath $validationManifest -Destination $installedManifest -Force
+        Copy-Item -LiteralPath $validationIdentityPath -Destination $installedIdentity -Force
+        $dataHashAfter = (Get-FileHash -LiteralPath $dataJson -Algorithm SHA256).Hash.ToLowerInvariant()
+        $installedHashAfter = (Get-FileHash -LiteralPath $installedMain -Algorithm SHA256).Hash.ToLowerInvariant()
+        $installedIdentityModel = Get-Content -LiteralPath $installedIdentity -Raw | ConvertFrom-Json
+        if ($dataHashBefore -ceq $dataHashAfter -and
+            $installedHashAfter -ceq $expectedValidationHash -and
+            [string]$installedIdentityModel.sourceCommit -ceq $implementationSha) {
+            Add-Result 'repaired-validation-install' 'PASS' 'BOUNDED VALIDATION INSTALL' 'Installed only repaired validation main.js/manifest/build identity; data.json remained byte-identical.'
+        } else {
+            $ready = $false
+            Add-Result 'repaired-validation-install' 'FAIL' 'PHYSICAL INSTALL FAILURE' ('Install verification failed: dataBefore={0} dataAfter={1} main={2} source={3}' -f $dataHashBefore,$dataHashAfter,$installedHashAfter,[string]$installedIdentityModel.sourceCommit)
         }
     }
 
