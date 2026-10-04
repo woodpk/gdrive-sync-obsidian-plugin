@@ -45,3 +45,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TOOLCHAIN FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08f-desktop-live-canary
+- Source build HEAD requested: 132be57f76b31f787a05683faca548e11dec09d5
+- Verification checkout HEAD: 132be57f76b31f787a05683faca548e11dec09d5
+- Evidence publication target: origin/bvp-s08f-desktop-live-canary
