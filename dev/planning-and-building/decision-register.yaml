@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-09-23"
+  as_of: "2026-10-04"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 — execute bound BVP-S03B from exact accepted predecessor fdc5f8a0f72f57492eea10590cecfa7e80aa1ee6 using dev/agents/st2a/ph6/05-bvp/03-hard-boundary-guard-metrics-phx-ci-enforcement/03b-implement-architecture-guard.md; do not begin 03C until 03B passes PHX-CI and supervisor acceptance."
+    next_step: "Stage 2A / Phase 6 / BVP-S08F — resume the human-accepted preserved physical recovery from the repository-controlled post-repair authority-recovery harness; do not replay r2 and do not begin S09."
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"
@@ -956,6 +956,12 @@ decisions:
     status: locked
     category: validation_anti_drift
     decision: "Coding agents do not receive authority to classify ambiguous repository surfaces when supervisor repository inspection can resolve them. Executable BVP prompts must state an exact writable-path allowlist and supervisor-decided retain/delete boundaries. If implementation appears to require an unlisted path, additional production seam, broader architecture, or reclassification, the agent must return BLOCKED to the supervisor rather than deciding, preserving, deleting, or expanding scope on its own."
+
+
+  - id: DEC-327
+    status: locked
+    category: supervisor_continuity
+    decision: "The repository must maintain durable supervisor re-entry memory independent of chat history. dev/planning-and-building/project-state.yaml is the canonical current execution/progress snapshot and must be updated whenever the active work package, exact task head, acceptance state, preserved physical/external state, or immediate next action materially changes. dev/planning-and-building/supervisor-continuity-log.md is an append-only chronological operational log; every material engineering transition must append enough exact branch/SHA/evidence/next-action context to resume safely after abrupt session loss. This continuity memory is operational state, not product authority, and does not replace the target-system specification, task contracts, decision register, PHX-CI evidence, or task-specific evidence."
 
 superseded_decisions:
   - id: SUP-001
