@@ -692,3 +692,51 @@ Authoritative owner-directed rerun binding:
 
 The PHX-CI result from this rerun is authoritative for the repository-verification status of the exact branch HEAD it verifies. Physical S08F canary/recovery state remains a separate acceptance surface and is not reclassified by this repository-verification correction.
 
+## 0.18 Authoritative Repository Verification — PASS
+
+Owner-executed PHX-CI completed successfully against exact source `0c5111965a1acbde374b63d80b6cceb643d7bc84`, exact base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, and `BVP_CHANGE_CLASS=authorized-governance`.
+
+Canonical run identity:
+
+- PHX-CI run ID: `7b082f28-aa6f-4354-b14a-38b19fb34af8`;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS;
+- compatibility: COMPLETE;
+- task exit code: 0;
+- artifact `main.js`: 886635 bytes / SHA-256 `550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477`;
+- evidence commit: `edbd77cf086c11e0acb178b8b96b661627036a80`;
+- evidence published: YES;
+- control checkout preserved: YES.
+
+The repository-verification blocker is closed. No product-source defect was demonstrated by the prior blocked PHX-CI runs.
+
+S08F remains open only for the physical product-authority recovery and subsequent fresh-canary proof required by this task.
+
+## 0.19 Current-Protocol Physical-Recovery Realignment
+
+The current original `agent-led-software-engineering-operating-protocol` and owner-locked `AGENTS.md` supersede the legacy standalone physical-validation harness instructions in sections 0.5, 0.7, and 0.16 wherever those instructions authorize direct execution of a bespoke verifier/harness.
+
+The legacy PowerShell harnesses and `.mjs.txt` helper fragments under the S08F evidence root remain historical evidence and diagnostic source material only. They MUST NOT be invoked directly as an independent validation authority.
+
+The next physical product-authority recovery MUST execute as a focused test/gate under PHX-CI. This re-grounding authorizes exactly one new test-only implementation path:
+
+- `test-platform/test/s08f-post-repair-product-authority-recovery.test.ts`.
+
+That test may mechanically internalize the already-reviewed physical recovery logic required to:
+
+1. prove the preserved attempt-1 and r2 terminal states;
+2. prove the exact disposable vault/canary identity;
+3. prove the repaired validation artifact is active in the disposable Obsidian instance;
+4. invoke only the existing production `previewManual()` recovery path;
+5. execute only an exact non-destructive reviewed recovery plan;
+6. require a new terminal `complete` production receipt with `requiredEffectsCommittedAndVerified=true`;
+7. require final product status `idle-ready`;
+8. prove the existing canary fixture remains byte-identical;
+9. stop at the existing semantic boundary `READY FOR FRESH S08F CANARY IDENTITY BINDING` without creating or executing a fresh canary identity;
+10. emit sufficient structured recovery evidence into PHX-CI-captured test output for supervisor evidence recovery without an independent publication mechanism.
+
+The test MUST be inert during ordinary/full test execution unless the PHX-CI focused command explicitly sets the S08F physical-execution environment flag. No product, production seam, runtime, scenario catalog, architecture boundary, or synchronization semantics may change.
+
+The focused physical gate remains subject to the exact disposable vault binding and the prohibition on the working BRAIN vault. S09 remains unauthorized.
+
