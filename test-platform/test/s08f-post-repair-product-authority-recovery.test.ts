@@ -18,8 +18,8 @@ const vaultPath = process.env.BVP_S08F_VAULT_PATH || 'D:\\bvp-s08f-vault-0f4c76d
 const repoWorktree = process.cwd();
 const evidenceDir = path.join(repoWorktree, '.phx-ci', 's08f-physical-authority-recovery');
 const configuredDebugPort = Number(process.env.BVP_S08F_DEBUG_PORT || '63311');
-const sourceCommit = process.env.BVP_S08F_SOURCE_COMMIT || '57e5be079ded16ba50b4f95c49f78a9d90b47f3f';
 const branchHead = process.env.BVP_S08F_BRANCH_HEAD || '';
+const sourceCommit = process.env.BVP_S08F_SOURCE_COMMIT || branchHead || '57e5be079ded16ba50b4f95c49f78a9d90b47f3f';
 const oldRunId = 's08f-desktop-canary-4f9c69c';
 const retryRunId = 's08f-desktop-canary-4f9c69c-r2';
 const scenarioId = 's08f-desktop-live-canary-r2';
@@ -31,9 +31,9 @@ const canaryText = `BVP S08F desktop live canary\nsource=${originalCanarySourceC
 const canaryBytes = Buffer.from(canaryText, 'utf8');
 const canaryHash = createHash('sha256').update(canaryBytes).digest('hex');
 const expectedCanaryHash = 'db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d';
-const expectedValidationHash = '6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf';
-const expectedProductionHash = '550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477';
-const expectedProductionSize = 886635;
+let expectedValidationHash = '6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf';
+let expectedProductionHash = '550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477';
+let expectedProductionSize = 886635;
 const pluginDir = vaultPath ? path.join(vaultPath, '.obsidian', 'plugins', 'brain-google-drive-sync') : '';
 const relayRoot = pluginDir ? path.join(pluginDir, '.bvp-relay') : '';
 const stateDir = relayRoot ? path.join(relayRoot, 'device-state') : '';
@@ -1837,6 +1837,7 @@ async function recoverR2ProductAuthority(priorVerdict) {
   record('r2recovery-preview','PASS','product-recovery-preview','Accepted production preview invoked the product recovery path and returned a full reviewed recovery plan.',preview);
 
   const plan=preview.plan;
+  if(preview.afterStatus?.kind!=='recovery-required')fail('BLOCKED','r2-product-recovery-authority-not-surfaced',`Recovery preview did not surface the durable recovery gate: ${JSON.stringify(preview)}`);
   if(!plan||!Array.isArray(plan.operations))fail('BLOCKED','r2-product-recovery-plan-unavailable',`Recovery preview returned no executable plan: ${JSON.stringify(preview)}`);
   const forbiddenKinds=new Set(['trash-local','trash-remote','blocked-unsafe','unresolved-conflict','recovery-required']);
   const unsafeOperations=plan.operations.filter(operation=>operation?.destructive===true||forbiddenKinds.has(operation?.kind));
@@ -1905,10 +1906,19 @@ try {
   let dataHashBeforeRestore;
   const priorVerdictPath = path.join(repoWorktree,'dev/evidence/2026-10-02-BVP-S08F-4f9c69c','S08F-BLOCKED.json');
   const priorVerdict = await readJson(priorVerdictPath).catch(()=>null);
+  const latestFalseReadyAuthorityBlock = priorVerdict?.classification === 'r2-product-recovery-precondition-blocked' &&
+    (priorVerdict?.stages ?? []).some(stage =>
+      stage?.name === 'r2recovery-uncertain-production-authority' &&
+      stage?.status === 'FAIL' &&
+      stage?.details?.uncertainAuthority?.historicalExact === true &&
+      stage?.details?.uncertainAuthority?.liveStatus?.kind === 'idle-ready' &&
+      stage?.details?.uncertainAuthority?.liveReceiptCompatible === true
+    );
   const productAuthorityRecovery = (
     (priorVerdict?.classification === 'postconflict-recovery-precondition-blocked' &&
       String(priorVerdict?.primaryReason??'').includes('production-action-rejected')) ||
-    priorVerdict?.classification === 'r2-product-recovery-plan-unavailable'
+    priorVerdict?.classification === 'r2-product-recovery-plan-unavailable' ||
+    latestFalseReadyAuthorityBlock
   ) &&
     priorVerdict?.retryRunId === retryRunId &&
     priorVerdict?.scenarioId === scenarioId;
@@ -2197,6 +2207,39 @@ test('S08F post-repair product-authority recovery reaches the fresh-canary bindi
   if (!(await exists(productionArtifact))) {
     throw new Error('Focused gate requires the PHX-CI focused command to build ordinary production main.js before physical recovery.');
   }
+
+  const productionBytes = await fs.readFile(productionArtifact);
+  expectedProductionHash = createHash('sha256').update(productionBytes).digest('hex');
+  expectedProductionSize = productionBytes.byteLength;
+
+  const compiledBuildModule = path.join(repoWorktree, '.test-build', 'bvp', 'test-platform', 'src', 'live-device', 'build-validation-artifact.js');
+  if (!(await exists(compiledBuildModule))) {
+    throw new Error('Focused gate requires test-platform compilation before physical recovery.');
+  }
+  const { buildValidationArtifact } = require(compiledBuildModule);
+  const validationBuild = await buildValidationArtifact(repoWorktree);
+  if (validationBuild.sourceCommit !== branchHead) {
+    throw new Error(`Validation artifact source mismatch: expected ${branchHead}, got ${validationBuild.sourceCommit}.`);
+  }
+  expectedValidationHash = validationBuild.artifactSha256;
+
+  const installedMain = path.join(pluginDir, 'main.js');
+  const installedManifest = path.join(pluginDir, 'manifest.json');
+  const installedIdentity = path.join(pluginDir, 'build-identity.json');
+  const installedData = path.join(pluginDir, 'data.json');
+  if (!(await exists(installedData))) {
+    throw new Error('Disposable validation plugin data.json is missing.');
+  }
+  const dataHashBeforeInstall = await sha256File(installedData);
+  await fs.copyFile(validationBuild.artifactPath, installedMain);
+  await fs.copyFile(validationBuild.manifestPath, installedManifest);
+  await fs.copyFile(validationBuild.identityPath, installedIdentity);
+  const dataHashAfterInstall = await sha256File(installedData);
+  if (dataHashAfterInstall !== dataHashBeforeInstall) {
+    throw new Error('Installing the repaired validation artifact changed disposable plugin data.json.');
+  }
+  console.log(`S08F_REPAIRED_PRODUCTION_ARTIFACT=${expectedProductionSize}:${expectedProductionHash}`);
+  console.log(`S08F_REPAIRED_VALIDATION_ARTIFACT=${validationBuild.artifactSize}:${expectedValidationHash}`);
 
   await fs.rm(evidenceDir, { recursive: true, force: true });
   await fs.mkdir(evidenceDir, { recursive: true });
