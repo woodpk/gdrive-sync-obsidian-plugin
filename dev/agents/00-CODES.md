@@ -114,3 +114,30 @@ dev/agents/
 The hierarchy above is authoritative for repository paths, build-address communication, new tasking, status reporting, and future supervision artifacts.
 
 Long-form stage/phase directory names are obsolete and must not coexist as mirrors or aliases. Historical text inside already-completed artifacts may still mention an older path as historical provenance, but the repository object itself must live only at its canonical coded path.
+
+## 8. Owner-Locked Validation / Verification Governance
+
+This section is authoritative for every descendant task, handoff, repair prompt, continuation prompt, and other instruction artifact under `dev/agents/**`. It **replaces and supersedes** any conflicting validation/verification instructions contained in those descendant files, regardless of when or on which branch the descendant instruction was written.
+
+### 8.1 Mandatory fresh-protocol gate
+
+Before authoring, generating, modifying, extending, or printing **any code or script whose purpose is wholly or partly validation or verification**, including any verifier, validator, validation/verification harness, test-orchestration harness, runner, launcher, evidence verifier/publisher, repository-check script, acceptance-gate script, or similar tooling, the engineering agent MUST:
+
+1. **Freshly retrieve and read the current original Google Drive document named `agent-led-software-engineering-operating-protocol` immediately before that script/code-authoring action.**
+2. Treat cached copies, repository copies, uploaded snapshots, memory, prior-chat readings, and earlier readings in the same session as insufficient for this gate.
+3. If more than one validation/verification-related script or code artifact will be authored or materially modified, re-fetch and re-read the current Drive original before **each** such authoring/modification action.
+4. Apply the freshly-read protocol exactly, including its current PHX-CI authority, owner-execution, rerun, evidence-recovery, mutation-safety, and script-audit rules.
+5. If the current Drive original cannot be fetched and read, declare **VALIDATION/VERIFICATION SCRIPT AUTHORING: BLOCKED**. Do not use an older copy and do not invent a substitute validation process.
+
+### 8.2 Legacy custom-validation instructions are superseded
+
+Any descendant `dev/agents/**` instruction that directs an agent to create, build, implement, extend, modify, or rely upon bespoke/custom validation or verification code is not independent authority. Such an instruction may be followed only to the extent the freshly-read current operating protocol permits that exact action.
+
+Where a descendant instruction conflicts with the current operating protocol, **the descendant instruction is VOID and this section replaces it**.
+
+PHX-CI must remain the primary, central, non-substitutable repository-validation pipeline whenever the current operating protocol assigns that authority to PHX-CI. Task-specific or physical-validation tooling may be created or changed only when the freshly-read protocol permits it for a responsibility PHX-CI does not own, and it must remain supplementary.
+
+### 8.3 No prompt-level bypass
+
+No task prompt, historical handoff, continuation instruction, repair task, acceptance task, or supervisor note under `dev/agents/**` may waive or bypass Sections 8.1–8.2. Only an explicit later human software-owner instruction may change this owner-locked rule.
+
