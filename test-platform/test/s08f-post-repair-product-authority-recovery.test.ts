@@ -149,9 +149,67 @@ async function allocateLoopbackPort() {
   });
 }
 
+function isDisposableVaultWindowTitle(title) {
+  const token = path.basename(vaultPath).toLowerCase();
+  return token.length > 0 && String(title ?? '').toLowerCase().includes(token);
+}
+
+async function stopExistingDisposableObsidianForDebug() {
+  const before = inspectObsidianRuntime();
+  const processes = before.processes ?? [];
+  const windows = before.windows ?? [];
+  if (processes.length === 0) return { ok:true, stopped:false, before, after:before };
+
+  const foreignWindows = windows.filter(item => !isDisposableVaultWindowTitle(item.MainWindowTitle ?? item.mainWindowTitle));
+  if (windows.length === 0 || foreignWindows.length > 0) {
+    return {
+      ok:false,
+      classification:'obsidian-nondisposable-instance-active',
+      reason: windows.length === 0
+        ? 'Obsidian is running without a provably disposable visible window; automatic restart is prohibited.'
+        : `Automatic Obsidian restart is prohibited because ${foreignWindows.length} visible window(s) are not the bound disposable S08F vault.`,
+      before,
+      foreignWindows,
+    };
+  }
+
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    "Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Stop-Process -Force",
+  ].join(';');
+  const stopResult = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',script], { encoding:'utf8', windowsHide:true });
+  if (stopResult.status !== 0) {
+    return {
+      ok:false,
+      classification:'obsidian-disposable-restart-stop-failed',
+      reason:String(stopResult.stderr || stopResult.stdout || '').trim() || 'Unable to stop the disposable Obsidian instance.',
+      before,
+    };
+  }
+
+  const deadline = Date.now() + 15000;
+  let after = inspectObsidianRuntime();
+  while ((after.processes ?? []).length > 0 && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    after = inspectObsidianRuntime();
+  }
+  if ((after.processes ?? []).length > 0) {
+    return {
+      ok:false,
+      classification:'obsidian-disposable-restart-stop-timeout',
+      reason:`Disposable Obsidian processes remained after restart preparation: ${JSON.stringify(after.processes)}`,
+      before,
+      after,
+    };
+  }
+  return { ok:true, stopped:true, before, after };
+}
+
 async function launchDebugEnabledDisposableObsidian() {
   const executable = await findObsidianExe();
   if (!executable) return { ok:false, classification:'obsidian-executable-unavailable', reason:'Obsidian.exe was not found in approved install locations.' };
+  const restart = await stopExistingDisposableObsidianForDebug();
+  if (!restart.ok) return { ...restart, executable };
   const port = await allocateLoopbackPort();
   let child;
   try {
@@ -182,13 +240,13 @@ async function launchDebugEnabledDisposableObsidian() {
   while (Date.now() < deadline) {
     try {
       const match = await findRenderer([port]);
-      return { ok:true, executable, port, pid:child.pid, target:match };
+      return { ok:true, executable, port, pid:child.pid, target:match, restart };
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
       await new Promise(resolve => setTimeout(resolve, 350));
     }
   }
-  return { ok:false, classification:'devtools-bootstrap-timeout', reason:lastError || 'No disposable-vault renderer became reachable.', executable, port, pid:child.pid };
+  return { ok:false, classification:'devtools-bootstrap-timeout', reason:lastError || 'No disposable-vault renderer became reachable.', executable, port, pid:child.pid, restart };
 }
 
 async function cdpEval(webSocketUrl, expression, timeoutMs = 20000) {
@@ -808,7 +866,7 @@ async function ensureRendererEnvironment(initialRenderer) {
     return repair;
   }
   record('environment-repair','PASS','debug-enabled-disposable-renderer','Established a debug-enabled Obsidian renderer for the disposable S08F vault.',{
-    executable:repair.executable, port:repair.port, pid:repair.pid,
+    executable:repair.executable, port:repair.port, pid:repair.pid, restart:repair.restart,
     snapshot:repair.target.snapshot, runtime:repair.target.runtime, attempts:repair.target.attempts,
   });
   return { ok:true, target:repair.target, repaired:true, port:repair.port, pid:repair.pid };
