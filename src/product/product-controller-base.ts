@@ -292,9 +292,6 @@ export class ProductControllerBase implements ProductControlPort {
 
   constructor(private readonly options: ProductControllerOptions) {
     this.runs = new CoreRunCoordinator(options.vaultIdentity, options.deviceIdentity, options.leasePort, options.holderId);
-    if (options.recoveryActive?.()) {
-      this.surface = { status: { kind: "recovery-required", reason: "recovery reconstruction is incomplete" }, conflicts: [] };
-    }
   }
 
   currentSurface(): ProductSurfaceState { return this.surface; }
