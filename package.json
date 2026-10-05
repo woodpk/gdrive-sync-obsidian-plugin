@@ -13,15 +13,9 @@
     "test:bvp-repository-check": "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/repository-check-integration.test.js",
     "build": "node scripts/build.mjs && node scripts/verify-build.mjs",
     "verify:build": "node scripts/verify-build.mjs",
-    "check": "npm run typecheck && npm test && npm run build",
-    "test:bvp-s08f-physical": "npm run build && tsc -p test-platform/tsconfig.json && node --experimental-default-type=commonjs --test .test-build/bvp/test-platform/test/s08f-post-repair-product-authority-recovery.test.js"
+    "check": "npm run typecheck && npm test && npm run build"
   },
-  "keywords": [
-    "obsidian",
-    "plugin",
-    "google-drive",
-    "sync"
-  ],
+  "keywords": ["obsidian", "plugin", "google-drive", "sync"],
   "license": "UNLICENSED",
   "overrides": {
     "moment": "2.31.0"
