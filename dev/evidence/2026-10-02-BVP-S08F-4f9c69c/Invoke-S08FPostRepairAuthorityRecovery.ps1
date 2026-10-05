@@ -36,6 +36,7 @@ $recoverySuccess = $false
 $evidenceCommit = ''
 $published = $false
 $preserve = $true
+$finalExitCode = 20
 
 function Add-Result {
     param(
@@ -431,7 +432,7 @@ try {
                 if ($refresh.exitCode -eq 0 -and $remote -ceq $CandidateSha) {
                     $lease = 'refs/heads/' + $Branch + ':' + $CandidateSha
                     $destination = 'HEAD:refs/heads/' + $Branch
-                    $push = Invoke-Native -File $git.Source -Arguments @('-C',$evidenceWorktree,'push','origin','--force-with-lease=' + $lease,$destination)
+                    $push = Invoke-Native -File $git.Source -Arguments @('-C',$evidenceWorktree,'push','origin',('--force-with-lease=' + $lease),$destination)
                     if ($push.exitCode -eq 0) {
                         $published = $true
                         Add-Result 'evidence-publication' 'PASS' 'ATOMIC EVIDENCE PUBLICATION' ('Published evidence commit {0} under exact branch lease.' -f $evidenceCommit)
@@ -486,13 +487,14 @@ try {
     Write-Host ('DIAGNOSTIC WORKSPACE: {0}' -f $(if ($preserve) { $tempRoot } else { '<cleaned>' }))
     if ($recoverySuccess -and $published) {
         Write-Host 'NEXT STATE: READY FOR FRESH S08F CANARY IDENTITY BINDING'
-        [Environment]::ExitCode = 0
+        $finalExitCode = 0
     } elseif (@($results | Where-Object { $_.status -eq 'FAIL' }).Count -gt 0) {
         Write-Host 'NEXT STATE: DIAGNOSE / REPAIR — DO NOT REPLAY R2'
-        [Environment]::ExitCode = 21
+        $finalExitCode = 21
     } else {
         Write-Host 'NEXT STATE: BLOCKED — PRESERVE STATE; DO NOT REPLAY R2'
-        [Environment]::ExitCode = 20
+        $finalExitCode = 20
     }
     Write-Host '============================================================'
+    exit $finalExitCode
 }
