@@ -229,7 +229,35 @@ async function launchDebugEnabledDisposableObsidian() {
   } catch (error) {
     return { ok:false, classification:'obsidian-process-launch-failed', reason:error instanceof Error?error.message:String(error), executable, port };
   }
-  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  const listenerDeadline = Date.now() + 20000;
+  let listenerReady = false;
+  let listenerError = '';
+  while (Date.now() < listenerDeadline) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1500) });
+      if (response.ok) {
+        listenerReady = true;
+        break;
+      }
+      listenerError = `HTTP ${response.status}`;
+    } catch (error) {
+      listenerError = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (!listenerReady) {
+    return {
+      ok:false,
+      classification:'devtools-listener-start-timeout',
+      reason:`Debug-enabled disposable Obsidian did not expose DevTools on port ${port}: ${listenerError || 'listener unavailable'}`,
+      executable,
+      port,
+      pid:child.pid,
+      restart,
+    };
+  }
+
   const vaultUri = `obsidian://open?path=${encodeURIComponent(vaultPath)}`;
   const openResult = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',`Start-Process ${psQuote(vaultUri)}`], { encoding:'utf8', windowsHide:true });
   if (openResult.status !== 0) {
