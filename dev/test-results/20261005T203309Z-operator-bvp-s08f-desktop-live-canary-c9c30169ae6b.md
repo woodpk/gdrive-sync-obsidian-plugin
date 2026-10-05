@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 886807 bytes; SHA-256 a4bfa4c2a9d7bea46588dd02f01125a219d4e4e18ae94ad2e13fd0cb1060a89f
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s08f-desktop-live-canary
+- Source build HEAD requested: c9c30169ae6bd0fd3371c62dfefabf8c91556afb
+- Verification checkout HEAD: c9c30169ae6bd0fd3371c62dfefabf8c91556afb
+- Evidence publication target: origin/bvp-s08f-desktop-live-canary
