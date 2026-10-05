@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
@@ -8,10 +8,8 @@ import { test } from "node:test";
 const repositoryEvidence = "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-BLOCKED.json";
 const implementationSha = "57e5be079ded16ba50b4f95c49f78a9d90b47f3f";
 const expectedValidationHash = "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf";
-const expectedCanaryHash = "db03eedf8f43902405abdc0f893649a3d9b3e166e3c6a6e259d";
-const actualExpectedCanaryHash = "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d";
+const expectedCanaryHash = "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d";
 const vaultPath = "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b";
-const oldRunId = "s08f-desktop-canary-4f9c69c";
 const retryRunId = "s08f-desktop-canary-4f9c69c-r2";
 const deviceId = "windows-brain-patrick";
 const fixtureRoot = "BVP-VALIDATION/s08f-desktop-canary-4f9c69c";
@@ -188,7 +186,7 @@ test("S08F preserved r2 product authority recovers through the repaired producti
 
   const canaryBytes = await readFile(canaryPath);
   equal(canaryBytes.length, 77);
-  equal(sha256(canaryBytes), actualExpectedCanaryHash);
+  equal(sha256(canaryBytes), expectedCanaryHash);
   equal(await fileHash(path.join(pluginDir, "main.js")), expectedValidationHash);
 
   let renderer = await findRenderer();
@@ -255,7 +253,7 @@ test("S08F preserved r2 product authority recovers through the repaired producti
 
   const canaryAfter = await readFile(canaryPath);
   equal(canaryAfter.length, 77);
-  equal(sha256(canaryAfter), actualExpectedCanaryHash);
+  equal(sha256(canaryAfter), expectedCanaryHash);
 
   console.log(JSON.stringify({
     result: "S08F_PRODUCT_AUTHORITY_RECOVERY_PASS",
