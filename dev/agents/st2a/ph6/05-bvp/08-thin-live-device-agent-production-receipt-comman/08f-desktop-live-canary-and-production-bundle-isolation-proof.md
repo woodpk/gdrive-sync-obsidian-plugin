@@ -740,3 +740,26 @@ The test MUST be inert during ordinary/full test execution unless the PHX-CI foc
 
 The focused physical gate remains subject to the exact disposable vault binding and the prohibition on the working BRAIN vault. S09 remains unauthorized.
 
+## 0.20 Bounded Product Status Repair — Recovery Reload False-Ready
+
+The latest repository-preserved physical evidence exposes a genuine product-status defect after runtime/plugin reconstruction: the durable recovery gate remains active, but a newly constructed `ProductControllerBase` initializes its observable surface to `idle-ready` until a later planning action consults `recoveryActive()`.
+
+This violates authoritative product requirement `UI-001`, which requires current status to continuously distinguish idle/ready from recovery-required, and it makes the S08A/S08F read-only production-status seam falsely report readiness during active recovery.
+
+Supervisor re-grounding therefore authorizes exactly this bounded prerequisite repair:
+
+- writable production path: `src/product/product-controller-base.ts`;
+- writable regression-test path: `test/product-controller-reconstruction-recovery-r1.test.ts`;
+- existing S08F PHX-CI physical-gate test may be updated only as necessary to recognize the latest preserved blocker and bind to the repaired source/artifacts.
+
+Required behavior:
+
+1. construction with `recoveryActive() === true` MUST expose `recovery-required` immediately, before any preview or execution;
+2. construction without active recovery MUST preserve `idle-ready`;
+3. the repair MUST NOT change planning, execution, durable-state, mutation, or recovery-completion semantics;
+4. r2 remains terminal and MUST NOT be replayed;
+5. the subsequent physical product-authority recovery must still require a live `recovery-required` status before recovery preview/execution; the test MUST NOT weaken this safety precondition to accept false-ready `idle-ready`;
+6. all executable verification remains PHX-CI-only.
+
+This repair is a product defect correction exposed by physical S08F evidence, not an architecture expansion.
+
