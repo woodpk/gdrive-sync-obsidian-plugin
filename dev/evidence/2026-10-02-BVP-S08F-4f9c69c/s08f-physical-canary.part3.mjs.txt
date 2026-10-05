@@ -1031,6 +1031,54 @@ async function recoverPostMailboxConflict(priorVerdict) {
 }
 
 
+function exactR2UncertainReceipt(receipt,retryCommand) {
+  return Boolean(
+    receipt &&
+    retryCommand &&
+    String(receipt.planId)===String(retryCommand.planId) &&
+    receipt.trigger==='manual' &&
+    receipt.terminal==='uncertain' &&
+    receipt.requiredEffectsCommittedAndVerified===false &&
+    receipt.committedOperationCount===0 &&
+    receipt.skippedOperationCount===0 &&
+    receipt.reasonCode==='uncertain-physical-outcome'
+  );
+}
+
+function evaluateR2UncertainAuthority(priorVerdict,retryCommand,liveObservation) {
+  const priorStage=(priorVerdict?.stages??[]).find(stage=>
+    stage?.name==='r2recovery-uncertain-production-authority' &&
+    stage?.status==='PASS' &&
+    stage?.classification==='uncertain-physical-outcome'
+  );
+  const historicalReceipt=priorStage?.details?.latestReceipt??null;
+  const historicalStatus=priorStage?.details?.productStatus??null;
+  const historicalCommand=priorStage?.details?.retryCommand??null;
+  const historicalExact=Boolean(
+    priorStage &&
+    historicalStatus?.kind==='recovery-required' &&
+    historicalCommand &&
+    retryCommand &&
+    canonicalValue(historicalCommand)===canonicalValue(retryCommand) &&
+    exactR2UncertainReceipt(historicalReceipt,retryCommand)
+  );
+  const liveStatus=liveObservation?.productStatus??null;
+  const liveReceipt=liveObservation?.latestReceipt??null;
+  const liveRecoveryRequired=liveStatus?.kind==='recovery-required';
+  const liveReceiptCompatible=liveReceipt==null || exactR2UncertainReceipt(liveReceipt,retryCommand);
+  return {
+    pass: historicalExact && liveRecoveryRequired && liveReceiptCompatible,
+    historicalExact,
+    liveRecoveryRequired,
+    liveReceiptCompatible,
+    historicalStatus,
+    historicalReceipt,
+    historicalCommand,
+    liveStatus,
+    liveReceipt,
+  };
+}
+
 async function recoverR2ProductAuthority(priorVerdict) {
   const defects=[];
   const note=(name,pass,classificationValue,summary,details=undefined,blocking=true)=>{
@@ -1149,14 +1197,12 @@ async function recoverR2ProductAuthority(priorVerdict) {
     note('control-quiesce',false,'recovery-agent-quiesced','Repaired validation renderer is unavailable after reload.',null);
   }
 
-  const uncertainReceipt=quiesced?.latestReceipt??null;
-  const uncertainExact=Boolean(retryCommand&&quiesced?.productStatus?.kind==='recovery-required'&&
-    uncertainReceipt&&String(uncertainReceipt.planId)===String(retryCommand.planId)&&uncertainReceipt.trigger==='manual'&&uncertainReceipt.terminal==='uncertain'&&
-    uncertainReceipt.requiredEffectsCommittedAndVerified===false&&uncertainReceipt.committedOperationCount===0&&uncertainReceipt.skippedOperationCount===0&&
-    uncertainReceipt.reasonCode==='uncertain-physical-outcome');
+  const uncertainAuthority=evaluateR2UncertainAuthority(priorVerdict,retryCommand,quiesced);
+  const uncertainReceipt=uncertainAuthority.historicalReceipt;
+  const uncertainExact=uncertainAuthority.pass;
   note('uncertain-production-authority',uncertainExact,'uncertain-physical-outcome',
-    uncertainExact?'Production authority independently confirms the r2 execution ended uncertain with zero committed operations and recovery required.':'Production authority does not match the exact expected uncertain r2 terminal state.',
-    {productStatus:quiesced?.productStatus??null,latestReceipt:uncertainReceipt,retryCommand});
+    uncertainExact?'Repository-preserved prior physical evidence proves the exact uncertain r2 receipt, while the repaired live controller independently remains recovery-required; an absent live receipt after plugin reload is expected because receipts are in-memory only.':'Historical uncertain-receipt evidence and live repaired-controller recovery authority do not reconcile safely.',
+    {retryCommand,uncertainAuthority});
 
   let mailbox=null;
   if(renderer&&retryCommand){
@@ -1292,6 +1338,54 @@ async function recoverR2ProductAuthority(priorVerdict) {
 if (process.argv.includes('--self-check')) {
   const expression = agentBootstrapExpression(retryRunId, '__SELF_CHECK__', true);
   new Function(`return ${expression};`);
+
+  const syntheticRetryCommand={runId:retryRunId,deviceId,sequence:3,commandId:'self-check-r2-seq3',kind:'production-execute',planId:'plan:self-check'};
+  const syntheticReceipt={
+    runId:'product-run:self-check',
+    trigger:'manual',
+    planId:syntheticRetryCommand.planId,
+    terminal:'uncertain',
+    requiredEffectsCommittedAndVerified:false,
+    committedOperationCount:0,
+    skippedOperationCount:0,
+    reasonCode:'uncertain-physical-outcome',
+  };
+  const syntheticPrior={
+    stages:[{
+      name:'r2recovery-uncertain-production-authority',
+      status:'PASS',
+      classification:'uncertain-physical-outcome',
+      details:{
+        productStatus:{kind:'recovery-required',reason:'self-check'},
+        latestReceipt:syntheticReceipt,
+        retryCommand:syntheticRetryCommand,
+      },
+    }],
+  };
+  const reloadClearedReceipt=evaluateR2UncertainAuthority(
+    syntheticPrior,
+    syntheticRetryCommand,
+    {productStatus:{kind:'recovery-required',reason:'self-check'},latestReceipt:null},
+  );
+  const liveConflict=evaluateR2UncertainAuthority(
+    syntheticPrior,
+    syntheticRetryCommand,
+    {productStatus:{kind:'recovery-required',reason:'self-check'},latestReceipt:{...syntheticReceipt,terminal:'complete'}},
+  );
+  const missingHistorical=evaluateR2UncertainAuthority(
+    {stages:[]},
+    syntheticRetryCommand,
+    {productStatus:{kind:'recovery-required',reason:'self-check'},latestReceipt:null},
+  );
+  const liveNotRecovering=evaluateR2UncertainAuthority(
+    syntheticPrior,
+    syntheticRetryCommand,
+    {productStatus:{kind:'idle-ready'},latestReceipt:null},
+  );
+  if(!reloadClearedReceipt.pass||liveConflict.pass||missingHistorical.pass||liveNotRecovering.pass){
+    throw new Error('S08F uncertain-authority self-check failed.');
+  }
+
   console.log('S08F helper self-check PASS');
   process.exit(0);
 }
