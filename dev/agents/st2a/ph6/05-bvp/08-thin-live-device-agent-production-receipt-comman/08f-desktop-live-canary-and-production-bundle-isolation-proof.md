@@ -783,3 +783,26 @@ The owner launcher after this re-grounding must remain minimal: fetch/locate the
 
 No further owner execution is authorized until the engineering agent has statically reviewed the complete focused execution path and its transitive module-loading boundary. S09 remains unauthorized.
 
+## 0.22 Physical Gate Execution Reached — Environment Blocker Isolated
+
+PHX-CI run ID `789e168f-6683-4d24-b2c7-b7f943a83429`, source `d1668e75dae34a6d0c9f1e351b697bd8486c8d9c`, evidence commit `03a122a4e116a9197e276b65f5240726dbc37307`, established that the S08F physical test body now executes under PHX-CI.
+
+Observed substantive boundary:
+
+- validation artifact built and installed from the exact source;
+- production artifact baseline remained validation-code-free;
+- attempt-1 terminal rejected state remained preserved;
+- r2 sequence 3 remained terminal and non-replayable;
+- canary fixture remained exact;
+- physical gate then blocked before recovery mutation because the already-running Obsidian single-instance process had no reachable DevTools listener;
+- the attempted second Obsidian launch could not apply remote-debugging flags to the existing single-instance runtime;
+- repository verification independently remained PASS.
+
+This is an environment/bootstrap blocker, not evidence of a product-recovery failure.
+
+The authorized S08F gate is repaired so that when no reachable disposable renderer exists it may restart Obsidian only if every visible Obsidian window is demonstrably the bound disposable S08F vault. Any non-disposable or unprovable visible Obsidian state remains BLOCKED and MUST NOT be terminated. After restart, the gate must prove the DevTools listener is reachable before opening the disposable vault URI.
+
+The PHX-CI execution workflow is now repository-controlled by `dev/scripts/Invoke-PHXCI-S08FPhysicalRecovery.ps1`. Owner-side chat must not reconstruct the focused PHX-CI command.
+
+No further owner execution is permitted until the engineering agent completes static review of this execution path and performs the Section 19.1 pre-script audit against the final exact candidate.
+
