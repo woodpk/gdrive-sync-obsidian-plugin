@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08D
 
@@ -171,55 +171,6 @@ Minimum repair:
 S08E is again **READY FOR LOCAL PHX-CI RE-VERIFICATION** at repaired HEAD `60866a6d5a9c00ba283cc416a14ef2beece65d55`.
 
 The focused command remains unchanged from the prior readiness record. S08E is not accepted until a new authoritative PHX-CI run passes and its exact persisted JSON, Markdown, and complete execution log are reviewed.
-
-
-## 0.4 Acceptance Record
-
-BVP-S08E is **COMPLETE / ACCEPTED**.
-
-Authoritative acceptance lineage:
-
-- accepted implementation HEAD: `e1067f5159a316f328c492837b8c6ff59e08d226`;
-- authoritative PHX-CI evidence commit: `2a68eb896bb33b92f480cb9f43d7ac002cdce539`;
-- authoritative PHX-CI run ID: `3efd4490-e913-42d3-93a7-6b919b3f61d8`;
-- exact verification base: `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6`;
-- complete persisted JSON, Markdown, and 7,559-line execution log reviewed before acceptance;
-- focused S08B/S08D/S08E/prerequisite/runner/checkpoint/evidence/metrics proof: 91/91 PASS;
-- complete repository suite: 835/835 PASS;
-- `npm ci`: 0 vulnerabilities;
-- every required PHX-CI stage: PASS / exit 0;
-- architecture guard: PASS / 0 violations;
-- repository gate: PASS;
-- ordinary shipping artifact: `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
-- validation artifact rebuilt deterministically with SHA-256 `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`.
-
-Accepted S08E semantics:
-
-- external live execution uses only the protected S08D local relay boundary and never receives device OAuth credentials;
-- command identity/sequence is deterministic across controller reconstruction;
-- command result correlation requires exact run/device/sequence/command/kind equality;
-- malformed, stale, wrong-device, and missing results fail/block rather than becoming success;
-- production transport acknowledgement is not synchronization success; correlated S08A receipt terminal authority is preserved;
-- `complete` is the only production-execute success terminal; blocked/deferred/recovery-required remain blocked and partial/failed/cancelled/uncertain remain failed;
-- human checkpoint instruction text stays external and is not persisted in checkpoint state;
-- durable resume state remains the existing S05D schemaVersion-1 checkpoint representation;
-- checkpoint resume validates scenario, run, execution mode, device identities, checkpoint position, and required evidence;
-- reconstructed external runners do not replay prior physical mutation commands;
-- iOS terminate/relaunch resume is proven with a new executor and no device-local scenario-runner state;
-- arbitrary unsupported physical capabilities fail closed rather than being falsely mapped.
-
-Accepted architecture state:
-
-- production source: 16,813 logical LOC;
-- production seam: 187 / 350 logical LOC, 3 / 4 files;
-- framework core: 3,996 / 4,000 logical TypeScript LOC / 10 modules;
-- live-device agent/relay/executor: 727 / 750 logical TypeScript LOC, leaving 23 LOC;
-- scenario catalog: 70 scenarios / 1,524 logical LOC;
-- BVP PowerShell: 4 scripts / 1,492 logical LOC;
-- scenario-specific production source: 0 files;
-- scenario-specific PowerShell: 0 files.
-
-This closes S08E. S08F remains separate work.
 
 ## 1. Objective
 
