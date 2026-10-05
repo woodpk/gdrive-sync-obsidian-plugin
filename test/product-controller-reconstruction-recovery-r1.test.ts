@@ -151,6 +151,7 @@ test("C1-R1 reconstruction bypasses durable recovery only while persisted canoni
     diagnostics,
   });
 
+  assert.equal(controller.currentSurface().status.kind, "recovery-required", "active recovery must be surfaced immediately after controller reconstruction");
   assert.equal((await store.load(context)).status, "recovery-required");
   const first = await controller.previewVerifyReconcile();
   assert.ok(first);
