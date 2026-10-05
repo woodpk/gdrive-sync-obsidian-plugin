@@ -45,87 +45,51 @@ stage_2a_phases:
   phase_5: { name: "Integrated Synchronization Product and User Workflows", status: complete_supervisor_approved }
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_bvp_s08f_physical_recovery
+    status: active_bvp_s08f_platform_construction_closure
     integration_branch: "phase6-integration"
     completion_gate: not_yet_satisfied
 
 active_work:
-  primary_package: "BVP-S08F — desktop live canary and production-bundle isolation proof"
+  primary_package: "BVP-S08F — platform construction closure and production-bundle isolation"
   task_branch: "bvp-s08f-desktop-live-canary"
-  last_recovery_harness_head: "f20df3bb009bafd154b446ce014605dca49a5e00"
   task_document: "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md"
+  authoritative_phase_boundary_decision: "DEC-328"
+  accepted_s08e_implementation: "e1067f5159a316f328c492837b8c6ff59e08d226"
+  accepted_s08e_closure: "4f9c69c38c12c09d2f06f3f966dc8519ed45a99f"
+  current_scope: "Build and PHX-CI-verify the BRAIN Verification Platform itself. No real Obsidian, vault, Google Drive, provider, or synchronization-product execution is authorized in S08."
+  required_end_state: "Automated BVP platform checks, architecture guard/metrics, production-bundle isolation, full repository verification, and PHX-CI acceptance are green; then proceed to S08V."
+  physical_product_validation_stage: "BVP-S09 only, after S08/S08V acceptance"
+
+historical_s08f_physical_attempt:
+  status: superseded_for_s08
   evidence_root: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c"
-  human_acceptance:
-    decision: "ACCEPT — resume physical S08F recovery"
-    evidence: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-HUMAN-ACCEPT-PHYSICAL-RECOVERY.md"
-    binding_commit: "6ae54d52fa60a4b59fa9698df708e97f50089333"
-  repaired_implementation:
-    sha: "57e5be079ded16ba50b4f95c49f78a9d90b47f3f"
-    status: accepted_for_preserved_physical_recovery
-  authoritative_repository_verification:
-    authority: PHX-CI
-    runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
-    framework_version: "0.2.0-dev.2"
-    run_id: "34a003cf-8277-4ba5-8831-c9019eb65596"
-    source_build_head: "06c9dbeb95ee5f0b0336745e8772074e1ace9b56"
-    substantive_verdict: PASS
-    recovered_canonical_evidence: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-PHX-CI-EVIDENCE-RECOVERY-PASS.md"
-    recovery_evidence_commit: "c744453d76eb5d39d442511c728c88b991a70639"
-  independent_review:
-    verdict: APPROVED
-    findings: "0 Critical / 0 Major / 0 Moderate / 0 Minor / 0 Informational"
-    evidence: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-FINAL-INDEPENDENT-REVIEW-APPROVED.md"
-    evidence_commit: "249ae6fdb92b74a29426d389a4c729fc8b08fb50"
+  authority: "historical only; not S08 acceptance evidence"
+  safety_rule: "Do not replay prior S08F physical run IDs or preserved physical state. Any future use of those observations requires S09 re-grounding."
 
-preserved_physical_state:
-  disposable_vault: "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b"
-  retry_run: "s08f-desktop-canary-4f9c69c-r2"
-  retry_sequence: 3
-  retry_terminal_state: "completed / rejected / production-action-rejected"
-  rule: "NEVER replay or reset attempt 1 or retry r2."
-  canary_size_bytes: 77
-  canary_sha256: "db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d"
-  working_brain_vault_prohibited: true
-
-post_accept_recovery:
-  audit_status: "REPAIRED_AFTER_BLOCKED_EXECUTION"
-  audit_record: "dev/planning-and-building/supervisor-continuity-log.md"
-  repository_controlled_harness: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPostRepairAuthorityRecovery.ps1"
-  harness_added_commit: "aa61df0d4eb2f452d8c8fc643930fadf6e0c94b4"
-  task_binding_commit: "2422e0c08b9b9e739000b79b11b2538e00502cf1"
-  latest_hardening_commit: "f20df3bb009bafd154b446ce014605dca49a5e00"
-  latest_hardening: "repaired validation installation is fail-safe with backup, exact identity verification, rollback, and data.json preservation checks"
-  last_blocked_physical_execution_candidate: "d4da4ce85852e921126cf6517c5de12761b704ca"
-  blocked_execution_evidence: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-POST-REPAIR-AUTHORITY-RECOVERY-BLOCKED-20261005.md"
-  harness_repair_commits:
-    - "46db08a1c9a369ebb4e2105140487caad43de069"
-    - "a9abc5d8565a977b7ca40c0d5896789dd6a9f82f"
-  repaired_production_artifact:
-    size_bytes: 886635
-    sha256: "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477"
-  repaired_validation_artifact:
-    size_bytes: 911149
-    sha256: "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf"
-    manifest_sha256: "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc"
-  success_stop_condition: "READY FOR FRESH S08F CANARY IDENTITY BINDING"
-  fresh_canary_in_same_execution_prohibited: true
+authoritative_repository_verification:
+  authority: "PHX-CI only"
+  framework_version: "0.2.0-dev.2"
+  runtime_source: "exact target branch phx-ci.json framework pin"
+  latest_accepted_predecessor: "S08E implementation e1067f5159a316f328c492837b8c6ff59e08d226 / closure 4f9c69c38c12c09d2f06f3f966dc8519ed45a99f"
+  current_s08f_candidate_status: "UNVERIFIED after scope correction"
 
 anti_drift:
   boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
   no_github_actions: true
-  authoritative_repository_verification: "PHX-CI only. Supplementary physical/product harnesses may prove behavior PHX-CI does not own, but cannot substitute for PHX-CI."
+  authoritative_repository_verification: "PHX-CI only."
   no_administrative_only_owner_reruns: true
+  s08_scope: "testing-platform construction and automated platform verification only"
+  s09_scope: "physical Windows/iOS/Obsidian/provider product validation"
 
 hard_boundaries:
   - "Do not redefine the BRAIN target system or frozen synchronization safety/authority contracts to simplify testing."
   - "Production src/** must not import test-platform/**."
   - "Ordinary production bundles must exclude BVP platform/scenario/live-agent code."
-  - "Archived legacy harness material is not current authority."
+  - "Archived or historical physical S08F material is not current S08 authority."
   - "GitHub Actions must not be used for build/test/verification/evidence workflows."
   - "PHX-CI is the mandatory authoritative repository-verification authority."
-  - "Do not ask the owner to rerun substantive SUT verification solely for administrative/evidence/tooling cleanup after the SUT result is conclusively established."
-  - "Do not replay or reset the preserved S08F r2 terminal sequence."
-  - "Do not begin S09."
+  - "Do not launch or automate Obsidian, touch a vault, authenticate to Drive, or execute real synchronization for S08 acceptance."
+  - "Do not begin S09 until S08F and S08V are accepted."
   - "Do not begin Stage 3 while material Phase 6 evidence remains incomplete."
 
 continuity_rule:
@@ -136,4 +100,5 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP-S08F"
-  action: "Supplementary recovery harness defects from the first post-ACCEPT physical execution are repaired and durably recorded. Next owner action is one bounded execution of the repaired post-repair product-authority recovery from the exact current task head. This rerun is permitted because physical recovery preview/execution did not execute. Do not replay r2, do not begin a fresh canary in the same execution, do not begin S09."
+  action: "Complete the corrected S08F platform-construction closure: inspect existing S08A-E automated coverage, add only any missing BVP-owned automated tests needed to prove the platform itself, then perform authoritative PHX-CI verification. No physical product execution. On PASS, proceed to S08V integrated acceptance."
+
