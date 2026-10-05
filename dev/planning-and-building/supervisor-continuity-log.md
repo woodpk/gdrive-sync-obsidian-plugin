@@ -176,3 +176,22 @@ Another owner execution is permitted because the relevant substantive physical r
 ### Immediate next action
 
 Audit and run the repaired post-repair authority-recovery harness from the new exact task head. Preserve r2; do not replay/reset it; do not start a fresh canary in the same execution; do not begin S09.
+
+## 2026-10-05 — S08/S09 Phase-Boundary Correction
+
+User authority corrected a fundamental scope error: BVP-S08 constructs and verifies the automated testing platform itself; BVP-S09 is the stage that uses the completed platform for real Windows/iOS/Obsidian/provider product validation.
+
+Corrective repository actions:
+
+- locked DEC-328;
+- restored S08E task record to its accepted state;
+- rewrote S08F as platform-construction closure / production-bundle isolation;
+- restored all product/source/test files modified solely for the premature S08 physical canary to accepted S08E state;
+- removed the 2,352-line S08F physical product-authority recovery test;
+- removed the repository-controlled S08F physical-recovery PHX-CI launcher;
+- retained prior physical evidence as historical only and explicitly marked it superseded for S08;
+- reset project-state and session-index authority to PHX-CI-only automated BVP platform verification;
+- no further Obsidian, vault, Drive, or real synchronization execution is authorized for S08.
+
+Next engineering action: inspect accepted S08A-E automated coverage against corrected S08F acceptance criteria, add only missing BVP-owned automated tests if necessary, then run authoritative PHX-CI on the exact corrected branch candidate. On PASS, proceed to S08V integrated acceptance.
+
