@@ -88,13 +88,18 @@ preserved_physical_state:
   working_brain_vault_prohibited: true
 
 post_accept_recovery:
-  audit_status: PASS
+  audit_status: "REPAIRED_AFTER_BLOCKED_EXECUTION"
   audit_record: "dev/planning-and-building/supervisor-continuity-log.md"
   repository_controlled_harness: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPostRepairAuthorityRecovery.ps1"
   harness_added_commit: "aa61df0d4eb2f452d8c8fc643930fadf6e0c94b4"
   task_binding_commit: "2422e0c08b9b9e739000b79b11b2538e00502cf1"
   latest_hardening_commit: "f20df3bb009bafd154b446ce014605dca49a5e00"
   latest_hardening: "repaired validation installation is fail-safe with backup, exact identity verification, rollback, and data.json preservation checks"
+  last_blocked_physical_execution_candidate: "d4da4ce85852e921126cf6517c5de12761b704ca"
+  blocked_execution_evidence: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-POST-REPAIR-AUTHORITY-RECOVERY-BLOCKED-20261005.md"
+  harness_repair_commits:
+    - "46db08a1c9a369ebb4e2105140487caad43de069"
+    - "a9abc5d8565a977b7ca40c0d5896789dd6a9f82f"
   repaired_production_artifact:
     size_bytes: 886635
     sha256: "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477"
@@ -131,4 +136,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP-S08F"
-  action: "Harness adversarial audit PASSED. Next owner action is one bounded execution of the repository-controlled post-repair product-authority recovery against the preserved disposable S08F state. Do not replay r2, do not begin a fresh canary in the same execution, do not begin S09, and do not mutate the task branch before the run returns because evidence publication uses an exact branch lease."
+  action: "Supplementary recovery harness defects from the first post-ACCEPT physical execution are repaired and durably recorded. Next owner action is one bounded execution of the repaired post-repair product-authority recovery from the exact current task head. This rerun is permitted because physical recovery preview/execution did not execute. Do not replay r2, do not begin a fresh canary in the same execution, do not begin S09."
