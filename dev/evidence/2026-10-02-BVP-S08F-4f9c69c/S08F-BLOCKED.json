@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "status": "BLOCKED",
-  "classification": "r2-product-recovery-plan-unavailable",
-  "primaryReason": "Recovery preview returned no executable plan: {\"ok\":true,\"beforeStatus\":{\"kind\":\"recovery-required\",\"reason\":\"managed-root:recovery-required\"},\"beforeReceipt\":{\"runId\":\"product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b\",\"trigger\":\"manual\",\"planId\":\"plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399\",\"terminal\":\"uncertain\",\"requiredEffectsCommittedAndVerified\":false,\"committedOperationCount\":0,\"skippedOperationCount\":0,\"reasonCode\":\"uncertain-physical-outcome\"},\"plan\":null,\"afterStatus\":{\"kind\":\"recovery-required\",\"reason\":\"durable effect effect:op:f443a1584da703ce97cca9eb3fffb26b34dfdac6c278d2fc3c1c0e66922bc2fe:remote-folder remains unresolved (outcome-unknown: managed-root-unobservable:recovery-required)\"},\"afterReceipt\":{\"runId\":\"product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b\",\"trigger\":\"manual\",\"planId\":\"plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399\",\"terminal\":\"uncertain\",\"requiredEffectsCommittedAndVerified\":false,\"committedOperationCount\":0,\"skippedOperationCount\":0,\"reasonCode\":\"uncertain-physical-outcome\"}}",
-  "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
-  "branchHead": "2db886dbbe7f8aee1b1787b5062d00a64662d283",
+  "classification": "r2-product-recovery-precondition-blocked",
+  "primaryReason": "R2 product recovery found 1 blocker(s): uncertain-production-authority=Historical uncertain-receipt evidence and live repaired-controller recovery authority do not reconcile safely.",
+  "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
+  "branchHead": "02b47a701f179f4bc05914aaefc5671335e325bf",
   "vaultPath": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
   "deviceId": "windows-brain-patrick",
   "oldRunId": "s08f-desktop-canary-4f9c69c",
@@ -23,8 +23,8 @@
       "classification": "device-result-recovery",
       "summary": "Prior evidence binds this execution to safe continuation of the existing attempt-2 transport/result recovery.",
       "details": {
-        "priorBranchHead": "6c8323673a6d87160306c885406cddedad97ac15",
-        "priorClassification": "postconflict-recovery-precondition-blocked",
+        "priorBranchHead": "2db886dbbe7f8aee1b1787b5062d00a64662d283",
+        "priorClassification": "r2-product-recovery-plan-unavailable",
         "retryRunId": "s08f-desktop-canary-4f9c69c-r2",
         "scenarioId": "s08f-desktop-live-canary-r2"
       }
@@ -44,11 +44,11 @@
       "name": "r2recovery-validation-artifact",
       "status": "PASS",
       "classification": "validation-artifact-identity",
-      "summary": "Installed validation artifact remains exact at 909821 bytes.",
+      "summary": "Installed validation artifact remains exact at 911149 bytes.",
       "details": {
-        "sizeBytes": 909821,
-        "sha256": "4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351",
-        "expectedSha256": "4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351"
+        "sizeBytes": 911149,
+        "sha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf",
+        "expectedSha256": "6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf"
       }
     },
     {
@@ -67,8 +67,8 @@
       "classification": "production-bundle-isolation",
       "summary": "Production restoration baseline remains exact and validation-code-free.",
       "details": {
-        "sizeBytes": 885307,
-        "sha256": "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074",
+        "sizeBytes": 886635,
+        "sha256": "550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477",
         "forbiddenMarkerHits": []
       }
     },
@@ -151,10 +151,10 @@
         "snapshot": {
           "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
           "visibility": "hidden",
-          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+          "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
           "identity": {
             "schemaVersion": 1,
-            "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+            "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
             "sentinel": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
           }
         },
@@ -162,50 +162,52 @@
       }
     },
     {
-      "name": "r2recovery-control-quiesce",
+      "name": "r2recovery-control-quiesce-before-reload",
       "status": "PASS",
       "classification": "recovery-agent-quiesced",
-      "summary": "Any prior S08F control was stopped before product recovery and before visibility transition.",
+      "summary": "Any prior S08F control was stopped before repaired validation reload.",
       "details": {
         "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
         "visibility": "hidden",
+        "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
         "controlStatus": null,
         "productStatus": {
-          "kind": "recovery-required",
-          "reason": "managed-root:recovery-required"
+          "kind": "idle-ready"
         },
-        "latestReceipt": {
-          "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
-          "trigger": "manual",
-          "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-          "terminal": "uncertain",
-          "requiredEffectsCommittedAndVerified": false,
-          "committedOperationCount": 0,
-          "skippedOperationCount": 0,
-          "reasonCode": "uncertain-physical-outcome"
-        }
+        "latestReceipt": null
+      }
+    },
+    {
+      "name": "r2recovery-validation-plugin-reload",
+      "status": "PASS",
+      "classification": "repaired-validation-already-loaded",
+      "summary": "Disposable renderer already runs repaired validation source 57e5be079ded16ba50b4f95c49f78a9d90b47f3f.",
+      "details": {
+        "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f"
+      }
+    },
+    {
+      "name": "r2recovery-control-quiesce",
+      "status": "PASS",
+      "classification": "recovery-agent-quiesced",
+      "summary": "Repaired validation renderer is exact and any S08F control is quiesced before product recovery.",
+      "details": {
+        "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
+        "visibility": "hidden",
+        "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
+        "controlStatus": null,
+        "productStatus": {
+          "kind": "idle-ready"
+        },
+        "latestReceipt": null
       }
     },
     {
       "name": "r2recovery-uncertain-production-authority",
-      "status": "PASS",
+      "status": "FAIL",
       "classification": "uncertain-physical-outcome",
-      "summary": "Production authority independently confirms the r2 execution ended uncertain with zero committed operations and recovery required.",
+      "summary": "Historical uncertain-receipt evidence and live repaired-controller recovery authority do not reconcile safely.",
       "details": {
-        "productStatus": {
-          "kind": "recovery-required",
-          "reason": "managed-root:recovery-required"
-        },
-        "latestReceipt": {
-          "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
-          "trigger": "manual",
-          "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-          "terminal": "uncertain",
-          "requiredEffectsCommittedAndVerified": false,
-          "committedOperationCount": 0,
-          "skippedOperationCount": 0,
-          "reasonCode": "uncertain-physical-outcome"
-        },
         "retryCommand": {
           "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
           "deviceId": "windows-brain-patrick",
@@ -213,6 +215,38 @@
           "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
           "runId": "s08f-desktop-canary-4f9c69c-r2",
           "sequence": 3
+        },
+        "uncertainAuthority": {
+          "pass": false,
+          "historicalExact": true,
+          "liveRecoveryRequired": false,
+          "liveReceiptCompatible": true,
+          "historicalStatus": {
+            "kind": "recovery-required",
+            "reason": "managed-root:recovery-required"
+          },
+          "historicalReceipt": {
+            "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
+            "trigger": "manual",
+            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+            "terminal": "uncertain",
+            "requiredEffectsCommittedAndVerified": false,
+            "committedOperationCount": 0,
+            "skippedOperationCount": 0,
+            "reasonCode": "uncertain-physical-outcome"
+          },
+          "historicalCommand": {
+            "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
+            "deviceId": "windows-brain-patrick",
+            "kind": "production-execute",
+            "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+            "runId": "s08f-desktop-canary-4f9c69c-r2",
+            "sequence": 3
+          },
+          "liveStatus": {
+            "kind": "idle-ready"
+          },
+          "liveReceipt": null
         }
       }
     },
@@ -225,11 +259,10 @@
         "ok": true,
         "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
         "visibility": "hidden",
-        "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
+        "sourceCommit": "57e5be079ded16ba50b4f95c49f78a9d90b47f3f",
         "controlStatus": null,
         "productStatus": {
-          "kind": "recovery-required",
-          "reason": "managed-root:recovery-required"
+          "kind": "idle-ready"
         },
         "commands": [
           {
@@ -540,78 +573,62 @@
     },
     {
       "name": "r2recovery-diagnostic-summary",
-      "status": "PASS",
-      "classification": "product-recovery-preconditions-safe",
-      "summary": "R2 product-authority recovery diagnostics observed 0 issue(s), including 0 blocker(s).",
+      "status": "FAIL",
+      "classification": "product-recovery-preconditions-blocked",
+      "summary": "R2 product-authority recovery diagnostics observed 1 issue(s), including 1 blocker(s).",
       "details": {
-        "defectCount": 0,
-        "blockerCount": 0,
-        "defects": []
-      }
-    },
-    {
-      "name": "r2recovery-lifecycle",
-      "status": "PASS",
-      "classification": "real-suspend-resume",
-      "summary": "After quiescing the old control, a real Windows restore returned the disposable renderer visible for product recovery.",
-      "details": {
-        "transition": {
-          "stdout": "Disposable S08F Obsidian window transitioned: 23488 / New tab - bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b - Obsidian 1.13.7",
-          "exitCode": 0
-        },
-        "after": {
-          "vault": "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b",
-          "visibility": "visible",
-          "sourceCommit": "e1067f5159a316f328c492837b8c6ff59e08d226",
-          "deviceAgentFactory": true,
-          "mailboxPoll": true,
-          "relayPump": true,
-          "pluginPresent": true,
-          "productionControl": true,
-          "productionStatus": {
-            "kind": "recovery-required",
-            "reason": "managed-root:recovery-required"
-          },
-          "productionError": null
-        }
-      }
-    },
-    {
-      "name": "r2recovery-preview",
-      "status": "PASS",
-      "classification": "product-recovery-preview",
-      "summary": "Accepted production preview invoked the product recovery path and returned a full reviewed recovery plan.",
-      "details": {
-        "ok": true,
-        "beforeStatus": {
-          "kind": "recovery-required",
-          "reason": "managed-root:recovery-required"
-        },
-        "beforeReceipt": {
-          "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
-          "trigger": "manual",
-          "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-          "terminal": "uncertain",
-          "requiredEffectsCommittedAndVerified": false,
-          "committedOperationCount": 0,
-          "skippedOperationCount": 0,
-          "reasonCode": "uncertain-physical-outcome"
-        },
-        "plan": null,
-        "afterStatus": {
-          "kind": "recovery-required",
-          "reason": "durable effect effect:op:f443a1584da703ce97cca9eb3fffb26b34dfdac6c278d2fc3c1c0e66922bc2fe:remote-folder remains unresolved (outcome-unknown: managed-root-unobservable:recovery-required)"
-        },
-        "afterReceipt": {
-          "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
-          "trigger": "manual",
-          "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
-          "terminal": "uncertain",
-          "requiredEffectsCommittedAndVerified": false,
-          "committedOperationCount": 0,
-          "skippedOperationCount": 0,
-          "reasonCode": "uncertain-physical-outcome"
-        }
+        "defectCount": 1,
+        "blockerCount": 1,
+        "defects": [
+          {
+            "name": "uncertain-production-authority",
+            "classification": "uncertain-physical-outcome",
+            "summary": "Historical uncertain-receipt evidence and live repaired-controller recovery authority do not reconcile safely.",
+            "details": {
+              "retryCommand": {
+                "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
+                "deviceId": "windows-brain-patrick",
+                "kind": "production-execute",
+                "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+                "runId": "s08f-desktop-canary-4f9c69c-r2",
+                "sequence": 3
+              },
+              "uncertainAuthority": {
+                "pass": false,
+                "historicalExact": true,
+                "liveRecoveryRequired": false,
+                "liveReceiptCompatible": true,
+                "historicalStatus": {
+                  "kind": "recovery-required",
+                  "reason": "managed-root:recovery-required"
+                },
+                "historicalReceipt": {
+                  "runId": "product-run:1a38eb6e-fe83-431d-b74a-0471dee32e1b",
+                  "trigger": "manual",
+                  "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+                  "terminal": "uncertain",
+                  "requiredEffectsCommittedAndVerified": false,
+                  "committedOperationCount": 0,
+                  "skippedOperationCount": 0,
+                  "reasonCode": "uncertain-physical-outcome"
+                },
+                "historicalCommand": {
+                  "commandId": "bvp-aca71ac570493c0f817e97dcf652c682",
+                  "deviceId": "windows-brain-patrick",
+                  "kind": "production-execute",
+                  "planId": "plan:4420a54da1c989b108d2d99d30e428f94bda384b8f169f50e08c61012a396399",
+                  "runId": "s08f-desktop-canary-4f9c69c-r2",
+                  "sequence": 3
+                },
+                "liveStatus": {
+                  "kind": "idle-ready"
+                },
+                "liveReceipt": null
+              }
+            },
+            "blocking": true
+          }
+        ]
       }
     }
   ]
