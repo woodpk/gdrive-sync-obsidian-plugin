@@ -8,6 +8,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$hasNativePreference = $null -ne (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue)
+$oldNativePreference = if ($hasNativePreference) { $PSNativeCommandUseErrorActionPreference } else { $null }
+if ($hasNativePreference) { $PSNativeCommandUseErrorActionPreference = $false }
 
 $branch = 'bvp-s08f-desktop-live-canary'
 $base = '4f9c69c38c12c09d2f06f3f966dc8519ed45a99f'
@@ -57,6 +60,7 @@ try {
     Write-Host "PHX-CI process exit code: $phxExit"
 }
 finally {
+    if ($hasNativePreference) { $PSNativeCommandUseErrorActionPreference = $oldNativePreference }
     if ($null -eq $oldChangeClass) {
         Remove-Item Env:BVP_CHANGE_CLASS -ErrorAction SilentlyContinue
     }
