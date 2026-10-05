@@ -4,7 +4,7 @@ param(
     [ValidatePattern('^[0-9a-f]{40}$')]
     [string]$CandidateSha,
 
-    [string]$RepoRoot = 'D:\\obsidian-brain-dev'
+    [string]$RepoRoot = 'D:\obsidian-brain-dev'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,8 +12,8 @@ $ErrorActionPreference = 'Stop'
 $branch = 'bvp-s08f-desktop-live-canary'
 $base = '4f9c69c38c12c09d2f06f3f966dc8519ed45a99f'
 $runtimeSha = '69c4aa077d4a1a46d1e85e59f39d36285be99e83'
-$runtime = Join-Path $env:LOCALAPPDATA "PHX-CI\\runtimes\\$runtimeSha\\scripts\\Invoke-PhxCi.ps1"
-$tempRoot = 'C:\\temp-' + [guid]::NewGuid().ToString('N')
+$runtime = Join-Path $env:LOCALAPPDATA "PHX-CI\runtimes\$runtimeSha\scripts\Invoke-PhxCi.ps1"
+$tempRoot = 'C:\temp-' + [guid]::NewGuid().ToString('N')
 
 git -C $RepoRoot fetch origin $branch --prune
 if ($LASTEXITCODE -ne 0) {
