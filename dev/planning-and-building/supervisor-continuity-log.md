@@ -81,3 +81,46 @@ It MUST NOT start a fresh canary in the same execution.
 4. Only if that audit passes, execute the bounded product-authority recovery against the preserved disposable S08F state.
 5. Do not replay r2.
 6. Do not begin S09.
+
+
+---
+
+## 2026-10-04 — Post-repair authority-recovery harness adversarial audit
+
+**Branch HEAD at audit start:** `e3d761e8f69c0ac1d40926ddb924bd06c0270c13`  
+**Executable harness blob:** `390bfcaddabc56e3a7dea7e7fd7831664e2f3cfd`  
+**Last executable hardening commit:** `f20df3bb009bafd154b446ce014605dca49a5e00`
+
+### Audit result
+
+**PASS — owner execution is permitted as supplementary physical recovery.**
+
+Confirmed:
+
+- continuity-only commits after `f20df3bb...` changed no executable recovery surface;
+- preserved repository evidence matches the harness's exact r2 terminal-state and uncertain-receipt assertions;
+- prior verdict `r2-product-recovery-plan-unavailable` selects `recoverR2ProductAuthority()`, not sequence replay;
+- retry r2 remains non-replayable and is not reset;
+- repaired production and validation artifacts are rebuilt and checked against frozen size/hash identities before physical mutation;
+- helper materialization is syntax/self-check gated before plugin installation;
+- validation installation backs up existing artifacts, proves `data.json` unchanged, verifies exact installed identities, and attempts exact rollback on install verification failure;
+- any prior S08F control is quiesced before repaired validation reload;
+- product recovery independently re-proves the uncertain receipt and zero committed/skipped operations before requesting a new preview;
+- recovery execution is allowed only for a manual, globally ungated, no-checkpoint plan with no destructive, blocked-unsafe, unresolved-conflict, or recovery-required operations;
+- success requires a new accepted action result, new complete receipt, `requiredEffectsCommittedAndVerified=true`, and product state `idle-ready`;
+- the 77-byte canary hash must remain exact after recovery;
+- successful recovery intentionally terminates as `BLOCKED / r2-terminal-product-authority-recovered` so no fresh canary starts in the same execution;
+- wrapper converts that exact bounded stop into `PRODUCT AUTHORITY RECOVERED` and `READY FOR FRESH S08F CANARY IDENTITY BINDING`;
+- evidence changes are restricted to the existing S08F evidence root and publication uses an exact branch lease.
+
+### Protocol alignment
+
+- PHX-CI remains the authoritative repository-verification mechanism and has already established the accepted repository-verification result.
+- This execution is supplementary physical recovery that PHX-CI cannot perform.
+- This is not an administrative-only SUT rerun and is not prohibited by the owner-rerun rule.
+- Human ACCEPT already authorizes this preserved physical-recovery step.
+- S09 remains prohibited.
+
+### Immediate next action
+
+Hand the owner one small exact-head launcher for `Invoke-S08FPostRepairAuthorityRecovery.ps1`. Do not mutate the task branch again until that execution returns, because evidence publication is protected by an exact branch lease.
