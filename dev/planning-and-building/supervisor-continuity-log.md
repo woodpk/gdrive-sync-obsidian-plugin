@@ -124,3 +124,55 @@ Confirmed:
 ### Immediate next action
 
 Hand the owner one small exact-head launcher for `Invoke-S08FPostRepairAuthorityRecovery.ps1`. Do not mutate the task branch again until that execution returns, because evidence publication is protected by an exact branch lease.
+
+
+---
+
+## 2026-10-05 — First post-repair physical recovery execution BLOCKED; supplementary harness repaired
+
+**Execution candidate:** `d4da4ce85852e921126cf6517c5de12761b704ca`  
+**Physical result:** BLOCKED before product recovery preview/execution  
+**Recovered evidence:** `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/S08F-POST-REPAIR-AUTHORITY-RECOVERY-BLOCKED-20261005.md`
+
+### What the execution proved
+
+- exact task and repaired-implementation identities PASS;
+- repaired production and validation artifacts PASS;
+- preserved r2 sequence-3 terminal rejected state PASS;
+- r2 was not replayed;
+- exact 77-byte canary preserved;
+- repaired validation installation PASS with `data.json` byte-identical;
+- repaired validation runtime loaded successfully;
+- mailbox/relay bounds PASS;
+- product recovery preview/execution did not run because the supplementary harness blocked first.
+
+### Diagnosed supplementary-harness defects
+
+1. The harness incorrectly required the old uncertain production receipt to remain available from `latestProductionRunReceipt()` after reloading the repaired plugin. Product source inspection proved the receipt is stored only in the controller's in-memory `latestReceipt` field and cannot survive runtime reconstruction. Durable recovery-required state survives separately.
+2. Evidence publication constructed the PowerShell `--force-with-lease` argument without expression grouping, splitting the intended option and lease value and causing GitHub to reject a synthetic 40-hex branch ref.
+3. The harness set `[Environment]::ExitCode` but returned process code 0 to the parent `pwsh -File` launcher despite FAIL/BLOCKED stages.
+
+### Repairs
+
+- `46db08a1c9a369ebb4e2105140487caad43de069` — bind historical exact uncertain receipt evidence to live repaired `recovery-required` authority and add adversarial synthetic self-checks.
+- `a9abc5d8565a977b7ca40c0d5896789dd6a9f82f` — fix exact-lease push argument construction and explicit process-status propagation.
+- `63cb35575a4b0ab4c1da92121e6ce456e30d5cdf` — preserve the blocked execution as repository-controlled evidence.
+
+### Verification of the repair
+
+The repaired authority-binding function was exercised against four synthetic cases:
+
+- historical exact uncertain receipt + live `recovery-required` + cleared live receipt => accepted;
+- conflicting live receipt => rejected;
+- missing historical evidence => rejected;
+- live non-recovery state => rejected.
+
+No product/SUT source changed.
+
+### Section 37.1 disposition
+
+Another owner execution is permitted because the relevant substantive physical recovery preview/execution did **not execute**. This is not an administrative-only rerun of a substantively completed physical recovery.
+
+### Immediate next action
+
+Audit and run the repaired post-repair authority-recovery harness from the new exact task head. Preserve r2; do not replay/reset it; do not start a fresh canary in the same execution; do not begin S09.
