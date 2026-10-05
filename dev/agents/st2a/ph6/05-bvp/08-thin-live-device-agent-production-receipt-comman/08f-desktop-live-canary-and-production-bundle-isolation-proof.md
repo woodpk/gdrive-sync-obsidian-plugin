@@ -763,3 +763,22 @@ Required behavior:
 
 This repair is a product defect correction exposed by physical S08F evidence, not an architecture expansion.
 
+## 0.21 Current-Protocol PHX-CI Execution-Path Re-grounding
+
+Repeated owner-side PHX-CI command construction exposed that S08F physical recovery is now a nontrivial PHX-CI invocation workflow. Sections 20 and 21 of the current governing protocol require that workflow to be repository-controlled rather than repeatedly reconstructed in chat.
+
+This section supersedes any S08F instruction that would require a substantial owner-pasted PHX-CI focused command.
+
+Exactly these additional prerequisite paths are authorized:
+
+- `dev/scripts/Invoke-PHXCI-S08FPhysicalRecovery.ps1` — PHX-CI execution/orchestration only; it MUST contain no independent validation logic or verdict synthesis;
+- `test-platform/package.json` — module-boundary declaration only, limited to making the existing CommonJS test-platform compilation unambiguously CommonJS.
+
+The already-authorized gate `test-platform/test/s08f-post-repair-product-authority-recovery.test.ts` may additionally repair the disposable Obsidian runtime precondition by restarting Obsidian only when all visible Obsidian windows are demonstrably the bound disposable S08F vault. If any visible Obsidian window is not the bound disposable vault, the gate MUST block without terminating Obsidian.
+
+The repository-controlled PHX-CI execution script may bind exact candidate/base/runtime/change-class/environment inputs and invoke PHX-CI. It MUST NOT execute tests, builds, repository checks, physical validation, or evidence verdict logic outside PHX-CI.
+
+The owner launcher after this re-grounding must remain minimal: fetch/locate the exact candidate and invoke the repository-controlled PHX-CI execution script.
+
+No further owner execution is authorized until the engineering agent has statically reviewed the complete focused execution path and its transitive module-loading boundary. S09 remains unauthorized.
+
