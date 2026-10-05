@@ -668,3 +668,27 @@ A BLOCKED/FAIL result preserves the physical state and diagnostic workspace. The
 This physical-recovery execution is supplementary physical validation, not a replacement for PHX-CI. Final repository verification after resulting physical evidence remains governed by the mandatory PHX-CI authority and the protocol's no-administrative-rerun rule.
 
 S09 remains unauthorized.
+
+## 0.17 Owner-Directed PHX-CI Rerun Binding Correction
+
+The software owner explicitly requested a new PHX-CI execution after review of the three S08F PHX-CI runs under `dev/test-results/`. This owner direction satisfies the rerun exception in Section 37.1 of the current Agent-Led Software Engineering Operating Protocol.
+
+The prior runs establish two administrative invocation defects that must not be repeated:
+
+1. the S08F verification base is the exact accepted S08E predecessor `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`; using `7b4297adceb2fd6268a5801a207b7dce1f7b7728` is invalid because that commit predates the authoritative BVP boundary manifest and causes architecture-metrics baseline failure;
+2. the S08F change set contains the explicitly supervisor-authorized `phx-ci.json` runtime rebind from section 0.12. Because `phx-ci.json` is a supervisor-owned frozen surface, this owner-directed rerun MUST use `BVP_CHANGE_CLASS=authorized-governance`. The earlier `ordinary` classification is superseded for this rerun only.
+
+No product-source repair is required by the three PHX-CI runs: install, typecheck, focused tests, full tests, build, and artifact verification passed on the repaired runtime/candidate; the demonstrated failure was repository-gate classification/base binding.
+
+Authoritative owner-directed rerun binding:
+
+- branch: `bvp-s08f-desktop-live-canary`;
+- exact base ref: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- PHX-CI runtime: exact consumer pin from branch `phx-ci.json`, currently `69c4aa077d4a1a46d1e85e59f39d36285be99e83`;
+- change class: `authorized-governance`;
+- publication mode: `push`;
+- temp root: a fresh `C:\\temp-<32-hex-guid>\\` workspace root as required by the current operating protocol;
+- no custom verifier, no direct test/build/repository-check execution, and no GitHub Actions.
+
+The PHX-CI result from this rerun is authoritative for the repository-verification status of the exact branch HEAD it verifies. Physical S08F canary/recovery state remains a separate acceptance surface and is not reclassified by this repository-verification correction.
+
