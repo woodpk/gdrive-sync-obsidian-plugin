@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import * as path from 'node:path';
 import { createServer } from 'node:net';
 
 
