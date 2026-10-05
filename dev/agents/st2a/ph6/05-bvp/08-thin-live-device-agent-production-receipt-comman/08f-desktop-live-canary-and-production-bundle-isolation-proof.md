@@ -772,11 +772,12 @@ This section supersedes any S08F instruction that would require a substantial ow
 Exactly these additional prerequisite paths are authorized:
 
 - `dev/scripts/Invoke-PHXCI-S08FPhysicalRecovery.ps1` — PHX-CI execution/orchestration only; it MUST contain no independent validation logic or verdict synthesis;
-- `test-platform/package.json` — module-boundary declaration only, limited to making the existing CommonJS test-platform compilation unambiguously CommonJS.
 
 The already-authorized gate `test-platform/test/s08f-post-repair-product-authority-recovery.test.ts` may additionally repair the disposable Obsidian runtime precondition by restarting Obsidian only when all visible Obsidian windows are demonstrably the bound disposable S08F vault. If any visible Obsidian window is not the bound disposable vault, the gate MUST block without terminating Obsidian.
 
-The repository-controlled PHX-CI execution script may bind exact candidate/base/runtime/change-class/environment inputs and invoke PHX-CI. It MUST NOT execute tests, builds, repository checks, physical validation, or evidence verdict logic outside PHX-CI.
+The repository-controlled PHX-CI execution script may bind exact candidate/base/runtime/change-class/environment inputs, including Node's CommonJS loader mode for the PHX-CI-focused test process, and invoke PHX-CI. It MUST NOT execute tests, builds, repository checks, physical validation, or evidence verdict logic outside PHX-CI.
+
+A tracked `test-platform/package.json` module-boundary experiment was evaluated and removed because TypeScript emits the BVP files under `.test-build/bvp`; such a source-tree package file would not govern the emitted runtime. No tracked package/module-boundary file is authorized or required.
 
 The owner launcher after this re-grounding must remain minimal: fetch/locate the exact candidate and invoke the repository-controlled PHX-CI execution script.
 
