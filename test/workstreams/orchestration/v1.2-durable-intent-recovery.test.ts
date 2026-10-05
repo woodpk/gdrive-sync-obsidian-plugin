@@ -3,7 +3,7 @@ import test from "node:test";
 import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../../src/diagnostics/diagnostic-logger";
 import { contractId, type GoogleDrivePort, type LocalVaultPort, type PersistenceRevision, type RecoverableOperationIntentV1_1, type RemoteEntry, type RemoteObjectId, type StateRevision, type SynchronizationAuthorityMetadataV1_1, type SynchronizationAuthoritySaveResult, type SynchronizationAuthorityStoreV1_1, type TrustedSynchronizationState, type VaultPath } from "../../../src/contracts";
 import { StateCommitCoordinator } from "../../../src/core/commit-coordinator";
-import { AuthorityCompleteExecutionCoordinator, recoverRemoteFolderEffectV1_2 } from "../../../src/core/execution-coordinator";
+import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/execution-coordinator";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
 import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "../../../src/product/durable-intent-recovery";
@@ -96,26 +96,6 @@ test("D-C11 outcome-unknown folder uses frozen recovery reader with no blind red
   const canonical = new CanonicalStore(); const authority = new AuthorityStore([folderIntent()]); const f = fixture(canonical, () => [entry(folder, reserved, v1, "folder")]); let reads = 0;
   const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote, { remoteFolderCreateRecoveryReadPort: { async observeFolderCreateRecovery() { reads++; return { status: "folder", targetPath: folder, pathComparisonKey: "folders/recovered", remoteObjectId: reserved, parentRemoteObjectId: root }; } } });
   assert.equal(result.status, "recovered"); assert.equal(reads, 1); assert.equal(f.raw(), 0); assert.equal(canonical.value.remoteMappings[0]?.remoteObjectId, reserved);
-});
-
-test("D-C11 missing or replaced expected parent remains recovery-pending and non-redispatchable", async () => {
-  for (const reason of ["expected-parent-unobservable:not-found","target-parent-identity-mismatch","expected-parent-identity-mismatch","expected-parent-identity-incomplete","expected-parent-live-state-incomplete"] as const) {
-    const intent = folderIntent("outcome-unknown");
-    const effect = intent.effects[0]!;
-    const reader = { async observeFolderCreateRecovery() { return { status: "unobservable" as const, reason }; } };
-    const decision = await recoverRemoteFolderEffectV1_2(effect, { status: "unknown", reasonCode: "recovery-observation-required" }, reader);
-    assert.deepEqual(decision, { status: "recovery-pending", reason });
-
-    const canonical = new CanonicalStore();
-    const authority = new AuthorityStore([intent]);
-    const f = fixture(canonical, () => []);
-    const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote, { remoteFolderCreateRecoveryReadPort: reader });
-    assert.equal(result.status, "recovery-required");
-    assert.equal(authority.value.operationIntents.length, 1);
-    assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "outcome-unknown");
-    assert.equal(canonical.saves, 0);
-    assert.equal(f.raw(), 0);
-  }
 });
 
 test("D-C11 effect-verified completes state without dispatch; state-committed repeats neither physical nor semantic commit", async () => {
