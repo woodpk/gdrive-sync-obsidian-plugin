@@ -88,6 +88,8 @@ preserved_physical_state:
   working_brain_vault_prohibited: true
 
 post_accept_recovery:
+  audit_status: PASS
+  audit_record: "dev/planning-and-building/supervisor-continuity-log.md"
   repository_controlled_harness: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FPostRepairAuthorityRecovery.ps1"
   harness_added_commit: "aa61df0d4eb2f452d8c8fc643930fadf6e0c94b4"
   task_binding_commit: "2422e0c08b9b9e739000b79b11b2538e00502cf1"
@@ -129,4 +131,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP-S08F"
-  action: "Resume exactly after post-ACCEPT harness construction/hardening: audit the current exact post-repair authority-recovery harness at the live task head, then—only if the protocol-alignment audit passes—perform the authorized product-authority recovery against the preserved disposable S08F state. Do not replay r2, do not begin a fresh canary in the same execution, and do not begin S09."
+  action: "Harness adversarial audit PASSED. Next owner action is one bounded execution of the repository-controlled post-repair product-authority recovery against the preserved disposable S08F state. Do not replay r2, do not begin a fresh canary in the same execution, do not begin S09, and do not mutate the task branch before the run returns because evidence publication uses an exact branch lease."
