@@ -4,10 +4,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 
-const require = createRequire(__filename);
 
 function arg(name, fallback) {
   const index = process.argv.indexOf(name);
