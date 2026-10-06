@@ -34,7 +34,10 @@ export interface DeviceFixturePort {
   observe(path: string): Promise<FixtureObservation>;
 }
 
+export interface ValidationBuildIdentity { readonly schemaVersion: 1; readonly sourceCommit: string; }
+
 export interface DeviceCommandResult {
+  readonly validationBuild: ValidationBuildIdentity;
   readonly runId: string;
   readonly deviceId: string;
   readonly sequence: number;
@@ -63,13 +66,14 @@ export type DeviceSequenceState =
 
 export interface DeviceSequenceStateStore {
   load(runId: string, deviceId: string): Promise<DeviceSequenceState | undefined>;
-  save(runId: string, deviceId: string, state: DeviceSequenceState): Promise<void>;
+  compareAndSave(runId: string, deviceId: string, expected: DeviceSequenceState | undefined, next: DeviceSequenceState): Promise<boolean>;
 }
 
 export interface DeviceCommandAgentOptions {
   readonly runId: string;
   readonly deviceId: string;
   readonly fixtureRoot: string;
+  readonly validationBuild: ValidationBuildIdentity;
   readonly fixtures: DeviceFixturePort;
   readonly sequenceState: DeviceSequenceStateStore;
   readonly production?: ProductionVerificationControl;
@@ -155,6 +159,7 @@ function fixturePath(root: string, relativePath: string): string | undefined {
 
 function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | undefined, status: DeviceCommandResult["status"], classification: string): DeviceCommandResult {
   return {
+    validationBuild: copy(options.validationBuild),
     runId: options.runId,
     deviceId: options.deviceId,
     sequence: command?.sequence ?? 0,
@@ -173,8 +178,9 @@ function verifiedFixture(observation: FixtureObservation, shouldExist: boolean):
 }
 
 export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptions): BoundedDeviceCommandAgent {
-  if (!boundedString(options.runId, 128) || !boundedString(options.deviceId, 128) || !safeFixtureRoot(options.fixtureRoot)) {
-    throw new Error("device command agent identity/fixture scope is invalid");
+  if (!boundedString(options.runId, 128) || !boundedString(options.deviceId, 128) || !safeFixtureRoot(options.fixtureRoot) ||
+      options.validationBuild.schemaVersion !== 1 || !/^[0-9a-f]{40}$/i.test(options.validationBuild.sourceCommit)) {
+    throw new Error("device command agent identity/fixture scope/build identity is invalid");
   }
   const maxInlineTextChars = options.maxInlineTextChars ?? 65_536;
   const maxPatternBytes = options.maxPatternBytes ?? 33_554_432;
@@ -278,34 +284,24 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
       if (command.deviceId !== options.deviceId) return resultFor(options, command, "rejected", "device-mismatch");
       const commandKey = canonical(command);
 
-      let state: DeviceSequenceState | undefined;
-      try {
-        state = await options.sequenceState.load(options.runId, options.deviceId);
-      } catch {
-        return resultFor(options, command, "failed", "sequence-state-unavailable");
-      }
-
-      if (state) {
-        if (command.sequence < state.sequence) return resultFor(options, command, "rejected", "stale-sequence");
-        if (command.sequence === state.sequence) {
-          if (commandKey !== state.commandKey) return resultFor(options, command, "rejected", "sequence-conflict");
+      let claim: DeviceSequenceState;
+      for (;;) {
+        let state: DeviceSequenceState | undefined;
+        try { state = await options.sequenceState.load(options.runId, options.deviceId); }
+        catch { return resultFor(options, command, "failed", "sequence-state-unavailable"); }
+        if (state) {
+          if (command.sequence < state.sequence) return resultFor(options, command, "rejected", "stale-sequence");
+          if (command.sequence === state.sequence) {
+            if (commandKey !== state.commandKey) return resultFor(options, command, "rejected", "sequence-conflict");
+            if (state.phase === "claimed") return resultFor(options, command, "failed", "prior-outcome-uncertain");
+            return { ...copy(state.result), replayed: true };
+          }
           if (state.phase === "claimed") return resultFor(options, command, "failed", "prior-outcome-uncertain");
-          return { ...copy(state.result), replayed: true };
-        }
-        if (state.phase === "claimed") return resultFor(options, command, "failed", "prior-outcome-uncertain");
-        if (command.sequence !== state.sequence + 1) return resultFor(options, command, "rejected", "sequence-gap");
-      } else if (command.sequence !== 1) {
-        return resultFor(options, command, "rejected", "sequence-gap");
-      }
-
-      try {
-        await options.sequenceState.save(options.runId, options.deviceId, {
-          sequence: command.sequence,
-          commandKey,
-          phase: "claimed",
-        });
-      } catch {
-        return resultFor(options, command, "failed", "sequence-claim-failed");
+          if (command.sequence !== state.sequence + 1) return resultFor(options, command, "rejected", "sequence-gap");
+        } else if (command.sequence !== 1) return resultFor(options, command, "rejected", "sequence-gap");
+        claim = { sequence: command.sequence, commandKey, phase: "claimed" };
+        try { if (await options.sequenceState.compareAndSave(options.runId, options.deviceId, state, claim)) break; }
+        catch { return resultFor(options, command, "failed", "sequence-claim-failed"); }
       }
 
       let terminal: DeviceCommandResult;
@@ -316,15 +312,11 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
       }
 
       try {
-        await options.sequenceState.save(options.runId, options.deviceId, {
-          sequence: command.sequence,
-          commandKey,
-          phase: "completed",
-          result: copy(terminal),
-        });
-      } catch {
-        return resultFor(options, command, "failed", "sequence-state-finalization-failed");
-      }
+        const completed: DeviceSequenceState = { sequence: command.sequence, commandKey, phase: "completed", result: copy(terminal) };
+        if (!await options.sequenceState.compareAndSave(options.runId, options.deviceId, claim, completed)) {
+          return resultFor(options, command, "failed", "sequence-state-finalization-failed");
+        }
+      } catch { return resultFor(options, command, "failed", "sequence-state-finalization-failed"); }
       return terminal;
     },
   };
