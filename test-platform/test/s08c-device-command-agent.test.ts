@@ -13,6 +13,7 @@ import {
 
 const runId = "run-001";
 const deviceId = "device-win";
+const validationBuild = { schemaVersion: 1 as const, sourceCommit: "a".repeat(40) };
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -21,16 +22,12 @@ function clone<T>(value: T): T {
 class MemorySequenceStore implements DeviceSequenceStateStore {
   state?: DeviceSequenceState;
   async load(): Promise<DeviceSequenceState | undefined> { return this.state ? clone(this.state) : undefined; }
-  async save(_runId: string, _deviceId: string, state: DeviceSequenceState): Promise<void> { this.state = clone(state); }
+  async compareAndSave(_runId:string,_deviceId:string,expected:DeviceSequenceState|undefined,next:DeviceSequenceState):Promise<boolean>{if(JSON.stringify(this.state)!==JSON.stringify(expected))return false;this.state=clone(next);return true;}
 }
 
 class FailFinalizationStore extends MemorySequenceStore {
   saves = 0;
-  override async save(run: string, device: string, state: DeviceSequenceState): Promise<void> {
-    this.saves += 1;
-    if (this.saves === 2) throw new Error("simulated completion persistence failure");
-    await super.save(run, device, state);
-  }
+  override async compareAndSave(run:string,device:string,expected:DeviceSequenceState|undefined,next:DeviceSequenceState):Promise<boolean>{this.saves+=1;if(this.saves===2)throw new Error("simulated completion persistence failure");return super.compareAndSave(run,device,expected,next);}
 }
 
 function fixtureHarness() {
@@ -97,6 +94,7 @@ test("run/device/sequence safety executes one fixture command once and replays e
   const fixtures = fixtureHarness();
   const store = new MemorySequenceStore();
   const agent = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port, sequenceState: store,
   });
   const put = command(1, { kind: "fixture-put", path: "note.md", content: { type: "text", text: "hello" } });
@@ -138,7 +136,7 @@ test("run/device/sequence safety executes one fixture command once and replays e
 test("write-ahead claim prevents ambiguous command replay across agent reconstruction", async () => {
   const fixtures = fixtureHarness();
   const store = new FailFinalizationStore();
-  const options = { runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port, sequenceState: store };
+  const options = { runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", validationBuild, fixtures: fixtures.port, sequenceState: store };
   const put = command(1, { kind: "fixture-put", path: "uncertain.md", content: { type: "text", text: "once" } });
   const first = await createBoundedDeviceCommandAgent(options).execute(put);
   equal(first.classification, "sequence-state-finalization-failed");
@@ -154,6 +152,7 @@ test("write-ahead claim prevents ambiguous command replay across agent reconstru
 test("malformed input, fixture escape, and bounded fixture sizes fail closed before mutation", async () => {
   const fixtures = fixtureHarness();
   const agent = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port,
     sequenceState: new MemorySequenceStore(), maxInlineTextChars: 5, maxPatternBytes: 16,
   });
@@ -163,12 +162,14 @@ test("malformed input, fixture escape, and bounded fixture sizes fail closed bef
   equal(fixtures.calls.length, 0);
 
   const fresh = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port,
     sequenceState: new MemorySequenceStore(), maxInlineTextChars: 5, maxPatternBytes: 16,
   });
   equal((await fresh.execute(command(1, { kind: "fixture-put", path: "large.md", content: { type: "text", text: "123456" } }))).classification, "fixture-content-too-large");
 
   const pattern = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port,
     sequenceState: new MemorySequenceStore(), maxPatternBytes: 16,
   });
@@ -180,6 +181,7 @@ test("production commands remain bounded and terminal receipt authority is propa
   const production = productionHarness("uncertain");
   const store = new MemorySequenceStore();
   const agent = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port, sequenceState: store, production: production.control,
   });
 
@@ -236,6 +238,7 @@ test("production execute rejects accepted dispatch without a new correlated rece
     latestProductionRunReceipt() { return staleReceipt; },
   };
   const agent = createBoundedDeviceCommandAgent({
+    validationBuild,
     runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001", fixtures: fixtures.port,
     sequenceState: new MemorySequenceStore(), production,
   });
@@ -243,4 +246,20 @@ test("production execute rejects accepted dispatch without a new correlated rece
   equal(result.status, "failed");
   equal(result.classification, "production-receipt-missing-or-stale");
   equal(result.receipt, undefined);
+});
+
+test("atomic durable claim permits only one concurrent physical execution", async () => {
+  const fixtures=fixtureHarness(),store=new MemorySequenceStore();
+  const options={runId,deviceId,fixtureRoot:"BVP-VALIDATION/run-001",validationBuild,fixtures:fixtures.port,sequenceState:store};
+  const commandOne=command(1,{kind:"fixture-put",path:"race.md",content:{type:"text",text:"one"}});
+  const [a,b]=await Promise.all([createBoundedDeviceCommandAgent(options).execute(commandOne),createBoundedDeviceCommandAgent(options).execute(clone(commandOne))]);
+  equal(fixtures.calls.filter(value=>value.startsWith("text:")).length,1);
+  equal([a,b].filter(value=>value.status==="completed").length,1);
+  equal([a,b].some(value=>value.classification==="prior-outcome-uncertain"),true);
+
+  const otherFixtures=fixtureHarness(),otherStore=new MemorySequenceStore(),otherOptions={...options,fixtures:otherFixtures.port,sequenceState:otherStore};
+  const conflicting={...commandOne,commandId:"different",content:{type:"text" as const,text:"two"}};
+  const [first,second]=await Promise.all([createBoundedDeviceCommandAgent(otherOptions).execute(commandOne),createBoundedDeviceCommandAgent(otherOptions).execute(conflicting)]);
+  equal(otherFixtures.calls.filter(value=>value.startsWith("text:")).length,1);
+  equal([first,second].some(value=>value.classification==="sequence-conflict"),true);
 });
