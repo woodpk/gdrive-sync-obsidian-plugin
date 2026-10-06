@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-10-05"
+  as_of: "2026-10-06"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 / BVP-S08F — close testing-platform construction with PHX-CI-only automated BVP verification and production-bundle isolation; no Obsidian, Drive, vault, or real synchronization execution in S08. Physical product validation begins in S09 only after S08/S08V acceptance."
+    next_step: "Stage 2A / Phase 6 / BVP pre-S09 closure — independently review the completed BVP, repair valid material findings, perform the owner-requested final PHX-CI verification, semantically reconcile the reviewed BVP lineage with master, PHX-CI-verify the exact merged candidate, promote safely, clean obsolete construction state, then rebind S09; Stage 3 remains pending."
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"
