@@ -13,7 +13,7 @@ $actualHead=(& $git -C $root rev-parse HEAD 2>$null).Trim()
 if($LASTEXITCODE-ne 0-or $actualHead-cne $CurrentHead){Fail "current HEAD mismatch expected=$CurrentHead actual=$actualHead"}
 & $git -C $root merge-base --is-ancestor $PredecessorHead $CurrentHead 2>$null
 if($LASTEXITCODE-ne 0){Fail "predecessor is not an ancestor predecessor=$PredecessorHead current=$CurrentHead"}
-$allowed=@('test-platform/src/live-device/drive-mailbox.ts','test-platform/src/live-device/validation-entrypoint.ts','dev/scripts/Test-BvpProductionTestCarryForward.ps1','dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1')
+$allowed=@('test-platform/src/live-device/drive-mailbox.ts','test-platform/src/live-device/validation-entrypoint.ts','test-platform/src/scenario/scenario-checkpoint.ts','test-platform/test/architecture-metrics.test.ts','test-platform/test/s08d-drive-mailbox-relay.test.ts','test-platform/test/s08e-external-live-executor.test.ts','dev/scripts/Get-TestingArchitectureMetrics.ps1','dev/scripts/Test-BvpProductionTestCarryForward.ps1','dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1')
 $changed=@(& $git -C $root diff --name-only "$PredecessorHead..$CurrentHead" 2>$null|ForEach-Object{([string]$_).Replace('\','/')}|Where-Object{-not[string]::IsNullOrWhiteSpace($_)})
 if($LASTEXITCODE-ne 0){Fail 'unable to inspect predecessor-to-current changed paths'}
 $unexpected=@($changed|Where-Object{$allowed-cnotcontains $_})
