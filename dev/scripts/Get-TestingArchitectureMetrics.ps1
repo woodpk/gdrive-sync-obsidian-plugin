@@ -8,15 +8,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ScriptRepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 
-function Normalize-RepoPath([string]$Path) {
-    return (($Path -replace '\\', '/') -replace '^\./', '').Trim('/')
-}
+function Normalize-RepoPath([string]$Path) { return (($Path -replace '\\', '/') -replace '^\./', '').Trim('/') }
 
-function Test-Under([string]$Path, [string]$Root) {
-    $p = Normalize-RepoPath $Path
-    $r = (Normalize-RepoPath $Root).TrimEnd('/')
-    return $p -eq $r -or $p.StartsWith("$r/", [System.StringComparison]::Ordinal)
-}
+function Test-Under([string]$Path, [string]$Root) { $p = Normalize-RepoPath $Path; $r = (Normalize-RepoPath $Root).TrimEnd('/'); return $p -eq $r -or $p.StartsWith("$r/", [System.StringComparison]::Ordinal) }
 
 function Get-BoundaryManifestLines([string]$Sha = '') {
     $relativePath = 'dev/governance/testing-platform-boundary.yaml'
