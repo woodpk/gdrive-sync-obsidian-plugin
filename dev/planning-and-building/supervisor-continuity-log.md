@@ -276,3 +276,22 @@ Disposition:
 - S09 physical execution remains prohibited until S08V acceptance.
 
 Immediate next action: reconcile the accepted S08F closure with the current `phase6-integration` head while preserving newer integration work, bind S08V to the resulting exact integrated SHA, and run S08V authoritative PHX-CI plus architecture review.
+
+
+## 2026-10-05 — Corrected S08V Integrated Binding
+
+S08F authoritative automated acceptance was closed at administrative branch head `08a033956b3605ef2dc13f756f099b5ff37f5888` after verified source `b53f8628353f0115248503fa5a81e4ebc206c218`, evidence `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`, run `6bf02af1-91be-4b74-9f19-a50591abb255`.
+
+The existing `phase6-integration` / S08V line still contained the superseded premature-physical S08F integration. Direct PR reconciliation was not mergeable. The supervisor therefore created corrected merge commit `d4553122d565fd70d976d926f4a022efe93a5aaa` with parents prior integration `76482df328492fc44fda08bda82483ac7a690185` and corrected S08F closure `08a033956b3605ef2dc13f756f099b5ff37f5888`. The merge tree is exactly `440ad6fba3d6acf768e3f8f0bd9b1ee9ae0ef2c0`, byte-for-byte identical to the corrected S08F closure tree, thereby removing the obsolete premature-physical source/test state while preserving integration ancestry. `phase6-integration` was fast-forwarded to the corrected merge. The stale S08V branch was replaced under an exact ref lease and the conflicting temporary PR was closed unmerged.
+
+S08V is now BOUND / EXECUTABLE on `bvp-s08v-primary-stage-acceptance` with:
+
+- integrated S08 input `d4553122d565fd70d976d926f4a022efe93a5aaa`;
+- stage base `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / framework `0.2.0-dev.2`;
+- change class `authorized-governance`;
+- publication mode `push`;
+- accepted S08F evidence `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- no physical-canary coordinate or real product execution authority.
+
+Immediate next action: freeze the current S08V branch HEAD after binding records and perform one authoritative integrated PHX-CI run. On PASS, inspect canonical evidence and perform the mandatory S08 architecture review before S09 binding.
