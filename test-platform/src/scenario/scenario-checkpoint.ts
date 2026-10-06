@@ -4,7 +4,7 @@ import type { ScenarioDefinition, ScenarioExecutionMode } from "./scenario-contr
 import type { CanonicalScenarioEvidence } from "./scenario-evidence";
 import type { ScenarioExecutionStatus, ScenarioStepExecution } from "./scenario-runner";
 
-const SCHEMA_VERSION = 1 as const;
+const SCHEMA_VERSION = 2 as const;
 const MAX_BYTES = 32 * 1024;
 const MAX_RESULTS = 256;
 const MAX_DEVICES = 16;
@@ -25,6 +25,7 @@ export type ScenarioResumeEvidence =
 export interface ScenarioCheckpointStepResult {
   readonly index: number;
   readonly stepId: string;
+  readonly kind: ScenarioDefinition["steps"][number]["kind"];
   readonly status: ScenarioExecutionStatus;
   readonly classification?: string;
   readonly matchedExpectation: boolean;
@@ -38,9 +39,11 @@ export interface ScenarioCheckpointEvidenceSummary {
 }
 
 interface ScenarioCheckpointData {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly checkpointId: string;
   readonly scenarioId: string;
+  readonly scenarioDigest: string;
+  readonly sourceIdentity?: string;
   readonly runId: string;
   readonly executionMode: ScenarioExecutionMode;
   readonly scenarioStepCount: number;
@@ -79,6 +82,7 @@ export interface CreateScenarioCheckpointInput {
   readonly deviceIdentities?: readonly string[];
   readonly requiredResumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly evidence?: CanonicalScenarioEvidence;
+  readonly sourceIdentity?: string;
 }
 
 export interface ScenarioResumeContext {
@@ -86,6 +90,7 @@ export interface ScenarioResumeContext {
   readonly runId: string;
   readonly executionMode: ScenarioExecutionMode;
   readonly deviceIdentities?: readonly string[];
+  readonly sourceIdentity?: string;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -103,6 +108,9 @@ const sortedUnique = (values: readonly string[]): string[] => [...new Set(values
 const sameStrings = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
+function canonical(value:unknown):string{if(value===null||typeof value!=="object")return JSON.stringify(value);if(Array.isArray(value))return "["+value.map(canonical).join(",")+"]";const record=value as Record<string,unknown>;return "{"+Object.keys(record).sort().map(key=>JSON.stringify(key)+":"+canonical(record[key])).join(",")+"}";}
+export function scenarioDefinitionDigest(scenario:ScenarioDefinition):string{return "sha256:"+createHash("sha256").update(canonical(scenario)).digest("hex");}
+
 const STATUSES = new Set<ScenarioExecutionStatus>(["completed", "failed", "blocked", "unsupported"]);
 const MODES = new Set<ScenarioExecutionMode>(["deterministic", "live"]);
 const DISPOSITIONS = new Set<ScenarioResumeDisposition>(["not-issued", "awaiting-resume", "reobserve-required", "completed-recorded"]);
@@ -119,8 +127,8 @@ function evidenceSummary(evidence: CanonicalScenarioEvidence | undefined): Scena
 }
 
 function validStepResult(value: unknown): value is ScenarioCheckpointStepResult {
-  if (!isRecord(value) || !exactKeys(value, ["index", "stepId", "status", "matchedExpectation"], ["classification"])) return false;
-  return integer(value.index) && text(value.stepId) && STATUSES.has(value.status as ScenarioExecutionStatus) &&
+  if (!isRecord(value) || !exactKeys(value, ["index", "stepId", "kind", "status", "matchedExpectation"], ["classification"])) return false;
+  return integer(value.index) && text(value.stepId) && ["fixture","production","external-state","checkpoint","observe","assert"].includes(String(value.kind)) && STATUSES.has(value.status as ScenarioExecutionStatus) &&
     typeof value.matchedExpectation === "boolean" && (value.classification === undefined || text(value.classification));
 }
 
@@ -134,11 +142,11 @@ function validateData(value: unknown): ScenarioCheckpointResult<ScenarioCheckpoi
   if (!isRecord(value)) return { ok: false, classification: "checkpoint-malformed" };
   if (value.schemaVersion !== SCHEMA_VERSION) return { ok: false, classification: "checkpoint-incompatible-version" };
   if (!exactKeys(value, [
-    "schemaVersion", "checkpointId", "scenarioId", "runId", "executionMode", "scenarioStepCount",
+    "schemaVersion", "checkpointId", "scenarioId", "scenarioDigest", "runId", "executionMode", "scenarioStepCount",
     "nextStepIndex", "disposition", "results", "deviceIdentities", "requiredResumeEvidence",
-  ], ["evidence"])) return { ok: false, classification: "checkpoint-malformed" };
+  ], ["evidence","sourceIdentity"])) return { ok: false, classification: "checkpoint-malformed" };
 
-  if (!text(value.checkpointId) || !text(value.scenarioId) || !text(value.runId) ||
+  if (!text(value.checkpointId) || !text(value.scenarioId) || typeof value.scenarioDigest!=="string" || !/^sha256:[0-9a-f]{64}$/.test(value.scenarioDigest) || !text(value.runId) ||
       !MODES.has(value.executionMode as ScenarioExecutionMode) ||
       !integer(value.scenarioStepCount) || !integer(value.nextStepIndex) ||
       value.nextStepIndex > value.scenarioStepCount ||
@@ -146,13 +154,15 @@ function validateData(value: unknown): ScenarioCheckpointResult<ScenarioCheckpoi
       !Array.isArray(value.results) || value.results.length > MAX_RESULTS || !value.results.every(validStepResult) ||
       !Array.isArray(value.deviceIdentities) || value.deviceIdentities.length > MAX_DEVICES || !value.deviceIdentities.every(text) ||
       !Array.isArray(value.requiredResumeEvidence) || !value.requiredResumeEvidence.every(item => RESUME_EVIDENCE.has(item as ScenarioResumeEvidence)) ||
-      (value.evidence !== undefined && !validEvidence(value.evidence))) {
+      (value.evidence !== undefined && !validEvidence(value.evidence)) ||
+      (value.sourceIdentity !== undefined && (typeof value.sourceIdentity!=="string" || !/^[0-9a-f]{40}$/i.test(value.sourceIdentity))) ||
+      (value.executionMode==="live" && typeof value.sourceIdentity!=="string")) {
     return { ok: false, classification: "checkpoint-malformed" };
   }
 
   const nextStepIndex = value.nextStepIndex as number;
   const results = value.results as ScenarioCheckpointStepResult[];
-  if (results.some((result, index) => result.index >= nextStepIndex || (index > 0 && result.index <= results[index - 1]!.index))) {
+  if (results.length!==nextStepIndex || results.some((result, index) => result.index !== index)) {
     return { ok: false, classification: "checkpoint-malformed" };
   }
   const devices = value.deviceIdentities as string[];
@@ -176,6 +186,7 @@ export function createScenarioCheckpoint(input: CreateScenarioCheckpointInput): 
     .map(step => ({
       index: step.index,
       stepId: step.stepId,
+      kind: step.kind,
       status: step.status,
       ...(step.classification === undefined ? {} : { classification: step.classification }),
       matchedExpectation: step.matchedExpectation,
@@ -184,6 +195,8 @@ export function createScenarioCheckpoint(input: CreateScenarioCheckpointInput): 
     schemaVersion: SCHEMA_VERSION,
     checkpointId: input.checkpointId,
     scenarioId: input.scenario.id,
+    scenarioDigest: scenarioDefinitionDigest(input.scenario),
+    ...(input.sourceIdentity===undefined?{}:{sourceIdentity:input.sourceIdentity.toLowerCase()}),
     runId: input.runId,
     executionMode: input.executionMode,
     scenarioStepCount: input.scenario.steps.length,
@@ -216,12 +229,17 @@ export function validateScenarioCheckpointForResume(
   checkpoint: ScenarioCheckpoint,
   context: ScenarioResumeContext,
 ): ScenarioCheckpointResult<ScenarioCheckpoint> {
-  if (checkpoint.scenarioId !== context.scenario.id || checkpoint.scenarioStepCount !== context.scenario.steps.length) {
+  if (checkpoint.scenarioId !== context.scenario.id || checkpoint.scenarioStepCount !== context.scenario.steps.length ||
+      checkpoint.scenarioDigest!==scenarioDefinitionDigest(context.scenario) ||
+      checkpoint.results.some((result,index)=>result.stepId!==context.scenario.steps[index]?.id||result.kind!==context.scenario.steps[index]?.kind)) {
     return { ok: false, classification: "checkpoint-scenario-mismatch" };
   }
   if (checkpoint.runId !== context.runId) return { ok: false, classification: "checkpoint-run-mismatch" };
   if (checkpoint.executionMode !== context.executionMode || !context.scenario.executionModes.includes(context.executionMode)) {
     return { ok: false, classification: "checkpoint-execution-mode-mismatch" };
+  }
+  if (context.executionMode==="live" && (!context.sourceIdentity || checkpoint.sourceIdentity!==context.sourceIdentity.toLowerCase())) {
+    return { ok:false, classification:"checkpoint-execution-context-mismatch" };
   }
   const expectedDevices = sortedUnique(context.deviceIdentities ?? []);
   if (!sameStrings(checkpoint.deviceIdentities, expectedDevices)) {
