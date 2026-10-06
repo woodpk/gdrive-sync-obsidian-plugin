@@ -24,6 +24,22 @@ async function respond(relay:string,build:(command:DeviceCommand)=>DeviceCommand
 const baseResult=(command:DeviceCommand,extra:Partial<DeviceCommandResult>={}):DeviceCommandResult=>({validationBuild,runId:command.runId,deviceId:command.deviceId,sequence:command.sequence,commandId:command.commandId,kind:command.kind,status:"completed",classification:"completed",...extra});
 const options=(s:ScenarioDefinition,r:string,relay:string,checkpoint:string,extra:Record<string,unknown>={})=>({scenario:s,runId:r,deviceIds:{"device-a":"physical-a","device-b":"physical-b"},relayRoot:relay,checkpointFile:checkpoint,expectedValidationSourceCommit:sourceCommit,resultTimeoutMs:1000,pollIntervalMs:1,...extra});
 
+test("multi-device authority acquisition is transactional across later-device lock failure",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("multi-lease",[
+  {id:"a",kind:"observe",subject:"device-state",device:"device-a",captureAs:"a"},
+  {id:"b",kind:"observe",subject:"device-state",device:"device-b",captureAs:"b"},
+]),authorityDir=join(relay,"controller-authority"),aPath=join(authorityDir,createHash("sha256").update("physical-a").digest("hex")+".json"),bPath=join(authorityDir,createHash("sha256").update("physical-b").digest("hex")+".json");
+  await mkdir(authorityDir,{recursive:true});await writeFile(bPath+".lock","held","utf8");
+  await rejects(()=>createLiveScenarioExecutor(options(s,"run-a",relay,join(dir,"a-fail.json"))),/live-controller-authority-busy/);
+  strictEqual(await readFile(aPath,"utf8").then(()=>true,()=>false),false);
+  await rm(bPath+".lock",{force:true});
+  const active=await createLiveScenarioExecutor(options(s,"run-a",relay,join(dir,"a-ok.json")));
+  const [aState,bState]=await Promise.all([readFile(aPath,"utf8").then(JSON.parse),readFile(bPath,"utf8").then(JSON.parse)]);strictEqual(aState.runId,"run-a");strictEqual(bState.runId,"run-a");strictEqual(aState.generation,1);strictEqual(bState.generation,1);
+  await mkdir(join(relay,"outbox"),{recursive:true});await writeFile(join(relay,"outbox","pending.json"),JSON.stringify({runId:"run-a",deviceId:"physical-a",sequence:1,commandId:"pending",kind:"observe-product"}),"utf8");
+  await active.dispose?.();strictEqual(JSON.parse(await readFile(aPath,"utf8")).runId,"run-a");
+  await rejects(()=>createLiveScenarioExecutor(options(s,"run-b",relay,join(dir,"b.json"))),/live-controller-device-run-conflict/);
+  await rm(dir,{recursive:true,force:true});
+});
+
 test("external controller atomically serializes competing device runs and advances generation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("lease-race",[{id:"observe",kind:"observe",subject:"device-state",device:"device-a",captureAs:"state"}]),make=(runId:string)=>createLiveScenarioExecutor(options(s,runId,relay,join(dir,runId+".json")));
   const attempts=await Promise.allSettled([make("run-a"),make("run-b")]),fulfilled=attempts.filter((value):value is PromiseFulfilledResult<Awaited<ReturnType<typeof createLiveScenarioExecutor>>>=>value.status==="fulfilled"),rejected=attempts.filter((value):value is PromiseRejectedResult=>value.status==="rejected");
   strictEqual(fulfilled.length,1);strictEqual(rejected.length,1);strictEqual(/live-controller-(?:authority-busy|device-run-conflict)/.test(String(rejected[0]!.reason)),true);
