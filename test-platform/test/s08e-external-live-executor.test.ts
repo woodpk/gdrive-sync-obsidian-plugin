@@ -10,6 +10,7 @@ import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "../src/live-device/device-command-agent";
 import { createLiveScenarioExecutor, type HumanCheckpointInstruction } from "../src/live-device/live-scenario-executor";
 
+const sourceCommit="a".repeat(40),validationBuild={schemaVersion:1 as const,sourceCommit};
 const delay=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const scenario=(id:string,steps:ScenarioDefinition["steps"]):ScenarioDefinition=>defineScenario({id,description:"S08E live executor fixture",traceability:{targets:[{kind:"requirement",id:"REQ-S08E-LIVE"}]},executionModes:["live"],steps});
 async function root(){return mkdtemp(join(tmpdir(),"brain-s08e-"));}
@@ -19,8 +20,8 @@ async function nextCommand(relay:string):Promise<{command:DeviceCommand;name:str
 async function respond(relay:string,build:(command:DeviceCommand)=>DeviceCommandResult):Promise<DeviceCommand>{
   const {command,name}=await nextCommand(relay),result=build(command);await mkdir(join(relay,"inbox"),{recursive:true});await writeFile(join(relay,"inbox",name+".result.json"),JSON.stringify(result),"utf8");await rm(join(relay,"sent",name),{force:true});return command;
 }
-const baseResult=(command:DeviceCommand,extra:Partial<DeviceCommandResult>={}):DeviceCommandResult=>({runId:command.runId,deviceId:command.deviceId,sequence:command.sequence,commandId:command.commandId,kind:command.kind,status:"completed",classification:"completed",...extra});
-const options=(s:ScenarioDefinition,r:string,relay:string,checkpoint:string,extra:Record<string,unknown>={})=>({scenario:s,runId:r,deviceIds:{"device-a":"physical-a","device-b":"physical-b"},relayRoot:relay,checkpointFile:checkpoint,resultTimeoutMs:1000,pollIntervalMs:1,...extra});
+const baseResult=(command:DeviceCommand,extra:Partial<DeviceCommandResult>={}):DeviceCommandResult=>({validationBuild,runId:command.runId,deviceId:command.deviceId,sequence:command.sequence,commandId:command.commandId,kind:command.kind,status:"completed",classification:"completed",...extra});
+const options=(s:ScenarioDefinition,r:string,relay:string,checkpoint:string,extra:Record<string,unknown>={})=>({scenario:s,runId:r,deviceIds:{"device-a":"physical-a","device-b":"physical-b"},relayRoot:relay,checkpointFile:checkpoint,expectedValidationSourceCommit:sourceCommit,resultTimeoutMs:1000,pollIntervalMs:1,...extra});
 
 test("live executor maps local fixture, production preview/execute, observation, and assertion in exact sequence",async()=>{const dir=await root(),relay=join(dir,"relay"),cp=join(dir,"state","cp.json"),s=scenario("flow",[
   {id:"seed",kind:"fixture",operation:"put-local-file",device:"device-a",path:"note.md",content:{encoding:"utf8",value:"hello"}},
@@ -33,7 +34,7 @@ test("live executor maps local fixture, production preview/execute, observation,
   const c2=await respond(relay,c=>baseResult(c,{classification:"production-preview-ready",plan:{planId:"plan-1",trigger:"manual",operationCount:1,executionDisposition:"reviewable",recoveryCheckpointRequired:false,globalExecutionGate:"open"}}));
   const c3=await respond(relay,c=>baseResult(c,{classification:"production-complete",receipt:{runId:"prod-1",trigger:"manual",planId:"plan-1",terminal:"complete",physicalEffectsCommittedAndVerified:true,committedOperationCount:1,skippedOperationCount:0,reasonCode:"completed"} as any}));
   const c4=await respond(relay,c=>baseResult(c,{classification:"fixture-observed",fixture:{exists:true,sizeBytes:5,sha256:"a".repeat(64)}}));
-  const result=await run;strictEqual(result.status,"completed");deepStrictEqual([c1.kind,c2.kind,c3.kind,c4.kind],["fixture-put","production-preview","production-execute","observe-file"]);deepStrictEqual([c1.sequence,c2.sequence,c3.sequence,c4.sequence],[1,2,3,4]);strictEqual(c1.deviceId,"physical-a");strictEqual(result.evidence?.machine.executionMode,"live");strictEqual((result.captures.local as any).exists,true);await rm(dir,{recursive:true,force:true});
+  const result=await run;strictEqual(result.status,"completed");deepStrictEqual([c1.kind,c2.kind,c3.kind,c4.kind],["fixture-put","production-preview","production-execute","observe-file"]);deepStrictEqual([c1.sequence,c2.sequence,c3.sequence,c4.sequence],[1,2,3,4]);strictEqual(c1.deviceId,"physical-a");strictEqual(result.evidence?.machine.executionMode,"live");deepStrictEqual(result.evidence?.machine.liveIdentity,{runId:"run-flow",sourceCommit});strictEqual((result.captures.local as any).exists,true);await rm(dir,{recursive:true,force:true});
 });
 
 test("production uncertainty propagates as failure rather than transport success",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("uncertain",[{id:"sync",kind:"production",device:"device-a",operation:"synchronize"}]),executor=await createLiveScenarioExecutor(options(s,"run-u",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
@@ -45,6 +46,10 @@ test("production uncertainty propagates as failure rather than transport success
 test("wrong-device result fails correlation and missing result blocks",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("correlation",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-c",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
   await respond(relay,c=>({...baseResult(c,{classification:"fixture-observed",fixture:{exists:false}}),deviceId:"wrong"}));const bad=await run;strictEqual(bad.status,"failed");strictEqual(bad.classification,"result-correlation-mismatch");
   const missingExec=await createLiveScenarioExecutor({...options(s,"run-missing",join(dir,"relay2"),join(dir,"cp2.json")),resultTimeoutMs:5});const missing=await new DeterministicScenarioRunner({},missingExec).run(s);strictEqual(missing.status,"blocked");strictEqual(missing.classification,"device-result-unavailable");await rm(dir,{recursive:true,force:true});
+});
+
+test("result from a different validation source fails exact correlation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("wrong-build",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-build",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
+  await respond(relay,c=>baseResult(c,{validationBuild:{schemaVersion:1,sourceCommit:"b".repeat(40)},classification:"fixture-observed",fixture:{exists:false}}));const result=await run;strictEqual(result.status,"failed");strictEqual(result.classification,"result-correlation-mismatch");await rm(dir,{recursive:true,force:true});
 });
 
 test("stale-sequence result also fails exact correlation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("stale-sequence",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-s",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
