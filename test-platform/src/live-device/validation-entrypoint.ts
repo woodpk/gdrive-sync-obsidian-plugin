@@ -10,7 +10,7 @@ interface ValidationAdapter { exists(path:string):Promise<boolean>; mkdir(path:s
 interface ValidationRuntimeOptions { readonly adapter:ValidationAdapter; readonly root:string; readonly deviceId:string; readonly validationBuild:ValidationBuildIdentity; readonly production?:Parameters<typeof createBoundedDeviceCommandAgent>[0]["production"]; readonly relay:boolean; }
 interface AgentConfig { readonly schemaVersion:1; readonly runId:string; readonly deviceId:string; }
 
-const safeId=(value:string)=>/^[A-Za-z0-9._:-]{1,128}$/.test(value);
+const safeRunId=(value:string)=>/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/.test(value);
 const stateKey=(root:string,runId:string,deviceId:string)=>"brain-bvp-sequence:"+encodeURIComponent(root+"|"+runId+"|"+deviceId);
 const sameState=(a:DeviceSequenceState|undefined,b:DeviceSequenceState|undefined)=>JSON.stringify(a)===JSON.stringify(b);
 const clone=<T>(value:T):T=>JSON.parse(JSON.stringify(value)) as T;
@@ -37,7 +37,7 @@ export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValida
 }
 async function loadAgentConfig(options:ValidationRuntimeOptions):Promise<AgentConfig|undefined>{
   const path=options.root+"/agent.json";if(!await options.adapter.exists(path))return undefined;let value:unknown;try{value=JSON.parse(await options.adapter.read(path));}catch{return undefined;}
-  const v=value as Partial<AgentConfig>;if(v.schemaVersion!==1||typeof v.runId!=="string"||!safeId(v.runId)||v.deviceId!==options.deviceId)return undefined;return{schemaVersion:1,runId:v.runId,deviceId:v.deviceId};
+  const v=value as Partial<AgentConfig>;if(v.schemaVersion!==1||typeof v.runId!=="string"||!safeRunId(v.runId)||v.deviceId!==options.deviceId)return undefined;return{schemaVersion:1,runId:v.runId,deviceId:v.deviceId};
 }
 export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){
   const mailbox=createDriveCommandMailbox(request),config=await loadAgentConfig(options),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
