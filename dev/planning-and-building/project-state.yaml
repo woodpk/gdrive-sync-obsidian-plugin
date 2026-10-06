@@ -51,20 +51,21 @@ stage_2a_phases:
 
 active_work:
   primary_package: "BVP pre-S09 closure — final independent review, correction, PHX-CI verification, master integration, and construction cleanup"
-  task_branch: "bvp-final-review-corrections-r2"
+  task_branch: "bvp-final-review-corrections-r3"
   task_document: "dev/planning-and-building/bvp-master-integration-and-cleanup-plan.md"
   authoritative_phase_boundary_decision: "DEC-328"
   authoritative_pre_s09_closure_decision: "DEC-329"
   authoritative_final_review_correction_decision: "DEC-330"
   reviewed_bvp_candidate: "38bc13f82a7e5240588ed61be1a3b1867e754703"
   first_correction_candidate: "5c73a15d438f39f7c7fc28e744a1e19a7119a53e"
-  correction_branch: "bvp-final-review-corrections-r2"
-  correction_r2_implementation_head: "53d1cd63814ca538388a24f829cb3299fc5b2c08"
+  correction_r2_candidate: "00d4ff1a2141b43d44a40e9cb71832965f0dbf22"
+  correction_branch: "bvp-final-review-corrections-r3"
+  correction_r3_implementation_head: "675cde8e836edd4d8b88abd5885eccf4eb0d92d8"
   accepted_s08v_source: "c9f035cc24fd16ff1aad8216367a81149dd58896"
   accepted_s08v_evidence: "e9c635a9ffcf1a50aa461d16efb517b06626a6c6"
   accepted_s08v_run: "cf16c8cc-179d-4fb9-8ca4-96aaad0bb742"
   s08_status: "CLOSED / ACCEPTED; mandatory architecture review PASS; S09 binding deferred by later owner-authorized pre-S09 closure gate"
-  current_scope: "The first correction review of 5c73a15d438f39f7c7fc28e744a1e19a7119a53e resolved F2/F3/F4 and identified five remaining valid defects: evidence-reason privacy, recursive scenario data-only governance, mailbox run-binding publication concurrency, Windows relay re-entrancy, and stale active S01 handoff authority. Targeted R2 corrections are implemented on bvp-final-review-corrections-r2. The next gate is one independent Codex delta review of exactly 5c73a15d... -> the frozen R2 candidate; authoritative executable verification remains pending and PHX-CI-only. No S09 physical execution has begun."
+  current_scope: "The R2 independent Codex delta review resolved FR-C01/FR-C02/FR-C04/FR-C05 and left only FR-C03 partially resolved because Drive search visibility was still being used as a safety-critical rollover signal. Targeted R3 correction removes automatic run rollover entirely: a device run binding must be positively visible before command publication, remains occupied regardless of command/result absence, and can be released only by explicit scoped cleanup that positively observes the old binding before deletion. R3 changes are isolated to the mailbox implementation and focused S08D tests plus continuity bookkeeping. The next gate is one independent Codex delta review of exactly 00d4ff1a... -> the frozen R3 candidate. PHX-CI verification remains pending and PHX-CI-only; S09 and Stage 3 remain prohibited."
   required_end_state: "One exact reviewed and PHX-CI-accepted BVP candidate is reconciled with the exact frozen current master; the exact merged candidate passes PHX-CI and is promoted to master under expected-SHA protection; durable closure/milestone/cleanup is complete; only then is S09 rebound to that exact master SHA."
 historical_s08f_physical_attempt:
   status: superseded_for_s08
@@ -106,4 +107,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP pre-S09 closure"
-  action: "Freeze the exact bvp-final-review-corrections-r2 HEAD after continuity records and issue one independent Codex Desktop delta review limited to the five remaining findings and the exact 5c73a15d... -> R2 diff. Codex must not mutate the repository or run executable validation directly. If R2 review passes, perform one authoritative PHX-CI verification of that exact reviewed R2 candidate before any master reconciliation. Do not begin S09 or Stage 3."
+  action: "Freeze the exact bvp-final-review-corrections-r3 HEAD after continuity records and issue one independent Codex Desktop delta review limited to FR-C03/R2-N01 and the exact 00d4ff1a... -> R3 diff. Codex must not mutate the repository or run executable validation directly. If R3 review passes, perform one authoritative PHX-CI verification of that exact reviewed R3 candidate before any master reconciliation. Do not begin S09 or Stage 3."
