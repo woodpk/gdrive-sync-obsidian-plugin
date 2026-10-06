@@ -108,11 +108,11 @@ function validEvidence(value: unknown): value is ScenarioCheckpointEvidenceSumma
 
 function validateData(value: unknown): ScenarioCheckpointResult<ScenarioCheckpoint> {
   if (!isRecord(value)) return { ok: false, classification: "checkpoint-malformed" };
-  if (value.schemaVersion !== SCHEMA_VERSION) return { ok: false, classification: "checkpoint-incompatible-version" };
   if (!exactKeys(value, [
     "schemaVersion", "checkpointId", "scenarioId", "scenarioDigest", "runId", "executionMode", "scenarioStepCount",
     "nextStepIndex", "disposition", "results", "deviceIdentities", "requiredResumeEvidence",
   ], ["evidence","sourceIdentity"])) return { ok: false, classification: "checkpoint-malformed" };
+  if (value.schemaVersion !== SCHEMA_VERSION) return { ok: false, classification: "checkpoint-incompatible-version" };
 
   if (!text(value.checkpointId) || !text(value.scenarioId) || typeof value.scenarioDigest!=="string" || !/^sha256:[0-9a-f]{64}$/.test(value.scenarioDigest) || !text(value.runId) ||
       !MODES.has(value.executionMode as ScenarioExecutionMode) ||
