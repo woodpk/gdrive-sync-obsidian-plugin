@@ -40,6 +40,16 @@ test("multi-device authority acquisition is transactional across later-device lo
   await rm(dir,{recursive:true,force:true});
 });
 
+test("multi-device authority rollback restores earlier activation under the full lock set",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("multi-conflict",[
+  {id:"a",kind:"observe",subject:"device-state",device:"device-a",captureAs:"a"},
+  {id:"b",kind:"observe",subject:"device-state",device:"device-b",captureAs:"b"},
+]),authorityDir=join(relay,"controller-authority"),aPath=join(authorityDir,createHash("sha256").update("physical-a").digest("hex")+".json"),bPath=join(authorityDir,createHash("sha256").update("physical-b").digest("hex")+".json");
+  await mkdir(authorityDir,{recursive:true});await writeFile(bPath,JSON.stringify({schemaVersion:1,generation:4,runId:"run-b",deviceId:"physical-b"}),"utf8");
+  await rejects(()=>createLiveScenarioExecutor(options(s,"run-a",relay,join(dir,"a.json"))),/live-controller-device-run-conflict/);
+  const rolled=JSON.parse(await readFile(aPath,"utf8")),preserved=JSON.parse(await readFile(bPath,"utf8"));strictEqual(rolled.runId,null);strictEqual(rolled.generation,1);strictEqual(preserved.runId,"run-b");strictEqual(preserved.generation,4);
+  await rm(dir,{recursive:true,force:true});
+});
+
 test("external controller atomically serializes competing device runs and advances generation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("lease-race",[{id:"observe",kind:"observe",subject:"device-state",device:"device-a",captureAs:"state"}]),make=(runId:string)=>createLiveScenarioExecutor(options(s,runId,relay,join(dir,runId+".json")));
   const attempts=await Promise.allSettled([make("run-a"),make("run-b")]),fulfilled=attempts.filter((value):value is PromiseFulfilledResult<Awaited<ReturnType<typeof createLiveScenarioExecutor>>>=>value.status==="fulfilled"),rejected=attempts.filter((value):value is PromiseRejectedResult=>value.status==="rejected");
   strictEqual(fulfilled.length,1);strictEqual(rejected.length,1);strictEqual(/live-controller-(?:authority-busy|device-run-conflict)/.test(String(rejected[0]!.reason)),true);
