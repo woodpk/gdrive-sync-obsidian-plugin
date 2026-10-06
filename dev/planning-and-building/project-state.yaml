@@ -2,7 +2,7 @@ schema_version: 4
 record:
   title: "BRAIN Google Drive Sync Plugin — Current Project State"
   status: authoritative_current_progress
-  as_of: "2026-10-05"
+  as_of: "2026-10-06"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
   purpose: "Canonical current execution/progress state for supervisor re-entry. Product authority remains in target-system-specification.md and decision-register.yaml. This file MUST be kept current whenever the active work package, exact task head, acceptance state, preserved physical/external state, or immediate next action materially changes."
@@ -45,21 +45,22 @@ stage_2a_phases:
   phase_5: { name: "Integrated Synchronization Product and User Workflows", status: complete_supervisor_approved }
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_bvp_s09a_binding
+    status: active_bvp_pre_s09_review_integration_cleanup
     integration_branch: "phase6-integration"
     completion_gate: not_yet_satisfied
 
 active_work:
-  primary_package: "BVP-S09A — Windows/iOS install, authentication, and pairing baseline binding"
-  task_branch: "not yet bound"
-  task_document: "dev/agents/st2a/ph6/05-bvp/09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md"
+  primary_package: "BVP pre-S09 closure — final independent review, correction, PHX-CI verification, master integration, and construction cleanup"
+  task_branch: "phase6-integration"
+  task_document: "dev/planning-and-building/bvp-master-integration-and-cleanup-plan.md"
   authoritative_phase_boundary_decision: "DEC-328"
+  authoritative_pre_s09_closure_decision: "DEC-329"
   accepted_s08v_source: "c9f035cc24fd16ff1aad8216367a81149dd58896"
   accepted_s08v_evidence: "e9c635a9ffcf1a50aa461d16efb517b06626a6c6"
   accepted_s08v_run: "cf16c8cc-179d-4fb9-8ca4-96aaad0bb742"
-  s08_status: "CLOSED / ACCEPTED; mandatory architecture review PASS — S09 may proceed to binding"
-  current_scope: "Bind S09A physical Windows/iOS/Obsidian/provider validation facts against the completed BVP. No S09 physical execution has begun yet."
-  required_end_state: "S09A hard execution facts are grounded and bound without reusing superseded S08 physical state as acceptance authority; then execute only the authorized S09A physical baseline through PHX-CI-coordinated validation."
+  s08_status: "CLOSED / ACCEPTED; mandatory architecture review PASS; S09 binding deferred by later owner-authorized pre-S09 closure gate"
+  current_scope: "Independently review the entire completed BVP, repair valid material findings, perform the owner-requested final PHX-CI verification, semantically reconcile the reviewed BVP lineage with current master, PHX-CI-verify the exact merged candidate, promote it safely, and clean obsolete construction state. No S09 physical execution has begun."
+  required_end_state: "One exact reviewed and PHX-CI-accepted BVP candidate is reconciled with the exact frozen current master; the exact merged candidate passes PHX-CI and is promoted to master under expected-SHA protection; durable closure/milestone/cleanup is complete; only then is S09 rebound to that exact master SHA."
 historical_s08f_physical_attempt:
   status: superseded_for_s08
   evidence_root: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c"
@@ -89,7 +90,7 @@ hard_boundaries:
   - "GitHub Actions must not be used for build/test/verification/evidence workflows."
   - "PHX-CI is the mandatory authoritative repository-verification authority."
   - "Do not launch or automate Obsidian, touch a vault, authenticate to Drive, or execute real synchronization for S08 acceptance."
-  - "Do not begin S09 until S08F and S08V are accepted."
+  - "Do not begin S09 until S08F and S08V are accepted and the DEC-329 pre-S09 review/integration/cleanup closure is complete."
   - "Do not begin Stage 3 while material Phase 6 evidence remains incomplete."
 
 continuity_rule:
@@ -99,5 +100,5 @@ continuity_rule:
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  package: "BVP-S09A"
-  action: "Ground the current integrated repository and the preplanned S09A contract, bind exact Windows/iOS install/authentication/pairing physical-validation facts, and ensure all executable validation remains PHX-CI-coordinated. Do not reuse superseded S08F physical evidence as S09 acceptance authority and do not begin Stage 3."
+  package: "BVP pre-S09 closure"
+  action: "Freeze one exact completed-BVP review candidate descended from accepted S08, issue the repository-grounded independent Codex Desktop final-review prompt, and do not merge into master before that review returns. After review, repair valid material findings, perform the owner-requested PHX-CI verification, reconcile with exact current master, PHX-CI-verify the merged candidate, promote safely, clean construction state, then rebind S09. Do not begin S09 or Stage 3 before this closure completes."
