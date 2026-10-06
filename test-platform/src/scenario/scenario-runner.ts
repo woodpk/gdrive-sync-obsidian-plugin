@@ -42,6 +42,8 @@ export interface ScenarioExecutorContext { readonly stepIndex: number; readCaptu
 export interface ScenarioStepExecutor {
   readonly executionMode: ScenarioExecutionMode;
   readonly deviceIdentities: readonly string[];
+  readonly runIdentity?: string;
+  readonly buildIdentity?: string;
   execute(step: ScenarioStep, context: ScenarioExecutorContext): Promise<ScenarioCapabilityResult>;
   dispose?(): Promise<void>;
 }
@@ -99,7 +101,7 @@ export class DeterministicScenarioRunner {
       const core = { scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
         ...(classification === undefined ? {} : { classification }), ...(reason === undefined ? {} : { reason }) };
       const deviceIdentities = this.executor?.deviceIdentities ?? [...names].map(name => String(world!.deviceBacking(name).deviceIdentity));
-      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities, executionMode }) };
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities, executionMode, runIdentity:this.executor?.runIdentity, buildIdentity:this.executor?.buildIdentity }) };
     };
 
     for (const [index, step] of scenario.steps.entries()) {
