@@ -741,6 +741,19 @@ test("architecture guard rejects executable helpers hidden beneath scenario root
   });
 });
 
+test("architecture guard rejects nested executable syntax inside defineScenario", () => {
+  for (const [name,body] of [
+    ["iife",'defineScenario({ id: "iife", description: (() => "private")() })'],
+    ["call",'defineScenario({ id: "call", description: String("private") })'],
+    ["spread",'defineScenario({ ...{ id: "spread" } })'],
+  ] as const) {
+    withFixture((root) => {
+      writeText(root, `test-platform/scenarios/${name}.ts`, 'import { defineScenario } from "../src/scenario/scenario-contract";\nexport const scenario = '+body+';\n');
+      assertFailsWithRule(runGuard(root), "SCENARIO_MODULE_NOT_DECLARATIVE");
+    });
+  }
+});
+
 test("architecture guard rejects PowerShell beneath test-platform", () => {
   withFixture((root) => {
     writeText(root, "test-platform/scenarios/C03.ps1", 'Write-Output "bad"\n');
