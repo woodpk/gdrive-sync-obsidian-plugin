@@ -974,6 +974,11 @@ decisions:
     category: bvp_pre_s09_closure
     decision: "After accepted BVP-S08 and before any BVP-S09 physical validation, perform one independent final review of the completed BVP, repair valid material findings, perform the owner-requested final authoritative PHX-CI verification, semantically reconcile one exact reviewed BVP lineage with the then-current master while preserving both histories, verify the exact merged candidate through PHX-CI, promote only that accepted candidate to master, then preserve a milestone and clean obsolete BVP construction branches/workspaces before rebinding S09. Do not merge historical BVP child-branch tips individually, do not use a global ours/theirs conflict policy or an automatic all-in-one semantic merge script, do not begin S09 before this closure completes, and do not begin Stage 3."
 
+  - id: DEC-330
+    status: locked
+    category: bvp_final_review_correction_authority
+    decision: "The user/supervisor explicitly authorized targeted correction of the valid findings from the final independent BVP review against reviewed candidate 38bc13f82a7e5240588ed61be1a3b1867e754703. This authorization includes the minimum necessary authorized-governance edits to dev/scripts/Test-TestingArchitectureGuard.ps1 and dev/scripts/Get-TestingArchitectureMetrics.ps1 to close the finding that executable helper code could hide beneath test-platform/scenarios/**. The correction must preserve every frozen architecture budget and shipping boundary, must not broaden production authority, and must not weaken or raise any architecture limit."
+
 
 superseded_decisions:
   - id: SUP-001
