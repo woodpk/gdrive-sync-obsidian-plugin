@@ -133,7 +133,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
 
   return{
     executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
-    async dispose(){if(pending)return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){const temp=path+".next";await writeFile(temp,JSON.stringify({...current,runId:null}),"utf8");await rename(temp,path);}});},
+    async dispose(){if(pending)return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
