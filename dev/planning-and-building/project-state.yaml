@@ -62,7 +62,7 @@ active_work:
   correction_r2_candidate: "00d4ff1a2141b43d44a40e9cb71832965f0dbf22"
   correction_r3_candidate: "ebf9863abbf9c2407f509f931a2fdea34267e329"
   correction_branch: "bvp-final-review-corrections-r4"
-  correction_r4_implementation_head: "904fec733e2fd9165126c2dde7cd88133b5d077f"
+  correction_r4_implementation_head: "3dc903de2273dc6b7bfa880ad18d89621baf2cf0"
   accepted_s08v_source: "c9f035cc24fd16ff1aad8216367a81149dd58896"
   accepted_s08v_evidence: "e9c635a9ffcf1a50aa461d16efb517b06626a6c6"
   accepted_s08v_run: "cf16c8cc-179d-4fb9-8ca4-96aaad0bb742"
