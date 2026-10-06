@@ -341,3 +341,28 @@ Disposition:
 - Stage 3 remains prohibited while S09 remains incomplete.
 
 Immediate next action: ground and bind S09A Windows/iOS install/authentication/pairing physical-validation facts against the completed BVP and current integrated repository, with all executable validation coordinated by PHX-CI.
+
+## 2026-10-06 — Pre-S09 Final Review / Master Integration Gate Re-entry
+
+Successor supervisor `sup-build-wp-2-36` re-grounded the current original Google Drive operating protocol and construction manual, then re-grounded the live repository before beginning any mutation.
+
+Observed repository state matched the predecessor handoff:
+
+- `master = caf4a03418b89b57893e3bd5d4c6f89c28604242`;
+- `phase6-integration = 4e04525bff3c4344f68bef67081f2805ee3b4f58` at re-entry;
+- `bvp-s08v-primary-stage-acceptance = 1605f5f7926d529bfad1b626b781ed16b42b55b9`;
+- `master...phase6-integration` remains diverged at 1,096 / 26 commits with merge base `7b4297adceb2fd6268a5801a207b7dce1f7b7728`;
+- remote inventory remains 81 branches total / 62 surviving `bvp-*` branches;
+- `phx-ci.json` still pins framework/runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / `0.2.0-dev.2`;
+- BVP-S08V remains CLOSED / ACCEPTED with source `c9f035cc24fd16ff1aad8216367a81149dd58896`, evidence `e9c635a9ffcf1a50aa461d16efb517b06626a6c6`, run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`.
+
+The current construction manual is newer than the revision recorded in the predecessor bootstrap and now explicitly requires material cross-session process/authority decisions to be persisted in the canonical decision register. The owner-inserted pre-S09 closure gate was therefore persisted as locked `DEC-329` in commit `a84efe3fa851e1a88b416a4e4aa31028a2f5141d`.
+
+The stale `project-state.yaml` S09A-next bookkeeping was corrected in commit `fb436d45161d1a0911022f7d89f8c7238396aa8d` so the active work is now the owner-authorized DEC-329 sequence:
+
+independent final BVP review → bounded repairs if needed → owner-requested PHX-CI verification → semantic reconciliation with exact current `master` → PHX-CI verification of the exact merged candidate → safe promotion → milestone / construction cleanup → S09 rebind.
+
+No BVP executable source, tests, PHX-CI configuration, architecture boundary, or production seam was changed by these administrative authority/state corrections.
+
+Immediate next action: freeze the resulting exact `phase6-integration` head as the completed-BVP Codex review candidate and issue one repository-grounded Codex Desktop final-review prompt. Do not merge into `master`, begin S09, or begin Stage 3 before that review returns and the DEC-329 closure sequence is completed.
+
