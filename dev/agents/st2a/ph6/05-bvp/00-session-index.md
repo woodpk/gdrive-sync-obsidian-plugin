@@ -60,7 +60,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
 | 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
 | 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
-| 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
+| 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
 | 09A | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md` |
 | 09B | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09b-physical-bidirectional-synchronization-and-representative-conflict.md` |
 | 09C | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09c-physical-offline-reconnect-and-interruption-resume.md` |
@@ -906,3 +906,6 @@ S08F — Platform Construction Closure and Production-Bundle Isolation is **COMP
 
 No physical product execution was used. S08F is closed; **S08 remains open pending S08V integrated acceptance and architecture review**. The next supervisor action is to reconcile the accepted S08F closure with the current `phase6-integration` head, bind S08V to that exact integrated state, and perform the S08V PHX-CI/architecture review.
 
+
+
+S08V — Primary-Stage PHX-CI Acceptance and Architecture Review is **BOUND / EXECUTABLE** from corrected integrated S08 input `d4553122d565fd70d976d926f4a022efe93a5aaa` on branch `bvp-s08v-primary-stage-acceptance`. The reconciliation commit has parents prior integration `76482df328492fc44fda08bda82483ac7a690185` and corrected accepted S08F closure `08a033956b3605ef2dc13f756f099b5ff37f5888`, and its tree is identical to the corrected S08F closure tree. Stage base is accepted pre-S08 closure `225e38d0e851ea7e537f71c1134f2931344ef5ac`; runtime pin is `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. S08V is automated integrated platform acceptance only under DEC-328; no Obsidian/vault/Drive/provider/product execution is authorized. On PHX-CI PASS, the supervisor must perform the mandatory S08 architecture review before S09 may be bound.
