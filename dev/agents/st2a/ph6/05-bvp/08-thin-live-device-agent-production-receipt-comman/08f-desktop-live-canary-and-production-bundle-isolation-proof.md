@@ -2,7 +2,7 @@
 
 ## 0. Status
 
-**Prompt maturity:** BOUND / EXECUTABLE — PLATFORM CONSTRUCTION ONLY  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Predecessor:** accepted S08E  
 **Task branch:** `bvp-s08f-desktop-live-canary`
@@ -18,6 +18,43 @@ BVP-S08 does **not** authorize using the BVP to perform real physical product va
 The earlier S08F desktop-live-canary / physical-recovery direction is superseded for S08. Historical physical evidence remains historical only and MUST NOT be used as S08 acceptance authority.
 
 Physical Windows/iOS/Obsidian/provider execution belongs to BVP-S09.
+
+## 0.3 Authoritative S08F Acceptance
+
+BVP-S08F is **COMPLETE / ACCEPTED**.
+
+Authoritative verification:
+
+- verified source SHA: `b53f8628353f0115248503fa5a81e4ebc206c218`;
+- authoritative PHX-CI evidence commit: `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- run ID: `6bf02af1-91be-4b74-9f19-a50591abb255`;
+- exact verification base: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- PHX-CI runtime/framework: `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / `0.2.0-dev.2`;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE / task exit 0;
+- focused S08 platform verification: 137/137 PASS;
+- complete repository suite: 835/835 PASS, 0 failed, 0 skipped, 0 cancelled, 0 todo;
+- build: PASS;
+- repository-check: PASS with architecture guard PASS and metrics PASS under `authorized-governance`;
+- production artifact: `main.js` 885,307 bytes, SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- control checkout preserved: YES;
+- evidence publication: YES.
+
+Accepted architecture metrics at this closure:
+
+- approved production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 3,996 / 4,000 logical TypeScript LOC;
+- live-device / relay / executor surface: 727 / 750 logical TypeScript LOC;
+- BVP PowerShell: 4 / 4 scripts, 1,492 / 1,500 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files.
+
+The canonical evidence commit is one evidence-only commit directly after the verified source and changes only `dev/_ca-output.{md,json}` plus the three immutable `dev/test-results/20261005T232847Z-operator-bvp-s08f-desktop-live-canary-b53f8628353f.*` records.
+
+No real Obsidian, vault, Google Drive, provider, or synchronization-product execution was used to establish this S08F verdict. Historical S08F physical material remains superseded/non-authoritative for S08 under DEC-328.
+
+This record closes S08F only. S08 as a whole remains open pending corrected S08V integrated acceptance and architecture review.
 
 ## 0.2 Authoritative Construction Boundary
 
