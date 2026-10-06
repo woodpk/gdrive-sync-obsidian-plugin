@@ -109,4 +109,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP pre-S09 closure"
-  action: "Freeze the exact bvp-final-review-corrections-r3 HEAD after continuity records and issue one independent Codex Desktop delta review limited to FR-C03/R2-N01 and the exact 00d4ff1a... -> R3 diff. Codex must not mutate the repository or run executable validation directly. If R3 review passes, perform one authoritative PHX-CI verification of that exact reviewed R3 candidate before any master reconciliation. Do not begin S09 or Stage 3."
+  action: "Freeze the exact bvp-final-review-corrections-r4 HEAD after continuity records and issue one independent Codex Desktop delta review limited to FR-C03/R3-N01 and the exact ebf9863... -> R4 diff, including simultaneous controller acquisition, relay authority enforcement, selective Drive omission while A remains controller-authoritative, and stale lower-generation binding behavior. Codex must not mutate the repository or run executable validation directly. If R4 review passes, perform one authoritative PHX-CI verification of that exact reviewed R4 candidate before master reconciliation. Do not begin S09 or Stage 3."
