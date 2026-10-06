@@ -286,7 +286,235 @@ function Measure-Snapshot([string]$Sha, $Policy) {
     $liveLoc = 0
     foreach ($path in $liveFiles) { $liveLoc += Count-Loc (Read-SnapshotText $path $Sha) $path }
 
-    $scenarioFiles = @($paths | Where-Object { if (-not (Test-Under $_ $scenarioRoot)) { return $false }; if ($_ -match '(?i)\.(?:json|ya?ml)
+    $scenarioFiles = @($paths | Where-Object { if (-not (Test-Under $_ $scenarioRoot)) { return $false }; if ($_ -match '(?i)\.(?:json|ya?ml)    $scenarios = [System.Collections.Generic.List[object]]::new()
+    foreach ($path in $scenarioFiles) {
+        $loc = Count-Loc (Read-SnapshotText $path $Sha) $path
+        $name = (Normalize-RepoPath $path).Substring($scenarioRoot.Length + 1) -replace '\.[^.]+$', ''
+        $scenarios.Add([pscustomobject]@{ scenario = $name; path = $path; logicalLoc = $loc; targetExceeded = ($loc -gt $Policy.ScenarioTarget); hardMaxExceeded = ($loc -gt $Policy.ScenarioMax) })
+    }
+
+    $prodSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($p in $productionFiles) { $prodSet.Add($p) | Out-Null }
+    $imports = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($result in $analysisResults) {
+        foreach ($errorText in @($result.errors)) { if ($errorText) { $classificationErrors.Add("TypeScript analysis failed for $($result.path): $errorText") } }
+        foreach ($dependency in @($result.dependencies)) {
+            $target = Resolve-ProductionModule ([string]$result.path) ([string]$dependency.specifier) $prodSet
+            if ($target) { $imports.Add($target) | Out-Null }
+        }
+    }
+
+    $knownNonBvp = @('dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1')
+    $knownBvp = @('dev/scripts/Get-TestingArchitectureMetrics.ps1','dev/scripts/Test-TestingArchitectureGuard.ps1')
+    $scriptPaths = [System.Collections.Generic.List[string]]::new()
+    $scenarioPs = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in @($paths | Where-Object { $_ -match '(?i)^dev/scripts/.*\.ps1$' })) {
+        if ($knownNonBvp -contains $path) { continue }
+        $code = @(Get-LogicalLines (Read-SnapshotText $path $Sha) 'ps') -join "`n"
+        $isKnownGeneric = $knownBvp -contains $path
+        $isBvp = $isKnownGeneric -or $code -match '(?i)\b(?:BVP|test-platform|testing-platform)\b'
+        if (-not $isBvp) { $classificationErrors.Add("Unclassifiable active dev/scripts PowerShell: $path"); continue }
+        $scriptPaths.Add($path)
+        if (-not $isKnownGeneric -and $code -match '(?i)(?:test-platform/scenarios/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["''][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["''])') { $scenarioPs.Add($path) }
+    }
+    foreach ($path in @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match '(?i)\.ps1$' })) {
+        if (-not $scenarioPs.Contains($path)) { $scenarioPs.Add($path) }
+    }
+    $psLoc = 0
+    foreach ($path in $scriptPaths) { $psLoc += Count-Loc (Read-SnapshotText $path $Sha) $path }
+    $scenarioProd = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in $productionFiles) {
+        $text = Read-SnapshotText $path $Sha
+        $code = @(Get-LogicalLines $text 'ts') -join "`n"
+        if ($path -match '(?i)scenario' -or $code -match '(?im)^\s*(?:export\s+)?(?:class|interface|type)\s+[A-Za-z0-9_]*Scenario[A-Za-z0-9_]*\b') { $scenarioProd.Add($path) }
+    }
+    $scenarioLocTotal = 0
+    foreach ($scenario in $scenarios) { $scenarioLocTotal += [int]$scenario.logicalLoc }
+    return [pscustomobject]@{
+        productionSourceLogicalLoc = $productionLoc
+        productionSeamLogicalLoc = $seamLoc
+        productionSeamFileCount = $seamFiles.Count
+        productionSeamFiles = @($seamFiles | Sort-Object)
+        frameworkCoreLogicalTsLoc = $coreLoc
+        platformCoreRuntimeModuleCount = $coreFiles.Count
+        frameworkCoreFiles = @($coreFiles | Sort-Object)
+        liveDeviceAgentRelayLogicalTsLoc = $liveLoc
+        liveDeviceAgentRelayFiles = @($liveFiles | Sort-Object)
+        scenarioDefinitionLogicalLocTotal = [int]$scenarioLocTotal
+        scenarioCount = $scenarios.Count
+        scenarios = @($scenarios | Sort-Object path)
+        productionModulesImportedCount = $imports.Count
+        productionModulesImported = @($imports | Sort-Object)
+        bvpPowerShellScriptCount = $scriptPaths.Count
+        bvpPowerShellLogicalLoc = $psLoc
+        bvpPowerShellFiles = @($scriptPaths | Sort-Object)
+        scenarioSpecificPowerShellCount = $scenarioPs.Count
+        scenarioSpecificPowerShellFiles = @($scenarioPs | Sort-Object)
+        scenarioSpecificProductionFileCount = $scenarioProd.Count
+        scenarioSpecificProductionFiles = @($scenarioProd | Sort-Object)
+        classificationErrors = @($classificationErrors | Sort-Object)
+    }
+}
+
+function Add-Budget($List, [string]$Id, [int]$Measured, [int]$Limit, [string[]]$Offenders = @()) {
+    $state = if ($Measured -le $Limit) { 'PASS' } else { 'FAIL' }
+    $List.Add([pscustomobject]@{ id = $Id; measured = $Measured; limit = $Limit; state = $state; offenders = @($Offenders) }) | Out-Null
+}
+
+try {
+    $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $policy = Get-ManifestPolicy
+    $current = Measure-Snapshot '' $policy
+    $budgets = [System.Collections.Generic.List[object]]::new()
+    Add-Budget $budgets 'PRODUCTION_SEAM_LOC' $current.productionSeamLogicalLoc $policy.SeamLocMax $current.productionSeamFiles
+    Add-Budget $budgets 'PRODUCTION_SEAM_FILES' $current.productionSeamFileCount $policy.SeamFilesMax $current.productionSeamFiles
+    Add-Budget $budgets 'FRAMEWORK_CORE_LOC' $current.frameworkCoreLogicalTsLoc $policy.CoreLocMax $current.frameworkCoreFiles
+    Add-Budget $budgets 'LIVE_DEVICE_AGENT_RELAY_LOC' $current.liveDeviceAgentRelayLogicalTsLoc $policy.LiveLocMax $current.liveDeviceAgentRelayFiles
+    foreach ($scenario in $current.scenarios) { Add-Budget $budgets ("SCENARIO_LOC:{0}" -f $scenario.scenario) $scenario.logicalLoc $policy.ScenarioMax @($scenario.path) }
+    Add-Budget $budgets 'SCENARIO_SPECIFIC_POWERSHELL' $current.scenarioSpecificPowerShellCount $policy.ScenarioPsMax $current.scenarioSpecificPowerShellFiles
+    Add-Budget $budgets 'BVP_POWERSHELL_SCRIPT_COUNT' $current.bvpPowerShellScriptCount $policy.BvpPsCountMax $current.bvpPowerShellFiles
+    Add-Budget $budgets 'BVP_POWERSHELL_LOC' $current.bvpPowerShellLogicalLoc $policy.BvpPsLocMax $current.bvpPowerShellFiles
+    Add-Budget $budgets 'SCENARIO_SPECIFIC_PRODUCTION_FILES' $current.scenarioSpecificProductionFileCount $policy.ScenarioProductionMax $current.scenarioSpecificProductionFiles
+    $base = $null
+    $delta = $null
+    if ($BaseSha) {
+        $basePolicy = Get-ManifestPolicy $BaseSha
+        $base = Measure-Snapshot $BaseSha $basePolicy
+        $delta = [ordered]@{}
+        foreach ($name in @('productionSourceLogicalLoc','productionSeamLogicalLoc','productionSeamFileCount','frameworkCoreLogicalTsLoc','platformCoreRuntimeModuleCount','liveDeviceAgentRelayLogicalTsLoc','scenarioDefinitionLogicalLocTotal','scenarioCount','productionModulesImportedCount','bvpPowerShellScriptCount','bvpPowerShellLogicalLoc','scenarioSpecificPowerShellCount','scenarioSpecificProductionFileCount')) {
+            $delta[$name] = [pscustomobject]@{ base = [int]$base.$name; current = [int]$current.$name; delta = ([int]$current.$name - [int]$base.$name) }
+        }
+    }
+    $failed = @($budgets | Where-Object state -eq 'FAIL').Count -gt 0 -or @($current.classificationErrors).Count -gt 0
+    if ($null -ne $base -and @($base.classificationErrors).Count -gt 0) { $failed = $true }
+    $baseLabel = if ($BaseSha) { $BaseSha } else { $null }
+    $overall = if ($failed) { 'FAIL' } else { 'PASS' }
+    $result = [ordered]@{ schemaVersion = 1; baseSha = $baseLabel; current = $current; base = $base; delta = $delta; budgets = @($budgets); overall = $overall }
+    $result | ConvertTo-Json -Depth 12
+    if ($failed) { exit 1 }
+    exit 0
+}
+catch {
+    $baseLabel = if ($BaseSha) { $BaseSha } else { $null }
+    [ordered]@{ schemaVersion = 1; baseSha = $baseLabel; current = $null; base = $null; delta = $null; budgets = @(); overall = 'FAIL'; error = $_.Exception.Message } | ConvertTo-Json -Depth 6
+    exit 1
+}
+) { return $true }; if ($_ -notmatch $tsExt) { return $false }; $shape=$analysisByPath[$_]; return $null -ne $shape -and $shape.declarativeScenario -eq $true })
+    $scenarios = [System.Collections.Generic.List[object]]::new()
+    foreach ($path in $scenarioFiles) {
+        $loc = Count-Loc (Read-SnapshotText $path $Sha) $path
+        $name = (Normalize-RepoPath $path).Substring($scenarioRoot.Length + 1) -replace '\.[^.]+$', ''
+        $scenarios.Add([pscustomobject]@{ scenario = $name; path = $path; logicalLoc = $loc; targetExceeded = ($loc -gt $Policy.ScenarioTarget); hardMaxExceeded = ($loc -gt $Policy.ScenarioMax) })
+    }
+
+    $prodSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($p in $productionFiles) { $prodSet.Add($p) | Out-Null }
+    $imports = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $analysisInput = @($testFiles | ForEach-Object { [pscustomobject]@{ path = $_; text = (Read-SnapshotText $_ $Sha) } })
+    foreach ($result in @(Invoke-TypeScriptDependencyAnalysis $analysisInput)) {
+        foreach ($errorText in @($result.errors)) { if ($errorText) { $classificationErrors.Add("TypeScript analysis failed for $($result.path): $errorText") } }
+        foreach ($dependency in @($result.dependencies)) {
+            $target = Resolve-ProductionModule ([string]$result.path) ([string]$dependency.specifier) $prodSet
+            if ($target) { $imports.Add($target) | Out-Null }
+        }
+    }
+
+    $knownNonBvp = @('dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1')
+    $knownBvp = @('dev/scripts/Get-TestingArchitectureMetrics.ps1','dev/scripts/Invoke-BvpS01AuthorityArchiveVerification.ps1','dev/scripts/Invoke-BvpS01Bootstrap.ps1','dev/scripts/Test-TestingArchitectureGuard.ps1')
+    $scriptPaths = [System.Collections.Generic.List[string]]::new()
+    $scenarioPs = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in @($paths | Where-Object { $_ -match '(?i)^dev/scripts/.*\.ps1$' })) {
+        if ($knownNonBvp -contains $path) { continue }
+        $code = @(Get-LogicalLines (Read-SnapshotText $path $Sha) 'ps') -join "`n"
+        $isKnownGeneric = $knownBvp -contains $path
+        $isBvp = $isKnownGeneric -or $code -match '(?i)\b(?:BVP|test-platform|testing-platform)\b'
+        if (-not $isBvp) { $classificationErrors.Add("Unclassifiable active dev/scripts PowerShell: $path"); continue }
+        $scriptPaths.Add($path)
+        if (-not $isKnownGeneric -and $code -match '(?i)(?:test-platform/scenarios/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["''][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["''])') { $scenarioPs.Add($path) }
+    }
+    foreach ($path in @($paths | Where-Object { (Test-Under $_ $Policy.TestPlatformRoot) -and $_ -match '(?i)\.ps1$' })) {
+        if (-not $scenarioPs.Contains($path)) { $scenarioPs.Add($path) }
+    }
+    $psLoc = 0
+    foreach ($path in $scriptPaths) { $psLoc += Count-Loc (Read-SnapshotText $path $Sha) $path }
+    $scenarioProd = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in $productionFiles) {
+        $text = Read-SnapshotText $path $Sha
+        $code = @(Get-LogicalLines $text 'ts') -join "`n"
+        if ($path -match '(?i)scenario' -or $code -match '(?im)^\s*(?:export\s+)?(?:class|interface|type)\s+[A-Za-z0-9_]*Scenario[A-Za-z0-9_]*\b') { $scenarioProd.Add($path) }
+    }
+    $scenarioLocTotal = 0
+    foreach ($scenario in $scenarios) { $scenarioLocTotal += [int]$scenario.logicalLoc }
+    return [pscustomobject]@{
+        productionSourceLogicalLoc = $productionLoc
+        productionSeamLogicalLoc = $seamLoc
+        productionSeamFileCount = $seamFiles.Count
+        productionSeamFiles = @($seamFiles | Sort-Object)
+        frameworkCoreLogicalTsLoc = $coreLoc
+        platformCoreRuntimeModuleCount = $coreFiles.Count
+        frameworkCoreFiles = @($coreFiles | Sort-Object)
+        liveDeviceAgentRelayLogicalTsLoc = $liveLoc
+        liveDeviceAgentRelayFiles = @($liveFiles | Sort-Object)
+        scenarioDefinitionLogicalLocTotal = [int]$scenarioLocTotal
+        scenarioCount = $scenarios.Count
+        scenarios = @($scenarios | Sort-Object path)
+        productionModulesImportedCount = $imports.Count
+        productionModulesImported = @($imports | Sort-Object)
+        bvpPowerShellScriptCount = $scriptPaths.Count
+        bvpPowerShellLogicalLoc = $psLoc
+        bvpPowerShellFiles = @($scriptPaths | Sort-Object)
+        scenarioSpecificPowerShellCount = $scenarioPs.Count
+        scenarioSpecificPowerShellFiles = @($scenarioPs | Sort-Object)
+        scenarioSpecificProductionFileCount = $scenarioProd.Count
+        scenarioSpecificProductionFiles = @($scenarioProd | Sort-Object)
+        classificationErrors = @($classificationErrors | Sort-Object)
+    }
+}
+
+function Add-Budget($List, [string]$Id, [int]$Measured, [int]$Limit, [string[]]$Offenders = @()) {
+    $state = if ($Measured -le $Limit) { 'PASS' } else { 'FAIL' }
+    $List.Add([pscustomobject]@{ id = $Id; measured = $Measured; limit = $Limit; state = $state; offenders = @($Offenders) }) | Out-Null
+}
+
+try {
+    $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $policy = Get-ManifestPolicy
+    $current = Measure-Snapshot '' $policy
+    $budgets = [System.Collections.Generic.List[object]]::new()
+    Add-Budget $budgets 'PRODUCTION_SEAM_LOC' $current.productionSeamLogicalLoc $policy.SeamLocMax $current.productionSeamFiles
+    Add-Budget $budgets 'PRODUCTION_SEAM_FILES' $current.productionSeamFileCount $policy.SeamFilesMax $current.productionSeamFiles
+    Add-Budget $budgets 'FRAMEWORK_CORE_LOC' $current.frameworkCoreLogicalTsLoc $policy.CoreLocMax $current.frameworkCoreFiles
+    Add-Budget $budgets 'LIVE_DEVICE_AGENT_RELAY_LOC' $current.liveDeviceAgentRelayLogicalTsLoc $policy.LiveLocMax $current.liveDeviceAgentRelayFiles
+    foreach ($scenario in $current.scenarios) { Add-Budget $budgets ("SCENARIO_LOC:{0}" -f $scenario.scenario) $scenario.logicalLoc $policy.ScenarioMax @($scenario.path) }
+    Add-Budget $budgets 'SCENARIO_SPECIFIC_POWERSHELL' $current.scenarioSpecificPowerShellCount $policy.ScenarioPsMax $current.scenarioSpecificPowerShellFiles
+    Add-Budget $budgets 'BVP_POWERSHELL_SCRIPT_COUNT' $current.bvpPowerShellScriptCount $policy.BvpPsCountMax $current.bvpPowerShellFiles
+    Add-Budget $budgets 'BVP_POWERSHELL_LOC' $current.bvpPowerShellLogicalLoc $policy.BvpPsLocMax $current.bvpPowerShellFiles
+    Add-Budget $budgets 'SCENARIO_SPECIFIC_PRODUCTION_FILES' $current.scenarioSpecificProductionFileCount $policy.ScenarioProductionMax $current.scenarioSpecificProductionFiles
+    $base = $null
+    $delta = $null
+    if ($BaseSha) {
+        $basePolicy = Get-ManifestPolicy $BaseSha
+        $base = Measure-Snapshot $BaseSha $basePolicy
+        $delta = [ordered]@{}
+        foreach ($name in @('productionSourceLogicalLoc','productionSeamLogicalLoc','productionSeamFileCount','frameworkCoreLogicalTsLoc','platformCoreRuntimeModuleCount','liveDeviceAgentRelayLogicalTsLoc','scenarioDefinitionLogicalLocTotal','scenarioCount','productionModulesImportedCount','bvpPowerShellScriptCount','bvpPowerShellLogicalLoc','scenarioSpecificPowerShellCount','scenarioSpecificProductionFileCount')) {
+            $delta[$name] = [pscustomobject]@{ base = [int]$base.$name; current = [int]$current.$name; delta = ([int]$current.$name - [int]$base.$name) }
+        }
+    }
+    $failed = @($budgets | Where-Object state -eq 'FAIL').Count -gt 0 -or @($current.classificationErrors).Count -gt 0
+    if ($null -ne $base -and @($base.classificationErrors).Count -gt 0) { $failed = $true }
+    $baseLabel = if ($BaseSha) { $BaseSha } else { $null }
+    $overall = if ($failed) { 'FAIL' } else { 'PASS' }
+    $result = [ordered]@{ schemaVersion = 1; baseSha = $baseLabel; current = $current; base = $base; delta = $delta; budgets = @($budgets); overall = $overall }
+    $result | ConvertTo-Json -Depth 12
+    if ($failed) { exit 1 }
+    exit 0
+}
+catch {
+    $baseLabel = if ($BaseSha) { $BaseSha } else { $null }
+    [ordered]@{ schemaVersion = 1; baseSha = $baseLabel; current = $null; base = $null; delta = $null; budgets = @(); overall = 'FAIL'; error = $_.Exception.Message } | ConvertTo-Json -Depth 6
+    exit 1
+}
+) { return $true }; if ($_ -notmatch $tsExt) { return $false }; $shape = $analysisByPath[$_]; return $null -ne $shape -and $shape.declarativeScenario -eq $true })
     $scenarios = [System.Collections.Generic.List[object]]::new()
     foreach ($path in $scenarioFiles) {
         $loc = Count-Loc (Read-SnapshotText $path $Sha) $path
