@@ -252,4 +252,11 @@ test("failure evidence preserves distinct privacy-safe reasons without copying f
   strictEqual(first.machineJson.includes("first private failure detail"),false);
   const token=buildScenarioEvidence(definition,{...base,reason:"oauth_token_super_secret_value"});
   strictEqual(token.machineJson.includes("super_secret_value"),false);
+  const codeShaped=buildScenarioEvidence(definition,{...base,reason:"project-apollo-roadmap"});
+  strictEqual(codeShaped.machine.verdict.reason?.startsWith("reason-sha256:"),true);
+  strictEqual(codeShaped.machineJson.includes("project-apollo-roadmap"),false);
+  const trusted=buildScenarioEvidence(definition,{...base,reason:"status"});
+  strictEqual(trusted.machine.verdict.reason,"status");
+  const classificationOnly=buildScenarioEvidence(definition,{...base,reason:undefined});
+  strictEqual(classificationOnly.machine.verdict.reason,"step-exception");
 });
