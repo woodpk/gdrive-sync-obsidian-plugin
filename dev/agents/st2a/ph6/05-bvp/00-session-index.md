@@ -59,7 +59,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
 | 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
-| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
+| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
 | 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
 | 09A | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md` |
 | 09B | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09b-physical-bidirectional-synchronization-and-representative-conflict.md` |
@@ -867,17 +867,42 @@ S08E first authoritative verification at `c8678f1eb5a128dd810531a9fd3c9a1e53d3cf
 
 S08E — External Live Executor and Human Checkpoints is **COMPLETE / ACCEPTED**. Accepted implementation `e1067f5159a316f328c492837b8c6ff59e08d226`; evidence `2a68eb896bb33b92f480cb9f43d7ac002cdce539`; run `3efd4490-e913-42d3-93a7-6b919b3f61d8`; exact base `6d328dbfd79c6d9c58ca3b0a3bfcbd32f5fa8ad6`. Complete JSON, Markdown, and 7,559-line log reviewed. Focused 91/91 PASS; full repository 835/835 PASS; all PHX-CI stages PASS; architecture guard 0; repository gate PASS; vulnerabilities 0. Shipping artifact remains 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`; validation artifact rebuilt deterministically at SHA-256 `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`. Current architecture: core 3,996/4,000 / 10 modules; live-device/relay/executor 727/750; production seam 187/350 and 3/4; BVP PowerShell 4/1,492; scenario-specific production/PowerShell 0/0.
 
+S08F — Platform Construction Closure and Production-Bundle Isolation is **RE-GROUNDED / ACTIVE**.
 
-S08F — Desktop Live Canary and Production-Bundle Isolation Proof is **BOUND / EXECUTABLE** from accepted S08E closure `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f` on branch `bvp-s08f-desktop-live-canary`. Physical target is the established Windows BRAIN vault at `C:\Users\woodpk\Phoenix Rising Counseling Services\brain-patrick\BRAIN`; command device ID `windows-brain-patrick`; installed plugin `.obsidian\plugins\brain-google-drive-sync`; disposable fixture `BVP-VALIDATION/s08f-desktop-canary-4f9c69c/canary.md` with SHA-256 `db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d`. Accepted predecessor closure is `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`; exact runtime/validation-artifact source is `e1067f5159a316f328c492837b8c6ff59e08d226`. Evidence root is `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/`. Default binding authorizes no new runtime code; the accepted S08A–E stack must prove the desktop canary or S08F returns BLOCKED for supervisor re-grounding.
+User authority now fixes the S08/S09 boundary:
 
+- S08 constructs and PHX-CI-verifies the BRAIN Verification Platform itself;
+- S08 does not use the platform to perform real Obsidian, vault, Google Drive, provider, or synchronization-product validation;
+- physical Windows/iOS/Obsidian/provider execution belongs to S09 only after S08/S08V acceptance;
+- all prior S08F desktop-canary / physical-recovery instructions are superseded for S08 and remain historical only.
 
-S08F execution correction: the previously bound working BRAIN vault is no longer an authorized canary target. The installed validation artifact successfully reached `S08F_DEVICE_AGENT_READY` with product status `idle-ready`, but no command, fixture, preview, or synchronization execution occurred. S08F is now BLOCKED pending a dedicated disposable Windows/Obsidian validation environment. This preserves the original S08F smoke-canary contract without beginning S09 product-validation coverage against permanent user state.
+Corrected S08F task:
+`dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md`
 
+Corrected closure objective:
 
-S08F environment blocker resolved: disposable validation vault `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` is bound as the sole authorized Windows canary target. It contains validation artifact `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351` from `e1067f5159a316f328c492837b8c6ff59e08d226`, with no copied working-vault content, data.json, OAuth token, pairing identity, remote identity, or synchronization authority. Working BRAIN vault remains prohibited for S08F execution.
+- prove the accepted S08A-E testing-platform components through repository-controlled automated tests;
+- prove production-bundle exclusion and frozen architecture budgets;
+- run authoritative PHX-CI verification only;
+- perform no live Obsidian/Drive/vault/product execution;
+- on PASS, stop at `READY FOR S08V INTEGRATED ACCEPTANCE`.
 
+Current corrected S08F candidate was subsequently verified and accepted.
 
-S08F disposable live identity binding: independent authentication succeeded for the disposable vault. Product device `device:8b7820faab2603b334a1c13d8c3bdba0`, vault `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`, and disposable managed remote `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-` are bound for the S08F canary. First synchronization remains unexecuted and automatic sync remains disabled.
+### S08F authoritative automated platform closure
 
+S08F — Platform Construction Closure and Production-Bundle Isolation is **COMPLETE / ACCEPTED**.
 
-S08F lifecycle-aware retry binding: attempt 1 run `s08f-desktop-canary-4f9c69c` is terminal after sequence 3 was safely rejected at production `run-start:stopping` with zero committed operations, exact fixture preserved, and local relay drained. Repository grounding confirms the accepted production lifecycle gate behaved fail-closed; the defect is in S08F physical execution timing, not production semantics. Fresh retry run `s08f-desktop-canary-4f9c69c-r2` / scenario `s08f-desktop-live-canary-r2` is authorized only after exact attempt-1 precondition verification and a real Windows/Obsidian suspend→resume transition. The retry must use the accepted S08C–E stack, pause command polling while the renderer is hidden, preserve attempt-1 sequence state, complete cleanup and identity-safety proofs, restore the ordinary production bundle on PASS, and stop at READY FOR LOCAL PHX-CI VERIFICATION. Repository-controlled continuation harness is bound under `dev/evidence/2026-10-02-BVP-S08F-4f9c69c/Invoke-S08FProtocolContinuation.ps1`; no production/test-platform runtime or additional `dev/scripts` BVP verifier is authorized.
+- verified source: `b53f8628353f0115248503fa5a81e4ebc206c218`;
+- PHX-CI evidence: `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- run: `6bf02af1-91be-4b74-9f19-a50591abb255`;
+- base: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / framework `0.2.0-dev.2`;
+- focused S08 platform tests: 137/137 PASS;
+- full repository suite: 835/835 PASS;
+- build, repository-check, architecture guard/metrics, Git gate, and artifact proof: PASS;
+- shipping `main.js`: 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- accepted metrics: production seam 187/350 LOC and 3/4 files; framework core 3,996/4,000 LOC; live-device/relay/executor 727/750 LOC; BVP PowerShell 4/4 scripts and 1,492/1,500 LOC; scenario-specific production/PowerShell 0/0.
+
+No physical product execution was used. S08F is closed; **S08 remains open pending S08V integrated acceptance and architecture review**. The next supervisor action is to reconcile the accepted S08F closure with the current `phase6-integration` head, bind S08V to that exact integrated state, and perform the S08V PHX-CI/architecture review.
+

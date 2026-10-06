@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-10-04"
+  as_of: "2026-10-05"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "agent-led-software-product-construction-manual.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -18,7 +18,7 @@ record:
     stage_1_build_decomposition: complete
     stage_2a: active
     stage_3: pending
-    next_step: "Stage 2A / Phase 6 / BVP-S08F — resume the human-accepted preserved physical recovery from the repository-controlled post-repair authority-recovery harness; do not replay r2 and do not begin S09."
+    next_step: "Stage 2A / Phase 6 / BVP-S08F — close testing-platform construction with PHX-CI-only automated BVP verification and production-bundle isolation; no Obsidian, Drive, vault, or real synchronization execution in S08. Physical product validation begins in S09 only after S08/S08V acceptance."
   supervision_model:
     mode: "supervised_parallel_capable"
     supervisor_lineage: "current supervising agent and successive descendant supervisors"
@@ -962,6 +962,12 @@ decisions:
     status: locked
     category: supervisor_continuity
     decision: "The repository must maintain durable supervisor re-entry memory independent of chat history. dev/planning-and-building/project-state.yaml is the canonical current execution/progress snapshot and must be updated whenever the active work package, exact task head, acceptance state, preserved physical/external state, or immediate next action materially changes. dev/planning-and-building/supervisor-continuity-log.md is an append-only chronological operational log; every material engineering transition must append enough exact branch/SHA/evidence/next-action context to resume safely after abrupt session loss. This continuity memory is operational state, not product authority, and does not replace the target-system specification, task contracts, decision register, PHX-CI evidence, or task-specific evidence."
+
+
+  - id: DEC-328
+    status: locked
+    category: bvp_phase_boundary
+    decision: "BVP-S08 is construction and automated verification of the BRAIN Verification Platform itself. S08 may build and PHX-CI-verify the validation artifact, bounded device-command agent, mailbox/relay, external executor, checkpoint behavior, production-receipt seam, architecture boundaries, and production-bundle isolation, but it must not use those facilities to perform real Obsidian, vault, Google Drive, provider, or synchronization-product validation. Physical Windows/iOS/Obsidian/provider use of the completed platform belongs to BVP-S09. All earlier S08F instructions to run or recover a real desktop canary are superseded for S08; their evidence remains historical only."
 
 superseded_decisions:
   - id: SUP-001

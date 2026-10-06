@@ -290,11 +290,11 @@ No scenario engine on device. No device-local distributed suite state. No new OA
 
 ### Verification
 
-Desktop validation build can execute bounded commands through production; stale/duplicate commands fail; production build remains clean; transport records cannot be interpreted as vault content/sync authority; architecture guard and budgets pass.
+During S08, prove the platform capability through PHX-CI-controlled automated repository checks only: validation-artifact construction, bounded command semantics, stale/duplicate/mismatch rejection, transport non-authority, external-runner/checkpoint contracts, production-bundle exclusion, and architecture guard/budgets. Do not launch Obsidian, touch a vault or real Google Drive remote, or execute real synchronization for S08 acceptance; physical use of the completed platform begins in S09 under DEC-328.
 
 ### Stop
 
-Stop before migrating full physical scenario coverage.
+Stop after automated S08 platform-construction acceptance. Do not begin physical product execution; full Windows/iOS/Obsidian/provider coverage belongs to S09.
 
 ---
 

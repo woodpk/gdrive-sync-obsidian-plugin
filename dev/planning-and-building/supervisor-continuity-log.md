@@ -176,3 +176,103 @@ Another owner execution is permitted because the relevant substantive physical r
 ### Immediate next action
 
 Audit and run the repaired post-repair authority-recovery harness from the new exact task head. Preserve r2; do not replay/reset it; do not start a fresh canary in the same execution; do not begin S09.
+
+## 2026-10-05 — S08/S09 Phase-Boundary Correction
+
+User authority corrected a fundamental scope error: BVP-S08 constructs and verifies the automated testing platform itself; BVP-S09 is the stage that uses the completed platform for real Windows/iOS/Obsidian/provider product validation.
+
+Corrective repository actions:
+
+- locked DEC-328;
+- restored S08E task record to its accepted state;
+- rewrote S08F as platform-construction closure / production-bundle isolation;
+- restored all product/source/test files modified solely for the premature S08 physical canary to accepted S08E state;
+- removed the 2,352-line S08F physical product-authority recovery test;
+- removed the repository-controlled S08F physical-recovery PHX-CI launcher;
+- retained prior physical evidence as historical only and explicitly marked it superseded for S08;
+- reset project-state and session-index authority to PHX-CI-only automated BVP platform verification;
+- no further Obsidian, vault, Drive, or real synchronization execution is authorized for S08.
+
+Next engineering action: inspect accepted S08A-E automated coverage against corrected S08F acceptance criteria, add only missing BVP-owned automated tests if necessary, then run authoritative PHX-CI on the exact corrected branch candidate. On PASS, proceed to S08V integrated acceptance.
+
+## 2026-10-05 — S08F Authority Reconciliation and Automated-Coverage Review
+
+Successor supervisor re-grounded the corrected S08F boundary against the current original Google Drive operating protocol and construction manual, the current repository, DEC-328, BVP planning authority, and the accepted S08E closure.
+
+Repository state at re-entry matched expected branch HEAD `d35d2acb489618b544e36f7fab89e11452d5745e`.
+
+Authority/document corrections completed:
+
+- `d5b5887154e6eea2d057c7c5d2012946e12743b6` — restored the exact accepted S08E closure task record from `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`, correcting the accidental regression to `BOUND / EXECUTABLE`;
+- `9376b1d10acc9ce5c2b16f854e17f4ec136d7ece` — corrected the active S08F/S08V rows in `testing-platform-session-decomposition.md` so S08 closes platform construction through automated verification and reserves physical execution for S09;
+- `4c892129a3597939e5b152a8a672f2eb8f990d13` — re-grounded S08V under DEC-328, removing the stale physical desktop-canary requirement and defining integrated automated platform-construction acceptance;
+- `8fed1c6bdd6339f79527371e73f287e4ddeddeb5` — clarified the active S08 build-session specification: PHX-CI-controlled automated platform proof only in S08, real Windows/iOS/Obsidian/provider use in S09;
+- `b776becc93846752041b1f4bcbcc7f505d2ba79f` — advanced canonical project state to the authoritative PHX-CI gate.
+
+Tree reconciliation against accepted S08E closure `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f` confirms:
+
+- no current `src/**` implementation delta;
+- no current `test-platform/src/**` implementation delta;
+- the superseded S08F physical-recovery test is absent;
+- the superseded S08F physical-recovery PHX-CI launcher is absent;
+- the historical physical evidence directory remains explicitly marked non-authoritative for S08;
+- the target branch `phx-ci.json` currently pins PHX-CI framework/runtime SHA `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
+
+Existing S08A-E automated coverage was inspected. It already covers the corrected S08F construction-closure contract: production receipt authority, validation-build/shipping isolation, bounded production-control delegation, device run/device/sequence and replay safety, mailbox/relay boundedness and correlation, single-runner authority, live-executor correlation/fail-closed behavior, human-checkpoint persistence/resume, architecture guard, architecture metrics, and PHX repository-check integration. No concrete S08F test gap was identified; no new test or runtime code is authorized or needed on current evidence.
+
+The architecture guard confirms that a change set containing frozen `phx-ci.json` requires `BVP_CHANGE_CLASS=authorized-governance`; ordinary classification would reject the frozen-surface change.
+
+Immediate next action: freeze the exact post-reconciliation branch HEAD as the S08F source candidate and run one authoritative PHX-CI verification against base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f` using the runtime selected by the candidate's `phx-ci.json`, publication mode `push`, and authorized-governance change classification. No physical product execution is permitted.
+
+
+
+## 2026-10-05 — S08F Authoritative Automated Platform Acceptance
+
+Corrected S08F platform-construction closure completed under DEC-328 with no physical product execution.
+
+Authoritative identities:
+
+- verified source: `b53f8628353f0115248503fa5a81e4ebc206c218`;
+- authoritative PHX-CI evidence commit: `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- run ID: `6bf02af1-91be-4b74-9f19-a50591abb255`;
+- verification base: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- PHX-CI runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`;
+- framework version: `0.2.0-dev.2`.
+
+Canonical evidence review:
+
+- evidence commit is exactly one commit after the verified source;
+- evidence-only delta contains `dev/_ca-output.md`, `dev/_ca-output.json`, and the three immutable `dev/test-results/20261005T232847Z-operator-bvp-s08f-desktop-live-canary-b53f8628353f.*` files only;
+- change-set verification PASS;
+- repository verification PASS;
+- overall verification PASS / compatibility COMPLETE / task exit 0;
+- every ordered PHX-CI stage PASS;
+- focused S08 platform scope: 137/137 PASS;
+- full repository suite: 835/835 PASS, 0 failed, 0 skipped, 0 cancelled, 0 todo;
+- build PASS;
+- repository-check PASS with architecture guard and metrics PASS under `authorized-governance`;
+- Git gate PASS;
+- artifact proof PASS;
+- control checkout preserved YES;
+- evidence published YES.
+
+Accepted architecture and artifact state:
+
+- production seam 187 / 350 logical LOC, 3 / 4 files;
+- framework core 3,996 / 4,000 logical TypeScript LOC;
+- live-device / relay / executor 727 / 750 logical TypeScript LOC;
+- BVP PowerShell 4 / 4 scripts, 1,492 / 1,500 logical LOC;
+- scenario-specific production files 0;
+- scenario-specific PowerShell 0;
+- shipping `main.js` 885,307 bytes, SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Disposition:
+
+- S08F is COMPLETE / ACCEPTED;
+- historical physical S08F material remains superseded/non-authoritative for S08;
+- no owner rerun is warranted for this accepted result;
+- administrative closure commits after the evidence commit change no SUT source or executable validation surface and therefore do not invalidate the accepted PHX-CI result;
+- S08 remains open pending corrected S08V integrated acceptance and mandatory architecture review;
+- S09 physical execution remains prohibited until S08V acceptance.
+
+Immediate next action: reconcile the accepted S08F closure with the current `phase6-integration` head while preserving newer integration work, bind S08V to the resulting exact integrated SHA, and run S08V authoritative PHX-CI plus architecture review.

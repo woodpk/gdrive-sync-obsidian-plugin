@@ -64,8 +64,8 @@ Every primary S01-S09 work package ends with a `V` acceptance gate. S01 is alrea
 | S08 | 08C | Bounded device command agent and sequence safety | Agent executes single commands only; no scenario state machine; <=750 LOC subset budget tracked. |
 | S08 | 08D | Minimal command mailbox and Windows relay | Transport is run-scoped control metadata, no new OAuth scope/token export/product authority. |
 | S08 | 08E | External live executor and human checkpoints | Scenario authority stays external; unavailable OS/provider actions become explicit checkpoints. |
-| S08 | 08F | Desktop live canary and production-bundle isolation proof | Desktop canary succeeds; duplicates/stale commands fail; production bundle exclusion proven. |
-| S08 | 08V | Primary-stage PHX-CI acceptance and architecture review | PHX-CI complete; architecture review approves physical stage or blocks. |
+| S08 | 08F | Platform construction closure and production-bundle isolation proof | Automated S08A–E platform-contract checks, architecture guard/metrics, full PHX-CI gates, and production-bundle exclusion pass; no real Obsidian/Drive/vault/product execution occurs. |
+| S08 | 08V | Primary-stage PHX-CI acceptance and architecture review | Integrated S08 testing-platform construction passes PHX-CI, frozen architecture/budget checks, production-seam/transport/runner/checkpoint review, and production-bundle isolation; supervisor may then authorize S09 physical validation. |
 | S09 | 09A | Windows/iOS install, authentication and pairing baseline | Bound device/build identities recorded; Windows+iOS baseline evidence complete. |
 | S09 | 09B | Physical bidirectional synchronization and representative conflict | Cross-device convergence/conflict evidence complete. |
 | S09 | 09C | Physical offline/reconnect and interruption/resume | Physical lifecycle/network evidence complete. |
