@@ -51,7 +51,7 @@ stage_2a_phases:
 
 active_work:
   primary_package: "BVP pre-S09 closure — final independent review, correction, PHX-CI verification, master integration, and construction cleanup"
-  task_branch: "bvp-final-review-corrections-r4"
+  task_branch: "bvp-final-review-corrections-r5"
   task_document: "dev/planning-and-building/bvp-master-integration-and-cleanup-plan.md"
   authoritative_phase_boundary_decision: "DEC-328"
   authoritative_pre_s09_closure_decision: "DEC-329"
@@ -61,8 +61,9 @@ active_work:
   first_correction_candidate: "5c73a15d438f39f7c7fc28e744a1e19a7119a53e"
   correction_r2_candidate: "00d4ff1a2141b43d44a40e9cb71832965f0dbf22"
   correction_r3_candidate: "ebf9863abbf9c2407f509f931a2fdea34267e329"
-  correction_branch: "bvp-final-review-corrections-r4"
-  correction_r4_implementation_head: "3dc903de2273dc6b7bfa880ad18d89621baf2cf0"
+  correction_r4_candidate: "b324eb670c6980d22b2495a46636a2ff2c5b3a53"
+  correction_branch: "bvp-final-review-corrections-r5"
+  correction_r5_implementation_head: "6eb9ab6789dee597f2cb76e3190aba5d1db04c51"
   accepted_s08v_source: "c9f035cc24fd16ff1aad8216367a81149dd58896"
   accepted_s08v_evidence: "e9c635a9ffcf1a50aa461d16efb517b06626a6c6"
   accepted_s08v_run: "cf16c8cc-179d-4fb9-8ca4-96aaad0bb742"
