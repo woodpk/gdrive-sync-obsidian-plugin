@@ -402,3 +402,40 @@ No executable validation has been run for these corrections yet. Under the opera
 
 Immediate next action: freeze the exact branch HEAD after this continuity commit and issue one independent Codex Desktop **correction review** against the complete reviewed-base-to-corrected-candidate diff, with explicit disposition required for each of the eight original findings plus regression/scope review. If that review passes, perform one authoritative PHX-CI verification of the exact reviewed correction candidate. Do not reconcile with master, begin S09, or begin Stage 3 before those gates pass.
 
+## 2026-10-06 — Final BVP Correction Review R2
+
+Codex independently reviewed first correction candidate `5c73a15d438f39f7c7fc28e744a1e19a7119a53e` and returned CORRECTION REQUIRED with five remaining material findings. The supervisor independently revalidated all five against the exact candidate and governing BVP contracts; all five were accepted as genuine defects.
+
+The five accepted defects were:
+
+1. canonical evidence still preserved arbitrary punctuation-shaped private reasons as plaintext;
+2. the scenario-root classifier checked only the outer `defineScenario({...})` shape and could still hide executable expressions inside the object;
+3. run-binding rollover could race command publication between binding creation and command-record visibility;
+4. Windows relay `pumpOnce()` remained re-entrant under timer overlap;
+5. active `dev/agents/agent-to-agent-communication.md` still directed agents to removed S01 verifier/bootstrap authority.
+
+A second isolated correction branch `bvp-final-review-corrections-r2` was created from exact reviewed SHA `5c73a15d438f39f7c7fc28e744a1e19a7119a53e`. Targeted changes only:
+
+- evidence reason plaintext is now restricted to the terminal classification itself or an explicit small trusted-code vocabulary; every other reason is hashed;
+- both authorized frozen governance classifiers now recursively require literal/data-only scenario-object syntax and reject calls, IIFEs/functions, spreads, computed properties, methods/accessors, tagged/executable expressions, while leaving current scenario authoring data-only;
+- command publication now writes a bounded per-run/device reservation before binding evaluation and removes it only after command media publication completes; competing run takeover is blocked while publication is in flight, and ambiguous partial publication remains fail-closed;
+- Windows relay pumping now has one in-flight promise and returns the same operation to overlapping callers;
+- active agent handoff was rewritten to current DEC-329 / PHX-CI-only authority with no dependency on deleted S01 standalone verifier scripts.
+
+Focused source regressions were added for:
+
+- code-shaped private evidence reasons;
+- nested IIFE/call/spread scenario definitions in both metrics and guard;
+- controlled two-run binding/publication interleaving;
+- relay overlap while the first publish is held;
+- installed artifact timer re-entry exercising the serialized desktop relay path.
+
+Static repository inspection also found no current scenario catalog use of calls/functions/spreads/templates/identifier-value/arithmetic patterns that would require weakening the data-only classifier, and GitHub code search returned no current references to the deleted S01 verifier/bootstrap names.
+
+No executable validation was run. PHX-CI remains the sole authoritative executable verification mechanism.
+
+R2 implementation head before project-state bookkeeping: `53d1cd63814ca538388a24f829cb3299fc5b2c08`.
+Project-state update commit: `2751ca48a758fefddc68cd75d64cf3f99f1d551d`.
+
+Immediate next action: freeze the exact R2 branch head after this continuity commit and issue one independent Codex Desktop delta review restricted to the five residual findings and the exact `5c73a15d...` -> R2 diff. If that review passes, perform one authoritative PHX-CI verification of the exact reviewed R2 candidate. Do not reconcile with master, begin S09, or begin Stage 3 before those gates pass.
+
