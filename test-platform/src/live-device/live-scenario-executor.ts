@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { createScenarioCheckpoint, decodeScenarioCheckpoint, encodeScenarioCheckpoint, validateScenarioCheckpointForResume, type ScenarioCheckpoint, type ScenarioResumeEvidence } from "../scenario/scenario-checkpoint";
@@ -86,6 +86,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     else{const checked=validateScenarioCheckpointForResume(decoded.value,{scenario:options.scenario,runId:options.runId,executionMode:"live",deviceIdentities,sourceIdentity:options.expectedValidationSourceCommit});if(!checked.ok)resumeFailure=checked.classification;else{const i=checked.value.nextStepIndex-1,target=options.scenario.steps[i];if(i<0||target?.kind!=="checkpoint"||checkpointKey(target)!==checked.value.checkpointId)resumeFailure="checkpoint-execution-context-mismatch";else resume=checked.value;}}
   }
 
+  async function pendingRelayCommand():Promise<boolean>{for(const root of [out,sent])for(const name of await readdir(root).catch(()=>[])){try{const value=JSON.parse(await readFile(join(root,name),"utf8")) as Partial<DeviceCommand>;if(value.runId===options.runId)return true;}catch{}}return false;}
   async function roundTrip(command:DeviceCommand):Promise<RelayResult>{
     const name=`${command.commandId}.json`,outPath=join(out,name),sentPath=join(sent,name),resultPath=join(inbox,`${name}.result.json`);
     if(!await exists(outPath)&&!await exists(sentPath)&&!await exists(resultPath)){
@@ -133,7 +134,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
 
   return{
     executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
-    async dispose(){if(pending)return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
+    async dispose(){if(pending||await pendingRelayCommand())return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
