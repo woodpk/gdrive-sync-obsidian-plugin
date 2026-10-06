@@ -77,7 +77,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   if(await exists(options.checkpointFile)){
     const decoded=decodeScenarioCheckpoint(await readFile(options.checkpointFile,"utf8"));
     if(!decoded.ok)resumeFailure=decoded.classification;
-    else{const checked=validateScenarioCheckpointForResume(decoded.value,{scenario:options.scenario,runId:options.runId,executionMode:"live",deviceIdentities});if(!checked.ok)resumeFailure=checked.classification;else{const i=checked.value.nextStepIndex-1,target=options.scenario.steps[i];if(i<0||target?.kind!=="checkpoint"||checkpointKey(target)!==checked.value.checkpointId)resumeFailure="checkpoint-execution-context-mismatch";else resume=checked.value;}}
+    else{const checked=validateScenarioCheckpointForResume(decoded.value,{scenario:options.scenario,runId:options.runId,executionMode:"live",deviceIdentities,sourceIdentity:options.expectedValidationSourceCommit});if(!checked.ok)resumeFailure=checked.classification;else{const i=checked.value.nextStepIndex-1,target=options.scenario.steps[i];if(i<0||target?.kind!=="checkpoint"||checkpointKey(target)!==checked.value.checkpointId)resumeFailure="checkpoint-execution-context-mismatch";else resume=checked.value;}}
   }
 
   async function roundTrip(command:DeviceCommand):Promise<RelayResult>{
@@ -105,7 +105,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     history.push({index,stepId:step.id,kind:step.kind,status:result.status,...("classification" in result?{classification:result.classification}:{}),matchedExpectation:true});return result;
   }
   function replay(index:number):ScenarioCapabilityResult{
-    const prior=resume?.results.find(item=>item.index===index);if(!prior||prior.status==="completed")return{status:"completed"};return fail(prior.status,prior.classification??"checkpoint-prior-result");
+    const prior=resume?.results.find(item=>item.index===index);if(!prior)return fail("blocked","checkpoint-prior-result-missing");if(prior.status==="completed")return{status:"completed"};return fail(prior.status,prior.classification??"checkpoint-prior-result");
   }
   async function humanCheckpoint(step:ScenarioCheckpointStep,context:ScenarioExecutorContext):Promise<ScenarioCapabilityResult>{
     const key=checkpointKey(step),instruction=options.checkpoints?.[key];
@@ -119,7 +119,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     const dependency=crossCheckpointCapture(options.scenario,context.stepIndex);
     if(dependency)return fail("unsupported","checkpoint-crosses-capture-dependency",dependency);
     const current:ScenarioStepExecution={index:context.stepIndex,stepId:step.id,kind:step.kind,status:"blocked",classification:"human-checkpoint-required",matchedExpectation:false};
-    const created=createScenarioCheckpoint({checkpointId:key,scenario:options.scenario,runId:options.runId,executionMode:"live",nextStepIndex:context.stepIndex+1,disposition:"awaiting-resume",steps:[...history,current],deviceIdentities,requiredResumeEvidence:instruction.requiredEvidence});
+    const created=createScenarioCheckpoint({checkpointId:key,scenario:options.scenario,runId:options.runId,executionMode:"live",nextStepIndex:context.stepIndex+1,disposition:"awaiting-resume",steps:[...history,current],deviceIdentities,requiredResumeEvidence:instruction.requiredEvidence,sourceIdentity:options.expectedValidationSourceCommit});
     if(!created.ok)return fail("failed",created.classification);
     await mkdir(dirname(options.checkpointFile),{recursive:true});await writeFile(options.checkpointFile,encodeScenarioCheckpoint(created.value),"utf8");
     pending=instruction;return fail("blocked","human-checkpoint-required",key);
