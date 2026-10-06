@@ -45,21 +45,23 @@ stage_2a_phases:
   phase_5: { name: "Integrated Synchronization Product and User Workflows", status: complete_supervisor_approved }
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_bvp_s08v_binding
+    status: active_bvp_s08v_integrated_acceptance
     integration_branch: "phase6-integration"
     completion_gate: not_yet_satisfied
 
 active_work:
   primary_package: "BVP-S08V — integrated S08 acceptance and architecture review binding"
-  task_branch: "not yet bound"
+  task_branch: "bvp-s08v-primary-stage-acceptance"
   task_document: "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md"
   authoritative_phase_boundary_decision: "DEC-328"
   accepted_s08f_source: "b53f8628353f0115248503fa5a81e4ebc206c218"
   accepted_s08f_evidence: "a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8"
   accepted_s08f_run: "6bf02af1-91be-4b74-9f19-a50591abb255"
-  accepted_s08f_closure_branch_head: "administrative closure in progress on bvp-s08f-desktop-live-canary; no SUT changes after evidence"
-  current_scope: "Bind and execute integrated S08 testing-platform acceptance/architecture review only. No real Obsidian, vault, Google Drive, provider, or synchronization-product execution is authorized in S08."
-  required_end_state: "Accepted S08F closure is reconciled with current phase6-integration state, S08V is bound to an exact integrated SHA, authoritative PHX-CI passes, and supervisor architecture review explicitly authorizes S09."
+  accepted_s08f_closure_branch_head: "08a033956b3605ef2dc13f756f099b5ff37f5888"
+  corrected_s08v_integration_input: "d4553122d565fd70d976d926f4a022efe93a5aaa"
+  s08v_stage_base: "225e38d0e851ea7e537f71c1134f2931344ef5ac"
+  current_scope: "Execute integrated S08 testing-platform acceptance/architecture review only. No real Obsidian, vault, Google Drive, provider, or synchronization-product execution is authorized in S08."
+  required_end_state: "Authoritative S08V PHX-CI passes against the exact bound branch candidate and supervisor architecture review explicitly authorizes S09."
   physical_product_validation_stage: "BVP-S09 only, after S08V acceptance"
 historical_s08f_physical_attempt:
   status: superseded_for_s08
@@ -101,4 +103,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP-S08V"
-  action: "Reconcile the accepted S08F closure with the current phase6-integration head without discarding newer integration work, create/bind the exact S08V integrated candidate, then perform authoritative PHX-CI and the mandatory S08 architecture review. Do not begin physical S09 execution until S08V accepts the integrated platform."
+  action: "Freeze the current bound S08V branch HEAD and perform one authoritative integrated PHX-CI verification against stage base 225e38d0e851ea7e537f71c1134f2931344ef5ac using runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83 and authorized-governance classification. On PASS, review canonical evidence and perform the mandatory S08 architecture review. No physical product execution."
