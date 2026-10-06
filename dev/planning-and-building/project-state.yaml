@@ -51,19 +51,20 @@ stage_2a_phases:
 
 active_work:
   primary_package: "BVP pre-S09 closure — final independent review, correction, PHX-CI verification, master integration, and construction cleanup"
-  task_branch: "phase6-integration"
+  task_branch: "bvp-final-review-corrections-r2"
   task_document: "dev/planning-and-building/bvp-master-integration-and-cleanup-plan.md"
   authoritative_phase_boundary_decision: "DEC-328"
   authoritative_pre_s09_closure_decision: "DEC-329"
   authoritative_final_review_correction_decision: "DEC-330"
   reviewed_bvp_candidate: "38bc13f82a7e5240588ed61be1a3b1867e754703"
-  correction_branch: "bvp-final-review-corrections"
-  correction_implementation_head: "3318ae896b03f364553736e39b64b1c0a9342c64"
+  first_correction_candidate: "5c73a15d438f39f7c7fc28e744a1e19a7119a53e"
+  correction_branch: "bvp-final-review-corrections-r2"
+  correction_r2_implementation_head: "53d1cd63814ca538388a24f829cb3299fc5b2c08"
   accepted_s08v_source: "c9f035cc24fd16ff1aad8216367a81149dd58896"
   accepted_s08v_evidence: "e9c635a9ffcf1a50aa461d16efb517b06626a6c6"
   accepted_s08v_run: "cf16c8cc-179d-4fb9-8ca4-96aaad0bb742"
   s08_status: "CLOSED / ACCEPTED; mandatory architecture review PASS; S09 binding deferred by later owner-authorized pre-S09 closure gate"
-  current_scope: "The independent final BVP review of 38bc13f82a7e5240588ed61be1a3b1867e754703 returned eight valid material findings. Targeted corrections are implemented on bvp-final-review-corrections, including the DEC-330 authorized-governance hardening. The next gate is independent Codex review of the exact corrected candidate; authoritative executable verification remains pending and must occur only through PHX-CI. No S09 physical execution has begun."
+  current_scope: "The first correction review of 5c73a15d438f39f7c7fc28e744a1e19a7119a53e resolved F2/F3/F4 and identified five remaining valid defects: evidence-reason privacy, recursive scenario data-only governance, mailbox run-binding publication concurrency, Windows relay re-entrancy, and stale active S01 handoff authority. Targeted R2 corrections are implemented on bvp-final-review-corrections-r2. The next gate is one independent Codex delta review of exactly 5c73a15d... -> the frozen R2 candidate; authoritative executable verification remains pending and PHX-CI-only. No S09 physical execution has begun."
   required_end_state: "One exact reviewed and PHX-CI-accepted BVP candidate is reconciled with the exact frozen current master; the exact merged candidate passes PHX-CI and is promoted to master under expected-SHA protection; durable closure/milestone/cleanup is complete; only then is S09 rebound to that exact master SHA."
 historical_s08f_physical_attempt:
   status: superseded_for_s08
@@ -105,4 +106,4 @@ next_action:
   stage: "Stage 2A"
   phase: phase_6
   package: "BVP pre-S09 closure"
-  action: "Freeze the exact bvp-final-review-corrections HEAD after continuity records, issue one independent Codex Desktop correction-review prompt covering all eight validated findings and the complete 38bc13f... -> corrected-candidate diff, and permit no repository mutation or direct executable validation during that review. If the correction review passes, perform one authoritative PHX-CI verification of that exact reviewed correction candidate before any master reconciliation. Do not begin S09 or Stage 3."
+  action: "Freeze the exact bvp-final-review-corrections-r2 HEAD after continuity records and issue one independent Codex Desktop delta review limited to the five remaining findings and the exact 5c73a15d... -> R2 diff. Codex must not mutate the repository or run executable validation directly. If R2 review passes, perform one authoritative PHX-CI verification of that exact reviewed R2 candidate before any master reconciliation. Do not begin S09 or Stage 3."
