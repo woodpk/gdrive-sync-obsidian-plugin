@@ -80,7 +80,7 @@ export class DeterministicScenarioRunner {
     if (!scenario.executionModes.includes(executionMode)) {
       const core = { scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {}, classification: "execution-mode-not-applicable" };
       await this.executor?.dispose?.();
-      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: [], executionMode }) };
+      return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: this.executor?.deviceIdentities??[], executionMode, runIdentity:this.executor?.runIdentity, buildIdentity:this.executor?.buildIdentity }) };
     }
 
     const names = new Set(["device-a", "device-b"]);
