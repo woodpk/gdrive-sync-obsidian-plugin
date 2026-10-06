@@ -270,18 +270,12 @@ function Measure-Snapshot([string]$Sha, $Policy) {
     $fixtureRoot = (Normalize-RepoPath $Policy.TestPlatformRoot) + '/fixtures'
     $testRoot = (Normalize-RepoPath $Policy.TestPlatformRoot) + '/test'
     $sourceRoot = (Normalize-RepoPath $Policy.TestPlatformRoot) + '/src'
-    $analysisInput = @($testFiles | ForEach-Object { [pscustomobject]@{ path = $_; text = (Read-SnapshotText $_ $Sha) } })
-    $analysisResults = @(Invoke-TypeScriptDependencyAnalysis $analysisInput)
-    $analysisByPath = @{}; foreach ($result in $analysisResults) { $analysisByPath[[string]$result.path] = $result }
+    $analysisInput = @($testFiles | ForEach-Object { [pscustomobject]@{ path = $_; text = (Read-SnapshotText $_ $Sha) } }); $analysisResults = @(Invoke-TypeScriptDependencyAnalysis $analysisInput); $analysisByPath = @{}; foreach ($result in $analysisResults) { $analysisByPath[[string]$result.path] = $result }
     $coreFiles = [System.Collections.Generic.List[string]]::new()
     $liveFiles = [System.Collections.Generic.List[string]]::new()
     foreach ($path in $testFiles) {
         if (Test-Under $path $testRoot) { continue }
-        if (Test-Under $path $scenarioRoot) {
-            $shape = $analysisByPath[$path]
-            if ($null -ne $shape -and $shape.declarativeScenario -eq $true) { continue }
-            $coreFiles.Add($path); continue
-        }
+        if (Test-Under $path $scenarioRoot) { $shape = $analysisByPath[$path]; if ($null -ne $shape -and $shape.declarativeScenario -eq $true) { continue }; $coreFiles.Add($path); continue }
         $isLive = $path -match '(?i)(?:^|/)(?:live-device|device-command-agent|command-agent|device-agent|windows-relay|relay|mailbox)(?:[-_/\.]|$)'
         if ($isLive) { $liveFiles.Add($path); continue }
         if ((Test-Under $path $sourceRoot) -or (Test-Under $path $fixtureRoot)) { $coreFiles.Add($path); continue }
