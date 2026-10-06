@@ -542,3 +542,45 @@ Final static, non-authoritative live-device simple-line estimate:
 
 No shipping `src/**` or PHX-CI configuration changed. No executable validation has been run.
 
+## 2026-10-06 — Final BVP Correction Review R5 / Transactional Multi-Device Authority Acquisition
+
+Codex independently reviewed R4 candidate `b324eb670c6980d22b2495a46636a2ff2c5b3a53`. The controller-authority model, Drive-generation transport, relay publication gate, selective-visibility defense, checkpoint reconstruction, pending-command retention, and prior FR-C03 fixes were accepted. One new blocking defect remained: R4-N01.
+
+R4-N01 was independently validated as genuine. R4 acquired and released each per-device authority lock independently during multi-device executor construction. A failed acquisition could therefore activate device 1, release its lock, allow another same-run executor to reuse that generation, then fail on device 2 and roll device 1 back to inactive. That rollback could revoke authority already being relied upon by the surviving executor.
+
+R5 branch `bvp-final-review-corrections-r5` was created from exact reviewed R4 SHA `b324eb670c6980d22b2495a46636a2ff2c5b3a53`.
+
+Targeted correction only:
+
+- compute the complete deterministic sorted device/path acquisition set first;
+- acquire every required per-device create-if-absent authority lock before mutating any controller-authority record;
+- if any later lock cannot be acquired, release already-acquired locks and fail before any device authority has changed;
+- once the complete lock set is held, inspect/mutate all device authority records while those locks remain held;
+- if a later authority-state conflict or invalid record causes acquisition failure after an earlier device was newly activated, roll back only the devices newly activated by this attempt while the complete lock set is still held;
+- release the complete lock set only after commit or rollback is complete;
+- existing single-device disposal continues to use the same lock primitive.
+
+This removes the observation window required by R4-N01. No concurrent executor—same run or different run—can reuse an earlier device from a still-in-progress multi-device acquisition because its lock remains held until the transaction finishes.
+
+Focused S08E regression added:
+
+- pre-hold the later device lock;
+- attempt a two-device run;
+- require acquisition to fail busy;
+- require that the earlier device authority file was never created, proving no partial activation occurred before the full lock set was acquired;
+- release the synthetic later lock;
+- acquire both devices successfully for run A and verify both are generation 1 / run A;
+- place an A command in the outbox and dispose the executor;
+- verify A authority remains because the command is pending;
+- require foreign run B to fail controller acquisition.
+
+R5 technical implementation head before state/continuity bookkeeping: `6eb9ab6789dee597f2cb76e3190aba5d1db04c51`.
+
+Static, non-authoritative live-device simple-line estimate: approximately `746 / 750`, up only two lines from reviewed R4 and still below the frozen hard limit.
+
+No shipping `src/**` files, PHX-CI configuration, Drive-generation semantics, relay command gate, architecture governance, scenario/evidence/checkpoint behavior, or production synchronization semantics changed.
+
+No executable validation was run. PHX-CI remains the sole authoritative executable verification mechanism.
+
+Immediate next action: freeze exact R5 HEAD after this continuity commit and issue one independent Codex Desktop delta review limited to R4-N01 and the exact `b324eb67...` -> R5 diff. If Codex accepts R5 with no new blocking finding, stop correction cycling and proceed to one authoritative PHX-CI verification of that exact reviewed R5 SHA before master reconciliation. Do not begin S09 or Stage 3.
+
