@@ -525,3 +525,20 @@ No executable validation was run. PHX-CI remains the sole authoritative executab
 
 Immediate next action: freeze exact R4 HEAD after this continuity commit and issue one independent Codex Desktop delta review of `ebf9863...` -> R4 limited to FR-C03/R3-N01 and direct regressions of the controller-authority/generation model. If Codex accepts R4, stop correction cycling and run one authoritative PHX-CI verification of that exact reviewed R4 SHA before any master reconciliation. Do not begin S09 or Stage 3.
 
+### R4 Final Hardening Addendum
+
+Before freezing R4 for review, two additional safeguards were added within the same FR-C03 authority boundary:
+
+- all controller-authority state transitions now write directly to the protected authority file while holding the exclusive local lock; run IDs are never embedded in temp filenames and no replace-rename behavior is required for authority updates on Windows;
+- controller authority is not released if the external runner still has any outbox/sent command for that run. A result timeout with an outstanding relay command therefore preserves the run's controller authority and blocks a competing run from acquiring the same physical device.
+
+Final R4 technical implementation head before this bookkeeping addendum:
+
+`3dc903de2273dc6b7bfa880ad18d89621baf2cf0`
+
+Final static, non-authoritative live-device simple-line estimate:
+
+`744 / 750`
+
+No shipping `src/**` or PHX-CI configuration changed. No executable validation has been run.
+
