@@ -35,6 +35,10 @@ if(-not(Test-Path -LiteralPath $toolPath -PathType Leaf)){Fail "current PHX-CI t
 $currentTools=Get-Content -LiteralPath $toolPath -Raw -Encoding utf8|ConvertFrom-Json -ErrorAction Stop
 $priorTools=$evidence.environment.nativeToolVersions
 foreach($name in @('node','npm')){$current=[string]$currentTools.$name;$prior=[string]$priorTools.$name;if([string]::IsNullOrWhiteSpace($current)-or[string]::IsNullOrWhiteSpace($prior)-or$current-cne$prior){Fail "toolchain mismatch for $name predecessor=$prior current=$current"}}
+$currentOs=[Environment]::OSVersion.VersionString; $currentPs=$PSVersionTable.PSVersion.ToString(); $currentGit=(& $git --version).Trim()
+if($currentOs-cne[string]$evidence.environment.os){Fail "OS mismatch predecessor=$($evidence.environment.os) current=$currentOs"}
+if($currentPs-cne[string]$evidence.environment.powerShellVersion){Fail "PowerShell mismatch predecessor=$($evidence.environment.powerShellVersion) current=$currentPs"}
+if($currentGit-cne[string]$priorTools.git){Fail "Git mismatch predecessor=$($priorTools.git) current=$currentGit"}
 Write-Output 'BVP_PRODUCTION_TEST_CARRY_FORWARD=PASS'
 Write-Output "predecessorHead=$PredecessorHead"; Write-Output "currentHead=$CurrentHead"; Write-Output "predecessorRunId=$($evidence.runId)"
 Write-Output 'tests=835'; Write-Output 'pass=835'; Write-Output 'fail=0'; Write-Output "changedPaths=$($changed.Count)"
