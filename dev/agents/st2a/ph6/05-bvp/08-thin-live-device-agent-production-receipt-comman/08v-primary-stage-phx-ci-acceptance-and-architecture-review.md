@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** BOUND / EXECUTABLE  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Phase-boundary authority:** `DEC-328`
@@ -55,6 +55,64 @@ Focused integrated S08 command:
 `node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08a-production-run-receipt-seam.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/s08c-prerequisite-production-control-seam.test.js .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/s08e-external-live-executor.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-checkpoint.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/architecture-guard.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js .test-build/bvp/test-platform/test/repository-check-integration.test.js`
 
 No physical-canary evidence, vault coordinate, Drive credential, or live product execution is part of this binding.
+
+## 0.2 Authoritative S08V Acceptance / Mandatory Architecture Review
+
+BVP-S08V is **COMPLETE / ACCEPTED** and BVP-S08 is **CLOSED / ACCEPTED**.
+
+Authoritative integrated verification:
+
+- verified source SHA: `c9f035cc24fd16ff1aad8216367a81149dd58896`;
+- authoritative PHX-CI evidence commit: `e9c635a9ffcf1a50aa461d16efb517b06626a6c6`;
+- run ID: `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`;
+- exact S08 stage base: `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- PHX-CI runtime/framework: `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / `0.2.0-dev.2`;
+- change-set verification: PASS;
+- repository verification: PASS;
+- overall verification: PASS / compatibility COMPLETE / task exit 0;
+- focused integrated S08 platform verification: 137/137 PASS;
+- complete repository suite: 835/835 PASS, 0 failed, 0 skipped, 0 cancelled, 0 todo;
+- build: PASS;
+- repository-check: PASS with architecture guard PASS and metrics PASS under `authorized-governance`;
+- Git/repository gate: PASS;
+- artifact proof: PASS;
+- production artifact: `main.js` 885,307 bytes, SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- evidence publication: YES;
+- control checkout preserved: YES.
+
+Evidence integrity:
+
+- `e9c635a9ffcf1a50aa461d16efb517b06626a6c6` is exactly one commit after the verified source;
+- that evidence-only delta changes only `dev/_ca-output.{md,json}` plus the three immutable `dev/test-results/20261006T013859Z-operator-bvp-s08v-primary-stage-acceptance-c9f035cc24fd.*` records;
+- the verified S08V source has no executable-code delta from accepted S08F source `b53f8628353f0115248503fa5a81e4ebc206c218`; the intervening delta is evidence and supervisor/task/project-state documentation only.
+
+Accepted architecture metrics:
+
+- approved production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 3,996 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device / relay / executor: 727 / 750 logical TypeScript LOC;
+- BVP PowerShell: 4 / 4 scripts, 1,492 / 1,500 logical LOC;
+- scenario-specific production source: 0 files;
+- scenario-specific PowerShell: 0 files;
+- architecture guard: PASS / zero violations.
+
+### Mandatory S08 Architecture Review
+
+Result: **PASS — S09 MAY PROCEED TO BINDING.**
+
+Repository-level findings:
+
+- the existing `DeterministicScenarioRunner` remains the single owner of scenario validation, ordering, captures, expected-outcome matching, evidence, and final result construction;
+- the live executor remains a bounded one-step `ScenarioStepExecutor`; it maps supported generic steps into device commands, enforces correlation and checkpoint semantics, and does not become a second scenario runner or distributed workflow authority;
+- the bounded device-command agent enforces run/device/sequence identity, write-ahead sequence claims, exact duplicate replay, stale/conflicting/gapped sequence rejection, and uncertain prior-outcome fail-closed behavior;
+- production execution success remains subordinate to a fresh correlated production receipt; transport acknowledgement cannot manufacture synchronization success;
+- the Drive mailbox remains bounded test-control metadata, rejects sensitive credential-shaped fields, has bounded record sizes/count behavior, and does not become synchronization authority;
+- the production validation-control seam explicitly owns no synchronization policy, scenario state, transport, persistence, fixture mutation, or verdict authority;
+- production `src/**` remains isolated from `test-platform/**`; ordinary shipping `main.js` remains free of validation-only platform/agent/relay/scenario code as proven by the guard/build tests and unchanged artifact identity;
+- no second runner, alternate synchronization engine, hosted validation backend, new OAuth scope, token-export mechanism, scenario-specific production source, or scenario-specific PowerShell was introduced;
+- no physical Obsidian/vault/Google Drive/provider/synchronization-product execution was used to establish S08 acceptance, preserving DEC-328.
+
+S08V performed no implementation repair. This acceptance closes BVP-S08 and authorizes the supervisor to bind BVP-S09A physical validation facts. It does not itself execute S09.
 
 ## 1. Objective
 
