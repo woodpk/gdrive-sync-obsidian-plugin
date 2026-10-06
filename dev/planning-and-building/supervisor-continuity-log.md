@@ -366,3 +366,39 @@ No BVP executable source, tests, PHX-CI configuration, architecture boundary, or
 
 Immediate next action: freeze the resulting exact `phase6-integration` head as the completed-BVP Codex review candidate and issue one repository-grounded Codex Desktop final-review prompt. Do not merge into `master`, begin S09, or begin Stage 3 before that review returns and the DEC-329 closure sequence is completed.
 
+## 2026-10-06 — Final BVP Review Findings Validated and Targeted Corrections Implemented
+
+The independent Codex Desktop final review of exact reviewed candidate `38bc13f82a7e5240588ed61be1a3b1867e754703` returned eight material findings. The supervisor independently validated all eight against the BVP target specification, S08 child contracts, and current repository implementation before editing code. All eight were accepted as genuine defects; no Codex finding was treated as authority merely because Codex reported it.
+
+Targeted corrections were implemented only on isolated branch `bvp-final-review-corrections`; `phase6-integration` and `master` remained untouched.
+
+Validated correction areas:
+
+1. **Installed validation-agent composition:** the validation artifact now constructs the bounded device runtime during plugin startup on both desktop and mobile, polls the Drive mailbox without assuming iOS background execution, invokes the existing production verification facade, uses a bounded vault fixture adapter, and survives reconstruction through validation-only durable sequence state. Run selection is discovered through a bounded per-device mailbox run binding rather than requiring a locally pre-provisioned run file.
+2. **Atomic device sequence admission:** the sequence-state store contract now uses compare-and-save semantics; concurrent claimants cannot both win. The installed runtime additionally serializes mailbox polling so timer re-entry cannot publish contradictory results for one command.
+3. **Checkpoint identity/resume safety:** checkpoint schema v2 binds exact scenario-definition digest, source identity for live execution, exact contiguous result prefix, and step id/kind. Missing prior results, same-ID scenario drift, altered step identity, stale run/source identity, and incomplete prefixes fail closed.
+4. **Validation build/result identity:** device results carry immutable validation source identity; mailbox serialization preserves it; live executor correlation rejects results from a different validation build; canonical live evidence records run/source/device identity.
+5. **Failure evidence reasons:** canonical evidence preserves safe structured reason codes while privacy-sensitive/free-form reasons are reduced to stable hashes, allowing same-classification failures to remain distinguishable without copying arbitrary content.
+6. **Mailbox lifetime/history isolation:** command/result records are indexed by run/device metadata; current-run listing is isolated from unrelated history; >200 records in the active run block explicitly; cleanup is scoped; active run bindings roll to a new run only when the prior run has no un-resulted commands.
+7. **Obsolete active verification authority:** the two superseded S01 standalone BVP PowerShell verifier/bootstrap scripts were removed from active `dev/scripts/**`; Git history remains the provenance archive.
+8. **Scenario-root architecture-budget escape:** the frozen architecture metrics and guard now distinguish the permitted one-export `defineScenario({...})` declarative module shape from executable TypeScript helpers under `test-platform/scenarios/**`; non-declarative source is charged to framework core and independently rejected by the guard.
+
+Because item 8 modifies frozen governance surfaces, the user/supervisor authorization was durably recorded as locked `DEC-330`. The authorized governance correction changes no hard budget, adds no production authority, and does not weaken a guard.
+
+Important scope facts from the correction diff:
+
+- no `src/**` shipping-production file changed;
+- no PHX-CI pin/configuration changed;
+- no target product synchronization semantics were changed;
+- the accepted live-device subset baseline was 727 / 750 logical TypeScript LOC; a static non-authoritative line comparison indicates the corrected live subset is approximately 728, still below the frozen limit;
+- the touched framework-core implementation files net lower than their reviewed-base line count, providing headroom against the 4,000 hard cap;
+- the obsolete-script removals materially reduce BVP PowerShell usage below the existing frozen 4-script / 1,500-LOC limits.
+
+Correction implementation head before required authority/state bookkeeping: `3318ae896b03f364553736e39b64b1c0a9342c64`.
+DEC-330 authority record commit: `3833e51db06d52f5bdceaa4fe83d2e25361ccdee`.
+Project-state correction-stage update commit: `0e42a9434170e86342f53eb56e2212b2eea91ec7`.
+
+No executable validation has been run for these corrections yet. Under the operating protocol, Codex may inspect/reason independently but must not run tests/build/typecheck/guard/metrics directly as validation; authoritative executable verification remains PHX-CI-only.
+
+Immediate next action: freeze the exact branch HEAD after this continuity commit and issue one independent Codex Desktop **correction review** against the complete reviewed-base-to-corrected-candidate diff, with explicit disposition required for each of the eight original findings plus regression/scope review. If that review passes, perform one authoritative PHX-CI verification of the exact reviewed correction candidate. Do not reconcile with master, begin S09, or begin Stage 3 before those gates pass.
+
