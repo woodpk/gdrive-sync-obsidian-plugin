@@ -740,6 +740,17 @@ function collectBuildReferences(sourceFile) {
   return [...new Set(references)];
 }
 
+function scenarioDataOnly(node) {
+  if (ts.isStringLiteral(node) || ts.isNumericLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ||
+      node.kind===ts.SyntaxKind.TrueKeyword || node.kind===ts.SyntaxKind.FalseKeyword || node.kind===ts.SyntaxKind.NullKeyword) return true;
+  if (ts.isPrefixUnaryExpression(node)) return (node.operator===ts.SyntaxKind.PlusToken || node.operator===ts.SyntaxKind.MinusToken) && ts.isNumericLiteral(node.operand);
+  if (ts.isParenthesizedExpression(node)) return scenarioDataOnly(node.expression);
+  if (ts.isArrayLiteralExpression(node)) return node.elements.every(element => !ts.isSpreadElement(element) && scenarioDataOnly(element));
+  if (ts.isObjectLiteralExpression(node)) return node.properties.every(property => ts.isPropertyAssignment(property) &&
+    (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name) || ts.isNumericLiteral(property.name)) && scenarioDataOnly(property.initializer));
+  if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || (ts.isSatisfiesExpression && ts.isSatisfiesExpression(node))) return scenarioDataOnly(node.expression);
+  return false;
+}
 function declarativeScenario(sourceFile) {
   let found=false, imported=false;
   for (const statement of sourceFile.statements) {
@@ -750,7 +761,7 @@ function declarativeScenario(sourceFile) {
     }
     if (ts.isVariableStatement(statement) && statement.modifiers?.some(modifier=>modifier.kind===ts.SyntaxKind.ExportKeyword) && (statement.declarationList.flags&ts.NodeFlags.Const) && statement.declarationList.declarations.length===1) {
       const declaration=statement.declarationList.declarations[0], initializer=declaration.initializer;
-      if (found || !initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || initializer.expression.text!=="defineScenario" || initializer.arguments.length!==1 || !ts.isObjectLiteralExpression(initializer.arguments[0])) return false;
+      if (found || !initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || initializer.expression.text!=="defineScenario" || initializer.arguments.length!==1 || !ts.isObjectLiteralExpression(initializer.arguments[0]) || !scenarioDataOnly(initializer.arguments[0])) return false;
       found=true; continue;
     }
     return false;
