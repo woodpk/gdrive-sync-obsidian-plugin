@@ -439,3 +439,42 @@ Project-state update commit: `2751ca48a758fefddc68cd75d64cf3f99f1d551d`.
 
 Immediate next action: freeze the exact R2 branch head after this continuity commit and issue one independent Codex Desktop delta review restricted to the five residual findings and the exact `5c73a15d...` -> R2 diff. If that review passes, perform one authoritative PHX-CI verification of the exact reviewed R2 candidate. Do not reconcile with master, begin S09, or begin Stage 3 before those gates pass.
 
+## 2026-10-06 — Final BVP Correction Review R3 / FR-C03 Closure Attempt
+
+Codex independently reviewed R2 candidate `00d4ff1a2141b43d44a40e9cb71832965f0dbf22`. FR-C01, FR-C02, FR-C04, and FR-C05 were accepted as RESOLVED. FR-C03 remained PARTIALLY RESOLVED because R2 still treated absence from an immediately following Drive `files.list` reservation search as evidence that no competing publication existed.
+
+The supervisor independently validated this finding against the exact R2 implementation and current Google Drive v3 API surface. The finding was accepted. Drive v3 provides file create/list/get/update primitives but the BVP mailbox has no documented compare-and-swap primitive that would make an eventually visible search result a valid distributed lock. The R3 correction therefore removes the unsafe inference rather than adding another search-based reservation layer.
+
+R3 branch `bvp-final-review-corrections-r3` was created from exact R2 candidate `00d4ff1a2141b43d44a40e9cb71832965f0dbf22`.
+
+Targeted FR-C03 changes only:
+
+- automatic per-device run rollover was removed;
+- if a different run binding is currently visible for the target device, publication fails with `mailbox-device-run-conflict` regardless of command/result absence;
+- when no binding is present, creation of a new run binding must be positively re-observed by the exact returned file ID before any command record is created; missing visibility returns `mailbox-run-binding-unconfirmed` and deletes the unconfirmed binding by ID;
+- a completed command/result pair does not release a device binding;
+- release is explicit through scoped `cleanup(runId, deviceId)`;
+- cleanup must positively observe at least one binding for that run/device before deletion; an empty/delayed binding search returns `mailbox-run-binding-release-unconfirmed` rather than reporting success;
+- after explicit release, stale Drive search visibility can only delay the next run by continuing to expose the old binding; it cannot authorize takeover;
+- the R2 reservation mechanism and its absence-based pending-run inference were removed entirely.
+
+Focused source regressions now prove:
+
+- terminal result alone does not permit another run to take over;
+- explicit cleanup is required before rebinding;
+- a competing run is rejected while the first run is held after binding creation but before its first command record exists;
+- newly created binding hidden from search aborts command publication;
+- cleanup with hidden binding aborts rather than claiming release;
+- once positive visibility is restored, scoped cleanup releases the old binding and the next run may bind.
+
+Before continuity bookkeeping, the R3 implementation head was `675cde8e836edd4d8b88abd5885eccf4eb0d92d8`. Its exact R2-to-R3 executable/test delta was only two files:
+
+- `test-platform/src/live-device/drive-mailbox.ts`;
+- `test-platform/test/s08d-drive-mailbox-relay.test.ts`.
+
+The implementation delta was 4 insertions / 9 deletions in mailbox source and 16 insertions / 3 deletions in focused tests. No shipping `src/**`, PHX-CI configuration, architecture governance, scenario/evidence behavior, relay behavior, or product synchronization semantics changed.
+
+No executable validation was run. PHX-CI remains the sole authoritative executable verification mechanism.
+
+Immediate next action: freeze the exact R3 branch head after project-state/continuity bookkeeping and issue one independent Codex Desktop delta review limited to FR-C03/R2-N01 and the exact `00d4ff1a...` -> R3 diff. If that review passes, proceed directly to one authoritative PHX-CI verification of the exact reviewed R3 candidate before master reconciliation. Do not begin S09 or Stage 3.
+
