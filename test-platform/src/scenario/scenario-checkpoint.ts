@@ -23,36 +23,18 @@ export type ScenarioResumeEvidence =
   | "canonical-evidence";
 
 export interface ScenarioCheckpointStepResult {
-  readonly index: number;
-  readonly stepId: string;
-  readonly kind: ScenarioDefinition["steps"][number]["kind"];
-  readonly status: ScenarioExecutionStatus;
-  readonly classification?: string;
-  readonly matchedExpectation: boolean;
+  readonly index:number; readonly stepId:string; readonly kind:ScenarioDefinition["steps"][number]["kind"];
+  readonly status:ScenarioExecutionStatus; readonly classification?:string; readonly matchedExpectation:boolean;
 }
 
 export interface ScenarioCheckpointEvidenceSummary {
-  readonly digest: string;
-  readonly verdictStatus: string;
-  readonly assertionCount: number;
-  readonly observationCount: number;
+  readonly digest:string; readonly verdictStatus:string; readonly assertionCount:number; readonly observationCount:number;
 }
 
 interface ScenarioCheckpointData {
-  readonly schemaVersion: 2;
-  readonly checkpointId: string;
-  readonly scenarioId: string;
-  readonly scenarioDigest: string;
-  readonly sourceIdentity?: string;
-  readonly runId: string;
-  readonly executionMode: ScenarioExecutionMode;
-  readonly scenarioStepCount: number;
-  readonly nextStepIndex: number;
-  readonly disposition: ScenarioResumeDisposition;
-  readonly results: readonly ScenarioCheckpointStepResult[];
-  readonly deviceIdentities: readonly string[];
-  readonly requiredResumeEvidence: readonly ScenarioResumeEvidence[];
-  readonly evidence?: ScenarioCheckpointEvidenceSummary;
+  readonly schemaVersion:2; readonly checkpointId:string; readonly scenarioId:string; readonly scenarioDigest:string; readonly sourceIdentity?:string;
+  readonly runId:string; readonly executionMode:ScenarioExecutionMode; readonly scenarioStepCount:number; readonly nextStepIndex:number; readonly disposition:ScenarioResumeDisposition;
+  readonly results:readonly ScenarioCheckpointStepResult[]; readonly deviceIdentities:readonly string[]; readonly requiredResumeEvidence:readonly ScenarioResumeEvidence[]; readonly evidence?:ScenarioCheckpointEvidenceSummary;
 }
 
 export type ScenarioCheckpoint = ScenarioCheckpointData & {
@@ -72,25 +54,11 @@ export type ScenarioCheckpointResult<T> =
   | { readonly ok: false; readonly classification: ScenarioCheckpointFailure };
 
 export interface CreateScenarioCheckpointInput {
-  readonly checkpointId: string;
-  readonly scenario: ScenarioDefinition;
-  readonly runId: string;
-  readonly executionMode: ScenarioExecutionMode;
-  readonly nextStepIndex: number;
-  readonly disposition: ScenarioResumeDisposition;
-  readonly steps?: readonly ScenarioStepExecution[];
-  readonly deviceIdentities?: readonly string[];
-  readonly requiredResumeEvidence?: readonly ScenarioResumeEvidence[];
-  readonly evidence?: CanonicalScenarioEvidence;
-  readonly sourceIdentity?: string;
+  readonly checkpointId:string; readonly scenario:ScenarioDefinition; readonly runId:string; readonly executionMode:ScenarioExecutionMode; readonly nextStepIndex:number; readonly disposition:ScenarioResumeDisposition;
+  readonly steps?:readonly ScenarioStepExecution[]; readonly deviceIdentities?:readonly string[]; readonly requiredResumeEvidence?:readonly ScenarioResumeEvidence[]; readonly evidence?:CanonicalScenarioEvidence; readonly sourceIdentity?:string;
 }
-
 export interface ScenarioResumeContext {
-  readonly scenario: ScenarioDefinition;
-  readonly runId: string;
-  readonly executionMode: ScenarioExecutionMode;
-  readonly deviceIdentities?: readonly string[];
-  readonly sourceIdentity?: string;
+  readonly scenario:ScenarioDefinition; readonly runId:string; readonly executionMode:ScenarioExecutionMode; readonly deviceIdentities?:readonly string[]; readonly sourceIdentity?:string;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
