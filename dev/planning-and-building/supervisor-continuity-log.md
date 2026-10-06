@@ -584,3 +584,17 @@ No executable validation was run. PHX-CI remains the sole authoritative executab
 
 Immediate next action: freeze exact R5 HEAD after this continuity commit and issue one independent Codex Desktop delta review limited to R4-N01 and the exact `b324eb67...` -> R5 diff. If Codex accepts R5 with no new blocking finding, stop correction cycling and proceed to one authoritative PHX-CI verification of that exact reviewed R5 SHA before master reconciliation. Do not begin S09 or Stage 3.
 
+### R5 Final Regression Addendum
+
+Before freezing R5, one additional focused S08E source regression was added for the rollback path after authority mutation:
+
+- seed device B with a conflicting active run;
+- attempt a two-device run A;
+- require device A to be temporarily activated only after the complete lock set is held;
+- require the later device-B conflict to fail the transaction;
+- verify device A is restored to inactive while preserving its generation and device B remains unchanged.
+
+Final R5 technical/test head before bookkeeping: `2f30ff15290aaf1b8f988f9213c0d44857d977c0`.
+
+No executable validation was run.
+
