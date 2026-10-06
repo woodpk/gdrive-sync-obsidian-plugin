@@ -89,8 +89,8 @@ const safeScalar = (value: unknown): value is JsonScalar =>
   value === null || typeof value === "string" || typeof value === "boolean" ||
   (typeof value === "number" && Number.isFinite(value));
 
-const SAFE_REASON_WORDS=new Set(["exists","status","path","hash","sizeBytes","planId","deviceIdentity","vaultIdentity","classification","reason"]);
-function safeReason(value:string):string{const lower=value.toLowerCase(),code=/^[a-z0-9]+(?:[-_.:][a-z0-9]+)+$/i.test(value)||SAFE_REASON_WORDS.has(value);if(code&&value.length<=128&&!/token|secret|password|passcode|authorization|oauth|credential/.test(lower))return value;return "reason-sha256:"+createHash("sha256").update(value).digest("hex").slice(0,24);}
+const TRUSTED_REASON_CODES=new Set(["exists","status","path","hash","sizeBytes","planId","deviceIdentity","vaultIdentity","classification","reason"]);
+function safeReason(value:string,classification:string):string{if(value===classification||TRUSTED_REASON_CODES.has(value))return value;return "reason-sha256:"+createHash("sha256").update(value).digest("hex").slice(0,24);}
 function safeObservation(value: unknown): Readonly<Record<string, SafeValue>> {
   if (!isRecord(value)) return {};
   const result: Record<string, SafeValue> = {};
@@ -305,7 +305,7 @@ export function buildScenarioEvidence(
       ...(execution.classification === undefined ? {} : { classification: execution.classification }),
       ...(execution.status === "completed" || execution.classification === undefined
         ? {}
-        : { reason: safeReason(execution.reason ?? execution.classification) }),
+        : { reason: safeReason(execution.reason ?? execution.classification, execution.classification) }),
     },
   };
   const machineJson = JSON.stringify(machine);
