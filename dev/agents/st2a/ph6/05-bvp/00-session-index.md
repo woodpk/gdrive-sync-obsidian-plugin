@@ -59,7 +59,7 @@ A PREPLANNED task is not a placeholder for later design. Dispatch binding suppli
 | 08C | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08c-bounded-device-command-agent-and-sequence-safety.md` |
 | 08D | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08d-minimal-command-mailbox-and-windows-relay.md` |
 | 08E | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08e-external-live-executor-and-human-checkpoints.md` |
-| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | EXECUTABLE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
+| 08F | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | COMPLETE | `08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md` |
 | 08V | S08 — Thin Live-Device Agent / Production Receipt / Command Transport | PREPLANNED | `08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md` |
 | 09A | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09a-windows-ios-install-authentication-and-pairing-baseline.md` |
 | 09B | S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness | PREPLANNED | `09-strategic-physical-coverage-evidence-closure-sta/09b-physical-bidirectional-synchronization-and-representative-conflict.md` |
@@ -887,5 +887,22 @@ Corrected closure objective:
 - perform no live Obsidian/Drive/vault/product execution;
 - on PASS, stop at `READY FOR S08V INTEGRATED ACCEPTANCE`.
 
-Current corrected S08F candidate remains **UNVERIFIED** until PHX-CI runs against the post-cleanup exact branch HEAD.
+Current corrected S08F candidate was subsequently verified and accepted.
+
+### S08F authoritative automated platform closure
+
+S08F — Platform Construction Closure and Production-Bundle Isolation is **COMPLETE / ACCEPTED**.
+
+- verified source: `b53f8628353f0115248503fa5a81e4ebc206c218`;
+- PHX-CI evidence: `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- run: `6bf02af1-91be-4b74-9f19-a50591abb255`;
+- base: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / framework `0.2.0-dev.2`;
+- focused S08 platform tests: 137/137 PASS;
+- full repository suite: 835/835 PASS;
+- build, repository-check, architecture guard/metrics, Git gate, and artifact proof: PASS;
+- shipping `main.js`: 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- accepted metrics: production seam 187/350 LOC and 3/4 files; framework core 3,996/4,000 LOC; live-device/relay/executor 727/750 LOC; BVP PowerShell 4/4 scripts and 1,492/1,500 LOC; scenario-specific production/PowerShell 0/0.
+
+No physical product execution was used. S08F is closed; **S08 remains open pending S08V integrated acceptance and architecture review**. The next supervisor action is to reconcile the accepted S08F closure with the current `phase6-integration` head, bind S08V to that exact integrated state, and perform the S08V PHX-CI/architecture review.
 
