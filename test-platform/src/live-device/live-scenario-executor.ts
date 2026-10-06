@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { createScenarioCheckpoint, decodeScenarioCheckpoint, encodeScenarioCheckpoint, validateScenarioCheckpointForResume, type ScenarioCheckpoint, type ScenarioResumeEvidence } from "../scenario/scenario-checkpoint";
@@ -26,6 +26,10 @@ type RelayResult = DeviceCommandResult | null | undefined;
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const fail=(status:"failed"|"blocked"|"unsupported",classification:string,reason?:string):ScenarioCapabilityResult=>({status,classification,...(reason===undefined?{}:{reason})});
 const exists=async(path:string):Promise<boolean>=>stat(path).then(()=>true,()=>false);
+const authorityPath=(root:string,deviceId:string)=>join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
+interface ControllerAuthority { readonly schemaVersion:1; readonly generation:number; readonly runId:string|null; readonly deviceId:string; }
+function authority(value:unknown,deviceId:string):ControllerAuthority|undefined{const v=value as Partial<ControllerAuthority>|null;return v&&v.schemaVersion===1&&v.deviceId===deviceId&&Number.isSafeInteger(v.generation)&&Number(v.generation)>=0&&(v.runId===null||typeof v.runId==="string")?v as ControllerAuthority:undefined;}
+async function withAuthorityLock<T>(path:string,action:()=>Promise<T>):Promise<T>{let handle;try{handle=await open(path+".lock","wx");}catch{throw new Error("live-controller-authority-busy");}try{return await action();}finally{await handle.close();await rm(path+".lock",{force:true});}}
 const checkpointKey=(step:ScenarioCheckpointStep):string=>step.operation==="capture"?step.checkpointId:step.checkpointRef??step.id;
 const stepDevice=(step:ScenarioStep):string|undefined=>"device" in step&&typeof step.device==="string"?step.device:undefined;
 const commandCount=(step:ScenarioStep):number=>
@@ -71,7 +75,9 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const timeout=options.resultTimeoutMs??30_000,poll=options.pollIntervalMs??250;
   if(timeout<0||poll<=0)throw new Error("live-executor-timing-invalid");
   const out=join(options.relayRoot,"outbox"),sent=join(options.relayRoot,"sent"),inbox=join(options.relayRoot,"inbox");
-  await mkdir(out,{recursive:true});
+  await mkdir(out,{recursive:true});await mkdir(join(options.relayRoot,"controller-authority"),{recursive:true});
+  const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>();
+  try{for(const deviceId of leasedDevices){const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;if(await exists(path)){try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(!current)throw new Error("live-controller-authority-invalid");}if(current?.runId&&current.runId!==options.runId)throw new Error("live-controller-device-run-conflict");if(current?.runId===options.runId)return;const next:ControllerAuthority={schemaVersion:1,generation:(current?.generation??0)+1,runId:options.runId,deviceId},temp=path+"."+options.runId+".tmp";await writeFile(temp,JSON.stringify(next),"utf8");await rename(temp,path);activated.add(deviceId);});}}catch(error){for(const deviceId of activated){const path=authorityFiles.get(deviceId)!;await withAuthorityLock(path,async()=>{const current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);if(current?.runId===options.runId){const temp=path+"."+options.runId+".rollback";await writeFile(temp,JSON.stringify({...current,runId:null}),"utf8");await rename(temp,path);}}).catch(()=>undefined);}throw error;}
   let pending:HumanCheckpointInstruction|undefined,resume:ScenarioCheckpoint|undefined,resumeFailure:string|undefined;
   const history:ScenarioStepExecution[]=[];
   if(await exists(options.checkpointFile)){
@@ -127,6 +133,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
 
   return{
     executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
+    async dispose(){if(pending)return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){const temp=path+"."+options.runId+".release";await writeFile(temp,JSON.stringify({...current,runId:null}),"utf8");await rename(temp,path);}});},
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
