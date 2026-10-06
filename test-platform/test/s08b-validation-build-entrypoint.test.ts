@@ -85,8 +85,8 @@ function evaluateValidationArtifact(result: ValidationArtifactBuildResult): any 
 async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, desktop: boolean): Promise<void> {
   const source=readFileSync(result.artifactPath,"utf8"), values=new Map<string,string>(), dirs=new Set<string>(), storage=new Map<string,string>();
   const root=".obsidian/plugins/brain-google-drive-sync/.bvp-relay",runId=desktop?"run-desktop":"run-mobile",deviceId=desktop?"device-desktop":"device-mobile";
-  dirs.add(".obsidian");dirs.add(".obsidian/plugins");dirs.add(".obsidian/plugins/brain-google-drive-sync");dirs.add(root);values.set(root+"/agent.json",JSON.stringify({schemaVersion:1,runId,deviceId}));
-  let fixtureWrites=0;
+  dirs.add(".obsidian");dirs.add(".obsidian/plugins");dirs.add(".obsidian/plugins/brain-google-drive-sync");dirs.add(root);
+  let fixtureWrites=0,productionCalls=0;
   const adapter:any={
     async exists(p:string){return dirs.has(p)||values.has(p);},async mkdir(p:string){dirs.add(p);},async read(p:string){const v=values.get(p);if(v===undefined)throw new Error("missing");return v;},
     async write(p:string,v:string){values.set(p,v);if(p.includes("BVP-VALIDATION/"))fixtureWrites++;},async readBinary(p:string){return new TextEncoder().encode(values.get(p)??"").buffer;},
@@ -101,11 +101,13 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   const box:{exports:any}={exports:{}},context:any={module:box,exports:box.exports,require:(specifier:string)=>specifier==="obsidian"?obsidianStub:(()=>{throw new Error("unexpected external "+specifier)})(),console,TextEncoder,TextDecoder,URL,URLSearchParams,AbortController,crypto:globalThis.crypto,localStorage,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>undefined};context.globalThis=context;context.window=context;
   new Script(source,{filename:result.artifactPath}).runInNewContext(context);
   const PluginClass=box.exports.default,base=Object.getPrototypeOf(PluginClass.prototype),app={vault:{configDir:".obsidian",adapter},secretStorage:{getSecret(){return undefined;},setSecret(){},deleteSecret(){}}},manifest={id:"brain-google-drive-sync"};
-  base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId}}};base.productionVerificationControl=function(){return undefined};
-  const command={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}};
-  const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.runId,runId);equal(runtime.deviceId,deviceId);
-  let first:any;runtime.mailbox.commands=async()=>[command];runtime.mailbox.resultFor=async()=>undefined;runtime.mailbox.publishResult=async(value:any)=>{first=value};await runtime.pollDeviceOnce();equal(first.classification,"fixture-verified");equal(first.validationBuild.sourceCommit,result.sourceCommit);equal(fixtureWrites,1);await plugin.onunload();
-  const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];let replay:any;after.mailbox.commands=async()=>[command];after.mailbox.resultFor=async()=>undefined;after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(fixtureWrites,1);await restarted.onunload();
+  const production={async previewManual(){return undefined;},async previewVerifyReconcile(){return undefined;},async executePlan(){return{status:"accepted"};},async pause(){productionCalls++;return{status:"accepted"};},async resume(){return{status:"accepted"};},async cancelActiveSync(){return{status:"accepted"};},currentStatus(){return{kind:"idle-ready"};},latestProductionRunReceipt(){return undefined;}};
+  base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId}}};base.productionVerificationControl=function(){return production};
+  const fixture={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}},control={runId,deviceId,sequence:2,commandId:"cmd-2",kind:"production-control",action:"pause"};
+  const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
+  let current:any=fixture,last:any;runtime.mailbox.commands=async()=>[current];runtime.mailbox.publishResult=async(value:any)=>{last=value};await runtime.pollDeviceOnce();equal(runtime.currentRunId(),runId);equal(last.classification,"fixture-verified");equal(last.validationBuild.sourceCommit,result.sourceCommit);equal(fixtureWrites,1);
+  current=control;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(productionCalls,1);await plugin.onunload();
+  const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];after.mailbox.activeRun=async()=>runId;after.mailbox.resultFor=async()=>undefined;let replay:any;after.mailbox.commands=async()=>[control];after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(productionCalls,1);equal(fixtureWrites,1);await restarted.onunload();
 }
 
 test("S08B validation artifact is separate, production-faithful, traceable, and disposable", async () => {
