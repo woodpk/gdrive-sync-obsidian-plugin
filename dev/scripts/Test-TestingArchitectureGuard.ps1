@@ -740,6 +740,24 @@ function collectBuildReferences(sourceFile) {
   return [...new Set(references)];
 }
 
+function declarativeScenario(sourceFile) {
+  let found=false, imported=false;
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      const moduleName=stringValue(statement.moduleSpecifier), bindings=statement.importClause&&statement.importClause.namedBindings;
+      if (!moduleName || !moduleName.endsWith("/src/scenario/scenario-contract") || !bindings || !ts.isNamedImports(bindings) || !bindings.elements.some(element=>element.name.text==="defineScenario")) return false;
+      imported=true; continue;
+    }
+    if (ts.isVariableStatement(statement) && statement.modifiers?.some(modifier=>modifier.kind===ts.SyntaxKind.ExportKeyword) && (statement.declarationList.flags&ts.NodeFlags.Const) && statement.declarationList.declarations.length===1) {
+      const declaration=statement.declarationList.declarations[0], initializer=declaration.initializer;
+      if (found || !initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || initializer.expression.text!=="defineScenario" || initializer.arguments.length!==1 || !ts.isObjectLiteralExpression(initializer.arguments[0])) return false;
+      found=true; continue;
+    }
+    return false;
+  }
+  return imported&&found;
+}
+
 function collectTsconfigReferences(file) {
   const text = fs.readFileSync(file.fullPath, "utf8");
   const parsed = ts.parseConfigFileTextToJson(file.fullPath, text);
@@ -770,7 +788,7 @@ for (const file of request.files) {
   }
   const sourceFile = program.getSourceFile(file.fullPath);
   if (!sourceFile) {
-    results.push({ path: file.relativePath, mode: file.mode, dependencies: [], scenarioSignals: [], buildReferences: [], errors: ["TypeScript parser did not load source file."] });
+    results.push({ path: file.relativePath, mode: file.mode, dependencies: [], scenarioSignals: [], buildReferences: [], declarativeScenario: false, errors: ["TypeScript parser did not load source file."] });
     continue;
   }
   const errors = program.getSyntacticDiagnostics(sourceFile).map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
@@ -780,6 +798,7 @@ for (const file of request.files) {
     dependencies: collectDependencies(sourceFile),
     scenarioSignals: file.mode === "source" ? collectScenarioSignals(sourceFile) : [],
     buildReferences: file.mode === "build" ? collectBuildReferences(sourceFile) : [],
+    declarativeScenario: file.mode === "source" ? declarativeScenario(sourceFile) : false,
     errors,
   });
 }
@@ -929,6 +948,11 @@ if ($null -ne $policy) {
         if ($result.mode -eq 'source') {
             $isProduction = Test-RepoPathWithinAnyRoot -RelativePath $relativePath -Roots $policy.ProductionRoots
             $isTestPlatform = Test-RepoPathWithinRoot -RelativePath $relativePath -Root $policy.TestPlatformRoot
+
+            $scenarioPrefix = (Normalize-RepoPath $policy.TestPlatformRoot).TrimEnd('/') + '/scenarios/'
+            if ($isTestPlatform -and $relativePath.StartsWith($scenarioPrefix, [System.StringComparison]::Ordinal) -and $result.declarativeScenario -ne $true) {
+                Add-Violation 'SCENARIO_MODULE_NOT_DECLARATIVE' $relativePath 'Executable TypeScript beneath test-platform/scenarios must be exactly one exported defineScenario(...) declarative module.'
+            }
 
             foreach ($dependency in @($result.dependencies)) {
                 $specifier = [string]$dependency.specifier
