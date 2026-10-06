@@ -295,3 +295,49 @@ S08V is now BOUND / EXECUTABLE on `bvp-s08v-primary-stage-acceptance` with:
 - no physical-canary coordinate or real product execution authority.
 
 Immediate next action: freeze the current S08V branch HEAD after binding records and perform one authoritative integrated PHX-CI run. On PASS, inspect canonical evidence and perform the mandatory S08 architecture review before S09 binding.
+
+
+## 2026-10-05 — S08V Authoritative Acceptance and S08 Closure
+
+BVP-S08V authoritative integrated PHX-CI completed successfully against exact source `c9f035cc24fd16ff1aad8216367a81149dd58896` and exact stage base `225e38d0e851ea7e537f71c1134f2931344ef5ac` using runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83` / framework `0.2.0-dev.2`.
+
+Canonical evidence:
+
+- evidence commit `e9c635a9ffcf1a50aa461d16efb517b06626a6c6`;
+- run ID `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`;
+- evidence commit is exactly one commit after the verified source and changes only the canonical evidence pair plus the three immutable S08V result records;
+- change-set verification PASS;
+- repository verification PASS;
+- overall verification PASS / compatibility COMPLETE / task exit 0;
+- every ordered PHX-CI stage PASS;
+- focused integrated S08 platform scope 137/137 PASS;
+- full repository suite 835/835 PASS, 0 failed/skipped/cancelled/todo;
+- build PASS;
+- repository-check PASS with architecture guard/metrics PASS under `authorized-governance`;
+- artifact proof PASS;
+- shipping `main.js` 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- control checkout preserved and evidence published.
+
+Mandatory S08 architecture review: **PASS — S09 MAY PROCEED TO BINDING**.
+
+Findings:
+
+- verified S08V source has no executable-code delta from accepted S08F source; intervening changes are evidence and supervisor/task/project-state records only;
+- production seam remains 187/350 logical LOC across 3/4 files;
+- framework core remains 3,996/4,000 logical TypeScript LOC / 10 modules;
+- live-device/relay/executor remains 727/750 logical TypeScript LOC;
+- BVP PowerShell remains 4/4 scripts and 1,492/1,500 logical LOC;
+- scenario-specific production and PowerShell remain 0/0;
+- one scenario runner remains authoritative for ordering/captures/verdict/evidence; live executor remains a bounded one-step executor;
+- device-command sequencing, production-receipt terminal authority, bounded mailbox transport, credential-shape rejection, checkpoint semantics, shipping isolation, and no-second-runner/no-alternate-engine/no-hosted-backend boundaries remain intact;
+- no real Obsidian/vault/Drive/provider/product execution was used to establish S08 acceptance.
+
+Disposition:
+
+- S08V COMPLETE / ACCEPTED;
+- BVP-S08 CLOSED / ACCEPTED;
+- S09 physical-validation binding is now authorized under DEC-328;
+- superseded S08 physical evidence remains historical/non-authoritative for S09 acceptance unless explicitly re-grounded as observation only;
+- Stage 3 remains prohibited while S09 remains incomplete.
+
+Immediate next action: ground and bind S09A Windows/iOS install/authentication/pairing physical-validation facts against the completed BVP and current integrated repository, with all executable validation coordinated by PHX-CI.
