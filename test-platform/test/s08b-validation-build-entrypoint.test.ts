@@ -11,7 +11,6 @@ import {
   type ValidationArtifactBuildResult,
 } from "../src/live-device/build-validation-artifact";
 import {
-  BVP_DEVICE_AGENT_FACTORY_GLOBAL,
   BVP_MAILBOX_RUNTIME_GLOBAL,
   BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL,
   BVP_VALIDATION_BUILD_GLOBAL,
@@ -82,6 +81,33 @@ function evaluateValidationArtifact(result: ValidationArtifactBuildResult): any 
   return { context, exports: moduleBox.exports };
 }
 
+
+async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, desktop: boolean): Promise<void> {
+  const source=readFileSync(result.artifactPath,"utf8"), values=new Map<string,string>(), dirs=new Set<string>(), storage=new Map<string,string>();
+  const root=".obsidian/plugins/brain-google-drive-sync/.bvp-relay",runId=desktop?"run-desktop":"run-mobile",deviceId=desktop?"device-desktop":"device-mobile";
+  dirs.add(".obsidian");dirs.add(".obsidian/plugins");dirs.add(".obsidian/plugins/brain-google-drive-sync");dirs.add(root);values.set(root+"/agent.json",JSON.stringify({schemaVersion:1,runId,deviceId}));
+  let fixtureWrites=0;
+  const adapter:any={
+    async exists(p:string){return dirs.has(p)||values.has(p);},async mkdir(p:string){dirs.add(p);},async read(p:string){const v=values.get(p);if(v===undefined)throw new Error("missing");return v;},
+    async write(p:string,v:string){values.set(p,v);if(p.includes("BVP-VALIDATION/"))fixtureWrites++;},async readBinary(p:string){return new TextEncoder().encode(values.get(p)??"").buffer;},
+    async writeBinary(p:string,v:ArrayBuffer){values.set(p,new TextDecoder().decode(v));if(p.includes("BVP-VALIDATION/"))fixtureWrites++;},async remove(p:string){values.delete(p);},
+    async stat(p:string){const v=values.get(p);return v===undefined?null:{type:"file",size:new TextEncoder().encode(v).byteLength};},
+    async list(){return{files:[],folders:[]};},async rename(a:string,b:string){const v=values.get(a);if(v!==undefined){values.set(b,v);values.delete(a);}}
+  };
+  const localStorage={getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>void storage.set(k,v),removeItem:(k:string)=>void storage.delete(k),clear:()=>storage.clear(),key:(i:number)=>[...storage.keys()][i]??null,get length(){return storage.size;}};
+  class PluginStub{app:any;manifest:any;constructor(app:any,manifest:any){this.app=app;this.manifest=manifest;}}
+  function Placeholder(){}
+  const obsidianStub=new Proxy({Platform:{isDesktopApp:desktop,isMobile:!desktop,isMobileApp:!desktop},Plugin:PluginStub,PluginSettingTab:class{},Modal:class{},Notice:class{},requestUrl:async()=>({status:200,json:{},text:"",headers:{}})},{get:(target,property)=>(property in target?target[property as keyof typeof target]:Placeholder)});
+  const box:{exports:any}={exports:{}},context:any={module:box,exports:box.exports,require:(specifier:string)=>specifier==="obsidian"?obsidianStub:(()=>{throw new Error("unexpected external "+specifier)})(),console,TextEncoder,TextDecoder,URL,URLSearchParams,AbortController,crypto:globalThis.crypto,localStorage,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>undefined};context.globalThis=context;context.window=context;
+  new Script(source,{filename:result.artifactPath}).runInNewContext(context);
+  const PluginClass=box.exports.default,base=Object.getPrototypeOf(PluginClass.prototype),app={vault:{configDir:".obsidian",adapter},secretStorage:{getSecret(){return undefined;},setSecret(){},deleteSecret(){}}},manifest={id:"brain-google-drive-sync"};
+  base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId}}};base.productionVerificationControl=function(){return undefined};
+  const command={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}};
+  const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.runId,runId);equal(runtime.deviceId,deviceId);
+  let first:any;runtime.mailbox.commands=async()=>[command];runtime.mailbox.resultFor=async()=>undefined;runtime.mailbox.publishResult=async(value:any)=>{first=value};await runtime.pollDeviceOnce();equal(first.classification,"fixture-verified");equal(first.validationBuild.sourceCommit,result.sourceCommit);equal(fixtureWrites,1);await plugin.onunload();
+  const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];let replay:any;after.mailbox.commands=async()=>[command];after.mailbox.resultFor=async()=>undefined;after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(fixtureWrites,1);await restarted.onunload();
+}
+
 test("S08B validation artifact is separate, production-faithful, traceable, and disposable", async () => {
   runNodeScript("scripts/build.mjs");
   runNodeScript("scripts/verify-build.mjs");
@@ -126,9 +152,10 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(runtimeIdentity.schemaVersion, 1);
   equal(runtimeIdentity.sourceCommit, first.sourceCommit);
   equal(runtimeIdentity.sentinel, BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL);
-  equal(typeof evaluated.context[BVP_DEVICE_AGENT_FACTORY_GLOBAL], "function");
   equal(evaluated.context[BVP_MAILBOX_RUNTIME_GLOBAL], undefined);
   ok(evaluated.exports);
+  await exerciseInstalledAgent(first,false);
+  await exerciseInstalledAgent(first,true);
 
   rmSync(first.outputDirectory, { recursive: true, force: true });
   equal(existsSync(first.outputDirectory), false);
