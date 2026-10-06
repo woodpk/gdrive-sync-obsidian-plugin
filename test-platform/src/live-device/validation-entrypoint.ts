@@ -20,7 +20,7 @@ async function sha256(bytes:ArrayBuffer):Promise<string>{const digest=await cryp
 class LocalStorageSequenceStore implements DeviceSequenceStateStore {
   constructor(private readonly key:string,private readonly storage:Storage){}
   async load(){const raw=this.storage.getItem(this.key);return raw?JSON.parse(raw) as DeviceSequenceState:undefined;}
-  async compareAndSave(_run:string,_device:string,expected:DeviceSequenceState|undefined,next:DeviceSequenceState){const current=await this.load();if(!sameState(current,expected))return false;this.storage.setItem(this.key,JSON.stringify(next));return true;}
+  async compareAndSave(_run:string,_device:string,expected:DeviceSequenceState|undefined,next:DeviceSequenceState){const raw=this.storage.getItem(this.key),current=raw?JSON.parse(raw) as DeviceSequenceState:undefined;if(!sameState(current,expected))return false;this.storage.setItem(this.key,JSON.stringify(next));return true;}
 }
 class VaultFixturePort implements DeviceFixturePort {
   constructor(private readonly adapter:ValidationAdapter){}
