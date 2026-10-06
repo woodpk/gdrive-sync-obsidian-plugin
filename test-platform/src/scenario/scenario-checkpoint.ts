@@ -108,7 +108,7 @@ const sortedUnique = (values: readonly string[]): string[] => [...new Set(values
 const sameStrings = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
-function canonical(value:unknown):string{if(value===null||typeof value!=="object")return JSON.stringify(value);if(Array.isArray(value))return "["+value.map(canonical).join(",")+"]";const record=value as Record<string,unknown>;return "{"+Object.keys(record).sort().map(key=>JSON.stringify(key)+":"+canonical(record[key])).join(",")+"}";}
+function canonical(value:unknown):string{if(value===undefined)return "undefined";if(value===null||typeof value!=="object")return JSON.stringify(value)??"undefined";if(Array.isArray(value))return "["+value.map(canonical).join(",")+"]";const record=value as Record<string,unknown>;return "{"+Object.keys(record).sort().map(key=>JSON.stringify(key)+":"+canonical(record[key])).join(",")+"}";}
 export function scenarioDefinitionDigest(scenario:ScenarioDefinition):string{return "sha256:"+createHash("sha256").update(canonical(scenario)).digest("hex");}
 
 const STATUSES = new Set<ScenarioExecutionStatus>(["completed", "failed", "blocked", "unsupported"]);
