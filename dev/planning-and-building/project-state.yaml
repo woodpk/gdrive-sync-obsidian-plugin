@@ -45,21 +45,22 @@ stage_2a_phases:
   phase_5: { name: "Integrated Synchronization Product and User Workflows", status: complete_supervisor_approved }
   phase_6:
     name: "Cross-Platform Hardening and Stage 3 Readiness"
-    status: active_bvp_s08f_platform_construction_closure
+    status: active_bvp_s08v_binding
     integration_branch: "phase6-integration"
     completion_gate: not_yet_satisfied
 
 active_work:
-  primary_package: "BVP-S08F — platform construction closure and production-bundle isolation"
-  task_branch: "bvp-s08f-desktop-live-canary"
-  task_document: "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08f-desktop-live-canary-and-production-bundle-isolation-proof.md"
+  primary_package: "BVP-S08V — integrated S08 acceptance and architecture review binding"
+  task_branch: "not yet bound"
+  task_document: "dev/agents/st2a/ph6/05-bvp/08-thin-live-device-agent-production-receipt-comman/08v-primary-stage-phx-ci-acceptance-and-architecture-review.md"
   authoritative_phase_boundary_decision: "DEC-328"
-  accepted_s08e_implementation: "e1067f5159a316f328c492837b8c6ff59e08d226"
-  accepted_s08e_closure: "4f9c69c38c12c09d2f06f3f966dc8519ed45a99f"
-  current_scope: "Build and PHX-CI-verify the BRAIN Verification Platform itself. No real Obsidian, vault, Google Drive, provider, or synchronization-product execution is authorized in S08."
-  required_end_state: "Automated BVP platform checks, architecture guard/metrics, production-bundle isolation, full repository verification, and PHX-CI acceptance are green; then proceed to S08V."
-  physical_product_validation_stage: "BVP-S09 only, after S08/S08V acceptance"
-
+  accepted_s08f_source: "b53f8628353f0115248503fa5a81e4ebc206c218"
+  accepted_s08f_evidence: "a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8"
+  accepted_s08f_run: "6bf02af1-91be-4b74-9f19-a50591abb255"
+  accepted_s08f_closure_branch_head: "administrative closure in progress on bvp-s08f-desktop-live-canary; no SUT changes after evidence"
+  current_scope: "Bind and execute integrated S08 testing-platform acceptance/architecture review only. No real Obsidian, vault, Google Drive, provider, or synchronization-product execution is authorized in S08."
+  required_end_state: "Accepted S08F closure is reconciled with current phase6-integration state, S08V is bound to an exact integrated SHA, authoritative PHX-CI passes, and supervisor architecture review explicitly authorizes S09."
+  physical_product_validation_stage: "BVP-S09 only, after S08V acceptance"
 historical_s08f_physical_attempt:
   status: superseded_for_s08
   evidence_root: "dev/evidence/2026-10-02-BVP-S08F-4f9c69c"
@@ -70,8 +71,8 @@ authoritative_repository_verification:
   authority: "PHX-CI only"
   framework_version: "0.2.0-dev.2"
   runtime_source: "exact target branch phx-ci.json framework pin"
-  latest_accepted_predecessor: "S08E implementation e1067f5159a316f328c492837b8c6ff59e08d226 / closure 4f9c69c38c12c09d2f06f3f966dc8519ed45a99f"
-  current_s08f_candidate_status: "READY FOR AUTHORITATIVE PHX-CI after authority reconciliation and automated-coverage review; still UNVERIFIED"
+  latest_accepted_predecessor: "S08F source b53f8628353f0115248503fa5a81e4ebc206c218 / evidence a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8 / run 6bf02af1-91be-4b74-9f19-a50591abb255"
+  current_s08f_candidate_status: "COMPLETE / ACCEPTED; focused 137/137 PASS; full repository 835/835 PASS; build/repository/artifact/architecture gates PASS"
 
 anti_drift:
   boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
@@ -99,6 +100,5 @@ continuity_rule:
 next_action:
   stage: "Stage 2A"
   phase: phase_6
-  package: "BVP-S08F"
-  action: "Authority reconciliation and S08A-E automated-coverage review are complete with no concrete test gap identified. Freeze the exact corrected S08F candidate and perform one authoritative PHX-CI verification only; no physical product execution. On PASS and supervisor evidence review, proceed to corrected S08V integrated acceptance."
-
+  package: "BVP-S08V"
+  action: "Reconcile the accepted S08F closure with the current phase6-integration head without discarding newer integration work, create/bind the exact S08V integrated candidate, then perform authoritative PHX-CI and the mandatory S08 architecture review. Do not begin physical S09 execution until S08V accepts the integrated platform."
