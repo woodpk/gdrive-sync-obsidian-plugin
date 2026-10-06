@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s08-live-device-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** BOUND / EXECUTABLE  
 **Task type:** PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S08 — Thin Live-Device Agent / Production Receipt / Command Transport  
 **Phase-boundary authority:** `DEC-328`
@@ -11,6 +11,50 @@
 This is a complete prewritten verification contract. It has no implementation-repair authority.
 
 BVP-S08 constructs and automatically verifies the BRAIN Verification Platform itself. Real Windows/iOS/Obsidian/vault/Google Drive/provider/synchronization-product validation belongs to BVP-S09 and is prohibited in S08.
+
+## 0.1 Final Dispatch Binding
+
+S08V is **BOUND / EXECUTABLE** against the corrected integrated S08 state.
+
+Repository coordinates:
+
+- verification branch: `bvp-s08v-primary-stage-acceptance`;
+- corrected integrated `phase6-integration` input: `d4553122d565fd70d976d926f4a022efe93a5aaa`;
+- integration reconciliation parents: prior integration `76482df328492fc44fda08bda82483ac7a690185` plus corrected accepted S08F closure `08a033956b3605ef2dc13f756f099b5ff37f5888`;
+- reconciliation tree is byte-for-byte identical to the corrected accepted S08F closure tree `440ad6fba3d6acf768e3f8f0bd9b1ee9ae0ef2c0`;
+- exact S08 stage verification base / accepted pre-S08 closure: `225e38d0e851ea7e537f71c1134f2931344ef5ac`;
+- PHX-CI runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`;
+- PHX-CI framework version: `0.2.0-dev.2`;
+- change class: `authorized-governance` because the integrated S08 change set includes frozen governance surfaces;
+- publication mode: `push`.
+
+Accepted S08 child implementation / evidence lineage:
+
+- S08A: `cd0e3225295b76287133d30a2787ae7cfcc69d43` / `3ff8fa27d25d0de260403047550aa6bbd609c60a`;
+- S08B: `3189e0646402273aeb33a25acf0a538b15137b7b` / `ac8a666fff361d49d610f5bae1d0f0aae5fa6c19`;
+- S08C production-control prerequisite: `24a5f94518679254d4855a4a2f0d42e15e939c64` / `d4cfef6a48e257ca2d7b43c74400134175406c2f`;
+- S08C: `441e7cdd3bfe215b2d47d27c9a1eb4efe90711f8` / `ac039c73b72afa3f9bf8a9f1e5bb1cb1d35179d6`;
+- S08D: `62cd8fcdac1fe2f1aa424b10db5ad2e450fdd65b` / `dd71266d19f2b2d0c58973b4cff7d2f18712696e`;
+- S08E single-runner prerequisite: `7d261698ec83cebeee6063524e57802955600b23` / `5828e0c251758d05c171ad8f2a0ba6a5db15d674`;
+- S08E: `e1067f5159a316f328c492837b8c6ff59e08d226` / `2a68eb896bb33b92f480cb9f43d7ac002cdce539`;
+- S08F verified source / authoritative evidence / run: `b53f8628353f0115248503fa5a81e4ebc206c218` / `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8` / `6bf02af1-91be-4b74-9f19-a50591abb255`.
+
+Accepted automated architecture/artifact state entering S08V:
+
+- approved production seam: `src/product/local-vault-boundary-seam.ts`, `src/product/run-receipt-seam.ts`, `src/product/live-validation-control-seam.ts`;
+- production seam: 187 / 350 logical LOC, 3 / 4 files;
+- framework core: 3,996 / 4,000 logical TypeScript LOC / 10 modules;
+- live-device / relay / executor: 727 / 750 logical TypeScript LOC;
+- BVP PowerShell: 4 / 4 scripts, 1,492 / 1,500 logical LOC;
+- scenario-specific production / PowerShell: 0 / 0;
+- ordinary production `main.js`: 885,307 bytes / SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- accepted validation artifact from S08E: SHA-256 `4c2e3d3cc18cfc30a2622068659ca8199c6ce8ed67dfec11dc298ff5b1e4e351`.
+
+Focused integrated S08 command:
+
+`node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s08a-production-run-receipt-seam.test.js .test-build/bvp/test-platform/test/s08b-validation-build-entrypoint.test.js .test-build/bvp/test-platform/test/s08c-prerequisite-production-control-seam.test.js .test-build/bvp/test-platform/test/s08c-device-command-agent.test.js .test-build/bvp/test-platform/test/s08d-drive-mailbox-relay.test.js .test-build/bvp/test-platform/test/s08e-prerequisite-runner-executor-seam.test.js .test-build/bvp/test-platform/test/s08e-external-live-executor.test.js .test-build/bvp/test-platform/test/scenario-runner.test.js .test-build/bvp/test-platform/test/scenario-checkpoint.test.js .test-build/bvp/test-platform/test/scenario-evidence.test.js .test-build/bvp/test-platform/test/architecture-guard.test.js .test-build/bvp/test-platform/test/architecture-metrics.test.js .test-build/bvp/test-platform/test/repository-check-integration.test.js`
+
+No physical-canary evidence, vault coordinate, Drive credential, or live product execution is part of this binding.
 
 ## 1. Objective
 
