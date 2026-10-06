@@ -25,7 +25,7 @@ class FakeDrive {
     if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id="f"+this.next++;this.files.set(id,{meta,content:""});return Response.json({id});}
     const upload=path.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);if(upload&&method==="PATCH"){const file=this.files.get(upload[1]);if(!file)return new Response("",{status:404});file.content=String(init.body??"");return new Response("",{status:200});}
     const media=path.match(/^\/drive\/v3\/files\/([^/]+)$/);if(media&&method==="GET"&&url.searchParams.get("alt")==="media"){const file=this.files.get(media[1]);return file?new Response(file.content,{status:200}):new Response("",{status:404});}
-    if(media&&method==="DELETE"){this.files.delete(media[1]);return new Response("",{status:204});}
+    if(media&&method==="DELETE"){this.files.delete(media[1]);return new Response(null,{status:204});}
     return new Response("",{status:400});};
   folder(){return [...this.files.values()].find(v=>v.meta.appProperties?.brainBvpMailbox==="1");}
 }
