@@ -969,6 +969,12 @@ decisions:
     category: bvp_phase_boundary
     decision: "BVP-S08 is construction and automated verification of the BRAIN Verification Platform itself. S08 may build and PHX-CI-verify the validation artifact, bounded device-command agent, mailbox/relay, external executor, checkpoint behavior, production-receipt seam, architecture boundaries, and production-bundle isolation, but it must not use those facilities to perform real Obsidian, vault, Google Drive, provider, or synchronization-product validation. Physical Windows/iOS/Obsidian/provider use of the completed platform belongs to BVP-S09. All earlier S08F instructions to run or recover a real desktop canary are superseded for S08; their evidence remains historical only."
 
+  - id: DEC-329
+    status: locked
+    category: bvp_pre_s09_closure
+    decision: "After accepted BVP-S08 and before any BVP-S09 physical validation, perform one independent final review of the completed BVP, repair valid material findings, perform the owner-requested final authoritative PHX-CI verification, semantically reconcile one exact reviewed BVP lineage with the then-current master while preserving both histories, verify the exact merged candidate through PHX-CI, promote only that accepted candidate to master, then preserve a milestone and clean obsolete BVP construction branches/workspaces before rebinding S09. Do not merge historical BVP child-branch tips individually, do not use a global ours/theirs conflict policy or an automatic all-in-one semantic merge script, do not begin S09 before this closure completes, and do not begin Stage 3."
+
+
 superseded_decisions:
   - id: SUP-001
     status: superseded
