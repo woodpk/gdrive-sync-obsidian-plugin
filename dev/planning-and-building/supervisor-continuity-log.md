@@ -224,3 +224,55 @@ The architecture guard confirms that a change set containing frozen `phx-ci.json
 
 Immediate next action: freeze the exact post-reconciliation branch HEAD as the S08F source candidate and run one authoritative PHX-CI verification against base `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f` using the runtime selected by the candidate's `phx-ci.json`, publication mode `push`, and authorized-governance change classification. No physical product execution is permitted.
 
+
+
+## 2026-10-05 — S08F Authoritative Automated Platform Acceptance
+
+Corrected S08F platform-construction closure completed under DEC-328 with no physical product execution.
+
+Authoritative identities:
+
+- verified source: `b53f8628353f0115248503fa5a81e4ebc206c218`;
+- authoritative PHX-CI evidence commit: `a002ee81b56d6681bb9dd3e3ca9093d2bbcc5ca8`;
+- run ID: `6bf02af1-91be-4b74-9f19-a50591abb255`;
+- verification base: `4f9c69c38c12c09d2f06f3f966dc8519ed45a99f`;
+- PHX-CI runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`;
+- framework version: `0.2.0-dev.2`.
+
+Canonical evidence review:
+
+- evidence commit is exactly one commit after the verified source;
+- evidence-only delta contains `dev/_ca-output.md`, `dev/_ca-output.json`, and the three immutable `dev/test-results/20261005T232847Z-operator-bvp-s08f-desktop-live-canary-b53f8628353f.*` files only;
+- change-set verification PASS;
+- repository verification PASS;
+- overall verification PASS / compatibility COMPLETE / task exit 0;
+- every ordered PHX-CI stage PASS;
+- focused S08 platform scope: 137/137 PASS;
+- full repository suite: 835/835 PASS, 0 failed, 0 skipped, 0 cancelled, 0 todo;
+- build PASS;
+- repository-check PASS with architecture guard and metrics PASS under `authorized-governance`;
+- Git gate PASS;
+- artifact proof PASS;
+- control checkout preserved YES;
+- evidence published YES.
+
+Accepted architecture and artifact state:
+
+- production seam 187 / 350 logical LOC, 3 / 4 files;
+- framework core 3,996 / 4,000 logical TypeScript LOC;
+- live-device / relay / executor 727 / 750 logical TypeScript LOC;
+- BVP PowerShell 4 / 4 scripts, 1,492 / 1,500 logical LOC;
+- scenario-specific production files 0;
+- scenario-specific PowerShell 0;
+- shipping `main.js` 885,307 bytes, SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`.
+
+Disposition:
+
+- S08F is COMPLETE / ACCEPTED;
+- historical physical S08F material remains superseded/non-authoritative for S08;
+- no owner rerun is warranted for this accepted result;
+- administrative closure commits after the evidence commit change no SUT source or executable validation surface and therefore do not invalidate the accepted PHX-CI result;
+- S08 remains open pending corrected S08V integrated acceptance and mandatory architecture review;
+- S09 physical execution remains prohibited until S08V acceptance.
+
+Immediate next action: reconcile the accepted S08F closure with the current `phase6-integration` head while preserving newer integration work, bind S08V to the resulting exact integrated SHA, and run S08V authoritative PHX-CI plus architecture review.
