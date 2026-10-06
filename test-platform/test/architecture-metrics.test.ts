@@ -246,6 +246,17 @@ test("executable helper under scenario root consumes framework core budget inste
   });
 });
 
+test("nested executable syntax under defineScenario is charged to framework core", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/iife.ts", 'import { defineScenario } from "../src/scenario/scenario-contract";\nexport const scenario = defineScenario({ id: "iife", description: (() => "private")() });\n');
+    writeText(root, "test-platform/scenarios/call.ts", 'import { defineScenario } from "../src/scenario/scenario-contract";\nexport const scenario = defineScenario({ id: "call", description: String("private") });\n');
+    writeText(root, "test-platform/scenarios/spread.ts", 'import { defineScenario } from "../src/scenario/scenario-contract";\nexport const scenario = defineScenario({ ...{ id: "spread" } });\n');
+    const value = assertPass(runMetrics(root));
+    for (const name of ["iife.ts","call.ts","spread.ts"]) strictEqual(value.current.frameworkCoreFiles.includes("test-platform/scenarios/"+name), true);
+    strictEqual(value.current.scenarios.some((value:any)=>["iife","call","spread"].includes(value.scenario)), false);
+  });
+});
+
 test("production seam logical LOC over 350 fails", () => {
   withFixture((root) => {
     writeText(root, "src/bvp-seam.ts", lines(351));
