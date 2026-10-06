@@ -478,3 +478,50 @@ No executable validation was run. PHX-CI remains the sole authoritative executab
 
 Immediate next action: freeze the exact R3 branch head after project-state/continuity bookkeeping and issue one independent Codex Desktop delta review limited to FR-C03/R2-N01 and the exact `00d4ff1a...` -> R3 diff. If that review passes, proceed directly to one authoritative PHX-CI verification of the exact reviewed R3 candidate before master reconciliation. Do not begin S09 or Stage 3.
 
+## 2026-10-06 — Final BVP Correction Review R4 / Controller-Authoritative FR-C03 Repair
+
+Codex reviewed exact R3 candidate `ebf9863abbf9c2407f509f931a2fdea34267e329` and again returned CORRECTION REQUIRED for FR-C03/R3-N01. R3 had removed result-driven rollover and required positive visibility of a publisher's own Drive binding, but Codex correctly demonstrated that selective Drive search omission could still hide an already-confirmed foreign binding while exposing the new publisher's binding. The supervisor independently validated that finding.
+
+R4 deliberately stops trying to make Google Drive search act as a distributed lock. Locked decision `DEC-331` establishes the actual authority model:
+
+- the external BVP controller owns per-device cross-run serialization;
+- one durable controller-authority record per physical device lives on the protected local relay boundary;
+- controller authority updates are serialized with an atomic local create-if-absent lock;
+- the authority record persists a monotonic generation across runs and preserves the same run across checkpoint/controller reconstruction;
+- the Windows relay is the only normal command-publishing path;
+- the Drive mailbox object no longer exposes `publishCommand`;
+- before publishing an outbox command, the relay must read the protected controller-authority record and verify exact run/device authority;
+- the relay passes the controller generation only through an internal module capability to Drive publication;
+- Drive run-binding and command metadata are generation-stamped;
+- device `activeRun()` chooses the unique highest visible generation, so a delayed lower-generation binding cannot regain authority;
+- visible lower-generation bindings may be cleaned opportunistically after a newer binding is positively confirmed;
+- same-generation foreign bindings or higher generations fail closed;
+- Google Drive is therefore at-least-once transport metadata, not run-ownership authority.
+
+The external live executor now acquires authority for every physical device referenced by the scenario before emitting commands. Different runs competing for the same device cannot both acquire the local authority. Same-run reconstruction reuses the persisted generation. Human-checkpoint blocking preserves authority; ordinary terminal completion releases the run while retaining its generation so the next run advances monotonically.
+
+Focused source tests now cover:
+
+- simultaneous first acquisition by two different live runs for the same physical device: exactly one acquires authority;
+- no outbox command is emitted merely by acquiring authority;
+- release preserves generation and the next run advances it;
+- the relay refuses an outbox command when no matching controller authority exists or the authority belongs to a different run;
+- direct Drive mailbox command publication is not exposed;
+- selective Drive omission of A cannot authorize a B command while local controller authority remains A; B creates no Drive binding/command and stays pending;
+- after legitimate controller release and generation advance, B generation 2 remains active even if stale A generation 1 was hidden during B publication and appears later;
+- a newly created binding must still become positively visible before its command is published;
+- equal-generation foreign binding ambiguity fails closed;
+- relay non-reentrancy remains preserved;
+- existing checkpoint-resume tests exercise same-run controller-authority persistence.
+
+Static scope/budget inspection before continuity bookkeeping:
+
+- shipping `src/**` changes: 0;
+- PHX-CI configuration changes: 0;
+- live-device simple logical-line estimate: approximately 743 / 750, up from R3's approximately 731 / 750 but still within the frozen hard limit;
+- technical R3->R4 changes were confined to `drive-mailbox.ts`, `live-scenario-executor.ts`, focused S08D/S08E tests, and DEC-331.
+
+No executable validation was run. PHX-CI remains the sole authoritative executable verification mechanism.
+
+Immediate next action: freeze exact R4 HEAD after this continuity commit and issue one independent Codex Desktop delta review of `ebf9863...` -> R4 limited to FR-C03/R3-N01 and direct regressions of the controller-authority/generation model. If Codex accepts R4, stop correction cycling and run one authoritative PHX-CI verification of that exact reviewed R4 SHA before any master reconciliation. Do not begin S09 or Stage 3.
+
