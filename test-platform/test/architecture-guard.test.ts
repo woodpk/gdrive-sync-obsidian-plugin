@@ -734,6 +734,13 @@ test("architecture guard ignores dependency-shaped non-dependencies", () => {
   }
 });
 
+test("architecture guard rejects executable helpers hidden beneath scenario root", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/helper.ts", "export function runScenario() { return true; }\n");
+    assertFailsWithRule(runGuard(root), "SCENARIO_MODULE_NOT_DECLARATIVE");
+  });
+});
+
 test("architecture guard rejects PowerShell beneath test-platform", () => {
   withFixture((root) => {
     writeText(root, "test-platform/scenarios/C03.ps1", 'Write-Output "bad"\n');
