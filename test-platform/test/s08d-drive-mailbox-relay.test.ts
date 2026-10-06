@@ -55,20 +55,22 @@ test("mailbox history is isolated by run/device and cleanup cannot touch unrelat
   for(let i=0;i<201;i++)drive.files.set("current-"+i,{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"command",brainBvpRunId:"overflow-run",brainBvpDeviceId:"device-a"}},content:JSON.stringify(command(i+1,"overflow-run","device-a"))});await rejects(()=>mailbox.commands("overflow-run","device-a"),/mailbox-current-run-overflow/);
 });
 
-test("device run binding is discovered from mailbox and rolls only after prior run completion",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),old=command(1,"run-old","device-a"),next=command(1,"run-next","device-a");await mailbox.publishCommand(old);equal(await mailbox.activeRun("device-a"),"run-old");await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);await mailbox.publishResult(result(old));await mailbox.publishCommand(next);equal(await mailbox.activeRun("device-a"),"run-next");deepEqual((await mailbox.commands("run-old","device-a")).map(v=>v.commandId),["cmd-1"]);deepEqual((await mailbox.commands("run-next","device-a")).map(v=>v.commandId),["cmd-1"]);});
+test("device run binding requires explicit scoped cleanup before rebinding",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),old=command(1,"run-old","device-a"),next=command(1,"run-next","device-a");await mailbox.publishCommand(old);equal(await mailbox.activeRun("device-a"),"run-old");await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);await mailbox.publishResult(result(old));await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);equal(await mailbox.cleanup("run-old","device-a"),3);equal(await mailbox.activeRun("device-a"),undefined);await mailbox.publishCommand(next);equal(await mailbox.activeRun("device-a"),"run-next");deepEqual(await mailbox.commands("run-old","device-a"),[]);deepEqual((await mailbox.commands("run-next","device-a")).map(v=>v.commandId),["cmd-1"]);});
 
 
-test("command publication reservation blocks competing run during binding-to-record gap",async()=>{
+test("binding blocks competing run even while first command record is not yet visible",async()=>{
   const drive=new FakeDrive();let release!:()=>void,entered!:()=>void;
   const gate=new Promise<void>(resolve=>{release=resolve;}),atGap=new Promise<void>(resolve=>{entered=resolve;});
   const request:AuthenticatedDriveRequest=async(input,init={})=>{const url=new URL(input),method=(init.method??"GET").toUpperCase();if(url.pathname==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}"));if(meta.appProperties?.brainBvpKind==="command"&&meta.appProperties?.brainBvpRunId==="run-a"){entered();await gate;}}return drive.request(input,init);};
   const mailbox=createDriveCommandMailbox(request),a=command(1,"run-a","device-a"),b=command(1,"run-b","device-a");
   const first=mailbox.publishCommand(a);await atGap;
-  await rejects(()=>mailbox.publishCommand(b),/mailbox-device-run-conflict/);
   equal(await mailbox.activeRun("device-a"),"run-a");
+  await rejects(()=>mailbox.publishCommand(b),/mailbox-device-run-conflict/);
   release();await first;
   deepEqual((await mailbox.commands("run-a","device-a")).map(value=>value.commandId),["cmd-1"]);
   await mailbox.publishResult(result(a));
+  await rejects(()=>mailbox.publishCommand(b),/mailbox-device-run-conflict/);
+  await mailbox.cleanup("run-a","device-a");
   await mailbox.publishCommand(b);
   equal(await mailbox.activeRun("device-a"),"run-b");
 });
