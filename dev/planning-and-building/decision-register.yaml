@@ -979,6 +979,11 @@ decisions:
     category: bvp_final_review_correction_authority
     decision: "The user/supervisor explicitly authorized targeted correction of the valid findings from the final independent BVP review against reviewed candidate 38bc13f82a7e5240588ed61be1a3b1867e754703. This authorization includes the minimum necessary authorized-governance edits to dev/scripts/Test-TestingArchitectureGuard.ps1 and dev/scripts/Get-TestingArchitectureMetrics.ps1 to close the finding that executable helper code could hide beneath test-platform/scenarios/**. The correction must preserve every frozen architecture budget and shipping boundary, must not broaden production authority, and must not weaken or raise any architecture limit."
 
+  - id: DEC-331
+    status: locked
+    category: bvp_live_run_ownership_authority
+    decision: "For BVP live execution, per-device cross-run ownership is serialized by the external controller on the protected local relay boundary, not inferred from Google Drive search absence. The controller maintains one durable per-device authority record updated under an atomic local create-if-absent lock, preserves a monotonically increasing generation across runs, and keeps the same run authoritative across controller reconstruction/checkpoints. The Windows relay is the only normal command-publishing path and may publish a command only when the protected local controller authority record matches that command's run/device; it stamps the controller generation onto Drive run-binding/command metadata. Device active-run discovery selects the unique highest visible generation, so delayed lower-generation Drive bindings cannot regain authority. Google Drive remains at-least-once test-control transport and is not a distributed lock or run-ownership authority."
+
 
 superseded_decisions:
   - id: SUP-001
