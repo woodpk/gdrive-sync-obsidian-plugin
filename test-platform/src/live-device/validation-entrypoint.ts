@@ -6,7 +6,7 @@ export const BVP_VALIDATION_BUILD_GLOBAL = "__BRAIN_BVP_VALIDATION_BUILD__";
 export const BVP_MAILBOX_RUNTIME_GLOBAL = "__BRAIN_BVP_MAILBOX_RUNTIME__";
 
 export interface BvpValidationBuildIdentity extends ValidationBuildIdentity { readonly sentinel: typeof BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL; }
-interface ValidationAdapter { exists(path:string):Promise<boolean>; mkdir(path:string):Promise<void>; read(path:string):Promise<string>; write(path:string,value:string):Promise<void>; readBinary(path:string):Promise<ArrayBuffer>; writeBinary(path:string,value:ArrayBuffer):Promise<void>; remove(path:string):Promise<void>; stat(path:string):Promise<{type:string;size:number}|null>; }
+interface ValidationAdapter { exists(path:string):Promise<boolean>; mkdir(path:string):Promise<void>; list(path:string):Promise<{files:string[];folders:string[]}>; read(path:string):Promise<string>; write(path:string,value:string):Promise<void>; readBinary(path:string):Promise<ArrayBuffer>; writeBinary(path:string,value:ArrayBuffer):Promise<void>; rename(from:string,to:string):Promise<void>; remove(path:string):Promise<void>; stat(path:string):Promise<{type:string;size:number}|null>; }
 interface ValidationRuntimeOptions { readonly adapter:ValidationAdapter; readonly root:string; readonly deviceId:string; readonly validationBuild:ValidationBuildIdentity; readonly production?:Parameters<typeof createBoundedDeviceCommandAgent>[0]["production"]; readonly relay:boolean; }
 const stateKey=(root:string,runId:string,deviceId:string)=>"brain-bvp-sequence:"+encodeURIComponent(root+"|"+runId+"|"+deviceId);
 const sameState=(a:DeviceSequenceState|undefined,b:DeviceSequenceState|undefined)=>JSON.stringify(a)===JSON.stringify(b);
