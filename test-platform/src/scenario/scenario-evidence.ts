@@ -34,6 +34,8 @@ export interface ScenarioEvidenceInput {
   readonly executionMode: ScenarioExecutionMode;
   readonly classification?: string;
   readonly reason?: string;
+  readonly runIdentity?: string;
+  readonly buildIdentity?: string;
 }
 
 export interface CanonicalScenarioEvidenceMachine {
@@ -52,6 +54,7 @@ export interface CanonicalScenarioEvidenceMachine {
     readonly sizeBytes?: number;
   }[];
   readonly deviceIdentities: readonly string[];
+  readonly liveIdentity?: { readonly runId: string; readonly sourceCommit: string };
   readonly observations: readonly {
     readonly stepId: string;
     readonly captureAs: string;
@@ -86,6 +89,7 @@ const safeScalar = (value: unknown): value is JsonScalar =>
   value === null || typeof value === "string" || typeof value === "boolean" ||
   (typeof value === "number" && Number.isFinite(value));
 
+function safeReason(value:string):string{const lower=value.toLowerCase();if(/^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(value)&&!/token|secret|password|passcode|authorization|oauth|credential/.test(lower))return value;return "reason-sha256:"+createHash("sha256").update(value).digest("hex").slice(0,24);}
 function safeObservation(value: unknown): Readonly<Record<string, SafeValue>> {
   if (!isRecord(value)) return {};
   const result: Record<string, SafeValue> = {};
@@ -292,6 +296,7 @@ export function buildScenarioEvidence(
     traceability: scenario.traceability.targets.map(target => ({ kind: target.kind, id: target.id })),
     fixtures: scenario.steps.map(fixtureIdentity).filter((value): value is NonNullable<typeof value> => value !== undefined),
     deviceIdentities: [...execution.deviceIdentities].sort(),
+    ...(execution.executionMode==="live"&&execution.runIdentity&&execution.buildIdentity?{liveIdentity:{runId:execution.runIdentity,sourceCommit:execution.buildIdentity}}:{}),
     observations,
     assertions: execution.steps.filter(step => assertionIds.has(step.stepId)),
     verdict: {
@@ -299,7 +304,7 @@ export function buildScenarioEvidence(
       ...(execution.classification === undefined ? {} : { classification: execution.classification }),
       ...(execution.status === "completed" || execution.classification === undefined
         ? {}
-        : { reason: execution.classification }),
+        : { reason: safeReason(execution.reason ?? execution.classification) }),
     },
   };
   const machineJson = JSON.stringify(machine);
