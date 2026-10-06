@@ -1,5 +1,6 @@
 import {
   deepStrictEqual,
+  notStrictEqual,
   doesNotMatch,
   match,
   strictEqual,
@@ -7,7 +8,7 @@ import {
 import { test } from "node:test";
 
 import { defineScenario, type ScenarioDefinition } from "../src/scenario/scenario-contract";
-import { createScenarioEvidenceHooks } from "../src/scenario/scenario-evidence";
+import { buildScenarioEvidence, createScenarioEvidenceHooks } from "../src/scenario/scenario-evidence";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 
 function scenario(id: string, steps: ScenarioDefinition["steps"]): ScenarioDefinition {
@@ -239,4 +240,16 @@ test("canonical evidence retains traceability and derives human text from the sa
     ["REQ-S05C-EVIDENCE", "INV-OBSERVATION-AUTHORITY"],
   );
   match(result.evidence?.human ?? "", new RegExp(`verdict=${result.evidence?.machine.verdict.status}`));
+});
+
+test("failure evidence preserves distinct privacy-safe reasons without copying free-form secret material", () => {
+  const definition=scenario("reason-evidence",[{id:"observe",kind:"observe",subject:"remote-change-state",captureAs:"value"}]);
+  const base={scenarioId:definition.id,status:"failed",steps:[],captures:{},deviceIdentities:[],executionMode:"deterministic" as const,classification:"step-exception"};
+  const first=buildScenarioEvidence(definition,{...base,reason:"first private failure detail"});
+  const second=buildScenarioEvidence(definition,{...base,reason:"second private failure detail"});
+  notStrictEqual(first.machine.verdict.reason,second.machine.verdict.reason);
+  strictEqual(first.machine.verdict.reason?.startsWith("reason-sha256:"),true);
+  strictEqual(first.machineJson.includes("first private failure detail"),false);
+  const token=buildScenarioEvidence(definition,{...base,reason:"oauth_token_super_secret_value"});
+  strictEqual(token.machineJson.includes("super_secret_value"),false);
 });
