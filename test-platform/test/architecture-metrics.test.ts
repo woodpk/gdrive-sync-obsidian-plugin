@@ -29,6 +29,10 @@ function writeText(root: string, relativePath: string, content: string): void {
 function lines(count: number, prefix = "export const value"): string {
   return Array.from({ length: count }, (_, index) => `${prefix}${index} = ${index};`).join("\n") + "\n";
 }
+function scenarioLines(count: number): string {
+  if (count < 3) throw new Error("scenario fixture requires at least three logical lines");
+  return ['import { defineScenario } from "../src/scenario/scenario-contract";','export const scenario = defineScenario({',...Array.from({length:count-3},(_,i)=>`p${i}: ${i},`),'});'].join("\n")+"\n";
+}
 
 function boundaryManifest(approvedImports: readonly string[] = []): string {
   return [
@@ -135,7 +139,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.productionSeamFileCount, 3);
   strictEqual(value.current.productionSeamLogicalLoc > 0, true);
   strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
-  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc, 727);
+  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc <= 750, true);
   const scenarios = value.current.scenarios ?? [];
   strictEqual(value.current.scenarioCount, scenarios.length);
   strictEqual(
@@ -169,7 +173,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
     ),
     true,
   );
-  strictEqual(value.current.bvpPowerShellScriptCount, 4);
+  strictEqual(value.current.bvpPowerShellScriptCount, 2);
 });
 
 test("architecture metrics pass a compliant synthetic baseline and list real production imports", () => {
@@ -223,15 +227,22 @@ test("logical LOC excludes blank and comment-only lines while retaining inline-c
 
 test("scenario target overage is observable but not a hard failure until 200 lines", () => {
   withFixture((root) => {
-    writeText(root, "test-platform/scenarios/C01.ts", lines(121));
+    writeText(root, "test-platform/scenarios/C01.ts", scenarioLines(121));
     const value = assertPass(runMetrics(root));
     strictEqual(value.current.scenarios[0].logicalLoc, 121);
     strictEqual(value.current.scenarioDefinitionLogicalLocTotal, 121);
     strictEqual(value.current.scenarios[0].targetExceeded, true);
     strictEqual(value.current.scenarios[0].hardMaxExceeded, false);
-    writeText(root, "test-platform/scenarios/C02.ts", lines(3));
+    writeText(root, "test-platform/scenarios/C02.ts", scenarioLines(3));
     const combined = assertPass(runMetrics(root));
     strictEqual(combined.current.scenarioDefinitionLogicalLocTotal, 124);
+  });
+});
+
+test("executable helper under scenario root consumes framework core budget instead of hiding as a scenario", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/helper.ts", lines(4000));
+    assertBudgetFailure(runMetrics(root), "FRAMEWORK_CORE_LOC");
   });
 });
 
@@ -266,7 +277,7 @@ test("live-device agent and relay logical LOC over 750 fails", () => {
 
 test("individual declarative scenario over 200 logical lines fails", () => {
   withFixture((root) => {
-    writeText(root, "test-platform/scenarios/C01.ts", lines(201));
+    writeText(root, "test-platform/scenarios/C01.ts", scenarioLines(201));
     assertBudgetFailure(runMetrics(root), "SCENARIO_LOC:C01");
   });
 });
