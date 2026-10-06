@@ -56,3 +56,27 @@ test("mailbox history is isolated by run/device and cleanup cannot touch unrelat
 });
 
 test("device run binding is discovered from mailbox and rolls only after prior run completion",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),old=command(1,"run-old","device-a"),next=command(1,"run-next","device-a");await mailbox.publishCommand(old);equal(await mailbox.activeRun("device-a"),"run-old");await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);await mailbox.publishResult(result(old));await mailbox.publishCommand(next);equal(await mailbox.activeRun("device-a"),"run-next");deepEqual((await mailbox.commands("run-old","device-a")).map(v=>v.commandId),["cmd-1"]);deepEqual((await mailbox.commands("run-next","device-a")).map(v=>v.commandId),["cmd-1"]);});
+
+
+test("command publication reservation blocks competing run during binding-to-record gap",async()=>{
+  const drive=new FakeDrive();let release!:()=>void,entered!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;}),atGap=new Promise<void>(resolve=>{entered=resolve;});
+  const request:AuthenticatedDriveRequest=async(input,init={})=>{const url=new URL(input),method=(init.method??"GET").toUpperCase();if(url.pathname==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}"));if(meta.appProperties?.brainBvpKind==="command"&&meta.appProperties?.brainBvpRunId==="run-a"){entered();await gate;}}return drive.request(input,init);};
+  const mailbox=createDriveCommandMailbox(request),a=command(1,"run-a","device-a"),b=command(1,"run-b","device-a");
+  const first=mailbox.publishCommand(a);await atGap;
+  await rejects(()=>mailbox.publishCommand(b),/mailbox-device-run-conflict/);
+  equal(await mailbox.activeRun("device-a"),"run-a");
+  release();await first;
+  deepEqual((await mailbox.commands("run-a","device-a")).map(value=>value.commandId),["cmd-1"]);
+  await mailbox.publishResult(result(a));
+  await mailbox.publishCommand(b);
+  equal(await mailbox.activeRun("device-a"),"run-b");
+});
+
+test("Windows relay pump is non-reentrant while a publish is in flight",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",cmd=command();for(const p of [root,root+"/outbox"])files.dirs.add(p);await files.write(root+"/outbox/cmd.json",JSON.stringify(cmd));
+  let release!:()=>void,entered!:()=>void,publishes=0;const gate=new Promise<void>(resolve=>{release=resolve;}),atPublish=new Promise<void>(resolve=>{entered=resolve;});
+  const mailbox:any={async publishCommand(){publishes++;entered();await gate;},async publishResult(){},async commands(){return[];},async resultFor(){return undefined;},async activeRun(){return undefined;},async cleanup(){return 0;}};
+  const relay=createWindowsMailboxRelay(mailbox,files,root),first=relay.pumpOnce();await atPublish;const second=relay.pumpOnce();equal(publishes,1);release();
+  deepEqual(await first,{status:"ok",published:1,completed:0});deepEqual(await second,{status:"ok",published:1,completed:0});equal(publishes,1);equal(await files.exists(root+"/sent/cmd.json"),true);
+});
