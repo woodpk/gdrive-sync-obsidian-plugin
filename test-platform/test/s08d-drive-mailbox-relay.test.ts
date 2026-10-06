@@ -58,6 +58,17 @@ test("mailbox history is isolated by run/device and cleanup cannot touch unrelat
 test("device run binding requires explicit scoped cleanup before rebinding",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),old=command(1,"run-old","device-a"),next=command(1,"run-next","device-a");await mailbox.publishCommand(old);equal(await mailbox.activeRun("device-a"),"run-old");await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);await mailbox.publishResult(result(old));await rejects(()=>mailbox.publishCommand(next),/mailbox-device-run-conflict/);equal(await mailbox.cleanup("run-old","device-a"),3);equal(await mailbox.activeRun("device-a"),undefined);await mailbox.publishCommand(next);equal(await mailbox.activeRun("device-a"),"run-next");deepEqual(await mailbox.commands("run-old","device-a"),[]);deepEqual((await mailbox.commands("run-next","device-a")).map(v=>v.commandId),["cmd-1"]);});
 
 
+test("binding acquisition and release fail closed when binding search visibility is missing",async()=>{
+  const drive=new FakeDrive();let hideBindings=true;
+  const request:AuthenticatedDriveRequest=async(input,init={})=>{const url=new URL(input),method=(init.method??"GET").toUpperCase(),q=decodeURIComponent(url.searchParams.get("q")??"");if(hideBindings&&url.pathname==="/drive/v3/files"&&method==="GET"&&q.includes("brainBvpKind' and value='run-binding'"))return Response.json({files:[]});return drive.request(input,init);};
+  const mailbox=createDriveCommandMailbox(request),a=command(1,"run-a","device-a");
+  await rejects(()=>mailbox.publishCommand(a),/mailbox-run-binding-unconfirmed/);
+  equal([...drive.files.values()].some(value=>value.meta.appProperties?.brainBvpKind==="command"),false);
+  hideBindings=false;await mailbox.publishCommand(a);equal(await mailbox.activeRun("device-a"),"run-a");await mailbox.publishResult(result(a));
+  hideBindings=true;await rejects(()=>mailbox.cleanup("run-a","device-a"),/mailbox-run-binding-release-unconfirmed/);
+  hideBindings=false;equal(await mailbox.activeRun("device-a"),"run-a");equal(await mailbox.cleanup("run-a","device-a"),3);equal(await mailbox.activeRun("device-a"),undefined);
+});
+
 test("binding blocks competing run even while first command record is not yet visible",async()=>{
   const drive=new FakeDrive();let release!:()=>void,entered!:()=>void;
   const gate=new Promise<void>(resolve=>{release=resolve;}),atGap=new Promise<void>(resolve=>{entered=resolve;});
