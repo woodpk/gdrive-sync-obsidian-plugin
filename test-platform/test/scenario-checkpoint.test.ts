@@ -95,7 +95,7 @@ test("valid checkpoint round-trips deterministically with bounded continuation s
   const second = encodeScenarioCheckpoint(decoded.value);
 
   strictEqual(second, first);
-  strictEqual(decoded.value.schemaVersion, 1);
+  strictEqual(decoded.value.schemaVersion, 2);
   strictEqual(decoded.value.scenarioId, "checkpoint-scenario");
   strictEqual(decoded.value.runId, "run-001");
   strictEqual(decoded.value.nextStepIndex, 2);
@@ -106,12 +106,13 @@ test("valid checkpoint round-trips deterministically with bounded continuation s
     decoded.value.results.map(result => ({
       index: result.index,
       stepId: result.stepId,
+      kind: result.kind,
       status: result.status,
       classification: result.classification,
     })),
     [
-      { index: 0, stepId: "seed", status: "completed", classification: undefined },
-      { index: 1, stepId: "capture", status: "blocked", classification: "human-checkpoint" },
+      { index: 0, stepId: "seed", kind: "fixture", status: "completed", classification: undefined },
+      { index: 1, stepId: "capture", kind: "checkpoint", status: "blocked", classification: "human-checkpoint" },
     ],
   );
   strictEqual(decoded.value.evidence?.verdictStatus, "blocked");
@@ -176,7 +177,7 @@ test("execution mode and device context mismatches fail closed", () => {
 test("incompatible, malformed, truncated, and oversized checkpoints fail closed", () => {
   const encoded = encodeScenarioCheckpoint(validCheckpoint());
   const incompatible = JSON.parse(encoded) as Record<string, unknown>;
-  incompatible.schemaVersion = 2;
+  incompatible.schemaVersion = 3;
   const versionResult = decodeScenarioCheckpoint(JSON.stringify(incompatible));
   strictEqual(versionResult.ok, false);
   if (!versionResult.ok) strictEqual(versionResult.classification, "checkpoint-incompatible-version");
@@ -230,6 +231,23 @@ test("restoring and validating a checkpoint cannot mutate product state by itsel
 
   const after = await world.deviceBacking("device-a").local.observe(path);
   deepStrictEqual(after, before);
+});
+
+test("same-ID scenario drift, incomplete prefixes, and stale live source identity fail closed", () => {
+  const checkpoint=validCheckpoint();
+  const changed=defineScenario({...scenario(),steps:[{...scenario().steps[0],path:"changed.bin"},...scenario().steps.slice(1)] as ScenarioDefinition["steps"]});
+  const drift=validateScenarioCheckpointForResume(checkpoint,{scenario:changed,runId:"run-001",executionMode:"deterministic",deviceIdentities:["device:a","device:z"]});
+  strictEqual(drift.ok,false);if(!drift.ok)strictEqual(drift.classification,"checkpoint-scenario-mismatch");
+
+  const omitted=JSON.parse(encodeScenarioCheckpoint(checkpoint)) as any;omitted.results.splice(0,1);
+  const omittedResult=decodeScenarioCheckpoint(JSON.stringify(omitted));strictEqual(omittedResult.ok,false);
+  const altered=JSON.parse(encodeScenarioCheckpoint(checkpoint)) as any;altered.results[0].stepId="different";
+  const alteredDecoded=decodeScenarioCheckpoint(JSON.stringify(altered));strictEqual(alteredDecoded.ok,true);
+  if(alteredDecoded.ok){const mismatch=validateScenarioCheckpointForResume(alteredDecoded.value,{scenario:scenario(),runId:"run-001",executionMode:"deterministic",deviceIdentities:["device:a","device:z"]});strictEqual(mismatch.ok,false);}
+
+  const sourceA="a".repeat(40),sourceB="b".repeat(40);
+  const live=createScenarioCheckpoint({checkpointId:"cp-live",scenario:scenario(),runId:"run-live",executionMode:"live",nextStepIndex:2,disposition:"awaiting-resume",steps:priorSteps,deviceIdentities:["device:a"],requiredResumeEvidence:["human-confirmation"],sourceIdentity:sourceA});
+  strictEqual(live.ok,true);if(live.ok){const stale=validateScenarioCheckpointForResume(live.value,{scenario:scenario(),runId:"run-live",executionMode:"live",deviceIdentities:["device:a"],sourceIdentity:sourceB});strictEqual(stale.ok,false);if(!stale.ok)strictEqual(stale.classification,"checkpoint-execution-context-mismatch");}
 });
 
 test("awaiting-resume requires explicit resume evidence and result positions cannot cross next step", () => {
