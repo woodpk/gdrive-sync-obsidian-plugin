@@ -17,6 +17,7 @@ export interface LiveScenarioExecutorOptions {
   readonly relayRoot: string; readonly checkpointFile: string;
   readonly checkpoints?: Readonly<Record<string, HumanCheckpointInstruction>>;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
+  readonly expectedValidationSourceCommit: string;
   readonly resultTimeoutMs?: number; readonly pollIntervalMs?: number;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
@@ -42,8 +43,8 @@ function sequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=
 function commandId(runId:string,scenarioId:string,index:number,sub:number):string{
   return "bvp-"+createHash("sha256").update(`${runId}\0${scenarioId}\0${index}\0${sub}`).digest("hex").slice(0,32);
 }
-function correlated(command:DeviceCommand,result:DeviceCommandResult):boolean{
-  return command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
+function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string):boolean{
+  return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
 function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
   return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;
@@ -66,7 +67,7 @@ function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string
 export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
   if(!options.scenario.executionModes.includes("live"))throw new Error("live-execution-mode-unavailable");
-  if(!options.runId||options.runId.length>128||deviceIdentities.some(value=>!value||value.length>128)||new Set(deviceIdentities).size!==deviceIdentities.length)throw new Error("live-executor-identity-invalid");
+  if(!options.runId||options.runId.length>128||!/^[0-9a-f]{40}$/i.test(options.expectedValidationSourceCommit)||deviceIdentities.some(value=>!value||value.length>128)||new Set(deviceIdentities).size!==deviceIdentities.length)throw new Error("live-executor-identity-invalid");
   const timeout=options.resultTimeoutMs??30_000,poll=options.pollIntervalMs??250;
   if(timeout<0||poll<=0)throw new Error("live-executor-timing-invalid");
   const out=join(options.relayRoot,"outbox"),sent=join(options.relayRoot,"sent"),inbox=join(options.relayRoot,"inbox");
@@ -88,7 +89,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     while(Date.now()<=deadline){
       if(await exists(resultPath)){
         let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
-        await rm(resultPath,{force:true});return correlated(command,result)?result:null;
+        await rm(resultPath,{force:true});return correlated(command,result,options.expectedValidationSourceCommit.toLowerCase())?result:null;
       }
       await sleep(poll);
     }
@@ -125,7 +126,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   }
 
   return{
-    executionMode:"live",deviceIdentities,pendingCheckpoint:()=>pending,
+    executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
