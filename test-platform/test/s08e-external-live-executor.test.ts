@@ -1,5 +1,6 @@
-import { doesNotMatch, deepStrictEqual, strictEqual } from "node:assert/strict";
+import { doesNotMatch, deepStrictEqual, rejects, strictEqual } from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -22,6 +23,14 @@ async function respond(relay:string,build:(command:DeviceCommand)=>DeviceCommand
 }
 const baseResult=(command:DeviceCommand,extra:Partial<DeviceCommandResult>={}):DeviceCommandResult=>({validationBuild,runId:command.runId,deviceId:command.deviceId,sequence:command.sequence,commandId:command.commandId,kind:command.kind,status:"completed",classification:"completed",...extra});
 const options=(s:ScenarioDefinition,r:string,relay:string,checkpoint:string,extra:Record<string,unknown>={})=>({scenario:s,runId:r,deviceIds:{"device-a":"physical-a","device-b":"physical-b"},relayRoot:relay,checkpointFile:checkpoint,expectedValidationSourceCommit:sourceCommit,resultTimeoutMs:1000,pollIntervalMs:1,...extra});
+
+test("external controller atomically serializes competing device runs and advances generation",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("lease-race",[{id:"observe",kind:"observe",subject:"device-state",device:"device-a",captureAs:"state"}]),make=(runId:string)=>createLiveScenarioExecutor(options(s,runId,relay,join(dir,runId+".json")));
+  const attempts=await Promise.allSettled([make("run-a"),make("run-b")]),fulfilled=attempts.filter((value):value is PromiseFulfilledResult<Awaited<ReturnType<typeof createLiveScenarioExecutor>>>=>value.status==="fulfilled"),rejected=attempts.filter((value):value is PromiseRejectedResult=>value.status==="rejected");
+  strictEqual(fulfilled.length,1);strictEqual(rejected.length,1);strictEqual(/live-controller-(?:authority-busy|device-run-conflict)/.test(String(rejected[0]!.reason)),true);
+  const authority=join(relay,"controller-authority",createHash("sha256").update("physical-a").digest("hex")+".json"),active=JSON.parse(await readFile(authority,"utf8"));strictEqual(active.generation,1);strictEqual(["run-a","run-b"].includes(active.runId),true);strictEqual((await readdir(join(relay,"outbox"))).length,0);
+  await fulfilled[0]!.value.dispose?.();const released=JSON.parse(await readFile(authority,"utf8"));strictEqual(released.runId,null);strictEqual(released.generation,1);
+  const next=await make("run-c"),generation2=JSON.parse(await readFile(authority,"utf8"));strictEqual(generation2.runId,"run-c");strictEqual(generation2.generation,2);await next.dispose?.();await rm(dir,{recursive:true,force:true});
+});
 
 test("live executor maps local fixture, production preview/execute, observation, and assertion in exact sequence",async()=>{const dir=await root(),relay=join(dir,"relay"),cp=join(dir,"state","cp.json"),s=scenario("flow",[
   {id:"seed",kind:"fixture",operation:"put-local-file",device:"device-a",path:"note.md",content:{encoding:"utf8",value:"hello"}},
@@ -74,7 +83,7 @@ test("human checkpoint persists only S05D state and resumes in a new executor wi
 
 test("stale checkpoint identity and cross-checkpoint capture dependency fail closed",async()=>{const dir=await root(),relay=join(dir,"relay"),cp=join(dir,"cp.json"),simple=scenario("cp-id",[{id:"cp",kind:"checkpoint",operation:"capture",checkpointId:"cp"}]),instruction:HumanCheckpointInstruction={action:"Restart app",device:"physical-a",stopCondition:"App stopped",requiredEvidence:["human-confirmation"],nextSafeAction:"Resume"};
   const creator=await createLiveScenarioExecutor(options(simple,"run-a",relay,cp,{checkpoints:{cp:instruction}}));const blocked=await new DeterministicScenarioRunner({},creator).run(simple);strictEqual(blocked.classification,"human-checkpoint-required");
-  const stale=await createLiveScenarioExecutor(options(simple,"run-b",relay,cp,{checkpoints:{cp:instruction},resumeEvidence:["human-confirmation"]}));const staleResult=await new DeterministicScenarioRunner({},stale).run(simple);strictEqual(staleResult.status,"blocked");strictEqual(staleResult.classification,"checkpoint-run-mismatch");
+  await rejects(()=>createLiveScenarioExecutor(options(simple,"run-b",relay,cp,{checkpoints:{cp:instruction},resumeEvidence:["human-confirmation"]})),/live-controller-device-run-conflict/);
   const dep=scenario("dep",[{id:"preview",kind:"production",device:"device-a",operation:"preview",captureAs:"plan"},{id:"cp",kind:"checkpoint",operation:"capture",checkpointId:"cp"},{id:"execute",kind:"production",device:"device-a",operation:"execute-reviewed-plan",inputRef:"plan"}]),depRelay=join(dir,"relay-dep"),depFile=join(dir,"dep.json"),depExec=await createLiveScenarioExecutor(options(dep,"run-dep",depRelay,depFile,{checkpoints:{cp:instruction}})),depRun=new DeterministicScenarioRunner({},depExec).run(dep);await respond(depRelay,c=>baseResult(c,{classification:"production-preview-ready",plan:{planId:"p",trigger:"manual",operationCount:0,executionDisposition:"reviewable",recoveryCheckpointRequired:false,globalExecutionGate:"open"}}));const depResult=await depRun;strictEqual(depResult.status,"unsupported");strictEqual(depResult.classification,"checkpoint-crosses-capture-dependency");strictEqual(await readFile(depFile,"utf8").then(()=>true,()=>false),false);await rm(dir,{recursive:true,force:true});
 });
 
