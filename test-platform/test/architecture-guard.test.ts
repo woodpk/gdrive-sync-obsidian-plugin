@@ -197,7 +197,7 @@ test("architecture guard is implemented in the PHX-CI-consumed TypeScript surfac
   );
   match(source, /export function runArchitectureGuard/);
   match(source, /ARCH_GUARD_RESULT=PASS violations=0/);
-  strictEqual(source.includes("Test-TestingArchitectureGuard.ps1"), true);
+  strictEqual(/(?:pwsh|powershell).*Test-TestingArchitectureGuard/i.test(source), false);
 });
 
 test("architecture guard passes the actual BRAIN repository baseline", () => {
