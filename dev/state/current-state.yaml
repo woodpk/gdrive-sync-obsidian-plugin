@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
-status: "WINDOWS_RUNTIME_LOAD_VERIFIED_READY_FOR_AUTH_BASELINE"
+status: "WINDOWS_AUTH_PAIR_OPERATOR_COMPLETE_AWAITING_OBJECTIVE_POST_PAIR_STATE"
 last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
 blockers:
   - "iPhone physical facts remain to be observed: exact model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity."
-next_action: "Proceed with the Windows same-device authentication/pairing baseline using the already-loaded validation build. Do not reinstall or rebuild the artifact."
+next_action: "Open Settings -> BRAIN Google Drive Sync and capture the top product-state section showing Device identity, Vault identity, Managed remote, and First synchronization. Use that objective product display to verify the Windows post-authentication/pairing state before closing the Windows S09A baseline."
 updated_at: "2026-10-07"
 
 context:
@@ -46,6 +46,9 @@ context:
       runtime_validation_schema_version: 1
       runtime_validation_source_commit: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
       runtime_validation_sentinel: "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL"
+      authentication_completed_operator: true
+      pairing_completed_operator: true
+      post_pair_objective_state_verified: false
 
   physical_binding:
     run_id: "s09a-20261007-3e3724ed-01"

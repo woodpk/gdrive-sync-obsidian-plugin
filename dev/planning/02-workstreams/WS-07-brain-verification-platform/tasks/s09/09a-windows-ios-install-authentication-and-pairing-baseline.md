@@ -111,6 +111,23 @@ Runtime observation of `globalThis.__BRAIN_BVP_VALIDATION_BUILD__` returned:
 
 This proves the running Obsidian process loaded the validation artifact rather than merely having it present on disk. The Windows tranche advances to same-device authentication/pairing baseline.
 
+### 0.5C Windows authentication/pairing operator checkpoints — ACTIONS COMPLETE / OBJECTIVE STATE PENDING
+
+The operator completed the supported Windows same-device Google authentication flow and reports authentication successful.
+
+The operator then selected **Validate and pair existing remote -> Pair** and reports pairing successful.
+
+These human actions are accepted as completed checkpoints. The Windows baseline is not yet closed because the required objective production-state observation remains pending.
+
+Required next observation from **Settings -> BRAIN Google Drive Sync**:
+
+- Device identity;
+- Vault identity;
+- Managed remote;
+- First synchronization.
+
+The post-pair screenshot currently on record shows only the Community plugins page and therefore does not prove those product-state values.
+
 ### 0.5 iOS physical observations still required
 
 Before the **iOS tranche** may execute, and before full S09A acceptance may be claimed, record exactly:

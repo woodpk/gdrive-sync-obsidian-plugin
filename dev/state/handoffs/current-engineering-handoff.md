@@ -149,8 +149,19 @@ The restarted Windows Obsidian 1.13.7 process loaded the installed validation ar
 
 The ordinary JavaScript `[[Prototype]]` properties shown by DevTools are not BVP evidence and require no inspection.
 
+## Windows authentication/pairing operator checkpoints
+
+The operator reports:
+
+- Windows same-device Google authentication completed successfully;
+- `Validate and pair existing remote -> Pair` completed successfully.
+
+These are recorded as completed human checkpoints. They are **not yet the objective post-pair product-state proof** required to close the Windows baseline.
+
+The screenshot supplied after pairing shows the correct disposable vault, Obsidian 1.13.7, and the enabled BRAIN Google Drive Sync 0.1.18 plugin, but it is the Community plugins page and does not expose Device identity, Vault identity, Managed remote, or First synchronization.
+
 ## Immediate next action
 
-Proceed with the Windows same-device authentication/pairing baseline using the already-loaded validation build. Do not reinstall or rebuild the artifact. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
+Open **Settings -> BRAIN Google Drive Sync** and capture the top product-state section showing Device identity, Vault identity, Managed remote, and First synchronization. Verify those product-reported values before closing the Windows authentication/pairing baseline. Do not reinstall or rebuild the artifact.
 
 Do not begin S09B. Do not begin Stage 3.
