@@ -498,3 +498,103 @@ function createAnalysis(files: readonly { readonly path: string; readonly text: 
       else if (ts.isExportDeclaration(node) && node.moduleSpecifier) add(node.isTypeOnly ? "export-type" : "export", node.moduleSpecifier);
       else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) add("import-equals", node.moduleReference.expression);
       else if (ts.isCallExpression(node)) {
+        if (node.expression.kind === ts.SyntaxKind.ImportKeyword) add("dynamic-import", node.arguments[0]);
+        else if (ts.isIdentifier(node.expression) && node.expression.text === "require" && !locallyShadowedRequire(node.expression, sourceFile)) add("require", node.arguments[0]);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    return dependencies;
+  };
+  const scenarioName = /^(?:BVP(?:_|$)[A-Za-z0-9_]*|scenario(?:Id|Runner|Step|Fixture|Verdict|Control|Execution|Command|Action)[A-Za-z0-9_]*|validation(?:Scenario|Runner|Control|Mode|Command)[A-Za-z0-9_]*|(?:run|execute|start|resume|advance|select|set|dispatch)[A-Za-z0-9_]*Scenario[A-Za-z0-9_]*)$/i;
+  const collectScenarioSignals = (sourceFile: ts.SourceFile): { kind: string; name: string }[] => {
+    const signals: { kind: string; name: string }[] = [];
+    const add = (kind: string, name: string | null | undefined): void => { if (name && scenarioName.test(name)) signals.push({ kind, name }); };
+    const addBinding = (kind: string, name: ts.BindingName): void => { const names: string[] = []; declarationNames(name, names); for (const value of names) add(kind, value); };
+    const visit = (node: ts.Node): void => {
+      if (ts.isVariableDeclaration(node)) addBinding("variable", node.name);
+      else if (ts.isParameter(node)) addBinding("parameter", node.name);
+      else if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) add("declaration", node.name?.text);
+      else if (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node) || ts.isPropertySignature(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) add("member", propertyNameText(node.name));
+      else if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) add("property", propertyNameText(node.name));
+      else if (ts.isCallExpression(node)) {
+        if (ts.isIdentifier(node.expression)) add("call", node.expression.text);
+        else if (ts.isPropertyAccessExpression(node.expression)) add("call", node.expression.name.text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    const seen = new Set<string>();
+    return signals.filter((signal) => { const key = signal.kind + ":" + signal.name; if (seen.has(key)) return false; seen.add(key); return true; });
+  };
+  const collectBuildReferences = (sourceFile: ts.SourceFile): string[] => {
+    const topLevelValues = new Map<string, ts.Expression>();
+    for (const statement of sourceFile.statements) if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) if (ts.isIdentifier(declaration.name) && declaration.initializer) topLevelValues.set(declaration.name.text, declaration.initializer);
+    const staticStrings = (node: ts.Expression | undefined, seen = new Set<string>()): string[] => {
+      if (!node) return [];
+      if (ts.isStringLiteralLike(node)) return [node.text];
+      if (ts.isArrayLiteralExpression(node)) return node.elements.flatMap((element) => ts.isExpression(element) ? staticStrings(element, seen) : []);
+      if (ts.isParenthesizedExpression(node)) return staticStrings(node.expression, seen);
+      if (ts.isIdentifier(node) && topLevelValues.has(node.text) && !seen.has(node.text)) { const next = new Set(seen); next.add(node.text); return staticStrings(topLevelValues.get(node.text), next); }
+      return [];
+    };
+    const buildKeys = new Set(["entry", "entries", "entryPoint", "entryPoints", "input", "inputs", "inject", "tsconfig"]);
+    const buildCallNames = new Set(["build", "buildSync", "context", "defineConfig"]);
+    const references: string[] = [];
+    const addValues = (node: ts.Expression | undefined): void => { for (const value of staticStrings(node)) references.push(value); };
+    const inspectConfig = (node: ts.Expression | undefined, seen = new Set<string>()): void => {
+      if (!node) return;
+      if (ts.isParenthesizedExpression(node)) { inspectConfig(node.expression, seen); return; }
+      if (ts.isIdentifier(node) && topLevelValues.has(node.text) && !seen.has(node.text)) { const next = new Set(seen); next.add(node.text); inspectConfig(topLevelValues.get(node.text), next); return; }
+      if (ts.isArrayLiteralExpression(node)) { for (const element of node.elements) if (ts.isExpression(element)) inspectConfig(element, seen); return; }
+      if (!ts.isObjectLiteralExpression(node)) return;
+      for (const property of node.properties) {
+        if (ts.isPropertyAssignment(property)) { const key = propertyNameText(property.name); if (key && buildKeys.has(key)) addValues(property.initializer); else inspectConfig(property.initializer, seen); }
+        else if (ts.isShorthandPropertyAssignment(property) && buildKeys.has(property.name.text)) addValues(topLevelValues.get(property.name.text));
+      }
+    };
+    const callName = (expression: ts.LeftHandSideExpression): string | null => ts.isIdentifier(expression) ? expression.text : ts.isPropertyAccessExpression(expression) ? expression.name.text : null;
+    const isModuleExports = (left: ts.Expression): boolean => ts.isPropertyAccessExpression(left) && ((ts.isIdentifier(left.expression) && left.expression.text === "module" && left.name.text === "exports") || (ts.isIdentifier(left.expression) && left.expression.text === "exports"));
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node)) { const name = callName(node.expression); if (name && buildCallNames.has(name)) for (const argument of node.arguments) inspectConfig(argument); }
+      else if (ts.isExportAssignment(node)) inspectConfig(node.expression);
+      else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && isModuleExports(node.left)) inspectConfig(node.right);
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    return [...new Set(references)];
+  };
+  return files.map((file) => {
+    if (file.mode === "tsconfig") {
+      const parsed = ts.parseConfigFileTextToJson(file.path, file.text);
+      if (parsed.error) return { path: file.path, dependencies: [], scenarioSignals: [], buildReferences: [], declarativeScenario: false, errors: [ts.flattenDiagnosticMessageText(parsed.error.messageText, "\n")] };
+      const config = parsed.config ?? {};
+      const refs: string[] = [];
+      const add = (value: unknown): void => { if (typeof value === "string") refs.push(value); else if (Array.isArray(value)) for (const item of value) add(item); };
+      add(config.files); add(config.include); add(config.extends); if (Array.isArray(config.references)) for (const value of config.references) if (value && typeof value.path === "string") refs.push(value.path); if (config.compilerOptions) { add(config.compilerOptions.rootDir); add(config.compilerOptions.rootDirs); }
+      return { path: file.path, dependencies: [], scenarioSignals: [], buildReferences: [...new Set(refs)], declarativeScenario: false, errors: [] };
+    }
+    const sourceFile = program.getSourceFile(normalizeRepoPath(file.path));
+    if (!sourceFile) return { path: file.path, dependencies: [], scenarioSignals: [], buildReferences: [], declarativeScenario: false, errors: ["TypeScript parser did not load source file."] };
+    const errors = program.getSyntacticDiagnostics(sourceFile).map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+    return {
+      path: file.path,
+      dependencies: collectDependencies(sourceFile),
+      scenarioSignals: file.mode === "source" ? collectScenarioSignals(sourceFile) : [],
+      buildReferences: file.mode === "build" ? collectBuildReferences(sourceFile) : [],
+      declarativeScenario: file.mode === "source" && declarativeScenario(sourceFile),
+      errors,
+    };
+  });
+}
+
+function buildScriptFileReferences(script: string): string[] {
+  const references: string[] = [];
+  const patterns = [
+    /(?:^|&&|\|\||;)\s*(?:node|tsx|ts-node)\s+(?:--[A-Za-z0-9_-]+(?:=\S+)?\s+)*("[^"]+"|'[^']+'|[A-Za-z0-9_./\\-]+\.(?:mjs|cjs|js|ts))/gi,
+    /(?:^|&&|\|\||;)\s*tsc\b[^;&|]*?(?:-p|--project)\s+("[^"]+"|'[^']+'|[A-Za-z0-9_./\\-]+)/gi,
+    /(?:^|&&|\|\||;)\s*(?:esbuild|rollup|webpack|vite)\s+("[^"]+"|'[^']+'|[A-Za-z0-9_./\\-]+)/gi,
+  ];
+  for (const pattern of patterns) for (const match of script.matchAll(pattern)) references.push(match[1].replace(/^['"]|['"]$/g, ""));
+  return references;
+}
