@@ -30,7 +30,7 @@ context:
   automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
   s09_started: false
   stage_3_started: false
-  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 10 implementation now includes PHX-CI-consumed canonical dev-root enforcement, operator-script classification, and migration shipping-identity tests. No Phase-10 PASS is claimed yet; authoritative deployed-runtime PHX-CI verification with canonical repository-published evidence is still required."
+  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 10 implementation now includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; authoritative deployed-runtime PHX-CI verification with canonical repository-published evidence is still required."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
