@@ -1,6 +1,6 @@
 # Development Repository Layout
 
-This repository is being migrated to the canonical development hierarchy required by the governing agent-led software engineering standards.
+This repository uses the canonical development hierarchy required by the governing agent-led software engineering standards.
 
 ## Canonical active structure
 
@@ -10,7 +10,7 @@ This repository is being migrated to the canonical development hierarchy require
 - `state/` — current continuity and construction state.
 - `reviews/` — completed independent/adversarial review outputs.
 - `scripts/` — repository-controlled engineering scripts.
-- `Test-Results/` — persisted PHX-CI run evidence.
+- `Test-Results/` — persisted repository verification run evidence.
 - `scratch/` — explicitly non-authoritative temporary working material.
 - `_ca-output.md` — current coding-agent/work-unit evidence and handoff surface where required.
 
@@ -20,7 +20,7 @@ Only `README.md` and `_ca-output.md` are standard ordinary files directly under 
 
 This README is organizational/navigation documentation only. It does not create product, architecture, validation, or process decisions.
 
-During the directory-standardization migration, legacy noncanonical `dev/**` trees may remain temporarily present until their owning migration phase relocates, transforms, archives, or deduplicates them. Their presence during migration does not make those locations part of the canonical target layout.
+Historical pre-standard development material is preserved outside active `dev/` under `archive/pre-standard-dev-layout-2026-10/DEV/` and is non-authoritative unless an active authority explicitly incorporates or cites it.
 
 ## Naming
 
