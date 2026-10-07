@@ -1,4 +1,0 @@
-schema_version: 1
-status: relocated_non_authoritative_pointer
-canonical_location: dev/authority/governance/locks/testing-platform-boundary.yaml
-note: "The canonical BVP boundary lock moved under dev/authority/governance/locks/. This legacy path is a temporary migration pointer and must not be used as a validation input."

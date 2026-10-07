@@ -1,4 +1,0 @@
-schema_version: 1
-status: relocated_non_authoritative_pointer
-canonical_location: dev/authority/decision-register.yaml
-note: "The canonical decision register moved under the standardized authority hierarchy. This legacy path remains only as a temporary migration pointer and must not be treated as a second decision register."
