@@ -128,6 +128,19 @@ The observed device, vault, and managed-remote identities match the exact bound 
 
 **Windows S09A baseline verdict: PASS.** Full S09A acceptance remains pending iOS evidence.
 
+### 0.5D Windows live-agent readiness — PASS
+
+Runtime observation of `globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__` returned an active object whose:
+
+- `deviceId` is `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- mailbox interface is present;
+- Windows relay interface is present;
+- `pollDeviceOnce` and `currentRunId` are present.
+
+The runtime device ID matches the exact bound Windows product identity. The live-device agent/relay seam is therefore ready for an external-controller probe.
+
+The next step is a **non-mutating `observe-product` round trip**. No fixture creation or synchronization execution is authorized until that round trip passes exact correlation.
+
 ### 0.5 iOS physical observations still required
 
 Before the **iOS tranche** may execute, and before full S09A acceptance may be claimed, record exactly:

@@ -1,43 +1,31 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — S09A Windows authentication/pairing baseline
+# Current work-unit evidence — S09 Windows live-agent readiness
 
 ## Result
 
-`WINDOWS_S09A_BASELINE: PASS`
+`WINDOWS_LIVE_AGENT_READY: PASS`
 
-## Human checkpoints
+## Runtime observation
 
-- Windows same-device Google authentication: COMPLETED / SUCCESS REPORTED
-- Validate and pair existing remote -> Pair: COMPLETED / SUCCESS REPORTED
+Command observed in the real Windows Obsidian runtime:
 
-No OAuth credential, token, authorization code, or secret was captured in evidence.
+`globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__`
 
-## Objective post-pair product state
+Returned runtime properties include:
 
-Correction to the prior evidence record: the supplied screenshot is the **BRAIN Google Drive Sync settings page**, not the Community plugins page.
+- deviceId: `device:8b7820faab2603b334a1c13d8c3bdba0`
+- mailbox interface: present
+- relay interface: present
+- currentRunId accessor: present
+- pollDeviceOnce function: present
 
-Observed values:
+The runtime device ID exactly matches the bound S09A Windows product identity.
 
-- Device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`
-- Vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`
-- Managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`
-- First synchronization: `preview/execute still required; automatic sync remains disabled`
+## Boundary
 
-The device, vault, and managed-remote identities match the exact bound S09A Windows coordinates.
-
-The first-sync state is expected at this checkpoint; S09A establishes installed-runtime authentication/pairing readiness and does not require synchronization execution.
-
-## Windows tranche conclusion
-
-Windows installation: PASS  
-Windows validation runtime load: PASS  
-Windows same-device authentication: PASS / operator checkpoint  
-Windows managed-remote pairing: PASS / operator checkpoint  
-Objective post-pair identity state: PASS
-
-The Windows S09A baseline is complete. Full S09A acceptance remains pending iOS evidence.
+This proves the validation mailbox/relay agent is active in the installed Windows runtime. It does not yet prove external-controller round-trip transport or production observation correlation.
 
 ## Next action
 
-Continue with the next independently meaningful Windows-only S09 physical evidence tranche using the same installed validation build. Do not reinstall or rebuild the artifact.
+Run a non-mutating external-controller `observe-product` round trip and require exact run/device/sequence/command/build correlation before any fixture creation or synchronization execution.

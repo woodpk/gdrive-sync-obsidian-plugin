@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
-status: "WINDOWS_S09A_BASELINE_COMPLETE_IOS_PENDING"
+status: "WINDOWS_LIVE_AGENT_VERIFIED_READY_FOR_CONTROLLER_PROBE"
 last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
 blockers:
   - "iPhone physical facts remain to be observed: exact model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity."
-next_action: "Windows S09A install/load/authentication/pairing baseline is complete. Continue with the next independently meaningful Windows-only S09 physical evidence tranche while iOS release/device work remains pending; do not claim full S09A acceptance until iOS evidence is complete."
+next_action: "Run a non-mutating external-controller observe-product round trip through the bound Windows relay/mailbox/device agent and require exact result correlation to source 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f before any fixture creation or synchronization execution."
 updated_at: "2026-10-07"
 
 context:
@@ -53,6 +53,10 @@ context:
       observed_vault_identity: "vault:c321a8a0-f083-4528-a1c1-25e60ad558bb"
       observed_managed_remote_id: "1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-"
       observed_first_sync_state: "preview/execute still required; automatic sync remains disabled"
+      mailbox_runtime_verified: true
+      mailbox_runtime_device_id: "device:8b7820faab2603b334a1c13d8c3bdba0"
+      mailbox_runtime_relay_present: true
+      mailbox_runtime_mailbox_present: true
 
   physical_binding:
     run_id: "s09a-20261007-3e3724ed-01"

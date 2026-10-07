@@ -171,8 +171,20 @@ Those values match the bound Windows S09A identities exactly. The first-sync sta
 
 The **Windows S09A baseline is complete**. Full S09A acceptance remains pending the iOS tranche.
 
+## Windows live-agent readiness checkpoint
+
+Runtime observation of `globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__` returned an active validation runtime object with:
+
+- deviceId: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- mailbox interface present;
+- relay interface present;
+- `pollDeviceOnce` present;
+- `currentRunId` accessor present.
+
+The runtime device ID exactly matches the bound Windows product identity. This establishes that the installed validation build has the live mailbox/relay agent active.
+
 ## Immediate next action
 
-Continue with the next independently meaningful Windows-only S09 physical evidence tranche using this same validated installed build. Do not reinstall or rebuild the artifact. Do not claim full S09A acceptance until the iOS evidence is complete.
+Run one **non-mutating external-controller `observe-product` round trip** through the relay/mailbox/device agent. Require exact run/device/sequence/command/build correlation before any fixture creation or synchronization execution.
 
 Do not begin S09B. Do not begin Stage 3.
