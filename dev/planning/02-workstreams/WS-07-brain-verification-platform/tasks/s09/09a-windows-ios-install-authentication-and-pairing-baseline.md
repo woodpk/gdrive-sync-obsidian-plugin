@@ -85,9 +85,23 @@ Authorized immediate sequence:
 
 This authorization does not declare S09A complete and does not permit a cross-device PASS without iOS evidence.
 
+### 0.5A Windows installation result — PASS
+
+The exact bound validation artifact is installed in the disposable Windows vault.
+
+- target plugin directory: `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync`;
+- installed `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`;
+- installed manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`;
+- installed build source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- source and installed artifact files are byte-identical;
+- existing `data.json`, `.bvp-relay`, and all other device-local state were preserved;
+- discrepancies: none.
+
+The Windows tranche therefore advances to **installed-runtime load verification**. No rebuild or reinstall is required.
+
 ### 0.5 iOS physical observations still required
 
-Before S09A may become EXECUTABLE, record exactly:
+Before the **iOS tranche** may execute, and before full S09A acceptance may be claimed, record exactly:
 
 - iPhone model;
 - iOS version;

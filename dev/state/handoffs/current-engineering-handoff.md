@@ -23,7 +23,7 @@ Active next child: **BVP-S09A — Windows / iOS Install, Authentication, and Pai
 
 The BVP's historical substantive green source anchor remains `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The current integrated pre-S09 source baseline is `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`.
 
-S09 physical execution has **not** started. Stage 3 has **not** started.
+S09 Windows physical execution **has started** with the verified installation of the exact validation artifact into the disposable Windows vault. Stage 3 has **not** started.
 
 ## S09A re-grounding completed
 
@@ -125,8 +125,22 @@ S09A is a physical-evidence child, not a product-implementation child. Normal ex
 
 No normal S09A execution change is authorized under `src/**`, `test-platform/**`, `phx-ci.json`, `Taskfile*.yml`, or frozen governance surfaces. If physical validation exposes a substantive defect requiring implementation repair, S09A stops BLOCKED and a separate bounded engineering repair unit must be created.
 
+## Windows validation artifact installation complete
+
+Codex Desktop reported `INSTALL: PASS` for the exact bound artifact.
+
+Verified installed state:
+
+- target: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync`;
+- installed `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`;
+- installed manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`;
+- installed build source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- source and installed artifact files were byte-identical;
+- `data.json`, `.bvp-relay`, and all other device-local state were preserved;
+- discrepancies: none.
+
 ## Immediate next action
 
-Install the exact bound validation artifact into the disposable Windows vault, verify the installed artifact identity, and begin the Windows installed-runtime/authentication baseline. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
+Open the exact disposable Windows vault in Obsidian 1.13.7, verify that the installed validation plugin loads and reports the expected source/build identity, then proceed with the Windows same-device authentication/pairing baseline. Do not reinstall or rebuild the artifact. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
 
 Do not begin S09B. Do not begin Stage 3.

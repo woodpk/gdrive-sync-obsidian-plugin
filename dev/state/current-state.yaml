@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
-status: "WINDOWS_TRANCHE_READY_FOR_INSTALL"
+status: "WINDOWS_TRANCHE_INSTALLED_READY_FOR_RUNTIME_LOAD"
 last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
 blockers:
   - "iPhone physical facts remain to be observed: exact model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity."
-next_action: "Install the exact bound S09A validation artifact into the disposable Windows vault plugin directory, preserve existing device-local state, verify the installed artifact hash/manifest/build identity, then begin the Windows installed-runtime/authentication baseline. iOS bindings remain required only for the iOS tranche and full S09A acceptance."
+next_action: "Open the exact disposable Windows vault in Obsidian 1.13.7, verify the installed validation plugin loads and reports the expected source/build identity, then proceed with the Windows same-device authentication/pairing baseline. Do not reinstall or rebuild the artifact."
 updated_at: "2026-10-07"
 
 context:
@@ -26,17 +26,22 @@ context:
   bvp:
     historical_substantive_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
     pre_s09_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09"
-    s09_started: false
+    s09_started: true
     s09a_contract: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/09a-windows-ios-install-authentication-and-pairing-baseline.md"
     s09a_contract_status: "WINDOWS_TRANCHE_EXECUTABLE_FULL_ACCEPTANCE_PENDING_IOS"
     stage_3_started: false
     windows_tranche:
-      status: "READY_FOR_INSTALL"
+      status: "INSTALLED_READY_FOR_RUNTIME_LOAD"
       artifact_sha256: "602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76"
       artifact_source_commit: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
       source_directory: "C:\\temp-2dd7a670f212446995f7038b0eeb9132\\.test-build\\bvp-live-device\\plugin"
       target_plugin_directory: "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync"
       preserve_device_local_state: true
+      install_verified: true
+      installed_main_sha256: "602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76"
+      installed_manifest_sha256: "f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc"
+      installed_build_source_commit: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
+      device_local_state_preserved: true
 
   physical_binding:
     run_id: "s09a-20261007-3e3724ed-01"
