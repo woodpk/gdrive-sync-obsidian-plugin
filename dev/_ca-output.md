@@ -1,35 +1,39 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — WS-07 re-entry / S09A dispatch correction
+# Current work-unit evidence — S09A physical binding advance
 
 ## Scope
 
-Administrative/repository-state correction only. No product behavior, test-platform implementation, PHX-CI framework, or physical validation execution was changed or executed in this work unit.
+Repository/task-state preparation only. No physical S09A authentication/pairing execution and no software acceptance validation were performed in this work unit.
 
-## Repository grounding
+## Bound coordinates
 
-- Canonical active branch: `automated-testing-platform-branch`
-- Integrated `dev/**` refactor baseline: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
-- Historical substantive pre-S09 BVP green anchor: `5b57c1ded6d314810ac2cca2a363342e67d9bee3`
-- Active workstream restored to: `WS-07-brain-verification-platform`
-- Active next child: `BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE`
+- implementation source baseline: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- S09A run ID: `s09a-20261007-3e3724ed-01`
+- fixture root: `BVP-VALIDATION/s09a-20261007-3e3724ed-01`
+- Windows Obsidian: `1.13.7`
+- Windows controller participant: `windows-brain-patrick`
+- Windows product device: `device:8b7820faab2603b334a1c13d8c3bdba0`
+- Windows disposable vault: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`
+- Windows vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`
+- managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`
+- Drive mailbox root: `BRAIN BVP Mailbox`
+- relay root: `.obsidian/plugins/brain-google-drive-sync/.bvp-relay`
+- reserved iOS controller participant: `ios-s09a-participant`
 
-## Correction performed
+## Remaining physical-preflight observations
 
-- Removed stale state/handoff instructions that treated the completed `dev/**` standardization as active work.
-- Recorded repository standardization as complete and integrated by supervisor direction.
-- Re-grounded the retained S09A contract against current repository paths, package identity, BVP live-device surfaces, governance, and exact PHX-CI pin.
-- Bound all repository-resolvable S09A dispatch coordinates.
-- Left physical/device/run coordinates explicitly UNBOUND rather than inventing them.
-- Established a no-product-code normal writable boundary for S09A physical evidence work.
-- Kept S09A NOT-YET-EXECUTABLE until every physical/operator coordinate is exact.
+- fresh validation `main.js` SHA-256 and complete `build-identity.json` generated from exact source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- iPhone model;
+- iOS version;
+- iOS Obsidian version;
+- iOS product logical device identity;
+- iOS disposable S09A vault identity.
 
-## Executable-validation status
+## Checkpoint order
 
-No new PHX-CI run was executed for this state correction, and no PHX-CI PASS is claimed for it.
+Artifact identity -> Windows installed-runtime load -> Windows same-device OAuth -> iOS identity capture -> iOS installed-runtime load -> iOS same-device OAuth -> distinct-device/managed-root comparison -> terminal S09A evidence.
 
-The 105 migrated historical PHX-CI run directories remain under `dev/Test-Results/`. The previously displayed current-work-unit PHX-CI summary for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742` remains historical evidence in the canonical run archive rather than the current work-unit surface.
+## Next action
 
-## Immediate next action
-
-Bind the remaining S09A physical/operator coordinates: validation artifact build identity/hash, Windows and iOS runtime/device identities, disposable vault/root identities, non-secret managed Drive identity, run ID, mailbox/relay coordinates, and human checkpoint sequence. Then mark S09A EXECUTABLE and begin only the 09A installed-runtime/authentication/pairing baseline.
+Run the bounded Windows artifact-build preflight and record its output; collect the listed iPhone/iOS runtime facts. S09A remains NOT-YET-EXECUTABLE until those values are exact.

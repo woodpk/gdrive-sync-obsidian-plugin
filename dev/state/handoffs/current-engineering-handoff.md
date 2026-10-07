@@ -46,18 +46,42 @@ Repository-resolvable bindings are now fixed:
 - current work-unit evidence surface: `dev/_ca-output.md`;
 - immutable PHX-CI history: `dev/Test-Results/<runId>/`.
 
+## S09A physical coordinates now bound
+
+The previously established Windows physical-validation coordinates were recovered and rebound for S09A rather than requesting duplicate operator entry:
+
+- S09A run ID: `s09a-20261007-3e3724ed-01`;
+- fixture root: `BVP-VALIDATION/s09a-20261007-3e3724ed-01`;
+- Windows host user: `woodpk`;
+- repository root: `D:\obsidian-brain-dev`;
+- Windows Obsidian: `1.13.7`;
+- Windows controller participant: `windows-brain-patrick`;
+- Windows product device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- disposable Windows vault: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`;
+- vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`;
+- managed remote ID: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`;
+- Drive mailbox root: `BRAIN BVP Mailbox`;
+- relay root: `.obsidian/plugins/brain-google-drive-sync/.bvp-relay`;
+- mailbox run/device/generation keys: `brainBvpRunId`, `brainBvpDeviceId`, `brainBvpGeneration`;
+- reserved iOS controller participant label: `ios-s09a-participant`.
+
+The exact human checkpoint order is now fixed:
+
+1. build the validation artifact from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` and record `build-identity.json` plus actual artifact SHA-256;
+2. load that exact artifact in the disposable Windows Obsidian vault and confirm validation-build/source identity;
+3. perform Windows same-device OAuth, then observe product/device/managed-root state without exporting tokens;
+4. record exact iPhone model, iOS version, Obsidian version, and disposable S09A vault identity before plugin load;
+5. load the exact same validation artifact in iOS Obsidian and confirm validation-build/source identity;
+6. perform iOS same-device OAuth, then observe product/device/managed-root state without credential transfer;
+7. compare Windows/iOS product device identities for distinctness and verify both bind to the intended managed remote;
+8. record terminal S09A PASS/FAIL/BLOCKED evidence and stop before S09B.
+
 ## S09A remains not executable
 
-The following values cannot be truthfully derived from repository state and therefore remain intentionally unbound until physical dispatch:
+Only these physical observations remain unbound:
 
-- exact validation artifact SHA-256/build identity produced for the S09A run;
-- exact Windows Obsidian version and logical device identity;
-- exact iPhone/iOS and Obsidian versions and logical device identity;
-- exact disposable physical validation vault/root identities;
-- exact non-secret Google account/managed Drive folder identity;
-- exact S09A run ID;
-- exact mailbox/relay coordinates for that run;
-- exact ordered human-checkpoint sequence for platform/provider-mediated authentication.
+- exact validation artifact SHA-256/build identity produced from implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` for this S09A run;
+- exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity.
 
 No credential, token, authorization code, or secret may be recorded in these bindings.
 
@@ -74,6 +98,6 @@ No normal S09A execution change is authorized under `src/**`, `test-platform/**`
 
 ## Immediate next action
 
-Bind the remaining physical/operator coordinates listed above into the S09A contract. When—and only when—all required dispatch coordinates are exact, change S09A from `REGROUNDED / NOT-YET-EXECUTABLE` to `EXECUTABLE` and begin the Windows/iOS installed-runtime authentication/pairing baseline.
+Run the bounded Windows S09A physical-preflight artifact build from exact source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`, record its generated `build-identity.json` and artifact SHA-256, and collect the exact iPhone model/iOS/Obsidian/product-device/vault observations. Then mark S09A `EXECUTABLE` and begin only the installed-runtime authentication/pairing baseline.
 
 Do not begin S09B. Do not begin Stage 3.

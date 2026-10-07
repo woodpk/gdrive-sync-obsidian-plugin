@@ -3,12 +3,13 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
-status: "READY_FOR_DISPATCH_BINDING"
+status: "READY_FOR_PHYSICAL_PREFLIGHT"
 last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
 blockers:
-  - "S09A physical/operator coordinates remain unbound: validation artifact hash/build identity; Windows Obsidian/device identity; iPhone/iOS/Obsidian/device identity; disposable validation vault/root identities; non-secret managed Drive identity; physical run ID; live mailbox/relay coordinates; and the exact human-checkpoint sequence."
-next_action: "Complete the remaining physical/operator bindings in the regrounded BVP-S09A contract. Only after every required coordinate is bound may S09A be marked EXECUTABLE and the Windows/iOS installed-runtime authentication/pairing baseline begin."
+  - "Fresh S09A validation artifact build identity/hash remains to be generated from exact source baseline 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f."
+  - "iPhone physical facts remain to be observed: exact model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity."
+next_action: "Run the bounded S09A physical-preflight artifact build from exact source baseline 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f, record build-identity.json and artifact SHA-256, then bind the remaining iPhone model/iOS/Obsidian/product-device/vault observations. Only after those values are exact may S09A be marked EXECUTABLE."
 updated_at: "2026-10-07"
 
 context:
@@ -28,8 +29,28 @@ context:
     pre_s09_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09"
     s09_started: false
     s09a_contract: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/09a-windows-ios-install-authentication-and-pairing-baseline.md"
-    s09a_contract_status: "REGROUNDED_AWAITING_PHYSICAL_BINDINGS"
+    s09a_contract_status: "REGROUNDED_READY_FOR_PHYSICAL_PREFLIGHT"
     stage_3_started: false
+
+  physical_binding:
+    run_id: "s09a-20261007-3e3724ed-01"
+    fixture_root: "BVP-VALIDATION/s09a-20261007-3e3724ed-01"
+    windows:
+      host_user: "woodpk"
+      repository_root: "D:\\obsidian-brain-dev"
+      obsidian_version: "1.13.7"
+      controller_device_id: "windows-brain-patrick"
+      product_device_identity: "device:8b7820faab2603b334a1c13d8c3bdba0"
+      disposable_vault_path: "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b"
+      vault_identity: "vault:c321a8a0-f083-4528-a1c1-25e60ad558bb"
+    managed_remote_id: "1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-"
+    mailbox_root_name: "BRAIN BVP Mailbox"
+    relay_root_relative: ".obsidian/plugins/brain-google-drive-sync/.bvp-relay"
+    mailbox_app_properties:
+      run_id_key: "brainBvpRunId"
+      device_id_key: "brainBvpDeviceId"
+      generation_key: "brainBvpGeneration"
+    ios_controller_device_id: "ios-s09a-participant"
 
   repository_bound_s09a:
     plugin_version: "0.1.18"

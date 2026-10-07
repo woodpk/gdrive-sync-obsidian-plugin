@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
-**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — PHYSICAL BINDINGS PENDING  
+**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — PHYSICAL PREFLIGHT PENDING  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
 **Accepted pre-S09 BVP green anchor:** `5b57c1ded6d314810ac2cca2a363342e67d9bee3`  
 **Current integrated S09 source baseline:** `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` on `automated-testing-platform-branch`
@@ -34,22 +34,52 @@ The repository-resolvable dispatch coordinates are bound below. Physical/device/
 | Current evidence surface | `dev/_ca-output.md` |
 | PHX-CI history root | `dev/Test-Results/<runId>/` |
 
-### 0.2 Physical/operator coordinates still required
+### 0.2 Bound physical/operator coordinates
 
-The following remain **UNBOUND** and must be supplied/observed at dispatch time:
+| Coordinate | Binding |
+| --- | --- |
+| S09A run ID | `s09a-20261007-3e3724ed-01` |
+| Fixture root | `BVP-VALIDATION/s09a-20261007-3e3724ed-01` |
+| Windows host user | `woodpk` |
+| Windows repository root | `D:\\obsidian-brain-dev` |
+| Windows Obsidian version | `1.13.7` |
+| Windows controller participant | `windows-brain-patrick` |
+| Windows product device identity | `device:8b7820faab2603b334a1c13d8c3bdba0` |
+| Windows disposable vault | `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` |
+| Windows vault identity | `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb` |
+| Managed remote ID | `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-` |
+| Drive mailbox root | `BRAIN BVP Mailbox` |
+| Relay root | `.obsidian/plugins/brain-google-drive-sync/.bvp-relay` |
+| Mailbox record selectors | `brainBvpRunId`, `brainBvpDeviceId`, `brainBvpGeneration` |
+| Reserved iOS controller participant label | `ios-s09a-participant` |
 
-- exact validation artifact SHA-256 and `build-identity.json` generated for the S09A run;
-- exact Windows Obsidian version and logical device identity;
-- exact iPhone model/iOS version/Obsidian version and logical device identity;
-- exact disposable physical validation vault/root identity on each device;
-- exact non-secret Google account/managed Drive folder identity;
-- exact S09A run ID;
-- exact live mailbox/relay coordinates for that run;
-- exact ordered human-checkpoint sequence for platform/provider-mediated authentication.
+The recovered Windows values are established prior physical-validation coordinates. They are not newly invented S09A observations.
+
+### 0.3 Physical-preflight observations still required
+
+Before S09A may become EXECUTABLE, record exactly:
+
+- the freshly generated validation artifact SHA-256 and full `build-identity.json` from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- iPhone model;
+- iOS version;
+- iOS Obsidian version;
+- iOS product logical device identity;
+- iOS disposable S09A vault identity.
 
 No credential, token, authorization code, client secret, or other secret may be written into this contract or committed evidence.
 
-### 0.3 Writable-path allowlist for normal S09A execution
+### 0.4 Fixed human-checkpoint sequence
+
+1. **Artifact identity / Windows engineering host** — build the validation artifact from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`; required observation: complete `build-identity.json`, actual `main.js` SHA-256, and sourceCommit equality.
+2. **Windows installed runtime** — install/load that exact artifact in `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` under Obsidian `1.13.7`; required observation: validation build reports the exact source identity.
+3. **Windows same-device OAuth** — complete the supported browser/provider flow on Windows; required observation: authenticated production state, product device identity `device:8b7820faab2603b334a1c13d8c3bdba0`, and managed remote `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`; no token export.
+4. **iOS identity capture** — on the target iPhone record exact model, iOS version, Obsidian version, and disposable S09A vault identity before plugin load.
+5. **iOS installed runtime** — install/load the exact same validation artifact in the target iOS Obsidian vault; required observation: validation build reports the exact source identity.
+6. **iOS same-device OAuth** — complete the supported provider flow on iPhone; required observation: authenticated production state, observed iOS product device identity, and managed remote `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`; no credential transfer.
+7. **Distinct-device/pairing comparison** — verify Windows and iOS product device identities are distinct and both bind to the same intended managed remote.
+8. **Terminal evidence** — record S09A PASS/FAIL/BLOCKED, checkpoint observations, artifact/device/run identities, and stop. Do not begin S09B.
+
+### 0.5 Writable-path allowlist for normal S09A execution
 
 Normal S09A physical evidence work may modify only:
 
