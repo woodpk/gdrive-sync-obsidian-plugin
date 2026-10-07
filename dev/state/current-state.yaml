@@ -1,42 +1,57 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
-active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
-status: "IN_PROGRESS"
-last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+active_workstream: "WS-07-brain-verification-platform"
+active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
+status: "READY_FOR_DISPATCH_BINDING"
+last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
-blockers: []
-next_action: "Run authoritative deployed-runtime PHX-CI verification against dev-directory-standardization-phase10 with publication mode push and Phase-9 as the explicit base; return the complete console output. PHX-CI must publish canonical result.md, result.json, and terminal.log under dev/Test-Results/<runId>/ before Phase 10 may close."
+blockers:
+  - "S09A physical/operator coordinates remain unbound: validation artifact hash/build identity; Windows Obsidian/device identity; iPhone/iOS/Obsidian/device identity; disposable validation vault/root identities; non-secret managed Drive identity; physical run ID; live mailbox/relay coordinates; and the exact human-checkpoint sequence."
+next_action: "Complete the remaining physical/operator bindings in the regrounded BVP-S09A contract. Only after every required coordinate is bound may S09A be marked EXECUTABLE and the Windows/iOS installed-runtime authentication/pairing baseline begin."
 updated_at: "2026-10-07"
 
 context:
   canonical_source_branch: "automated-testing-platform-branch"
-  canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  current_migration_branch: "dev-directory-standardization-phase10"
-  migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  migration_phases_completed:
-    - "PHASE_1_INVENTORY_AND_DISPOSITION"
-    - "PHASE_2_CANONICAL_DIRECTORY_SKELETON"
-    - "PHASE_3_AUTHORITY_NORMALIZATION"
-    - "PHASE_4_PLANNING_AND_WORKSTREAM_NORMALIZATION"
-    - "PHASE_5_STATE_AND_HANDOFF_NORMALIZATION"
-    - "PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
-    - "PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
-    - "PHASE_8_NORMALIZE_ENGINEERING_SCRIPTS"
-    - "PHASE_9_UPDATE_PATH_REFERENCES"
-  product_workstream_context: "WS-07-brain-verification-platform"
-  retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
-  s09_started: false
-  stage_3_started: false
-  verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/Test-Results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."
+  current_integrated_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
+
+  repository_standardization:
+    status: "COMPLETE_AND_INTEGRATED_BY_SUPERVISOR_DIRECTION"
+    consolidated_branch: "dev-directory-standardization-consolidated"
+    integrated_refactor_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
+    obsolete_divergent_branch_excluded: "dev-directory-standardization-phase9"
+    verification_scope: "Required dev/ folder system, legacy decision-register migration completeness, specification decomposition accuracy/format, and current repository-state accuracy/format were verified before integration."
+    phx_ci_acceptance_run_for_refactor: null
+
+  bvp:
+    historical_substantive_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+    pre_s09_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09"
+    s09_started: false
+    s09a_contract: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/09a-windows-ios-install-authentication-and-pairing-baseline.md"
+    s09a_contract_status: "REGROUNDED_AWAITING_PHYSICAL_BINDINGS"
+    stage_3_started: false
+
+  repository_bound_s09a:
+    plugin_version: "0.1.18"
+    production_artifact: "main.js"
+    production_artifact_sha256_guard: "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074"
+    validation_build_implementation: "test-platform/src/live-device/build-validation-artifact.ts"
+    validation_entrypoint: "test-platform/src/live-device/validation-entrypoint.ts"
+    validation_output_root: ".test-build/bvp-live-device/plugin"
+    validation_identity_file: ".test-build/bvp-live-device/plugin/build-identity.json"
+    device_command_agent: "test-platform/src/live-device/device-command-agent.ts"
+    drive_mailbox: "test-platform/src/live-device/drive-mailbox.ts"
+    live_scenario_executor: "test-platform/src/live-device/live-scenario-executor.ts"
+    phx_ci_framework_version: "0.2.0-dev.2"
+    phx_ci_framework_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
     workstream_index: "dev/planning/02-workstreams/00-INDEX.md"
     bvp_specification: "dev/planning/01-target-system/bvp-subsystem-specification.md"
     bvp_governance_lock: "dev/authority/governance/locks/testing-platform-boundary.yaml"
+
   evidence:
     current_work_unit_surface: "dev/_ca-output.md"
     historical_phx_ci_root: "dev/Test-Results/"

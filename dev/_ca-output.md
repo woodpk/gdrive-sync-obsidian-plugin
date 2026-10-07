@@ -1,48 +1,35 @@
 STATUS: COMPLETE
 
-# phx-ci evidence - gdrive-sync-obsidian-plugin
+# Current work-unit evidence — WS-07 re-entry / S09A dispatch correction
 
-## Verification summary
+## Scope
 
-- Change-set verification: PASS
-- Repository verification: PASS
-- Overall verification: PASS
+Administrative/repository-state correction only. No product behavior, test-platform implementation, PHX-CI framework, or physical validation execution was changed or executed in this work unit.
 
-- Framework version: 0.2.0-dev.2
-- Run ID: cf16c8cc-179d-4fb9-8ca4-96aaad0bb742
-- Repository: C:/temp-8326a09e0e84444cb1964b1a0e8f4041/phx-c6f769c538dc445b/w
-- Branch:
-- Verified HEAD: c9f035cc24fd16ff1aad8216367a81149dd58896
-- Verified tree: 98152be6d9933ef22cb65f994b479913295f54a7
-- Expected HEAD: c9f035cc24fd16ff1aad8216367a81149dd58896
-- Base SHA: 225e38d0e851ea7e537f71c1134f2931344ef5ac
-- Task version: 3.53.1
-- OS: Microsoft Windows NT 10.0.26200.0
-- PowerShell: 7.6.6
-- git: git version 2.52.0.windows.1
-- node: v22.23.2
-- npm: 10.9.8
-- nodeExecutable: C:\Program Files\nodejs\node.exe
-- npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-06T01:39:02.0558427Z
-- Ended: 2026-10-06T01:42:22.7770650Z
+## Repository grounding
 
-## Ordered stages
+- Canonical active branch: `automated-testing-platform-branch`
+- Integrated `dev/**` refactor baseline: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- Historical substantive pre-S09 BVP green anchor: `5b57c1ded6d314810ac2cca2a363342e67d9bee3`
+- Active workstream restored to: `WS-07-brain-verification-platform`
+- Active next child: `BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE`
 
-- preflight: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- node-preflight: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- node-project-files: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- install: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- typecheck: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- test-focused: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- test: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- build: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- repository-check: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- check: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
-- artifacts: PASS (exit 0; NONE; run cf16c8cc-179d-4fb9-8ca4-96aaad0bb742)
+## Correction performed
 
-## Artifacts
+- Removed stale state/handoff instructions that treated the completed `dev/**` standardization as active work.
+- Recorded repository standardization as complete and integrated by supervisor direction.
+- Re-grounded the retained S09A contract against current repository paths, package identity, BVP live-device surfaces, governance, and exact PHX-CI pin.
+- Bound all repository-resolvable S09A dispatch coordinates.
+- Left physical/device/run coordinates explicitly UNBOUND rather than inventing them.
+- Established a no-product-code normal writable boundary for S09A physical evidence work.
+- Kept S09A NOT-YET-EXECUTABLE until every physical/operator coordinate is exact.
 
-- main.js: 885307 bytes; SHA-256 8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074
+## Executable-validation status
 
-Final verdict: COMPLETE
+No new PHX-CI run was executed for this state correction, and no PHX-CI PASS is claimed for it.
+
+The 105 migrated historical PHX-CI run directories remain under `dev/Test-Results/`. The previously displayed current-work-unit PHX-CI summary for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742` remains historical evidence in the canonical run archive rather than the current work-unit surface.
+
+## Immediate next action
+
+Bind the remaining S09A physical/operator coordinates: validation artifact build identity/hash, Windows and iOS runtime/device identities, disposable vault/root identities, non-secret managed Drive identity, run ID, mailbox/relay coordinates, and human checkpoint sequence. Then mark S09A EXECUTABLE and begin only the 09A installed-runtime/authentication/pairing baseline.

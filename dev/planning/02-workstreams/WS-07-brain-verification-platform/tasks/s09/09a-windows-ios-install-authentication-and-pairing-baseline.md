@@ -3,13 +3,62 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
-**Prompt maturity:** PREPLANNED / NOT-YET-EXECUTABLE  
+**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — PHYSICAL BINDINGS PENDING  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
-**Predecessor:** accepted BVP-S08 primary-stage gate
+**Accepted pre-S09 BVP green anchor:** `5b57c1ded6d314810ac2cca2a363342e67d9bee3`  
+**Current integrated S09 source baseline:** `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` on `automated-testing-platform-branch`
 
-Before execution, re-ground this preplanned contract against the current WS-07 architecture/decomposition, `dev/state/current-state.yaml`, the current repository, and the current external engineering protocol. Bind exact source/device/run/evidence coordinates before dispatch. This file is NOT executable until that rebind is complete.
+This contract has been re-grounded against the current WS-07 architecture/decomposition, current repository state, current BVP governance lock, and current PHX-CI pin after completion/integration of the canonical `dev/**` standardization.
 
-This is a complete prewritten physical-evidence contract. Dispatch binding supplies exact build/device/run coordinates only.
+The repository-resolvable dispatch coordinates are bound below. Physical/device/run coordinates that cannot be truthfully derived from Git remain explicitly UNBOUND. This file is **not executable** until every required physical binding is exact.
+
+### 0.1 Repository-bound dispatch coordinates
+
+| Coordinate | Binding |
+| --- | --- |
+| Active branch | `automated-testing-platform-branch` |
+| Current integrated S09 source baseline | `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` |
+| Historical substantive pre-S09 BVP green anchor | `5b57c1ded6d314810ac2cca2a363342e67d9bee3` |
+| Plugin version | `0.1.18` |
+| Production artifact | `main.js` |
+| Production artifact SHA-256 guard | `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074` |
+| Validation build implementation | `test-platform/src/live-device/build-validation-artifact.ts` |
+| Validation entrypoint | `test-platform/src/live-device/validation-entrypoint.ts` |
+| Validation output root | `.test-build/bvp-live-device/plugin` |
+| Validation identity | `.test-build/bvp-live-device/plugin/build-identity.json` |
+| Device command agent | `test-platform/src/live-device/device-command-agent.ts` |
+| Drive mailbox | `test-platform/src/live-device/drive-mailbox.ts` |
+| External live executor | `test-platform/src/live-device/live-scenario-executor.ts` |
+| PHX-CI framework | `0.2.0-dev.2` |
+| PHX-CI exact SHA | `69c4aa077d4a1a46d1e85e59f39d36285be99e83` |
+| Current evidence surface | `dev/_ca-output.md` |
+| PHX-CI history root | `dev/Test-Results/<runId>/` |
+
+### 0.2 Physical/operator coordinates still required
+
+The following remain **UNBOUND** and must be supplied/observed at dispatch time:
+
+- exact validation artifact SHA-256 and `build-identity.json` generated for the S09A run;
+- exact Windows Obsidian version and logical device identity;
+- exact iPhone model/iOS version/Obsidian version and logical device identity;
+- exact disposable physical validation vault/root identity on each device;
+- exact non-secret Google account/managed Drive folder identity;
+- exact S09A run ID;
+- exact live mailbox/relay coordinates for that run;
+- exact ordered human-checkpoint sequence for platform/provider-mediated authentication.
+
+No credential, token, authorization code, client secret, or other secret may be written into this contract or committed evidence.
+
+### 0.3 Writable-path allowlist for normal S09A execution
+
+Normal S09A physical evidence work may modify only:
+
+- `dev/_ca-output.md`;
+- `dev/state/current-state.yaml`;
+- `dev/state/handoffs/current-engineering-handoff.md`;
+- PHX-CI-owned `dev/Test-Results/<runId>/**` only when repository changes made during the child require authoritative PHX-CI publication.
+
+Normal S09A execution is **not authorized** to modify `src/**`, `test-platform/**`, `phx-ci.json`, `Taskfile*.yml`, or frozen governance surfaces. A substantive defect requiring code/platform repair stops S09A as BLOCKED and creates a separate bounded repair unit.
 
 ## 1. Objective
 
@@ -33,7 +82,7 @@ Physical evidence proves:
 
 Before execution the supervisor binds:
 
-- exact accepted S08 integration SHA;
+- exact accepted pre-S09 BVP source anchor;
 - exact production and validation artifact versions/hashes;
 - exact Windows Obsidian version/device identity;
 - exact iPhone/iOS/Obsidian version/device identity;

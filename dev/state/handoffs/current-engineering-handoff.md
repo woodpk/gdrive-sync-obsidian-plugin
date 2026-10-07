@@ -2,61 +2,78 @@
 
 ## Current state
 
-The completed automated testing platform remains historically anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The formerly recorded PHX-CI run ID `38b52d07-dce9-4e2f-aa61-3fd7188703f7` is not present among the 105 canonical `dev/Test-Results/` run directories after migration, so canonical state no longer asserts that missing run ID; Phase 10 will establish a new authoritative source/run/evidence identity.
+The canonical working branch is `automated-testing-platform-branch`.
 
-The repository is in the separate canonical `dev/**` standardization migration. Product behavior and BVP architecture are not being reopened.
+The repository-wide `dev/**` standardization is complete and integrated. Its cumulative accepted integration baseline is `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`. The obsolete divergent `dev-directory-standardization-phase9` line was intentionally excluded; the authoritative Phase-9 continuation was `dev-directory-standardization-phase9-r2`.
 
-## Completed standardization phases
+The standardization closure verified the four supervisor-requested conditions before integration:
 
-1. Phase 1 — complete inventory/disposition of all original `dev/**` files.
-2. Phase 2 — canonical directory skeleton and READMEs.
-3. Phase 3 — canonical authority hierarchy.
-4. Phase 4 — canonical target-system/workstream/verification planning hierarchy.
-5. Phase 5 — canonical current state and concise handoff.
-6. Phase 6 — retired legacy agent/prompt hierarchies and retained only future S09 task contracts under WS-07.
-7. Phase 7 — moved all 105 historical PHX-CI run triples, without rewriting their Git blobs, into exact `dev/Test-Results/<runId>/` directories; retired lowercase `dev/test-results/`; removed redundant `dev/_ca-output.json`; and rebound PHX-CI history to `dev/Test-Results`.
-8. Phase 8 — archived all five legacy `dev/scripts/*.ps1` files under `archive/pre-standard-dev-layout-2026-10/DEV/scripts/` with unchanged Git blobs; moved BVP architecture guard/metrics implementation into `test-platform/src/architecture-governance.ts`; rebound `test-platform/src/repository-check.ts` and the guard/metrics/integration tests to that PHX-CI-consumed TypeScript surface; and updated the BVP governance lock/specification to prohibit standalone PowerShell validation authority.
-9. Phase 9 — retired `dev/archive/`, `dev/evidence/`, `dev/governance/`, and `dev/planning-and-building/`; verified exact external-archive preservation for all 366 retired source blobs; removed remaining live retired-script/path exceptions; and completed the active-reference sweep without compatibility aliases.
-10. Phase 10 — implementation preparation is complete: canonical `dev/` structure enforcement now executes inside the PHX-CI repository check; negative coverage rejects noncanonical top-level `dev/` entries; and the repository check now validates the post-build `main.js` SHA-256 against the accepted pre-migration artifact, with a negative regression for mismatch. No new repository PowerShell launcher was added; the owner boundary uses the deployed PHX-CI operator front door directly. Authoritative deployed-runtime PHX-CI execution remains pending.
+1. the required canonical `dev/` folder system exists;
+2. the canonical decision register preserves the complete legacy decision set required by the migration;
+3. the target/specification decomposition is accurately represented in the required canonical workstream format;
+4. the repository's current-state documentation is accurately represented in the required canonical state format.
 
-## Evidence model
+No additional Phase-10 launcher or refactor-verification run is pending.
 
-- Current work-unit surface: `dev/_ca-output.md`
-- Historical PHX-CI runs: `dev/Test-Results/<runId>/result.md`, `result.json`, and `terminal.log`
-- Historical run count migrated in Phase 7: **105**
-- Historical evidence blobs rewritten during migration: **0**
-- The removed root `dev/_ca-output.json` was byte-identical to the canonical S08V result JSON for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`.
+## Active workstream
 
-## Phase 8 verification boundary
+Active workstream: **WS-07 — BRAIN Verification Platform**.
 
-- GitHub comparison recognizes the five retired active PowerShell files as zero-content-change renames into the external archive.
-- No authoritative PHX-CI run was executed or claimed for Phase 8.
-- The last accepted substantive software verification remains the previously accepted green source/run recorded in canonical state.
-- Comprehensive migration verification remains reserved for Phase 10, after Phase 9 finishes the atomic path-reference sweep.
+Active next child: **BVP-S09A — Windows / iOS Install, Authentication, and Pairing Baseline**.
 
-## Phase 9 verification boundary
+The BVP's historical substantive green source anchor remains `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The current integrated pre-S09 source baseline is `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`.
 
-- Authoritative Phase-9 branch: `dev-directory-standardization-phase9-r2`, based directly on completed Phase-8 head `2d18de7b9828fc1a6bc205a614330d10b6ea8497`.
-- The earlier out-of-sequence `dev-directory-standardization-phase9` branch remains historical and is not the authoritative continuation.
-- Retired top-level legacy-tree source blobs checked: **366**.
-- Exact archived blob matches: **366**.
-- Missing archived source blobs: **0**.
-- No compatibility aliases were created.
-- Critical active authority/config/build/PHX-CI/BVP surfaces have no stale live bindings to the retired paths or Phase-8 validator/helper scripts.
-- No authoritative PHX-CI acceptance run is claimed for Phase 9.
+S09 physical execution has **not** started. Stage 3 has **not** started.
 
-## Phase 10 execution boundary
+## S09A re-grounding completed
 
-- Source branch: `dev-directory-standardization-phase10`.
-- Verification base: `dev-directory-standardization-phase9-r2`.
-- PHX-CI runtime pin: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
-- The owner-facing action must be a small direct invocation of the deployed PHX-CI operator front door.
-- `-PublicationMode push` is required so PHX-CI itself publishes canonical evidence back to the branch.
-- The owner returns only the complete console output; the engineering agent retrieves and inspects repository-published evidence directly.
-- No Phase-10 PASS or migration closure is claimed until the authoritative PHX-CI run is green and its canonical evidence has been inspected.
+The retained S09A contract has been reconciled with current repository reality and current governance.
+
+Repository-resolvable bindings are now fixed:
+
+- active branch: `automated-testing-platform-branch`;
+- current integrated source baseline: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- historical pre-S09 substantive BVP green anchor: `5b57c1ded6d314810ac2cca2a363342e67d9bee3`;
+- plugin version: `0.1.18`;
+- shipping artifact identity guard: `main.js` SHA-256 `8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074`;
+- validation build implementation: `test-platform/src/live-device/build-validation-artifact.ts`;
+- validation output: `.test-build/bvp-live-device/plugin/{main.js,manifest.json,build-identity.json}`;
+- validation entrypoint: `test-platform/src/live-device/validation-entrypoint.ts`;
+- bounded device agent: `test-platform/src/live-device/device-command-agent.ts`;
+- Drive mailbox: `test-platform/src/live-device/drive-mailbox.ts`;
+- external live executor: `test-platform/src/live-device/live-scenario-executor.ts`;
+- PHX-CI framework: `0.2.0-dev.2` at exact SHA `69c4aa077d4a1a46d1e85e59f39d36285be99e83`;
+- current work-unit evidence surface: `dev/_ca-output.md`;
+- immutable PHX-CI history: `dev/Test-Results/<runId>/`.
+
+## S09A remains not executable
+
+The following values cannot be truthfully derived from repository state and therefore remain intentionally unbound until physical dispatch:
+
+- exact validation artifact SHA-256/build identity produced for the S09A run;
+- exact Windows Obsidian version and logical device identity;
+- exact iPhone/iOS and Obsidian versions and logical device identity;
+- exact disposable physical validation vault/root identities;
+- exact non-secret Google account/managed Drive folder identity;
+- exact S09A run ID;
+- exact mailbox/relay coordinates for that run;
+- exact ordered human-checkpoint sequence for platform/provider-mediated authentication.
+
+No credential, token, authorization code, or secret may be recorded in these bindings.
+
+## S09A writable boundary
+
+S09A is a physical-evidence child, not a product-implementation child. Normal execution may write only:
+
+- `dev/_ca-output.md`;
+- `dev/state/current-state.yaml`;
+- `dev/state/handoffs/current-engineering-handoff.md`;
+- PHX-CI-owned `dev/Test-Results/<runId>/**` only if a repository change made during the child requires PHX-CI publication.
+
+No normal S09A execution change is authorized under `src/**`, `test-platform/**`, `phx-ci.json`, `Taskfile*.yml`, or frozen governance surfaces. If physical validation exposes a substantive defect requiring implementation repair, S09A stops BLOCKED and a separate bounded engineering repair unit must be created.
 
 ## Immediate next action
 
-Run the audited small deployed-runtime PHX-CI operator command against `dev-directory-standardization-phase10`, using `origin/dev-directory-standardization-phase9-r2` as the explicit base and publication mode `push`. Return the complete console output only.
+Bind the remaining physical/operator coordinates listed above into the S09A contract. When—and only when—all required dispatch coordinates are exact, change S09A from `REGROUNDED / NOT-YET-EXECUTABLE` to `EXECUTABLE` and begin the Windows/iOS installed-runtime authentication/pairing baseline.
 
-Do not begin S09 or Stage 3 until Phase 10 closes green.
+Do not begin S09B. Do not begin Stage 3.
