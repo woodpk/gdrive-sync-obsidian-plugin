@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import {
   runArchitectureGuard,
@@ -16,6 +16,67 @@ interface VerificationContext {
 const shaPattern = /^[0-9a-f]{40}$/i;
 const repositoryRoot = resolve(process.cwd());
 const rawChangeClass = process.env.BVP_CHANGE_CLASS?.trim() || "ordinary";
+const canonicalDevDirectories = new Set([
+  "authority",
+  "planning",
+  "research",
+  "state",
+  "reviews",
+  "scripts",
+  "Test-Results",
+  "scratch",
+]);
+const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
+
+interface DevRootViolation {
+  readonly path: string;
+  readonly detail: string;
+}
+
+function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
+  const devRoot = resolve(repositoryRoot, "dev");
+  if (!existsSync(devRoot)) {
+    return [{ path: "dev", detail: "Canonical development root is missing." }];
+  }
+
+  const entries = readdirSync(devRoot, { withFileTypes: true });
+  const violations: DevRootViolation[] = [];
+
+  for (const required of canonicalDevDirectories) {
+    const entry = entries.find((candidate) => candidate.name === required);
+    if (!entry || !entry.isDirectory()) {
+      violations.push({
+        path: "dev/" + required,
+        detail: "Required canonical development directory is missing.",
+      });
+    }
+  }
+
+  for (const required of canonicalDevFiles) {
+    const entry = entries.find((candidate) => candidate.name === required);
+    if (!entry || !entry.isFile()) {
+      violations.push({
+        path: "dev/" + required,
+        detail: "Required canonical development file is missing.",
+      });
+    }
+  }
+
+  for (const entry of entries) {
+    const allowed =
+      (entry.isDirectory() && canonicalDevDirectories.has(entry.name)) ||
+      (entry.isFile() && canonicalDevFiles.has(entry.name));
+    if (!allowed) {
+      violations.push({
+        path: "dev/" + entry.name,
+        detail:
+          "Noncanonical active dev/ top-level entry; compatibility aliases and retired development trees are prohibited.",
+      });
+    }
+  }
+
+  return violations;
+}
 
 function fail(message: string, exitCode = 2): never {
   console.error("BVP_REPOSITORY_CHECK_ERROR " + message);
@@ -101,6 +162,23 @@ if (context) {
   console.log("BVP_REPOSITORY_CHECK_CONTEXT unavailable mode=local");
 }
 
+console.log("=== CANONICAL DEV ROOT STRUCTURE ===");
+const devRootViolations = inspectCanonicalDevRoot();
+for (const violation of devRootViolations) {
+  console.log(
+    "DEV_ROOT_STRUCTURE_VIOLATION path=" +
+      violation.path +
+      " detail=" +
+      violation.detail,
+  );
+}
+console.log(
+  "DEV_ROOT_STRUCTURE_RESULT=" +
+    (devRootViolations.length === 0 ? "PASS" : "FAIL") +
+    " violations=" +
+    devRootViolations.length,
+);
+
 console.log("=== BVP ARCHITECTURE GUARD ===");
 const guard = runArchitectureGuard({
   repoRoot: repositoryRoot,
@@ -116,10 +194,14 @@ const metrics = runArchitectureMetrics({
 });
 process.stdout.write(metrics.output);
 
-const passed = guard.exitCode === 0 && metrics.exitCode === 0;
+const devRootExit = devRootViolations.length === 0 ? 0 : 1;
+const passed =
+  devRootExit === 0 && guard.exitCode === 0 && metrics.exitCode === 0;
 console.log(
   "BVP_REPOSITORY_CHECK_RESULT=" +
     (passed ? "PASS" : "FAIL") +
+    " devRootExit=" +
+    devRootExit +
     " guardExit=" +
     guard.exitCode +
     " metricsExit=" +
