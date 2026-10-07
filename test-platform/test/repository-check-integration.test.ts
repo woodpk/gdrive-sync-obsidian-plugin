@@ -89,6 +89,20 @@ function runGit(root: string, args: readonly string[]): string {
 
 function createFixture(): { readonly root: string; readonly baseSha: string } {
   const root = mkdtempSync(join(tmpdir(), "brain bvp repository check "));
+  for (const directory of [
+    "dev/authority",
+    "dev/planning",
+    "dev/research",
+    "dev/state",
+    "dev/reviews",
+    "dev/scripts",
+    "dev/Test-Results",
+    "dev/scratch",
+  ]) {
+    mkdirSync(join(root, ...directory.split("/")), { recursive: true });
+  }
+  writeText(root, "dev/README.md", "# Development\n");
+  writeText(root, "dev/_ca-output.md", "STATUS: TEST FIXTURE\n");
   writeText(
     root,
     "dev/authority/governance/locks/testing-platform-boundary.yaml",
@@ -239,6 +253,7 @@ test("repository-check consumes PHX context and TypeScript governance without Po
   match(source, /PHX_VERIFICATION_CONTEXT_PATH/);
   match(source, /runArchitectureGuard/);
   match(source, /runArchitectureMetrics/);
+  match(source, /DEV_ROOT_STRUCTURE_RESULT/);
   strictEqual(/\.ps1|pwsh|powershell|spawnSync/.test(source), false);
   strictEqual(
     /\bgit\s+-C\b|merge-base|diff --name-only|rev-parse/.test(source),
@@ -265,6 +280,7 @@ test("authoritative context supplies exact base and changed-path count", () => {
           " changedPaths=2",
       ),
     );
+    match(result.output, /DEV_ROOT_STRUCTURE_RESULT=PASS violations=0/);
     match(result.output, /ARCH_GUARD_RESULT=PASS violations=0/);
     match(result.output, /"baseSha":/);
     match(result.output, /BVP_REPOSITORY_CHECK_RESULT=PASS/);
@@ -286,7 +302,7 @@ test("authorized governance classification permits an explicitly frozen-surface 
     strictEqual(result.status, 0, result.output);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS.*changeClass=authorized-governance/,
+      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 guardExit=0 metricsExit=0.*changeClass=authorized-governance/,
     );
   });
 });
@@ -307,7 +323,7 @@ test("architecture guard failure blocks repository check", () => {
     if (result.error) throw result.error;
     notStrictEqual(result.status, 0, result.output);
     match(result.output, /rule=PRODUCTION_IMPORTS_TEST_PLATFORM/);
-    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL guardExit=1/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 guardExit=1/);
   });
 });
 
@@ -336,7 +352,31 @@ test("hard-budget metrics failure blocks repository check while guard still pass
     match(result.output, /"id": "SCENARIO_LOC:oversized"/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=FAIL guardExit=0 metricsExit=1/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 guardExit=0 metricsExit=1/,
+    );
+  });
+});
+
+test("noncanonical active dev top-level entries block repository check", () => {
+  withFixture((root, baseSha) => {
+    writeText(root, "dev/archive/legacy.md", "legacy\n");
+    const contextPath = writeContext(root, baseSha, {
+      changedPaths: ["dev/archive/legacy.md"],
+    });
+    const result = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "authorized-governance",
+    });
+    if (result.error) throw result.error;
+    notStrictEqual(result.status, 0, result.output);
+    match(
+      result.output,
+      /DEV_ROOT_STRUCTURE_VIOLATION path=dev\/archive .*Noncanonical active dev\/ top-level entry/,
+    );
+    match(result.output, /DEV_ROOT_STRUCTURE_RESULT=FAIL violations=1/);
+    match(
+      result.output,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=1 guardExit=0 metricsExit=0/,
     );
   });
 });
@@ -387,7 +427,7 @@ test("routine local mode runs both repository-controlled checks without fabricat
     match(result.output, /"baseSha": null/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
+      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
     );
   });
 });
