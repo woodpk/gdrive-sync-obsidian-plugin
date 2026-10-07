@@ -198,3 +198,103 @@ function sectionBounds(lines: readonly string[], section: string): { start: numb
   }
   return { start, end };
 }
+
+function topScalar(lines: readonly string[], key: string): string {
+  const re = new RegExp("^" + escapeRegex(key) + ":\\s*(.+?)\\s*$");
+  const matches = lines.map((line) => line.match(re)).filter((value): value is RegExpMatchArray => value !== null);
+  if (matches.length !== 1) throw new Error(`Manifest key '${key}' must appear exactly once as a scalar.`);
+  return unquote(matches[0][1]);
+}
+
+function nestedScalar(lines: readonly string[], section: string, key: string): string {
+  const bounds = sectionBounds(lines, section);
+  const re = new RegExp("^  " + escapeRegex(key) + ":\\s*(.+?)\\s*$");
+  const values: string[] = [];
+  for (let i = bounds.start + 1; i < bounds.end; i += 1) {
+    const match = lines[i].match(re);
+    if (match) values.push(unquote(match[1]));
+  }
+  if (values.length !== 1) throw new Error(`Manifest key '${section}.${key}' must appear exactly once as a scalar.`);
+  return values[0];
+}
+
+function nestedList(lines: readonly string[], section: string, key: string, required = true): string[] {
+  const bounds = sectionBounds(lines, section);
+  const re = new RegExp("^  " + escapeRegex(key) + ":\\s*(\\[\\s*\\])?\\s*$");
+  const indices: number[] = [];
+  let inlineEmpty = false;
+  for (let i = bounds.start + 1; i < bounds.end; i += 1) {
+    const match = lines[i].match(re);
+    if (match) { indices.push(i); inlineEmpty ||= Boolean(match[1]); }
+  }
+  if (indices.length === 0 && !required) return [];
+  if (indices.length !== 1) throw new Error(`Manifest list '${section}.${key}' must appear exactly once.`);
+  if (inlineEmpty) return [];
+  const values: string[] = [];
+  for (let i = indices[0] + 1; i < bounds.end; i += 1) {
+    const line = lines[i];
+    if (/^  \S/.test(line)) break;
+    const match = line.match(/^    -\s+(.+?)\s*$/);
+    if (match) values.push(unquote(match[1]));
+  }
+  if (required && values.length === 0) throw new Error(`Manifest list '${section}.${key}' must not be empty.`);
+  return values;
+}
+
+function topList(lines: readonly string[], key: string): string[] {
+  const re = new RegExp("^" + escapeRegex(key) + ":\\s*$");
+  const indices = lines.map((line, index) => re.test(line) ? index : -1).filter((index) => index >= 0);
+  if (indices.length !== 1) throw new Error(`Manifest list '${key}' must appear exactly once.`);
+  const values: string[] = [];
+  for (let i = indices[0] + 1; i < lines.length; i += 1) {
+    if (/^\S/.test(lines[i])) break;
+    const match = lines[i].match(/^  -\s+(.+?)\s*$/);
+    if (match) values.push(unquote(match[1]));
+  }
+  if (values.length === 0) throw new Error(`Manifest list '${key}' must not be empty.`);
+  return values;
+}
+
+function boolValue(value: string, path: string): boolean {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`Manifest key '${path}' must be true or false.`);
+}
+
+function intValue(value: string, path: string): number {
+  if (!/^-?\d+$/.test(value)) throw new Error(`BOUNDARY_MANIFEST_INVALID: ${path} must be an integer.`);
+  return Number(value);
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function frozenSurfacePath(surface: string): string {
+  const trimmed = surface.trim();
+  if (/^[A-Za-z0-9._/-]+$/.test(trimmed)) return normalizeRepoPath(trimmed);
+  const match = trimmed.match(/([A-Za-z0-9._/-]+\.[A-Za-z0-9._-]+)\s*$/);
+  if (match) return normalizeRepoPath(match[1]);
+  throw new Error(`Frozen surface entry '${surface}' does not contain a deterministic repository path.`);
+}
+
+function parseBoundaryPolicy(text: string): BoundaryPolicy {
+  const lines = linesOf(text);
+  if (lines.length === 0 || text.length === 0) throw new Error("Manifest is empty.");
+  if (lines.some((line) => line.includes("\t"))) throw new Error("Tabs are not permitted in the authoritative manifest.");
+  const schema = intValue(topScalar(lines, "schema_version"), "schema_version");
+  if (schema !== 2) throw new Error(`Unsupported schema_version '${schema}'.`);
+  const status = topScalar(lines, "status");
+  if (!/^authoritative(?:_|$)/i.test(status)) throw new Error(`Manifest status '${status}' does not establish authoritative boundary policy.`);
+  const productionRoots = nestedList(lines, "roots", "production").map(normalizePolicyRoot);
+  const testPlatformRoot = normalizePolicyRoot(nestedScalar(lines, "roots", "test_platform"));
+  const activeDevRoot = normalizePolicyRoot(nestedScalar(lines, "roots", "active_dev"));
+  const archiveRoot = normalizePolicyRoot(nestedScalar(lines, "roots", "archive"));
+  const productionForbiddenRoots = nestedList(lines, "import_rules", "production_must_not_import").map(normalizePolicyRoot);
+  const shippingForbiddenRoots = nestedList(lines, "shipping_rules", "production_bundle_must_exclude").map(normalizePolicyRoot);
+  const allowlistRequired = boolValue(nestedScalar(lines, "import_rules", "test_platform_may_import_production_only_through_allowlist"), "import_rules.test_platform_may_import_production_only_through_allowlist");
+  const scenarioSpecificProductionAllowed = boolValue(nestedScalar(lines, "import_rules", "scenario_specific_production_code_allowed"), "import_rules.scenario_specific_production_code_allowed");
+  const productionValidationUiAllowed = boolValue(nestedScalar(lines, "shipping_rules", "production_validation_ui_allowed"), "shipping_rules.production_validation_ui_allowed");
+  const validationDeviceSeparated = boolValue(nestedScalar(lines, "shipping_rules", "validation_device_agent_must_be_separate_artifact_or_entrypoint"), "shipping_rules.validation_device_agent_must_be_separate_artifact_or_entrypoint");
+  const seamAllowlistRequired = boolValue(nestedScalar(lines, "production_seam", "allowlist_required"), "production_seam.allowlist_required");
+  const approvedProductionImports = nestedList(lines, "production_seam", "approved_imports", false).map(normalizeRepoPath);
