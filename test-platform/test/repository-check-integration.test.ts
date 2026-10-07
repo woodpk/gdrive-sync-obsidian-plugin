@@ -254,6 +254,7 @@ test("repository-check consumes PHX context and TypeScript governance without Po
   match(source, /runArchitectureGuard/);
   match(source, /runArchitectureMetrics/);
   match(source, /DEV_ROOT_STRUCTURE_RESULT/);
+  match(source, /SHIPPING_ARTIFACT_IDENTITY_RESULT/);
   strictEqual(/\.ps1|pwsh|powershell|spawnSync/.test(source), false);
   strictEqual(
     /\bgit\s+-C\b|merge-base|diff --name-only|rev-parse/.test(source),
@@ -302,7 +303,7 @@ test("authorized governance classification permits an explicitly frozen-surface 
     strictEqual(result.status, 0, result.output);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 guardExit=0 metricsExit=0.*changeClass=authorized-governance/,
+      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=0.*changeClass=authorized-governance/,
     );
   });
 });
@@ -323,7 +324,7 @@ test("architecture guard failure blocks repository check", () => {
     if (result.error) throw result.error;
     notStrictEqual(result.status, 0, result.output);
     match(result.output, /rule=PRODUCTION_IMPORTS_TEST_PLATFORM/);
-    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 guardExit=1/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=0 guardExit=1/);
   });
 });
 
@@ -352,7 +353,7 @@ test("hard-budget metrics failure blocks repository check while guard still pass
     match(result.output, /"id": "SCENARIO_LOC:oversized"/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 guardExit=0 metricsExit=1/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=1/,
     );
   });
 });
@@ -376,7 +377,37 @@ test("noncanonical active dev top-level entries block repository check", () => {
     match(result.output, /DEV_ROOT_STRUCTURE_RESULT=FAIL violations=1/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=1 guardExit=0 metricsExit=0/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=1 shippingArtifactExit=0 guardExit=0 metricsExit=0/,
+    );
+  });
+});
+
+test("built shipping artifact identity mismatch blocks repository check", () => {
+  withFixture((root, baseSha) => {
+    const packageModel = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    packageModel.name = "brain-google-drive-sync";
+    writeText(root, "package.json", JSON.stringify(packageModel, null, 2) + "\n");
+    writeText(root, "main.js", 'console.log("changed artifact");\n');
+    const contextPath = writeContext(root, baseSha, {
+      changedPaths: ["main.js"],
+    });
+    const result = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "authorized-governance",
+    });
+    if (result.error) throw result.error;
+    notStrictEqual(result.status, 0, result.output);
+    match(
+      result.output,
+      /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=main\.js .*Built shipping artifact SHA-256 changed/,
+    );
+    match(
+      result.output,
+      /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/,
+    );
+    match(
+      result.output,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/,
     );
   });
 });
@@ -427,7 +458,7 @@ test("routine local mode runs both repository-controlled checks without fabricat
     match(result.output, /"baseSha": null/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
+      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
     );
   });
 });
