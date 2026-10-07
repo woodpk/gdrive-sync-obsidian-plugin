@@ -9,19 +9,19 @@ record:
 
 repository_conventions:
   durable_product_authority:
-    - "dev/planning-and-building/target-system-specification.md"
+    - "dev/planning/01-target-system/target-system-specification.md"
     - "dev/authority/decision-register.yaml"
-    - "dev/planning-and-building/build-decomposition.md"
+    - "dev/planning/02-workstreams/00-INDEX.md"
     - "dev/planning-and-building/project-state.yaml"
     - "dev/authority/contracts/phase6-sync-architecture-foundation.md"
     - "dev/authority/contracts/phase6-sync-contract-freeze.md"
   supervisor_continuity_log: "dev/planning-and-building/supervisor-continuity-log.md"
   active_bvp_authority:
-    - "dev/planning-and-building/testing-platform-target-system-specification.md"
-    - "dev/planning-and-building/testing-platform-build-decomposition.md"
-    - "dev/planning-and-building/testing-platform-requirement-coverage.md"
-    - "dev/planning-and-building/testing-platform-build-session-specifications.md"
-    - "dev/planning-and-building/testing-platform-session-decomposition.md"
+    - "dev/planning/01-target-system/bvp-subsystem-specification.md"
+    - "dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md"
+    - "dev/planning/02-workstreams/requirement-workstream-coverage.md"
+    - "dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md"
+    - "dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md"
     - "dev/authority/governance/locks/testing-platform-boundary.yaml"
   coding_agent_task_prompts: "TRANSITIONAL ONLY: legacy dev/agents/ is being retired; future durable task prompts belong only under the owning dev/planning/02-workstreams/WS-##-*/tasks/ directory."
   evidence: "Current work-unit evidence may use dev/_ca-output.md; immutable historical PHX-CI runs belong under dev/Test-Results/<runId>/; legacy dev/evidence/ is transitional historical material pending external archive migration."
