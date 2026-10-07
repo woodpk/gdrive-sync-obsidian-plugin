@@ -899,7 +899,8 @@ decisions:
     decision: "Verification verdicts derive from objective observations of production plans/results, content/hash/identity, authoritative state, remote reality, conflicts, and required platform outcomes. Production execution exposes a narrow authoritative run receipt or equivalent terminal observation when needed; diagnostics corroborate evidence but are not the test-control authority protocol."
 
   - id: DEC-318
-    status: locked
+    status: superseded
+    superseded_by: DEC-336
     category: validation_anti_drift
     decision: "The BVP architecture is mechanically enforced by a machine-readable boundary manifest, repository-controlled PowerShell architecture guard, and architecture metrics. A failed architecture guard blocks acceptance regardless of functional test results."
 
@@ -998,6 +999,12 @@ decisions:
     category: supervisor_continuity
     supersedes: DEC-327
     decision: "Durable current execution/continuity state is recorded in dev/state/current-state.yaml using the canonical state schema and must be reconciled against repository reality whenever the two differ. Concise active handoffs may be stored under dev/state/handoffs/. Historical append-only supervisor journals are not canonical active state and must be archived rather than used as a competing continuity authority. The state system does not replace the target-system specification, decision register, workstream planning, repository reality, PHX-CI evidence, or accepted review outcomes."
+
+  - id: DEC-336
+    status: locked
+    category: validation_anti_drift
+    supersedes: DEC-318
+    decision: "The BVP architecture remains mechanically enforced by the authoritative boundary manifest plus repository-controlled architecture guard and metrics logic, but that validation logic is implemented in test-platform/src/architecture-governance.ts and consumed only through test-platform/src/repository-check.ts inside PHX-CI. Standalone PowerShell validators under dev/scripts/ are retired and prohibited as competing validation authority. Existing architecture rules, hard complexity budgets, frozen production seams, PHX-CI ownership, and fail-closed acceptance semantics are unchanged."
 
 superseded_decisions:
   - id: SUP-001
