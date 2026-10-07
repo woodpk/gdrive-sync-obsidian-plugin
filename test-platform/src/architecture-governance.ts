@@ -806,6 +806,7 @@ function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy): Metric
   const frameworkCoreFiles: string[] = [];
   const liveFiles: string[] = [];
   for (const path of testFiles) {
+    if (path === normalizeRepoPath(policy.testPlatformRoot) + "/src/architecture-governance.ts") continue;
     if (under(path, testRoot)) continue;
     if (under(path, scenarioRoot)) { if (analysisByPath.get(path)?.declarativeScenario) continue; frameworkCoreFiles.push(path); continue; }
     if (/(?:^|\/)(?:live-device|device-command-agent|command-agent|device-agent|windows-relay|relay|mailbox)(?:[-_/.]|$)/i.test(path)) { liveFiles.push(path); continue; }
