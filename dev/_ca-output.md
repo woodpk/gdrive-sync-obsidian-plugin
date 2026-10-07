@@ -1,34 +1,29 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — S09A Windows validation artifact installation
+# Current work-unit evidence — S09A Windows installed-runtime load
 
 ## Result
 
-`INSTALL: PASS`
+`RUNTIME_LOAD: PASS`
 
-## Exact installation
+## Observed runtime
 
-- source artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`
-- target plugin directory: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync`
-- source `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`
-- installed `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`
-- installed manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`
-- installed build source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- vault: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`
+- Obsidian: `1.13.7`
+- plugin: `BRAIN Google Drive Sync 0.1.18`
+- runtime global: `globalThis.__BRAIN_BVP_VALIDATION_BUILD__`
+- schema version: `1`
+- source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- sentinel: `BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL`
 
-All three installed artifact files are byte-identical to their source copies.
+The initial observation before a full Obsidian restart was `undefined`, consistent with the prior process retaining an older loaded plugin module. After fully quitting and reopening Obsidian, the expected validation identity was present.
 
-## State preservation
-
-`data.json`, `.bvp-relay`, and all other existing device-local state were preserved unchanged.
-
-## Discrepancies
-
-None.
+The JavaScript `[[Prototype]]` expansion shown by DevTools is ordinary object inheritance and is not additional BVP state.
 
 ## Boundary
 
-This is an installation result only. It does not yet prove installed-runtime plugin load, Windows authentication/pairing, iOS behavior, cross-device synchronization, or full S09A acceptance.
+This proves the exact validation artifact is loaded in the real Windows Obsidian runtime. It does not yet prove Google authentication, managed-root pairing, iOS behavior, or full S09A acceptance.
 
 ## Next action
 
-Open the exact disposable Windows vault in Obsidian 1.13.7 and verify the installed validation build loads with the expected source/build identity. Do not rebuild or reinstall the artifact.
+Proceed with the Windows same-device authentication/pairing baseline using the already-loaded validation build.

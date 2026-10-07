@@ -99,6 +99,18 @@ The exact bound validation artifact is installed in the disposable Windows vault
 
 The Windows tranche therefore advances to **installed-runtime load verification**. No rebuild or reinstall is required.
 
+### 0.5B Windows installed-runtime load result — PASS
+
+After a full Obsidian restart, the disposable Windows vault loaded the exact installed validation build under Obsidian `1.13.7`.
+
+Runtime observation of `globalThis.__BRAIN_BVP_VALIDATION_BUILD__` returned:
+
+- `schemaVersion: 1`;
+- `sourceCommit: 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- `sentinel: BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL`.
+
+This proves the running Obsidian process loaded the validation artifact rather than merely having it present on disk. The Windows tranche advances to same-device authentication/pairing baseline.
+
 ### 0.5 iOS physical observations still required
 
 Before the **iOS tranche** may execute, and before full S09A acceptance may be claimed, record exactly:

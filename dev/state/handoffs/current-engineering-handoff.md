@@ -139,8 +139,18 @@ Verified installed state:
 - `data.json`, `.bvp-relay`, and all other device-local state were preserved;
 - discrepancies: none.
 
+## Windows installed-runtime load verification complete
+
+The restarted Windows Obsidian 1.13.7 process loaded the installed validation artifact successfully. Browser-console observation of `globalThis.__BRAIN_BVP_VALIDATION_BUILD__` returned:
+
+- `schemaVersion: 1`;
+- `sourceCommit: 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- `sentinel: BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL`.
+
+The ordinary JavaScript `[[Prototype]]` properties shown by DevTools are not BVP evidence and require no inspection.
+
 ## Immediate next action
 
-Open the exact disposable Windows vault in Obsidian 1.13.7, verify that the installed validation plugin loads and reports the expected source/build identity, then proceed with the Windows same-device authentication/pairing baseline. Do not reinstall or rebuild the artifact. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
+Proceed with the Windows same-device authentication/pairing baseline using the already-loaded validation build. Do not reinstall or rebuild the artifact. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
 
 Do not begin S09B. Do not begin Stage 3.
