@@ -366,8 +366,9 @@ function Get-BoundaryPolicy {
             }
         }
 
-        if (-not (Test-RepoPathWithinRoot -RelativePath $archiveRoot -Root $activeDevRoot)) {
-            throw "Archive root '$archiveRoot' must be contained by active_dev root '$activeDevRoot'."
+        if ((Test-RepoPathWithinRoot -RelativePath $archiveRoot -Root $activeDevRoot) -or
+            (Test-RepoPathWithinRoot -RelativePath $activeDevRoot -Root $archiveRoot)) {
+            throw "Archive root '$archiveRoot' must be outside and non-overlapping with active_dev root '$activeDevRoot'."
         }
 
         if (-not ($productionForbiddenRoots -contains $testPlatformRoot)) {

@@ -1,5 +1,9 @@
 # Build Decomposition — BRAIN Verification Platform
 
+## Durable future task contracts
+
+The only retained detailed future task contracts are BVP-S09A through S09V under `tasks/s09/`. They remain `PREPLANNED / NOT-YET-EXECUTABLE` and must be re-grounded against current repository reality, current authority, and current PHX-CI/physical-validation requirements immediately before dispatch. Completed or superseded historical prompts are preserved only in the external pre-standard archive.
+
 ## Primary decomposition
 
 ## 1. Status and Authority
@@ -9,7 +13,7 @@
 **Workflow:** Workflow A / Stage 2A controlled session-based construction  
 **Date:** 2026-09-23  
 
-This decomposition follows the Agent-Led Software Product Construction Manual: phases exist only where dependency order, stable-boundary establishment, risk isolation, independent testability, or meaningful integration requires separation. The nine BVP work packages are decomposed into bounded child sessions in `testing-platform-session-decomposition.md`; detailed executable child prompts must be refreshed against the actual repository immediately before each session begins.
+This decomposition follows the Agent-Led Software Product Construction Manual: phases exist only where dependency order, stable-boundary establishment, risk isolation, independent testability, or meaningful integration requires separation. The nine BVP work packages are decomposed into bounded child sessions later in this canonical workstream artifact; detailed executable child prompts must be refreshed against the actual repository immediately before each session begins.
 
 ## 2. Ordered Dependency Model
 

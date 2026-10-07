@@ -37,7 +37,7 @@ function boundaryManifest(): string {
     "    - src/",
     "  test_platform: test-platform/",
     "  active_dev: dev/",
-    "  archive: dev/archive/",
+    "  archive: archive/",
     "",
     "import_rules:",
     "  production_must_not_import:",
@@ -139,8 +139,8 @@ function createBaselineFixture(): string {
   );
   writeText(
     root,
-    "dev/planning-and-building/testing-platform-target-system-specification.md",
-    "Historical BVP material may be retained under dev/archive/ as non-authoritative evidence only.\n",
+    "dev/planning/01-target-system/bvp-subsystem-specification.md",
+    "Historical BVP material may be retained under archive/ as non-authoritative evidence only.\n",
   );
   writeText(root, "main.js", 'console.log("production bundle");\n');
 
@@ -360,6 +360,17 @@ test("architecture guard fails closed when required manifest authority is incomp
         "  test_platform: test-platform/",
         "",
       ].join("\n"),
+    );
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_INVALID");
+  });
+});
+
+test("architecture guard rejects an archive nested under active dev", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      boundaryManifest().replace("  archive: archive/", "  archive: dev/archive/"),
     );
     assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_INVALID");
   });
@@ -765,8 +776,8 @@ test("architecture guard rejects active archive-as-authority linkage", () => {
   withFixture((root) => {
     writeText(
       root,
-      "dev/agents/st2a/ph6/05-bvp/current-task.md",
-      "Execute dev/archive/legacy-validation-harness/task.md as the governing task authority.\n",
+      "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/fixture-current-task.md",
+      "Execute archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md as the governing task authority.\n",
     );
     assertFailsWithRule(runGuard(root), "ARCHIVE_USED_AS_CURRENT_AUTHORITY");
   });
@@ -776,8 +787,8 @@ test("architecture guard allows historical non-authoritative archive prose", () 
   withFixture((root) => {
     writeText(
       root,
-      "dev/agents/st2a/ph6/05-bvp/history-note.md",
-      "Historical reference only: dev/archive/legacy-validation-harness/task.md is non-authoritative and must not be used as current task authority.\n",
+      "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/fixture-history-note.md",
+      "Historical reference only: archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md is non-authoritative and must not be used as current task authority.\n",
     );
     assertPass(runGuard(root));
   });

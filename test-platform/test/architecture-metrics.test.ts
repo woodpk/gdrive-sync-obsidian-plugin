@@ -43,7 +43,7 @@ function boundaryManifest(approvedImports: readonly string[] = []): string {
     "    - src/",
     "  test_platform: test-platform/",
     "  active_dev: dev/",
-    "  archive: dev/archive/",
+    "  archive: archive/",
     "production_seam:",
     "  allowlist_required: true",
     ...(approvedImports.length === 0

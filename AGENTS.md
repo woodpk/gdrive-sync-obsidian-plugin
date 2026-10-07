@@ -1,6 +1,6 @@
 # OWNER-LOCKED VALIDATION / VERIFICATION GOVERNANCE
 
-This file applies to every engineering agent, every task prompt under `dev/agents/**`, and every branch of this repository.
+This file applies to every engineering agent, every persisted task prompt under `dev/planning/02-workstreams/**/tasks/**`, and every branch of this repository.
 
 ## Mandatory fresh-protocol gate
 
@@ -14,7 +14,9 @@ Before authoring, generating, modifying, extending, or printing **any code or sc
 
 ## Legacy custom-validation instructions are void
 
-Any instruction anywhere under `dev/agents/**` that directs an agent to create, build, implement, extend, modify, or rely upon bespoke/custom validation or verification code contrary to the freshly-read current operating protocol is **VOID AND SUPERSEDED** by this file.
+Any instruction in a persisted workstream task or archived historical prompt that directs an agent to create, build, implement, extend, modify, or rely upon bespoke/custom validation or verification code contrary to the freshly-read current operating protocol is **VOID AND SUPERSEDED** by this file.
+
+Archived pre-standard prompts are historical evidence only and are never current task authority merely because they remain accessible under `archive/**`.
 
 PHX-CI is the primary, central, non-substitutable repository-validation pipeline whenever the current protocol assigns that authority to PHX-CI. A task-specific or physical-validation tool may exist only when the freshly-read current protocol permits it for a responsibility PHX-CI does not own, and it MUST remain supplementary.
 

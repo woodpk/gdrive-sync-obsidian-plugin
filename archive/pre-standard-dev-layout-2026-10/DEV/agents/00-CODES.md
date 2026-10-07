@@ -1,7 +1,3 @@
-> **MIGRATION STATUS — TRANSITIONAL LEGACY HIERARCHY**
->
-> The canonical development standard no longer defines a top-level `dev/agents/` hierarchy. Do not create new task artifacts here. Durable future task prompts, when genuinely required, belong only under the owning `dev/planning/02-workstreams/WS-##-*/tasks/` directory. Existing material remains temporarily for migration/history and will be archived in a later standardization phase.
-
 # Build Address Codes
 
 This file defines the canonical shorthand and directory-address system for `dev/agents/**`.
@@ -144,3 +140,4 @@ PHX-CI must remain the primary, central, non-substitutable repository-validation
 ### 8.3 No prompt-level bypass
 
 No task prompt, historical handoff, continuation instruction, repair task, acceptance task, or supervisor note under `dev/agents/**` may waive or bypass Sections 8.1–8.2. Only an explicit later human software-owner instruction may change this owner-locked rule.
+
