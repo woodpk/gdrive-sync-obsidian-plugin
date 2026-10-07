@@ -832,6 +832,8 @@ function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy, histori
   const scenarioSpecificPowerShellFiles: string[] = [];
   for (const path of paths.filter((value) => /^dev\/scripts\/.*\.ps1$/i.test(value))) {
     const code = logicalLines(reader.read(path), "ps").join("\n");
+    const isPhxCiOperator = /^dev\/scripts\/Invoke-PHXCI-[A-Za-z0-9-]+\.ps1$/.test(path);
+    if (isPhxCiOperator) continue;
     const isBvp = /\b(?:BVP|test-platform|testing-platform)\b/i.test(code);
     if (!isBvp) {
       if (historicalBase) continue;
