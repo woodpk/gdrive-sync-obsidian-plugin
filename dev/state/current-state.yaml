@@ -2,18 +2,18 @@ schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
-active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
+active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_8_NORMALIZE_ENGINEERING_SCRIPTS"
 status: "READY"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "38b52d07-dce9-4e2f-aa61-3fd7188703f7"
 blockers: []
-next_action: "Execute dev-directory standardization Phase 7: canonicalize the 105 legacy flat PHX-CI result triples into exact dev/Test-Results/<runId>/{result.md,result.json,terminal.log} directories, preserve historical contents without rewriting them, and remove the lowercase dev/test-results/ legacy tree and redundant dev/_ca-output.json after canonical evidence placement is proven."
+next_action: "Execute dev-directory standardization Phase 8: normalize dev/scripts/ semantically by retiring obsolete task-specific selective/carry-forward/S07 verification helpers, removing independent PASS/FAIL validation authority from repository PowerShell, preserving BVP architecture guard/metrics behavior through PHX-CI-consumed test-platform/repository-check surfaces, and leaving dev/scripts/ only canonical engineering/PHX-CI operational tooling."
 updated_at: "2026-10-07"
 
 context:
   canonical_source_branch: "automated-testing-platform-branch"
   canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  current_migration_branch: "dev-directory-standardization-phase6"
+  current_migration_branch: "dev-directory-standardization-phase7"
   migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
   migration_phases_completed:
     - "PHASE_1_INVENTORY_AND_DISPOSITION"
@@ -22,12 +22,13 @@ context:
     - "PHASE_4_PLANNING_AND_WORKSTREAM_NORMALIZATION"
     - "PHASE_5_STATE_AND_HANDOFF_NORMALIZATION"
     - "PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
+    - "PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
   automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
   s09_started: false
   stage_3_started: false
-  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. The dev-directory migration has intentionally not received its final comprehensive PHX-CI run yet; that verification is reserved for the completed migration."
+  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Historical PHX-CI evidence has now been structurally canonicalized without rewriting evidence blobs. Final comprehensive PHX-CI verification of the migration remains deferred until standardization completion."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
@@ -37,3 +38,4 @@ context:
   evidence:
     current_work_unit_surface: "dev/_ca-output.md"
     historical_phx_ci_root: "dev/Test-Results/"
+    historical_run_count: 105
