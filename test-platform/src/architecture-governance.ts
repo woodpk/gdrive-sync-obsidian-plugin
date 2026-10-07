@@ -398,3 +398,103 @@ function resolveRepositoryReference(repoRoot: string, origin: string, reference:
   for (const root of knownRoots.map(normalizePolicyRoot)) {
     if (normalized === root || normalized.startsWith(root + "/")) return normalizeRepoPath(normalized);
   }
+  if (!normalized.startsWith(".") && !treatBareAsRepoRelative) return null;
+  const base = treatBareAsRepoRelative && !normalized.startsWith(".") ? repoRoot : dirname(join(repoRoot, ...normalizeRepoPath(origin).split("/")));
+  const target = resolve(base, normalized);
+  const rel = normalizeRepoPath(relative(repoRoot, target));
+  if (rel === ".." || rel.startsWith("../")) return null;
+  return rel;
+}
+
+function approvedProductionImport(target: string, allowlist: readonly string[]): boolean {
+  for (const raw of allowlist) {
+    const entry = normalizeRepoPath(raw);
+    if (entry.endsWith("/**")) {
+      const prefix = entry.slice(0, -3).replace(/\/+$/, "");
+      if (target === prefix || target.startsWith(prefix + "/")) return true;
+      continue;
+    }
+    if (target === entry) return true;
+    const stem = entry.replace(/\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/i, "");
+    if (stem !== entry && target === stem) return true;
+    if (/\/index\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/i.test(entry) && target === entry.replace(/\/index\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/i, "")) return true;
+  }
+  return false;
+}
+
+function propertyNameText(name: ts.PropertyName | undefined): string | null {
+  if (!name) return null;
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)) return name.text;
+  return null;
+}
+
+function stringValue(node: ts.Node | undefined): string | null {
+  return node && ts.isStringLiteralLike(node) ? node.text : null;
+}
+
+function scenarioDataOnly(node: ts.Node): boolean {
+  if (ts.isStringLiteral(node) || ts.isNumericLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword) return true;
+  if (ts.isPrefixUnaryExpression(node)) return (node.operator === ts.SyntaxKind.PlusToken || node.operator === ts.SyntaxKind.MinusToken) && ts.isNumericLiteral(node.operand);
+  if (ts.isParenthesizedExpression(node)) return scenarioDataOnly(node.expression);
+  if (ts.isArrayLiteralExpression(node)) return node.elements.every((element) => !ts.isSpreadElement(element) && scenarioDataOnly(element));
+  if (ts.isObjectLiteralExpression(node)) return node.properties.every((property) => ts.isPropertyAssignment(property) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name) || ts.isNumericLiteral(property.name)) && scenarioDataOnly(property.initializer));
+  if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || (ts.isSatisfiesExpression(node))) return scenarioDataOnly(node.expression);
+  return false;
+}
+
+function declarativeScenario(sourceFile: ts.SourceFile): boolean {
+  let found = false;
+  let imported = false;
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      const moduleName = stringValue(statement.moduleSpecifier);
+      const bindings = statement.importClause?.namedBindings;
+      if (!moduleName?.endsWith("/src/scenario/scenario-contract") || !bindings || !ts.isNamedImports(bindings) || !bindings.elements.some((element) => element.name.text === "defineScenario")) return false;
+      imported = true;
+      continue;
+    }
+    if (ts.isVariableStatement(statement) && statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) && (statement.declarationList.flags & ts.NodeFlags.Const) !== 0 && statement.declarationList.declarations.length === 1) {
+      const initializer = statement.declarationList.declarations[0].initializer;
+      if (found || !initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || initializer.expression.text !== "defineScenario" || initializer.arguments.length !== 1 || !ts.isObjectLiteralExpression(initializer.arguments[0]) || !scenarioDataOnly(initializer.arguments[0])) return false;
+      found = true;
+      continue;
+    }
+    return false;
+  }
+  return imported && found;
+}
+
+function createAnalysis(files: readonly { readonly path: string; readonly text: string; readonly mode?: "source" | "build" | "tsconfig" }[]): SourceAnalysis[] {
+  const sourceFiles = files.filter((file) => file.mode !== "tsconfig");
+  const map = new Map(sourceFiles.map((file) => [normalizeRepoPath(file.path), file.text]));
+  const options: ts.CompilerOptions = { allowJs: true, checkJs: false, noResolve: true, skipLibCheck: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS };
+  const host = ts.createCompilerHost(options);
+  host.fileExists = (file) => map.has(normalizeRepoPath(file));
+  host.readFile = (file) => map.get(normalizeRepoPath(file));
+  host.writeFile = () => undefined;
+  host.getSourceFile = (file, version) => {
+    const key = normalizeRepoPath(file);
+    const text = map.get(key);
+    return text === undefined ? undefined : ts.createSourceFile(key, text, version, true);
+  };
+  host.getCurrentDirectory = () => "";
+  const program = ts.createProgram({ rootNames: [...map.keys()], options, host });
+  const checker = program.getTypeChecker();
+
+  const declarationNames = (name: ts.BindingName | undefined, output: string[]): void => {
+    if (!name) return;
+    if (ts.isIdentifier(name)) { output.push(name.text); return; }
+    for (const element of name.elements) if (ts.isBindingElement(element)) declarationNames(element.name, output);
+  };
+  const locallyShadowedRequire = (identifier: ts.Identifier, sourceFile: ts.SourceFile): boolean => {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    return Boolean(symbol?.declarations?.some((declaration) => normalizeRepoPath(declaration.getSourceFile().fileName) === normalizeRepoPath(sourceFile.fileName)));
+  };
+  const collectDependencies = (sourceFile: ts.SourceFile): Dependency[] => {
+    const dependencies: Dependency[] = [];
+    const add = (kind: string, node: ts.Node | undefined): void => { const specifier = stringValue(node); if (specifier !== null) dependencies.push({ kind, specifier }); };
+    const visit = (node: ts.Node): void => {
+      if (ts.isImportDeclaration(node)) add(node.importClause?.isTypeOnly ? "import-type" : "import", node.moduleSpecifier);
+      else if (ts.isExportDeclaration(node) && node.moduleSpecifier) add(node.isTypeOnly ? "export-type" : "export", node.moduleSpecifier);
+      else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) add("import-equals", node.moduleReference.expression);
+      else if (ts.isCallExpression(node)) {
