@@ -2,18 +2,18 @@ schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
-active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_9_UPDATE_PATH_REFERENCES"
+active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
 status: "READY"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "38b52d07-dce9-4e2f-aa61-3fd7188703f7"
 blockers: []
-next_action: "Execute dev-directory standardization Phase 9: update every path-bound reference atomically across active authority, target/workstream planning, state, BVP governance/tests/metrics/repository-check, PHX-CI configuration, Taskfiles, AGENTS documentation, and code so no active reference points to retired dev/governance, lowercase dev/test-results, dev/archive, dev/agents, dev/planning-and-building, retired validation scripts, or other obsolete paths; do not create compatibility aliases or begin S09/Stage 3."
+next_action: "Execute dev-directory standardization Phase 10: verify the completed migration exclusively through PHX-CI, including typecheck, full BVP suite, full production suite, build, repository/architecture checks, and artifact collection; correct migration defects exposed by verification, record authoritative evidence, and do not begin S09 or Stage 3 until the migration closes green."
 updated_at: "2026-10-07"
 
 context:
   canonical_source_branch: "automated-testing-platform-branch"
   canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  current_migration_branch: "dev-directory-standardization-phase8"
+  current_migration_branch: "dev-directory-standardization-phase9-r2"
   migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
   migration_phases_completed:
     - "PHASE_1_INVENTORY_AND_DISPOSITION"
@@ -24,12 +24,13 @@ context:
     - "PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
     - "PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
     - "PHASE_8_NORMALIZE_ENGINEERING_SCRIPTS"
+    - "PHASE_9_UPDATE_PATH_REFERENCES"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
   automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
   s09_started: false
   stage_3_started: false
-  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 8 archived all five legacy dev/scripts PowerShell validators/helpers, migrated architecture guard/metrics logic into the PHX-CI-consumed TypeScript test-platform surface, and did not run or claim a new authoritative PHX-CI acceptance. Final comprehensive PHX-CI verification of the completed migration remains reserved for Phase 10."
+  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 9 retired the remaining noncanonical dev/archive, dev/evidence, dev/governance, and dev/planning-and-building trees; verified exact archival preservation for all 366 retired source blobs; removed remaining live retired-script/path exceptions; and did not run or claim a new authoritative PHX-CI acceptance. Phase 10 is the required comprehensive executable verification gate for the completed migration."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
