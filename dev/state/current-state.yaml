@@ -3,12 +3,13 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_AND_PAIRING_BASELINE"
-status: "WINDOWS_LIVE_AGENT_VERIFIED_READY_FOR_CONTROLLER_PROBE"
+status: "BLOCKED_PHXCI_PHYSICAL_VALIDATION_COORDINATION_GAP"
 last_accepted_source_sha: "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
 last_phx_ci_run_id: null
 blockers:
+  - "W2 non-mutating controller probe is blocked until the existing BVP live executor is executed/coordinated through PHX-CI; standalone physical-validation execution is prohibited by the current governing engineering protocol."
   - "iPhone physical facts remain to be observed: exact model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity."
-next_action: "Run a non-mutating external-controller observe-product round trip through the bound Windows relay/mailbox/device agent and require exact result correlation to source 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f before any fixture creation or synchronization execution."
+next_action: "Create a bounded PHX-CI tooling integration so the existing BVP live executor can be executed or coordinated by PHX-CI. Do not rerun W2 outside PHX-CI. After the integration itself passes authoritative PHX-CI verification, rerun the same non-mutating observe-product probe through PHX-CI."
 updated_at: "2026-10-07"
 
 context:
@@ -57,6 +58,9 @@ context:
       mailbox_runtime_device_id: "device:8b7820faab2603b334a1c13d8c3bdba0"
       mailbox_runtime_relay_present: true
       mailbox_runtime_mailbox_present: true
+      w2_controller_probe_status: "BLOCKED"
+      w2_blocker_classification: "PHX-CI EXECUTION / PROCESS INTEGRATION GAP"
+      w2_blocker_reason: "Current governing protocol prohibits standalone physical-validation controllers outside PHX-CI; existing live executor is not yet exposed through PHX-CI."
 
   physical_binding:
     run_id: "s09a-20261007-3e3724ed-01"

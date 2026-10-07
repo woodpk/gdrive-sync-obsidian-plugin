@@ -141,6 +141,24 @@ The runtime device ID matches the exact bound Windows product identity. The live
 
 The next step is a **non-mutating `observe-product` round trip**. No fixture creation or synchronization execution is authorized until that round trip passes exact correlation.
 
+### 0.5E W2 controller probe — BLOCKED / PHX-CI integration required
+
+The planned first external-controller probe was **not executed**.
+
+Codex Desktop stopped before emitting any relay/mailbox command because the current governing **Agent-Led Software Engineering Operating Protocol** requires all executable software validation, including physical validation, to be executed or coordinated by PHX-CI and prohibits standalone physical-validation controllers.
+
+No fixture, synchronization, product-setting, vault, or managed-remote mutation occurred.
+
+This is classified as a **PHX-CI execution/process integration gap**, not a product or live-agent failure.
+
+Required repair:
+
+- preserve the existing BVP live executor, mailbox, device agent, and scenario authority;
+- add only the smallest PHX-CI-owned coordination surface required to invoke the existing live executor;
+- do not create a second validator/controller;
+- verify the tooling change through PHX-CI;
+- rerun the same non-mutating W2 `observe-product` probe through PHX-CI before any fixture or synchronization mutation.
+
 ### 0.5 iOS physical observations still required
 
 Before the **iOS tranche** may execute, and before full S09A acceptance may be claimed, record exactly:

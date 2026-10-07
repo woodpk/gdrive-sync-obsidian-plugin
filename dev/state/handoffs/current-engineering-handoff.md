@@ -183,8 +183,25 @@ Runtime observation of `globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__` returned an ac
 
 The runtime device ID exactly matches the bound Windows product identity. This establishes that the installed validation build has the live mailbox/relay agent active.
 
+## W2 external-controller probe — BLOCKED by PHX-CI process authority
+
+Codex Desktop correctly stopped before emitting any command.
+
+Observed result:
+
+- run ID: `s09-w2-windows-controller-probe-20261007-01`;
+- device ID: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- scenario: not started;
+- command emitted: none;
+- vault/Drive/product mutation: none;
+- temporary workspace: `C:\w2-6c2a49d8`.
+
+The blocker is not a BVP/product defect. The current **Agent-Led Software Engineering Operating Protocol** makes PHX-CI the sole executable software-validation framework and explicitly prohibits standalone physical-validation controllers. The existing BVP live executor therefore must be **executed or coordinated by PHX-CI** before W2 may run.
+
+Current consumer integration exposes ordinary repository checks only; it does not yet expose the live physical controller through PHX-CI.
+
 ## Immediate next action
 
-Run one **non-mutating external-controller `observe-product` round trip** through the relay/mailbox/device agent. Require exact run/device/sequence/command/build correlation before any fixture creation or synchronization execution.
+Create the smallest bounded **PHX-CI physical-validation coordination integration** that invokes the existing BVP live executor without duplicating its protocol or scenario authority. Verify that tooling change through PHX-CI. Only then rerun W2 through PHX-CI.
 
 Do not begin S09B. Do not begin Stage 3.

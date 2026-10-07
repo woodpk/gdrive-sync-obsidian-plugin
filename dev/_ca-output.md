@@ -1,31 +1,41 @@
-STATUS: COMPLETE
+STATUS: BLOCKED
 
-# Current work-unit evidence — S09 Windows live-agent readiness
+# Current work-unit evidence — S09 W2 non-mutating controller probe
 
 ## Result
 
-`WINDOWS_LIVE_AGENT_READY: PASS`
+`W2: BLOCKED`
 
-## Runtime observation
+## Bound coordinates
 
-Command observed in the real Windows Obsidian runtime:
+- run ID: `s09-w2-windows-controller-probe-20261007-01`
+- device ID: `device:8b7820faab2603b334a1c13d8c3bdba0`
+- validation source: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- temporary execution workspace: `C:\w2-6c2a49d8`
 
-`globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__`
+## Execution result
 
-Returned runtime properties include:
+- scenario terminal status: not started
+- command kind: none
+- command sequence: none
+- result correlation: not performed
+- production productStatus: not returned
+- fixture/synchronization mutation command: none
 
-- deviceId: `device:8b7820faab2603b334a1c13d8c3bdba0`
-- mailbox interface: present
-- relay interface: present
-- currentRunId accessor: present
-- pollDeviceOnce function: present
+## Blocker
 
-The runtime device ID exactly matches the bound S09A Windows product identity.
+The current governing Agent-Led Software Engineering Operating Protocol makes PHX-CI the sole permitted executable software-validation framework. Feature-specific, task-specific, acceptance, and physical-validation software harnesses outside PHX-CI are prohibited.
 
-## Boundary
+The requested temporary standalone external-controller script would therefore have violated the governing process.
 
-This proves the validation mailbox/relay agent is active in the installed Windows runtime. It does not yet prove external-controller round-trip transport or production observation correlation.
+## Classification
+
+`PHX-CI EXECUTION / PROCESS INTEGRATION GAP`
+
+The existing BVP live executor is present and the installed Windows live agent is ready, but the repository currently does not expose the physical controller through PHX-CI.
+
+This is not evidence of a product defect.
 
 ## Next action
 
-Run a non-mutating external-controller `observe-product` round trip and require exact run/device/sequence/command/build correlation before any fixture creation or synchronization execution.
+Implement the smallest PHX-CI-owned coordination path that invokes the existing BVP live executor without duplicating validation authority. Verify that tooling integration through authoritative PHX-CI. Then rerun the same non-mutating W2 probe through PHX-CI.
