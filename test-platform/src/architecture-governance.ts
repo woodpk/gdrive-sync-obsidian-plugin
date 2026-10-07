@@ -598,3 +598,103 @@ function buildScriptFileReferences(script: string): string[] {
   for (const pattern of patterns) for (const match of script.matchAll(pattern)) references.push(match[1].replace(/^['"]|['"]$/g, ""));
   return references;
 }
+
+function objectStrings(value: unknown): string[] {
+  if (value === null || value === undefined) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(objectStrings);
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).flatMap(objectStrings);
+  return [];
+}
+
+export function runArchitectureGuard(options: { readonly repoRoot: string; readonly changedPaths?: readonly string[]; readonly changeClass?: ChangeClass }): GuardResult {
+  const repoRoot = resolve(options.repoRoot);
+  const changeClass = options.changeClass ?? "ordinary";
+  const changedPaths = options.changedPaths ?? [];
+  const violations: ArchitectureViolation[] = [];
+  const add = (rule: string, path: string, detail: string): void => { violations.push({ rule, path: normalizeRepoPath(path), detail }); };
+  if (!existsSync(repoRoot)) return { exitCode: 2, output: `ARCH_GUARD_ERROR rule=INPUT path=${repoRoot} detail=Repository root does not exist.\n`, violations: [] };
+  if (changeClass !== "ordinary" && changeClass !== "authorized-governance") return { exitCode: 2, output: "ARCH_GUARD_ERROR rule=INPUT path=<change-class> detail=ChangeClass must be ordinary or authorized-governance.\n", violations: [] };
+  let policy: BoundaryPolicy | null = null;
+  const manifestFullPath = join(repoRoot, ...manifestPath.split("/"));
+  if (!existsSync(manifestFullPath)) add("BOUNDARY_MANIFEST_MISSING", manifestPath, "Required authoritative boundary manifest is missing.");
+  else {
+    try { policy = parseBoundaryPolicy(readFileSync(manifestFullPath, "utf8")); }
+    catch (error) { add("BOUNDARY_MANIFEST_INVALID", manifestPath, error instanceof Error ? error.message : String(error)); }
+  }
+  if (policy) {
+    const knownRoots = [...policy.productionRoots, policy.testPlatformRoot];
+    const analysisRequests: { path: string; text: string; mode: "source" | "build" | "tsconfig" }[] = [];
+    for (const root of policy.productionRoots) for (const file of listSourceFiles(repoRoot, root)) analysisRequests.push({ path: repoRelative(repoRoot, file), text: readFileSync(file, "utf8"), mode: "source" });
+    for (const file of listSourceFiles(repoRoot, policy.testPlatformRoot)) analysisRequests.push({ path: repoRelative(repoRoot, file), text: readFileSync(file, "utf8"), mode: "source" });
+
+    let packageModel: Record<string, unknown> | null = null;
+    const packagePath = join(repoRoot, "package.json");
+    if (!existsSync(packagePath)) add("PRODUCTION_BUILD_CONFIGURATION_INVALID", "package.json", "Production package.json is required to establish build entrypoints.");
+    else {
+      try { packageModel = JSON.parse(readFileSync(packagePath, "utf8")); }
+      catch (error) { add("PRODUCTION_BUILD_CONFIGURATION_INVALID", "package.json", "Unable to parse package.json: " + (error instanceof Error ? error.message : String(error))); }
+    }
+    const buildPaths = new Set<string>();
+    const addBuild = (path: string, mode: "build" | "tsconfig"): void => {
+      const normalized = normalizeRepoPath(path);
+      const key = mode + "|" + normalized;
+      if (buildPaths.has(key)) return;
+      buildPaths.add(key);
+      const full = join(repoRoot, ...normalized.split("/"));
+      if (!existsSync(full)) { add("PRODUCTION_BUILD_CONFIGURATION_INVALID", normalized, "Production build configuration references a missing file."); return; }
+      analysisRequests.push({ path: normalized, text: readFileSync(full, "utf8"), mode });
+    };
+    if (packageModel) {
+      for (const field of ["main", "module", "browser", "exports"]) for (const value of objectStrings(packageModel[field])) {
+        const target = resolveRepositoryReference(repoRoot, "package.json", value, knownRoots, true);
+        if (target && withinAny(target, policy.shippingForbiddenRoots)) add("PRODUCTION_BUILD_REFERENCES_TEST_PLATFORM", "package.json", `Production package field '${field}' references forbidden shipping root through '${value}'.`);
+      }
+      const scripts = packageModel.scripts;
+      if (scripts && typeof scripts === "object" && !Array.isArray(scripts)) for (const [name, raw] of Object.entries(scripts as Record<string, unknown>)) {
+        if (!/^(?:build|verify:build|bundle|package|dist|release)(?::|$)/.test(name) || typeof raw !== "string") continue;
+        for (const reference of buildScriptFileReferences(raw)) {
+          const target = resolveRepositoryReference(repoRoot, "package.json", reference, knownRoots, true);
+          if (!target) continue;
+          if (withinAny(target, policy.shippingForbiddenRoots)) { add("PRODUCTION_BUILD_REFERENCES_TEST_PLATFORM", "package.json", `Production build script '${name}' directly references forbidden shipping root through '${reference}'.`); continue; }
+          if (/tsconfig[^/]*\.json$/i.test(target)) addBuild(target, "tsconfig");
+          else if (/\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/i.test(target)) addBuild(target, "build");
+        }
+      }
+    }
+    if (existsSync(join(repoRoot, "tsconfig.json"))) addBuild("tsconfig.json", "tsconfig");
+    for (const file of readdirSync(repoRoot, { withFileTypes: true })) if (file.isFile() && /^(?:esbuild|rollup|webpack|vite)\.config\./.test(file.name)) addBuild(file.name, "build");
+
+    for (const result of createAnalysis(analysisRequests)) {
+      const path = normalizeRepoPath(result.path);
+      for (const error of result.errors) if (error.trim()) add("SOURCE_ANALYSIS_FAILED", path, error);
+      const sourceMode = analysisRequests.find((request) => request.path === result.path)?.mode;
+      if (sourceMode === "source") {
+        const isProduction = withinAny(path, policy.productionRoots);
+        const isTestPlatform = under(path, policy.testPlatformRoot);
+        const scenarioPrefix = normalizeRepoPath(policy.testPlatformRoot) + "/scenarios/";
+        if (isTestPlatform && path.startsWith(scenarioPrefix) && !result.declarativeScenario) add("SCENARIO_MODULE_NOT_DECLARATIVE", path, "Executable TypeScript beneath test-platform/scenarios must be exactly one exported defineScenario(...) declarative module.");
+        for (const dependency of result.dependencies) {
+          const target = resolveRepositoryReference(repoRoot, path, dependency.specifier, knownRoots);
+          if (!target) continue;
+          if (isProduction && withinAny(target, policy.productionForbiddenRoots)) add("PRODUCTION_IMPORTS_TEST_PLATFORM", path, `Actual ${dependency.kind} dependency '${dependency.specifier}' resolves into forbidden root '${target}'.`);
+          if (isTestPlatform && withinAny(target, policy.productionRoots) && !approvedProductionImport(target, policy.approvedProductionImports)) add("TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION", path, `Actual ${dependency.kind} dependency '${dependency.specifier}' resolves into production '${target}' without an approved seam entry.`);
+        }
+        if (isProduction && !policy.scenarioSpecificProductionAllowed) for (const signal of result.scenarioSignals) add("PRODUCTION_SCENARIO_CONTROL", path, `Executable production ${signal.kind} '${signal.name}' introduces prohibited BVP/validation scenario authority.`);
+      } else if (sourceMode === "build" || sourceMode === "tsconfig") {
+        for (const dependency of result.dependencies) {
+          const target = resolveRepositoryReference(repoRoot, path, dependency.specifier, knownRoots);
+          if (target && withinAny(target, policy.shippingForbiddenRoots)) add("PRODUCTION_BUILD_REFERENCES_TEST_PLATFORM", path, `Actual build dependency '${dependency.specifier}' resolves into forbidden shipping root '${target}'.`);
+        }
+        for (const reference of result.buildReferences) {
+          const target = resolveRepositoryReference(repoRoot, path, reference, knownRoots, true);
+          if (target && withinAny(target, policy.shippingForbiddenRoots)) add("PRODUCTION_BUILD_REFERENCES_TEST_PLATFORM", path, `${sourceMode === "tsconfig" ? "Production TypeScript build input/reference" : "Actual build input/reference"} '${reference}' resolves into forbidden shipping root '${target}'.`);
+        }
+      }
+    }
+    const main = join(repoRoot, "main.js");
+    if (existsSync(main) && readFileSync(main, "utf8").includes("BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL")) add("PRODUCTION_BUNDLE_CONTAINS_TEST_PLATFORM", "main.js", "Shipping bundle contains the BVP non-shipping sentinel.");
+    const testRoot = join(repoRoot, ...policy.testPlatformRoot.split("/"));
+    for (const file of listFiles(testRoot).filter((path) => path.toLowerCase().endsWith(".ps1"))) add("TEST_PLATFORM_POWERSHELL_PROHIBITED", repoRelative(repoRoot, file), "PowerShell scripts are prohibited beneath the authoritative test-platform root.");
+    const activeDev = join(repoRoot, ...policy.activeDevRoot.split("/"));
+    const authorityTerms = /\b(?:execute|executing|use|using|read|follow|prompt|task|authority|authoritative|governing|required input|source of truth|depend|depends|dependency)\b/i;
