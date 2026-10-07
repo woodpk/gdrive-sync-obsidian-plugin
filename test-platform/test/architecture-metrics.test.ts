@@ -403,7 +403,7 @@ test("architecture metrics are implemented in the PHX-CI-consumed TypeScript gov
     "utf8",
   );
   match(source, /export function runArchitectureMetrics/);
-  strictEqual(source.includes("Get-TestingArchitectureMetrics.ps1"), true);
+  strictEqual(/(?:pwsh|powershell).*Get-TestingArchitectureMetrics/i.test(source), false);
 });
 
 test("semantic production dependency measurement covers accepted forms, multiline syntax, and TS-family/index resolution", () => {
