@@ -298,3 +298,103 @@ function parseBoundaryPolicy(text: string): BoundaryPolicy {
   const validationDeviceSeparated = boolValue(nestedScalar(lines, "shipping_rules", "validation_device_agent_must_be_separate_artifact_or_entrypoint"), "shipping_rules.validation_device_agent_must_be_separate_artifact_or_entrypoint");
   const seamAllowlistRequired = boolValue(nestedScalar(lines, "production_seam", "allowlist_required"), "production_seam.allowlist_required");
   const approvedProductionImports = nestedList(lines, "production_seam", "approved_imports", false).map(normalizeRepoPath);
+  const frozenSurfaces = topList(lines, "supervisor_owned_frozen_surfaces").map(frozenSurfacePath);
+  const archiveIsNonAuthoritative = boolValue(nestedScalar(lines, "archive_policy", "archive_is_non_authoritative"), "archive_policy.archive_is_non_authoritative");
+  const archiveExcluded = boolValue(nestedScalar(lines, "archive_policy", "exclude_from_normal_grounding"), "archive_policy.exclude_from_normal_grounding");
+  const activeDocsMustNotDepend = boolValue(nestedScalar(lines, "archive_policy", "active_docs_must_not_depend_on_archived_prompts"), "archive_policy.active_docs_must_not_depend_on_archived_prompts");
+  const scenarioPowerShellMax = intValue(nestedScalar(lines, "complexity_budgets", "scenario_specific_powershell_scripts_max"), "complexity_budgets.scenario_specific_powershell_scripts_max");
+  if (scenarioPowerShellMax !== 0) throw new Error("complexity_budgets.scenario_specific_powershell_scripts_max must be 0 for S03B.");
+  for (const root of [...productionRoots, testPlatformRoot, activeDevRoot, archiveRoot, ...productionForbiddenRoots, ...shippingForbiddenRoots]) {
+    if (!/^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(root) || /(^|\/)\.\.($|\/)/.test(root)) throw new Error(`Manifest root '${root}' is not a safe repository-relative root.`);
+  }
+  for (const root of productionRoots) {
+    if (under(root, testPlatformRoot) || under(testPlatformRoot, root)) throw new Error(`Production root '${root}' overlaps test-platform root '${testPlatformRoot}'.`);
+  }
+  if (under(archiveRoot, activeDevRoot) || under(activeDevRoot, archiveRoot)) throw new Error(`Archive root '${archiveRoot}' must be outside and non-overlapping with active_dev root '${activeDevRoot}'.`);
+  if (!productionForbiddenRoots.includes(testPlatformRoot)) throw new Error("import_rules.production_must_not_import does not prohibit the authoritative test-platform root.");
+  if (!shippingForbiddenRoots.includes(testPlatformRoot)) throw new Error("shipping_rules.production_bundle_must_exclude does not exclude the authoritative test-platform root.");
+  if (!allowlistRequired || !seamAllowlistRequired) throw new Error("Production seam allowlist authority is not enabled.");
+  if (scenarioSpecificProductionAllowed || productionValidationUiAllowed || !validationDeviceSeparated) throw new Error("Manifest permits production scenario/validation authority or does not require validation-device separation.");
+  if (!archiveIsNonAuthoritative || !archiveExcluded || !activeDocsMustNotDepend) throw new Error("Archive policy does not establish required inertness.");
+  return {
+    manifestPath,
+    productionRoots: [...new Set(productionRoots)].sort(),
+    testPlatformRoot,
+    activeDevRoot,
+    archiveRoot,
+    productionForbiddenRoots: [...new Set(productionForbiddenRoots)].sort(),
+    shippingForbiddenRoots: [...new Set(shippingForbiddenRoots)].sort(),
+    approvedProductionImports: [...new Set(approvedProductionImports)].sort(),
+    frozenSurfaces: [...new Set(frozenSurfaces)].sort(),
+    scenarioSpecificProductionAllowed,
+    productionValidationUiAllowed,
+    seamLocMax: intValue(nestedScalar(lines, "production_seam", "max_logical_loc"), "production_seam.max_logical_loc"),
+    seamFilesMax: intValue(nestedScalar(lines, "production_seam", "max_files"), "production_seam.max_files"),
+    coreLocMax: intValue(nestedScalar(lines, "complexity_budgets", "test_platform_framework_core_logical_ts_loc_max"), "complexity_budgets.test_platform_framework_core_logical_ts_loc_max"),
+    liveLocMax: intValue(nestedScalar(lines, "complexity_budgets", "live_device_agent_logical_ts_loc_max"), "complexity_budgets.live_device_agent_logical_ts_loc_max"),
+    scenarioTarget: intValue(nestedScalar(lines, "complexity_budgets", "ordinary_scenario_logical_loc_target"), "complexity_budgets.ordinary_scenario_logical_loc_target"),
+    scenarioMax: intValue(nestedScalar(lines, "complexity_budgets", "ordinary_scenario_logical_loc_hard_max"), "complexity_budgets.ordinary_scenario_logical_loc_hard_max"),
+    scenarioPowerShellMax,
+    bvpPowerShellCountMax: intValue(nestedScalar(lines, "complexity_budgets", "bvp_powershell_scripts_max"), "complexity_budgets.bvp_powershell_scripts_max"),
+    bvpPowerShellLocMax: intValue(nestedScalar(lines, "complexity_budgets", "bvp_powershell_combined_logical_loc_max"), "complexity_budgets.bvp_powershell_combined_logical_loc_max"),
+    scenarioProductionMax: intValue(nestedScalar(lines, "complexity_budgets", "scenario_specific_production_files_max"), "complexity_budgets.scenario_specific_production_files_max"),
+  };
+}
+
+function currentReader(repoRoot: string, policy: BoundaryPolicy): SnapshotReader {
+  const found = new Set<string>();
+  for (const root of [...policy.productionRoots, policy.testPlatformRoot, "dev/scripts"]) {
+    const full = join(repoRoot, ...normalizePolicyRoot(root).split("/"));
+    for (const file of listFiles(full)) found.add(repoRelative(repoRoot, file));
+  }
+  return {
+    paths: [...found].sort(),
+    read(path: string): string | null {
+      const full = join(repoRoot, ...normalizeRepoPath(path).split("/"));
+      return existsSync(full) ? readFileSync(full, "utf8") : null;
+    },
+  };
+}
+
+function git(repoRoot: string, args: readonly string[]): string {
+  const result = spawnSync("git", ["-C", repoRoot, ...args], { encoding: "utf8" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`git ${args.join(" ")} exited ${result.status}: ${(result.stderr || result.stdout || "").trim()}`);
+  return result.stdout ?? "";
+}
+
+function gitReader(repoRoot: string, sha: string): SnapshotReader {
+  try { git(repoRoot, ["cat-file", "-e", `${sha}^{commit}`]); }
+  catch (error) { throw new Error(`BASE_SHA_UNREADABLE: ${error instanceof Error ? error.message : String(error)}`); }
+  let paths: string[];
+  try { paths = git(repoRoot, ["ls-tree", "-r", "--name-only", sha]).split(/\r?\n/).filter(Boolean).map(normalizeRepoPath).sort(); }
+  catch (error) { throw new Error(`BASE_SHA_UNREADABLE: ${error instanceof Error ? error.message : String(error)}`); }
+  return {
+    paths,
+    read(path: string): string | null {
+      const result = spawnSync("git", ["-C", repoRoot, "show", `${sha}:${normalizeRepoPath(path)}`], { encoding: "utf8" });
+      if (result.error || result.status !== 0) return null;
+      return result.stdout ?? "";
+    },
+  };
+}
+
+function loadPolicy(reader: SnapshotReader): BoundaryPolicy {
+  const text = reader.read(manifestPath);
+  if (text === null) throw new Error("BOUNDARY_MANIFEST_MISSING");
+  try { return parseBoundaryPolicy(text); }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.startsWith("BOUNDARY_MANIFEST_")) throw error;
+    throw new Error("BOUNDARY_MANIFEST_INVALID: " + message);
+  }
+}
+
+function resolveRepositoryReference(repoRoot: string, origin: string, reference: string, knownRoots: readonly string[], treatBareAsRepoRelative = false): string | null {
+  let normalized = reference.trim().replace(/^['"]|['"]$/g, "").replaceAll("\\", "/");
+  if (!normalized) return null;
+  normalized = normalized.replace(/[*?\[].*$/, "");
+  if (!normalized) return null;
+  for (const root of knownRoots.map(normalizePolicyRoot)) {
+    if (normalized === root || normalized.startsWith(root + "/")) return normalizeRepoPath(normalized);
+  }
