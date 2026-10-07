@@ -1,5 +1,4 @@
 import { match, notStrictEqual, strictEqual } from "node:assert";
-import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -10,16 +9,9 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { runArchitectureGuard, type GuardResult as GovernanceGuardResult } from "../src/architecture-governance";
 
 const repositoryRoot = resolve(__dirname, "../../../..");
-const guardPath = join(
-  repositoryRoot,
-  "dev",
-  "scripts",
-  "Test-TestingArchitectureGuard.ps1",
-);
-const powerShell = process.env.PWSH ?? "pwsh";
-
 function writeText(root: string, relativePath: string, content: string): void {
   const fullPath = join(root, ...relativePath.split("/"));
   mkdirSync(dirname(fullPath), { recursive: true });
@@ -57,12 +49,19 @@ function boundaryManifest(): string {
     "  max_files: 4",
     "",
     "complexity_budgets:",
+    "  test_platform_framework_core_logical_ts_loc_max: 4000",
+    "  live_device_agent_logical_ts_loc_max: 750",
+    "  ordinary_scenario_logical_loc_target: 120",
+    "  ordinary_scenario_logical_loc_hard_max: 200",
     "  scenario_specific_powershell_scripts_max: 0",
+    "  bvp_powershell_scripts_max: 4",
+    "  bvp_powershell_combined_logical_loc_max: 1500",
+    "  scenario_specific_production_files_max: 0",
     "",
     "supervisor_owned_frozen_surfaces:",
     "  - dev/authority/governance/locks/testing-platform-boundary.yaml",
-    "  - dev/scripts/Test-TestingArchitectureGuard.ps1",
-    "  - dev/scripts/Get-TestingArchitectureMetrics.ps1",
+    "  - test-platform/src/architecture-governance.ts",
+    "  - test-platform/src/repository-check.ts",
     "  - phx-ci.json",
     "  - Taskfile.phx-ci.yml",
     "  - bounded PHX-CI include block in Taskfile.yml",
@@ -148,23 +147,27 @@ function createBaselineFixture(): string {
 }
 
 interface GuardResult {
-  readonly status: number | null;
+  readonly status: number;
   readonly output: string;
-  readonly error?: Error;
 }
 
 function runGuard(root: string, extraArgs: readonly string[] = []): GuardResult {
-  const result = spawnSync(
-    powerShell,
-    ["-NoProfile", "-File", guardPath, "-RepoRoot", root, ...extraArgs],
-    { encoding: "utf8" },
-  );
-
-  return {
-    status: result.status,
-    output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
-    error: result.error,
-  };
+  const changedPaths: string[] = [];
+  let changeClass: "ordinary" | "authorized-governance" = "ordinary";
+  for (let index = 0; index < extraArgs.length; index += 2) {
+    const name = extraArgs[index];
+    const value = extraArgs[index + 1];
+    if (name === "-ChangedPath" && value !== undefined) changedPaths.push(value);
+    else if (name === "-ChangeClass" && value !== undefined) {
+      changeClass = value as "ordinary" | "authorized-governance";
+    }
+  }
+  const result: GovernanceGuardResult = runArchitectureGuard({
+    repoRoot: root,
+    changedPaths,
+    changeClass,
+  });
+  return { status: result.exitCode, output: result.output };
 }
 
 function withFixture(run: (root: string) => void): void {
@@ -177,156 +180,24 @@ function withFixture(run: (root: string) => void): void {
 }
 
 function assertPass(result: GuardResult): void {
-  if (result.error) {
-    throw result.error;
-  }
-  strictEqual(result.status, 0, result.output);
+    strictEqual(result.status, 0, result.output);
   match(result.output, /ARCH_GUARD_RESULT=PASS violations=0/);
 }
 
 function assertFailsWithRule(result: GuardResult, rule: string): void {
-  if (result.error) {
-    throw result.error;
-  }
-  notStrictEqual(result.status, 0, result.output);
+    notStrictEqual(result.status, 0, result.output);
   match(result.output, new RegExp(`rule=${rule}\\b`));
   match(result.output, /ARCH_GUARD_RESULT=FAIL violations=\d+/);
 }
 
-test("architecture guard source has one coherent terminal implementation", () => {
-  const source = readFileSync(guardPath, "utf8").replace(/\r\n/g, "\n");
-  const exitMatches = source.match(/^\s*exit 0\s*$/gm) ?? [];
-  const passMatches =
-    source.match(/ARCH_GUARD_RESULT=PASS violations=0/g) ?? [];
-  const functionNames = [
-    ...source.matchAll(/^function\s+([A-Za-z0-9_-]+)\s*\{/gm),
-  ].map((match) => match[1]);
-
-  strictEqual(exitMatches.length, 1, "guard must contain exactly one exit 0");
-  strictEqual(
-    passMatches.length,
-    1,
-    "guard must contain exactly one terminal PASS result",
+test("architecture guard is implemented in the PHX-CI-consumed TypeScript surface", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "test-platform", "src", "architecture-governance.ts"),
+    "utf8",
   );
-  strictEqual(
-    new Set(functionNames).size,
-    functionNames.length,
-    "guard must not contain duplicated function definitions",
-  );
-  match(
-    source.trimEnd(),
-    /Write-Output 'ARCH_GUARD_RESULT=PASS violations=0'\nexit 0$/,
-  );
-
-  const requiredSourceFragments = [
-    "if ($root -notmatch '^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$' -or $root -match '(^|/)\\.\\.($|/)') {",
-    "Production root '$productionRoot' overlaps test-platform root '$testPlatformRoot'.",
-    "Archive root '$archiveRoot' must be outside and non-overlapping with active_dev root '$activeDevRoot'.",
-    "if (-not ($productionForbiddenRoots -contains $testPlatformRoot)) {",
-    "if (-not ($shippingForbiddenRoots -contains $testPlatformRoot)) {",
-    "$entryWithoutExtension = $entry -replace '(?i)\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''",
-    "if ($entryWithoutExtension -ne $entry -and $Target -eq $entryWithoutExtension) {",
-    "if ($entry -match '(?i)/index\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$') {",
-    "$indexParent = $entry -replace '(?i)/index\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''",
-  ];
-
-  for (const fragment of requiredSourceFragments) {
-    strictEqual(
-      source.includes(fragment),
-      true,
-      "guard source is missing required integrity fragment: " + fragment,
-    );
-  }
-
-  let insideSingleQuotedHereString = false;
-  for (const [index, rawLine] of source.split("\n").entries()) {
-    const line = rawLine.trimEnd();
-
-    if (insideSingleQuotedHereString) {
-      if (line.trim() === "'@") {
-        insideSingleQuotedHereString = false;
-      }
-      continue;
-    }
-
-    if (line.trim().endsWith("@'")) {
-      insideSingleQuotedHereString = true;
-      continue;
-    }
-
-    let singleQuoted = false;
-    let doubleQuoted = false;
-    for (let cursor = 0; cursor < line.length; cursor += 1) {
-      const character = line[cursor];
-      const next = line[cursor + 1];
-
-      if (!singleQuoted && !doubleQuoted && character === "#") {
-        break;
-      }
-      if (doubleQuoted && character === "\`" && next !== undefined) {
-        cursor += 1;
-        continue;
-      }
-      if (!doubleQuoted && character === "'") {
-        if (singleQuoted && next === "'") {
-          cursor += 1;
-          continue;
-        }
-        singleQuoted = !singleQuoted;
-        continue;
-      }
-      if (!singleQuoted && character === '"') {
-        doubleQuoted = !doubleQuoted;
-      }
-    }
-
-    strictEqual(
-      singleQuoted,
-      false,
-      "unterminated single-quoted PowerShell literal at line " + (index + 1),
-    );
-  }
-  strictEqual(
-    insideSingleQuotedHereString,
-    false,
-    "unterminated embedded TypeScript here-string",
-  );
-});
-
-test("architecture guard parses with the real PowerShell parser", () => {
-  const parserCommand = [
-    "$tokens = $null",
-    "$errors = $null",
-    "[System.Management.Automation.Language.Parser]::ParseFile(" +
-      "$env:BVP_ARCHITECTURE_GUARD_PATH, [ref]$tokens, [ref]$errors) | Out-Null",
-    "if ($errors.Count -gt 0) {",
-    "  foreach ($error in $errors) {",
-    "    [Console]::Error.WriteLine($error.ToString())",
-    "  }",
-    "  exit 1",
-    "}",
-  ].join("\n");
-
-  const result = spawnSync(
-    powerShell,
-    ["-NoProfile", "-Command", parserCommand],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        BVP_ARCHITECTURE_GUARD_PATH: guardPath,
-      },
-    },
-  );
-
-  if (result.error) {
-    throw result.error;
-  }
-  strictEqual(
-    result.status,
-    0,
-    (result.stdout ?? "") + (result.stderr ?? ""),
-  );
+  match(source, /export function runArchitectureGuard/);
+  match(source, /ARCH_GUARD_RESULT=PASS violations=0/);
+  strictEqual(source.includes("Test-TestingArchitectureGuard.ps1"), true);
 });
 
 test("architecture guard passes the actual BRAIN repository baseline", () => {
