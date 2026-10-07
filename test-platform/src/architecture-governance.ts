@@ -798,3 +798,121 @@ function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy): Metric
   const productionSeamLogicalLoc = productionSeamFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
   const analysisInput = testFiles.map((path) => ({ path, text: reader.read(path) ?? "", mode: "source" as const }));
   const analysis = createAnalysis(analysisInput);
+  const analysisByPath = new Map(analysis.map((result) => [result.path, result]));
+  const scenarioRoot = normalizeRepoPath(policy.testPlatformRoot) + "/scenarios";
+  const fixtureRoot = normalizeRepoPath(policy.testPlatformRoot) + "/fixtures";
+  const testRoot = normalizeRepoPath(policy.testPlatformRoot) + "/test";
+  const sourceRoot = normalizeRepoPath(policy.testPlatformRoot) + "/src";
+  const frameworkCoreFiles: string[] = [];
+  const liveFiles: string[] = [];
+  for (const path of testFiles) {
+    if (under(path, testRoot)) continue;
+    if (under(path, scenarioRoot)) { if (analysisByPath.get(path)?.declarativeScenario) continue; frameworkCoreFiles.push(path); continue; }
+    if (/(?:^|\/)(?:live-device|device-command-agent|command-agent|device-agent|windows-relay|relay|mailbox)(?:[-_/.]|$)/i.test(path)) { liveFiles.push(path); continue; }
+    if (under(path, sourceRoot) || under(path, fixtureRoot)) { frameworkCoreFiles.push(path); continue; }
+    classificationErrors.push("Unclassifiable active BVP TypeScript source: " + path);
+  }
+  frameworkCoreFiles.sort(); liveFiles.sort();
+  const frameworkCoreLogicalTsLoc = frameworkCoreFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
+  const liveDeviceAgentRelayLogicalTsLoc = liveFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
+  const scenarioFiles = paths.filter((path) => under(path, scenarioRoot) && (/\.(?:json|ya?ml)$/i.test(path) || (tsExtensions.test(path) && Boolean(analysisByPath.get(path)?.declarativeScenario))));
+  const scenarios: ScenarioMetric[] = scenarioFiles.map((path) => {
+    const loc = countLoc(reader.read(path), path);
+    const name = normalizeRepoPath(path).slice(scenarioRoot.length + 1).replace(/\.[^.]+$/, "");
+    return { scenario: name, path, logicalLoc: loc, targetExceeded: loc > policy.scenarioTarget, hardMaxExceeded: loc > policy.scenarioMax };
+  }).sort((a, b) => a.path.localeCompare(b.path));
+  const productionSet = new Set(productionFiles);
+  const imports = new Set<string>();
+  for (const result of analysis) {
+    for (const error of result.errors) if (error) classificationErrors.push(`TypeScript analysis failed for ${result.path}: ${error}`);
+    for (const dependency of result.dependencies) { const target = resolveProductionModule(result.path, dependency.specifier, productionSet); if (target) imports.add(target); }
+  }
+  const knownNonBvp = new Set(["dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]);
+  const knownBvp = new Set(["dev/scripts/Get-TestingArchitectureMetrics.ps1", "dev/scripts/Test-TestingArchitectureGuard.ps1", "dev/scripts/Test-BvpProductionTestCarryForward.ps1", "dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1"]);
+  const bvpPowerShellFiles: string[] = [];
+  const scenarioSpecificPowerShellFiles: string[] = [];
+  for (const path of paths.filter((value) => /^dev\/scripts\/.*\.ps1$/i.test(value))) {
+    if (knownNonBvp.has(path)) continue;
+    const code = logicalLines(reader.read(path), "ps").join("\n");
+    const isKnown = knownBvp.has(path);
+    const isBvp = isKnown || /\b(?:BVP|test-platform|testing-platform)\b/i.test(code);
+    if (!isBvp) { classificationErrors.push("Unclassifiable active dev/scripts PowerShell: " + path); continue; }
+    bvpPowerShellFiles.push(path);
+    if (!isKnown && /(?:test-platform\/scenarios\/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["'][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["'])/i.test(code)) scenarioSpecificPowerShellFiles.push(path);
+  }
+  for (const path of paths.filter((value) => under(value, policy.testPlatformRoot) && value.toLowerCase().endsWith(".ps1"))) if (!scenarioSpecificPowerShellFiles.includes(path)) scenarioSpecificPowerShellFiles.push(path);
+  bvpPowerShellFiles.sort(); scenarioSpecificPowerShellFiles.sort();
+  const bvpPowerShellLogicalLoc = bvpPowerShellFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
+  const scenarioSpecificProductionFiles: string[] = [];
+  for (const path of productionFiles) {
+    const code = logicalLines(reader.read(path), "ts").join("\n");
+    if (/scenario/i.test(path) || /^\s*(?:export\s+)?(?:class|interface|type)\s+[A-Za-z0-9_]*Scenario[A-Za-z0-9_]*\b/im.test(code)) scenarioSpecificProductionFiles.push(path);
+  }
+  return {
+    productionSourceLogicalLoc,
+    productionSeamLogicalLoc,
+    productionSeamFileCount: productionSeamFiles.length,
+    productionSeamFiles,
+    frameworkCoreLogicalTsLoc,
+    platformCoreRuntimeModuleCount: frameworkCoreFiles.length,
+    frameworkCoreFiles,
+    liveDeviceAgentRelayLogicalTsLoc,
+    liveDeviceAgentRelayFiles: liveFiles,
+    scenarioDefinitionLogicalLocTotal: scenarios.reduce((sum, scenario) => sum + scenario.logicalLoc, 0),
+    scenarioCount: scenarios.length,
+    scenarios,
+    productionModulesImportedCount: imports.size,
+    productionModulesImported: [...imports].sort(),
+    bvpPowerShellScriptCount: bvpPowerShellFiles.length,
+    bvpPowerShellLogicalLoc,
+    bvpPowerShellFiles,
+    scenarioSpecificPowerShellCount: scenarioSpecificPowerShellFiles.length,
+    scenarioSpecificPowerShellFiles,
+    scenarioSpecificProductionFileCount: scenarioSpecificProductionFiles.length,
+    scenarioSpecificProductionFiles: scenarioSpecificProductionFiles.sort(),
+    classificationErrors: classificationErrors.sort(),
+  };
+}
+
+function budget(id: string, measured: number, limit: number, offenders: readonly string[] = []): BudgetResult {
+  return { id, measured, limit, state: measured <= limit ? "PASS" : "FAIL", offenders: [...offenders] };
+}
+
+export function runArchitectureMetrics(options: { readonly repoRoot: string; readonly baseSha?: string }): MetricsRunResult {
+  const repoRoot = resolve(options.repoRoot);
+  const baseSha = options.baseSha?.trim() || null;
+  try {
+    const bootstrapPolicy = loadPolicy({ paths: [], read: (path) => { const full = join(repoRoot, ...normalizeRepoPath(path).split("/")); return existsSync(full) ? readFileSync(full, "utf8") : null; } });
+    const currentReaderValue = currentReader(repoRoot, bootstrapPolicy);
+    const policy = loadPolicy(currentReaderValue);
+    const current = measureSnapshot(currentReaderValue, policy);
+    const budgets: BudgetResult[] = [
+      budget("PRODUCTION_SEAM_LOC", current.productionSeamLogicalLoc, policy.seamLocMax, current.productionSeamFiles),
+      budget("PRODUCTION_SEAM_FILES", current.productionSeamFileCount, policy.seamFilesMax, current.productionSeamFiles),
+      budget("FRAMEWORK_CORE_LOC", current.frameworkCoreLogicalTsLoc, policy.coreLocMax, current.frameworkCoreFiles),
+      budget("LIVE_DEVICE_AGENT_RELAY_LOC", current.liveDeviceAgentRelayLogicalTsLoc, policy.liveLocMax, current.liveDeviceAgentRelayFiles),
+      ...current.scenarios.map((scenario) => budget("SCENARIO_LOC:" + scenario.scenario, scenario.logicalLoc, policy.scenarioMax, [scenario.path])),
+      budget("SCENARIO_SPECIFIC_POWERSHELL", current.scenarioSpecificPowerShellCount, policy.scenarioPowerShellMax, current.scenarioSpecificPowerShellFiles),
+      budget("BVP_POWERSHELL_SCRIPT_COUNT", current.bvpPowerShellScriptCount, policy.bvpPowerShellCountMax, current.bvpPowerShellFiles),
+      budget("BVP_POWERSHELL_LOC", current.bvpPowerShellLogicalLoc, policy.bvpPowerShellLocMax, current.bvpPowerShellFiles),
+      budget("SCENARIO_SPECIFIC_PRODUCTION_FILES", current.scenarioSpecificProductionFileCount, policy.scenarioProductionMax, current.scenarioSpecificProductionFiles),
+    ];
+    let base: MetricsSnapshot | null = null;
+    let delta: MetricsResultValue["delta"] = null;
+    if (baseSha) {
+      const baseReader = gitReader(repoRoot, baseSha);
+      const basePolicy = loadPolicy(baseReader);
+      base = measureSnapshot(baseReader, basePolicy);
+      delta = {};
+      for (const name of ["productionSourceLogicalLoc", "productionSeamLogicalLoc", "productionSeamFileCount", "frameworkCoreLogicalTsLoc", "platformCoreRuntimeModuleCount", "liveDeviceAgentRelayLogicalTsLoc", "scenarioDefinitionLogicalLocTotal", "scenarioCount", "productionModulesImportedCount", "bvpPowerShellScriptCount", "bvpPowerShellLogicalLoc", "scenarioSpecificPowerShellCount", "scenarioSpecificProductionFileCount"] as const) {
+        delta[name] = { base: base[name] as number, current: current[name] as number, delta: (current[name] as number) - (base[name] as number) };
+      }
+    }
+    const failed = budgets.some((entry) => entry.state === "FAIL") || current.classificationErrors.length > 0 || Boolean(base && base.classificationErrors.length > 0);
+    const value: MetricsResultValue = { schemaVersion: 1, baseSha, current, base, delta, budgets, overall: failed ? "FAIL" : "PASS" };
+    return { exitCode: failed ? 1 : 0, output: JSON.stringify(value, null, 2) + "\n", value };
+  } catch (error) {
+    const value: MetricsResultValue = { schemaVersion: 1, baseSha, current: null, base: null, delta: null, budgets: [], overall: "FAIL", error: error instanceof Error ? error.message : String(error) };
+    return { exitCode: 1, output: JSON.stringify(value, null, 2) + "\n", value };
+  }
+}
