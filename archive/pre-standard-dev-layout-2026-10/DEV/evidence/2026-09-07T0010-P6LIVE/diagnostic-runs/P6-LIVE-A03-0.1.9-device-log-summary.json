@@ -1,0 +1,17 @@
+{
+  "testId": "P6-LIVE-A03",
+  "version": "0.1.9",
+  "rawLogFile": "P6-LIVE-A03-0.1.9-device-diagnostic-log.jsonl",
+  "rawLogBytes": 18911,
+  "rawLogSha256": "5c0c0f09f286dc68437e41de18e37000fbfb609669e431da8e2be11d1e6893e7",
+  "credentialPatternScanPassed": true,
+  "recordCount": 81,
+  "parseErrorCount": 0,
+  "sequenceRange": [1, 81],
+  "latestRuntimeInitializationResult": "product-ready",
+  "stateStoreReady": true,
+  "auditStoreReady": true,
+  "syncPlanRecordsInDeviceLog": 0,
+  "durableAuditPlanCreated": true,
+  "durableAuditConflictCreated": true
+}

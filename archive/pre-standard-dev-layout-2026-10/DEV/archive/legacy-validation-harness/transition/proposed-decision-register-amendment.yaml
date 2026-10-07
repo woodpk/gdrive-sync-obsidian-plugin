@@ -1,0 +1,94 @@
+# Proposed decision-register amendment for BVP-S01.
+# These IDs are valid against the supplied repository snapshot where DEC-310 is the last current decision.
+# BVP-S01 must verify that no later decision IDs exist before applying; if IDs have advanced, preserve
+# the decision text and allocate the next contiguous IDs rather than overwriting later authority.
+
+new_decisions:
+  - id: DEC-311
+    status: locked
+    category: phase6_validation_architecture
+    decision: "Replace the oversized internal Phase-6 validation harness with the BRAIN Verification Platform (BVP): an external repository-controlled test platform that uses deterministic virtual-world execution for most synchronization semantics and a thin validation-only live-device agent only for behavior that genuinely requires installed Windows/iOS Obsidian runtimes."
+
+  - id: DEC-312
+    status: locked
+    category: phase6_validation_architecture
+    decision: "Physically separate verification infrastructure from production: replacement platform code lives under top-level test-platform/**; production src/** must not import test-platform/**; ordinary production bundles must exclude the platform, scenarios, live validation agent, cross-device control, and validation-only UI. Any production-only BVP seam is explicitly enumerated and tightly budgeted."
+
+  - id: DEC-313
+    status: locked
+    category: phase6_validation_execution
+    decision: "Use stateful deterministic in-memory implementations of local-vault, Google Drive, device-local state, cursor/tombstone, time/order, and fault boundaries to run the real production planner/executor/state semantics for automated multi-device verification. Simulated boundaries model external reality and must not implement alternate synchronization policy."
+
+  - id: DEC-314
+    status: locked
+    category: phase6_validation_scenarios
+    decision: "Ordinary verification scenarios are typed declarative step definitions interpreted by one common external runner. Scenario-specific orchestration classes, scenario-specific production code, and scenario-specific PowerShell verification scripts are prohibited."
+
+  - id: DEC-315
+    status: locked
+    category: phase6_validation_live_devices
+    decision: "The external BVP runner owns scenario sequence, checkpoint state, assertions, evidence, and verdicts. A validation-only device agent may execute bounded addressed commands through the production path and return observations/results, but it must not contain a general scenario state machine or durable distributed suite orchestration."
+
+  - id: DEC-316
+    status: locked
+    category: phase6_validation_coordination
+    decision: "Live cross-device validation may use a minimal run/device/sequence command mailbox or relay within existing user-owned infrastructure, without a developer-hosted automation backend, token export, or additional Google OAuth scope. Coordination records are test control metadata and never synchronization authority or ordinary vault content."
+
+  - id: DEC-317
+    status: locked
+    category: phase6_validation_evidence
+    decision: "Verification verdicts derive from objective observations of production plans/results, content/hash/identity, authoritative state, remote reality, conflicts, and required platform outcomes. Production execution exposes a narrow authoritative run receipt or equivalent terminal observation when needed; diagnostics corroborate evidence but are not the test-control authority protocol."
+
+  - id: DEC-318
+    status: locked
+    category: validation_anti_drift
+    decision: "The BVP architecture is mechanically enforced by a machine-readable boundary manifest, repository-controlled PowerShell architecture guard, and architecture metrics. A failed architecture guard blocks acceptance regardless of functional test results."
+
+  - id: DEC-319
+    status: locked
+    category: validation_anti_drift
+    decision: "Initial hard complexity budgets are fixed until explicit user-approved architecture change: production BVP-only seam <=350 logical LOC across <=4 production files; BVP framework core <=4000 logical TypeScript LOC; live-device agent subset <=750 logical TypeScript LOC; ordinary declarative scenario hard maximum 200 logical LOC with <=120 target; zero scenario-specific PowerShell scripts; BVP PowerShell governance/verification <=4 scripts and <=1500 logical LOC combined; zero scenario-specific production files. Tests are not subject to a LOC ceiling."
+
+  - id: DEC-320
+    status: locked
+    category: verification_execution
+    decision: "GitHub Actions are not used for BVP build/test/CI-like verification or evidence collection. Repository-controlled PowerShell scripts under dev/scripts/ perform required local verification, capture commands/results/exit codes/architecture metrics, and write canonical evidence to dev/_ca-output.md; each local workflow also provides a small paste-ready PowerShell bootstrap that delegates to the committed verifier."
+
+  - id: DEC-321
+    status: locked
+    category: project_authority
+    decision: "All active dev/** material whose purpose is the superseded internal validation harness is moved under dev/archive/legacy-validation-harness/** during the first environment-preparation session. Archived material is historical/non-authoritative and excluded from normal task discovery and implementation grounding unless a supervisor explicitly requests historical evidence."
+
+  - id: DEC-322
+    status: locked
+    category: validation_anti_drift
+    decision: "Architecture-boundary manifest, architecture guard, metrics script, and canonical BVP verifier are supervisor-owned frozen surfaces after establishment. Ordinary coding agents may not weaken or change them. Every implementation session runs guard/metrics, and after no more than two implementation sessions the supervisor must perform a repository-level architecture review before further dispatch. New runner/router/distributed-state/coordination/evidence/persistence architectures or complexity-budget increases require explicit architecture approval before implementation."
+
+supersession_record:
+  - id: SUP-008
+    status: superseded
+    earlier: "DEC-301 through DEC-310: the Phase-6 internal plugin/runtime validation-harness architecture, including its scenario runner, modular harness decomposition, internal cross-device coordinator, harness-owned checkpoint/evidence orchestration, and production validation-mode surface."
+    superseded_by:
+      - DEC-311
+      - DEC-312
+      - DEC-313
+      - DEC-314
+      - DEC-315
+      - DEC-316
+      - DEC-317
+      - DEC-318
+      - DEC-319
+      - DEC-320
+      - DEC-321
+      - DEC-322
+
+remove_from_deferred_engineering:
+  - "Exact harness coordination transport and persistence representation, subject to DEC-307 and the no-additional-scope/no-external-backend constraints."
+  - "Exact validation-mode activation mechanism and concrete module/type/file layout, subject to DEC-301 through DEC-310 and repository grounding."
+
+add_to_deferred_engineering:
+  - "Exact typed declarative scenario DSL syntax and private step-handler decomposition within DEC-314 and the fixed complexity budgets."
+  - "Exact stateful in-memory adapter data structures and deterministic time/fault primitives within DEC-313."
+  - "Exact validation-only build/entrypoint composition mechanism that preserves DEC-312 shipping separation."
+  - "Exact minimal cross-device command-mailbox/desktop-relay representation within DEC-316."
+  - "Exact canonical scenario evidence serialization within DEC-317, subject to existing privacy/secret constraints."

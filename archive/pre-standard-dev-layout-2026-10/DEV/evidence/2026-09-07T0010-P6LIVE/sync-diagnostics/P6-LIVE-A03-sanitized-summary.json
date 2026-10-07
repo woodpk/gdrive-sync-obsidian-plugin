@@ -1,0 +1,21 @@
+{
+  "testId": "P6-LIVE-A03",
+  "exportType": "Copy synchronization diagnostics",
+  "rawExportCopiedToEvidence": false,
+  "rawExportReason": "Contains path and persistent identity metadata; only aggregate safe fields retained",
+  "rawExportBytes": 5524,
+  "rawExportSha256": "eb283170fb04f6e6e572158f8b82c13d58b6de4efd39bc817a73a8338a606fc3",
+  "credentialPatternScanPassed": true,
+  "schemaVersion": 1,
+  "stateRevision": "state:18",
+  "authorityMigrationRequired": true,
+  "knownDeviceCount": 1,
+  "baseCount": 8,
+  "remoteMappingCount": 8,
+  "tombstoneCount": 0,
+  "operationCount": 9,
+  "operationStatusCounts": {
+    "completed": 9
+  },
+  "validationNamespaceFilesystemEventCount": 0
+}

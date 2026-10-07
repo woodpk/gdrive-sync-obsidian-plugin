@@ -1,0 +1,3 @@
+"vault_relative_path","status","reason_code","human_readable_reason","planned_category","first_seen","last_seen","occurrence_count","last_run_identifier","trigger","resolved_at"
+"__brain_sync_portable_config__/app.json","resolved","opaque-binary","Concurrent changes require preservation and explicit resolution.","unresolved-conflict","2026-09-07T20:52:40.865Z","2026-09-08T23:49:36.057Z","7","","verify-reconcile","2026-09-09T00:11:31.638Z"
+"__brain_sync_portable_config__/app.json","current","identity-ambiguous","multiple distinct remote objects occupy the same logical path","blocked-unsafe","2026-09-09T13:33:48.959Z","2026-09-09T13:33:48.959Z","1","","verify-reconcile",""
