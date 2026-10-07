@@ -2,7 +2,7 @@
 
 ## Current state
 
-The completed automated testing platform remains anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3` with accepted full fresh PHX-CI run `38b52d07-dce9-4e2f-aa61-3fd7188703f7`.
+The completed automated testing platform remains historically anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The formerly recorded PHX-CI run ID `38b52d07-dce9-4e2f-aa61-3fd7188703f7` is not present among the 105 canonical `dev/Test-Results/` run directories after migration, so canonical state no longer asserts that missing run ID; Phase 10 will establish a new authoritative source/run/evidence identity.
 
 The repository is in the separate canonical `dev/**` standardization migration. Product behavior and BVP architecture are not being reopened.
 
