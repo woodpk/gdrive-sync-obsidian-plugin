@@ -3,17 +3,17 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
 active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
-status: "READY"
+status: "IN_PROGRESS"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "38b52d07-dce9-4e2f-aa61-3fd7188703f7"
 blockers: []
-next_action: "Execute dev-directory standardization Phase 10: verify the completed migration exclusively through PHX-CI, including typecheck, full BVP suite, full production suite, build, repository/architecture checks, and artifact collection; correct migration defects exposed by verification, record authoritative evidence, and do not begin S09 or Stage 3 until the migration closes green."
+next_action: "Run authoritative deployed-runtime PHX-CI verification against dev-directory-standardization-phase10 with publication mode push and Phase-9 as the explicit base; return the complete console output. PHX-CI must publish canonical result.md, result.json, and terminal.log under dev/Test-Results/<runId>/ before Phase 10 may close."
 updated_at: "2026-10-07"
 
 context:
   canonical_source_branch: "automated-testing-platform-branch"
   canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  current_migration_branch: "dev-directory-standardization-phase9-r2"
+  current_migration_branch: "dev-directory-standardization-phase10"
   migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
   migration_phases_completed:
     - "PHASE_1_INVENTORY_AND_DISPOSITION"
@@ -30,7 +30,7 @@ context:
   automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
   s09_started: false
   stage_3_started: false
-  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 9 retired the remaining noncanonical dev/archive, dev/evidence, dev/governance, and dev/planning-and-building trees; verified exact archival preservation for all 366 retired source blobs; removed remaining live retired-script/path exceptions; and did not run or claim a new authoritative PHX-CI acceptance. Phase 10 is the required comprehensive executable verification gate for the completed migration."
+  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 10 implementation now includes PHX-CI-consumed canonical dev-root enforcement, operator-script classification, and migration shipping-identity tests. No Phase-10 PASS is claimed yet; authoritative deployed-runtime PHX-CI verification with canonical repository-published evidence is still required."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
