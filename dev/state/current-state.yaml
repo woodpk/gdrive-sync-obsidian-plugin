@@ -5,7 +5,7 @@ active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
 active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
 status: "IN_PROGRESS"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: "38b52d07-dce9-4e2f-aa61-3fd7188703f7"
+last_phx_ci_run_id: null
 blockers: []
 next_action: "Run authoritative deployed-runtime PHX-CI verification against dev-directory-standardization-phase10 with publication mode push and Phase-9 as the explicit base; return the complete console output. PHX-CI must publish canonical result.md, result.json, and terminal.log under dev/Test-Results/<runId>/ before Phase 10 may close."
 updated_at: "2026-10-07"
@@ -30,7 +30,7 @@ context:
   automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
   s09_started: false
   stage_3_started: false
-  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. Phase 10 implementation now includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; authoritative deployed-runtime PHX-CI verification with canonical repository-published evidence is still required."
+  verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/Test-Results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
