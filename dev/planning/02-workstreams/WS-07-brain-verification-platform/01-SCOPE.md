@@ -122,7 +122,7 @@
 
 **BVP-MIG-001 — Historical preservation.** Legacy validation-harness documents/evidence MUST be moved, not silently deleted, when their historical value remains material.
 
-**BVP-MIG-002 — Active-authority removal.** Every `dev/**` artifact whose purpose or active instructions implement/govern the superseded internal validation harness MUST be moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/archive/legacy-validation-harness/**` or replaced with a clean non-legacy active artifact before replacement implementation begins.
+**BVP-MIG-002 — Active-authority removal.** Every `dev/**` artifact whose purpose or active instructions implement/govern the superseded internal validation harness MUST be moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/**` or replaced with a clean non-legacy active artifact before replacement implementation begins.
 
 **BVP-MIG-003 — Mixed documents.** If an active file mixes valid project authority with legacy-harness authority (for example the decision register or project-state record), archive the original complete file and create a clean active replacement containing the still-valid authority plus explicit supersession of the legacy harness.
 
@@ -231,4 +231,3 @@ The BVP does not require:
 - replacement of existing product diagnostics/audit features that serve real users;
 - replacement of useful ordinary production/unit tests unrelated to the legacy harness;
 - preservation of the old C/D/E/F implementation shape merely for historical continuity.
-

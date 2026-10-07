@@ -368,7 +368,7 @@ A session may be split only if actual repository evidence shows the bounded unit
 
 The existing BVP-S01 through BVP-S09 specifications are **primary Stage-2A work packages**, not one-turn coding sessions. This document decomposes them into bounded child sessions sized for one coding-agent execution/review cycle while preserving the manual's minimum-sound high-level phase structure.
 
-Historical child task files were created under the pre-standard `dev/agents/**` hierarchy and are slated for external archival. This canonical file now contains the durable child-session decomposition. Any future durable task prompt, when genuinely required, belongs only under this workstream's optional `tasks/` directory and must be repository-grounded immediately before dispatch.
+Historical child task files were created under the pre-standard task hierarchy and are slated for external archival. This canonical file now contains the durable child-session decomposition. Any future durable task prompt, when genuinely required, belongs only under this workstream's optional `tasks/` directory and must be repository-grounded immediately before dispatch.
 
 ## 2. Verification Model
 
