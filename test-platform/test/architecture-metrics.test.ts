@@ -508,15 +508,30 @@ test("neutral-named BVP PowerShell cannot evade the script-count budget", () => 
   });
 });
 
-test("unclassifiable dev PowerShell fails closed while the established non-BVP S07 verifier remains excluded", () => {
+test("unclassifiable active dev PowerShell fails closed", () => {
   withFixture((root) => {
-    writeText(root, "dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1", "Write-Output 'legacy consumer verification'\n");
-    const allowed = assertPass(runMetrics(root));
-    strictEqual(allowed.current.bvpPowerShellScriptCount, 0);
     writeText(root, "dev/scripts/Unclassified.ps1", "Write-Output 'unknown purpose'\n");
     const result = runMetrics(root);
     notStrictEqual(result.status, 0, result.output);
     match(result.value?.current?.classificationErrors?.join("\n") ?? "", /Unclassifiable active dev\/scripts PowerShell/);
+  });
+});
+
+test("historical base snapshots ignore non-BVP engineering PowerShell without filename exceptions", () => {
+  withFixture((root) => {
+    writeText(root, "dev/scripts/LegacyEngineeringHelper.ps1", "Write-Output 'legacy engineering helper'\n");
+    runGit(root, ["init"]);
+    runGit(root, ["config", "user.email", "bvp@example.invalid"]);
+    runGit(root, ["config", "user.name", "BVP Fixture"]);
+    runGit(root, ["add", "."]);
+    runGit(root, ["commit", "-m", "historical baseline"]);
+    const base = runGit(root, ["rev-parse", "HEAD"]);
+    rmSync(join(root, "dev", "scripts", "LegacyEngineeringHelper.ps1"));
+
+    const value = assertPass(runMetrics(root, ["-BaseSha", base]));
+    strictEqual(value.base.classificationErrors.length, 0);
+    strictEqual(value.base.bvpPowerShellScriptCount, 0);
+    strictEqual(value.current.bvpPowerShellScriptCount, 0);
   });
 });
 
