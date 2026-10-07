@@ -828,20 +828,18 @@ function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy, histori
     for (const error of result.errors) if (error) classificationErrors.push(`TypeScript analysis failed for ${result.path}: ${error}`);
     for (const dependency of result.dependencies) { const target = resolveProductionModule(result.path, dependency.specifier, productionSet); if (target) imports.add(target); }
   }
-  const retiredScripts = new Set(["dev/scripts/Get-TestingArchitectureMetrics.ps1", "dev/scripts/Test-TestingArchitectureGuard.ps1", "dev/scripts/Test-BvpProductionTestCarryForward.ps1", "dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1", "dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]);
-  const knownNonBvp = historicalBase ? new Set(["dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]) : new Set<string>();
-  const knownBvp = historicalBase ? new Set([...retiredScripts].filter((path) => !knownNonBvp.has(path))) : new Set<string>();
   const bvpPowerShellFiles: string[] = [];
   const scenarioSpecificPowerShellFiles: string[] = [];
   for (const path of paths.filter((value) => /^dev\/scripts\/.*\.ps1$/i.test(value))) {
-    if (knownNonBvp.has(path)) continue;
-    if (!historicalBase && retiredScripts.has(path)) { classificationErrors.push("Retired standalone validation script is active: " + path); continue; }
     const code = logicalLines(reader.read(path), "ps").join("\n");
-    const isKnown = knownBvp.has(path);
-    const isBvp = isKnown || /\b(?:BVP|test-platform|testing-platform)\b/i.test(code);
-    if (!isBvp) { classificationErrors.push("Unclassifiable active dev/scripts PowerShell: " + path); continue; }
+    const isBvp = /\b(?:BVP|test-platform|testing-platform)\b/i.test(code);
+    if (!isBvp) {
+      if (historicalBase) continue;
+      classificationErrors.push("Unclassifiable active dev/scripts PowerShell: " + path);
+      continue;
+    }
     bvpPowerShellFiles.push(path);
-    if (!isKnown && /(?:test-platform\/scenarios\/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["'][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["'])/i.test(code)) scenarioSpecificPowerShellFiles.push(path);
+    if (/(?:test-platform\/scenarios\/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|["'][A-Z]{1,4}\d{2,3}(?:-[A-Z0-9]+)*["'])/i.test(code)) scenarioSpecificPowerShellFiles.push(path);
   }
   for (const path of paths.filter((value) => under(value, policy.testPlatformRoot) && value.toLowerCase().endsWith(".ps1"))) if (!scenarioSpecificPowerShellFiles.includes(path)) scenarioSpecificPowerShellFiles.push(path);
   bvpPowerShellFiles.sort(); scenarioSpecificPowerShellFiles.sort();
