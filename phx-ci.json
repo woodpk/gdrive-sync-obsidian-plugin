@@ -12,7 +12,7 @@
   ],
   "evidence": {
     "canonicalPath": "dev/_ca-output.md",
-    "historyDirectory": "dev/test-results"
+    "historyDirectory": "dev/Test-Results"
   },
   "repositoryPolicy": {
     "requiredPaths": [],
