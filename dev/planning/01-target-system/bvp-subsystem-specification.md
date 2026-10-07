@@ -165,7 +165,7 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-VER-002 — PHX-CI is the canonical acceptance system.** Authoritative coding-agent branch and primary-stage verification MUST use the installed PHX-CI deployed runtime selected from the exact target branch's `phx-ci.json` framework pin and invoked through that runtime's `scripts/Invoke-PhxCi.ps1` operator front door. Production/operator verification MUST NOT depend on a mutable PHX-CI source checkout.
 
-**BVP-VER-003 — Project-specific checks remain small and durable.** The repository MAY contain the generic BVP architecture guard and metrics scripts under `dev/scripts/`, but MUST NOT create one-off task/scenario verifier scripts. After BVP-S03, guard and metrics execution MUST be wired into the repository check that PHX-CI runs so every accepted implementation session is mechanically architecture-checked.
+**BVP-VER-003 — Project-specific checks remain small and durable.** Generic BVP architecture guard and metrics logic MUST remain repository-controlled and PHX-CI-consumed through `test-platform/src/architecture-governance.ts` and `test-platform/src/repository-check.ts`. Standalone validation scripts under `dev/scripts/` and one-off task/scenario verifier scripts are prohibited. After BVP-S03, every accepted implementation session is mechanically architecture-checked through the repository check that PHX-CI runs.
 
 **BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/Test-Results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
 
@@ -206,7 +206,7 @@ The following controls are part of the target architecture, not optional process
 
 ### 4.2 Architecture Guard
 
-**BVP-GOV-002.** `dev/scripts/Test-TestingArchitectureGuard.ps1` MUST fail verification when any applicable condition occurs:
+**BVP-GOV-002.** The repository-controlled guard in `test-platform/src/architecture-governance.ts`, consumed by `test-platform/src/repository-check.ts` under PHX-CI, MUST fail verification when any applicable condition occurs:
 
 - production imports from `test-platform/**`;
 - shipping build includes test-platform code;
@@ -220,7 +220,7 @@ The following controls are part of the target architecture, not optional process
 
 ### 4.3 Complexity Metrics and Budgets
 
-**BVP-GOV-003.** `dev/scripts/Get-TestingArchitectureMetrics.ps1` MUST calculate and persist at least:
+**BVP-GOV-003.** The repository-controlled metrics implementation in `test-platform/src/architecture-governance.ts`, consumed by `test-platform/src/repository-check.ts` under PHX-CI, MUST calculate and persist at least:
 
 - production-only source LOC;
 - production code whose sole purpose is the BVP seam;
@@ -239,7 +239,7 @@ The following controls are part of the target architecture, not optional process
 - live-device agent/relay subset: **maximum 750 logical TypeScript source lines**;
 - individual ordinary declarative scenario: **target ≤120 logical lines; hard maximum 200 logical lines**;
 - scenario-specific PowerShell scripts: **0**;
-- BVP PowerShell verification/governance scripts: **maximum 4 scripts and 1,500 logical lines combined**;
+- BVP PowerShell operational/invocation scripts, if any: **maximum 4 scripts and 1,500 logical lines combined**; standalone PowerShell validation authority is prohibited.
 - scenario-specific production source files/classes/interfaces: **0**.
 
 Tests themselves are not constrained by these LOC budgets; correctness evidence must not be discouraged by a test-code ceiling.
@@ -391,7 +391,7 @@ Evidence records what was observed. Evidence does not authorize product mutation
 
 **BVP-INV-011.** Adding an ordinary scenario does not require scenario-specific production code or PowerShell infrastructure.
 
-**BVP-INV-012.** All authoritative verification/CI-like acceptance for this subsystem is local PHX-CI deployed-runtime verification, not GitHub Actions; project-specific architecture guard/metrics remain repository-controlled PowerShell invoked through PHX-CI's repository check.
+**BVP-INV-012.** All authoritative verification/CI-like acceptance for this subsystem is local PHX-CI deployed-runtime verification, not GitHub Actions; project-specific architecture guard/metrics remain repository-controlled TypeScript consumed through PHX-CI's repository check.
 
 ## 9. Failure and Validation Behavior
 
