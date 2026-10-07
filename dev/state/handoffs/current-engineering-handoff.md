@@ -19,7 +19,7 @@ No additional Phase-10 launcher or refactor-verification run is pending.
 
 Active workstream: **WS-07 — BRAIN Verification Platform**.
 
-Active next child: **BVP-S09A — Windows / iOS Install, Authentication, and Pairing Baseline**.
+Active next child: **BVP-S09A — Windows / iOS Install, Authentication, and Pairing Baseline**, with the **Windows execution tranche active first**.
 
 The BVP's historical substantive green source anchor remains `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The current integrated pre-S09 source baseline is `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`.
 
@@ -76,6 +76,23 @@ The exact human checkpoint order is now fixed:
 7. compare Windows/iOS product device identities for distinctness and verify both bind to the intended managed remote;
 8. record terminal S09A PASS/FAIL/BLOCKED evidence and stop before S09B.
 
+## Windows-first S09 execution rule
+
+S09 evidence collection is now explicitly device-scoped where the underlying physical proof is independent. The automated testing platform may execute Windows-only physical evidence before iOS availability or before the GitHub/BRAT mobile release exists. This is an execution-order change only:
+
+- Windows-only claims may be proved on Windows now;
+- iOS-only claims remain pending until the mobile artifact is released/installed;
+- cross-device claims still require both devices;
+- S09A–S09V acceptance remains serial and no later child is declared accepted out of order.
+
+The immediate Windows install binding is:
+
+- source artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`;
+- target plugin directory: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync`;
+- required validation `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`;
+- plugin ID: `brain-google-drive-sync`;
+- existing device-local plugin state (including `data.json` and relay/state files) must be preserved unless a later test explicitly owns resetting it.
+
 ## S09A validation artifact preflight complete
 
 The bounded artifact-generation preflight completed successfully with exit code 0. Exact bound identity:
@@ -89,7 +106,7 @@ The bounded artifact-generation preflight completed successfully with exit code 
 
 The printed build identity and independently printed artifact SHA-256 agree exactly.
 
-## S09A remains not executable
+## Full S09A acceptance remains pending iOS
 
 Only these physical observations remain unbound:
 
@@ -110,6 +127,6 @@ No normal S09A execution change is authorized under `src/**`, `test-platform/**`
 
 ## Immediate next action
 
-Collect and bind the exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity. The validation artifact is already built and bound. Then mark S09A `EXECUTABLE` and begin only the installed-runtime authentication/pairing baseline.
+Install the exact bound validation artifact into the disposable Windows vault, verify the installed artifact identity, and begin the Windows installed-runtime/authentication baseline. Collect iOS bindings later before the iOS tranche; full S09A acceptance still requires both platforms.
 
 Do not begin S09B. Do not begin Stage 3.

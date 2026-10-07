@@ -446,6 +446,14 @@ Every primary S01-S09 work package ends with a `V` acceptance gate. S01 is alrea
 
 Default sequencing is serial through `phase6-integration`: accepted child → PHX-CI evidence → supervisor review/integration → repository-ground next child.
 
+Within BVP-S09, **evidence collection may be device-scoped and front-loaded when the physical capability is independent**. Windows-only evidence for planned S09 obligations may be executed before iOS availability or before the GitHub/BRAT mobile release exists, provided that:
+- no later child is declared accepted before its stated predecessor gate;
+- cross-device claims are not made from single-device evidence;
+- iOS-specific/platform-specific obligations remain pending rather than synthetically substituted;
+- the same exact accepted validation build/source identity is used or any change is explicitly rebound before later physical execution.
+
+This device-scoped execution rule changes evidence-collection order only; it does not weaken S09A–S09V acceptance criteria or the final serial closure gates.
+
 Scenario-only batches in S06/S07 MAY be parallelized later only if the supervisor proves non-overlapping writable surfaces and frozen core contracts before dispatch. Parallelism is never inferred merely because task files already exist.
 
 ## 5. Dispatch Split Rule

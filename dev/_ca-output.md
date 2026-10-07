@@ -1,36 +1,25 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — S09A validation artifact preflight
+# Current work-unit evidence — S09 Windows-first execution authorization
 
-## Result
+## Decision
 
-- Preflight: PASS
-- Exit code: `0`
-- Exact source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
-- Validation artifact size: `920436` bytes
-- Validation artifact SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`
-- Manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`
-- Local artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`
+The S09 execution order is now explicitly device-scoped where the physical proof is independent. Windows-only physical evidence may be collected before iOS availability and before the GitHub/BRAT mobile release exists. Acceptance ordering remains unchanged.
 
-## Build identity
+## Immediate Windows install binding
 
-- production entrypoint: `src/main.ts`
-- validation entrypoint: `test-platform/src/live-device/validation-entrypoint.ts`
-- included test-platform inputs:
-  - `test-platform/src/live-device/device-command-agent.ts`
-  - `test-platform/src/live-device/drive-mailbox.ts`
-  - `test-platform/src/live-device/validation-entrypoint.ts`
+- source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- validation artifact SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`
+- source artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`
+- target vault: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`
+- target plugin directory: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync`
+- plugin ID: `brain-google-drive-sync`
+- preserve existing device-local plugin state: YES
 
-The build identity artifact hash and independently printed artifact hash agree exactly.
+## Boundary
 
-## Scope
+This change authorizes Windows evidence collection only. It does not claim S09A acceptance, does not substitute Windows evidence for iOS evidence, and does not authorize cross-device PASS claims without both devices.
 
-This was artifact preparation only. It did not execute S09A authentication/pairing, did not establish a Windows/iOS PASS, and did not perform software acceptance verification.
+## Immediate next action
 
-## Remaining dispatch block
-
-Only the iPhone-specific physical observations remain unbound: exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity.
-
-## Next action
-
-Collect and bind those exact iPhone values. Then S09A may be marked EXECUTABLE and the installed-runtime authentication/pairing baseline may begin.
+Install the exact bound validation artifact into the bound disposable Windows vault, verify installed artifact identity, and stop before physical test execution unless separately instructed.

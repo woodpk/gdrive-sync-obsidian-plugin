@@ -3,14 +3,14 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
-**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — IOS PHYSICAL BINDINGS PENDING  
+**Prompt maturity:** REGROUNDED / WINDOWS TRANCHE EXECUTABLE — FULL ACCEPTANCE PENDING IOS  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
 **Accepted pre-S09 BVP green anchor:** `5b57c1ded6d314810ac2cca2a363342e67d9bee3`  
 **Current integrated S09 source baseline:** `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` on `automated-testing-platform-branch`
 
 This contract has been re-grounded against the current WS-07 architecture/decomposition, current repository state, current BVP governance lock, and current PHX-CI pin after completion/integration of the canonical `dev/**` standardization.
 
-The repository-resolvable dispatch coordinates are bound below. Physical/device/run coordinates that cannot be truthfully derived from Git remain explicitly UNBOUND. This file is **not executable** until every required physical binding is exact.
+The repository-resolvable dispatch coordinates are bound below. The **Windows tranche is executable now** because its exact source/artifact/device/vault coordinates are bound. iOS-specific coordinates remain explicitly UNBOUND and gate only the iOS tranche and full S09A acceptance.
 
 ### 0.1 Repository-bound dispatch coordinates
 
@@ -71,7 +71,21 @@ The bounded S09A artifact-generation preflight completed with `S09A_PREFLIGHT_EX
 
 The generated `build-identity.json` artifact hash and the independently printed `S09A_VALIDATION_ARTIFACT_SHA256` matched exactly.
 
-### 0.4 iOS physical observations still required
+### 0.4 Windows tranche authorization
+
+The Windows portion of S09A is **EXECUTABLE** before iOS availability.
+
+Authorized immediate sequence:
+
+1. install the exact bound validation artifact into `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync`;
+2. preserve existing device-local plugin state such as `data.json`, relay state, and other non-artifact state unless a later bounded test explicitly owns resetting it;
+3. verify installed `main.js` SHA-256 equals `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`, installed `manifest.json` matches the validation artifact, and `build-identity.json` retains source commit `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+4. load the installed validation build in Windows Obsidian `1.13.7` and collect the planned Windows baseline evidence;
+5. continue with additional Windows-only S09 physical evidence where independently meaningful, while deferring all iOS-specific and genuinely cross-device claims.
+
+This authorization does not declare S09A complete and does not permit a cross-device PASS without iOS evidence.
+
+### 0.5 iOS physical observations still required
 
 Before S09A may become EXECUTABLE, record exactly:
 
@@ -83,7 +97,7 @@ Before S09A may become EXECUTABLE, record exactly:
 
 No credential, token, authorization code, client secret, or other secret may be written into this contract or committed evidence.
 
-### 0.5 Fixed human-checkpoint sequence
+### 0.6 Fixed human-checkpoint sequence
 
 1. **Artifact identity / Windows engineering host** — build the validation artifact from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`; required observation: complete `build-identity.json`, actual `main.js` SHA-256, and sourceCommit equality.
 2. **Windows installed runtime** — install/load that exact artifact in `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` under Obsidian `1.13.7`; required observation: validation build reports the exact source identity.
@@ -94,7 +108,7 @@ No credential, token, authorization code, client secret, or other secret may be 
 7. **Distinct-device/pairing comparison** — verify Windows and iOS product device identities are distinct and both bind to the same intended managed remote.
 8. **Terminal evidence** — record S09A PASS/FAIL/BLOCKED, checkpoint observations, artifact/device/run identities, and stop. Do not begin S09B.
 
-### 0.6 Writable-path allowlist for normal S09A execution
+### 0.7 Writable-path allowlist for normal S09A execution
 
 Normal S09A physical evidence work may modify only:
 
