@@ -780,7 +780,7 @@ function resolveProductionModule(origin: string, specifier: string, production: 
   return candidates.find((candidate) => production.has(candidate)) ?? null;
 }
 
-function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy): MetricsSnapshot {
+function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy, historicalBase = false): MetricsSnapshot {
   const paths = [...new Set(reader.paths.map(normalizeRepoPath))].sort();
   const productionFiles = paths.filter((path) => withinAny(path, policy.productionRoots) && tsExtensions.test(path));
   const testFiles = paths.filter((path) => under(path, policy.testPlatformRoot) && tsExtensions.test(path));
@@ -828,12 +828,14 @@ function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy): Metric
     for (const error of result.errors) if (error) classificationErrors.push(`TypeScript analysis failed for ${result.path}: ${error}`);
     for (const dependency of result.dependencies) { const target = resolveProductionModule(result.path, dependency.specifier, productionSet); if (target) imports.add(target); }
   }
-  const knownNonBvp = new Set(["dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]);
-  const knownBvp = new Set(["dev/scripts/Get-TestingArchitectureMetrics.ps1", "dev/scripts/Test-TestingArchitectureGuard.ps1", "dev/scripts/Test-BvpProductionTestCarryForward.ps1", "dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1"]);
+  const retiredScripts = new Set(["dev/scripts/Get-TestingArchitectureMetrics.ps1", "dev/scripts/Test-TestingArchitectureGuard.ps1", "dev/scripts/Test-BvpProductionTestCarryForward.ps1", "dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1", "dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]);
+  const knownNonBvp = historicalBase ? new Set(["dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1"]) : new Set<string>();
+  const knownBvp = historicalBase ? new Set([...retiredScripts].filter((path) => !knownNonBvp.has(path))) : new Set<string>();
   const bvpPowerShellFiles: string[] = [];
   const scenarioSpecificPowerShellFiles: string[] = [];
   for (const path of paths.filter((value) => /^dev\/scripts\/.*\.ps1$/i.test(value))) {
     if (knownNonBvp.has(path)) continue;
+    if (!historicalBase && retiredScripts.has(path)) { classificationErrors.push("Retired standalone validation script is active: " + path); continue; }
     const code = logicalLines(reader.read(path), "ps").join("\n");
     const isKnown = knownBvp.has(path);
     const isBvp = isKnown || /\b(?:BVP|test-platform|testing-platform)\b/i.test(code);
@@ -886,7 +888,7 @@ export function runArchitectureMetrics(options: { readonly repoRoot: string; rea
     const bootstrapPolicy = loadPolicy({ paths: [], read: (path) => { const full = join(repoRoot, ...normalizeRepoPath(path).split("/")); return existsSync(full) ? readFileSync(full, "utf8") : null; } });
     const currentReaderValue = currentReader(repoRoot, bootstrapPolicy);
     const policy = loadPolicy(currentReaderValue);
-    const current = measureSnapshot(currentReaderValue, policy);
+    const current = measureSnapshot(currentReaderValue, policy, false);
     const budgets: BudgetResult[] = [
       budget("PRODUCTION_SEAM_LOC", current.productionSeamLogicalLoc, policy.seamLocMax, current.productionSeamFiles),
       budget("PRODUCTION_SEAM_FILES", current.productionSeamFileCount, policy.seamFilesMax, current.productionSeamFiles),
@@ -903,7 +905,7 @@ export function runArchitectureMetrics(options: { readonly repoRoot: string; rea
     if (baseSha) {
       const baseReader = gitReader(repoRoot, baseSha);
       const basePolicy = loadPolicy(baseReader);
-      base = measureSnapshot(baseReader, basePolicy);
+      base = measureSnapshot(baseReader, basePolicy, true);
       delta = {};
       for (const name of ["productionSourceLogicalLoc", "productionSeamLogicalLoc", "productionSeamFileCount", "frameworkCoreLogicalTsLoc", "platformCoreRuntimeModuleCount", "liveDeviceAgentRelayLogicalTsLoc", "scenarioDefinitionLogicalLocTotal", "scenarioCount", "productionModulesImportedCount", "bvpPowerShellScriptCount", "bvpPowerShellLogicalLoc", "scenarioSpecificPowerShellCount", "scenarioSpecificProductionFileCount"] as const) {
         delta[name] = { base: base[name] as number, current: current[name] as number, delta: (current[name] as number) - (base[name] as number) };
