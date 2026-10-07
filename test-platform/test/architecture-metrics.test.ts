@@ -10,16 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { runArchitectureMetrics } from "../src/architecture-governance";
 
 const repositoryRoot = resolve(__dirname, "../../../..");
-const metricsPath = join(
-  repositoryRoot,
-  "dev",
-  "scripts",
-  "Get-TestingArchitectureMetrics.ps1",
-);
-const powerShell = process.env.PWSH ?? "pwsh";
-
 function writeText(root: string, relativePath: string, content: string): void {
   const fullPath = join(root, ...relativePath.split("/"));
   mkdirSync(dirname(fullPath), { recursive: true });
@@ -44,6 +37,16 @@ function boundaryManifest(approvedImports: readonly string[] = []): string {
     "  test_platform: test-platform/",
     "  active_dev: dev/",
     "  archive: archive/",
+    "import_rules:",
+    "  production_must_not_import:",
+    "    - test-platform/",
+    "  test_platform_may_import_production_only_through_allowlist: true",
+    "  scenario_specific_production_code_allowed: false",
+    "shipping_rules:",
+    "  production_bundle_must_exclude:",
+    "    - test-platform/",
+    "  production_validation_ui_allowed: false",
+    "  validation_device_agent_must_be_separate_artifact_or_entrypoint: true",
     "production_seam:",
     "  allowlist_required: true",
     ...(approvedImports.length === 0
@@ -60,6 +63,17 @@ function boundaryManifest(approvedImports: readonly string[] = []): string {
     "  bvp_powershell_scripts_max: 4",
     "  bvp_powershell_combined_logical_loc_max: 1500",
     "  scenario_specific_production_files_max: 0",
+    "supervisor_owned_frozen_surfaces:",
+    "  - dev/authority/governance/locks/testing-platform-boundary.yaml",
+    "  - test-platform/src/architecture-governance.ts",
+    "  - test-platform/src/repository-check.ts",
+    "  - phx-ci.json",
+    "  - Taskfile.phx-ci.yml",
+    "  - bounded PHX-CI include block in Taskfile.yml",
+    "archive_policy:",
+    "  archive_is_non_authoritative: true",
+    "  exclude_from_normal_grounding: true",
+    "  active_docs_must_not_depend_on_archived_prompts: true",
     "",
   ].join("\n");
 }
@@ -81,21 +95,16 @@ interface MetricsRun {
 }
 
 function runMetrics(root: string, extraArgs: readonly string[] = []): MetricsRun {
-  const result = spawnSync(
-    powerShell,
-    ["-NoProfile", "-File", metricsPath, "-RepoRoot", root, ...extraArgs],
-    { encoding: "utf8" },
-  );
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
-  let value: any = null;
-  if (result.stdout) {
-    try {
-      value = JSON.parse(result.stdout);
-    } catch {
-      // Assertion helpers report the full output when JSON is invalid.
-    }
+  let baseSha: string | undefined;
+  for (let index = 0; index < extraArgs.length; index += 2) {
+    if (extraArgs[index] === "-BaseSha") baseSha = extraArgs[index + 1];
   }
-  return { status: result.status, output, value, error: result.error };
+  const result = runArchitectureMetrics({ repoRoot: root, baseSha });
+  return {
+    status: result.exitCode,
+    output: result.output,
+    value: result.value,
+  };
 }
 
 function withFixture(run: (root: string) => void, approvedImports: readonly string[] = []): void {
@@ -173,7 +182,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
     ),
     true,
   );
-  strictEqual(value.current.bvpPowerShellScriptCount, 4);
+  strictEqual(value.current.bvpPowerShellScriptCount, 0);
 });
 
 test("architecture metrics pass a compliant synthetic baseline and list real production imports", () => {
@@ -388,12 +397,13 @@ test("malformed required governance fails closed", () => {
   });
 });
 
-test("metric source stays within the frozen PowerShell budget headroom", () => {
-  const source = readFileSync(metricsPath, "utf8").replace(/\r\n/g, "\n");
-  const logical = source
-    .split("\n")
-    .filter((line) => line.trim().length > 0 && !line.trimStart().startsWith("#")).length;
-  strictEqual(logical <= 389, true, `metrics script uses ${logical} simple logical lines; S03C headroom is 389`);
+test("architecture metrics are implemented in the PHX-CI-consumed TypeScript governance surface", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "test-platform", "src", "architecture-governance.ts"),
+    "utf8",
+  );
+  match(source, /export function runArchitectureMetrics/);
+  strictEqual(source.includes("Get-TestingArchitectureMetrics.ps1"), true);
 });
 
 test("semantic production dependency measurement covers accepted forms, multiline syntax, and TS-family/index resolution", () => {
