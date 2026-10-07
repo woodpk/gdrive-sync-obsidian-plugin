@@ -1,0 +1,37 @@
+schema_version: 1
+project: "woodpk/gdrive-sync-obsidian-plugin"
+lifecycle_stage: "STAGE_2A_PHASE_6"
+active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
+active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
+status: "READY"
+last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+last_phx_ci_run_id: "38b52d07-dce9-4e2f-aa61-3fd7188703f7"
+blockers: []
+next_action: "Execute dev-directory standardization Phase 6: retire the legacy dev/agents/ and dev/prompts/ hierarchies, preserve historical material under archive/pre-standard-dev-layout-2026-10/DEV/, retain only genuinely durable future task prompts under the owning dev/planning/02-workstreams/WS-##-*/tasks/ directory, and archive the standalone dev/security-prompt-header.md. Do not begin S09 or Stage 3 as part of this repository-organization migration."
+updated_at: "2026-10-07T01:07:00-04:00"
+
+context:
+  canonical_source_branch: "automated-testing-platform-branch"
+  canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+  current_migration_branch: "dev-directory-standardization-phase5"
+  migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+  migration_phases_completed:
+    - "PHASE_1_INVENTORY_AND_DISPOSITION"
+    - "PHASE_2_CANONICAL_DIRECTORY_SKELETON"
+    - "PHASE_3_AUTHORITY_NORMALIZATION"
+    - "PHASE_4_PLANNING_AND_WORKSTREAM_NORMALIZATION"
+    - "PHASE_5_STATE_AND_HANDOFF_NORMALIZATION"
+  product_workstream_context: "WS-07-brain-verification-platform"
+  automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
+  s09_started: false
+  stage_3_started: false
+  verification_note: "The last accepted substantive software verification remains the exact green R7 source above. The dev-directory migration has intentionally not received its final comprehensive PHX-CI run yet; that verification is reserved for the completed migration."
+  authority:
+    decision_register: "dev/authority/decision-register.yaml"
+    target_system: "dev/planning/01-target-system/target-system-specification.md"
+    workstream_index: "dev/planning/02-workstreams/00-INDEX.md"
+    bvp_specification: "dev/planning/01-target-system/bvp-subsystem-specification.md"
+    bvp_governance_lock: "dev/authority/governance/locks/testing-platform-boundary.yaml"
+  evidence:
+    current_work_unit_surface: "dev/_ca-output.md"
+    historical_phx_ci_root: "dev/Test-Results/"
