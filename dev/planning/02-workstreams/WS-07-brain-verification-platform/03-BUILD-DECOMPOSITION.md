@@ -119,10 +119,10 @@ Make the simple replacement architecture mechanically enforceable before substan
 
 - top-level `test-platform/**` skeleton exists and is excluded from ordinary shipping build;
 - active `dev/authority/governance/locks/testing-platform-boundary.yaml` is installed;
-- `dev/scripts/Test-TestingArchitectureGuard.ps1` enforces import/bundle/scenario/archive/frozen-surface rules;
-- `dev/scripts/Get-TestingArchitectureMetrics.ps1` measures required budgets and deltas;
+- `test-platform/src/architecture-governance.ts` implements the repository-controlled architecture guard for import/bundle/scenario/archive/frozen-surface rules;
+- `test-platform/src/architecture-governance.ts` implements architecture metrics and budget/delta measurement;
 - the installed PHX-CI deployed runtime is the canonical branch/stage verification entrypoint;
-- architecture guard and metrics are themselves tested with deterministic negative fixtures/cases;
+- architecture guard and metrics are consumed by `test-platform/src/repository-check.ts` under PHX-CI and are themselves tested with deterministic negative fixtures/cases;
 - PHX-CI current work-unit evidence is `dev/_ca-output.md` with immutable historical runs under `dev/Test-Results/<runId>/`;
 - no scenario-specific PowerShell verifier exists.
 
