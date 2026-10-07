@@ -24,7 +24,7 @@ The governing authority order for this subsystem is:
 6. current repository state as evidence of implementation state;
 7. build-session prompts generated from the current repository immediately before execution.
 
-Legacy material moved beneath `dev/archive/**` is historical evidence only. It is not implementation authority and MUST NOT be used as a design template unless a later supervisor explicitly identifies a specific archived item as historical evidence needed for a bounded question.
+Legacy material moved beneath `archive/**` is historical evidence only. It is not implementation authority and MUST NOT be used as a design template unless a later supervisor explicitly identifies a specific archived item as historical evidence needed for a bounded question.
 
 ### 1.1 Why Replacement Is Required
 
@@ -164,7 +164,7 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-VER-003 — Project-specific checks remain small and durable.** The repository MAY contain the generic BVP architecture guard and metrics scripts under `dev/scripts/`, but MUST NOT create one-off task/scenario verifier scripts. After BVP-S03, guard and metrics execution MUST be wired into the repository check that PHX-CI runs so every accepted implementation session is mechanically architecture-checked.
 
-**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured canonical `dev/_ca-output.md`, `dev/_ca-output.json`, and immutable `dev/test-results/` history. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
+**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/Test-Results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
 
 **BVP-VER-005 — Child-session and primary-stage gates.** Every implementation child session MUST pass authoritative PHX-CI remote-branch verification before supervisor integration. Every primary BVP stage MUST then pass a separate integrated PHX-CI acceptance gate before the next primary stage begins.
 
@@ -174,11 +174,11 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-MIG-001 — Historical preservation.** Legacy validation-harness documents/evidence MUST be moved, not silently deleted, when their historical value remains material.
 
-**BVP-MIG-002 — Active-authority removal.** Every `dev/**` artifact whose purpose or active instructions implement/govern the superseded internal validation harness MUST be moved beneath `dev/archive/legacy-validation-harness/**` or replaced with a clean non-legacy active artifact before replacement implementation begins.
+**BVP-MIG-002 — Active-authority removal.** Every `dev/**` artifact whose purpose or active instructions implement/govern the superseded internal validation harness MUST be moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/archive/legacy-validation-harness/**` or replaced with a clean non-legacy active artifact before replacement implementation begins.
 
 **BVP-MIG-003 — Mixed documents.** If an active file mixes valid project authority with legacy-harness authority (for example the decision register or project-state record), archive the original complete file and create a clean active replacement containing the still-valid authority plus explicit supersession of the legacy harness.
 
-**BVP-MIG-004 — Archive inertness.** Normal supervisor/coding-agent repository grounding MUST exclude `dev/archive/**`. Active documents MUST NOT link to archived implementation prompts as current authority.
+**BVP-MIG-004 — Archive inertness.** Normal supervisor/coding-agent repository grounding MUST exclude `archive/**`. Active documents MUST NOT link to archived implementation prompts as current authority.
 
 **BVP-MIG-005 — Legacy code removal.** The legacy `src/validation/**` system, scenario-specific validation tests, shipping-plugin validation UI/runtime integration, and supervisor-classified harness-only production seams MUST be removed from active production/test execution. Any retain/delete classification needed for retirement MUST be resolved by the supervisor before worker dispatch; a coding agent may not decide that a listed deletion should be retained or that an unlisted surface is safe to remove. Archived source snapshots are optional because Git history already preserves source history; active legacy implementation must not coexist as a second available platform.
 
@@ -188,7 +188,7 @@ The following controls are part of the target architecture, not optional process
 
 ### 4.1 Machine-Readable Boundary
 
-**BVP-GOV-001.** The repository MUST contain `dev/governance/testing-platform-boundary.yaml` (or an equivalently named supervisor-approved file) defining at minimum:
+**BVP-GOV-001.** The repository MUST contain `dev/authority/governance/locks/testing-platform-boundary.yaml` (or an equivalently named supervisor-approved file) defining at minimum:
 
 - production root(s);
 - testing-platform root;
@@ -211,7 +211,7 @@ The following controls are part of the target architecture, not optional process
 - unapproved production seams are imported by the platform;
 - validation-only UI/runner/fault controls become part of the normal production build;
 - scenario-specific PowerShell verification scripts appear;
-- active planning/tasking treats `dev/archive/**` as current authority;
+- active planning/tasking treats `archive/**` as current authority;
 - a normal scenario-only work package changes frozen platform-core/governance surfaces without explicit authorization;
 - hard complexity budgets are exceeded.
 
@@ -419,7 +419,7 @@ Evidence records what was observed. Evidence does not authorize product mutation
 - Live-device code is a thin validation-only command agent, not a general runner.
 - No developer-hosted automation backend and no expanded Google OAuth scope are introduced solely for validation.
 - GitHub Actions are not used; the installed PHX-CI deployed runtime owns authoritative branch/stage verification and canonical evidence, while repository-controlled BVP guard/metrics scripts provide project-specific checks invoked by PHX-CI.
-- `dev/archive/**` is historical and non-authoritative.
+- `archive/**` is historical and non-authoritative.
 - Anti-drift guards, budgets, and recurring architecture reviews are mandatory acceptance gates.
 
 ## 11. Engineering Discretion
@@ -491,7 +491,7 @@ The BVP is complete only when objective evidence proves all of the following.
 ### 13.4 Evidence and Verification
 
 - authoritative PHX-CI verification completes successfully for every accepted child branch and final integrated stage;
-- `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/test-results/` contain the configured PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
+- `dev/_ca-output.md` and `dev/Test-Results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
 - scenario evidence maps to the BRAIN target specification's §13 completion-evidence categories;
 - a Stage-3 validator can trace each material product requirement to implementation and validation evidence without relying on legacy harness claims.
 

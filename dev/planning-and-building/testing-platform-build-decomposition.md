@@ -72,7 +72,7 @@ Remove the superseded internal validation harness from active authority and acti
 
 - accepted BVP planning documents are active under `dev/planning-and-building/` and `dev/governance/`;
 - `DEC-301`–`DEC-310` are superseded rather than simultaneously active;
-- all old `dev/**` harness tasking/planning/evidence is moved beneath `dev/archive/legacy-validation-harness/**` according to the archive plan;
+- all old `dev/**` harness tasking/planning/evidence is moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/archive/legacy-validation-harness/**` according to the archive plan;
 - active project-state/handoff authority no longer points at the old harness;
 - `src/validation/**` legacy architecture and shipping validation UI/runtime integration are removed from active execution;
 - production synchronization behavior, general diagnostics, and useful non-harness tests remain intact;
@@ -112,12 +112,12 @@ Make the simple replacement architecture mechanically enforceable before substan
 ### 5.2 Required End State
 
 - top-level `test-platform/**` skeleton exists and is excluded from ordinary shipping build;
-- active `dev/governance/testing-platform-boundary.yaml` is installed;
+- active `dev/authority/governance/locks/testing-platform-boundary.yaml` is installed;
 - `dev/scripts/Test-TestingArchitectureGuard.ps1` enforces import/bundle/scenario/archive/frozen-surface rules;
 - `dev/scripts/Get-TestingArchitectureMetrics.ps1` measures required budgets and deltas;
 - the installed PHX-CI deployed runtime is the canonical branch/stage verification entrypoint;
 - architecture guard and metrics are themselves tested with deterministic negative fixtures/cases;
-- PHX-CI canonical evidence output is `dev/_ca-output.md` / `dev/_ca-output.json` with immutable history under `dev/test-results/`;
+- PHX-CI current work-unit evidence is `dev/_ca-output.md` with immutable historical runs under `dev/Test-Results/<runId>/`;
 - no scenario-specific PowerShell verifier exists.
 
 ### 5.3 Principal Invariants
@@ -141,7 +141,7 @@ PHX-CI repository checks must execute the guard/metrics. The guard demonstrably 
 - an unapproved production import surface;
 - a scenario-specific `.ps1` verifier;
 - a hard complexity-budget violation;
-- an active authority link treating `dev/archive/**` as current tasking.
+- an active authority link treating `archive/**` as current tasking.
 
 It also passes the compliant baseline.
 

@@ -2,7 +2,7 @@
 
 ## Current Authority
 
-The repository is in Stage 2A / Phase 6, inside the DEC-329 pre-S09 closure gate. The active testing-platform architecture is the BRAIN Verification Platform (BVP), governed by the current testing-platform planning documents, `dev/governance/testing-platform-boundary.yaml`, and locked decisions in `dev/planning-and-building/decision-register.yaml`.
+The repository is in Stage 2A / Phase 6, inside the DEC-329 pre-S09 closure gate. The active testing-platform architecture is the BRAIN Verification Platform (BVP), governed by the current testing-platform planning documents, `dev/authority/governance/locks/testing-platform-boundary.yaml`, and locked decisions in `dev/authority/decision-register.yaml`.
 
 The BRAIN product target specification, decision register, build decomposition, Phase-6 synchronization contracts, project state, and later explicit user decisions remain controlling for their scopes.
 

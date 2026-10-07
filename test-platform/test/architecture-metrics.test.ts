@@ -66,7 +66,7 @@ function boundaryManifest(approvedImports: readonly string[] = []): string {
 
 function createFixture(approvedImports: readonly string[] = []): string {
   const root = mkdtempSync(join(tmpdir(), "brain-bvp-metrics-"));
-  writeText(root, "dev/governance/testing-platform-boundary.yaml", boundaryManifest(approvedImports));
+  writeText(root, "dev/authority/governance/locks/testing-platform-boundary.yaml", boundaryManifest(approvedImports));
   writeText(root, "src/main.ts", "export const productionValue = 1;\n");
   writeText(root, "test-platform/src/platform-root.ts", "export const platformValue = 1;\n");
   writeText(root, "test-platform/test/placeholder.test.ts", "export const testOnly = true;\n");
@@ -368,7 +368,7 @@ test("unreadable base SHA fails closed instead of becoming a zero baseline", () 
 
 test("missing required governance fails closed", () => {
   withFixture((root) => {
-    rmSync(join(root, "dev", "governance", "testing-platform-boundary.yaml"));
+    rmSync(join(root, "dev", "authority", "governance", "locks", "testing-platform-boundary.yaml"));
     const result = runMetrics(root);
     if (result.error) throw result.error;
     notStrictEqual(result.status, 0, result.output);
@@ -379,7 +379,7 @@ test("missing required governance fails closed", () => {
 
 test("malformed required governance fails closed", () => {
   withFixture((root) => {
-    writeText(root, "dev/governance/testing-platform-boundary.yaml", "schema_version: 2\nroots:\n  production:\n    - src/\n");
+    writeText(root, "dev/authority/governance/locks/testing-platform-boundary.yaml", "schema_version: 2\nroots:\n  production:\n    - src/\n");
     const result = runMetrics(root);
     if (result.error) throw result.error;
     notStrictEqual(result.status, 0, result.output);
@@ -521,7 +521,7 @@ test("unsupported governance schema fails closed", () => {
   withFixture((root) => {
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest().replace("schema_version: 2", "schema_version: 3"),
     );
     const result = runMetrics(root);
@@ -534,7 +534,7 @@ test("non-authoritative governance status fails closed", () => {
   withFixture((root) => {
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest().replace(
         "status: authoritative_frozen_after_bvp_s01_persistence",
         "status: draft",
@@ -563,7 +563,7 @@ test("base snapshot uses its own approved seam policy when current governance ad
     writeText(root, "src/seam.ts", "export const seam = 1;\n");
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest(["src/seam.ts"]),
     );
     runGit(root, ["init"]);
@@ -576,7 +576,7 @@ test("base snapshot uses its own approved seam policy when current governance ad
     writeText(root, "src/new-seam.ts", "export const newSeam = 2;\n");
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest(["src/seam.ts", "src/new-seam.ts"]),
     );
 
@@ -697,7 +697,7 @@ test("duplicate S03C hard-budget authority fails closed", () => {
   withFixture((root) => {
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest().replace(
         "  bvp_powershell_scripts_max: 4",
         "  bvp_powershell_scripts_max: 4\n  bvp_powershell_scripts_max: 400",
@@ -713,7 +713,7 @@ test("duplicate S03C root authority fails closed", () => {
   withFixture((root) => {
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       boundaryManifest().replace(
         "  test_platform: test-platform/",
         "  test_platform: test-platform/\n  test_platform: permissive-platform/",
@@ -748,4 +748,3 @@ test("generic neutral BVP governance PowerShell is not falsely scenario-specific
     strictEqual(value.current.scenarioSpecificPowerShellCount, 0);
   });
 });
-

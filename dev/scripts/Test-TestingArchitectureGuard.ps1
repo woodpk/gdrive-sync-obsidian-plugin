@@ -292,7 +292,7 @@ function Convert-FrozenSurfaceToPath {
 }
 
 function Get-BoundaryPolicy {
-    $manifestRelativePath = 'dev/governance/testing-platform-boundary.yaml'
+    $manifestRelativePath = 'dev/authority/governance/locks/testing-platform-boundary.yaml'
     $manifestPath = Join-Path $RepoRoot $manifestRelativePath
 
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {

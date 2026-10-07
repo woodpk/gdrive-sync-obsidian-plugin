@@ -60,7 +60,7 @@ function boundaryManifest(): string {
     "  scenario_specific_powershell_scripts_max: 0",
     "",
     "supervisor_owned_frozen_surfaces:",
-    "  - dev/governance/testing-platform-boundary.yaml",
+    "  - dev/authority/governance/locks/testing-platform-boundary.yaml",
     "  - dev/scripts/Test-TestingArchitectureGuard.ps1",
     "  - dev/scripts/Get-TestingArchitectureMetrics.ps1",
     "  - phx-ci.json",
@@ -134,7 +134,7 @@ function createBaselineFixture(): string {
   );
   writeText(
     root,
-    "dev/governance/testing-platform-boundary.yaml",
+    "dev/authority/governance/locks/testing-platform-boundary.yaml",
     boundaryManifest(),
   );
   writeText(
@@ -341,7 +341,7 @@ test("architecture guard passes a compliant baseline fixture", () => {
 
 test("architecture guard fails closed when the boundary manifest is missing", () => {
   withFixture((root) => {
-    rmSync(join(root, "dev", "governance", "testing-platform-boundary.yaml"));
+    rmSync(join(root, "dev", "authority", "governance", "locks", "testing-platform-boundary.yaml"));
     assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_MISSING");
   });
 });
@@ -350,7 +350,7 @@ test("architecture guard fails closed when required manifest authority is incomp
   withFixture((root) => {
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       [
         "schema_version: 2",
         "status: authoritative",
@@ -372,7 +372,7 @@ test("architecture guard consumes manifest-rebound architecture roots", () => {
       .replaceAll("    - test-platform/", "    - verification-platform/");
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       manifest,
     );
     writeText(
@@ -408,7 +408,7 @@ test("architecture guard consumes the manifest-approved production seam", () => 
     );
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       manifest,
     );
     writeText(
@@ -442,7 +442,7 @@ test("architecture guard treats inline empty approved imports as a valid empty a
     );
     writeText(
       root,
-      "dev/governance/testing-platform-boundary.yaml",
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
       manifest,
     );
     writeText(
@@ -788,7 +788,7 @@ test("architecture guard rejects ordinary changes to frozen governance", () => {
     assertFailsWithRule(
       runGuard(root, [
         "-ChangedPath",
-        "dev/governance/testing-platform-boundary.yaml",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
       ]),
       "FROZEN_SURFACE_CHANGED",
     );
@@ -802,7 +802,7 @@ test("architecture guard accepts explicitly authorized governance change class f
         "-ChangeClass",
         "authorized-governance",
         "-ChangedPath",
-        "dev/governance/testing-platform-boundary.yaml",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
       ]),
     );
   });
@@ -816,7 +816,7 @@ test("authorized governance change class exempts only frozen-surface enforcement
         "-ChangeClass",
         "authorized-governance",
         "-ChangedPath",
-        "dev/governance/testing-platform-boundary.yaml",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
       ]),
       "TEST_PLATFORM_POWERSHELL_PROHIBITED",
     );

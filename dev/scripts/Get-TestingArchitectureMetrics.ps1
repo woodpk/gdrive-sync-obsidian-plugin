@@ -13,7 +13,7 @@ function Normalize-RepoPath([string]$Path) { return (($Path -replace '\\', '/') 
 function Test-Under([string]$Path, [string]$Root) { $p = Normalize-RepoPath $Path; $r = (Normalize-RepoPath $Root).TrimEnd('/'); return $p -eq $r -or $p.StartsWith("$r/", [System.StringComparison]::Ordinal) }
 
 function Get-BoundaryManifestLines([string]$Sha = '') {
-    $relativePath = 'dev/governance/testing-platform-boundary.yaml'
+    $relativePath = 'dev/authority/governance/locks/testing-platform-boundary.yaml'
     if ($Sha) {
         $probe = @(& git -C $RepoRoot cat-file -e "$Sha^{commit}" 2>&1)
         $probeCode = $LASTEXITCODE

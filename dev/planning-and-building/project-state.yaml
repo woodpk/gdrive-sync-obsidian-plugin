@@ -10,11 +10,11 @@ record:
 repository_conventions:
   durable_product_authority:
     - "dev/planning-and-building/target-system-specification.md"
-    - "dev/planning-and-building/decision-register.yaml"
+    - "dev/authority/decision-register.yaml"
     - "dev/planning-and-building/build-decomposition.md"
     - "dev/planning-and-building/project-state.yaml"
-    - "dev/planning-and-building/phase6-sync-architecture-foundation.md"
-    - "dev/planning-and-building/phase6-sync-contract-freeze.md"
+    - "dev/authority/contracts/phase6-sync-architecture-foundation.md"
+    - "dev/authority/contracts/phase6-sync-contract-freeze.md"
   supervisor_continuity_log: "dev/planning-and-building/supervisor-continuity-log.md"
   active_bvp_authority:
     - "dev/planning-and-building/testing-platform-target-system-specification.md"
@@ -22,11 +22,11 @@ repository_conventions:
     - "dev/planning-and-building/testing-platform-requirement-coverage.md"
     - "dev/planning-and-building/testing-platform-build-session-specifications.md"
     - "dev/planning-and-building/testing-platform-session-decomposition.md"
-    - "dev/governance/testing-platform-boundary.yaml"
-  coding_agent_task_prompts: "dev/agents/"
-  evidence: "PHX-CI canonical dev/_ca-output.md + dev/_ca-output.json and immutable dev/test-results/; supplemental project evidence may live under dev/evidence/"
+    - "dev/authority/governance/locks/testing-platform-boundary.yaml"
+  coding_agent_task_prompts: "TRANSITIONAL ONLY: legacy dev/agents/ is being retired; future durable task prompts belong only under the owning dev/planning/02-workstreams/WS-##-*/tasks/ directory."
+  evidence: "Current work-unit evidence may use dev/_ca-output.md; immutable historical PHX-CI runs belong under dev/Test-Results/<runId>/; legacy dev/evidence/ is transitional historical material pending external archive migration."
   scripts: "dev/scripts/"
-  archive_policy: "dev/archive/** is historical and non-authoritative. Do not use it for normal task discovery, implementation grounding, or architecture derivation unless a supervisor explicitly requests a bounded historical lookup."
+  archive_policy: "Retired development generations belong outside active dev/ under archive/<generation>/DEV/** and are historical/non-authoritative unless explicitly cited by active authority."
 
 stage_state:
   stage_0: complete
@@ -84,7 +84,7 @@ authoritative_repository_verification:
   current_s08_status: "CLOSED / ACCEPTED predecessor evidence remains valid for the accepted S08 source; the later DEC-329 final-review correction candidate has not yet received its required post-review PHX-CI verification."
 
 anti_drift:
-  boundary_manifest: "dev/governance/testing-platform-boundary.yaml"
+  boundary_manifest: "dev/authority/governance/locks/testing-platform-boundary.yaml"
   no_github_actions: true
   authoritative_repository_verification: "PHX-CI only."
   no_administrative_only_owner_reruns: true

@@ -207,7 +207,7 @@ test("authoritative context forwards exact base and changed paths to both accept
 test("authorized governance classification is explicit and forwarded unchanged", () => {
   withFixture((root) => {
     const contextPath = writeContext(root, {
-      changedPaths: ["dev/governance/testing-platform-boundary.yaml"],
+      changedPaths: ["dev/authority/governance/locks/testing-platform-boundary.yaml"],
     });
     const result = runRepositoryCheck(root, {
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
