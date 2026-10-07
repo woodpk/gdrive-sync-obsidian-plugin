@@ -1,39 +1,36 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — S09A physical binding advance
+# Current work-unit evidence — S09A validation artifact preflight
+
+## Result
+
+- Preflight: PASS
+- Exit code: `0`
+- Exact source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
+- Validation artifact size: `920436` bytes
+- Validation artifact SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`
+- Manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`
+- Local artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`
+
+## Build identity
+
+- production entrypoint: `src/main.ts`
+- validation entrypoint: `test-platform/src/live-device/validation-entrypoint.ts`
+- included test-platform inputs:
+  - `test-platform/src/live-device/device-command-agent.ts`
+  - `test-platform/src/live-device/drive-mailbox.ts`
+  - `test-platform/src/live-device/validation-entrypoint.ts`
+
+The build identity artifact hash and independently printed artifact hash agree exactly.
 
 ## Scope
 
-Repository/task-state preparation only. No physical S09A authentication/pairing execution and no software acceptance validation were performed in this work unit.
+This was artifact preparation only. It did not execute S09A authentication/pairing, did not establish a Windows/iOS PASS, and did not perform software acceptance verification.
 
-## Bound coordinates
+## Remaining dispatch block
 
-- implementation source baseline: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`
-- S09A run ID: `s09a-20261007-3e3724ed-01`
-- fixture root: `BVP-VALIDATION/s09a-20261007-3e3724ed-01`
-- Windows Obsidian: `1.13.7`
-- Windows controller participant: `windows-brain-patrick`
-- Windows product device: `device:8b7820faab2603b334a1c13d8c3bdba0`
-- Windows disposable vault: `D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`
-- Windows vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`
-- managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`
-- Drive mailbox root: `BRAIN BVP Mailbox`
-- relay root: `.obsidian/plugins/brain-google-drive-sync/.bvp-relay`
-- reserved iOS controller participant: `ios-s09a-participant`
-
-## Remaining physical-preflight observations
-
-- fresh validation `main.js` SHA-256 and complete `build-identity.json` generated from exact source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
-- iPhone model;
-- iOS version;
-- iOS Obsidian version;
-- iOS product logical device identity;
-- iOS disposable S09A vault identity.
-
-## Checkpoint order
-
-Artifact identity -> Windows installed-runtime load -> Windows same-device OAuth -> iOS identity capture -> iOS installed-runtime load -> iOS same-device OAuth -> distinct-device/managed-root comparison -> terminal S09A evidence.
+Only the iPhone-specific physical observations remain unbound: exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity.
 
 ## Next action
 
-Run the bounded Windows artifact-build preflight and record its output; collect the listed iPhone/iOS runtime facts. S09A remains NOT-YET-EXECUTABLE until those values are exact.
+Collect and bind those exact iPhone values. Then S09A may be marked EXECUTABLE and the installed-runtime authentication/pairing baseline may begin.

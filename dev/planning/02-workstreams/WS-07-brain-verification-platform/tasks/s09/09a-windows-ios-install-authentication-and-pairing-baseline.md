@@ -3,7 +3,7 @@
 ## 0. Status
 
 **Agent name:** `agt-brain-bvp-s09-physical-validation-01`  
-**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — PHYSICAL PREFLIGHT PENDING  
+**Prompt maturity:** REGROUNDED / NOT-YET-EXECUTABLE — IOS PHYSICAL BINDINGS PENDING  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness  
 **Accepted pre-S09 BVP green anchor:** `5b57c1ded6d314810ac2cca2a363342e67d9bee3`  
 **Current integrated S09 source baseline:** `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` on `automated-testing-platform-branch`
@@ -55,11 +55,26 @@ The repository-resolvable dispatch coordinates are bound below. Physical/device/
 
 The recovered Windows values are established prior physical-validation coordinates. They are not newly invented S09A observations.
 
-### 0.3 Physical-preflight observations still required
+### 0.3 Validation artifact binding — COMPLETE
+
+The bounded S09A artifact-generation preflight completed with `S09A_PREFLIGHT_EXIT_CODE=0`.
+
+| Artifact coordinate | Bound value |
+| --- | --- |
+| Source commit | `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` |
+| Validation artifact | `main.js` |
+| Artifact size | `920436` bytes |
+| Artifact SHA-256 | `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76` |
+| Manifest SHA-256 | `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc` |
+| Local artifact directory | `C:\\temp-2dd7a670f212446995f7038b0eeb9132\\.test-build\\bvp-live-device\\plugin` |
+| Included test-platform inputs | `device-command-agent.ts`, `drive-mailbox.ts`, `validation-entrypoint.ts` |
+
+The generated `build-identity.json` artifact hash and the independently printed `S09A_VALIDATION_ARTIFACT_SHA256` matched exactly.
+
+### 0.4 iOS physical observations still required
 
 Before S09A may become EXECUTABLE, record exactly:
 
-- the freshly generated validation artifact SHA-256 and full `build-identity.json` from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
 - iPhone model;
 - iOS version;
 - iOS Obsidian version;
@@ -68,7 +83,7 @@ Before S09A may become EXECUTABLE, record exactly:
 
 No credential, token, authorization code, client secret, or other secret may be written into this contract or committed evidence.
 
-### 0.4 Fixed human-checkpoint sequence
+### 0.5 Fixed human-checkpoint sequence
 
 1. **Artifact identity / Windows engineering host** — build the validation artifact from exact implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`; required observation: complete `build-identity.json`, actual `main.js` SHA-256, and sourceCommit equality.
 2. **Windows installed runtime** — install/load that exact artifact in `D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b` under Obsidian `1.13.7`; required observation: validation build reports the exact source identity.
@@ -79,7 +94,7 @@ No credential, token, authorization code, client secret, or other secret may be 
 7. **Distinct-device/pairing comparison** — verify Windows and iOS product device identities are distinct and both bind to the same intended managed remote.
 8. **Terminal evidence** — record S09A PASS/FAIL/BLOCKED, checkpoint observations, artifact/device/run identities, and stop. Do not begin S09B.
 
-### 0.5 Writable-path allowlist for normal S09A execution
+### 0.6 Writable-path allowlist for normal S09A execution
 
 Normal S09A physical evidence work may modify only:
 

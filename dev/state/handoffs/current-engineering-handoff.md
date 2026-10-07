@@ -76,11 +76,23 @@ The exact human checkpoint order is now fixed:
 7. compare Windows/iOS product device identities for distinctness and verify both bind to the intended managed remote;
 8. record terminal S09A PASS/FAIL/BLOCKED evidence and stop before S09B.
 
+## S09A validation artifact preflight complete
+
+The bounded artifact-generation preflight completed successfully with exit code 0. Exact bound identity:
+
+- source commit: `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`;
+- validation `main.js` size: `920436` bytes;
+- validation `main.js` SHA-256: `602b40354f0c5a4ac9906ab4db22d76d71bea688581b3382d4609d0e29a51c76`;
+- manifest SHA-256: `f7ec45b74beb0e9edb041f17ae3af9e8f40b4cfd216ddbd3870adfdbd9d55ccc`;
+- current local artifact directory: `C:\temp-2dd7a670f212446995f7038b0eeb9132\.test-build\bvp-live-device\plugin`;
+- bundled test-platform inputs are limited to the device command agent, Drive mailbox, and validation entrypoint.
+
+The printed build identity and independently printed artifact SHA-256 agree exactly.
+
 ## S09A remains not executable
 
 Only these physical observations remain unbound:
 
-- exact validation artifact SHA-256/build identity produced from implementation source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f` for this S09A run;
 - exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity.
 
 No credential, token, authorization code, or secret may be recorded in these bindings.
@@ -98,6 +110,6 @@ No normal S09A execution change is authorized under `src/**`, `test-platform/**`
 
 ## Immediate next action
 
-Run the bounded Windows S09A physical-preflight artifact build from exact source `3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f`, record its generated `build-identity.json` and artifact SHA-256, and collect the exact iPhone model/iOS/Obsidian/product-device/vault observations. Then mark S09A `EXECUTABLE` and begin only the installed-runtime authentication/pairing baseline.
+Collect and bind the exact iPhone model, iOS version, Obsidian version, product logical device identity, and disposable S09A vault identity. The validation artifact is already built and bound. Then mark S09A `EXECUTABLE` and begin only the installed-runtime authentication/pairing baseline.
 
 Do not begin S09B. Do not begin Stage 3.
