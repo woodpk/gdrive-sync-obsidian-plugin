@@ -221,7 +221,7 @@ test("architecture guard source has one coherent terminal implementation", () =>
   const requiredSourceFragments = [
     "if ($root -notmatch '^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$' -or $root -match '(^|/)\\.\\.($|/)') {",
     "Production root '$productionRoot' overlaps test-platform root '$testPlatformRoot'.",
-    "Archive root '$archiveRoot' must be contained by active_dev root '$activeDevRoot'.",
+    "Archive root '$archiveRoot' must be outside and non-overlapping with active_dev root '$activeDevRoot'.",
     "if (-not ($productionForbiddenRoots -contains $testPlatformRoot)) {",
     "if (-not ($shippingForbiddenRoots -contains $testPlatformRoot)) {",
     "$entryWithoutExtension = $entry -replace '(?i)\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$', ''",

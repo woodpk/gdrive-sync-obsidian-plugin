@@ -7,6 +7,8 @@
 **Task type:** FINAL PRIMARY-STAGE INTEGRATION / VERIFICATION  
 **Primary work package:** BVP-S09 — Strategic Physical Coverage / Evidence Closure / Stage-3 Readiness
 
+Before execution, re-ground this preplanned contract against the current WS-07 architecture/decomposition, `dev/state/current-state.yaml`, the current repository, and the current external engineering protocol. Bind exact source/run/evidence coordinates before dispatch. This file is NOT executable until that rebind is complete.
+
 This is a complete prewritten final verification contract. It has no product-code repair authority and does not perform Stage 3.
 
 ## 1. Objective
