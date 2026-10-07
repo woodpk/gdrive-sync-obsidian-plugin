@@ -698,3 +698,103 @@ export function runArchitectureGuard(options: { readonly repoRoot: string; reado
     for (const file of listFiles(testRoot).filter((path) => path.toLowerCase().endsWith(".ps1"))) add("TEST_PLATFORM_POWERSHELL_PROHIBITED", repoRelative(repoRoot, file), "PowerShell scripts are prohibited beneath the authoritative test-platform root.");
     const activeDev = join(repoRoot, ...policy.activeDevRoot.split("/"));
     const authorityTerms = /\b(?:execute|executing|use|using|read|follow|prompt|task|authority|authoritative|governing|required input|source of truth|depend|depends|dependency)\b/i;
+    const historicalTerms = /\b(?:historical|non-authoritative|non authoritative|archived|must not|do not|excluded|exclude|ignore|superseded|provenance|no\s+(?:use|reliance|dependency|authority))\b/i;
+    const archiveReference = new RegExp(`(?:^|[\\s('\"\\]])(?:\\./)?${escapeRegex(normalizeRepoPath(policy.archiveRoot))}/[^\\s)'\"\\]]*`, "i");
+    for (const file of listFiles(activeDev).filter((path) => path.toLowerCase().endsWith(".md"))) {
+      const path = repoRelative(repoRoot, file);
+      for (const [index, line] of linesOf(readFileSync(file, "utf8")).entries()) if (archiveReference.test(line) && authorityTerms.test(line) && !historicalTerms.test(line)) add("ARCHIVE_USED_AS_CURRENT_AUTHORITY", path, `Line ${index + 1} treats authoritative archive root as current task/design/implementation authority.`);
+    }
+    if (changedPaths.length > 0 && changeClass === "ordinary") for (const raw of changedPaths) for (const piece of raw.split(/[,;\r\n]+/)) {
+      if (!piece.trim()) continue;
+      const changed = normalizeRepoPath(piece);
+      const frozen = policy.frozenSurfaces.find((surface) => changed === surface || changed.startsWith(surface + "/"));
+      if (frozen) add("FROZEN_SURFACE_CHANGED", changed, `Ordinary work changed supervisor-owned frozen surface '${frozen}'.`);
+    }
+  }
+  let output = "";
+  for (const violation of violations) output += `ARCH_GUARD_VIOLATION rule=${violation.rule} path=${violation.path} detail=${violation.detail}\n`;
+  output += violations.length > 0 ? `ARCH_GUARD_RESULT=FAIL violations=${violations.length}\n` : "ARCH_GUARD_RESULT=PASS violations=0\n";
+  return { exitCode: violations.length > 0 ? 1 : 0, output, violations };
+}
+
+function logicalLines(text: string | null, kind: "ps" | "ts"): string[] {
+  if (text === null) return [];
+  const result: string[] = [];
+  let inBlock = false;
+  let quote = "";
+  let here = "";
+  for (const raw of text.split(/\r?\n/)) {
+    const trimmed = raw.trim();
+    if (kind === "ps" && here) { if (trimmed) result.push(raw); if (trimmed === here + "@") here = ""; continue; }
+    let visible = "";
+    let i = 0;
+    while (i < raw.length) {
+      if (inBlock) { const end = kind === "ps" ? "#>" : "*/"; const close = raw.indexOf(end, i); if (close < 0) { i = raw.length; continue; } inBlock = false; i = close + 2; continue; }
+      const ch = raw[i];
+      if (quote) {
+        visible += ch;
+        const escape = kind === "ps" ? "`" : "\\";
+        if (ch === escape && i + 1 < raw.length) { visible += raw[i + 1]; i += 2; continue; }
+        if (ch === quote) { if (kind === "ps" && quote === "'" && i + 1 < raw.length && raw[i + 1] === "'") { visible += raw[i + 1]; i += 2; continue; } quote = ""; }
+        i += 1; continue;
+      }
+      if (kind === "ps" && ch === "@" && i + 1 < raw.length && (raw[i + 1] === "'" || raw[i + 1] === '"')) { here = raw[i + 1]; visible += raw.slice(i); i = raw.length; continue; }
+      const blockStart = kind === "ps" ? "<#" : "/*";
+      const lineStart = kind === "ps" ? "#" : "//";
+      if (raw.slice(i, i + 2) === blockStart) { inBlock = true; i += 2; continue; }
+      if (raw.slice(i, i + lineStart.length) === lineStart) break;
+      if ((kind === "ps" && (ch === "'" || ch === '"')) || (kind === "ts" && (ch === "'" || ch === '"' || ch === "`"))) quote = ch;
+      visible += ch; i += 1;
+    }
+    if (kind === "ps" || quote !== "`") quote = "";
+    if (visible.trim()) result.push(visible);
+  }
+  return result;
+}
+
+function countLoc(text: string | null, path: string): number {
+  return logicalLines(text, path.toLowerCase().endsWith(".ps1") || /\.ya?ml$/i.test(path) ? "ps" : "ts").length;
+}
+
+function resolveRelative(origin: string, specifier: string): string | null {
+  if (!specifier.startsWith(".")) return null;
+  const parts: string[] = [];
+  const base = normalizeRepoPath(origin).replace(/\/[^/]+$/, "");
+  for (const segment of (base + "/" + specifier).split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") { if (parts.length === 0) return null; parts.pop(); continue; }
+    parts.push(segment);
+  }
+  return parts.join("/");
+}
+
+function resolveProductionModule(origin: string, specifier: string, production: ReadonlySet<string>): string | null {
+  const target = resolveRelative(origin, specifier);
+  if (!target) return null;
+  const candidates = [target];
+  const extension = extname(target).toLowerCase();
+  if (!extension) candidates.push(target + ".ts", target + ".tsx", target + ".mts", target + ".cts", target + "/index.ts", target + "/index.tsx", target + "/index.mts", target + "/index.cts");
+  else if (extension === ".js") candidates.push(target.slice(0, -3) + ".ts", target.slice(0, -3) + ".tsx");
+  else if (extension === ".mjs") candidates.push(target.slice(0, -4) + ".mts");
+  else if (extension === ".cjs") candidates.push(target.slice(0, -4) + ".cts");
+  return candidates.find((candidate) => production.has(candidate)) ?? null;
+}
+
+function measureSnapshot(reader: SnapshotReader, policy: BoundaryPolicy): MetricsSnapshot {
+  const paths = [...new Set(reader.paths.map(normalizeRepoPath))].sort();
+  const productionFiles = paths.filter((path) => withinAny(path, policy.productionRoots) && tsExtensions.test(path));
+  const testFiles = paths.filter((path) => under(path, policy.testPlatformRoot) && tsExtensions.test(path));
+  const classificationErrors: string[] = [];
+  for (const path of paths.filter((path) => under(path, policy.testPlatformRoot) && /\.(?:js|jsx|mjs|cjs|py|sh)$/i.test(path))) classificationErrors.push("Unclassifiable active BVP executable source: " + path);
+  const productionSourceLogicalLoc = productionFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
+  const seam = new Set<string>();
+  for (const entry of policy.approvedProductionImports) {
+    const entryStem = entry.replace(/\.(?:ts|tsx|mts|cts)$/i, "");
+    const matches = productionFiles.filter((path) => { const stem = path.replace(/\.(?:ts|tsx|mts|cts)$/i, ""); return path === entry || stem === entryStem || stem === entryStem + "/index"; });
+    if (matches.length === 0) classificationErrors.push("Approved production seam entry is not a readable production TypeScript file: " + entry);
+    for (const path of matches) seam.add(path);
+  }
+  const productionSeamFiles = [...seam].sort();
+  const productionSeamLogicalLoc = productionSeamFiles.reduce((sum, path) => sum + countLoc(reader.read(path), path), 0);
+  const analysisInput = testFiles.map((path) => ({ path, text: reader.read(path) ?? "", mode: "source" as const }));
+  const analysis = createAnalysis(analysisInput);
