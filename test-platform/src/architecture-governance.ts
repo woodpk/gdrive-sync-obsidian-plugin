@@ -699,7 +699,7 @@ export function runArchitectureGuard(options: { readonly repoRoot: string; reado
     const activeDev = join(repoRoot, ...policy.activeDevRoot.split("/"));
     const authorityTerms = /\b(?:execute|executing|use|using|read|follow|prompt|task|authority|authoritative|governing|required input|source of truth|depend|depends|dependency)\b/i;
     const historicalTerms = /\b(?:historical|non-authoritative|non authoritative|archived|must not|do not|excluded|exclude|ignore|superseded|provenance|no\s+(?:use|reliance|dependency|authority))\b/i;
-    const archiveReference = new RegExp(`(?:^|[\\\\s('"\\\\]])(?:\\\\./)?${escapeRegex(normalizeRepoPath(policy.archiveRoot))}/[^\\\\s)'"\\\\]]*`, "i");
+    const archiveReference = new RegExp(`(?:^|[\\s('"\\]])(?:\\./)?${escapeRegex(normalizeRepoPath(policy.archiveRoot))}/[^\\s)'"\\]]*`, "i");
     for (const file of listFiles(activeDev).filter((path) => path.toLowerCase().endsWith(".md"))) {
       const path = repoRelative(repoRoot, file);
       for (const [index, line] of linesOf(readFileSync(file, "utf8")).entries()) if (archiveReference.test(line) && authorityTerms.test(line) && !historicalTerms.test(line)) add("ARCHIVE_USED_AS_CURRENT_AUTHORITY", path, `Line ${index + 1} treats authoritative archive root as current task/design/implementation authority.`);
