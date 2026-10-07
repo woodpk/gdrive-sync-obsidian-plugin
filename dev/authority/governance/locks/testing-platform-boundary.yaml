@@ -73,8 +73,7 @@ normal_scenario_change_surface:
 
 supervisor_owned_frozen_surfaces:
   - dev/authority/governance/locks/testing-platform-boundary.yaml
-  - dev/scripts/Test-TestingArchitectureGuard.ps1
-  - dev/scripts/Get-TestingArchitectureMetrics.ps1
+  - test-platform/src/architecture-governance.ts
   - phx-ci.json
   - Taskfile.phx-ci.yml
   - test-platform/src/repository-check.ts
