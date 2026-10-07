@@ -2,7 +2,7 @@
 
 ## Current state
 
-The completed automated testing platform remains anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3` with accepted full fresh PHX-CI run `38b52d07-dce9-4e2f-aa61-3fd7188703f7`.
+The completed automated testing platform remains anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`.
 
 The repository is in the separate canonical `dev/**` standardization migration. Product behavior and BVP architecture are not being reopened.
 
@@ -14,18 +14,29 @@ The repository is in the separate canonical `dev/**` standardization migration. 
 4. Phase 4 — canonical target-system/workstream/verification planning hierarchy.
 5. Phase 5 — canonical current state and concise handoff.
 6. Phase 6 — retired legacy agent/prompt hierarchies and retained only future S09 task contracts under WS-07.
-7. Phase 7 — moved all 105 historical PHX-CI run triples, without rewriting their Git blobs, into exact `dev/Test-Results/<runId>/` directories; retired lowercase `dev/test-results/`; removed redundant `dev/_ca-output.json`; and rebound PHX-CI history to `dev/Test-Results`.
+7. Phase 7 — canonicalized all 105 historical verification-result triples under exact `dev/Test-Results/<runId>/` directories and retired the old flat evidence surfaces.
+8. Phase 9 — audited active path references, preserved the remaining pre-standard development trees under the external archive, and removed `dev/archive/`, `dev/evidence/`, `dev/governance/`, and `dev/planning-and-building/` from active `dev/`.
 
-## Evidence model
+Phase 8 has **not** been executed and remains pending.
 
-- Current work-unit surface: `dev/_ca-output.md`
-- Historical PHX-CI runs: `dev/Test-Results/<runId>/result.md`, `result.json`, and `terminal.log`
-- Historical run count migrated in Phase 7: **105**
-- Historical evidence blobs rewritten during migration: **0**
-- The removed root `dev/_ca-output.json` was byte-identical to the canonical S08V result JSON for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`.
+## Canonical active dev root
+
+```text
+dev/
+  README.md
+  _ca-output.md
+  authority/
+  planning/
+  research/
+  state/
+  reviews/
+  scripts/
+  Test-Results/
+  scratch/
+```
 
 ## Immediate next action
 
-Execute standardization Phase 8: normalize `dev/scripts/` so obsolete selective/carry-forward/task-specific verification helpers are archived and repository validation logic does not operate as an independent authority outside PHX-CI.
+Execute Phase 8 strictly as plugin-repository housekeeping for `dev/scripts/`: classify the remaining scripts, archive obsolete historical helpers, and retain only scripts that belong in the canonical engineering-scripts directory.
 
-Do not begin S09 or Stage 3 as part of this migration. Final comprehensive PHX-CI verification remains reserved for the completed repository-wide standardization.
+No other repository is in scope for that work. Do not begin S09 or Stage 3 as part of this migration.
