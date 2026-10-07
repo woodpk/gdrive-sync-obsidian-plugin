@@ -56,7 +56,7 @@ The following controls are part of the target architecture, not optional process
 
 ### 4.2 Architecture Guard
 
-**BVP-GOV-002.** `dev/scripts/Test-TestingArchitectureGuard.ps1` MUST fail verification when any applicable condition occurs:
+**BVP-GOV-002.** The repository-controlled guard in `test-platform/src/architecture-governance.ts`, consumed by `test-platform/src/repository-check.ts` under PHX-CI, MUST fail verification when any applicable condition occurs:
 
 - production imports from `test-platform/**`;
 - shipping build includes test-platform code;
@@ -70,7 +70,7 @@ The following controls are part of the target architecture, not optional process
 
 ### 4.3 Complexity Metrics and Budgets
 
-**BVP-GOV-003.** `dev/scripts/Get-TestingArchitectureMetrics.ps1` MUST calculate and persist at least:
+**BVP-GOV-003.** The repository-controlled metrics implementation in `test-platform/src/architecture-governance.ts`, consumed by `test-platform/src/repository-check.ts` under PHX-CI, MUST calculate and persist at least:
 
 - production-only source LOC;
 - production code whose sole purpose is the BVP seam;
@@ -89,7 +89,7 @@ The following controls are part of the target architecture, not optional process
 - live-device agent/relay subset: **maximum 750 logical TypeScript source lines**;
 - individual ordinary declarative scenario: **target ≤120 logical lines; hard maximum 200 logical lines**;
 - scenario-specific PowerShell scripts: **0**;
-- BVP PowerShell verification/governance scripts: **maximum 4 scripts and 1,500 logical lines combined**;
+- BVP PowerShell operational/invocation scripts, if any: **maximum 4 scripts and 1,500 logical lines combined**; standalone PowerShell validation authority is prohibited.
 - scenario-specific production source files/classes/interfaces: **0**.
 
 Tests themselves are not constrained by these LOC budgets; correctness evidence must not be discouraged by a test-code ceiling.
