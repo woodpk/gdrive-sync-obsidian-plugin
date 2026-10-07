@@ -508,6 +508,20 @@ test("neutral-named BVP PowerShell cannot evade the script-count budget", () => 
   });
 });
 
+test("canonical Invoke-PHXCI operator scripts are excluded from BVP validation-script budgets", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/scripts/Invoke-PHXCI-RepositoryStandardization.ps1",
+      "$env:PHX_FRAMEWORK_ROOT = 'C:/runtime'\ntask ci\n",
+    );
+    const value = assertPass(runMetrics(root));
+    strictEqual(value.current.bvpPowerShellScriptCount, 0);
+    strictEqual(value.current.scenarioSpecificPowerShellCount, 0);
+    strictEqual(value.current.classificationErrors.length, 0);
+  });
+});
+
 test("unclassifiable active dev PowerShell fails closed", () => {
   withFixture((root) => {
     writeText(root, "dev/scripts/Unclassified.ps1", "Write-Output 'unknown purpose'\n");
