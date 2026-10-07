@@ -72,9 +72,9 @@ Remove the superseded internal validation harness from active authority and acti
 
 ### 4.2 Required End State
 
-- accepted BVP planning documents are active under `dev/planning-and-building/` and `dev/governance/`;
+- accepted BVP planning documents are active under `dev/planning/` and governance authority under `dev/authority/governance/`;
 - `DEC-301`–`DEC-310` are superseded rather than simultaneously active;
-- all old `dev/**` harness tasking/planning/evidence is moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/archive/legacy-validation-harness/**` according to the archive plan;
+- all old `dev/**` harness tasking/planning/evidence is moved beneath `archive/pre-standard-dev-layout-2026-10/DEV/**` according to the archive plan;
 - active project-state/handoff authority no longer points at the old harness;
 - `src/validation/**` legacy architecture and shipping validation UI/runtime integration are removed from active execution;
 - production synchronization behavior, general diagnostics, and useful non-harness tests remain intact;
@@ -368,7 +368,7 @@ A session may be split only if actual repository evidence shows the bounded unit
 
 The existing BVP-S01 through BVP-S09 specifications are **primary Stage-2A work packages**, not one-turn coding sessions. This document decomposes them into bounded child sessions sized for one coding-agent execution/review cycle while preserving the manual's minimum-sound high-level phase structure.
 
-The child task files live under `dev/agents/st2a/ph6/05-bvp/**`. Later child prompts are intentionally pre-generated as non-executable scope contracts; they must be repository-grounded and bound immediately before dispatch.
+Historical child task files were created under the pre-standard `dev/agents/**` hierarchy and are slated for external archival. This canonical file now contains the durable child-session decomposition. Any future durable task prompt, when genuinely required, belongs only under this workstream's optional `tasks/` directory and must be repository-grounded immediately before dispatch.
 
 ## 2. Verification Model
 
@@ -456,7 +456,7 @@ No primary stage is complete because all child agents report completion. The sta
 
 ## How to Use This Document
 
-BVP-S01 through BVP-S09 are **primary Stage-2A work packages**, not assumptions that one coding agent can complete an entire primary stage in one execution turn. The authoritative child-session decomposition is `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, with task files under `dev/agents/st2a/ph6/05-bvp/**`.
+BVP-S01 through BVP-S09 are **primary Stage-2A work packages**, not assumptions that one coding agent can complete an entire primary stage in one execution turn. The authoritative child-session decomposition is this file. Historical pre-standard task files are non-authoritative migration material; any future durable task prompt belongs only under this workstream's optional `tasks/` directory.
 
 Later child task files are pre-generated only as **PREPLANNED / NOT-YET-EXECUTABLE** scope contracts. In accordance with the governing construction manual, immediately before execution the supervisor MUST inspect the actual accepted repository, bind the exact predecessor SHA, confirm exact types/tests/current paths, set an exact writable-path allowlist, confirm the child still satisfies the session-size gate, and mark that child prompt EXECUTABLE.
 
@@ -466,10 +466,9 @@ Every dispatched child session MUST:
 - use no GitHub Actions;
 - receive no authority to expand its writable surface or classify extra files;
 - push its implementation branch and pass authoritative verification through the installed PHX-CI deployed-runtime operator front door before supervisor integration;
-- use PHX-CI canonical evidence in `dev/_ca-output.md`, `dev/_ca-output.json`, and `dev/Test-Results/`;
+- use `dev/_ca-output.md` for current work-unit evidence where required and `dev/Test-Results/<runId>/` for immutable historical PHX-CI execution evidence;
 - from BVP-S03 onward, pass architecture guard and metrics through the repository check executed by PHX-CI;
 - treat `archive/**` as historical/non-authoritative;
 - return BLOCKED rather than weakening boundaries, raising budgets, or editing unlisted paths.
 
 Each primary BVP stage also ends with a separate integrated PHX-CI acceptance task before the next primary stage begins.
-
