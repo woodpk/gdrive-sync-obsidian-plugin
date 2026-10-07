@@ -1,30 +1,43 @@
 STATUS: COMPLETE
 
-# Current work-unit evidence — S09A Windows authentication/pairing operator checkpoints
+# Current work-unit evidence — S09A Windows authentication/pairing baseline
 
-## Operator-reported actions
+## Result
+
+`WINDOWS_S09A_BASELINE: PASS`
+
+## Human checkpoints
 
 - Windows same-device Google authentication: COMPLETED / SUCCESS REPORTED
 - Validate and pair existing remote -> Pair: COMPLETED / SUCCESS REPORTED
 
 No OAuth credential, token, authorization code, or secret was captured in evidence.
 
-## Screenshot observation
+## Objective post-pair product state
 
-The supplied screenshot confirms:
+Correction to the prior evidence record: the supplied screenshot is the **BRAIN Google Drive Sync settings page**, not the Community plugins page.
 
-- disposable vault window: `bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b`;
-- Obsidian version: `1.13.7`;
-- BRAIN Google Drive Sync `0.1.18` is installed and enabled.
+Observed values:
 
-However, the screenshot is the Community plugins page. It does not display the product's Device identity, Vault identity, Managed remote, or First synchronization state.
+- Device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`
+- Vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`
+- Managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`
+- First synchronization: `preview/execute still required; automatic sync remains disabled`
 
-## Evidence classification
+The device, vault, and managed-remote identities match the exact bound S09A Windows coordinates.
 
-Authentication and pairing actions are recorded as completed **human checkpoints**.
+The first-sync state is expected at this checkpoint; S09A establishes installed-runtime authentication/pairing readiness and does not require synchronization execution.
 
-Objective post-pair product-state verification: PENDING.
+## Windows tranche conclusion
+
+Windows installation: PASS  
+Windows validation runtime load: PASS  
+Windows same-device authentication: PASS / operator checkpoint  
+Windows managed-remote pairing: PASS / operator checkpoint  
+Objective post-pair identity state: PASS
+
+The Windows S09A baseline is complete. Full S09A acceptance remains pending iOS evidence.
 
 ## Next action
 
-Open **Settings -> BRAIN Google Drive Sync** and capture the top product-state section showing Device identity, Vault identity, Managed remote, and First synchronization. Use those values to complete the Windows post-authentication/pairing baseline.
+Continue with the next independently meaningful Windows-only S09 physical evidence tranche using the same installed validation build. Do not reinstall or rebuild the artifact.

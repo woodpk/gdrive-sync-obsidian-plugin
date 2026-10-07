@@ -156,12 +156,23 @@ The operator reports:
 - Windows same-device Google authentication completed successfully;
 - `Validate and pair existing remote -> Pair` completed successfully.
 
-These are recorded as completed human checkpoints. They are **not yet the objective post-pair product-state proof** required to close the Windows baseline.
+These are recorded as completed human checkpoints.
 
-The screenshot supplied after pairing shows the correct disposable vault, Obsidian 1.13.7, and the enabled BRAIN Google Drive Sync 0.1.18 plugin, but it is the Community plugins page and does not expose Device identity, Vault identity, Managed remote, or First synchronization.
+## Windows objective post-pair product-state verification complete
+
+Correction: the screenshot supplied after pairing **is** the BRAIN Google Drive Sync settings page and does expose the required product state. It objectively shows:
+
+- Device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- Vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`;
+- Managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`;
+- First synchronization: `preview/execute still required; automatic sync remains disabled`.
+
+Those values match the bound Windows S09A identities exactly. The first-sync state is expected at this gate: S09A establishes install/authentication/pairing readiness and does not require first synchronization to have been executed.
+
+The **Windows S09A baseline is complete**. Full S09A acceptance remains pending the iOS tranche.
 
 ## Immediate next action
 
-Open **Settings -> BRAIN Google Drive Sync** and capture the top product-state section showing Device identity, Vault identity, Managed remote, and First synchronization. Verify those product-reported values before closing the Windows authentication/pairing baseline. Do not reinstall or rebuild the artifact.
+Continue with the next independently meaningful Windows-only S09 physical evidence tranche using this same validated installed build. Do not reinstall or rebuild the artifact. Do not claim full S09A acceptance until the iOS evidence is complete.
 
 Do not begin S09B. Do not begin Stage 3.

@@ -111,22 +111,22 @@ Runtime observation of `globalThis.__BRAIN_BVP_VALIDATION_BUILD__` returned:
 
 This proves the running Obsidian process loaded the validation artifact rather than merely having it present on disk. The Windows tranche advances to same-device authentication/pairing baseline.
 
-### 0.5C Windows authentication/pairing operator checkpoints — ACTIONS COMPLETE / OBJECTIVE STATE PENDING
+### 0.5C Windows authentication/pairing baseline — PASS
 
-The operator completed the supported Windows same-device Google authentication flow and reports authentication successful.
+The operator completed the supported Windows same-device Google authentication flow and reported authentication successful.
 
-The operator then selected **Validate and pair existing remote -> Pair** and reports pairing successful.
+The operator then selected **Validate and pair existing remote -> Pair** and reported pairing successful.
 
-These human actions are accepted as completed checkpoints. The Windows baseline is not yet closed because the required objective production-state observation remains pending.
+The post-pair screenshot is the **BRAIN Google Drive Sync settings page** and objectively records:
 
-Required next observation from **Settings -> BRAIN Google Drive Sync**:
+- Device identity: `device:8b7820faab2603b334a1c13d8c3bdba0`;
+- Vault identity: `vault:c321a8a0-f083-4528-a1c1-25e60ad558bb`;
+- Managed remote: `1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-`;
+- First synchronization: `preview/execute still required; automatic sync remains disabled`.
 
-- Device identity;
-- Vault identity;
-- Managed remote;
-- First synchronization.
+The observed device, vault, and managed-remote identities match the exact bound Windows S09A coordinates. The first-sync state is expected because this child proves install/authentication/pairing readiness and does not require synchronization execution.
 
-The post-pair screenshot currently on record shows only the Community plugins page and therefore does not prove those product-state values.
+**Windows S09A baseline verdict: PASS.** Full S09A acceptance remains pending iOS evidence.
 
 ### 0.5 iOS physical observations still required
 
