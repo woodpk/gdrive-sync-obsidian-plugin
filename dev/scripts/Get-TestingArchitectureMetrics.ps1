@@ -313,7 +313,7 @@ function Measure-Snapshot([string]$Sha, $Policy) {
     }
 
     $knownNonBvp = @('dev/scripts/Invoke-PhxCiS07ConsumerVerification.ps1')
-    $knownBvp = @('dev/scripts/Get-TestingArchitectureMetrics.ps1','dev/scripts/Test-TestingArchitectureGuard.ps1')
+    $knownBvp = @('dev/scripts/Get-TestingArchitectureMetrics.ps1','dev/scripts/Test-TestingArchitectureGuard.ps1','dev/scripts/Test-BvpProductionTestCarryForward.ps1','dev/scripts/Invoke-PHXCI-BvpFinalSelectiveVerification.ps1')
     $scriptPaths = [System.Collections.Generic.List[string]]::new()
     $scenarioPs = [System.Collections.Generic.List[string]]::new()
     foreach ($path in @($paths | Where-Object { $_ -match '(?i)^dev/scripts/.*\.ps1$' })) {
