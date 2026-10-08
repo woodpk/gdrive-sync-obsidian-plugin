@@ -16,7 +16,7 @@ Naming: PHX-CI operating scripts use `Invoke-PHXCI-<scope>.ps1` where applicable
 
 Generic BVP battery operators may live here when they only compile/invoke the canonical BVP implementation and record its returned evidence/exit status. They MUST NOT duplicate product synchronization policy or create a competing validation authority.
 
-Battery definitions, assertions, live capability mappings, checkpoint semantics, and evidence semantics remain under `test-platform/`.
+Battery registries and execution machinery remain under `test-platform/src/batteries/`; declarative live cases remain under `test-platform/scenarios/live/`; assertions, checkpoint semantics, and evidence semantics remain inside the BVP rather than the PowerShell operators.
 
 ### Live physical batteries
 
