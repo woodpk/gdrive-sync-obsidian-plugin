@@ -75,7 +75,7 @@ export interface CanonicalScenarioEvidence {
 }
 
 const SAFE_OBSERVATION_FIELDS = new Set([
-  "status", "exists", "side", "entityKind", "hash", "sizeBytes", "revision",
+  "kind", "status", "exists", "side", "entityKind", "hash", "sizeBytes", "revision",
   "remoteObjectId", "stateRevision", "changeCursor", "operationKinds",
   "knownDeviceIds", "operationCount", "baseCount", "mappingCount",
   "tombstoneCount", "classification", "reason", "planId", "schemaVersion",
