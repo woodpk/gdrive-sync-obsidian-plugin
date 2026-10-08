@@ -3,7 +3,15 @@ import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../live-device/live-scenario-executor";
+import type { ScenarioResumeEvidence } from "../scenario/scenario-checkpoint";
 import { getLiveBattery, listLiveBatteryNames } from "./battery-registry";
+
+const RESUME_EVIDENCE = new Set<ScenarioResumeEvidence>([
+  "human-confirmation",
+  "external-observation",
+  "production-result",
+  "canonical-evidence",
+]);
 
 function requiredArg(name: string): string {
   const index = process.argv.indexOf(name);
@@ -40,11 +48,32 @@ function deviceMapArg(): Readonly<Record<string, string>> {
   const entries = Object.entries(parsed);
   if (
     entries.length === 0 ||
-    entries.some(([label, deviceId]) => label.trim().length === 0 || typeof deviceId !== "string" || deviceId.trim().length === 0)
+    entries.some(([label, deviceId]) =>
+      label.trim().length === 0 ||
+      typeof deviceId !== "string" ||
+      deviceId.trim().length === 0)
   ) {
     throw new Error("--device-map-json must map non-empty labels to non-empty device IDs");
   }
   return Object.fromEntries(entries) as Readonly<Record<string, string>>;
+}
+
+function resumeEvidenceArg(): readonly ScenarioResumeEvidence[] {
+  const raw = optionalArg("--resume-evidence-json");
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("--resume-evidence-json must be valid JSON");
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some(item => typeof item !== "string" || !RESUME_EVIDENCE.has(item as ScenarioResumeEvidence))
+  ) {
+    throw new Error("--resume-evidence-json must be an array of supported evidence tokens");
+  }
+  return [...new Set(parsed as ScenarioResumeEvidence[])].sort();
 }
 
 async function persistResult(path: string, value: unknown): Promise<void> {
@@ -62,30 +91,46 @@ async function main(): Promise<void> {
     );
   }
 
+  const suppliedDevices = deviceMapArg();
+  const missing = battery.requiredDeviceLabels.filter(label => !suppliedDevices[label]);
+  if (missing.length > 0) {
+    throw new Error(
+      `battery '${batteryName}' requires device mapping(s): ${missing.join(", ")}`,
+    );
+  }
+  const deviceIds = Object.fromEntries(
+    battery.requiredDeviceLabels.map(label => [label, suppliedDevices[label]!]),
+  );
+
   const scenario = battery.createScenario();
   const executor = await createLiveScenarioExecutor({
     scenario,
     runId: requiredArg("--run-id"),
-    deviceIds: deviceMapArg(),
+    deviceIds,
     relayRoot: requiredArg("--relay-root"),
     checkpointFile: requiredArg("--checkpoint-file"),
+    checkpoints: battery.checkpoints,
+    resumeEvidence: resumeEvidenceArg(),
     expectedValidationSourceCommit: requiredArg("--validation-source-commit"),
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
     pollIntervalMs: positiveIntegerArg("--poll-interval-ms", 250),
   });
 
   const result = await new DeterministicScenarioRunner({}, executor).run(scenario);
+  const checkpoint = executor.pendingCheckpoint();
   const envelope = {
     battery: {
       name: battery.name,
       description: battery.description,
+      requiredDeviceLabels: battery.requiredDeviceLabels,
     },
+    ...(checkpoint ? { checkpoint } : {}),
     result,
   };
 
   await persistResult(resultFile, envelope);
   console.log(JSON.stringify(envelope, null, 2));
-  process.exitCode = result.status === "completed" ? 0 : 1;
+  process.exitCode = result.status === "completed" ? 0 : checkpoint ? 3 : 1;
 }
 
 main().catch(async error => {
