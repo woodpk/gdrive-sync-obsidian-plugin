@@ -29,6 +29,7 @@ const device = id<"DeviceIdentity">("device:folder-production") as DeviceIdentit
 const generation = id<"SemanticStateGeneration">("generation:folder-production");
 const target = path("new-empty");
 const reserved = remoteId("remote:folder:reserved:production");
+const contentParent = remoteId("remote:content-domain-parent");
 const managedRemote: ManagedRemoteIdentity = { rootId: remoteId("root:folder-production"), vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
 const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
 
@@ -81,7 +82,7 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
   const mutation: ReliableRemoteMutationPort = {
     async reserveFileCreateIdentity() { throw new Error("file reservation must not be used"); },
     async reserveFolderCreateIdentity(_root, intentId, targetPath) {
-      return { ok: true, value: { kind: "reserved-folder-create", intentId, reservedRemoteObjectId: reserved, path: targetPath } };
+      return { ok: true, value: { kind: "reserved-folder-create", intentId, reservedRemoteObjectId: reserved, path: targetPath, parentRemoteObjectId: contentParent } };
     },
     async createReserved(identity) {
       assert.equal(identity.kind, "reserved-folder-create");
@@ -94,7 +95,7 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
   };
   const recovery: RemoteFolderCreateRecoveryReadPort = {
     async observeFolderCreateRecovery(descriptor) {
-      return { status: "folder", targetPath: descriptor.targetPath, pathComparisonKey: descriptor.pathAuthority.pathComparisonKey, remoteObjectId: reserved, parentRemoteObjectId: managedRemote.rootId };
+      return { status: "folder", targetPath: descriptor.targetPath, pathComparisonKey: descriptor.pathAuthority.pathComparisonKey, remoteObjectId: reserved, parentRemoteObjectId: contentParent };
     },
   };
   const legacy = {
@@ -112,5 +113,11 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
   if (result.status !== "durable-verified-success") return;
   assert.equal(result.receipt.resultingRemoteObjectId, reserved);
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.descriptor.kind, "remote-folder-create");
+  const recorded = authority.value.operationIntents[0]?.effects[0]?.descriptor;
+  if (recorded?.kind === "remote-folder-create") {
+    assert.equal(recorded.parentRemoteObjectId, contentParent);
+    assert.notEqual(recorded.parentRemoteObjectId, managedRemote.rootId);
+    assert.equal(recorded.remoteMutation.parentRemoteObjectId, contentParent);
+  }
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
 });
