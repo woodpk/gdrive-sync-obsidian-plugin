@@ -92,8 +92,64 @@ test("reserved folder creation dispatches only inside the configured managed roo
     intentId: "intent:1",
     reservedRemoteObjectId: "reserved-folder",
     path: "sample",
+    parentRemoteObjectId: "validation-content-parent",
   } as never);
   strictEqual(outcome.status, "verified-effect");
   strictEqual(observedParentRoot, configured.rootId);
   strictEqual(dispatchCount, 1);
+});
+
+test("new reserved folder identity carries an observed content-domain parent, not the managed root", async () => {
+  const configured = { rootId: "validation-root", vaultIdentity: "vault:validation", protocolVersion: "1" } as unknown as ManagedRemoteIdentity;
+  const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
+  const seams = adapter as unknown as Record<string, unknown>;
+  seams["validateManagedRoot"] = async () => ({ ok: true, value: { status: "valid", identity: configured } });
+  seams["resolveUniqueParent"] = async (rootId: string, target: string) => {
+    strictEqual(rootId, configured.rootId);
+    strictEqual(target, "top-level");
+    return { ok: true, value: "content-domain-parent" };
+  };
+  seams["generateId"] = async () => ({ ok: true, value: "reserved-new-folder" });
+  const reserved = await adapter.reserveFolderCreateIdentity(configured, "intent:new" as never, "top-level" as never);
+  strictEqual(reserved.ok, true);
+  if (reserved.ok) {
+    strictEqual(reserved.value.parentRemoteObjectId, "content-domain-parent");
+    strictEqual(reserved.value.reservedRemoteObjectId, "reserved-new-folder");
+  }
+});
+
+test("new reserved folder fails closed when its physical parent cannot be proven", async () => {
+  const configured = { rootId: "validation-root", vaultIdentity: "vault:validation", protocolVersion: "1" } as unknown as ManagedRemoteIdentity;
+  const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
+  const seams = adapter as unknown as Record<string, unknown>;
+  seams["validateManagedRoot"] = async () => ({ ok: true, value: { status: "valid", identity: configured } });
+  seams["resolveUniqueParent"] = async () => ({ ok: true, value: undefined });
+  seams["generateId"] = async () => { throw new Error("no ID may be reserved when parent is missing"); };
+  const result = await adapter.reserveFolderCreateIdentity(configured, "intent:new" as never, "top-level" as never);
+  strictEqual(result.ok, false);
+  if (!result.ok) strictEqual(result.signal.kind, "recovery-required");
+});
+
+test("read-only legacy top-level recovery verifies the configured domain parent, never an arbitrary parent", async () => {
+  const configured = { rootId: "validation-root", vaultIdentity: "vault:validation", protocolVersion: "1" } as unknown as ManagedRemoteIdentity;
+  const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
+  const seams = adapter as unknown as Record<string, unknown>;
+  seams["guardPairedAccount"] = async () => ({ ok: true, value: undefined });
+  seams["getFile"] = async () => ({ ok: true, value: { id: "reserved-legacy", name: "top-level", mimeType: "application/vnd.google-apps.folder", parents: ["content-domain-parent"], trashed: false } });
+  seams["rootForFile"] = async () => ({ ok: true, value: configured.rootId });
+  seams["domainRoots"] = async () => ({ ok: true, value: { content: { id: "content-domain-parent" }, config: { id: "config-domain-parent" } } });
+  seams["logicalPathForFile"] = async () => ({ ok: true, value: "top-level" });
+  const descriptor = {
+    kind: "remote-folder-create", targetSide: "remote", mutationKind: "create", intentId: "intent:legacy",
+    targetPath: "top-level", parentRemoteObjectId: configured.rootId,
+    pathAuthority: { generation: "semantic:0", targetPath: "top-level", parentPath: "", pathComparisonKey: "top-level", expectedTarget: "absent" },
+    remoteMutation: { kind: "reserved-folder-create", intentId: "intent:legacy", path: "top-level", reservedRemoteObjectId: "reserved-legacy" },
+  } as unknown as Parameters<GoogleDriveAdapter["observeFolderCreateRecovery"]>[0];
+  const observed = await adapter.observeFolderCreateRecovery(descriptor);
+  strictEqual(observed.status, "folder");
+  if (observed.status !== "folder") return;
+  strictEqual(observed.parentRemoteObjectId, "content-domain-parent");
+  strictEqual(observed.verifiedLegacyManagedRootParentId, configured.rootId);
+  const { verifyRemoteFolderCreate } = await import("../../../src/contracts");
+  strictEqual(verifyRemoteFolderCreate(descriptor, observed).status, "verified-effect");
 });
