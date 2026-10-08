@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert/strict";
 import { test } from "node:test";
 import { GoogleDriveAdapter } from "../../../src/drive/google-drive-port";
 import type { ManagedRemoteIdentity } from "../../../src/contracts/google-drive";
+import { verifyRemoteFolderCreate } from "../../../src/contracts";
 
 test("durable folder recovery checks the configured vault root even when two managed roots coexist", async () => {
   const configured = {
@@ -150,6 +151,5 @@ test("read-only legacy top-level recovery verifies the configured domain parent,
   if (observed.status !== "folder") return;
   strictEqual(observed.parentRemoteObjectId, "content-domain-parent");
   strictEqual(observed.verifiedLegacyManagedRootParentId, configured.rootId);
-  const { verifyRemoteFolderCreate } = await import("../../../src/contracts");
   strictEqual(verifyRemoteFolderCreate(descriptor, observed).status, "verified-effect");
 });
