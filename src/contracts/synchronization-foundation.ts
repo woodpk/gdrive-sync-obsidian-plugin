@@ -198,6 +198,8 @@ export type RemoteMutationIdentity =
       readonly intentId: MutationIntentId;
       readonly reservedRemoteObjectId: RemoteObjectId;
       readonly path: VaultPath;
+      /** Exact remotely observed physical parent. Absent only in pre-fix persisted intents. */
+      readonly parentRemoteObjectId?: RemoteObjectId;
     }
   | {
       readonly kind: "existing-file-content-update";
