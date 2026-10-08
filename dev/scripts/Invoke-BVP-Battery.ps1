@@ -9,15 +9,17 @@ param(
   [string]$ValidationSourceCommit,
   [int]$ResultTimeoutMs = 60000,
   [int]$PollIntervalMs = 250,
-  [string]$RunId
+  [string]$RunId,
+  [string[]]$ResumeEvidence = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
+$RunIdWasProvided = -not [string]::IsNullOrWhiteSpace($RunId)
 
-if ([string]::IsNullOrWhiteSpace($RunId)) {
+if (-not $RunIdWasProvided) {
   $Stamp = [DateTimeOffset]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
   $Suffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)
   $RunId = "bvp-$Battery-$Stamp-$Suffix"
@@ -43,7 +45,7 @@ try {
     throw "Unable to read repository status."
   }
   if ($InitialStatus.Count -gt 0) {
-    throw "Working tree must be clean before a BVP battery run so the result upload cannot include unrelated files."
+    throw "Working tree must be clean before a BVP battery run so result persistence cannot include unrelated files."
   }
 
   $BranchName = (& git branch --show-current).Trim()
@@ -66,18 +68,42 @@ try {
 
 $ResultDir = Join-Path $RepoRoot "dev/Test-Results/$RunId"
 $RelativeResultDir = "dev/Test-Results/$RunId"
-if (Test-Path -LiteralPath $ResultDir) {
-  throw "Result package already exists: $ResultDir"
+$CheckpointFile = Join-Path $ResultDir "checkpoint.json"
+$IsResume = Test-Path -LiteralPath $ResultDir -PathType Container
+
+if ($IsResume) {
+  if (-not $RunIdWasProvided) {
+    throw "Generated RunId collided with an existing result package: $RunId"
+  }
+  if (-not (Test-Path -LiteralPath $CheckpointFile -PathType Leaf)) {
+    throw "Existing result package has no checkpoint to resume: $ResultDir"
+  }
+  if ($ResumeEvidence.Count -eq 0) {
+    throw "A checkpoint resume requires -ResumeEvidence."
+  }
+} else {
+  if ($ResumeEvidence.Count -gt 0) {
+    throw "-ResumeEvidence may only be supplied when resuming an existing checkpointed RunId."
+  }
+  New-Item -ItemType Directory -Path $ResultDir -Force | Out-Null
 }
 
-New-Item -ItemType Directory -Path $ResultDir -Force | Out-Null
+$AttemptsDir = Join-Path $ResultDir "attempts"
+New-Item -ItemType Directory -Path $AttemptsDir -Force | Out-Null
+$ExistingAttempts = @(Get-ChildItem -LiteralPath $AttemptsDir -Directory -Filter "attempt-*" -ErrorAction SilentlyContinue)
+$AttemptNumber = $ExistingAttempts.Count + 1
+$AttemptName = "attempt-{0:D3}" -f $AttemptNumber
+$AttemptDir = Join-Path $AttemptsDir $AttemptName
+New-Item -ItemType Directory -Path $AttemptDir -Force | Out-Null
 
-$TranscriptPath = Join-Path $ResultDir "terminal.log"
-$ResultJsonPath = Join-Path $ResultDir "result.json"
+$TranscriptPath = Join-Path $AttemptDir "terminal.log"
+$AttemptResultJsonPath = Join-Path $AttemptDir "result.json"
+$ResumeEvidencePath = Join-Path $AttemptDir "resume-evidence.json"
+$CanonicalResultJsonPath = Join-Path $ResultDir "result.json"
 $ResultMarkdownPath = Join-Path $ResultDir "result.md"
-$CheckpointFile = Join-Path $ResultDir "checkpoint.json"
 $CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/src/batteries/run-live-battery.js"
 $DeviceMapJson = $DeviceMap | ConvertTo-Json -Compress
+$ResumeEvidenceJson = @($ResumeEvidence) | ConvertTo-Json -Compress -AsArray
 
 $CommandRecords = [System.Collections.Generic.List[object]]::new()
 $BatteryExitCode = 0
@@ -85,6 +111,21 @@ $FailureMessage = $null
 $UploadExitCode = 0
 
 [System.IO.File]::WriteAllText($TranscriptPath, "", [System.Text.UTF8Encoding]::new($false))
+
+if ($IsResume) {
+  $ResumeRecord = [ordered]@{
+    schemaVersion = 1
+    runId = $RunId
+    attempt = $AttemptNumber
+    suppliedEvidence = @($ResumeEvidence)
+    recordedAtUtc = [DateTimeOffset]::UtcNow.ToString("o")
+  }
+  [System.IO.File]::WriteAllText(
+    $ResumeEvidencePath,
+    (($ResumeRecord | ConvertTo-Json -Depth 10) + [Environment]::NewLine),
+    [System.Text.UTF8Encoding]::new($false)
+  )
+}
 
 function Write-TranscriptLine {
   param([AllowEmptyString()][string]$Line)
@@ -139,7 +180,7 @@ function Write-FallbackResult {
   }
 
   [System.IO.File]::WriteAllText(
-    $ResultJsonPath,
+    $AttemptResultJsonPath,
     (($Payload | ConvertTo-Json -Depth 20) + [Environment]::NewLine),
     [System.Text.UTF8Encoding]::new($false)
   )
@@ -147,11 +188,12 @@ function Write-FallbackResult {
 
 function Write-ResultMarkdown {
   try {
-    $Envelope = Get-Content -LiteralPath $ResultJsonPath -Raw | ConvertFrom-Json -Depth 100
+    $Envelope = Get-Content -LiteralPath $CanonicalResultJsonPath -Raw | ConvertFrom-Json -Depth 100
   } catch {
     $script:FailureMessage = "Unable to parse result.json: $($_.Exception.Message)"
     Write-FallbackResult -Classification "battery-result-json-invalid"
-    $Envelope = Get-Content -LiteralPath $ResultJsonPath -Raw | ConvertFrom-Json -Depth 100
+    Copy-Item -LiteralPath $AttemptResultJsonPath -Destination $CanonicalResultJsonPath -Force
+    $Envelope = Get-Content -LiteralPath $CanonicalResultJsonPath -Raw | ConvertFrom-Json -Depth 100
   }
 
   $Result = $Envelope.result
@@ -176,16 +218,18 @@ function Write-ResultMarkdown {
     ""
   }
 
+  $PackageStatus = if ($BatteryExitCode -eq 0) {
+    "PASS"
+  } elseif ($BatteryExitCode -eq 3 -and $Envelope.PSObject.Properties.Name -contains "checkpoint") {
+    "CHECKPOINT REQUIRED"
+  } else {
+    "FAIL"
+  }
+
   $Rows = ($CommandRecords | ForEach-Object {
     $SafeCommand = $_.Command.Replace("|", "\|")
     "| $($_.Label) | $SafeCommand | $($_.ExitCode) |"
   }) -join [Environment]::NewLine
-
-  $CheckpointLine = if (Test-Path -LiteralPath $CheckpointFile -PathType Leaf) {
-    "- checkpoint.json — persisted BVP checkpoint/resume state."
-  } else {
-    "- checkpoint.json — not produced by this battery."
-  }
 
   $ClassificationLine = if ([string]::IsNullOrWhiteSpace($Classification)) {
     ""
@@ -199,31 +243,53 @@ function Write-ResultMarkdown {
     "- Canonical BVP evidence: $HumanEvidence"
   }
 
+  $CheckpointSection = ""
+  if ($Envelope.PSObject.Properties.Name -contains "checkpoint" -and $null -ne $Envelope.checkpoint) {
+    $Required = @($Envelope.checkpoint.requiredEvidence) -join ", "
+    $CheckpointSection = @"
+
+## Pending human checkpoint
+
+- Device: $($Envelope.checkpoint.device)
+- Action: $($Envelope.checkpoint.action)
+- Stop condition: $($Envelope.checkpoint.stopCondition)
+- Required resume evidence: $Required
+- Next safe action: $($Envelope.checkpoint.nextSafeAction)
+
+Resume this exact Run ID after the physical checkpoint is complete. Do not start a replacement run.
+"@
+  }
+
   $Markdown = @"
 # BVP Battery Result
 
 - Battery: $Battery
 - Run ID: $RunId
+- Attempt: $AttemptNumber
+- Package status: **$PackageStatus**
 - Scenario: $ScenarioId
 - BVP status: **$Status**
 - Battery process exit code: $BatteryExitCode
 $ClassificationLine
 - Validation source commit: $ValidationSourceCommit
-- Controller source HEAD: $InputHead
+- Controller source HEAD at attempt start: $InputHead
 - Controller branch: $BranchName
 - Relay root: $RelayRoot
 - Generated UTC: $([DateTimeOffset]::UtcNow.ToString("o"))
 - GitHub Actions used: **No**
 $HumanLine
+$CheckpointSection
 
 ## Result package
 
-- result.json — complete machine-readable battery/BVP result.
-- result.md — this human-readable run summary.
-- terminal.log — complete terminal output for compilation and BVP execution.
-$CheckpointLine
+- result.json — current complete machine-readable battery/BVP result.
+- result.md — this current human-readable run summary.
+- checkpoint.json — present when a human checkpoint has been issued; retained as checkpoint history after resume.
+- attempts/$AttemptName/result.json — machine-readable output from this attempt.
+- attempts/$AttemptName/terminal.log — complete compile/BVP terminal output from this attempt.
+- attempts/$AttemptName/resume-evidence.json — present only on resume attempts and records the supplied bounded evidence tokens.
 
-## Executed commands
+## Executed commands for this attempt
 
 | Step | Command | Exit code |
 | --- | --- | ---: |
@@ -231,7 +297,7 @@ $Rows
 
 ## Persistence
 
-This directory is the complete persisted BVP battery result package. After the package is finalized, the operator script commits only this directory and pushes that commit to the current branch on `origin`.
+This directory is the complete persisted BVP battery result package. After each attempt, the operator stages only this run directory, commits it, and pushes that commit to the current branch on origin.
 "@
 
   [System.IO.File]::WriteAllText(
@@ -246,6 +312,8 @@ try {
   Write-TranscriptLine "BVP BATTERY RUN"
   Write-TranscriptLine "Battery: $Battery"
   Write-TranscriptLine "Run ID: $RunId"
+  Write-TranscriptLine "Attempt: $AttemptNumber"
+  Write-TranscriptLine "Resume: $IsResume"
   Write-TranscriptLine "Controller branch: $BranchName"
   Write-TranscriptLine "Controller HEAD: $InputHead"
   Write-TranscriptLine "Validation source: $ValidationSourceCommit"
@@ -272,7 +340,8 @@ try {
       "--device-map-json", $DeviceMapJson,
       "--relay-root", $RelayRoot,
       "--checkpoint-file", $CheckpointFile,
-      "--result-file", $ResultJsonPath,
+      "--result-file", $AttemptResultJsonPath,
+      "--resume-evidence-json", $ResumeEvidenceJson,
       "--validation-source-commit", $ValidationSourceCommit,
       "--run-id", $RunId,
       "--result-timeout-ms", $ResultTimeoutMs.ToString(),
@@ -287,9 +356,10 @@ try {
   Write-TranscriptLine ""
   Write-TranscriptLine "ERROR: $FailureMessage"
 } finally {
-  if (-not (Test-Path -LiteralPath $ResultJsonPath -PathType Leaf)) {
+  if (-not (Test-Path -LiteralPath $AttemptResultJsonPath -PathType Leaf)) {
     Write-FallbackResult -Classification "battery-result-not-produced"
   }
+  Copy-Item -LiteralPath $AttemptResultJsonPath -Destination $CanonicalResultJsonPath -Force
   Write-ResultMarkdown
   Pop-Location
 }
@@ -313,7 +383,8 @@ try {
     throw "Unable to inspect staged BVP result files."
   }
 
-  & git commit -m "test(bvp): record $Battery result $RunId"
+  $CommitVerb = if ($IsResume) { "resume" } else { "record" }
+  & git commit -m "test(bvp): $CommitVerb $Battery result $RunId attempt $AttemptNumber"
   if ($LASTEXITCODE -ne 0) {
     throw "git commit failed for BVP result package."
   }
