@@ -3,6 +3,7 @@ import { s09aWindowsInitialSyncScenario } from "../../scenarios/live/s09a-window
 import { s09aDualDeviceReadinessScenario } from "../../scenarios/live/s09a-dual-device-readiness";
 import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirectional-sync";
 import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
+import { s09cIosInterruptionResumeScenario } from "../../scenarios/live/s09c-ios-interruption-resume";
 import { s09cInterruptionResumeScenario } from "../../scenarios/live/s09c-interruption-resume";
 import { s09cOfflineReconnectScenario } from "../../scenarios/live/s09c-offline-reconnect";
 import { s09dResourceObservationScenario } from "../../scenarios/live/s09d-resource-observation";
@@ -61,6 +62,21 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     description: "Prove one representative concurrent cross-device clean text merge and final convergence.",
     requiredDeviceLabels: dual,
     createScenario: () => s09bCleanTextMergeScenario,
+  },
+  "s09c-ios-interruption-resume": {
+    name: "s09c-ios-interruption-resume",
+    description: "Physically terminate/reopen the real iOS Obsidian app and prove pending-edit preservation and safe cross-device reconciliation.",
+    requiredDeviceLabels: dual,
+    checkpoints: {
+      "ios-physical-app-restart": {
+        device: "ios",
+        action: "On the actual iPhone, fully leave/terminate the Obsidian application using the platform UI, confirm the app was closed, reopen the same disposable validation vault, and wait for its BVP validation runtime to load. Do not manually synchronize; do not assume continued background operation.",
+        stopCondition: "The actual iOS app lifecycle transition occurred and the same vault/runtime is active after reopen with no manual sync.",
+        requiredEvidence: ["human-confirmation", "external-observation"],
+        nextSafeAction: "Resume this same BVP Run ID to observe the pending edit and reconcile through the real production path.",
+      },
+    },
+    createScenario: () => s09cIosInterruptionResumeScenario,
   },
   "s09c-offline-reconnect": {
     name: "s09c-offline-reconnect",
