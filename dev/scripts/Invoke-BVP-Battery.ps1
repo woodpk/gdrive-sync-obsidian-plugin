@@ -10,7 +10,8 @@ param(
   [int]$ResultTimeoutMs = 60000,
   [int]$PollIntervalMs = 250,
   [string]$RunId,
-  [string[]]$ResumeEvidence = @()
+  [string[]]$ResumeEvidence = @(),
+  [string]$ResumeEvidenceNote
 )
 
 Set-StrictMode -Version Latest
@@ -81,9 +82,15 @@ if ($IsResume) {
   if ($ResumeEvidence.Count -eq 0) {
     throw "A checkpoint resume requires -ResumeEvidence."
   }
+  if ($ResumeEvidence -contains "human-confirmation" -and [string]::IsNullOrWhiteSpace($ResumeEvidenceNote)) {
+    throw "A checkpoint resume with human-confirmation requires -ResumeEvidenceNote describing the observed physical action/outcome. Do not include credentials or tokens."
+  }
+  if ($ResumeEvidenceNote.Length -gt 2000) {
+    throw "ResumeEvidenceNote must be 2000 characters or fewer."
+  }
 } else {
-  if ($ResumeEvidence.Count -gt 0) {
-    throw "-ResumeEvidence may only be supplied when resuming an existing checkpointed RunId."
+  if ($ResumeEvidence.Count -gt 0 -or -not [string]::IsNullOrWhiteSpace($ResumeEvidenceNote)) {
+    throw "Resume evidence may only be supplied when resuming an existing checkpointed RunId."
   }
   New-Item -ItemType Directory -Path $ResultDir -Force | Out-Null
 }
@@ -118,6 +125,7 @@ if ($IsResume) {
     runId = $RunId
     attempt = $AttemptNumber
     suppliedEvidence = @($ResumeEvidence)
+    observationNote = $ResumeEvidenceNote
     recordedAtUtc = [DateTimeOffset]::UtcNow.ToString("o")
   }
   [System.IO.File]::WriteAllText(
