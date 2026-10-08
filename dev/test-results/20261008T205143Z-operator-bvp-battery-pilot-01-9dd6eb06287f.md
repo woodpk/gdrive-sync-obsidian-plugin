@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-battery-pilot-01
+- Source build HEAD requested: 9dd6eb06287fc4aa7b05718e927caaf6efa81dea
+- Verification checkout HEAD: 9dd6eb06287fc4aa7b05718e927caaf6efa81dea
+- Evidence publication target: origin/bvp-battery-pilot-01
