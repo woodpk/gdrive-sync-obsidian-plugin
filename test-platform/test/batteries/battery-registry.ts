@@ -1,3 +1,5 @@
+import { s09aIosInitialSyncScenario } from "../../scenarios/live/s09a-ios-initial-sync";
+import { s09aWindowsInitialSyncScenario } from "../../scenarios/live/s09a-windows-initial-sync";
 import { s09aDualDeviceReadinessScenario } from "../../scenarios/live/s09a-dual-device-readiness";
 import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirectional-sync";
 import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
@@ -34,6 +36,18 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     description: "Require both installed validation participants to answer through the live path in idle-ready production state.",
     requiredDeviceLabels: dual,
     createScenario: () => s09aDualDeviceReadinessScenario,
+  },
+  "s09a-ios-initial-sync": {
+    name: "s09a-ios-initial-sync",
+    description: "Exercise an authenticated paired iOS participant through the real initial synchronization path.",
+    requiredDeviceLabels: ["ios"],
+    createScenario: () => s09aIosInitialSyncScenario,
+  },
+  "s09a-windows-initial-sync": {
+    name: "s09a-windows-initial-sync",
+    description: "Exercise an authenticated paired Windows participant through the real initial synchronization path.",
+    requiredDeviceLabels: ["windows"],
+    createScenario: () => s09aWindowsInitialSyncScenario,
   },
   "s09b-bidirectional-sync": {
     name: "s09b-bidirectional-sync",
