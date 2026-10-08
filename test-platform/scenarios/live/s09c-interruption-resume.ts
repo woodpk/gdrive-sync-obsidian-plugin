@@ -13,6 +13,8 @@ export const s09cInterruptionResumeScenario = defineScenario({
     { id: "sync-base-windows", kind: "production", operation: "synchronize", device: "windows" },
     { id: "sync-base-ios", kind: "production", operation: "synchronize", device: "ios" },
     { id: "edit-before-restart", kind: "fixture", operation: "put-local-file", device: "windows", path: "interruption-resume.md", content: { encoding: "utf8", value: "# BVP interruption/resume\n\nVersion: changed before application restart\n" } },
+    { id: "observe-pending-restart-edit", kind: "observe", subject: "local-entry", device: "windows", path: "interruption-resume.md", captureAs: "pending-restart-edit" },
+    { id: "assert-pending-restart-edit", kind: "assert", assertion: "field-equals", observationRef: "pending-restart-edit", field: "hash", expected: "8cecad3c924b8e7fe6656981512f308188a52cf385532b7195fba29c04ebd362" },
     { id: "physical-runtime-restart", kind: "checkpoint", operation: "restart-device", device: "windows", checkpointRef: "windows-physical-runtime-restart" },
     { id: "observe-after-restart", kind: "observe", subject: "local-entry", device: "windows", path: "interruption-resume.md", captureAs: "after-restart" },
     { id: "assert-change-survived", kind: "assert", assertion: "field-equals", observationRef: "after-restart", field: "hash", expected: "8cecad3c924b8e7fe6656981512f308188a52cf385532b7195fba29c04ebd362" },
