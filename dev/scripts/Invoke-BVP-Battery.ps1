@@ -108,7 +108,7 @@ $AttemptResultJsonPath = Join-Path $AttemptDir "result.json"
 $ResumeEvidencePath = Join-Path $AttemptDir "resume-evidence.json"
 $CanonicalResultJsonPath = Join-Path $ResultDir "result.json"
 $ResultMarkdownPath = Join-Path $ResultDir "result.md"
-$CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/src/batteries/run-live-battery.js"
+$CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/test/batteries/run-live-battery.js"
 $DeviceMapJson = $DeviceMap | ConvertTo-Json -Compress
 $ResumeEvidenceJson = @($ResumeEvidence) | ConvertTo-Json -Compress -AsArray
 
