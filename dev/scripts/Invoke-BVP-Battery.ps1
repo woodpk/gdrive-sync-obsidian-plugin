@@ -11,7 +11,7 @@ param(
   [int]$PollIntervalMs = 250,
   [string]$RunId,
   [string[]]$ResumeEvidence = @(),
-  [string]$ResumeEvidenceNote
+  [string]$ResumeEvidenceNote = ""
 )
 
 Set-StrictMode -Version Latest
