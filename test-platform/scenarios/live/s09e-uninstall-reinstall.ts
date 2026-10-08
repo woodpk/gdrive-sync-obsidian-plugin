@@ -9,6 +9,8 @@ export const s09eUninstallReinstallScenario = defineScenario({
     { id: "seed-reinstall-preservation", kind: "fixture", operation: "put-local-file", device: "windows", path: "lifecycle/plugin-reinstall.md", content: { encoding: "utf8", value: "# BVP plugin reinstall lifecycle\n\nThis managed file must survive uninstall and reinstall.\n" } },
     { id: "sync-reinstall-base-windows", kind: "production", operation: "synchronize", device: "windows", captureAs: "windows-reinstall-base" },
     { id: "sync-reinstall-base-ios", kind: "production", operation: "synchronize", device: "ios", captureAs: "ios-reinstall-base" },
+    { id: "observe-ios-before-uninstall", kind: "observe", subject: "local-entry", device: "ios", path: "lifecycle/plugin-reinstall.md", captureAs: "ios-before-uninstall" },
+    { id: "assert-ios-before-uninstall", kind: "assert", assertion: "field-equals", observationRef: "ios-before-uninstall", field: "hash", expected: "ea7b20af00704bfd1b7e94b7b25b4098132ead8ae4124c5b66fbacb20450d803" },
     { id: "physical-plugin-uninstall-reinstall", kind: "checkpoint", operation: "restart-device", device: "windows", checkpointRef: "windows-plugin-uninstall-reinstall" },
     { id: "observe-reinstall-file-after", kind: "observe", subject: "local-entry", device: "windows", path: "lifecycle/plugin-reinstall.md", captureAs: "windows-reinstall-file" },
     { id: "assert-reinstall-file-after", kind: "assert", assertion: "field-equals", observationRef: "windows-reinstall-file", field: "hash", expected: "ea7b20af00704bfd1b7e94b7b25b4098132ead8ae4124c5b66fbacb20450d803" },
