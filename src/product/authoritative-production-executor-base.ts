@@ -268,9 +268,13 @@ async function remoteSource(legacy: ProductSynchronizationExecutor, version: Ver
   if (!read.ok || (version.content?.hash && read.value.evidence.hash !== version.content.hash)) return undefined;
   return { content: read.value.content, evidence: read.value.evidence };
 }
-async function folderParentId(operation: ExecutablePlannedOperation, stateStore: SynchronizationStateStore, context: StateLoadContext, root: ManagedRemoteIdentity): Promise<RemoteObjectId | undefined> {
+async function folderParentId(operation: ExecutablePlannedOperation, stateStore: SynchronizationStateStore, context: StateLoadContext, root: ManagedRemoteIdentity, recoveryReadPort?: RemoteFolderCreateRecoveryReadPort): Promise<RemoteObjectId | undefined> {
   const parent = parentPath(operation.path);
-  if (String(parent) === "") return root.rootId;
+  if (String(parent) === "" || String(parent) === "__brain_sync_portable_config__") {
+    if (!recoveryReadPort?.resolveRootDomainParentIdentity) return undefined;
+    const resolved = await recoveryReadPort.resolveRootDomainParentIdentity(root, operation.path);
+    return resolved.status === "resolved" ? resolved.parentRemoteObjectId : undefined;
+  }
   const loaded = await stateStore.load(context);
   if (loaded.status !== "trusted") return undefined;
   const matches = loaded.state.remoteMappings.filter(value => value.path === parent && value.entityKind === "folder");
@@ -329,7 +333,7 @@ async function prepareIntent(
     if (version.entityKind === "folder") {
       const reserved = await remote.reserveFolderCreateIdentity(root, intentId, operation.path);
       if (!reserved.ok) return { status: "blocked", reason: `REMOTE folder identity reservation failed: ${reserved.signal.kind}` };
-      const parentRemoteObjectId = await folderParentId(operation, stateStore, context, root);
+      const parentRemoteObjectId = await folderParentId(operation, stateStore, context, root, deps.remoteFolderCreateRecoveryReadPort);
       if (!parentRemoteObjectId) return { status: "blocked", reason: "REMOTE folder create lacks unique durable parent identity" };
       add("remote-folder", {
         kind: "remote-folder-create",

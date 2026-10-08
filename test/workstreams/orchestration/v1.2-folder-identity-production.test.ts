@@ -30,6 +30,7 @@ const generation = id<"SemanticStateGeneration">("generation:folder-production")
 const target = path("new-empty");
 const reserved = remoteId("remote:folder:reserved:production");
 const managedRemote: ManagedRemoteIdentity = { rootId: remoteId("root:folder-production"), vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
+const contentDomainId = remoteId("root:folder-production:content");
 const context: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
 
 class Authority implements SynchronizationAuthorityStoreV1_1 {
@@ -93,8 +94,14 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
     async trashExisting() { throw new Error("not used"); },
   };
   const recovery: RemoteFolderCreateRecoveryReadPort = {
+    async resolveRootDomainParentIdentity(root, targetPath) {
+      assert.equal(root.rootId, managedRemote.rootId);
+      assert.equal(targetPath, target);
+      return { status: "resolved", parentRemoteObjectId: contentDomainId };
+    },
     async observeFolderCreateRecovery(descriptor) {
-      return { status: "folder", targetPath: descriptor.targetPath, pathComparisonKey: descriptor.pathAuthority.pathComparisonKey, remoteObjectId: reserved, parentRemoteObjectId: managedRemote.rootId };
+      assert.equal(descriptor.parentRemoteObjectId, contentDomainId);
+      return { status: "folder", targetPath: descriptor.targetPath, pathComparisonKey: descriptor.pathAuthority.pathComparisonKey, remoteObjectId: reserved, parentRemoteObjectId: contentDomainId };
     },
   };
   const legacy = {

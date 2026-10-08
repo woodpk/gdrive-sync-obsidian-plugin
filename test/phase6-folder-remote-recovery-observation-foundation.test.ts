@@ -201,3 +201,18 @@ test("v1.2 T10: intended parent in descriptor is expectation, not observed proof
   assert.equal(result.status, "outcome-unknown");
   assert.equal(reader.seenDescriptors.length, 1);
 });
+
+test("legacy managed-root parent proof permits only verified real domain parent", async () => {
+  const value = { ...descriptor(), targetPath: path("top-level"), pathAuthority: { ...descriptor().pathAuthority, targetPath: path("top-level"), parentPath: path(""), pathComparisonKey: "top-level" }, parentRemoteObjectId: remoteId("legacy-managed-root"), remoteMutation: { ...descriptor().remoteMutation, path: path("top-level") } };
+  const correct = {
+    status: "folder" as const, targetPath: value.targetPath, pathComparisonKey: "top-level",
+    remoteObjectId: value.remoteMutation.reservedRemoteObjectId,
+    parentRemoteObjectId: remoteId("real-content-root"),
+    legacyRootParentProof: { managedRootId: value.parentRemoteObjectId, domainParentRemoteObjectId: remoteId("real-content-root") },
+  };
+  const { verifyRemoteFolderCreate } = await import("../src/contracts");
+  assert.equal(verifyRemoteFolderCreate(value, correct).status, "verified-effect");
+  assert.equal(verifyRemoteFolderCreate(value, { ...correct, legacyRootParentProof: undefined }).status, "conflict-preserved");
+  assert.equal(verifyRemoteFolderCreate(value, { ...correct, legacyRootParentProof: { ...correct.legacyRootParentProof, domainParentRemoteObjectId: remoteId("other-parent") } }).status, "conflict-preserved");
+  assert.equal(verifyRemoteFolderCreate({ ...value, pathAuthority: { ...value.pathAuthority, parentPath: path("nested") } }, correct).status, "conflict-preserved");
+});

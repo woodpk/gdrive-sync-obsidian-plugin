@@ -9,6 +9,7 @@ import type {
   SemanticStateGeneration,
   VaultPath,
 } from "./common";
+import type { ManagedRemoteIdentity } from "./google-drive";
 import {
   restartRecoveryDirective,
   type CanonicalFileContentProof,
@@ -259,6 +260,8 @@ export type RemoteFolderCreateObservation =
       readonly pathComparisonKey: string;
       readonly remoteObjectId: RemoteObjectId;
       readonly parentRemoteObjectId: RemoteObjectId;
+      /** Read-only proof for legacy top-level descriptors with managed-root rather than domain-root parent IDs. */
+      readonly legacyRootParentProof?: { readonly managedRootId: RemoteObjectId; readonly domainParentRemoteObjectId: RemoteObjectId };
     }
   | {
       readonly status: "occupied";
@@ -290,6 +293,11 @@ export type RemoteFolderCreateObservation =
  * `outcome-unknown` without redispatching merely because the pre-crash response was lost.
  */
 export interface RemoteFolderCreateRecoveryReadPort {
+  /** Read-only parent resolution for top-level folder creates; absent capability fails closed. */
+  resolveRootDomainParentIdentity?(root: ManagedRemoteIdentity, path: VaultPath): Promise<
+    | { readonly status: "resolved"; readonly parentRemoteObjectId: RemoteObjectId }
+    | { readonly status: "unavailable"; readonly reason: string }
+  >;
   observeFolderCreateRecovery(
     descriptor: RemoteFolderCreatePhysicalMutationDescriptor,
     cancellation?: SynchronizationCancellationSignal,
@@ -387,8 +395,14 @@ export function verifyRemoteFolderCreate(
   if (observation.status === "occupied") {
     return { status: "conflict-preserved", reason: "remote-folder-logical-path-occupied-by-non-authoritative-object" };
   }
+  const legacyRootParentVerified = observation.status === "folder"
+    && observation.legacyRootParentProof?.managedRootId === descriptor.parentRemoteObjectId
+    && observation.legacyRootParentProof?.domainParentRemoteObjectId === observation.parentRemoteObjectId
+    && observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId
+    && (String(descriptor.pathAuthority.parentPath) === ""
+      || String(descriptor.pathAuthority.parentPath) === "__brain_sync_portable_config__");
   if (observation.remoteObjectId !== reservedRemoteObjectId
-    || observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId) {
+    || (observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId && !legacyRootParentVerified)) {
     return { status: "conflict-preserved", reason: "remote-folder-identity-or-parent-mismatch" };
   }
   return {
