@@ -11,6 +11,7 @@ import {
   operationalFailureFromDriveSignalV1_3,
   type DriveResult,
   type DriveSignal,
+  type ManagedRemoteIdentity,
 } from "../../../src/contracts/google-drive";
 import type { RemoteMutationIdentity } from "../../../src/contracts/synchronization-foundation";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../../../src/drive/auth";
@@ -55,6 +56,12 @@ function adapter(handler: (url: string, init?: PortableRequestInit) => Promise<D
     new GoogleOAuthSession({ clientId: "c", redirectUri: "https://cb" }, secrets),
     new StubTransport(handler),
     secrets,
+    undefined,
+    () => ({
+      rootId: ro("root"),
+      vaultIdentity: contractId<"VaultIdentity">("vault-1"),
+      protocolVersion: contractId<"ProtocolVersion">("1"),
+    } as ManagedRemoteIdentity),
   );
 }
 
