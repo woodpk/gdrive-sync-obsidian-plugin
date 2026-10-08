@@ -1,4 +1,5 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { createWriteStream } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -39,25 +40,38 @@ async function main(): Promise<void> {
 
   const compiledTestRoot = resolve(__dirname, "..");
   const testPaths = battery.testFiles.map(file => resolve(compiledTestRoot, file));
+  await mkdir(dirname(tapFile), { recursive: true });
   const started = performance.now();
-  const child = spawnSync(
-    process.execPath,
-    ["--test", "--test-reporter=tap", ...testPaths],
-    {
+  const outcome = await new Promise<{ exitCode: number; signal: string | null; error?: string }>((resolveRun, rejectRun) => {
+    const tap = createWriteStream(tapFile, { encoding: "utf8" });
+    const child = spawn(process.execPath, ["--test", "--test-reporter=tap", ...testPaths], {
       cwd: process.cwd(),
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    },
-  );
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let launchError: Error | undefined;
+    tap.on("error", error => {
+      child.kill();
+      rejectRun(error);
+    });
+    child.stdout.on("data", (chunk: Buffer) => {
+      process.stdout.write(chunk);
+      if (!tap.write(chunk)) {
+        child.stdout.pause();
+        tap.once("drain", () => child.stdout.resume());
+      }
+    });
+    child.stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+    child.on("error", error => { launchError = error; });
+    child.on("close", (code, signal) => {
+      tap.end(() => resolveRun({
+        exitCode: code ?? 1,
+        signal,
+        ...(launchError ? { error: launchError.message } : {}),
+      }));
+    });
+  });
   const durationMs = Math.round(performance.now() - started);
-  const stdout = child.stdout ?? "";
-  const stderr = child.stderr ?? "";
-  await persist(tapFile, stdout);
-
-  if (stdout) process.stdout.write(stdout);
-  if (stderr) process.stderr.write(stderr);
-
-  const exitCode = child.status ?? (child.error ? 1 : 0);
+  const { exitCode } = outcome;
   const envelope = {
     battery: {
       name: battery.name,
@@ -69,8 +83,8 @@ async function main(): Promise<void> {
       status: exitCode === 0 ? "completed" : "failed",
       exitCode,
       durationMs,
-      ...(child.signal ? { signal: child.signal } : {}),
-      ...(child.error ? { error: child.error.message } : {}),
+      ...(outcome.signal ? { signal: outcome.signal } : {}),
+      ...(outcome.error ? { error: outcome.error } : {}),
     },
   };
 
