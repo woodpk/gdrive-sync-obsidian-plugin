@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { createScenarioCheckpoint, decodeScenarioCheckpoint, encodeScenarioCheckpoint, validateScenarioCheckpointForResume, type ScenarioCheckpoint, type ScenarioResumeEvidence } from "../scenario/scenario-checkpoint";
 import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition, ScenarioStep } from "../scenario/scenario-contract";
-import { assertScenarioObservation } from "../scenario/scenario-evidence";
+import { assertScenarioObservation, summarizeScenarioProductionValue } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
 
@@ -35,7 +35,7 @@ async function withAuthorityLock<T>(path:string,action:()=>Promise<T>):Promise<T
 const checkpointKey=(step:ScenarioCheckpointStep):string=>step.operation==="capture"?step.checkpointId:step.checkpointRef??step.id;
 const stepDevice=(step:ScenarioStep):string|undefined=>"device" in step&&typeof step.device==="string"?step.device:undefined;
 const commandCount=(step:ScenarioStep):number=>
-  step.kind==="fixture"&&((step.operation==="put-local-file"&&step.content.encoding==="utf8")||step.operation==="remove-local")?1:
+  step.kind==="fixture"&&((step.operation==="put-local-file"&&step.content.encoding==="utf8")||step.operation==="put-local-pattern"||step.operation==="remove-local")?1:
   step.kind==="production"&&(step.operation==="synchronize"||step.operation==="reconcile")?2:
   step.kind==="production"&&step.operation!=="automatic-sync"?1:
   step.kind==="external-state"&&step.transition==="request-cancellation"&&!step.boundary?1:
@@ -145,6 +145,8 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
       else if(step.kind==="fixture"&&step.operation==="put-local-file"&&step.content.encoding==="utf8"){
         const r=await send(step,context,{kind:"fixture-put",path:step.path,content:{type:"text",text:step.content.value}}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
+      }else if(step.kind==="fixture"&&step.operation==="put-local-pattern"){
+        const r=await send(step,context,{kind:"fixture-put",path:step.path,content:{type:"pattern",byteLength:step.byteLength,seed:step.seed}}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
       }else if(step.kind==="fixture"&&step.operation==="remove-local"){
         const r=await send(step,context,{kind:"fixture-remove",path:step.path}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
       }else if(step.kind==="production"&&step.operation==="execute-reviewed-plan"){
@@ -165,7 +167,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       }else if(step.kind==="observe"&&step.subject==="device-state"){
         const r=await send(step,context,{kind:"observe-product"}),f=transportFailure(r);result=f??((r as DeviceCommandResult).status==="completed"?{status:"completed",value:(r as DeviceCommandResult).productStatus}:resultOutcome(r as DeviceCommandResult));
       }else if(step.kind==="observe"&&(step.subject==="production-plan"||step.subject==="production-result")){
-        const value=context.readCapture(step.inputRef);result=value===undefined?fail("blocked","missing-required-result",step.inputRef):{status:"completed",value};
+        const value=context.readCapture(step.inputRef);result=value===undefined?fail("blocked","missing-required-result",step.inputRef):{status:"completed",value:summarizeScenarioProductionValue(value)};
       }else result=fail("unsupported","live-capability-unsupported",step.kind);
       return remember(context.stepIndex,step,result);
     },
