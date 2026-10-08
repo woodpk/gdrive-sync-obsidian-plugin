@@ -11,3 +11,10 @@ BVP architecture guard and metrics logic is not implemented here. It lives in `t
 Authority status: scripts are executable tooling, not governing product or validation authority.
 
 Naming: PHX-CI operating scripts use `Invoke-PHXCI-<scope>.ps1` where applicable. Other permitted engineering scripts use clear verb-noun names consistent with repository conventions.
+
+## BVP battery operators
+
+Generic BVP battery operating scripts may live here when they only compile/invoke the canonical BVP implementation and record its returned evidence/exit status. They MUST NOT encode scenario-specific correctness rules or create a competing validation authority.
+
+Battery definitions, assertions, and validation semantics remain under `test-platform/`. The generic operator entrypoint is `Invoke-BVP-Battery.ps1`.
+
