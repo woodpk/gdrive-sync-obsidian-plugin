@@ -149,3 +149,47 @@ test("folder create: empty folder lifecycle uses structural proof and still requ
   assert.equal(folderCreateEligibleForAuthoritativeCommit(applied, { status: "converged", generation: generation("semantic:folder:next"), baseFingerprint: id<"BaseFingerprint">("base:folder") as never }), true);
   assert.equal("intendedContent" in descriptor, false);
 });
+
+test("folder create: legacy top-level root parent reconciles only with exact observed domain-root proof", () => {
+  const descriptor = remoteDescriptor();
+  const observed = {
+    status: "folder" as const,
+    targetPath: descriptor.targetPath,
+    pathComparisonKey: descriptor.pathAuthority.pathComparisonKey,
+    remoteObjectId: descriptor.remoteMutation.reservedRemoteObjectId,
+    parentRemoteObjectId: remoteId("folder:actual-content-domain-parent"),
+    verifiedLegacyManagedRootParentId: descriptor.parentRemoteObjectId,
+  };
+  assert.equal(verifyRemoteFolderCreate(descriptor, observed).status, "verified-effect");
+  assert.equal(verifyRemoteFolderCreate(descriptor, {
+    ...observed, verifiedLegacyManagedRootParentId: remoteId("folder:other-root"),
+  }).status, "conflict-preserved");
+  assert.equal(verifyRemoteFolderCreate(descriptor, {
+    ...observed, verifiedLegacyManagedRootParentId: undefined,
+  }).status, "conflict-preserved");
+  assert.equal(verifyRemoteFolderCreate(descriptor, {
+    ...observed, remoteObjectId: remoteId("folder:other-reserved"),
+  }).status, "conflict-preserved");
+});
+
+test("folder create: newly persisted physical parent cannot use legacy-root compatibility", () => {
+  const old = remoteDescriptor();
+  const newParent = remoteId("folder:actual-content-domain-parent");
+  const descriptor: RemoteFolderCreatePhysicalMutationDescriptor = {
+    ...old,
+    parentRemoteObjectId: newParent,
+    remoteMutation: { ...old.remoteMutation, parentRemoteObjectId: newParent },
+  };
+  assert.equal(folderCreateDescriptorIsSelfConsistent(descriptor), true);
+  assert.equal(verifyRemoteFolderCreate(descriptor, {
+    status: "folder",
+    targetPath: descriptor.targetPath,
+    pathComparisonKey: descriptor.pathAuthority.pathComparisonKey,
+    remoteObjectId: descriptor.remoteMutation.reservedRemoteObjectId,
+    parentRemoteObjectId: remoteId("folder:unexpected-parent"),
+    verifiedLegacyManagedRootParentId: newParent,
+  }).status, "conflict-preserved");
+  assert.equal(folderCreateDescriptorIsSelfConsistent({
+    ...descriptor, parentRemoteObjectId: remoteId("folder:wrong-persisted-parent"),
+  }), false);
+});
