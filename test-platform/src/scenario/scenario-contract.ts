@@ -13,7 +13,6 @@ export interface ScenarioTraceability {
 
 export type ScenarioExpectedOutcome =
   | { readonly status: "success" }
-  | { readonly status: "blocked-or-failed" }
   | { readonly status: "blocked" | "failed"; readonly classification: string };
 
 export type ScenarioFixtureContent =
@@ -23,8 +22,7 @@ export type ScenarioFixtureContent =
 type Step<T> = { readonly id: string; readonly expect?: ScenarioExpectedOutcome } & T;
 
 export type ScenarioFixtureStep = Step<
-  | { readonly kind: "fixture"; readonly operation: "put-local-file"; readonly device: string; readonly path: string; readonly content: ScenarioFixtureContent }
-  | { readonly kind: "fixture"; readonly operation: "put-local-pattern"; readonly device: string; readonly path: string; readonly byteLength: number; readonly seed: string }
+  | { readonly kind: "fixture"; readonly operation: "put-local-file"; readonly device: string; readonly path: string; readonly content: ScenarioFixtureContent } | { readonly kind: "fixture"; readonly operation: "put-local-pattern"; readonly device: string; readonly path: string; readonly byteLength: number; readonly seed: string }
   | { readonly kind: "fixture"; readonly operation: "put-local-folder"; readonly device: string; readonly path: string }
   | { readonly kind: "fixture"; readonly operation: "put-remote-file"; readonly path: string; readonly content: ScenarioFixtureContent }
   | { readonly kind: "fixture"; readonly operation: "put-remote-folder"; readonly path: string }
@@ -70,10 +68,7 @@ export type ScenarioLiteral = string | number | boolean | null | readonly string
 export type ScenarioObservationField =
   | "kind" | "status" | "hash" | "sizeBytes" | "remoteObjectId" | "revision" | "entityKind"
   | "stateRevision" | "changeCursor" | "operationKinds" | "knownDeviceIds"
-  | "operationCount" | "baseCount" | "mappingCount" | "tombstoneCount"
-  | "terminal" | "productionRunId" | "trigger" | "executionDisposition"
-  | "globalExecutionGate" | "recoveryCheckpointRequired"
-  | "requiredEffectsCommittedAndVerified" | "committedOperationCount" | "skippedOperationCount";
+  | "operationCount" | "baseCount" | "mappingCount" | "tombstoneCount";
 export type ScenarioAssertionStep = Step<
   | { readonly kind: "assert"; readonly assertion: "equals" | "not-equals"; readonly observationRef: string; readonly expected: ScenarioLiteral }
   | { readonly kind: "assert"; readonly assertion: "status"; readonly observationRef: string; readonly expectedStatus: string }
@@ -101,8 +96,7 @@ type RecordValue = Record<string, unknown>;
 type StepSchema = { readonly discriminator: string; readonly required: readonly string[]; readonly allowed: readonly string[] };
 
 const STEP_SCHEMAS: Readonly<Record<string, StepSchema>> = {
-  "fixture:put-local-file": { discriminator: "operation", required: ["device", "path", "content"], allowed: ["device", "path", "content"] },
-  "fixture:put-local-pattern": { discriminator: "operation", required: ["device", "path", "byteLength", "seed"], allowed: ["device", "path", "byteLength", "seed"] },
+  "fixture:put-local-file": { discriminator: "operation", required: ["device", "path", "content"], allowed: ["device", "path", "content"] }, "fixture:put-local-pattern": { discriminator: "operation", required: ["device", "path", "byteLength", "seed"], allowed: ["device", "path", "byteLength", "seed"] },
   "fixture:put-local-folder": { discriminator: "operation", required: ["device", "path"], allowed: ["device", "path"] },
   "fixture:put-remote-file": { discriminator: "operation", required: ["path", "content"], allowed: ["path", "content"] },
   "fixture:put-remote-folder": { discriminator: "operation", required: ["path"], allowed: ["path"] },
@@ -161,15 +155,11 @@ function validateStep(step: unknown, index: number, issues: string[]): void {
   for (const field of schema.required) if (step[field] === undefined || (typeof step[field] === "string" && !text(step[field]))) issues.push(`${at}.${field} is required`);
   if (step.expect !== undefined) {
     const expect = step.expect;
-    if (!isRecord(expect) || Object.keys(expect).some(field => !["status", "classification"].includes(field)) || (expect.status !== "success" && expect.status !== "blocked-or-failed" && expect.status !== "blocked" && expect.status !== "failed")) issues.push(`${at}.expect is invalid`);
+    if (!isRecord(expect) || Object.keys(expect).some(field => !["status", "classification"].includes(field)) || (expect.status !== "success" && expect.status !== "blocked" && expect.status !== "failed")) issues.push(`${at}.expect is invalid`);
     else if ((expect.status === "blocked" || expect.status === "failed") && !text(expect.classification)) issues.push(`${at}.expect ${expect.status} requires classification`);
-    else if ((expect.status === "success" || expect.status === "blocked-or-failed") && expect.classification !== undefined) issues.push(`${at}.expect ${expect.status} cannot carry classification`);
+    else if (expect.status === "success" && expect.classification !== undefined) issues.push(`${at}.expect success cannot carry classification`);
   }
-  if (step.kind === "fixture" && step.operation === "put-local-pattern") {
-    if (typeof step.byteLength !== "number" || !Number.isSafeInteger(step.byteLength) || step.byteLength <= 0 || step.byteLength > 33_554_432) issues.push(`${at}.byteLength must be an integer from 1 through 33554432`);
-    if (!text(step.seed) || step.seed.length > 256) issues.push(`${at}.seed is invalid`);
-  }
-  if (step.kind === "fixture" && (step.operation === "put-local-file" || step.operation === "put-remote-file")) {
+  if (step.kind === "fixture" && step.operation === "put-local-pattern" && (typeof step.byteLength !== "number" || !Number.isSafeInteger(step.byteLength) || step.byteLength <= 0 || step.byteLength > 33_554_432 || !text(step.seed) || step.seed.length > 256)) issues.push(`${at} pattern fixture is invalid`); if (step.kind === "fixture" && (step.operation === "put-local-file" || step.operation === "put-remote-file")) {
     const content = step.content;
     if (!isRecord(content) || (content.encoding === "utf8" ? typeof content.value !== "string" : content.encoding === "bytes" ? !Array.isArray(content.value) || content.value.some(value => typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 255) : true)) issues.push(`${at}.content is invalid`);
   }
