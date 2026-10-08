@@ -259,6 +259,8 @@ export type RemoteFolderCreateObservation =
       readonly pathComparisonKey: string;
       readonly remoteObjectId: RemoteObjectId;
       readonly parentRemoteObjectId: RemoteObjectId;
+      /** Read-only proof for a legacy top-level intent that recorded the managed root instead of its physical domain parent. */
+      readonly verifiedLegacyManagedRootParentId?: RemoteObjectId;
     }
   | {
       readonly status: "occupied";
@@ -324,7 +326,9 @@ export function folderCreateDescriptorIsSelfConsistent(descriptor: FolderCreateP
   if (descriptor.targetPath !== descriptor.pathAuthority.targetPath) return false;
   if (descriptor.kind === "remote-folder-create") {
     return descriptor.intentId === descriptor.remoteMutation.intentId
-      && descriptor.targetPath === descriptor.remoteMutation.path;
+      && descriptor.targetPath === descriptor.remoteMutation.path
+      && (descriptor.remoteMutation.parentRemoteObjectId === undefined
+        || descriptor.parentRemoteObjectId === descriptor.remoteMutation.parentRemoteObjectId);
   }
   return true;
 }
@@ -387,8 +391,10 @@ export function verifyRemoteFolderCreate(
   if (observation.status === "occupied") {
     return { status: "conflict-preserved", reason: "remote-folder-logical-path-occupied-by-non-authoritative-object" };
   }
+  const legacyTopLevelParentProven = descriptor.remoteMutation.parentRemoteObjectId === undefined
+    && observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
   if (observation.remoteObjectId !== reservedRemoteObjectId
-    || observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId) {
+    || (observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId && !legacyTopLevelParentProven)) {
     return { status: "conflict-preserved", reason: "remote-folder-identity-or-parent-mismatch" };
   }
   return {
