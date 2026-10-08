@@ -20,6 +20,7 @@ const EXPECTED_BATTERIES = [
   "s09d-resource-observation",
   "s09d-unicode-path-roundtrip",
   "s09e-auth-revocation-restore",
+  "s09e-device-deauthorize-relink",
   "s09e-plugin-disable-reenable",
   "s09e-uninstall-reinstall",
   "windows-live-smoke",
@@ -60,6 +61,7 @@ test("every compiled live scenario module is represented by one registered batte
     "s09d-resource-observation",
     "s09d-unicode-path-roundtrip",
     "s09e-auth-revocation-restore",
+    "s09e-device-deauthorize-relink",
     "s09e-plugin-disable-reenable",
     "s09e-uninstall-reinstall",
     "windows-live-smoke",
@@ -73,6 +75,7 @@ test("checkpoint batteries bind every declared checkpoint to explicit operator i
     "s09c-offline-reconnect",
     "s09d-resource-observation",
     "s09e-auth-revocation-restore",
+    "s09e-device-deauthorize-relink",
     "s09e-plugin-disable-reenable",
     "s09e-uninstall-reinstall",
   ]) {
