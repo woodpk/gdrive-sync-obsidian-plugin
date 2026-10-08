@@ -53,14 +53,21 @@ async function main(): Promise<void> {
       child.kill();
       rejectRun(error);
     });
-    child.stdout.on("data", (chunk: Buffer) => {
+    const stdout = child.stdout;
+    const stderr = child.stderr;
+    if (!stdout || !stderr) {
+      child.kill();
+      rejectRun(new Error("deterministic battery subprocess has no output streams"));
+      return;
+    }
+    stdout.on("data", (chunk: Buffer) => {
       process.stdout.write(chunk);
       if (!tap.write(chunk)) {
-        child.stdout.pause();
-        tap.once("drain", () => child.stdout.resume());
+        stdout.pause();
+        tap.once("drain", () => stdout.resume());
       }
     });
-    child.stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+    stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
     child.on("error", error => { launchError = error; });
     child.on("close", (code, signal) => {
       tap.end(() => resolveRun({
