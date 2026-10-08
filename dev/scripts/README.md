@@ -34,6 +34,7 @@ Registered live batteries currently include:
 - `s09b-clean-text-merge`
 - `s09c-offline-reconnect`
 - `s09c-interruption-resume`
+- `s09c-ios-interruption-resume`
 - `s09d-unicode-path-roundtrip`
 - `s09d-large-transfer`
 - `s09d-resource-observation`
