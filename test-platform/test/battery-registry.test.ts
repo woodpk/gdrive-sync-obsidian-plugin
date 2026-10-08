@@ -16,6 +16,7 @@ const EXPECTED_BATTERIES = [
   "s09c-interruption-resume",
   "s09c-offline-reconnect",
   "s09d-large-transfer",
+  "s09d-resource-observation",
   "s09d-unicode-path-roundtrip",
   "s09e-auth-revocation-restore",
   "s09e-plugin-disable-reenable",
@@ -53,6 +54,7 @@ test("every compiled live scenario module is represented by one registered batte
     "s09c-interruption-resume",
     "s09c-offline-reconnect",
     "s09d-large-transfer",
+  "s09d-resource-observation",
     "s09d-unicode-path-roundtrip",
     "s09e-auth-revocation-restore",
     "s09e-plugin-disable-reenable",
@@ -66,6 +68,7 @@ test("checkpoint batteries bind every declared checkpoint to explicit operator i
   for (const name of [
     "s09c-interruption-resume",
     "s09c-offline-reconnect",
+    "s09d-resource-observation",
     "s09e-auth-revocation-restore",
     "s09e-plugin-disable-reenable",
     "s09e-uninstall-reinstall",
