@@ -198,11 +198,6 @@ function Write-ResultMarkdown {
 
   $Result = $Envelope.result
   $Status = [string]$Result.status
-  $ScenarioId = if ($Result.PSObject.Properties.Name -contains "scenarioId") {
-    [string]$Result.scenarioId
-  } else {
-    "<not-produced>"
-  }
   $Classification = if ($Result.PSObject.Properties.Name -contains "classification") {
     [string]$Result.classification
   } else {
@@ -267,7 +262,6 @@ Resume this exact Run ID after the physical checkpoint is complete. Do not start
 - Run ID: $RunId
 - Attempt: $AttemptNumber
 - Package status: **$PackageStatus**
-- Scenario: $ScenarioId
 - BVP status: **$Status**
 - Battery process exit code: $BatteryExitCode
 $ClassificationLine
