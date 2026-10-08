@@ -153,3 +153,26 @@ test("read-only legacy top-level recovery verifies the configured domain parent,
   strictEqual(observed.verifiedLegacyManagedRootParentId, configured.rootId);
   strictEqual(verifyRemoteFolderCreate(descriptor, observed).status, "verified-effect");
 });
+
+test("legacy parent compatibility is never inferred for a nested folder", async () => {
+  const configured = { rootId: "validation-root", vaultIdentity: "vault:validation", protocolVersion: "1" } as unknown as ManagedRemoteIdentity;
+  const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
+  const seams = adapter as unknown as Record<string, unknown>;
+  seams["guardPairedAccount"] = async () => ({ ok: true, value: undefined });
+  seams["getFile"] = async () => ({ ok: true, value: { id: "reserved-nested", mimeType: "application/vnd.google-apps.folder", parents: ["content-domain-parent"], trashed: false } });
+  seams["rootForFile"] = async () => ({ ok: true, value: configured.rootId });
+  seams["domainRoots"] = async () => ({ ok: true, value: { content: { id: "content-domain-parent" }, config: { id: "config-domain-parent" } } });
+  seams["logicalPathForFile"] = async () => ({ ok: true, value: "nested/child" });
+  const descriptor = {
+    kind: "remote-folder-create", targetSide: "remote", mutationKind: "create", intentId: "intent:nested",
+    targetPath: "nested/child", parentRemoteObjectId: configured.rootId,
+    pathAuthority: { generation: "semantic:0", targetPath: "nested/child", parentPath: "nested", pathComparisonKey: "nested/child", expectedTarget: "absent" },
+    remoteMutation: { kind: "reserved-folder-create", intentId: "intent:nested", path: "nested/child", reservedRemoteObjectId: "reserved-nested" },
+  } as unknown as Parameters<GoogleDriveAdapter["observeFolderCreateRecovery"]>[0];
+  const observed = await adapter.observeFolderCreateRecovery(descriptor);
+  strictEqual(observed.status, "folder");
+  if (observed.status === "folder") {
+    strictEqual(observed.verifiedLegacyManagedRootParentId, undefined);
+    strictEqual(verifyRemoteFolderCreate(descriptor, observed).status, "conflict-preserved");
+  }
+});
