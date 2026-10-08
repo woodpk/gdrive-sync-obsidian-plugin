@@ -79,9 +79,7 @@ const SAFE_OBSERVATION_FIELDS = new Set([
   "remoteObjectId", "stateRevision", "changeCursor", "operationKinds",
   "knownDeviceIds", "operationCount", "baseCount", "mappingCount",
   "tombstoneCount", "classification", "reason", "planId", "schemaVersion",
-  "deviceIdentity", "vaultIdentity", "terminal", "productionRunId", "trigger",
-  "executionDisposition", "globalExecutionGate", "recoveryCheckpointRequired",
-  "requiredEffectsCommittedAndVerified", "committedOperationCount", "skippedOperationCount",
+  "deviceIdentity", "vaultIdentity",
 ]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -136,9 +134,7 @@ function fixtureIdentity(
   if ("path" in step) base.path = step.path;
   if ("fromPath" in step) base.fromPath = step.fromPath;
   if ("toPath" in step) base.toPath = step.toPath;
-  if (step.operation === "put-local-pattern") {
-    base.sizeBytes = step.byteLength;
-  } else if ("content" in step) {
+  if ("content" in step) {
     const identity = contentIdentity(step.content);
     base.contentHash = identity.hash;
     base.sizeBytes = identity.sizeBytes;
@@ -146,40 +142,17 @@ function fixtureIdentity(
   return base;
 }
 
-export function summarizeScenarioProductionValue(value: unknown): Readonly<Record<string, SafeValue>> {
+function productionSummary(value: unknown): Readonly<Record<string, SafeValue>> {
   if (!isRecord(value)) return {};
   const result: Record<string, SafeValue> = {};
-  const copyFields = (source: Record<string, unknown>, fields: readonly string[]): void => {
-    for (const key of fields) if (safeScalar(source[key])) result[key] = source[key] as JsonScalar;
-  };
-
-  copyFields(value, [
-    "status", "reason", "classification", "planId", "trigger", "operationCount",
-    "executionDisposition", "globalExecutionGate", "recoveryCheckpointRequired",
-  ]);
-
+  for (const key of ["status", "reason", "classification", "planId"]) {
+    if (safeScalar(value[key])) result[key] = value[key] as JsonScalar;
+  }
   if (Array.isArray(value.operations)) {
     result.operationCount = value.operations.length;
     result.operationKinds = value.operations
       .map(operation => isRecord(operation) && typeof operation.kind === "string" ? operation.kind : undefined)
       .filter((kind): kind is string => kind !== undefined);
-  }
-
-  const plan = isRecord(value.plan) ? value.plan : undefined;
-  if (plan) {
-    copyFields(plan, [
-      "planId", "trigger", "operationCount", "executionDisposition",
-      "globalExecutionGate", "recoveryCheckpointRequired",
-    ]);
-  }
-
-  const receipt = isRecord(value.receipt) ? value.receipt : undefined;
-  if (receipt) {
-    if (safeScalar(receipt.runId)) result.productionRunId = receipt.runId as JsonScalar;
-    copyFields(receipt, [
-      "planId", "trigger", "terminal", "requiredEffectsCommittedAndVerified",
-      "committedOperationCount", "skippedOperationCount",
-    ]);
   }
   return result;
 }
@@ -189,7 +162,7 @@ async function observe(step: ScenarioObservationStep, context: ScenarioRunnerHoo
     const captured = context.readCapture(step.inputRef);
     return captured === undefined
       ? { status: "blocked", classification: "missing-required-result", reason: step.inputRef }
-      : { status: "completed", value: summarizeScenarioProductionValue(captured) };
+      : { status: "completed", value: productionSummary(captured) };
   }
   if (step.subject === "device-state") {
     const loaded = await context.world.deviceBacking(step.device).load();
