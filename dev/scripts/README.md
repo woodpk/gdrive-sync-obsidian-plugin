@@ -18,3 +18,15 @@ Generic BVP battery operating scripts may live here when they only compile/invok
 
 Battery definitions, assertions, and validation semantics remain under `test-platform/`. The generic operator entrypoint is `Invoke-BVP-Battery.ps1`.
 
+Every BVP battery run persists a self-contained result directory at:
+
+`dev/Test-Results/<run-id>/`
+
+The standard package contains:
+
+- `result.json` — complete machine-readable battery/BVP result.
+- `result.md` — human-readable run summary and execution metadata.
+- `terminal.log` — complete compilation and BVP execution output.
+- `checkpoint.json` — only when the live BVP creates checkpoint/resume state.
+
+After finalizing the package, `Invoke-BVP-Battery.ps1` stages only that run directory, commits it, and pushes the result commit to the currently checked-out branch on `origin`. A BVP run therefore produces both visible terminal output and durable repository evidence under `dev/Test-Results/`.
