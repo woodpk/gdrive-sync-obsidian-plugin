@@ -57,7 +57,7 @@ $TranscriptPath = Join-Path $ResultDir "terminal.log"
 $ResultJsonPath = Join-Path $ResultDir "result.json"
 $ResultMarkdownPath = Join-Path $ResultDir "result.md"
 $TapPath = Join-Path $ResultDir "test-output.tap"
-$CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/src/batteries/run-deterministic-battery.js"
+$CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/test/batteries/run-deterministic-battery.js"
 
 $CommandRecords = [System.Collections.Generic.List[object]]::new()
 $BatteryExitCode = 0
