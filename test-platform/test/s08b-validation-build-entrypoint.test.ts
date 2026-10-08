@@ -86,7 +86,7 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   const source=readFileSync(result.artifactPath,"utf8"), values=new Map<string,string>(), dirs=new Set<string>(), storage=new Map<string,string>();
   const root=".obsidian/plugins/brain-google-drive-sync/.bvp-relay",runId=desktop?"run-desktop":"run-mobile",deviceId=desktop?"device-desktop":"device-mobile";
   dirs.add(".obsidian");dirs.add(".obsidian/plugins");dirs.add(".obsidian/plugins/brain-google-drive-sync");dirs.add(root);
-  let fixtureWrites=0,productionCalls=0,listCalls=0,intervalCallback:(()=>void)|undefined;
+  let fixtureWrites=0,productionCalls=0,replacementCalls=0,listCalls=0,intervalCallback:(()=>void)|undefined;
   const adapter:any={
     async exists(p:string){return dirs.has(p)||values.has(p);},async mkdir(p:string){dirs.add(p);},async read(p:string){const v=values.get(p);if(v===undefined)throw new Error("missing");return v;},
     async write(p:string,v:string){values.set(p,v);if(p.includes("BVP-VALIDATION/"))fixtureWrites++;},async readBinary(p:string){return new TextEncoder().encode(values.get(p)??"").buffer;},
@@ -106,8 +106,15 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   const fixture={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}},control={runId,deviceId,sequence:2,commandId:"cmd-2",kind:"production-control",action:"pause"};
   const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);ok(intervalCallback);intervalCallback!();intervalCallback!();await new Promise(resolve=>setTimeout(resolve,0));equal(listCalls,desktop?2:0);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
   let current:any=fixture,last:any,published=0;runtime.mailbox.commands=async()=>[current];runtime.mailbox.publishResult=async(value:any)=>{last=value;published++;};await Promise.all([runtime.pollDeviceOnce(),runtime.pollDeviceOnce()]);equal(runtime.currentRunId(),runId);equal(last.classification,"fixture-verified");equal(last.validationBuild.sourceCommit,result.sourceCommit);equal(fixtureWrites,1);equal(published,1);
-  current=control;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(productionCalls,1);await plugin.onunload();
-  const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];after.mailbox.activeRun=async()=>runId;after.mailbox.resultFor=async()=>undefined;let replay:any;after.mailbox.commands=async()=>[control];after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(productionCalls,1);equal(fixtureWrites,1);await restarted.onunload();
+  current=control;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(productionCalls,1);
+  // The production controller can be replaced after initial mailbox installation.
+  // The next real mailbox command must reach the current controller, not the stale one.
+  const replacement={...production,async pause(){replacementCalls++;return{status:"accepted"};}};
+  base.productionVerificationControl=function(){return replacement};
+  const swappedControl={...control,sequence:3,commandId:"cmd-3"};
+  current=swappedControl;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(replacementCalls,1);equal(productionCalls,1);
+  await plugin.onunload();
+  const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];after.mailbox.activeRun=async()=>runId;after.mailbox.resultFor=async()=>undefined;let replay:any;after.mailbox.commands=async()=>[swappedControl];after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(productionCalls,1);equal(replacementCalls,1);equal(fixtureWrites,1);await restarted.onunload();
 }
 
 test("S08B validation artifact is separate, production-faithful, traceable, and disposable", async () => {
