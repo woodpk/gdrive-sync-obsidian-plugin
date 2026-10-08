@@ -49,7 +49,7 @@ $FailureMessage = $null
 [System.IO.File]::WriteAllText($TranscriptPath, "", [System.Text.UTF8Encoding]::new($false))
 
 function Write-TranscriptLine {
-  param([Parameter(Mandatory = $true)][string]$Line)
+  param([AllowEmptyString()][string]$Line)
   Write-Host $Line
   Add-Content -LiteralPath $TranscriptPath -Value $Line -Encoding utf8
 }
@@ -73,7 +73,7 @@ function Invoke-RecordedExternal {
 
   $Output = & $FilePath @Arguments 2>&1
   foreach ($Item in $Output) {
-    Write-TranscriptLine $Item.ToString()
+    Write-TranscriptLine ($Item.ToString())
   }
 
   $Code = $LASTEXITCODE
@@ -89,7 +89,7 @@ function Invoke-RecordedExternal {
 function Write-Evidence {
   $Rows = ($CommandRecords | ForEach-Object {
     $SafeCommand = $_.Command.Replace("|", "\|")
-    "| $($_.Label) | `$SafeCommand` | $($_.ExitCode) |"
+    "| $($_.Label) | $SafeCommand | $($_.ExitCode) |"
   }) -join [Environment]::NewLine
 
   $Transcript = if (Test-Path -LiteralPath $TranscriptPath) {
@@ -113,13 +113,13 @@ $FailureMessage
   $Evidence = @"
 # BVP Battery Evidence
 
-- Battery: `$Battery`
-- Run ID: `$RunId`
+- Battery: $Battery
+- Run ID: $RunId
 - Status: **$Status**
-- Final exit code: `$FinalExitCode`
-- Validation source commit: `$ValidationSourceCommit`
-- Relay root: `$RelayRoot`
-- Generated UTC: `$([DateTimeOffset]::UtcNow.ToString("o"))`
+- Final exit code: $FinalExitCode
+- Validation source commit: $ValidationSourceCommit
+- Relay root: $RelayRoot
+- Generated UTC: $([DateTimeOffset]::UtcNow.ToString("o"))
 - GitHub Actions used: **No**
 
 ## Commands
