@@ -253,8 +253,8 @@ test("repository-check consumes PHX context and TypeScript governance without Po
   match(source, /PHX_VERIFICATION_CONTEXT_PATH/);
   match(source, /runArchitectureGuard/);
   match(source, /runArchitectureMetrics/);
-  match(source, /DEV_ROOT_STRUCTURE_RESULT/);
-  match(source, /SHIPPING_ARTIFACT_IDENTITY_RESULT/);
+  match(source, /reportViolations\("DEV_ROOT_STRUCTURE"/);
+  match(source, /reportViolations\("SHIPPING_ARTIFACT_IDENTITY"/);
   strictEqual(/\.ps1|pwsh|powershell|spawnSync/.test(source), false);
   strictEqual(
     /\bgit\s+-C\b|merge-base|diff --name-only|rev-parse/.test(source),
