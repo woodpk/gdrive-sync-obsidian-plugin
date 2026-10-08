@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 
 import { windowsLiveSmokeScenario } from "../scenarios/live/windows-live-smoke";
-import { getLiveBattery, listLiveBatteryNames } from "../src/batteries/battery-registry";
+import { getLiveBattery, listLiveBatteryNames } from "./batteries/battery-registry";
 import { validateScenarioDefinition } from "../src/scenario/scenario-contract";
 
 const EXPECTED_BATTERIES = [
