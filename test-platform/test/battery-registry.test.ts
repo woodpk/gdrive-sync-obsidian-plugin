@@ -84,6 +84,44 @@ test("checkpoint batteries bind every declared checkpoint to explicit operator i
   }
 });
 
+test("every live battery uses supported operations and resolves its own capture dependencies", () => {
+  const scenarioIds = new Set<string>();
+  for (const name of EXPECTED_BATTERIES) {
+    const battery = getLiveBattery(name)!;
+    const scenario = battery.createScenario();
+    strictEqual(scenarioIds.has(scenario.id), false, name);
+    scenarioIds.add(scenario.id);
+    const captures = new Set<string>();
+    const devices = new Set<string>();
+    for (const step of scenario.steps) {
+      if ("device" in step && typeof step.device === "string") devices.add(step.device);
+      if ("inputRef" in step && typeof step.inputRef === "string") {
+        strictEqual(captures.has(step.inputRef), true, `${name}: missing input ${step.inputRef}`);
+      }
+      if (step.kind === "fixture") {
+        strictEqual(
+          step.operation === "put-local-pattern" ||
+          step.operation === "remove-local" ||
+          (step.operation === "put-local-file" && step.content.encoding === "utf8"),
+          true, `${name}: unsupported live fixture ${step.operation}`,
+        );
+      } else if (step.kind === "production") {
+        strictEqual(["preview", "synchronize", "reconcile", "execute-reviewed-plan"].includes(step.operation), true, name);
+      } else if (step.kind === "external-state") {
+        strictEqual(step.transition === "request-cancellation" && step.boundary === undefined, true, name);
+      } else if (step.kind === "observe") {
+        strictEqual(["local-entry", "device-state", "production-plan", "production-result"].includes(step.subject), true, name);
+      } else if (step.kind === "assert") {
+        strictEqual(captures.has(step.observationRef), true, `${name}: missing observation ${step.observationRef}`);
+      }
+      if ("captureAs" in step && typeof step.captureAs === "string") captures.add(step.captureAs);
+    }
+    for (const device of devices) {
+      strictEqual(battery.requiredDeviceLabels.includes(device), true, `${name}: unbound device ${device}`);
+    }
+  }
+});
+
 test("Windows live smoke battery remains bounded to the proven fixture identity", () => {
   strictEqual(windowsLiveSmokeScenario.id, "battery-windows-live-smoke-01");
   deepStrictEqual(windowsLiveSmokeScenario.executionModes, ["live"]);
