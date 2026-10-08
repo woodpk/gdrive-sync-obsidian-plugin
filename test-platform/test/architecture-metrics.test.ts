@@ -551,7 +551,7 @@ test("unsupported governance schema fails closed", () => {
     );
     const result = runMetrics(root);
     notStrictEqual(result.status, 0, result.output);
-    match(result.value?.error ?? "", /unsupported schema_version/);
+    match(result.value?.error ?? "", /Unsupported schema_version '3'/);
   });
 });
 
@@ -567,7 +567,7 @@ test("non-authoritative governance status fails closed", () => {
     );
     const result = runMetrics(root);
     notStrictEqual(result.status, 0, result.output);
-    match(result.value?.error ?? "", /is not authoritative/);
+    match(result.value?.error ?? "", /does not establish authoritative boundary policy/);
   });
 });
 
@@ -730,7 +730,7 @@ test("duplicate S03C hard-budget authority fails closed", () => {
     );
     const result = runMetrics(root);
     notStrictEqual(result.status, 0, result.output);
-    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: duplicate authority 'complexity_budgets\.bvp_powershell_scripts_max'/);
+    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: Manifest key 'complexity_budgets\.bvp_powershell_scripts_max' must appear exactly once as a scalar/);
   });
 });
 
@@ -746,7 +746,7 @@ test("duplicate S03C root authority fails closed", () => {
     );
     const result = runMetrics(root);
     notStrictEqual(result.status, 0, result.output);
-    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: duplicate authority 'roots\.test_platform'/);
+    match(result.value?.error ?? "", /BOUNDARY_MANIFEST_INVALID: Manifest key 'roots\.test_platform' must appear exactly once as a scalar/);
   });
 });
 
