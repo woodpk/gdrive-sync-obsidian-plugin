@@ -320,9 +320,7 @@ test("production-result evidence exposes bounded receipt authority from a live e
     status: "completed",
     steps: [
       {
-        index: 0,
         stepId: "observe-result",
-        kind: "observe",
         status: "completed",
         matchedExpectation: true,
       },
