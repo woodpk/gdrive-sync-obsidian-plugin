@@ -268,14 +268,6 @@ async function remoteSource(legacy: ProductSynchronizationExecutor, version: Ver
   if (!read.ok || (version.content?.hash && read.value.evidence.hash !== version.content.hash)) return undefined;
   return { content: read.value.content, evidence: read.value.evidence };
 }
-async function folderParentId(operation: ExecutablePlannedOperation, stateStore: SynchronizationStateStore, context: StateLoadContext, root: ManagedRemoteIdentity): Promise<RemoteObjectId | undefined> {
-  const parent = parentPath(operation.path);
-  if (String(parent) === "") return root.rootId;
-  const loaded = await stateStore.load(context);
-  if (loaded.status !== "trusted") return undefined;
-  const matches = loaded.state.remoteMappings.filter(value => value.path === parent && value.entityKind === "folder");
-  return matches.length === 1 ? matches[0]?.remoteObjectId : undefined;
-}
 function localTransaction(operation: ExecutablePlannedOperation, intended: CanonicalFileContentProof, suffix: string, mutationKind: "create" | "replace"): LocalMutationTransaction | undefined {
   const transactionId = cid<"LocalMutationTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as LocalMutationTransactionId;
   const common = {
@@ -329,8 +321,8 @@ async function prepareIntent(
     if (version.entityKind === "folder") {
       const reserved = await remote.reserveFolderCreateIdentity(root, intentId, operation.path);
       if (!reserved.ok) return { status: "blocked", reason: `REMOTE folder identity reservation failed: ${reserved.signal.kind}` };
-      const parentRemoteObjectId = await folderParentId(operation, stateStore, context, root);
-      if (!parentRemoteObjectId) return { status: "blocked", reason: "REMOTE folder create lacks unique durable parent identity" };
+      const parentRemoteObjectId = reserved.value.parentRemoteObjectId;
+      if (!parentRemoteObjectId) return { status: "blocked", reason: "REMOTE folder create lacks exact observed physical parent identity" };
       add("remote-folder", {
         kind: "remote-folder-create",
         targetSide: "remote",
