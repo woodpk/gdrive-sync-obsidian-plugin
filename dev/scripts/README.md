@@ -28,6 +28,8 @@ Registered live batteries currently include:
 
 - `windows-live-smoke`
 - `s09a-dual-device-readiness`
+- `s09a-ios-initial-sync`
+- `s09a-windows-initial-sync`
 - `s09b-bidirectional-sync`
 - `s09b-clean-text-merge`
 - `s09c-offline-reconnect`
