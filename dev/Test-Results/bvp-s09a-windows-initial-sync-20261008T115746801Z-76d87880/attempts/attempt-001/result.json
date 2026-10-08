@@ -1,0 +1,152 @@
+{
+  "battery": {
+    "name": "s09a-windows-initial-sync",
+    "description": "Exercise an authenticated paired Windows participant through the real initial synchronization path.",
+    "requiredDeviceLabels": [
+      "windows"
+    ]
+  },
+  "result": {
+    "scenarioId": "battery-s09a-windows-initial-sync-01",
+    "status": "blocked",
+    "steps": [
+      {
+        "index": 0,
+        "stepId": "observe-windows-ready",
+        "kind": "observe",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 1,
+        "stepId": "assert-windows-ready",
+        "kind": "assert",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 2,
+        "stepId": "seed-windows-initial",
+        "kind": "fixture",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 3,
+        "stepId": "observe-windows-canary",
+        "kind": "observe",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 4,
+        "stepId": "assert-windows-canary",
+        "kind": "assert",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 5,
+        "stepId": "sync-windows-initial",
+        "kind": "production",
+        "status": "blocked",
+        "matchedExpectation": false,
+        "classification": "production-preview-unavailable"
+      }
+    ],
+    "captures": {
+      "windows-before": {
+        "kind": "idle-ready"
+      },
+      "windows-canary": {
+        "status": "present",
+        "exists": true,
+        "sizeBytes": 53,
+        "hash": "fd07d9a82b6662d6ce7f2c192fec419481fb082065a86c2b73bd629aef59a82f"
+      }
+    },
+    "classification": "production-preview-unavailable",
+    "evidence": {
+      "machine": {
+        "schemaVersion": 1,
+        "scenarioId": "battery-s09a-windows-initial-sync-01",
+        "executionMode": "live",
+        "traceability": [
+          {
+            "kind": "completion-evidence",
+            "id": "BVP-S09A-WINDOWS-INITIAL-SYNC"
+          }
+        ],
+        "fixtures": [
+          {
+            "stepId": "seed-windows-initial",
+            "operation": "put-local-file",
+            "device": "windows",
+            "path": "initial-sync-windows.md",
+            "contentHash": "fd07d9a82b6662d6ce7f2c192fec419481fb082065a86c2b73bd629aef59a82f",
+            "sizeBytes": 53
+          }
+        ],
+        "deviceIdentities": [
+          "device:8b7820faab2603b334a1c13d8c3bdba0"
+        ],
+        "liveIdentity": {
+          "runId": "bvp-s09a-windows-initial-sync-20261008T115746801Z-76d87880",
+          "sourceCommit": "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
+        },
+        "observations": [
+          {
+            "stepId": "observe-windows-ready",
+            "captureAs": "windows-before",
+            "value": {
+              "kind": "idle-ready"
+            }
+          },
+          {
+            "stepId": "observe-windows-canary",
+            "captureAs": "windows-canary",
+            "value": {
+              "status": "present",
+              "exists": true,
+              "sizeBytes": 53,
+              "hash": "fd07d9a82b6662d6ce7f2c192fec419481fb082065a86c2b73bd629aef59a82f"
+            }
+          },
+          {
+            "stepId": "observe-windows-canary-after-sync",
+            "captureAs": "windows-canary-after-sync",
+            "value": {}
+          },
+          {
+            "stepId": "observe-windows-after",
+            "captureAs": "windows-after",
+            "value": {}
+          }
+        ],
+        "assertions": [
+          {
+            "index": 1,
+            "stepId": "assert-windows-ready",
+            "kind": "assert",
+            "status": "completed",
+            "matchedExpectation": true
+          },
+          {
+            "index": 4,
+            "stepId": "assert-windows-canary",
+            "kind": "assert",
+            "status": "completed",
+            "matchedExpectation": true
+          }
+        ],
+        "verdict": {
+          "status": "blocked",
+          "classification": "production-preview-unavailable",
+          "reason": "production-preview-unavailable"
+        }
+      },
+      "machineJson": "{\"schemaVersion\":1,\"scenarioId\":\"battery-s09a-windows-initial-sync-01\",\"executionMode\":\"live\",\"traceability\":[{\"kind\":\"completion-evidence\",\"id\":\"BVP-S09A-WINDOWS-INITIAL-SYNC\"}],\"fixtures\":[{\"stepId\":\"seed-windows-initial\",\"operation\":\"put-local-file\",\"device\":\"windows\",\"path\":\"initial-sync-windows.md\",\"contentHash\":\"fd07d9a82b6662d6ce7f2c192fec419481fb082065a86c2b73bd629aef59a82f\",\"sizeBytes\":53}],\"deviceIdentities\":[\"device:8b7820faab2603b334a1c13d8c3bdba0\"],\"liveIdentity\":{\"runId\":\"bvp-s09a-windows-initial-sync-20261008T115746801Z-76d87880\",\"sourceCommit\":\"3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f\"},\"observations\":[{\"stepId\":\"observe-windows-ready\",\"captureAs\":\"windows-before\",\"value\":{\"kind\":\"idle-ready\"}},{\"stepId\":\"observe-windows-canary\",\"captureAs\":\"windows-canary\",\"value\":{\"status\":\"present\",\"exists\":true,\"sizeBytes\":53,\"hash\":\"fd07d9a82b6662d6ce7f2c192fec419481fb082065a86c2b73bd629aef59a82f\"}},{\"stepId\":\"observe-windows-canary-after-sync\",\"captureAs\":\"windows-canary-after-sync\",\"value\":{}},{\"stepId\":\"observe-windows-after\",\"captureAs\":\"windows-after\",\"value\":{}}],\"assertions\":[{\"index\":1,\"stepId\":\"assert-windows-ready\",\"kind\":\"assert\",\"status\":\"completed\",\"matchedExpectation\":true},{\"index\":4,\"stepId\":\"assert-windows-canary\",\"kind\":\"assert\",\"status\":\"completed\",\"matchedExpectation\":true}],\"verdict\":{\"status\":\"blocked\",\"classification\":\"production-preview-unavailable\",\"reason\":\"production-preview-unavailable\"}}",
+      "human": "Scenario battery-s09a-windows-initial-sync-01 [live] verdict=blocked; assertions=2/2; observations=4; traceability=BVP-S09A-WINDOWS-INITIAL-SYNC"
+    }
+  }
+}
