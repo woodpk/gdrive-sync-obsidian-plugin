@@ -39,6 +39,7 @@ Registered live batteries currently include:
 - `s09d-large-transfer`
 - `s09d-resource-observation`
 - `s09e-auth-revocation-restore`
+- `s09e-device-deauthorize-relink`
 - `s09e-plugin-disable-reenable`
 - `s09e-uninstall-reinstall`
 
