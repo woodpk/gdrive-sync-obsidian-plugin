@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 885702 bytes; SHA-256 c139115f8eb9b83792818ed0ec832240fdf0b0aa6dbf593ada54e68b7fc29390
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-battery-pilot-01
+- Source build HEAD requested: cab46982a01a40bc21a0a8a1f8356e6ce3b8656f
+- Verification checkout HEAD: cab46982a01a40bc21a0a8a1f8356e6ce3b8656f
+- Evidence publication target: origin/bvp-battery-pilot-01
