@@ -1,4 +1,5 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
+import { readdirSync } from "node:fs";
 import { test } from "node:test";
 
 import {
@@ -27,4 +28,14 @@ test("deterministic batteries partition the automated BVP platform suite without
   const all = getDeterministicBattery("all-platform-tests")!;
   deepStrictEqual([...all.testFiles].sort(), [...files].sort());
   strictEqual(getDeterministicBattery("missing"), undefined);
+});
+
+test("all-platform-tests includes every compiled BVP test module exactly once", () => {
+  const compiledTests = readdirSync(__dirname)
+    .filter(name => name.endsWith(".test.js"))
+    .sort();
+  const all = [...getDeterministicBattery("all-platform-tests")!.testFiles].sort();
+
+  deepStrictEqual(all, compiledTests);
+  strictEqual(new Set(all).size, all.length);
 });
