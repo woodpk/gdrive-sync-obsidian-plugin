@@ -38,7 +38,7 @@ Registered live batteries currently include:
 - `s09e-plugin-disable-reenable`
 - `s09e-uninstall-reinstall`
 
-Batteries requiring a genuinely physical operator/provider/OS transition stop at an external BVP checkpoint rather than synthesizing that transition. The initial attempt is persisted and uploaded with exit code 3. Resume uses the same Run ID plus the bounded evidence tokens requested by the checkpoint.
+Batteries requiring a genuinely physical operator/provider/OS transition stop at an external BVP checkpoint rather than synthesizing that transition. The initial attempt is persisted and uploaded with exit code 3. Resume uses the same Run ID plus the bounded evidence tokens requested by the checkpoint. Any resume carrying `human-confirmation` must also provide a short `-ResumeEvidenceNote` describing the observed physical action/outcome; credentials, tokens, and authorization codes must never be included.
 
 A checkpointed run preserves all attempts under:
 
