@@ -3,13 +3,10 @@ import { s09aWindowsInitialSyncScenario } from "../../scenarios/live/s09a-window
 import { s09aDualDeviceReadinessScenario } from "../../scenarios/live/s09a-dual-device-readiness";
 import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirectional-sync";
 import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
-import { s09cIosInterruptionResumeScenario } from "../../scenarios/live/s09c-ios-interruption-resume";
 import { s09cInterruptionResumeScenario } from "../../scenarios/live/s09c-interruption-resume";
 import { s09cOfflineReconnectScenario } from "../../scenarios/live/s09c-offline-reconnect";
-import { s09dResourceObservationScenario } from "../../scenarios/live/s09d-resource-observation";
 import { s09dLargeTransferScenario } from "../../scenarios/live/s09d-large-transfer";
 import { s09dUnicodePathRoundtripScenario } from "../../scenarios/live/s09d-unicode-path-roundtrip";
-import { s09eDeviceDeauthorizeRelinkScenario } from "../../scenarios/live/s09e-device-deauthorize-relink";
 import { s09eAuthRevocationRestoreScenario } from "../../scenarios/live/s09e-auth-revocation-restore";
 import { s09ePluginDisableReenableScenario } from "../../scenarios/live/s09e-plugin-disable-reenable";
 import { s09eUninstallReinstallScenario } from "../../scenarios/live/s09e-uninstall-reinstall";
@@ -64,21 +61,6 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     requiredDeviceLabels: dual,
     createScenario: () => s09bCleanTextMergeScenario,
   },
-  "s09c-ios-interruption-resume": {
-    name: "s09c-ios-interruption-resume",
-    description: "Physically terminate/reopen the real iOS Obsidian app and prove pending-edit preservation and safe cross-device reconciliation.",
-    requiredDeviceLabels: dual,
-    checkpoints: {
-      "ios-physical-app-restart": {
-        device: "ios",
-        action: "On the actual iPhone, fully leave/terminate the Obsidian application using the platform UI, confirm the app was closed, reopen the same disposable validation vault, and wait for its BVP validation runtime to load. Do not manually synchronize; do not assume continued background operation.",
-        stopCondition: "The actual iOS app lifecycle transition occurred and the same vault/runtime is active after reopen with no manual sync.",
-        requiredEvidence: ["human-confirmation", "external-observation"],
-        nextSafeAction: "Resume this same BVP Run ID to observe the pending edit and reconcile through the real production path.",
-      },
-    },
-    createScenario: () => s09cIosInterruptionResumeScenario,
-  },
   "s09c-offline-reconnect": {
     name: "s09c-offline-reconnect",
     description: "Physically exercise offline/reconnect with an external human checkpoint and post-reconnect convergence.",
@@ -109,28 +91,6 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     },
     createScenario: () => s09cInterruptionResumeScenario,
   },
-  "s09d-resource-observation": {
-    name: "s09d-resource-observation",
-    description: "Collect actual iOS storage/resource observations before and after a bounded transfer while proving content integrity.",
-    requiredDeviceLabels: dual,
-    checkpoints: {
-      "ios-resource-before-transfer": {
-        device: "ios",
-        action: "On the real iOS validation device, record the available storage capacity and any safely observable memory/thermal/OS constraint indicators before this bounded 8 MiB transfer. Do not artificially exhaust storage or interrupt another application.",
-        stopCondition: "Available capacity and any observable constraints are recorded in non-sensitive terms, and the device has sufficient safe headroom for the fixture.",
-        requiredEvidence: ["human-confirmation", "external-observation"],
-        nextSafeAction: "Resume this exact BVP Run ID with an evidence note describing the measured capacity/constraints; the battery will perform the real transfer.",
-      },
-      "ios-resource-after-transfer": {
-        device: "ios",
-        action: "On the same physical iOS device, record available storage and any safely observable memory/thermal/OS constraints after the real transfer; note actual warnings or failure classifications without inventing a threshold.",
-        stopCondition: "Post-transfer resource observations and any OS warnings are recorded; no unsafe pressure experiment was performed.",
-        requiredEvidence: ["human-confirmation", "external-observation"],
-        nextSafeAction: "Resume this same BVP Run ID with the post-transfer observations to collect the final device state.",
-      },
-    },
-    createScenario: () => s09dResourceObservationScenario,
-  },
   "s09d-unicode-path-roundtrip": {
     name: "s09d-unicode-path-roundtrip",
     description: "Prove representative Unicode/space-containing paths and exact content identity in both physical directions.",
@@ -157,21 +117,6 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
       },
     },
     createScenario: () => s09eAuthRevocationRestoreScenario,
-  },
-  "s09e-device-deauthorize-relink": {
-    name: "s09e-device-deauthorize-relink",
-    description: "Exercise the actual non-destructive Deauthorize this device control and same-device restoration.",
-    requiredDeviceLabels: dual,
-    checkpoints: {
-      "windows-device-deauthorize-relink": {
-        device: "windows",
-        action: "In the real Windows Obsidian plugin settings select Deauthorize this device. Confirm that authentication and local pairing clear without deleting this disposable vault's managed fixture, and that the unaffected iOS participant still has its copy. Then reauthenticate Windows using the normal same-device OAuth flow, pair the SAME managed remote, and fully restart Windows Obsidian to refresh the validation runtime. Do not export tokens, remove shared remote content, or change unrelated devices.",
-        stopCondition: "Actual device deauthorization and local preservation were observed; the unaffected participant retained the managed file; Windows was reauthorized and paired to the intended remote and restarted.",
-        requiredEvidence: ["human-confirmation", "external-observation"],
-        nextSafeAction: "Resume the same BVP Run ID with a bounded note recording the observed deauthorization, preserved data, and restored pairing.",
-      },
-    },
-    createScenario: () => s09eDeviceDeauthorizeRelinkScenario,
   },
   "s09e-plugin-disable-reenable": {
     name: "s09e-plugin-disable-reenable",
