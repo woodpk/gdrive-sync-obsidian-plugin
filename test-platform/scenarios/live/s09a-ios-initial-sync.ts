@@ -12,6 +12,8 @@ export const s09aIosInitialSyncScenario = defineScenario({
     { id: "observe-ios-canary", kind: "observe", subject: "local-entry", device: "ios", path: "initial-sync-ios.md", captureAs: "ios-canary" },
     { id: "assert-ios-canary", kind: "assert", assertion: "field-equals", observationRef: "ios-canary", field: "hash", expected: "f26473879f294e5b5cc451b0ddbc829b9a5f972d1c14ea4998f3e9368906a3b5" },
     { id: "sync-ios-initial", kind: "production", operation: "synchronize", device: "ios", captureAs: "ios-initial-result" },
+    { id: "observe-ios-canary-after-sync", kind: "observe", subject: "local-entry", device: "ios", path: "initial-sync-ios.md", captureAs: "ios-canary-after-sync" },
+    { id: "assert-ios-canary-preserved", kind: "assert", assertion: "field-equals", observationRef: "ios-canary-after-sync", field: "hash", expected: "f26473879f294e5b5cc451b0ddbc829b9a5f972d1c14ea4998f3e9368906a3b5" },
     { id: "observe-ios-after", kind: "observe", subject: "device-state", device: "ios", captureAs: "ios-after" },
     { id: "assert-ios-after", kind: "assert", assertion: "field-equals", observationRef: "ios-after", field: "kind", expected: "idle-ready" },
   ],
