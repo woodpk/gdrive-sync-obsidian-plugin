@@ -62,8 +62,8 @@ const predecessorPrefixes = [
   ["src/contracts/common.ts", 2559, "4048ceca9bd2a5022ededf7406a736360330572c"],
   ["src/contracts/google-drive.ts", 5457, "dc331d4acd1e7d9c308c0df73232497bf5d85d55"],
   ["src/contracts/execution.ts", 3107, "7fd20c94d5852f14bc223b6e5e0280d60fbb5776"],
-  ["dev/planning-and-building/phase6-sync-contract-freeze.md", 16296, "fe527c76137b2cd578ef7050ee3444498b21a5e0"],
-  ["dev/planning-and-building/phase6-sync-architecture-foundation.md", 14429, "f67d8ff67ff1915610e5a21ddc3d113c94a2f94b"],
+  ["dev/authority/contracts/phase6-sync-contract-freeze.md", 16296, "fe527c76137b2cd578ef7050ee3444498b21a5e0"],
+  ["dev/authority/contracts/phase6-sync-architecture-foundation.md", 14429, "f67d8ff67ff1915610e5a21ddc3d113c94a2f94b"],
 ] as const;
 
 // Compile-time negative proof: Drive authentication provenance cannot claim a local source.
@@ -245,8 +245,8 @@ test("foundation v1.3 C15: predecessor approved contract/document bytes remain e
 });
 
 test("foundation v1.3 C16: documentation succession material is appended after approved predecessor prefixes", () => {
-  const freeze = readFileSync("dev/planning-and-building/phase6-sync-contract-freeze.md");
-  const architecture = readFileSync("dev/planning-and-building/phase6-sync-architecture-foundation.md");
+  const freeze = readFileSync("dev/authority/contracts/phase6-sync-contract-freeze.md");
+  const architecture = readFileSync("dev/authority/contracts/phase6-sync-architecture-foundation.md");
   const freezeHeading = Buffer.from("## 12. V1.3 APPEND-ONLY FAILURE-PROVENANCE SUCCESSION CANDIDATE");
   const architectureHeading = Buffer.from("## 17. V1.3 APPEND-ONLY OPERATIONAL-FAILURE PROVENANCE ARCHITECTURE");
   assert.ok(freeze.indexOf(freezeHeading) >= 16296);
