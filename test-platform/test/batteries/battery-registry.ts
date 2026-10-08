@@ -5,6 +5,7 @@ import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirec
 import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
 import { s09cInterruptionResumeScenario } from "../../scenarios/live/s09c-interruption-resume";
 import { s09cOfflineReconnectScenario } from "../../scenarios/live/s09c-offline-reconnect";
+import { s09dResourceObservationScenario } from "../../scenarios/live/s09d-resource-observation";
 import { s09dLargeTransferScenario } from "../../scenarios/live/s09d-large-transfer";
 import { s09dUnicodePathRoundtripScenario } from "../../scenarios/live/s09d-unicode-path-roundtrip";
 import { s09eAuthRevocationRestoreScenario } from "../../scenarios/live/s09e-auth-revocation-restore";
@@ -90,6 +91,28 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
       },
     },
     createScenario: () => s09cInterruptionResumeScenario,
+  },
+  "s09d-resource-observation": {
+    name: "s09d-resource-observation",
+    description: "Collect actual iOS storage/resource observations before and after a bounded transfer while proving content integrity.",
+    requiredDeviceLabels: dual,
+    checkpoints: {
+      "ios-resource-before-transfer": {
+        device: "ios",
+        action: "On the real iOS validation device, record the available storage capacity and any safely observable memory/thermal/OS constraint indicators before this bounded 8 MiB transfer. Do not artificially exhaust storage or interrupt another application.",
+        stopCondition: "Available capacity and any observable constraints are recorded in non-sensitive terms, and the device has sufficient safe headroom for the fixture.",
+        requiredEvidence: ["human-confirmation", "external-observation"],
+        nextSafeAction: "Resume this exact BVP Run ID with an evidence note describing the measured capacity/constraints; the battery will perform the real transfer.",
+      },
+      "ios-resource-after-transfer": {
+        device: "ios",
+        action: "On the same physical iOS device, record available storage and any safely observable memory/thermal/OS constraints after the real transfer; note actual warnings or failure classifications without inventing a threshold.",
+        stopCondition: "Post-transfer resource observations and any OS warnings are recorded; no unsafe pressure experiment was performed.",
+        requiredEvidence: ["human-confirmation", "external-observation"],
+        nextSafeAction: "Resume this same BVP Run ID with the post-transfer observations to collect the final device state.",
+      },
+    },
+    createScenario: () => s09dResourceObservationScenario,
   },
   "s09d-unicode-path-roundtrip": {
     name: "s09d-unicode-path-roundtrip",
