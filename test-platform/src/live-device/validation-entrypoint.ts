@@ -1,4 +1,4 @@
-import { createBoundedDeviceCommandAgent, type BoundedDeviceCommandAgent, type DeviceFixturePort, type DeviceSequenceState, type DeviceSequenceStateStore, type ValidationBuildIdentity } from "./device-command-agent";
+import { createBoundedDeviceCommandAgent, type DeviceFixturePort, type DeviceSequenceState, type DeviceSequenceStateStore, type ValidationBuildIdentity } from "./device-command-agent";
 import { createDriveCommandMailbox, createWindowsMailboxRelay, pollDeviceMailboxOnce, type AuthenticatedDriveRequest } from "./drive-mailbox";
 
 export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL";
@@ -7,7 +7,7 @@ export const BVP_MAILBOX_RUNTIME_GLOBAL = "__BRAIN_BVP_MAILBOX_RUNTIME__";
 
 export interface BvpValidationBuildIdentity extends ValidationBuildIdentity { readonly sentinel: typeof BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL; }
 interface ValidationAdapter { exists(path:string):Promise<boolean>; mkdir(path:string):Promise<void>; list(path:string):Promise<{files:string[];folders:string[]}>; read(path:string):Promise<string>; write(path:string,value:string):Promise<void>; readBinary(path:string):Promise<ArrayBuffer>; writeBinary(path:string,value:ArrayBuffer):Promise<void>; rename(from:string,to:string):Promise<void>; remove(path:string):Promise<void>; stat(path:string):Promise<{type:string;size:number}|null>; }
-interface ValidationRuntimeOptions { readonly adapter:ValidationAdapter; readonly root:string; readonly deviceId:string; readonly validationBuild:ValidationBuildIdentity; readonly production?:Parameters<typeof createBoundedDeviceCommandAgent>[0]["production"]; readonly relay:boolean; }
+interface ValidationRuntimeOptions { readonly adapter:ValidationAdapter; readonly root:string; readonly deviceId:string; readonly validationBuild:ValidationBuildIdentity; readonly production?:()=>Parameters<typeof createBoundedDeviceCommandAgent>[0]["production"]; readonly relay:boolean; }
 const stateKey=(root:string,runId:string,deviceId:string)=>"brain-bvp-sequence:"+encodeURIComponent(root+"|"+runId+"|"+deviceId);
 const sameState=(a:DeviceSequenceState|undefined,b:DeviceSequenceState|undefined)=>JSON.stringify(a)===JSON.stringify(b);
 const clone=<T>(value:T):T=>JSON.parse(JSON.stringify(value)) as T;
@@ -34,8 +34,8 @@ export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValida
 }
 export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
-  let activeRunId:string|undefined,agent:BoundedDeviceCommandAgent|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
-  async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(runId!==activeRunId||!agent){activeRunId=runId;if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable"};agent=createBoundedDeviceCommandAgent({runId,deviceId:options.deviceId,fixtureRoot:"BVP-VALIDATION/"+runId,fixtures:new VaultFixturePort(options.adapter),sequenceState:new LocalStorageSequenceStore(stateKey(options.root,runId,options.deviceId),globalThis.localStorage),production:options.production,validationBuild:options.validationBuild});}return pollDeviceMailboxOnce(mailbox,agent,runId,options.deviceId);}
+  let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
+  async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable"};activeRunId=runId;const agent=createBoundedDeviceCommandAgent({runId,deviceId:options.deviceId,fixtureRoot:"BVP-VALIDATION/"+runId,fixtures:new VaultFixturePort(options.adapter),sequenceState:new LocalStorageSequenceStore(stateKey(options.root,runId,options.deviceId),globalThis.localStorage),production:options.production?.(),validationBuild:options.validationBuild});return pollDeviceMailboxOnce(mailbox,agent,runId,options.deviceId);}
   function pollDeviceOnce(){if(polling)return polling;polling=pollCore().finally(()=>{polling=undefined;});return polling;}
   const value=Object.freeze({mailbox,relay,deviceId:options.deviceId,currentRunId:()=>activeRunId,pollDeviceOnce});
   Object.defineProperty(globalThis,BVP_MAILBOX_RUNTIME_GLOBAL,{value,configurable:true,enumerable:false,writable:false});return value;
