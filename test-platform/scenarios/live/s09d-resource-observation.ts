@@ -11,7 +11,7 @@ export const s09dResourceObservationScenario = defineScenario({
   steps: [
     { id: "observe-ios-initial", kind: "observe", subject: "device-state", device: "ios", captureAs: "ios-before-resource" },
     { id: "assert-ios-initial-ready", kind: "assert", assertion: "field-equals", observationRef: "ios-before-resource", field: "kind", expected: "idle-ready" },
-    { id: "record-ios-resource-preconditions", kind: "checkpoint", operation: "restart-device", device: "ios", checkpointRef: "ios-resource-before-transfer" },
+    { id: "record-ios-resource-preconditions", kind: "checkpoint", operation: "capture", checkpointId: "ios-resource-before-transfer" },
     { id: "seed-ios-resource-file", kind: "fixture", operation: "put-local-pattern", device: "ios", path: "resource/ios-resource-sample-8MiB.bin", byteLength: 8388608, seed: "s09d-ios-upload-v1" },
     { id: "observe-ios-resource-source", kind: "observe", subject: "local-entry", device: "ios", path: "resource/ios-resource-sample-8MiB.bin", captureAs: "resource-source" },
     { id: "assert-ios-resource-size", kind: "assert", assertion: "field-equals", observationRef: "resource-source", field: "sizeBytes", expected: 8388608 },
@@ -21,7 +21,7 @@ export const s09dResourceObservationScenario = defineScenario({
     { id: "observe-windows-resource-file", kind: "observe", subject: "local-entry", device: "windows", path: "resource/ios-resource-sample-8MiB.bin", captureAs: "resource-target" },
     { id: "assert-windows-resource-size", kind: "assert", assertion: "field-equals", observationRef: "resource-target", field: "sizeBytes", expected: 8388608 },
     { id: "assert-windows-resource-hash", kind: "assert", assertion: "field-equals", observationRef: "resource-target", field: "hash", expected: "c240e45445b2b6bf499d305d67bed6b9f83a2397863f987bf55f6d2132a9321e" },
-    { id: "record-ios-resource-after", kind: "checkpoint", operation: "restart-device", device: "ios", checkpointRef: "ios-resource-after-transfer" },
+    { id: "record-ios-resource-after", kind: "checkpoint", operation: "capture", checkpointId: "ios-resource-after-transfer" },
     { id: "observe-ios-final", kind: "observe", subject: "device-state", device: "ios", captureAs: "ios-after-resource" },
     { id: "assert-ios-final-ready", kind: "assert", assertion: "field-equals", observationRef: "ios-after-resource", field: "kind", expected: "idle-ready" },
   ],
