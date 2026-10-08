@@ -54,6 +54,7 @@ test("every compiled live scenario module is represented by one registered batte
     "s09b-clean-text-merge",
     "s09c-interruption-resume",
     "s09c-ios-interruption-resume",
+    "s09c-ios-interruption-resume",
     "s09c-offline-reconnect",
     "s09d-large-transfer",
     "s09d-resource-observation",
