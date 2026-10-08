@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { createScenarioCheckpoint, decodeScenarioCheckpoint, encodeScenarioCheckpoint, validateScenarioCheckpointForResume, type ScenarioCheckpoint, type ScenarioResumeEvidence } from "../scenario/scenario-checkpoint";
 import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition, ScenarioStep } from "../scenario/scenario-contract";
-import { assertScenarioObservation, summarizeScenarioProductionValue } from "../scenario/scenario-evidence";
+import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
 
@@ -145,8 +145,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
       else if(step.kind==="fixture"&&step.operation==="put-local-file"&&step.content.encoding==="utf8"){
         const r=await send(step,context,{kind:"fixture-put",path:step.path,content:{type:"text",text:step.content.value}}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
-      }else if(step.kind==="fixture"&&step.operation==="put-local-pattern"){
-        const r=await send(step,context,{kind:"fixture-put",path:step.path,content:{type:"pattern",byteLength:step.byteLength,seed:step.seed}}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
+      }else if(step.kind==="fixture"&&step.operation==="put-local-pattern"){const r=await send(step,context,{kind:"fixture-put",path:step.path,content:{type:"pattern",byteLength:step.byteLength,seed:step.seed}}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
       }else if(step.kind==="fixture"&&step.operation==="remove-local"){
         const r=await send(step,context,{kind:"fixture-remove",path:step.path}),f=transportFailure(r);result=f??resultOutcome(r as DeviceCommandResult);
       }else if(step.kind==="production"&&step.operation==="execute-reviewed-plan"){
@@ -167,7 +166,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       }else if(step.kind==="observe"&&step.subject==="device-state"){
         const r=await send(step,context,{kind:"observe-product"}),f=transportFailure(r);result=f??((r as DeviceCommandResult).status==="completed"?{status:"completed",value:(r as DeviceCommandResult).productStatus}:resultOutcome(r as DeviceCommandResult));
       }else if(step.kind==="observe"&&(step.subject==="production-plan"||step.subject==="production-result")){
-        const value=context.readCapture(step.inputRef);result=value===undefined?fail("blocked","missing-required-result",step.inputRef):{status:"completed",value:summarizeScenarioProductionValue(value)};
+        const value=context.readCapture(step.inputRef);result=value===undefined?fail("blocked","missing-required-result",step.inputRef):{status:"completed",value};
       }else result=fail("unsupported","live-capability-unsupported",step.kind);
       return remember(context.stepIndex,step,result);
     },
