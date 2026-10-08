@@ -260,3 +260,41 @@ test("failure evidence preserves distinct privacy-safe reasons without copying f
   const classificationOnly=buildScenarioEvidence(definition,{...base,reason:undefined});
   strictEqual(classificationOnly.machine.verdict.reason,"step-exception");
 });
+
+test("live product status kind is retained in canonical evidence without widening unsafe fields", () => {
+  const definition = scenario("live-product-kind-evidence", [
+    {
+      id: "observe-product",
+      kind: "observe",
+      subject: "device-state",
+      device: "device-a",
+      captureAs: "product",
+    },
+  ]);
+
+  const evidence = buildScenarioEvidence(definition, {
+    scenarioId: definition.id,
+    status: "completed",
+    steps: [
+      {
+        stepId: "observe-product",
+        status: "completed",
+        matchedExpectation: true,
+      },
+    ],
+    captures: {
+      product: {
+        kind: "idle-ready",
+        accessToken: "must-not-be-recorded",
+      },
+    },
+    deviceIdentities: ["device:test"],
+    executionMode: "live",
+    runIdentity: "run:test",
+    buildIdentity: "0123456789012345678901234567890123456789",
+  });
+
+  strictEqual(evidence.machine.observations[0]?.value.kind, "idle-ready");
+  strictEqual(evidence.machineJson.includes("must-not-be-recorded"), false);
+});
+
