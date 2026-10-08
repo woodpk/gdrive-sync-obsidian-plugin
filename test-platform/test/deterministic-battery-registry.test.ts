@@ -5,7 +5,7 @@ import { test } from "node:test";
 import {
   getDeterministicBattery,
   listDeterministicBatteryNames,
-} from "../src/batteries/deterministic-battery-registry";
+} from "./batteries/deterministic-battery-registry";
 
 test("deterministic batteries partition the automated BVP platform suite without duplicate test files", () => {
   deepStrictEqual(listDeterministicBatteryNames(), [
