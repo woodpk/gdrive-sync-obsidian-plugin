@@ -36,6 +36,7 @@ Registered live batteries currently include:
 - `s09c-interruption-resume`
 - `s09d-unicode-path-roundtrip`
 - `s09d-large-transfer`
+- `s09d-resource-observation`
 - `s09e-auth-revocation-restore`
 - `s09e-plugin-disable-reenable`
 - `s09e-uninstall-reinstall`
