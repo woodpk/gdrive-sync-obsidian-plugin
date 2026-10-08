@@ -9,6 +9,7 @@ const PLATFORM_CORE = [
   "architecture-metrics.test.js",
   "battery-registry.test.js",
   "battery-support.test.js",
+  "deterministic-battery-registry.test.js",
   "in-memory-google-drive.test.js",
   "in-memory-local-vault.test.js",
   "per-device-runtime.test.js",
