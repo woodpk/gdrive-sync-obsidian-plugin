@@ -13,6 +13,8 @@ export const s09cOfflineReconnectScenario = defineScenario({
     { id: "sync-online-base-windows", kind: "production", operation: "synchronize", device: "windows" },
     { id: "sync-online-base-ios", kind: "production", operation: "synchronize", device: "ios" },
     { id: "edit-before-offline", kind: "fixture", operation: "put-local-file", device: "windows", path: "offline-reconnect.md", content: { encoding: "utf8", value: "# BVP offline/reconnect\n\nVersion: changed before offline sync attempt\n" } },
+    { id: "observe-pending-offline-edit", kind: "observe", subject: "local-entry", device: "windows", path: "offline-reconnect.md", captureAs: "pending-offline-edit" },
+    { id: "assert-pending-offline-edit", kind: "assert", assertion: "field-equals", observationRef: "pending-offline-edit", field: "hash", expected: "5eda9daba2b58418cdf110f226ef73294e2c2af91512d42c1b71da029309b152" },
     { id: "physical-offline-cycle", kind: "checkpoint", operation: "capture", checkpointId: "windows-physical-offline-cycle" },
     { id: "reconcile-windows", kind: "production", operation: "reconcile", device: "windows", captureAs: "windows-reconnect-result" },
     { id: "reconcile-ios", kind: "production", operation: "reconcile", device: "ios", captureAs: "ios-reconnect-result" },
