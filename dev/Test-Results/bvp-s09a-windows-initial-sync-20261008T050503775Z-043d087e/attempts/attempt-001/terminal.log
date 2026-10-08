@@ -1,0 +1,25 @@
+BVP BATTERY RUN
+Battery: s09a-windows-initial-sync
+Run ID: bvp-s09a-windows-initial-sync-20261008T050503775Z-043d087e
+Attempt: 1
+Resume: False
+Controller branch: bvp-battery-pilot-01
+Controller HEAD: 51b69a53df568e96e849dff77eb375409f798a37
+Validation source: 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f
+Result package: dev/Test-Results/bvp-s09a-windows-initial-sync-20261008T050503775Z-043d087e
+
+>>> node-version
+COMMAND: node --version
+v22.23.2
+EXIT CODE: 0
+
+>>> npm-version
+COMMAND: npm --version
+10.9.8
+EXIT CODE: 0
+
+>>> bvp-typescript-compile
+COMMAND: node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json
+test-platform/test/battery-registry.test.ts(81,20): error TS2339: Property 'checkpointRef' does not exist on type '({ readonly id: string; readonly expect?: ScenarioExpectedOutcome | undefined; } & { readonly kind: "checkpoint"; readonly operation: "capture"; readonly checkpointId: string; }) | ({ ...; } & { ...; })'.
+  Property 'checkpointRef' does not exist on type '{ readonly id: string; readonly expect?: ScenarioExpectedOutcome | undefined; } & { readonly kind: "checkpoint"; readonly operation: "capture"; readonly checkpointId: string; }'.
+EXIT CODE: 2
