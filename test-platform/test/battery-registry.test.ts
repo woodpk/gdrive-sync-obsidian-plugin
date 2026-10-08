@@ -1,11 +1,10 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import { test } from "node:test";
 
+import { windowsLiveSmokeScenario } from "../scenarios/live/windows-live-smoke";
 import { getLiveBattery, listLiveBatteryNames } from "../src/batteries/battery-registry";
-import {
-  WINDOWS_LIVE_SMOKE_CANARY_SHA256,
-  createWindowsLiveSmokeScenario,
-} from "../src/batteries/windows-live-smoke";
 import { validateScenarioDefinition } from "../src/scenario/scenario-contract";
 
 const EXPECTED_BATTERIES = [
@@ -36,6 +35,29 @@ test("live battery registry exposes the complete physical battery set", () => {
   }
 });
 
+test("every compiled live scenario module is represented by one registered battery", () => {
+  const compiledScenarioRoot = resolve(__dirname, "../scenarios/live");
+  const scenarioModules = readdirSync(compiledScenarioRoot)
+    .filter(name => name.endsWith(".js"))
+    .map(name => name.slice(0, -3))
+    .sort();
+
+  deepStrictEqual(scenarioModules, [
+    "s09a-dual-device-readiness",
+    "s09b-bidirectional-sync",
+    "s09b-clean-text-merge",
+    "s09c-interruption-resume",
+    "s09c-offline-reconnect",
+    "s09d-large-transfer",
+    "s09d-unicode-path-roundtrip",
+    "s09e-auth-revocation-restore",
+    "s09e-plugin-disable-reenable",
+    "s09e-uninstall-reinstall",
+    "windows-live-smoke",
+  ]);
+  strictEqual(scenarioModules.length, EXPECTED_BATTERIES.length);
+});
+
 test("checkpoint batteries bind every declared checkpoint to explicit operator instructions", () => {
   for (const name of [
     "s09c-interruption-resume",
@@ -60,16 +82,18 @@ test("checkpoint batteries bind every declared checkpoint to explicit operator i
   }
 });
 
-test("Windows live smoke battery remains bounded to the proven live fixture path", () => {
-  const scenario = createWindowsLiveSmokeScenario();
-  strictEqual(scenario.id, "battery-windows-live-smoke-01");
-  deepStrictEqual(scenario.executionModes, ["live"]);
-  strictEqual(scenario.steps.length, 6);
+test("Windows live smoke battery remains bounded to the proven fixture identity", () => {
+  strictEqual(windowsLiveSmokeScenario.id, "battery-windows-live-smoke-01");
+  deepStrictEqual(windowsLiveSmokeScenario.executionModes, ["live"]);
+  strictEqual(windowsLiveSmokeScenario.steps.length, 6);
 
-  const hashAssertion = scenario.steps[5];
+  const hashAssertion = windowsLiveSmokeScenario.steps[5];
   strictEqual(hashAssertion.kind, "assert");
   if (hashAssertion.kind === "assert" && "expected" in hashAssertion) {
-    strictEqual(hashAssertion.expected, WINDOWS_LIVE_SMOKE_CANARY_SHA256);
+    strictEqual(
+      hashAssertion.expected,
+      "8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895",
+    );
   } else {
     throw new Error("expected final step to be a hash assertion");
   }
