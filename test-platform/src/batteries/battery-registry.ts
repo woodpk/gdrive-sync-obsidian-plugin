@@ -1,16 +1,16 @@
+import { s09aDualDeviceReadinessScenario } from "../../scenarios/live/s09a-dual-device-readiness";
+import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirectional-sync";
+import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
+import { s09cInterruptionResumeScenario } from "../../scenarios/live/s09c-interruption-resume";
+import { s09cOfflineReconnectScenario } from "../../scenarios/live/s09c-offline-reconnect";
+import { s09dLargeTransferScenario } from "../../scenarios/live/s09d-large-transfer";
+import { s09dUnicodePathRoundtripScenario } from "../../scenarios/live/s09d-unicode-path-roundtrip";
+import { s09eAuthRevocationRestoreScenario } from "../../scenarios/live/s09e-auth-revocation-restore";
+import { s09ePluginDisableReenableScenario } from "../../scenarios/live/s09e-plugin-disable-reenable";
+import { s09eUninstallReinstallScenario } from "../../scenarios/live/s09e-uninstall-reinstall";
+import { windowsLiveSmokeScenario } from "../../scenarios/live/windows-live-smoke";
 import type { HumanCheckpointInstruction } from "../live-device/live-scenario-executor";
 import type { ScenarioDefinition } from "../scenario/scenario-contract";
-import { createS09aDualDeviceReadinessScenario } from "./s09a-dual-device-readiness";
-import { createS09bBidirectionalSyncScenario } from "./s09b-bidirectional-sync";
-import { createS09bCleanTextMergeScenario } from "./s09b-clean-text-merge";
-import { createS09cInterruptionResumeScenario } from "./s09c-interruption-resume";
-import { createS09cOfflineReconnectScenario } from "./s09c-offline-reconnect";
-import { createS09dLargeTransferScenario } from "./s09d-large-transfer";
-import { createS09dUnicodePathRoundtripScenario } from "./s09d-unicode-path-roundtrip";
-import { createS09eAuthRevocationRestoreScenario } from "./s09e-auth-revocation-restore";
-import { createS09ePluginDisableReenableScenario } from "./s09e-plugin-disable-reenable";
-import { createS09eUninstallReinstallScenario } from "./s09e-uninstall-reinstall";
-import { createWindowsLiveSmokeScenario } from "./windows-live-smoke";
 
 export interface LiveBatteryDefinition {
   readonly name: string;
@@ -27,25 +27,25 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     name: "windows-live-smoke",
     description: "Observe the live Windows product state and verify one bounded local fixture round-trip.",
     requiredDeviceLabels: ["windows"],
-    createScenario: createWindowsLiveSmokeScenario,
+    createScenario: () => windowsLiveSmokeScenario,
   },
   "s09a-dual-device-readiness": {
     name: "s09a-dual-device-readiness",
     description: "Require both installed validation participants to answer through the live path in idle-ready production state.",
     requiredDeviceLabels: dual,
-    createScenario: createS09aDualDeviceReadinessScenario,
+    createScenario: () => s09aDualDeviceReadinessScenario,
   },
   "s09b-bidirectional-sync": {
     name: "s09b-bidirectional-sync",
     description: "Prove Windows-to-iOS create propagation and reciprocal iOS-to-Windows update propagation.",
     requiredDeviceLabels: dual,
-    createScenario: createS09bBidirectionalSyncScenario,
+    createScenario: () => s09bBidirectionalSyncScenario,
   },
   "s09b-clean-text-merge": {
     name: "s09b-clean-text-merge",
     description: "Prove one representative concurrent cross-device clean text merge and final convergence.",
     requiredDeviceLabels: dual,
-    createScenario: createS09bCleanTextMergeScenario,
+    createScenario: () => s09bCleanTextMergeScenario,
   },
   "s09c-offline-reconnect": {
     name: "s09c-offline-reconnect",
@@ -60,7 +60,7 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
         nextSafeAction: "Resume this same BVP run so production Verify/Reconcile can establish post-reconnect convergence.",
       },
     },
-    createScenario: createS09cOfflineReconnectScenario,
+    createScenario: () => s09cOfflineReconnectScenario,
   },
   "s09c-interruption-resume": {
     name: "s09c-interruption-resume",
@@ -75,19 +75,19 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
         nextSafeAction: "Resume this same BVP run; it will reobserve the pending local change before reconciling.",
       },
     },
-    createScenario: createS09cInterruptionResumeScenario,
+    createScenario: () => s09cInterruptionResumeScenario,
   },
   "s09d-unicode-path-roundtrip": {
     name: "s09d-unicode-path-roundtrip",
     description: "Prove representative Unicode/space-containing paths and exact content identity in both physical directions.",
     requiredDeviceLabels: dual,
-    createScenario: createS09dUnicodePathRoundtripScenario,
+    createScenario: () => s09dUnicodePathRoundtripScenario,
   },
   "s09d-large-transfer": {
     name: "s09d-large-transfer",
     description: "Transfer deterministic 8 MiB binary fixtures in both physical directions and verify exact size/hash integrity.",
     requiredDeviceLabels: dual,
-    createScenario: createS09dLargeTransferScenario,
+    createScenario: () => s09dLargeTransferScenario,
   },
   "s09e-auth-revocation-restore": {
     name: "s09e-auth-revocation-restore",
@@ -102,7 +102,7 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
         nextSafeAction: "Resume this same BVP run to reobserve production state and reconcile both devices.",
       },
     },
-    createScenario: createS09eAuthRevocationRestoreScenario,
+    createScenario: () => s09eAuthRevocationRestoreScenario,
   },
   "s09e-plugin-disable-reenable": {
     name: "s09e-plugin-disable-reenable",
@@ -117,7 +117,7 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
         nextSafeAction: "Resume this same BVP run to reobserve the file/status and reconcile both devices.",
       },
     },
-    createScenario: createS09ePluginDisableReenableScenario,
+    createScenario: () => s09ePluginDisableReenableScenario,
   },
   "s09e-uninstall-reinstall": {
     name: "s09e-uninstall-reinstall",
@@ -132,7 +132,7 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
         nextSafeAction: "Resume this same BVP run to reobserve the file/status and reconcile both devices.",
       },
     },
-    createScenario: createS09eUninstallReinstallScenario,
+    createScenario: () => s09eUninstallReinstallScenario,
   },
 });
 
