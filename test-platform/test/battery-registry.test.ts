@@ -74,13 +74,11 @@ test("checkpoint batteries bind every declared checkpoint to explicit operator i
     const scenario = battery.createScenario();
     const keys = scenario.steps
       .filter(step => step.kind === "checkpoint")
-      .map(step =>
-        step.kind === "checkpoint" && step.operation === "capture"
-          ? step.checkpointId
-          : step.kind === "checkpoint"
-            ? step.checkpointRef ?? step.id
-            : "",
-      )
+      .map(step => {
+        if (step.kind !== "checkpoint") return "";
+        if (step.operation === "capture") return step.checkpointId;
+        return step.checkpointRef ?? step.id;
+      })
       .sort();
     deepStrictEqual(keys, Object.keys(battery.checkpoints ?? {}).sort());
   }
