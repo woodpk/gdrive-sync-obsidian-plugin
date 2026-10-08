@@ -1,5 +1,6 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { deepStrictEqual, strictEqual } from "node:assert";
+import { test } from "node:test";
+
 import { getLiveBattery, listLiveBatteryNames } from "../src/batteries/battery-registry";
 import {
   WINDOWS_LIVE_SMOKE_CANARY_SHA256,
@@ -7,18 +8,18 @@ import {
 } from "../src/batteries/windows-live-smoke";
 
 test("live battery registry exposes the Windows smoke battery", () => {
-  assert.deepEqual(listLiveBatteryNames(), ["windows-live-smoke"]);
-  assert.equal(getLiveBattery("windows-live-smoke")?.name, "windows-live-smoke");
-  assert.equal(getLiveBattery("missing"), undefined);
+  deepStrictEqual(listLiveBatteryNames(), ["windows-live-smoke"]);
+  strictEqual(getLiveBattery("windows-live-smoke")?.name, "windows-live-smoke");
+  strictEqual(getLiveBattery("missing"), undefined);
 });
 
 test("Windows live smoke battery remains bounded to the proven live fixture path", () => {
   const scenario = createWindowsLiveSmokeScenario();
 
-  assert.equal(scenario.id, "battery-windows-live-smoke-01");
-  assert.deepEqual(scenario.executionModes, ["live"]);
-  assert.equal(scenario.steps.length, 6);
-  assert.deepEqual(
+  strictEqual(scenario.id, "battery-windows-live-smoke-01");
+  deepStrictEqual(scenario.executionModes, ["live"]);
+  strictEqual(scenario.steps.length, 6);
+  deepStrictEqual(
     scenario.steps.map(step => step.id),
     [
       "observe-windows-product",
@@ -31,10 +32,10 @@ test("Windows live smoke battery remains bounded to the proven live fixture path
   );
 
   const hashAssertion = scenario.steps[5];
-  assert.equal(hashAssertion.kind, "assert");
+  strictEqual(hashAssertion.kind, "assert");
   if (hashAssertion.kind === "assert" && "expected" in hashAssertion) {
-    assert.equal(hashAssertion.expected, WINDOWS_LIVE_SMOKE_CANARY_SHA256);
+    strictEqual(hashAssertion.expected, WINDOWS_LIVE_SMOKE_CANARY_SHA256);
   } else {
-    assert.fail("expected final step to be a hash assertion");
+    throw new Error("expected final step to be a hash assertion");
   }
 });
