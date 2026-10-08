@@ -96,7 +96,7 @@ function createFixture(): { readonly root: string; readonly baseSha: string } {
     "dev/state",
     "dev/reviews",
     "dev/scripts",
-    "dev/Test-Results",
+    "dev/test-results",
     "dev/scratch",
   ]) {
     mkdirSync(join(root, ...directory.split("/")), { recursive: true });

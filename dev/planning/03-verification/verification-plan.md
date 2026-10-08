@@ -4,7 +4,7 @@
 
 PHX-CI is the exclusive authoritative executable verification system under DEC-334. Repository-controlled checks may be consumed by PHX-CI, but they do not become independent acceptance authorities. GitHub Actions are prohibited for BVP acceptance.
 
-Verification must preserve exact source identity, run identity, PHX-CI runtime/framework identity, stage results, repository checks, build/artifact results, and final classification. Historical finalized run evidence belongs under `dev/Test-Results/<runId>/`.
+Verification must preserve exact source identity, run identity, PHX-CI runtime/framework identity, stage results, repository checks, build/artifact results, and final classification. Historical finalized run evidence belongs under `dev/test-results/<runId>/`.
 
 ## Product completion-evidence ownership
 
@@ -71,7 +71,7 @@ The BVP is complete only when objective evidence proves all of the following.
 ### 13.4 Evidence and Verification
 
 - authoritative PHX-CI verification completes successfully for every accepted child branch and final integrated stage;
-- `dev/_ca-output.md` and `dev/Test-Results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
+- `dev/_ca-output.md` and `dev/test-results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
 - scenario evidence maps to the BRAIN target specification's §13 completion-evidence categories;
 - a Stage-3 validator can trace each material product requirement to implementation and validation evidence without relying on legacy harness claims.
 

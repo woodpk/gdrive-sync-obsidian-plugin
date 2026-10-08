@@ -2,7 +2,7 @@
 
 ## Current state
 
-The completed automated testing platform remains historically anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The formerly recorded PHX-CI run ID `38b52d07-dce9-4e2f-aa61-3fd7188703f7` is not present among the 105 canonical `dev/Test-Results/` run directories after migration, so canonical state no longer asserts that missing run ID; Phase 10 will establish a new authoritative source/run/evidence identity.
+The completed automated testing platform remains historically anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The formerly recorded PHX-CI run ID `38b52d07-dce9-4e2f-aa61-3fd7188703f7` is not present among the 105 canonical `dev/test-results/` run directories after migration, so canonical state no longer asserts that missing run ID; Phase 10 will establish a new authoritative source/run/evidence identity.
 
 The repository is in the separate canonical `dev/**` standardization migration. Product behavior and BVP architecture are not being reopened.
 
@@ -14,7 +14,7 @@ The repository is in the separate canonical `dev/**` standardization migration. 
 4. Phase 4 — canonical target-system/workstream/verification planning hierarchy.
 5. Phase 5 — canonical current state and concise handoff.
 6. Phase 6 — retired legacy agent/prompt hierarchies and retained only future S09 task contracts under WS-07.
-7. Phase 7 — moved all 105 historical PHX-CI run triples, without rewriting their Git blobs, into exact `dev/Test-Results/<runId>/` directories; retired lowercase `dev/test-results/`; removed redundant `dev/_ca-output.json`; and rebound PHX-CI history to `dev/Test-Results`.
+7. Phase 7 — historically moved all 105 PHX-CI run triples into `dev/Test-Results/<runId>/`, retiring the then-existing lowercase directory; preserved their Git blobs unchanged; removed redundant `dev/_ca-output.json`; and rebound PHX-CI history to `dev/test-results`.
 8. Phase 8 — archived all five legacy `dev/scripts/*.ps1` files under `archive/pre-standard-dev-layout-2026-10/DEV/scripts/` with unchanged Git blobs; moved BVP architecture guard/metrics implementation into `test-platform/src/architecture-governance.ts`; rebound `test-platform/src/repository-check.ts` and the guard/metrics/integration tests to that PHX-CI-consumed TypeScript surface; and updated the BVP governance lock/specification to prohibit standalone PowerShell validation authority.
 9. Phase 9 — retired `dev/archive/`, `dev/evidence/`, `dev/governance/`, and `dev/planning-and-building/`; verified exact external-archive preservation for all 366 retired source blobs; removed remaining live retired-script/path exceptions; and completed the active-reference sweep without compatibility aliases.
 10. Phase 10 — implementation preparation is complete: canonical `dev/` structure enforcement now executes inside the PHX-CI repository check; negative coverage rejects noncanonical top-level `dev/` entries; and the repository check now validates the post-build `main.js` SHA-256 against the accepted pre-migration artifact, with a negative regression for mismatch. No new repository PowerShell launcher was added; the owner boundary uses the deployed PHX-CI operator front door directly. Authoritative deployed-runtime PHX-CI execution remains pending.
@@ -22,7 +22,7 @@ The repository is in the separate canonical `dev/**` standardization migration. 
 ## Evidence model
 
 - Current work-unit surface: `dev/_ca-output.md`
-- Historical PHX-CI runs: `dev/Test-Results/<runId>/result.md`, `result.json`, and `terminal.log`
+- Historical PHX-CI runs: `dev/test-results/<runId>/result.md`, `result.json`, and `terminal.log`
 - Historical run count migrated in Phase 7: **105**
 - Historical evidence blobs rewritten during migration: **0**
 - The removed root `dev/_ca-output.json` was byte-identical to the canonical S08V result JSON for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`.
@@ -60,3 +60,5 @@ The repository is in the separate canonical `dev/**` standardization migration. 
 Run the audited small deployed-runtime PHX-CI operator command against `dev-directory-standardization-phase10`, using `origin/dev-directory-standardization-phase9-r2` as the explicit base and publication mode `push`. Return the complete console output only.
 
 Do not begin S09 or Stage 3 until Phase 10 closes green.
+
+**2026-10-08 lowercase normalization:** The active BVP branch has restored `dev/test-results/` as the current evidence path under the updated shared manuals and explicit owner decision. All historical evidence blobs were preserved; the Phase 7 account above records the earlier migration rather than current casing authority.

@@ -35,4 +35,4 @@ Shared engineering-process and repository-organization standards are not copied 
 - Workstream decomposition: `dev/planning/02-workstreams/`
 - Verification planning: `dev/planning/03-verification/`
 - Current continuity state: `dev/state/current-state.yaml`
-- Historical PHX-CI evidence: `dev/Test-Results/<runId>/`
+- Historical PHX-CI evidence: `dev/test-results/<runId>/`

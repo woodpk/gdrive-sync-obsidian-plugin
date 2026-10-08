@@ -167,7 +167,7 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 
 **BVP-VER-003 — Project-specific checks remain small and durable.** Generic BVP architecture guard and metrics logic MUST remain repository-controlled and PHX-CI-consumed through `test-platform/src/architecture-governance.ts` and `test-platform/src/repository-check.ts`. Standalone validation scripts under `dev/scripts/` and one-off task/scenario verifier scripts are prohibited. After BVP-S03, every accepted implementation session is mechanically architecture-checked through the repository check that PHX-CI runs.
 
-**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/Test-Results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
+**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/test-results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
 
 **BVP-VER-005 — Child-session and primary-stage gates.** Every implementation child session MUST pass authoritative PHX-CI remote-branch verification before supervisor integration. Every primary BVP stage MUST then pass a separate integrated PHX-CI acceptance gate before the next primary stage begins.
 
@@ -494,7 +494,7 @@ The BVP is complete only when objective evidence proves all of the following.
 ### 13.4 Evidence and Verification
 
 - authoritative PHX-CI verification completes successfully for every accepted child branch and final integrated stage;
-- `dev/_ca-output.md` and `dev/Test-Results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
+- `dev/_ca-output.md` and `dev/test-results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
 - scenario evidence maps to the BRAIN target specification's §13 completion-evidence categories;
 - a Stage-3 validator can trace each material product requirement to implementation and validation evidence without relying on legacy harness claims.
 

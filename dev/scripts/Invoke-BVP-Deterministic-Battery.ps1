@@ -49,8 +49,8 @@ try {
   Pop-Location
 }
 
-$ResultDir = Join-Path $RepoRoot "dev/Test-Results/$RunId"
-$RelativeResultDir = "dev/Test-Results/$RunId"
+$ResultDir = Join-Path $RepoRoot "dev/test-results/$RunId"
+$RelativeResultDir = "dev/test-results/$RunId"
 if (Test-Path -LiteralPath $ResultDir) {
   throw "Result package already exists: $ResultDir"
 }

@@ -978,7 +978,8 @@ decisions:
 
 
   - id: DEC-332
-    status: locked
+    status: superseded
+    superseded_by: DEC-337
     category: repository_development_structure
     decision: "The repository MUST use the canonical dev/** hierarchy defined by the shared agent-led engineering standards: dev/README.md and dev/_ca-output.md are the only standard ordinary files directly under dev/; durable authority lives under dev/authority/; target/workstream/verification planning under dev/planning/; research under dev/research/; continuity state under dev/state/; completed reviews under dev/reviews/; repository engineering scripts under dev/scripts/; historical PHX-CI execution output under exact-cased dev/Test-Results/<runId>/; and temporary non-authoritative work under dev/scratch/. No standardized dev/agents/, dev/prompts/, dev/evidence/, dev/governance/, dev/planning-and-building/, lowercase dev/test-results/, or in-dev archive hierarchy exists. Durable task prompts, when genuinely required, belong only under the owning workstream's optional tasks/ directory. Shared governing manuals remain external and are referenced from dev/authority/external-authorities.md rather than copied into the repository."
 
@@ -989,7 +990,8 @@ decisions:
     decision: "Retired development generations MUST be preserved outside active dev/ under archive/<generation>/DEV/, retaining their historical internal structure where practical. Material under archive/** is historical/non-authoritative unless an active authoritative artifact explicitly incorporates or cites it. The existing dev/archive/** generation is transitional legacy layout and must be migrated outside active dev/ rather than treated as current authority."
 
   - id: DEC-334
-    status: locked
+    status: superseded
+    superseded_by: DEC-338
     category: verification_execution
     supersedes: DEC-323
     decision: "GitHub Actions are prohibited for BVP verification. The canonical local CI/acceptance system is the installed PHX-CI deployed runtime selected by the consumer branch's exact phx-ci.json framework SHA. Authoritative verification uses the deployed PHX-CI operator front door and PHX-CI owns exact target/base/change-set resolution, detached verification worktrees, full test/build/repository/artifact gates, race protection, and canonical evidence publication. Historical PHX-CI run output MUST be stored under dev/Test-Results/<exact-runId>/ with result.md, result.json, terminal.log, and optional artifacts/. dev/_ca-output.md remains only the current coding-agent/work-unit evidence and handoff surface where required; it is not the historical run archive, and dev/_ca-output.json is not a standard root artifact. Project-specific guard/metrics logic remains repository-controlled and PHX-CI-consumed; task-specific independent verifier scripts are prohibited."
@@ -1005,6 +1007,18 @@ decisions:
     category: validation_anti_drift
     supersedes: DEC-318
     decision: "The BVP architecture remains mechanically enforced by the authoritative boundary manifest plus repository-controlled architecture guard and metrics logic, but that validation logic is implemented in test-platform/src/architecture-governance.ts and consumed only through test-platform/src/repository-check.ts inside PHX-CI. Standalone PowerShell validators under dev/scripts/ are retired and prohibited as competing validation authority. Existing architecture rules, hard complexity budgets, frozen production seams, PHX-CI ownership, and fail-closed acceptance semantics are unchanged."
+
+  - id: DEC-337
+    status: locked
+    category: repository_development_structure
+    supersedes: DEC-332
+    decision: "The repository MUST use the canonical dev/** hierarchy defined by the shared agent-led engineering standards: dev/README.md and dev/_ca-output.md are the only standard ordinary files directly under dev/; durable authority lives under dev/authority/; target/workstream/verification planning under dev/planning/; research under dev/research/; continuity state under dev/state/; completed reviews under dev/reviews/; repository engineering scripts under dev/scripts/; historical PHX-CI execution output under exact-cased dev/test-results/<runId>/; and temporary non-authoritative work under dev/scratch/. No standardized dev/agents/, dev/prompts/, dev/evidence/, dev/governance/, dev/planning-and-building/, uppercase dev/Test-Results/, or in-dev archive hierarchy exists. Durable task prompts, when genuinely required, belong only under the owning workstream's optional tasks/ directory. Shared governing manuals remain external and are referenced from dev/authority/external-authorities.md rather than copied into the repository."
+
+  - id: DEC-338
+    status: locked
+    category: verification_execution
+    supersedes: DEC-334
+    decision: "GitHub Actions are prohibited for BVP verification. The canonical local CI/acceptance system is the installed PHX-CI deployed runtime selected by the consumer branch's exact phx-ci.json framework SHA. Authoritative verification uses the deployed PHX-CI operator front door and PHX-CI owns exact target/base/change-set resolution, detached verification worktrees, full test/build/repository/artifact gates, race protection, and canonical evidence publication. Historical PHX-CI run output MUST be stored under dev/test-results/<exact-runId>/ with result.md, result.json, terminal.log, and optional artifacts/. dev/_ca-output.md remains only the current coding-agent/work-unit evidence and handoff surface where required; it is not the historical run archive, and dev/_ca-output.json is not a standard root artifact. Project-specific guard/metrics logic remains repository-controlled and PHX-CI-consumed; task-specific independent verifier scripts are prohibited."
 
 superseded_decisions:
   - id: SUP-001

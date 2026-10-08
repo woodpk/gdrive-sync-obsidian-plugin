@@ -24,7 +24,7 @@ const canonicalDevDirectories = new Set([
   "state",
   "reviews",
   "scripts",
-  "Test-Results",
+  "test-results",
   "scratch",
 ]);
 const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);

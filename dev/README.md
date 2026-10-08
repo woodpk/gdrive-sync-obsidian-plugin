@@ -10,7 +10,7 @@ This repository is being migrated to the canonical development hierarchy require
 - `state/` — current continuity and construction state.
 - `reviews/` — completed independent/adversarial review outputs.
 - `scripts/` — repository-controlled engineering scripts.
-- `Test-Results/` — persisted PHX-CI run evidence.
+- `test-results/` — persisted PHX-CI run evidence.
 - `scratch/` — explicitly non-authoritative temporary working material.
 - `_ca-output.md` — current coding-agent/work-unit evidence and handoff surface where required.
 
@@ -24,4 +24,4 @@ During the directory-standardization migration, legacy noncanonical `dev/**` tre
 
 ## Naming
 
-Canonical directory and filename casing is exact. In particular, use `Test-Results` exactly as written.
+Canonical directory and filename casing is exact. In particular, use `test-results` exactly as written.

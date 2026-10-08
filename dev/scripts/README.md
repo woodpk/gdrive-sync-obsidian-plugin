@@ -44,7 +44,7 @@ Batteries requiring a genuinely physical operator/provider/OS transition stop at
 
 A checkpointed run preserves all attempts under:
 
-`dev/Test-Results/<run-id>/attempts/attempt-###/`
+`dev/test-results/<run-id>/attempts/attempt-###/`
 
 The run root retains the current `result.json`, `result.md`, and BVP `checkpoint.json`.
 
@@ -68,7 +68,7 @@ These are logical groupings over the existing automated BVP test-platform suite.
 
 Every battery run persists a self-contained result directory at:
 
-`dev/Test-Results/<run-id>/`
+`dev/test-results/<run-id>/`
 
 A live result package contains the current machine-readable result, human-readable summary, checkpoint state when applicable, and complete per-attempt terminal output.
 

@@ -123,7 +123,7 @@ The BVP is complete only when objective evidence proves all of the following.
 ### 13.4 Evidence and Verification
 
 - authoritative PHX-CI verification completes successfully for every accepted child branch and final integrated stage;
-- `dev/_ca-output.md` and `dev/Test-Results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
+- `dev/_ca-output.md` and `dev/test-results/<runId>/` contain the configured current and historical PHX-CI evidence, including commands/results, exit codes, architecture metrics, and required verification evidence;
 - scenario evidence maps to the BRAIN target specification's §13 completion-evidence categories;
 - a Stage-3 validator can trace each material product requirement to implementation and validation evidence without relying on legacy harness claims.
 

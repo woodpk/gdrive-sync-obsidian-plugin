@@ -54,7 +54,7 @@ Independently:
 
 1. inspect final integrated change history against accepted child/stage evidence;
 2. run authoritative deployed-runtime PHX-CI on final the accepted Phase-6 integration/source branch with canonical evidence publication;
-3. inspect fresh `dev/_ca-output.md`, `dev/Test-Results/<runId>/result.json`, and immutable `dev/Test-Results/<runId>/`;
+3. inspect fresh `dev/_ca-output.md`, `dev/test-results/<runId>/result.json`, and immutable `dev/test-results/<runId>/`;
 4. confirm architecture guard/metrics/budgets;
 5. confirm ordinary production artifact excludes validation-only code;
 6. confirm frozen governance surfaces changed only in explicitly authorized sessions;

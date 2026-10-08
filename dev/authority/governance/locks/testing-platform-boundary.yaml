@@ -107,8 +107,8 @@ verification:
   operator_entrypoint: scripts/Invoke-PhxCi.ps1
   task_branch_acceptance_publication_mode: push
   canonical_evidence: dev/_ca-output.md
-  structured_evidence: dev/Test-Results/<runId>/result.json
-  evidence_history: dev/Test-Results/
+  structured_evidence: dev/test-results/<runId>/result.json
+  evidence_history: dev/test-results/
   architecture_guard_required_every_session_after_bvp_s03: true
   metrics_required_every_session_after_bvp_s03: true
   primary_stage_phx_ci_gate_required: true

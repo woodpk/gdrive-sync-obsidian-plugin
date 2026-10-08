@@ -123,7 +123,7 @@ Make the simple replacement architecture mechanically enforceable before substan
 - `test-platform/src/architecture-governance.ts` implements architecture metrics and budget/delta measurement;
 - the installed PHX-CI deployed runtime is the canonical branch/stage verification entrypoint;
 - architecture guard and metrics are consumed by `test-platform/src/repository-check.ts` under PHX-CI and are themselves tested with deterministic negative fixtures/cases;
-- PHX-CI current work-unit evidence is `dev/_ca-output.md` with immutable historical runs under `dev/Test-Results/<runId>/`;
+- PHX-CI current work-unit evidence is `dev/_ca-output.md` with immutable historical runs under `dev/test-results/<runId>/`;
 - no scenario-specific PowerShell verifier exists.
 
 ### 5.3 Principal Invariants
@@ -470,7 +470,7 @@ Every dispatched child session MUST:
 - use no GitHub Actions;
 - receive no authority to expand its writable surface or classify extra files;
 - push its implementation branch and pass authoritative verification through the installed PHX-CI deployed-runtime operator front door before supervisor integration;
-- use `dev/_ca-output.md` for current work-unit evidence where required and `dev/Test-Results/<runId>/` for immutable historical PHX-CI execution evidence;
+- use `dev/_ca-output.md` for current work-unit evidence where required and `dev/test-results/<runId>/` for immutable historical PHX-CI execution evidence;
 - from BVP-S03 onward, pass architecture guard and metrics through the repository check executed by PHX-CI;
 - treat `archive/**` as historical/non-authoritative;
 - return BLOCKED rather than weakening boundaries, raising budgets, or editing unlisted paths.

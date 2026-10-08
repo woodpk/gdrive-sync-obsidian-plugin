@@ -112,7 +112,7 @@
 
 **BVP-VER-003 — Project-specific checks remain small and durable.** The repository MAY contain the generic BVP architecture guard and metrics scripts under `dev/scripts/`, but MUST NOT create one-off task/scenario verifier scripts. After BVP-S03, guard and metrics execution MUST be wired into the repository check that PHX-CI runs so every accepted implementation session is mechanically architecture-checked.
 
-**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/Test-Results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
+**BVP-VER-004 — PHX-CI evidence is canonical.** PHX-CI MUST capture exact framework identity, target HEAD/base/change set, stage results, full test/build/repository/artifact results, and final verdict in the configured current `dev/_ca-output.md` surface and immutable `dev/test-results/<runId>/` historical evidence. Acceptance workflows that authorize publication MUST use PHX-CI's race-protected evidence publication rather than hand-built evidence commits.
 
 **BVP-VER-005 — Child-session and primary-stage gates.** Every implementation child session MUST pass authoritative PHX-CI remote-branch verification before supervisor integration. Every primary BVP stage MUST then pass a separate integrated PHX-CI acceptance gate before the next primary stage begins.
 

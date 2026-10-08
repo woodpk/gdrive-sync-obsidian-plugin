@@ -73,8 +73,8 @@ try {
   Pop-Location
 }
 
-$ResultDir = Join-Path $RepoRoot "dev/Test-Results/$RunId"
-$RelativeResultDir = "dev/Test-Results/$RunId"
+$ResultDir = Join-Path $RepoRoot "dev/test-results/$RunId"
+$RelativeResultDir = "dev/test-results/$RunId"
 $CheckpointFile = Join-Path $ResultDir "checkpoint.json"
 $IsResume = Test-Path -LiteralPath $ResultDir -PathType Container
 

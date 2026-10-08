@@ -29,7 +29,7 @@ Current canonical rules are:
 - governance locks live in `dev/authority/governance/locks/`;
 - active target/workstream/verification planning lives in `dev/planning/`;
 - current continuity state lives in `dev/state/`;
-- historical PHX-CI execution evidence lives in `dev/Test-Results/<runId>/`;
+- historical PHX-CI execution evidence lives in `dev/test-results/<runId>/`;
 - no standardized `dev/agents/` hierarchy exists.
 
 ## Current migration mapping
