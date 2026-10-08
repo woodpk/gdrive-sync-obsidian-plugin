@@ -63,7 +63,9 @@ const signalReason = (signal: DriveSignal): string | undefined => "detail" in si
 const expectedMatches = (expected: ScenarioExpectedOutcome | undefined, actual: StepOutcome): boolean =>
   (!expected || expected.status === "success")
     ? actual.status === "completed"
-    : actual.status === expected.status && "classification" in actual && actual.classification === expected.classification;
+    : expected.status === "blocked-or-failed"
+      ? actual.status === "blocked" || actual.status === "failed"
+      : actual.status === expected.status && "classification" in actual && actual.classification === expected.classification;
 
 export class DeterministicScenarioRunner {
   constructor(private readonly hooks: ScenarioRunnerHooks = {}, private readonly executor?: ScenarioStepExecutor) {}
@@ -162,6 +164,9 @@ export class DeterministicScenarioRunner {
     if (step.operation === "put-local-file") {
       await world.deviceBacking(step.device).local.replaceFile(virtualVaultPath(step.path), source(bytes(step.content)));
       return { status: "completed" };
+    }
+    if (step.operation === "put-local-pattern") {
+      return fail("unsupported", "fixture-pattern-live-only");
     }
     if (step.operation === "put-local-folder") {
       world.deviceBacking(step.device).local.seedFolder(virtualVaultPath(step.path));
