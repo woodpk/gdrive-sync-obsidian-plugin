@@ -17,6 +17,8 @@ export const s09dUnicodePathRoundtripScenario = defineScenario({
     { id: "observe-ios-windows-path", kind: "observe", subject: "local-entry", device: "ios", path: "paths/Windows Ångström 東京 😀.md", captureAs: "ios-windows-path" },
     { id: "assert-ios-windows-path", kind: "assert", assertion: "field-equals", observationRef: "ios-windows-path", field: "hash", expected: "ad0b575ae2a9d2efcb8511576d97502c8b62ab69ae6d97b691de1d2555ac7076" },
     { id: "seed-ios-unicode", kind: "fixture", operation: "put-local-file", device: "ios", path: "paths/iOS café école 東京.md", content: { encoding: "utf8", value: "# Unicode path from iOS\n\ncafé / école / 東京\n" } },
+    { id: "observe-ios-unicode-source", kind: "observe", subject: "local-entry", device: "ios", path: "paths/iOS café école 東京.md", captureAs: "ios-unicode-source" },
+    { id: "assert-ios-unicode-source", kind: "assert", assertion: "field-equals", observationRef: "ios-unicode-source", field: "hash", expected: "75c1a961442808b9384284e64b150ab2a3a0a40f619779388454e47f88103369" },
     { id: "sync-ios-unicode", kind: "production", operation: "synchronize", device: "ios", captureAs: "ios-unicode-upload" },
     { id: "sync-windows-receive-ios", kind: "production", operation: "synchronize", device: "windows", captureAs: "windows-unicode-download" },
     { id: "observe-windows-ios-path", kind: "observe", subject: "local-entry", device: "windows", path: "paths/iOS café école 東京.md", captureAs: "windows-ios-path" },
