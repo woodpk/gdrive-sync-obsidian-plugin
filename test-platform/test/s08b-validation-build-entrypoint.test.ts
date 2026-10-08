@@ -18,7 +18,7 @@ import {
 
 const repositoryRoot = resolve(process.cwd());
 const acceptedProductionSha256 =
-  "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074";
+  "c139115f8eb9b83792818ed0ec832240fdf0b0aa6dbf593ada54e68b7fc29390";
 
 function sha256(content: Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");

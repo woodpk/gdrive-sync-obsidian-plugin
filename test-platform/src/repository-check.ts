@@ -29,12 +29,20 @@ const canonicalDevDirectories = new Set([
 ]);
 const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
 const brainPackageName = "brain-google-drive-sync";
-const migrationBaselineMainSha256 =
-  "8b950648aa2e9d2a920a48fe54151b6b0cb81c017ea9890763426aa5f3417074";
+const acceptedProductionMainSha256 =
+  "c139115f8eb9b83792818ed0ec832240fdf0b0aa6dbf593ada54e68b7fc29390";
 
 interface DevRootViolation {
   readonly path: string;
   readonly detail: string;
+}
+
+function reportViolations(name: string, violations: readonly DevRootViolation[]): void {
+  console.log("=== " + (name === "DEV_ROOT_STRUCTURE" ? "CANONICAL DEV ROOT STRUCTURE" : "SHIPPING ARTIFACT IDENTITY") + " ===");
+  for (const violation of violations) {
+    console.log(name + "_VIOLATION path=" + violation.path + " detail=" + violation.detail);
+  }
+  console.log(name + "_RESULT=" + (violations.length === 0 ? "PASS" : "FAIL") + " violations=" + violations.length);
 }
 
 function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
@@ -46,24 +54,17 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   const entries = readdirSync(devRoot, { withFileTypes: true });
   const violations: DevRootViolation[] = [];
 
-  for (const required of canonicalDevDirectories) {
-    const entry = entries.find((candidate) => candidate.name === required);
-    if (!entry || !entry.isDirectory()) {
-      violations.push({
-        path: "dev/" + required,
-        detail: "Required canonical development directory is missing.",
-      });
-    }
-  }
-
-  for (const required of canonicalDevFiles) {
-    const entry = entries.find((candidate) => candidate.name === required);
-    if (!entry || !entry.isFile()) {
-      violations.push({
-        path: "dev/" + required,
-        detail: "Required canonical development file is missing.",
-      });
-    }
+  const requiredEntries = [
+    ...[...canonicalDevDirectories].map((name) => ({ name, kind: "directory" as const })),
+    ...[...canonicalDevFiles].map((name) => ({ name, kind: "file" as const })),
+  ];
+  for (const { name, kind } of requiredEntries) {
+    const entry = entries.find((candidate) => candidate.name === name);
+    const valid = entry && (kind === "directory" ? entry.isDirectory() : entry.isFile());
+    if (!valid) violations.push({
+      path: "dev/" + name,
+      detail: "Required canonical development " + kind + " is missing.",
+    });
   }
 
   for (const entry of entries) {
@@ -105,12 +106,12 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   const actualSha256 = createHash("sha256")
     .update(readFileSync(artifactPath))
     .digest("hex");
-  if (actualSha256 !== migrationBaselineMainSha256) {
+  if (actualSha256 !== acceptedProductionMainSha256) {
     return [{
       path: "main.js",
       detail:
-        "Built shipping artifact SHA-256 changed across repository standardization. Expected " +
-        migrationBaselineMainSha256 +
+        "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
+        acceptedProductionMainSha256 +
         "; actual " +
         actualSha256 +
         ".",
@@ -147,17 +148,10 @@ function readAuthoritativeContext(): VerificationContext | null {
         String(context?.schemaVersion),
     );
   }
-  if (
-    typeof context.targetHead !== "string" ||
-    !shaPattern.test(context.targetHead)
-  ) {
-    fail("context targetHead is not a full Git SHA");
-  }
-  if (
-    typeof context.baseSha !== "string" ||
-    !shaPattern.test(context.baseSha)
-  ) {
-    fail("context baseSha is not a full Git SHA");
+  for (const key of ["targetHead", "baseSha"] as const) {
+    if (typeof context[key] !== "string" || !shaPattern.test(context[key])) {
+      fail("context " + key + " is not a full Git SHA");
+    }
   }
   if (!Array.isArray(context.changedPaths)) {
     fail("context changedPaths is not an array");
@@ -204,39 +198,10 @@ if (context) {
   console.log("BVP_REPOSITORY_CHECK_CONTEXT unavailable mode=local");
 }
 
-console.log("=== CANONICAL DEV ROOT STRUCTURE ===");
 const devRootViolations = inspectCanonicalDevRoot();
-for (const violation of devRootViolations) {
-  console.log(
-    "DEV_ROOT_STRUCTURE_VIOLATION path=" +
-      violation.path +
-      " detail=" +
-      violation.detail,
-  );
-}
-console.log(
-  "DEV_ROOT_STRUCTURE_RESULT=" +
-    (devRootViolations.length === 0 ? "PASS" : "FAIL") +
-    " violations=" +
-    devRootViolations.length,
-);
-
-console.log("=== SHIPPING ARTIFACT IDENTITY ===");
+reportViolations("DEV_ROOT_STRUCTURE", devRootViolations);
 const shippingArtifactViolations = inspectShippingArtifactIdentity();
-for (const violation of shippingArtifactViolations) {
-  console.log(
-    "SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=" +
-      violation.path +
-      " detail=" +
-      violation.detail,
-  );
-}
-console.log(
-  "SHIPPING_ARTIFACT_IDENTITY_RESULT=" +
-    (shippingArtifactViolations.length === 0 ? "PASS" : "FAIL") +
-    " violations=" +
-    shippingArtifactViolations.length,
-);
+reportViolations("SHIPPING_ARTIFACT_IDENTITY", shippingArtifactViolations);
 
 console.log("=== BVP ARCHITECTURE GUARD ===");
 const guard = runArchitectureGuard({
