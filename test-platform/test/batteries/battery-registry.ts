@@ -9,6 +9,7 @@ import { s09cOfflineReconnectScenario } from "../../scenarios/live/s09c-offline-
 import { s09dResourceObservationScenario } from "../../scenarios/live/s09d-resource-observation";
 import { s09dLargeTransferScenario } from "../../scenarios/live/s09d-large-transfer";
 import { s09dUnicodePathRoundtripScenario } from "../../scenarios/live/s09d-unicode-path-roundtrip";
+import { s09eDeviceDeauthorizeRelinkScenario } from "../../scenarios/live/s09e-device-deauthorize-relink";
 import { s09eAuthRevocationRestoreScenario } from "../../scenarios/live/s09e-auth-revocation-restore";
 import { s09ePluginDisableReenableScenario } from "../../scenarios/live/s09e-plugin-disable-reenable";
 import { s09eUninstallReinstallScenario } from "../../scenarios/live/s09e-uninstall-reinstall";
@@ -156,6 +157,21 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
       },
     },
     createScenario: () => s09eAuthRevocationRestoreScenario,
+  },
+  "s09e-device-deauthorize-relink": {
+    name: "s09e-device-deauthorize-relink",
+    description: "Exercise the actual non-destructive Deauthorize this device control and same-device restoration.",
+    requiredDeviceLabels: dual,
+    checkpoints: {
+      "windows-device-deauthorize-relink": {
+        device: "windows",
+        action: "In the real Windows Obsidian plugin settings select Deauthorize this device. Confirm that authentication and local pairing clear without deleting this disposable vault's managed fixture, and that the unaffected iOS participant still has its copy. Then reauthenticate Windows using the normal same-device OAuth flow, pair the SAME managed remote, and fully restart Windows Obsidian to refresh the validation runtime. Do not export tokens, remove shared remote content, or change unrelated devices.",
+        stopCondition: "Actual device deauthorization and local preservation were observed; the unaffected participant retained the managed file; Windows was reauthorized and paired to the intended remote and restarted.",
+        requiredEvidence: ["human-confirmation", "external-observation"],
+        nextSafeAction: "Resume the same BVP Run ID with a bounded note recording the observed deauthorization, preserved data, and restored pairing.",
+      },
+    },
+    createScenario: () => s09eDeviceDeauthorizeRelinkScenario,
   },
   "s09e-plugin-disable-reenable": {
     name: "s09e-plugin-disable-reenable",
