@@ -257,7 +257,7 @@ test("S09A network failure preserves transport signal and records one terminal f
     attempts++;
     throw new Error("network unavailable");
   }, policy, async () => undefined, () => 0, () => 0, diagnostics);
-  const result = await transport.request("https://www.googleapis.com/drive/v3/files?q=unavailable", {}, true, monitor.scopeFor(run, op));
+  const result = await transport.request("https://www.googleapis.com/drive/v3/files?q=unavailable", {}, true, context(monitor.scopeFor(run, op)!, "precondition-validation"));
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.signal.kind, "transient-failure");
   monitor.finish(run, op); monitor.close(run);
