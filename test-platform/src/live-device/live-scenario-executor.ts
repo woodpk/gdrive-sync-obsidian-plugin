@@ -7,7 +7,6 @@ import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition,
 import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import type { LateCompletionRecovery } from "./late-completion-recovery";
 
 export interface HumanCheckpointInstruction {
   readonly action: string; readonly device: string; readonly stopCondition: string;
@@ -20,7 +19,6 @@ export interface LiveScenarioExecutorOptions {
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly expectedValidationSourceCommit: string;
   readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
-  readonly lateCompletionRecovery?: LateCompletionRecovery;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
 
@@ -142,13 +140,6 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
-      else if(options.lateCompletionRecovery && context.stepIndex<=options.lateCompletionRecovery.completedStepIndex){
-        const recovery=options.lateCompletionRecovery;
-        if(context.stepIndex===recovery.completedStepIndex)result=resultOutcome(recovery.result);
-        else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
-        else if("captureAs" in step && typeof step.captureAs==="string")result={status:"completed",value:recovery.prior.captures[step.captureAs]};
-        else result={status:"completed"};
-      }
       else if(resume&&context.stepIndex<resume.nextStepIndex-1)result=replay(context.stepIndex);
       else if(step.kind==="checkpoint")result=await humanCheckpoint(step,context);
       else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
