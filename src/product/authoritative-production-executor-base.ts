@@ -600,7 +600,7 @@ async function recoverEffect(
         ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-file-recovery", String(tx.transactionId)) }
         : { status: "outcome-unknown", reason: recovered.status === "recovered" ? (converged.ok ? "LOCAL recovery convergence unavailable" : converged.reason) : resultReason(recovered, "LOCAL recovery unresolved") };
     } else {
-      const converged = await convergenceFor(legacy, effect.descriptor);
+      const converged = await convergenceFor(legacy, effect.descriptor, scope);
       physical = converged.ok
         ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("restart-observation", effect.effectId) }
         : { status: "outcome-unknown", reason: converged.reason };
