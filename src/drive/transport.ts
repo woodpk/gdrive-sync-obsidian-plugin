@@ -132,6 +132,7 @@ export class GoogleHttpTransport {
         requestAttributionMonitorFor(this.diagnostics)?.observe({
           runId: runIdForMeasurement, scope: attribution,
           endpoint: endpointClass(url, (init.method ?? "GET").toUpperCase()),
+          method: (init.method ?? "GET").toUpperCase(),
           elapsedMs: this.elapsedMs(started), attempts: attemptsForMeasurement,
           ...(statusForMeasurement !== undefined ? { status: statusForMeasurement } : {}), failed,
         });
