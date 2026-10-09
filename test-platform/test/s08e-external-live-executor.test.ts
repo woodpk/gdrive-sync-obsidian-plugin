@@ -78,6 +78,27 @@ test("production uncertainty propagates as failure rather than transport success
   const result=await run;strictEqual(result.status,"failed");strictEqual(result.classification,"production-uncertain");await rm(dir,{recursive:true,force:true});
 });
 
+
+test("production execution has a separate bounded receipt deadline from routine commands",async()=>{
+  const dir=await root(),relay=join(dir,"relay"),s=scenario("production-deadline",[
+    {id:"sync",kind:"production",device:"device-a",operation:"synchronize",captureAs:"result"},
+  ]);
+  try{
+    const executor=await createLiveScenarioExecutor({...options(s,"run-deadline",relay,join(dir,"cp.json")),resultTimeoutMs:200,productionResultTimeoutMs:2000});
+    const running=new DeterministicScenarioRunner({},executor).run(s);
+    await respond(relay,c=>baseResult(c,{classification:"production-preview-ready",plan:{planId:"p",trigger:"manual",operationCount:1,executionDisposition:"reviewable",recoveryCheckpointRequired:false,globalExecutionGate:"open"}}));
+    const delayed=nextCommand(relay);
+    const cmd=await delayed;
+    strictEqual(cmd.command.kind,"production-execute");
+    await delay(350);
+    await writeFile(join(relay,"inbox",cmd.name+".result.json"),JSON.stringify(baseResult(cmd.command,{classification:"production-complete",receipt:{runId:"prod-deadline",trigger:"manual",planId:"p",terminal:"complete",requiredEffectsCommittedAndVerified:true,committedOperationCount:1,skippedOperationCount:0} as any})));
+    await rm(join(relay,"sent",cmd.name),{force:true});
+    const result=await running;
+    strictEqual(result.status,"completed");
+    strictEqual((result.captures.result as DeviceCommandResult).receipt?.terminal,"complete");
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
 test("wrong-device result fails correlation and missing result blocks",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("correlation",[{id:"observe",kind:"observe",subject:"local-entry",device:"device-a",path:"x.md",captureAs:"x"}]),executor=await createLiveScenarioExecutor(options(s,"run-c",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
   await respond(relay,c=>({...baseResult(c,{classification:"fixture-observed",fixture:{exists:false}}),deviceId:"wrong"}));const bad=await run;strictEqual(bad.status,"failed");strictEqual(bad.classification,"result-correlation-mismatch");
   const missingRelay=join(dir,"relay2"),missingExec=await createLiveScenarioExecutor({...options(s,"run-missing",missingRelay,join(dir,"cp2.json")),resultTimeoutMs:5});const missing=await new DeterministicScenarioRunner({},missingExec).run(s);strictEqual(missing.status,"blocked");strictEqual(missing.classification,"device-result-unavailable");await rejects(()=>createLiveScenarioExecutor(options(s,"run-after-timeout",missingRelay,join(dir,"cp3.json"))),/live-controller-device-run-conflict/);await rm(dir,{recursive:true,force:true});
