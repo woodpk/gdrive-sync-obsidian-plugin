@@ -1,6 +1,7 @@
 import type { DriveResult, DriveSignal } from "../contracts/google-drive";
 import { sanitizeDiagnosticText, type DiagnosticLogger, type SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { GoogleOAuthSession, type FetchLike } from "./auth";
+import { requestAttributionMonitorFor, type RequestAttributionScope } from "../diagnostics/request-attribution";
 
 export interface RetryPolicy { readonly maxAttempts: number; readonly baseDelayMs: number; readonly maxDelayMs: number; readonly maxConcurrency: number; }
 export const DEFAULT_RETRY_POLICY: RetryPolicy = { maxAttempts: 5, baseDelayMs: 500, maxDelayMs: 15_000, maxConcurrency: 3 };
@@ -121,14 +122,30 @@ export class GoogleHttpTransport {
     private readonly monotonicNow: () => number = () => globalThis.performance?.now?.() ?? Date.now(),
   ) { this.semaphore = new Semaphore(Math.max(1, policy.maxConcurrency)); }
 
-  request(url: string, init: PortableRequestInit = {}, retry = true): Promise<DriveResult<Response>> {
+  request(url: string, init: PortableRequestInit = {}, retry = true, attribution?: RequestAttributionScope): Promise<DriveResult<Response>> {
+    let started = this.monotonicNow();
+    let runIdForMeasurement: number | undefined;
+    let attemptsForMeasurement = 0;
+    let statusForMeasurement: number | undefined;
+    const observe = (failed: boolean): void => {
+      try {
+        requestAttributionMonitorFor(this.diagnostics)?.observe({
+          runId: runIdForMeasurement, scope: attribution,
+          endpoint: endpointClass(url, (init.method ?? "GET").toUpperCase()),
+          elapsedMs: this.elapsedMs(started), attempts: attemptsForMeasurement,
+          ...(statusForMeasurement !== undefined ? { status: statusForMeasurement } : {}), failed,
+        });
+      } catch { /* Telemetry must not affect HTTP results. */ }
+    };
     return this.semaphore.run(async () => {
+      started = this.monotonicNow();
       const replaySafe = retry && automaticReplaySafe(init);
       const method = (init.method ?? "GET").toUpperCase();
       const requestId = requestCorrelationId();
       const safeEndpointClass = endpointClass(url, method);
       const requestStarted = this.monotonicNow();
       const runId = this.currentRunId();
+      runIdForMeasurement = runId;
       const commonFields: SafeDiagnosticFields = {
         requestId,
         method,
@@ -140,6 +157,7 @@ export class GoogleHttpTransport {
 
       for (let attempt = 0; attempt < this.policy.maxAttempts; attempt++) {
         const attemptNumber = attempt + 1;
+        attemptsForMeasurement = attemptNumber;
         const token = await this.oauth.accessToken();
         if (!token) {
           const signal: DriveSignal = this.oauth.accessTokenFailure() === "transient"
@@ -197,6 +215,7 @@ export class GoogleHttpTransport {
           await this.sleep(delayMs); continue;
         }
 
+        statusForMeasurement = response.status;
         const safeProviderRequestId = providerRequestId(response);
         if (response.ok || response.status === 308) {
           const attemptLatencyMs = this.elapsedMs(attemptStarted);
@@ -343,7 +362,7 @@ export class GoogleHttpTransport {
         result: "failure",
       }, runId);
       return { ok: false, signal };
-    });
+    }).then(result => { observe(!result.ok); return result; }, error => { observe(true); throw error; });
   }
 
   private finalFailure(
