@@ -393,7 +393,8 @@ export function verifyRemoteFolderCreate(
   if (observation.status === "occupied") {
     return { status: "conflict-preserved", reason: "remote-folder-logical-path-occupied-by-non-authoritative-object" };
   }
-  const legacyTopLevelParentProven = observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
+  const legacyTopLevelParentProven = descriptor.remoteMutation.parentRemoteObjectId === undefined
+    && observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
   if (observation.remoteObjectId !== reservedRemoteObjectId
     || (observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId && !legacyTopLevelParentProven)) {
     return { status: "conflict-preserved", reason: "remote-folder-identity-or-parent-mismatch" };
