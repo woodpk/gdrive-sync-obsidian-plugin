@@ -53,6 +53,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
   "s08d-drive-mailbox-relay.test.js",
   "s08e-external-live-executor.test.js",
   "s08e-prerequisite-runner-executor-seam.test.js",
+  "s09a-late-completion-recovery.test.js",
 ] as const;
 
 const ALL_PLATFORM_TESTS = [
