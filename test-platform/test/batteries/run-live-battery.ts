@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
-import { loadLateCompletionRecovery } from "../../src/live-device/late-completion-recovery";
+import { loadLateCompletionRecovery, withLateCompletionRecovery } from "./late-completion-recovery";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
 import { getLiveBattery, listLiveBatteryNames } from "./battery-registry";
 
@@ -123,13 +123,12 @@ async function main(): Promise<void> {
     checkpoints: battery.checkpoints,
     resumeEvidence: resumeEvidenceArg(),
     expectedValidationSourceCommit: sourceCommit,
-    lateCompletionRecovery: recovery,
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
     productionResultTimeoutMs: positiveIntegerArg("--production-result-timeout-ms", 600_000),
     pollIntervalMs: positiveIntegerArg("--poll-interval-ms", 250),
   });
 
-  const result = await new DeterministicScenarioRunner({}, executor).run(scenario);
+  const result = await new DeterministicScenarioRunner({}, recovery ? withLateCompletionRecovery(executor, recovery) : executor).run(scenario);
   const checkpoint = executor.pendingCheckpoint();
   const envelope = {
     battery: {
