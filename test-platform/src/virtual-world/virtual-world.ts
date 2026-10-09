@@ -226,6 +226,14 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
     };
   }
 
+  async resolveFolderCreatePhysicalParent(root: ManagedRemoteIdentity, path: VaultPath) {
+    const invalid = await this.validateRoot(root);
+    if (invalid) return invalid;
+    const parent = this.parentRemoteObjectId(path);
+    if (!parent) return { ok: false as const, signal: { kind: "recovery-required" as const, detail: "physical-parent-missing" } };
+    return { ok: true as const, value: parent };
+  }
+
   async reserveFolderCreateIdentity(
     root: ManagedRemoteIdentity,
     intentId: MutationIntentId,
