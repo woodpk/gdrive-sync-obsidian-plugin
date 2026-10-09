@@ -7,6 +7,7 @@ import type {
 } from "../contracts";
 import type { ExecutionLifecycleObserver, ExecutionLifecycleStage } from "../core/execution-coordinator";
 import { diagnosticPathKey, type DiagnosticLogger, type SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
+import { RequestAttributionMonitor, registerRequestAttributionMonitor, type RequestAttributionScope } from "../diagnostics/request-attribution";
 
 export type AuthorityPersistenceFailureStage = "pending-journal-failed" | "uncertain-state-journal-failed";
 
@@ -20,11 +21,13 @@ export type ExecutionDiagnosticEmitter = (
 
 type ObservableLifecycleObserver = ExecutionLifecycleObserver & {
   readonly executionDiagnosticEmitter?: ExecutionDiagnosticEmitter;
+  readonly executionRequestAttribution?: (operation: PlannedOperation) => RequestAttributionScope | undefined;
 };
 
 export type ObservableSynchronizationAuthorityStore = SynchronizationAuthorityStoreV1_1 & {
   readonly executionLifecycleObserver?: ExecutionLifecycleObserver;
   readonly executionDiagnosticEmitter?: ExecutionDiagnosticEmitter;
+  readonly executionRequestAttribution?: (operation: PlannedOperation) => RequestAttributionScope | undefined;
   readonly consumeAuthorityPersistenceFailureStage?: (error: unknown) => AuthorityPersistenceFailureStage | undefined;
 };
 
@@ -123,6 +126,8 @@ export function authoritativeDiagnostics(
   let planId: string | undefined;
   let physicalVerified = false;
   let commitStarted = false;
+  const attribution = new RequestAttributionMonitor(logger);
+  registerRequestAttributionMonitor(logger, attribution);
 
   const proxied = new Proxy(logger, {
     get(target, property, receiver) {
@@ -137,6 +142,9 @@ export function authoritativeDiagnostics(
           }
           return target.syncTrace(component, event, currentRunId, fields);
         };
+      }
+      if (property === "endSyncRun") {
+        return (endedRunId: number) => { attribution.close(endedRunId); return target.endSyncRun(endedRunId); };
       }
       if (property === "syncInfo") {
         return (component: Parameters<DiagnosticLogger["syncInfo"]>[0], event: string, currentRunId: number, fields?: SafeDiagnosticFields) => {
@@ -166,6 +174,7 @@ export function authoritativeDiagnostics(
     if (stage === "operation-start") {
       physicalVerified = false;
       commitStarted = false;
+      attribution.start(runId, operation, operationIndex);
       emitter(operation, "sync.execute", "operation-entry", { stage: "operation-start" });
       return;
     }
@@ -189,11 +198,13 @@ export function authoritativeDiagnostics(
       ...(classification ? { classification } : {}),
     });
     logger.syncTrace("sync.execute", stage, runId, fields);
+    if (stage === "operation-complete") attribution.finish(runId, operation, result);
     if (!failure) return;
     if (error !== undefined) logger.syncFailure("sync.execute", stage, runId, error, fields);
     else logger.syncError("sync.execute", stage, runId, fields);
   }) as ObservableLifecycleObserver;
   Object.defineProperty(observer, "executionDiagnosticEmitter", { value: emitter, enumerable: false });
+  Object.defineProperty(observer, "executionRequestAttribution", { value: (op: PlannedOperation) => attribution.scopeFor(runId, op), enumerable: false });
 
   return { logger: proxied, observer };
 }
@@ -227,6 +238,10 @@ function classifyAuthorityPersistenceTransition(
   return undefined;
 }
 
+export function executionRequestAttributionFor(store: SynchronizationAuthorityStoreV1_1, operation: PlannedOperation): RequestAttributionScope | undefined {
+  return (store as ObservableSynchronizationAuthorityStore).executionRequestAttribution?.(operation);
+}
+
 export function executionDiagnosticEmitterFor(
   store: SynchronizationAuthorityStoreV1_1,
 ): ExecutionDiagnosticEmitter | undefined {
@@ -239,6 +254,7 @@ export function withExecutionLifecycleObserver(
 ): ObservableSynchronizationAuthorityStore {
   if (!observer) return store;
   const diagnosticEmitter = (observer as ObservableLifecycleObserver).executionDiagnosticEmitter;
+  const requestAttribution = (observer as ObservableLifecycleObserver).executionRequestAttribution;
   let activeOperation: PlannedOperation | undefined;
   let previousTrustedAuthority: SynchronizationAuthorityMetadataV1_1 | undefined;
   let classifiedFailure: { readonly error: unknown; readonly stage: AuthorityPersistenceFailureStage } | undefined;
@@ -252,6 +268,7 @@ export function withExecutionLifecycleObserver(
   return {
     executionLifecycleObserver: trackedObserver,
     executionDiagnosticEmitter: diagnosticEmitter,
+    executionRequestAttribution: requestAttribution,
     loadAuthority: async () => {
       const loaded = await store.loadAuthority();
       if (loaded.status === "trusted") previousTrustedAuthority = loaded.state;
