@@ -42,6 +42,8 @@ Registered live batteries currently include:
 
 Batteries requiring a genuinely physical operator/provider/OS transition stop at an external BVP checkpoint rather than synthesizing that transition. The initial attempt is persisted and uploaded with exit code 3. Resume uses the same Run ID plus the bounded evidence tokens requested by the checkpoint. Any resume carrying `human-confirmation` must also provide a short `-ResumeEvidenceNote` describing the observed physical action/outcome; credentials, tokens, and authorization codes must never be included.
 
+A timed-out live production-execute step can be continued only with the exact retained terminal receipt and the prior blocked run, using `-RecoverTimedOutRun -RunId <original-run-id>`. This mode verifies correlation (command ID, sequence, device, run, source), complete/verified production receipt, and empty pending queues before replaying earlier completed steps **without dispatching them**. It executes only the remaining scenario observations and assertions. It requires the original controller lease to be safely released, does not accept human checkpoint resume, and preserves the original `result.json` and `result.md` unchanged. Continuation is separately recorded as `late-completion-result.json` and `late-completion-result.md`, plus an additional attempt's terminal evidence. A late receipt never retroactively changes the original battery verdict.
+
 A checkpointed run preserves all attempts under:
 
 `dev/test-results/<run-id>/attempts/attempt-###/`
