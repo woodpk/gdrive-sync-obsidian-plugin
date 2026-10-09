@@ -877,6 +877,7 @@ export function createAuthoritativeProductExecutor(
   const diagnostics = executionDiagnosticEmitterFor(authorityStore);
 
   async function validateExact(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
+    const measuredLegacy = attributedPort(legacy, executionRequestAttributionFor(authorityStore, operation));
     diagnostics?.(operation, "sync.execute", "authority-resolution-start", { stage: "authority-resolution" });
     const [authorityLoad, identityLoad] = await Promise.all([authorityStore.loadAuthority(), identityStateStore.load(stateContext)]);
     if (authorityLoad.status !== "trusted") {
@@ -896,7 +897,7 @@ export function createAuthoritativeProductExecutor(
     const bootstrapCandidate = reviewedFirstSyncResolutionCandidate(operation);
     const bootstrapRecovery = bootstrapCandidate && reviewedFirstSyncRecoveryIntentMatches(operation, authorityLoad.state);
     const bootstrapCurrent = bootstrapRecovery || (bootstrapCandidate
-      ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, legacy, managedRemote)
+      ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, measuredLegacy, managedRemote)
       : false);
     if (bootstrapCandidate && !bootstrapCurrent) {
       diagnostics?.(operation, "sync.execute", "authority-resolution-failed", {
@@ -925,7 +926,7 @@ export function createAuthoritativeProductExecutor(
           failed.push(precondition);
         } else {
           const observedPath = operation.kind === "identity-preserving-move" && operation.targetSide === "local" && operation.toPath ? operation.toPath : mapping.path;
-          if (!await legacy.versionStillCurrent("remote", { path: observedPath, entityKind: mapping.entityKind, remoteObjectId: mapping.remoteObjectId }, managedRemote)) failed.push(precondition);
+          if (!await measuredLegacy.versionStillCurrent("remote", { path: observedPath, entityKind: mapping.entityKind, remoteObjectId: mapping.remoteObjectId }, managedRemote)) failed.push(precondition);
         }
       }
     }
@@ -949,7 +950,7 @@ export function createAuthoritativeProductExecutor(
       stateRevision: String(identityLoad.state.stateRevision),
     });
     if (bootstrapRecovery) return { status: "valid" };
-    const ordinary = await legacy.validatePreconditions(operation);
+    const ordinary = await measuredLegacy.validatePreconditions(operation);
     if (ordinary.status === "valid") return { status: "valid" };
     if (ordinary.status === "stale") {
       return { status: "stale", failed: ordinary.failed.filter((value): value is ExecutableOperationPrecondition => value.kind !== "base-trusted" && value.kind !== "identity-unambiguous") };
@@ -972,8 +973,9 @@ export function createAuthoritativeProductExecutor(
       if (validation.status === "stale") return { status: "stale-precondition", reason: "exact authority changed at production mutation boundary", failed: validation.failed };
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
-      if (!physicalOperation(operation)) return legacy.execute(operation);
-       const requestScope = executionRequestAttributionFor(authorityStore, operation);
+      const requestScope = executionRequestAttributionFor(authorityStore, operation);
+       const measuredLegacy = attributedPort(legacy, requestScope);
+       if (!physicalOperation(operation)) return measuredLegacy.execute(operation);
        const measuredDependencies = attributedDependencies(dependencies, requestScope);
 
       const needsRemote = operation.targetSide === "remote" || operation.kind.startsWith("upload-") || operation.kind === "trash-remote" || operation.kind === "clean-text-merge";
@@ -997,7 +999,7 @@ export function createAuthoritativeProductExecutor(
         });
         if (existing.semanticAuthority.generation !== loaded.state.semanticGeneration) return { status: "recovery-required", reason: "persisted intent belongs to stale semantic authority" };
         for (const effect of existing.effects) {
-          const result = await recoverEffect(lifecycle, operation, effect, legacy, measuredDependencies, diagnostics, requestScope);
+          const result = await recoverEffect(lifecycle, operation, effect, measuredLegacy, measuredDependencies, diagnostics, requestScope);
           if (result) return result;
         }
         const final = await lifecycle.loadAuthority();
@@ -1016,7 +1018,7 @@ export function createAuthoritativeProductExecutor(
         return receipt;
       }
 
-      const prepared = await prepareIntent(operation, loaded.state, legacy, measuredDependencies, identityStateStore, stateContext, managedRemote);
+      const prepared = await prepareIntent(operation, loaded.state, measuredLegacy, measuredDependencies, identityStateStore, stateContext, managedRemote);
       if (prepared.status === "blocked") return { status: "recovery-required", reason: prepared.reason };
       diagnostics?.(operation, "sync.effect", "durable-intent-prepared", {
         stage: "intent-preparation",
@@ -1047,7 +1049,7 @@ export function createAuthoritativeProductExecutor(
       });
       if (persisted.status !== "persisted") return { status: "recovery-required", reason: `physical intent not durably persisted (${persisted.status})` };
       for (const effect of prepared.prepared) {
-        const result = await dispatchEffect(lifecycle, operation, effect, legacy, measuredDependencies, diagnostics, requestScope);
+        const result = await dispatchEffect(lifecycle, operation, effect, measuredLegacy, measuredDependencies, diagnostics, requestScope);
         if (result) return result;
       }
       const final = await lifecycle.loadAuthority();
