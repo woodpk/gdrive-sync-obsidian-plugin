@@ -26,6 +26,7 @@ import {
   type RecoverableProductionMutationDependencies,
 } from "./authoritative-production-executor-base";
 import { recoverMatchingDurableIntentToVerifiedReceipt } from "./durable-intent-recovery";
+import { executionRequestAttributionFor } from "./authority-execution-diagnostics";
 import type { ProductSynchronizationExecutor } from "./production-executor";
 import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 
@@ -203,8 +204,14 @@ export function createAuthoritativeProductExecutor(
     }
     if (existing.status === "none") return base.execute(operation);
 
+    const recoveryScope = executionRequestAttributionFor(authorityStore, operation);
+    let recoveryLegacy = legacy;
+    if (recoveryScope) {
+      try { recoveryLegacy = legacy.withRequestAttribution(recoveryScope); }
+      catch { /* Attribution is observational; retain the original execution port. */ }
+    }
     const recovery = await recoverMatchingDurableIntentToVerifiedReceipt(
-      legacy,
+      recoveryLegacy,
       authorityStore,
       identityStateStore,
       stateContext,
