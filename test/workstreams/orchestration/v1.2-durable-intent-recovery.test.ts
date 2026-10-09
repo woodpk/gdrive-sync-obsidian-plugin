@@ -392,8 +392,19 @@ test("S09A base durable recovery keeps active operation scope for both REMOTE co
     validatePreconditions: async () => ({ status: "valid" as const }),
     runEvidence: () => ({ managedRemote, remoteEnumerationComplete: true }),
   };
+  const forbiddenDispatch = () => { throw new Error("Recovery fixture must not reserve or redispatch REMOTE mutations"); };
   const executor = createBaseAuthoritativeProductExecutor(
     legacy as never, authority, canonical as never, context as never, managedRemote,
+    {
+      reliableRemoteMutationPort: {
+        reserveFileCreateIdentity: forbiddenDispatch,
+        reserveFolderCreateIdentity: forbiddenDispatch,
+        createReserved: forbiddenDispatch,
+        updateExisting: forbiddenDispatch,
+        moveExisting: forbiddenDispatch,
+        trashExisting: forbiddenDispatch,
+      } as never,
+    },
   );
   const result = await executor.execute(executable(v1));
   assert.equal(result.status, "durable-verified-success");
