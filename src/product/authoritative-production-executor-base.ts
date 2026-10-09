@@ -321,8 +321,10 @@ async function prepareIntent(
     if (version.entityKind === "folder") {
       const reserved = await remote.reserveFolderCreateIdentity(root, intentId, operation.path);
       if (!reserved.ok) return { status: "blocked", reason: `REMOTE folder identity reservation failed: ${reserved.signal.kind}` };
-      const parentRemoteObjectId = reserved.value.parentRemoteObjectId;
-      if (!parentRemoteObjectId) return { status: "blocked", reason: "REMOTE folder create lacks exact observed physical parent identity" };
+      if (!deps.remoteFolderCreateRecoveryReadPort?.resolveFolderCreatePhysicalParent) return { status: "blocked", reason: "REMOTE folder physical-parent authority read port unavailable" };
+      const observedParent = await deps.remoteFolderCreateRecoveryReadPort.resolveFolderCreatePhysicalParent(root, operation.path);
+      if (!observedParent.ok) return { status: "blocked", reason: `REMOTE folder physical-parent authority unavailable: ${observedParent.signal.kind}` };
+      const parentRemoteObjectId = observedParent.value;
       add("remote-folder", {
         kind: "remote-folder-create",
         targetSide: "remote",
