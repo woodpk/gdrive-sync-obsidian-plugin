@@ -186,7 +186,7 @@ test("S09A scoped Drive adapter classifies real reconciliation traversal indepen
     parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } };
   const fetcher = async (url: string): Promise<Response> => {
     calls.push(url);
-    const expanded = decodeURIComponent(url).replace(/\\+/g, " ");
+    const expanded = decodeURIComponent(url).replace(/\+/g, " ");
     let body: unknown;
     if (url.includes("/about?")) body = { user: { permissionId: "acct" } };
     else if (url.includes("/files/root?")) body = root;
