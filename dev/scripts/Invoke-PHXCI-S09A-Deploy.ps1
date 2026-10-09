@@ -62,8 +62,21 @@ if ($code -eq 0) {
   $remoteExit = $LASTEXITCODE
   git.exe -C $repo merge-base --is-ancestor HEAD "refs/remotes/origin/$branch"
   $ffCode = $LASTEXITCODE
-  if ($remoteExit -ne 0 -or $remote.Count -ne 1 -or $remote[0].Trim() -cne $SourceHead -or $ffCode -ne 0) {
-    Block 94 'Remote source differs from expected or local checkout cannot advance safely.'
+  if ($remoteExit -ne 0 -or $remote.Count -ne 1 -or $ffCode -ne 0) {
+    Block 94 'Remote source cannot be safely resolved or fast-forwarded.'
+  } elseif ($remote[0].Trim() -cne $SourceHead) {
+    if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) {
+      Block 94 'Remote branch moved before the first PHX-CI build.'
+    } else {
+      git.exe -C $repo merge-base --is-ancestor $SourceHead $remote[0].Trim()
+      $ancestryExit = $LASTEXITCODE
+      $delta = @(git.exe -C $repo diff --name-only $SourceHead $remote[0].Trim())
+      $deltaExit = $LASTEXITCODE
+      $unexpected = @($delta | Where-Object { $_ -cnotmatch '^dev/(?:_ca-output\\.(?:md|json)$|test-results/)' })
+      if ($ancestryExit -ne 0 -or $deltaExit -ne 0 -or $unexpected.Count -ne 0) {
+        Block 94 'Post-verification remote history is not evidence-only; staging retained.'
+      }
+    }
   }
 }
 if ($code -eq 0) {
