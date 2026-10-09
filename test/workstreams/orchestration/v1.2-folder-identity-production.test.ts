@@ -82,7 +82,7 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
   const mutation: ReliableRemoteMutationPort = {
     async reserveFileCreateIdentity() { throw new Error("file reservation must not be used"); },
     async reserveFolderCreateIdentity(_root, intentId, targetPath) {
-      return { ok: true, value: { kind: "reserved-folder-create", intentId, reservedRemoteObjectId: reserved, path: targetPath, parentRemoteObjectId: contentParent } };
+      return { ok: true, value: { kind: "reserved-folder-create", intentId, reservedRemoteObjectId: reserved, path: targetPath } };
     },
     async createReserved(identity) {
       assert.equal(identity.kind, "reserved-folder-create");
@@ -94,6 +94,7 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
     async trashExisting() { throw new Error("not used"); },
   };
   const recovery: RemoteFolderCreateRecoveryReadPort = {
+    async resolveFolderCreatePhysicalParent() { return { ok: true, value: contentParent }; },
     async observeFolderCreateRecovery(descriptor) {
       return { status: "folder", targetPath: descriptor.targetPath, pathComparisonKey: descriptor.pathAuthority.pathComparisonKey, remoteObjectId: reserved, parentRemoteObjectId: contentParent };
     },
@@ -117,7 +118,6 @@ test("D-C8 production REMOTE folder reserved identity is carried into the verifi
   if (recorded?.kind === "remote-folder-create") {
     assert.equal(recorded.parentRemoteObjectId, contentParent);
     assert.notEqual(recorded.parentRemoteObjectId, managedRemote.rootId);
-    assert.equal(recorded.remoteMutation.parentRemoteObjectId, contentParent);
   }
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
 });
