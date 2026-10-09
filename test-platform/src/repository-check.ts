@@ -27,7 +27,7 @@ const canonicalDevDirectories = new Set([
   "test-results",
   "scratch",
 ]);
-const canonicalDevFiles = new Set(["README.md", "_ca-output.md", "_ca-output.json"]);
+const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
 const brainPackageName = "brain-google-drive-sync";
 const acceptedProductionMainSha256 =
   "5014602d5ae319beb151276117da7c6efc4f9cd50d8bef3503c2ef0514f02a3a";
@@ -70,7 +70,7 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   for (const entry of entries) {
     const allowed =
       (entry.isDirectory() && canonicalDevDirectories.has(entry.name)) ||
-      (entry.isFile() && canonicalDevFiles.has(entry.name));
+      (entry.isFile() && (canonicalDevFiles.has(entry.name) || entry.name === "_ca-output.json"));
     if (!allowed) {
       violations.push({
         path: "dev/" + entry.name,
