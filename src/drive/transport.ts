@@ -145,7 +145,7 @@ export class GoogleHttpTransport {
       const safeEndpointClass = endpointClass(url, method);
       const requestStarted = this.monotonicNow();
       const runId = this.currentRunId();
-      runIdForMeasurement = runId;
+      runIdForMeasurement = attribution?.runId ?? runId;
       const commonFields: SafeDiagnosticFields = {
         requestId,
         method,
