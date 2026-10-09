@@ -18,6 +18,7 @@ export interface RequestMeasurement {
   readonly runId?: number;
   readonly scope?: RequestAttributionScope;
   readonly endpoint: string;
+  readonly method: string;
   readonly elapsedMs: number;
   readonly attempts: number;
   readonly status?: number;
@@ -57,7 +58,7 @@ function add(t: Totals, value: RequestMeasurement, purpose: RequestPurpose): voi
   const ms = Number.isFinite(value.elapsedMs) ? Math.max(0, value.elapsedMs) : 0;
   t.ms += ms;
   const endpoint = ["drive.files.list", "drive.files.get", "drive.about"].includes(value.endpoint)
-    ? value.endpoint : "other";
+    ? value.endpoint : value.method === "GET" || value.method === "HEAD" ? "other-read" : "write";
   count(t.endpoints, endpoint, ms);
   count(t.purposes, purpose, ms);
 }
@@ -71,6 +72,7 @@ function keys(t: Totals): SafeDiagnosticFields {
     notFoundRequestCount: t.missing, retryCount: t.retries,
     summedRequestMs: Math.round(t.ms), listRequestCount: e("drive.files.list"),
     getRequestCount: e("drive.files.get"), aboutRequestCount: e("drive.about"),
+    otherReadRequestCount: e("other-read"), writeRequestCount: e("write"),
     fullTreeRequestCount: p("full-reconciliation-tree"),
     provenanceRequestCount: p("reconciliation-provenance"),
     parentPathRequestCount: p("parent-path-resolution"),
@@ -81,6 +83,7 @@ function keys(t: Totals): SafeDiagnosticFields {
     unattributedRequestCount: p("unattributed"),
     listRequestMs: em("drive.files.list"), getRequestMs: em("drive.files.get"),
     aboutRequestMs: em("drive.about"),
+    otherReadRequestMs: em("other-read"), writeRequestMs: em("write"),
     fullTreeRequestMs: pm("full-reconciliation-tree"),
     provenanceRequestMs: pm("reconciliation-provenance"),
     parentPathRequestMs: pm("parent-path-resolution"),
