@@ -48,7 +48,7 @@ function empty(): Totals {
   return { requests: 0, failed: 0, missing: 0, retries: 0, ms: 0,
     endpoints: new Map(), purposes: new Map() };
 }
-function count(map: Map<string, Counts>, key: string, ms: number): void {
+function count<K extends string>(map: Map<K, Counts>, key: K, ms: number): void {
   const value = map.get(key) ?? { count: 0, ms: 0 };
   value.count++; value.ms += ms; map.set(key, value);
 }
