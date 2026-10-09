@@ -19,7 +19,7 @@ export interface LiveScenarioExecutorOptions {
   readonly checkpoints?: Readonly<Record<string, HumanCheckpointInstruction>>;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly expectedValidationSourceCommit: string;
-  readonly resultTimeoutMs?: number; readonly pollIntervalMs?: number;
+  readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
   readonly lateCompletionRecovery?: LateCompletionRecovery;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
@@ -76,8 +76,8 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
   if(!options.scenario.executionModes.includes("live"))throw new Error("live-execution-mode-unavailable");
   if(!options.runId||options.runId.length>128||!/^[0-9a-f]{40}$/i.test(options.expectedValidationSourceCommit)||deviceIdentities.some(value=>!value||value.length>128)||new Set(deviceIdentities).size!==deviceIdentities.length)throw new Error("live-executor-identity-invalid");
-  const timeout=options.resultTimeoutMs??30_000,poll=options.pollIntervalMs??250;
-  if(timeout<0||poll<=0)throw new Error("live-executor-timing-invalid");
+  const timeout=options.resultTimeoutMs??30_000,productionTimeout=options.productionResultTimeoutMs??600_000,poll=options.pollIntervalMs??250;
+  if(timeout<=0||productionTimeout<=0||poll<=0)throw new Error("live-executor-timing-invalid");
   const out=join(options.relayRoot,"outbox"),sent=join(options.relayRoot,"sent"),inbox=join(options.relayRoot,"inbox");
   await mkdir(out,{recursive:true});await mkdir(join(options.relayRoot,"controller-authority"),{recursive:true});
   const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>(),authorityEntries=leasedDevices.map(deviceId=>{const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);return{deviceId,path};}),authorityLocks=await acquireAuthorityLocks(authorityEntries.map(value=>value.path));
@@ -96,7 +96,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     if(!await exists(outPath)&&!await exists(sentPath)&&!await exists(resultPath)){
       const temp=join(options.relayRoot,`.${name}.tmp`);await writeFile(temp,JSON.stringify(command),"utf8");await rename(temp,outPath);
     }
-    const deadline=Date.now()+timeout;
+    const deadline=Date.now()+(command.kind==="production-execute"?productionTimeout:timeout);
     while(Date.now()<=deadline){
       if(await exists(resultPath)){
         let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
