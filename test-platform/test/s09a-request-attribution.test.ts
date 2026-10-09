@@ -74,17 +74,23 @@ test("S09A exact HTTP counts, retries, and semantic caller categories reconcile 
     const result = await transport.request(`https://www.googleapis.com/drive/v3/${path}`, {}, true, context(scope, purpose));
     assert.equal(result.ok, true);
   }
+  const generated = await transport.request("https://www.googleapis.com/drive/v3/files/generateIds?count=1", {}, true, context(scope, "precondition-validation"));
+  const created = await transport.request("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST" }, false, context(scope, "precondition-validation"));
+  assert.equal(generated.ok, true);
+  assert.equal(created.ok, true);
   monitor.reconciliation(scope, 47, false);
   monitor.finish(runId, op, "verified");
   monitor.close(runId);
-  assert.equal(calls, 6);
+  assert.equal(calls, 8);
   const records = snapshots(diagnostics);
   assert.equal(records.length, 2);
   const opFields = records[0]!.fields!;
-  assert.equal(opFields.requestCount, 6);
+  assert.equal(opFields.requestCount, 8);
   assert.equal(opFields.listRequestCount, 3);
   assert.equal(opFields.getRequestCount, 2);
   assert.equal(opFields.aboutRequestCount, 1);
+  assert.equal(opFields.otherReadRequestCount, 1);
+  assert.equal(opFields.writeRequestCount, 1);
   assert.equal(opFields.fullTreeRequestCount, 1);
   assert.equal(opFields.provenanceRequestCount, 1);
   assert.equal(opFields.parentPathRequestCount, 1);
