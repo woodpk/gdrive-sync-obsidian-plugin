@@ -667,9 +667,10 @@ async function guardPhysicalDispatch(
   prepared: PreparedEffect,
   legacy: ProductSynchronizationExecutor,
   diagnostics?: ExecutionDiagnosticEmitter,
+  scope?: RequestAttributionScope,
 ): Promise<ExecutionResult | undefined> {
   const guardOperation = dispatchGuardOperation(operation, prepared.effect.descriptor);
-  const validation = await legacy.validatePreconditions(guardOperation);
+  const validation = await attributedPort(legacy, scope ? { ...scope, purpose: "precondition-validation" } : undefined).validatePreconditions(guardOperation);
   if (validation.status === "valid") return undefined;
 
   const reason = validation.status === "stale"
@@ -726,7 +727,7 @@ async function dispatchEffect(
   }));
   if (authorized.status !== "dispatch-authorized") return { status: "recovery-required", reason: `dispatch authority not durably persisted (${authorized.status})` };
 
-  const guarded = await guardPhysicalDispatch(lifecycle, operation, prepared, legacy, diagnostics);
+  const guarded = await guardPhysicalDispatch(lifecycle, operation, prepared, legacy, diagnostics, scope);
   if (guarded) return guarded;
 
   const descriptor = prepared.effect.descriptor;
@@ -877,7 +878,8 @@ export function createAuthoritativeProductExecutor(
   const diagnostics = executionDiagnosticEmitterFor(authorityStore);
 
   async function validateExact(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
-    const measuredLegacy = attributedPort(legacy, executionRequestAttributionFor(authorityStore, operation));
+    const scope = executionRequestAttributionFor(authorityStore, operation);
+    const measuredLegacy = attributedPort(legacy, scope ? { ...scope, purpose: "precondition-validation" } : undefined);
     diagnostics?.(operation, "sync.execute", "authority-resolution-start", { stage: "authority-resolution" });
     const [authorityLoad, identityLoad] = await Promise.all([authorityStore.loadAuthority(), identityStateStore.load(stateContext)]);
     if (authorityLoad.status !== "trusted") {
@@ -974,9 +976,13 @@ export function createAuthoritativeProductExecutor(
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
       const requestScope = executionRequestAttributionFor(authorityStore, operation);
-       const measuredLegacy = attributedPort(legacy, requestScope);
-       if (!physicalOperation(operation)) return measuredLegacy.execute(operation);
-       const measuredDependencies = attributedDependencies(dependencies, requestScope);
+      const mutationScope = requestScope ? { ...requestScope, purpose: "mutation-dispatch" as const } : undefined;
+      const preparationScope = requestScope ? { ...requestScope, purpose: "intent-preparation" as const } : undefined;
+      const measuredLegacy = attributedPort(legacy, mutationScope);
+      if (!physicalOperation(operation)) return measuredLegacy.execute(operation);
+      const measuredDependencies = attributedDependencies(dependencies, mutationScope);
+      const preparationLegacy = attributedPort(legacy, preparationScope);
+      const preparationDependencies = attributedDependencies(dependencies, preparationScope);
 
       const needsRemote = operation.targetSide === "remote" || operation.kind.startsWith("upload-") || operation.kind === "trash-remote" || operation.kind === "clean-text-merge";
       const needsLocalFile = ((operation.kind === "download-create" || operation.kind === "download-update") && operation.contentVersion?.entityKind !== "folder") || operation.kind === "clean-text-merge";
@@ -1018,7 +1024,7 @@ export function createAuthoritativeProductExecutor(
         return receipt;
       }
 
-      const prepared = await prepareIntent(operation, loaded.state, measuredLegacy, measuredDependencies, identityStateStore, stateContext, managedRemote);
+      const prepared = await prepareIntent(operation, loaded.state, preparationLegacy, preparationDependencies, identityStateStore, stateContext, managedRemote);
       if (prepared.status === "blocked") return { status: "recovery-required", reason: prepared.reason };
       diagnostics?.(operation, "sync.effect", "durable-intent-prepared", {
         stage: "intent-preparation",
