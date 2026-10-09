@@ -57,7 +57,7 @@ test("S09A exact HTTP counts, retries, and semantic caller categories reconcile 
   let calls = 0;
   const observed: string[] = [];
   const transport = new GoogleHttpTransport(session(), async url => {
-    observed.push(url);
+    observed.push(String(url));
     calls++;
     return new Response("{}", { status: 200 });
   }, policy, async () => undefined, () => 0, () => 0, diagnostics, () => calls * 10);
@@ -184,7 +184,8 @@ test("S09A scoped Drive adapter classifies real reconciliation traversal indepen
     parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-content" } };
   const configurationRoot = { id: "config", name: "__brain_sync_portable_config__", mimeType: "application/vnd.google-apps.folder",
     parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } };
-  const fetcher = async (url: string): Promise<Response> => {
+  const fetcher = async (input: RequestInfo | URL): Promise<Response> => {
+    const url = String(input);
     calls.push(url);
     const expanded = decodeURIComponent(url).replace(/\+/g, " ");
     let body: unknown;
