@@ -5,7 +5,7 @@ export type RequestPurpose =
   | "full-reconciliation-tree" | "reconciliation-provenance"
   | "parent-path-resolution" | "reserved-id-observation"
   | "create-result-verification" | "precondition-validation"
-  | "managed-root-account" | "unattributed";
+  | "managed-root-account" | "intent-preparation" | "mutation-dispatch" | "unattributed";
 
 export interface RequestAttributionScope {
   readonly runId: number;
@@ -41,7 +41,7 @@ type Run = Totals & {
 const purposes: readonly RequestPurpose[] = [
   "full-reconciliation-tree", "reconciliation-provenance", "parent-path-resolution",
   "reserved-id-observation", "create-result-verification", "precondition-validation",
-  "managed-root-account", "unattributed",
+  "managed-root-account", "intent-preparation", "mutation-dispatch", "unattributed",
 ];
 function empty(): Totals {
   return { requests: 0, failed: 0, missing: 0, retries: 0, ms: 0,
@@ -80,6 +80,8 @@ function keys(t: Totals): SafeDiagnosticFields {
     createVerifyRequestCount: p("create-result-verification"),
     preconditionRequestCount: p("precondition-validation"),
     rootAccountRequestCount: p("managed-root-account"),
+    intentPreparationRequestCount: p("intent-preparation"),
+    mutationDispatchRequestCount: p("mutation-dispatch"),
     unattributedRequestCount: p("unattributed"),
     listRequestMs: em("drive.files.list"), getRequestMs: em("drive.files.get"),
     aboutRequestMs: em("drive.about"),
@@ -91,6 +93,8 @@ function keys(t: Totals): SafeDiagnosticFields {
     createVerifyRequestMs: pm("create-result-verification"),
     preconditionRequestMs: pm("precondition-validation"),
     rootAccountRequestMs: pm("managed-root-account"),
+    intentPreparationRequestMs: pm("intent-preparation"),
+    mutationDispatchRequestMs: pm("mutation-dispatch"),
     unattributedRequestMs: pm("unattributed"),
   };
 }
@@ -108,7 +112,7 @@ export class RequestAttributionMonitor {
       const r = this.run(id), key = String(op.operationId);
       if (r.closed || r.operations.has(key)) return;
       const scope = Object.freeze({ runId: id, operationIndex: index,
-        operationKind: op.kind, purpose: "precondition-validation" as const });
+        operationKind: op.kind, purpose: "unattributed" as const });
       const entry: Operation = { ...empty(), scope, index, kind: op.kind,
         started: this.now(), ended: false, passes: 0, passMs: 0, passFailed: 0, unknownDuringOperation: false };
       r.operations.set(key, entry); r.byIndex.set(index, entry);
@@ -128,9 +132,10 @@ export class RequestAttributionMonitor {
       const purpose = valid && purposes.includes(scope!.purpose) ? scope!.purpose : "unattributed";
       add(r, value, purpose);
       if (valid) add(entry!, value, purpose);
-      else {
+      if (purpose === "unattributed") {
         r.unattributed++;
-        for (const active of r.operations.values()) if (!active.ended) active.unknownDuringOperation = true;
+        if (entry && !entry.ended) entry.unknownDuringOperation = true;
+        else for (const active of r.operations.values()) if (!active.ended) active.unknownDuringOperation = true;
       }
     } catch { /* Measurement is non-authoritative. */ }
   }
