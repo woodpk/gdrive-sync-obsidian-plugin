@@ -168,3 +168,56 @@ test("S09A disabled diagnostics remain observational and produce no persistent s
   monitor.finish(run, op); monitor.close(run);
   assert.deepEqual(diagnostics.snapshot(), []);
 });
+
+test("S09A scoped Drive adapter classifies real reconciliation traversal independently of provenance and root checks", async () => {
+  const { GoogleDriveAdapter } = await import("../../src/drive/google-drive-port");
+  const diagnostics = logger();
+  const monitor = new RequestAttributionMonitor(diagnostics);
+  registerRequestAttributionMonitor(diagnostics, monitor);
+  const run = diagnostics.beginSyncRun(), op = operation("op:reconcile");
+  monitor.start(run, op, 1);
+  const calls: string[] = [];
+  const root = { id: "root", name: "BRAIN Sync", mimeType: "application/vnd.google-apps.folder",
+    trashed: false, appProperties: { brainSyncRole: "brain-sync-root",
+      brainVaultIdentity: "vault-1", brainProtocolVersion: "1" } };
+  const contentRoot = { id: "content", name: "vault", mimeType: "application/vnd.google-apps.folder",
+    parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-content" } };
+  const configurationRoot = { id: "config", name: "__brain_sync_portable_config__", mimeType: "application/vnd.google-apps.folder",
+    parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } };
+  const fetcher = async (url: string): Promise<Response> => {
+    calls.push(url);
+    const expanded = decodeURIComponent(url).replace(/\\+/g, " ");
+    let body: unknown;
+    if (url.includes("/about?")) body = { user: { permissionId: "acct" } };
+    else if (url.includes("/files/root?")) body = root;
+    else if (expanded.includes("brain-sync-content") && expanded.includes("'root' in parents")) body = { files: [contentRoot] };
+    else if (expanded.includes("__brain_sync_portable_config__") && expanded.includes("'root' in parents")) body = { files: [configurationRoot] };
+    else if (expanded.includes("brainManagedRootId")) body = { files: [] };
+    else if (expanded.includes("'content' in parents") || expanded.includes("'config' in parents")) body = { files: [] };
+    else throw new Error("unexpected fake endpoint category");
+    return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const secrets = new Map<string, string>([["brain-gdrive-paired-account", "acct"]]);
+  const secretStore = new ObsidianSecretStore({
+    getSecret: id => secrets.get(id) ?? null,
+    setSecret: (id, value) => { secrets.set(id, value); },
+    deleteSecret: id => { secrets.delete(id); },
+  });
+  const http = new GoogleHttpTransport(session(), fetcher, policy, async () => undefined, () => 0, () => 0, diagnostics);
+  const drive = new GoogleDriveAdapter(session(), http, secretStore, diagnostics);
+  const result = await drive.withRequestAttribution(monitor.scopeFor(run, op)!).listForReconciliation("root" as never);
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.completeness.status, "complete");
+  monitor.finish(run, op); monitor.close(run);
+  const value = snapshots(diagnostics)[0]!.fields!;
+  assert.equal(value.requestCount, calls.length);
+  assert.equal(value.listRequestCount, 5);
+  assert.equal(value.getRequestCount, 1);
+  assert.equal(value.aboutRequestCount, 1);
+  assert.equal(value.fullTreeRequestCount, 2);
+  assert.equal(value.provenanceRequestCount, 1);
+  assert.equal(value.rootAccountRequestCount, 4);
+  assert.equal(value.reconciliationCount, 1);
+  assert.equal(value.reconciliationFailureCount, 0);
+  assert.equal(value.attributionComplete, true);
+});
