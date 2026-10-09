@@ -72,7 +72,7 @@ if ($code -eq 0) {
       $ancestryExit = $LASTEXITCODE
       $delta = @(git.exe -C $repo diff --name-only $SourceHead $remote[0].Trim())
       $deltaExit = $LASTEXITCODE
-      $unexpected = @($delta | Where-Object { $_ -cnotmatch '^dev/(?:_ca-output\\.(?:md|json)$|test-results/)' })
+      $unexpected = @($delta | Where-Object { $_ -cnotmatch '^dev/(?:_ca-output\.(?:md|json)$|test-results/)' })
       if ($ancestryExit -ne 0 -or $deltaExit -ne 0 -or $unexpected.Count -ne 0) {
         Block 94 'Post-verification remote history is not evidence-only; staging retained.'
       }
@@ -88,7 +88,7 @@ if ($code -eq 0) {
   $nowExit = $LASTEXITCODE
   git.exe -C $repo merge-base --is-ancestor $base $SourceHead
   $baseExit = $LASTEXITCODE
-  if ($nowExit -ne 0 -or $now.Count -ne 1 -or $now[0].Trim() -cne $SourceHead -or $baseExit -ne 0) {
+  if ($nowExit -ne 0 -or $now.Count -ne 1 -or $baseExit -ne 0 -or ($now[0].Trim() -cne $SourceHead -and -not (Test-Path -LiteralPath $marker -PathType Leaf))) {
     Block 96 'Source SHA or ancestry mismatch.'
   }
 }
