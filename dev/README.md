@@ -13,8 +13,9 @@ This repository is being migrated to the canonical development hierarchy require
 - `test-results/` — persisted PHX-CI run evidence.
 - `scratch/` — explicitly non-authoritative temporary working material.
 - `_ca-output.md` — current coding-agent/work-unit evidence and handoff surface where required.
+- `_ca-output.json` — optional structured PHX-CI evidence metadata published alongside the canonical Markdown report.
 
-Only `README.md` and `_ca-output.md` are standard ordinary files directly under `dev/`.
+Only `README.md` and `_ca-output.md` are required ordinary files directly under `dev/`; PHX-CI may additionally publish `_ca-output.json`.
 
 ## Authority status
 
