@@ -239,7 +239,8 @@ function classifyAuthorityPersistenceTransition(
 }
 
 export function executionRequestAttributionFor(store: SynchronizationAuthorityStoreV1_1, operation: PlannedOperation): RequestAttributionScope | undefined {
-  return (store as ObservableSynchronizationAuthorityStore).executionRequestAttribution?.(operation);
+  try { return (store as ObservableSynchronizationAuthorityStore).executionRequestAttribution?.(operation); }
+  catch { return undefined; }
 }
 
 export function executionDiagnosticEmitterFor(
