@@ -109,7 +109,7 @@ export class RequestAttributionMonitor {
       if (r.closed) return;
       const scope = value.scope;
       const entry = scope?.runId === value.runId ? r.byIndex.get(scope.operationIndex) : undefined;
-      const valid = !!entry && !entry.ended && entry.scope === scope;
+      const valid = !!entry && !entry.ended && entry.kind === scope?.operationKind;
       const purpose = valid && purposes.includes(scope!.purpose) ? scope!.purpose : "unattributed";
       add(r, value, purpose);
       if (valid) add(entry!, value, purpose); else r.unattributed++;
