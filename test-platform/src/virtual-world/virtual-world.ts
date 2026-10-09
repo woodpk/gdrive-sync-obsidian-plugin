@@ -241,15 +241,12 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
   ): ReturnType<ReliableRemoteMutationPort["reserveFolderCreateIdentity"]> {
     const validation = await this.validateRoot(root);
     if (validation) return validation;
-    return {
-      ok: true,
-      value: {
-        kind: "reserved-folder-create",
-        intentId,
-        reservedRemoteObjectId: this.drive.reserveProviderObjectId(),
-        path,
-      },
-    };
+    return { ok: true, value: {
+      kind: "reserved-folder-create",
+      intentId,
+      reservedRemoteObjectId: this.drive.reserveProviderObjectId(),
+      path,
+    } };
   }
 
   async createReserved(identity: ReservedCreateIdentity, content?: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
