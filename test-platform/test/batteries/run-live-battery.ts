@@ -125,6 +125,7 @@ async function main(): Promise<void> {
     expectedValidationSourceCommit: sourceCommit,
     lateCompletionRecovery: recovery,
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
+    productionResultTimeoutMs: positiveIntegerArg("--production-result-timeout-ms", 600_000),
     pollIntervalMs: positiveIntegerArg("--poll-interval-ms", 250),
   });
 
