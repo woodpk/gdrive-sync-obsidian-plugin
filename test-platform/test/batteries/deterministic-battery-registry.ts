@@ -53,7 +53,11 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
   "s08d-drive-mailbox-relay.test.js",
   "s08e-external-live-executor.test.js",
   "s08e-prerequisite-runner-executor-seam.test.js",
+] as const;
+
+const S09_REQUEST_ATTRIBUTION = [
   "s09a-late-completion-recovery.test.js",
+  "s09a-request-attribution.test.js",
 ] as const;
 
 const ALL_PLATFORM_TESTS = [
@@ -62,6 +66,7 @@ const ALL_PLATFORM_TESTS = [
     ...S06_SYNC_SEMANTICS,
     ...S07_FAULT_RECOVERY_SAFETY,
     ...S08_LIVE_PLATFORM_INFRASTRUCTURE,
+    ...S09_REQUEST_ATTRIBUTION,
   ]),
 ].sort();
 
@@ -86,6 +91,11 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
       name: "s08-live-platform-infrastructure",
       description: "Production receipt seam, validation build, command agent, mailbox/relay, and external live-executor infrastructure tests.",
       testFiles: S08_LIVE_PLATFORM_INFRASTRUCTURE,
+    },
+    "s09-request-attribution": {
+      name: "s09-request-attribution",
+      description: "S09A bounded diagnostics and guarded late-completion recovery tests.",
+      testFiles: S09_REQUEST_ATTRIBUTION,
     },
     "all-platform-tests": {
       name: "all-platform-tests",
