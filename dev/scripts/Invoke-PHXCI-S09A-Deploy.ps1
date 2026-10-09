@@ -68,9 +68,10 @@ if ($code -eq 0) {
     if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) {
       Block 94 'Remote branch moved before the first PHX-CI build.'
     } else {
-      git.exe -C $repo merge-base --is-ancestor $SourceHead $remote[0].Trim()
+      $remoteHead = $remote[0].Trim()
+      git.exe -C $repo merge-base --is-ancestor $SourceHead $remoteHead
       $ancestryExit = $LASTEXITCODE
-      $delta = @(git.exe -C $repo diff --name-only $SourceHead $remote[0].Trim())
+      $delta = @(git.exe -C $repo diff --name-only $SourceHead $remoteHead)
       $deltaExit = $LASTEXITCODE
       $unexpected = @($delta | Where-Object { $_ -cnotmatch '^dev/(?:_ca-output\.(?:md|json)$|test-results/)' })
       if ($ancestryExit -ne 0 -or $deltaExit -ne 0 -or $unexpected.Count -ne 0) {
