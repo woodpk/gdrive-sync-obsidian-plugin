@@ -382,6 +382,32 @@ test("noncanonical active dev top-level entries block repository check", () => {
   });
 });
 
+test("PHX-CI structured evidence is an optional canonical dev-root file", () => {
+  withFixture((root, baseSha) => {
+    writeText(root, "dev/_ca-output.json", '{"status":"PASS"}\n');
+    const contextPath = writeContext(root, baseSha);
+    const result = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+    });
+    if (result.error) throw result.error;
+    strictEqual(result.status, 0, result.output);
+    match(result.output, /DEV_ROOT_STRUCTURE_RESULT=PASS violations=0/);
+  });
+});
+
+test("unrelated dev-root JSON files remain prohibited", () => {
+  withFixture((root, baseSha) => {
+    writeText(root, "dev/unapproved.json", "{}\n");
+    const contextPath = writeContext(root, baseSha);
+    const result = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+    });
+    if (result.error) throw result.error;
+    notStrictEqual(result.status, 0, result.output);
+    match(result.output, /DEV_ROOT_STRUCTURE_VIOLATION path=dev\/unapproved\.json /);
+  });
+});
+
 test("built shipping artifact identity mismatch blocks repository check", () => {
   withFixture((root, baseSha) => {
     const packageModel = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
