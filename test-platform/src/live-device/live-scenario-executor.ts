@@ -7,6 +7,7 @@ import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition,
 import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
+import type { LateCompletionRecovery } from "./late-completion-recovery";
 
 export interface HumanCheckpointInstruction {
   readonly action: string; readonly device: string; readonly stopCondition: string;
@@ -19,6 +20,7 @@ export interface LiveScenarioExecutorOptions {
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly expectedValidationSourceCommit: string;
   readonly resultTimeoutMs?: number; readonly pollIntervalMs?: number;
+  readonly lateCompletionRecovery?: LateCompletionRecovery;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
 
@@ -41,12 +43,12 @@ const commandCount=(step:ScenarioStep):number=>
   step.kind==="external-state"&&step.transition==="request-cancellation"&&!step.boundary?1:
   step.kind==="observe"&&(step.subject==="local-entry"||step.subject==="device-state")?1:0;
 
-function sequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{
+export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{
   let value=sub+1;
   for(let i=0;i<index;i++)if(stepDevice(scenario.steps[i]!)===device)value+=commandCount(scenario.steps[i]!);
   return value;
 }
-function commandId(runId:string,scenarioId:string,index:number,sub:number):string{
+export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{
   return "bvp-"+createHash("sha256").update(`${runId}\0${scenarioId}\0${index}\0${sub}`).digest("hex").slice(0,32);
 }
 function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string):boolean{
@@ -107,7 +109,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   async function send(step:ScenarioStep,context:ScenarioExecutorContext,body:Record<string,unknown>,sub=0):Promise<RelayResult>{
     const label=stepDevice(step);if(!label)return null;
     const deviceId=options.deviceIds[label];if(!deviceId)return undefined;
-    const command={runId:options.runId,deviceId,sequence:sequenceFor(options.scenario,label,context.stepIndex,sub),commandId:commandId(options.runId,options.scenario.id,context.stepIndex,sub),...body} as DeviceCommand;
+    const command={runId:options.runId,deviceId,sequence:liveSequenceFor(options.scenario,label,context.stepIndex,sub),commandId:liveCommandId(options.runId,options.scenario.id,context.stepIndex,sub),...body} as DeviceCommand;
     return roundTrip(command);
   }
   function remember(index:number,step:ScenarioStep,result:ScenarioCapabilityResult):ScenarioCapabilityResult{
@@ -140,6 +142,13 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     async execute(step,context){
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
+      else if(options.lateCompletionRecovery && context.stepIndex<=options.lateCompletionRecovery.completedStepIndex){
+        const recovery=options.lateCompletionRecovery;
+        if(context.stepIndex===recovery.completedStepIndex)result=resultOutcome(recovery.result);
+        else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
+        else if("captureAs" in step && typeof step.captureAs==="string")result={status:"completed",value:recovery.prior.captures[step.captureAs]};
+        else result={status:"completed"};
+      }
       else if(resume&&context.stepIndex<resume.nextStepIndex-1)result=replay(context.stepIndex);
       else if(step.kind==="checkpoint")result=await humanCheckpoint(step,context);
       else if(step.kind==="assert")result=await assertScenarioObservation(step as ScenarioAssertionStep,context);
