@@ -14,7 +14,7 @@ test("deterministic batteries partition the automated BVP platform suite without
     "s06-sync-semantics",
     "s07-fault-recovery-safety",
     "s08-live-platform-infrastructure",
-    "s09-request-attribution",
+    "s09-late-completion-recovery",
   ]);
 
   const grouped = [
@@ -22,7 +22,7 @@ test("deterministic batteries partition the automated BVP platform suite without
     getDeterministicBattery("s06-sync-semantics")!,
     getDeterministicBattery("s07-fault-recovery-safety")!,
     getDeterministicBattery("s08-live-platform-infrastructure")!,
-    getDeterministicBattery("s09-request-attribution")!,
+    getDeterministicBattery("s09-late-completion-recovery")!,
   ];
   const files = grouped.flatMap(battery => battery.testFiles);
   strictEqual(new Set(files).size, files.length);
