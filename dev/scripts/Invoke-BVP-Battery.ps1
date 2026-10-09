@@ -11,7 +11,8 @@ param(
   [int]$PollIntervalMs = 250,
   [string]$RunId,
   [string[]]$ResumeEvidence = @(),
-  [string]$ResumeEvidenceNote = ""
+  [string]$ResumeEvidenceNote = "",
+  [switch]$RecoverTimedOutRun
 )
 
 Set-StrictMode -Version Latest
@@ -77,8 +78,25 @@ $ResultDir = Join-Path $RepoRoot "dev/test-results/$RunId"
 $RelativeResultDir = "dev/test-results/$RunId"
 $CheckpointFile = Join-Path $ResultDir "checkpoint.json"
 $IsResume = Test-Path -LiteralPath $ResultDir -PathType Container
+$OriginalResultJsonPath = Join-Path $ResultDir "result.json"
 
-if ($IsResume) {
+if ($RecoverTimedOutRun) {
+  if (-not $IsResume -or -not $RunIdWasProvided) {
+    throw "Timeout recovery requires an existing exact RunId."
+  }
+  if (Test-Path -LiteralPath $CheckpointFile) {
+    throw "Timeout recovery cannot override a human checkpoint."
+  }
+  if (-not (Test-Path -LiteralPath $OriginalResultJsonPath -PathType Leaf)) {
+    throw "The original result.json is required for timeout recovery."
+  }
+  if ($ResumeEvidence.Count -ne 0 -or -not [string]::IsNullOrWhiteSpace($ResumeEvidenceNote)) {
+    throw "Timeout recovery cannot accept human resume evidence."
+  }
+  if (Test-Path -LiteralPath (Join-Path $ResultDir "late-completion-result.json")) {
+    throw "This run already has a late-completion result; refusing a duplicate."
+  }
+} elseif ($IsResume) {
   if (-not $RunIdWasProvided) {
     throw "Generated RunId collided with an existing result package: $RunId"
   }
@@ -112,8 +130,10 @@ New-Item -ItemType Directory -Path $AttemptDir -Force | Out-Null
 $TranscriptPath = Join-Path $AttemptDir "terminal.log"
 $AttemptResultJsonPath = Join-Path $AttemptDir "result.json"
 $ResumeEvidencePath = Join-Path $AttemptDir "resume-evidence.json"
-$CanonicalResultJsonPath = Join-Path $ResultDir "result.json"
-$ResultMarkdownPath = Join-Path $ResultDir "result.md"
+$CanonicalResultJsonPath = if ($RecoverTimedOutRun) { Join-Path $ResultDir "late-completion-result.json" } else { $OriginalResultJsonPath }
+$ResultMarkdownPath = Join-Path $ResultDir $(if ($RecoverTimedOutRun) { "late-completion-result.md" } else { "result.md" })
+$ResultFileName = Split-Path $CanonicalResultJsonPath -Leaf
+$MarkdownFileName = Split-Path $ResultMarkdownPath -Leaf
 $CompiledCli = Join-Path $RepoRoot ".test-build/bvp/test-platform/test/batteries/run-live-battery.js"
 $DeviceMapJson = $DeviceMap | ConvertTo-Json -Compress
 $ResumeEvidenceJson = @($ResumeEvidence) | ConvertTo-Json -Compress -AsArray
@@ -125,7 +145,7 @@ $UploadExitCode = 0
 
 [System.IO.File]::WriteAllText($TranscriptPath, "", [System.Text.UTF8Encoding]::new($false))
 
-if ($IsResume) {
+if ($IsResume -and -not $RecoverTimedOutRun) {
   $ResumeRecord = [ordered]@{
     schemaVersion = 1
     runId = $RunId
@@ -268,6 +288,7 @@ Resume this exact Run ID after the physical checkpoint is complete. Do not start
 "@
   }
 
+  $RecoveryContext = if ($RecoverTimedOutRun) { "- Recovery mode: **verified late completion**; original result.json/result.md retained unchanged." } else { "" }
   $Markdown = @"
 # BVP Battery Result
 
@@ -284,13 +305,14 @@ $ClassificationLine
 - Relay root: $RelayRoot
 - Generated UTC: $([DateTimeOffset]::UtcNow.ToString("o"))
 - GitHub Actions used: **No**
+$RecoveryContext
 $HumanLine
 $CheckpointSection
 
 ## Result package
 
-- result.json — current complete machine-readable battery/BVP result.
-- result.md — this current human-readable run summary.
+- $ResultFileName — machine-readable result for this attempt.
+- $MarkdownFileName — human-readable result for this attempt.
 - checkpoint.json — present when a human checkpoint has been issued; retained as checkpoint history after resume.
 - attempts/$AttemptName/result.json — machine-readable output from this attempt.
 - attempts/$AttemptName/terminal.log — complete compile/BVP terminal output from this attempt.
@@ -321,6 +343,7 @@ try {
   Write-TranscriptLine "Run ID: $RunId"
   Write-TranscriptLine "Attempt: $AttemptNumber"
   Write-TranscriptLine "Resume: $IsResume"
+  Write-TranscriptLine "Recover timed-out completion: $RecoverTimedOutRun"
   Write-TranscriptLine "Controller branch: $BranchName"
   Write-TranscriptLine "Controller HEAD: $InputHead"
   Write-TranscriptLine "Validation source: $ValidationSourceCommit"
@@ -341,7 +364,7 @@ try {
     throw "Compiled BVP battery CLI was not produced: $CompiledCli"
   }
   if ($BatteryExitCode -eq 0) {
-    $BatteryExitCode = Invoke-RecordedExternal -Label "bvp-live-battery" -FilePath "node" -Arguments @(
+    $RunnerArgs = @(
       $CompiledCli,
       "--battery", $Battery,
       "--device-map-json", $DeviceMapJson,
@@ -354,6 +377,10 @@ try {
       "--result-timeout-ms", $ResultTimeoutMs.ToString(),
       "--poll-interval-ms", $PollIntervalMs.ToString()
     )
+    if ($RecoverTimedOutRun) {
+      $RunnerArgs += @("--recover-timed-out-result-file", $OriginalResultJsonPath)
+    }
+    $BatteryExitCode = Invoke-RecordedExternal -Label "bvp-live-battery" -FilePath "node" -Arguments $RunnerArgs
   }
 } catch {
   $FailureMessage = $_.Exception.Message
@@ -390,7 +417,7 @@ try {
     throw "Unable to inspect staged BVP result files."
   }
 
-  $CommitVerb = if ($IsResume) { "resume" } else { "record" }
+  $CommitVerb = if ($RecoverTimedOutRun) { "recover-timeout" } elseif ($IsResume) { "resume" } else { "record" }
   & git commit -m "test(bvp): $CommitVerb $Battery result $RunId attempt $AttemptNumber"
   if ($LASTEXITCODE -ne 0) {
     throw "git commit failed for BVP result package."
