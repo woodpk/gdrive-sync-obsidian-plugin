@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
+import { loadLateCompletionRecovery } from "../../src/live-device/late-completion-recovery";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
 import { getLiveBattery, listLiveBatteryNames } from "./battery-registry";
 
@@ -103,15 +104,26 @@ async function main(): Promise<void> {
   );
 
   const scenario = battery.createScenario();
+  const runId = requiredArg("--run-id");
+  const relayRoot = requiredArg("--relay-root");
+  const sourceCommit = requiredArg("--validation-source-commit");
+  const recoveryFile = optionalArg("--recover-timed-out-result-file");
+  if (recoveryFile && resumeEvidenceArg().length !== 0) {
+    throw new Error("late-completion recovery and human checkpoint resume are mutually exclusive");
+  }
+  const recovery = recoveryFile ? await loadLateCompletionRecovery({
+    scenario, runId, deviceIds, sourceCommit, relayRoot, previousResultFile: recoveryFile,
+  }) : undefined;
   const executor = await createLiveScenarioExecutor({
     scenario,
-    runId: requiredArg("--run-id"),
+    runId,
     deviceIds,
-    relayRoot: requiredArg("--relay-root"),
+    relayRoot,
     checkpointFile: requiredArg("--checkpoint-file"),
     checkpoints: battery.checkpoints,
     resumeEvidence: resumeEvidenceArg(),
-    expectedValidationSourceCommit: requiredArg("--validation-source-commit"),
+    expectedValidationSourceCommit: sourceCommit,
+    lateCompletionRecovery: recovery,
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
     pollIntervalMs: positiveIntegerArg("--poll-interval-ms", 250),
   });
@@ -125,6 +137,9 @@ async function main(): Promise<void> {
       requiredDeviceLabels: battery.requiredDeviceLabels,
     },
     ...(checkpoint ? { checkpoint } : {}),
+    ...(recovery ? { recovery: { kind: "verified-late-production-completion",
+      originalVerdict: "blocked", originalClassification: "device-result-unavailable",
+      originalResultFile: recoveryFile, completedStepIndex: recovery.completedStepIndex } } : {}),
     result,
   };
 
