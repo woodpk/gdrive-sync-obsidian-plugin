@@ -55,9 +55,8 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
   "s08e-prerequisite-runner-executor-seam.test.js",
 ] as const;
 
-const S09_REQUEST_ATTRIBUTION = [
+const S09_LATE_COMPLETION_RECOVERY = [
   "s09a-late-completion-recovery.test.js",
-  "s09a-request-attribution.test.js",
 ] as const;
 
 const ALL_PLATFORM_TESTS = [
@@ -66,7 +65,7 @@ const ALL_PLATFORM_TESTS = [
     ...S06_SYNC_SEMANTICS,
     ...S07_FAULT_RECOVERY_SAFETY,
     ...S08_LIVE_PLATFORM_INFRASTRUCTURE,
-    ...S09_REQUEST_ATTRIBUTION,
+    ...S09_LATE_COMPLETION_RECOVERY,
   ]),
 ].sort();
 
@@ -92,10 +91,10 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
       description: "Production receipt seam, validation build, command agent, mailbox/relay, and external live-executor infrastructure tests.",
       testFiles: S08_LIVE_PLATFORM_INFRASTRUCTURE,
     },
-    "s09-request-attribution": {
-      name: "s09-request-attribution",
-      description: "S09A bounded diagnostics and guarded late-completion recovery tests.",
-      testFiles: S09_REQUEST_ATTRIBUTION,
+    "s09-late-completion-recovery": {
+      name: "s09-late-completion-recovery",
+      description: "S09A guarded late-completion recovery tests.",
+      testFiles: S09_LATE_COMPLETION_RECOVERY,
     },
     "all-platform-tests": {
       name: "all-platform-tests",
