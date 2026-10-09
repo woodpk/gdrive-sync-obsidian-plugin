@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-folder-parent-recovery-01
+- Source build HEAD requested: 90b418c7a47bb460695a1e578123e75893c703bb
+- Verification checkout HEAD: 90b418c7a47bb460695a1e578123e75893c703bb
+- Evidence publication target: origin/bvp-s09a-folder-parent-recovery-01
