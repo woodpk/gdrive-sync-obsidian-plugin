@@ -134,7 +134,7 @@ export interface RemoteFolderCreatePhysicalMutationDescriptor {
   readonly parentRemoteObjectId: RemoteObjectId;
   readonly pathAuthority: FolderCreatePathAuthority;
   /** Reserved Drive identity must be durable before dispatch and reused after restart. */
-  readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }>;
+  readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }> & { readonly parentRemoteObjectId?: RemoteObjectId };
 }
 
 export type FolderCreatePhysicalMutationDescriptor =
@@ -329,7 +329,8 @@ export function folderCreateDescriptorIsSelfConsistent(descriptor: FolderCreateP
   if (descriptor.targetPath !== descriptor.pathAuthority.targetPath) return false;
   if (descriptor.kind === "remote-folder-create") {
     return descriptor.intentId === descriptor.remoteMutation.intentId
-      && descriptor.targetPath === descriptor.remoteMutation.path;
+      && descriptor.targetPath === descriptor.remoteMutation.path
+      && (descriptor.remoteMutation.parentRemoteObjectId === undefined || descriptor.remoteMutation.parentRemoteObjectId === descriptor.parentRemoteObjectId);
   }
   return true;
 }
