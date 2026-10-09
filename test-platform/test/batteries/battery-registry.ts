@@ -1,5 +1,6 @@
 import { s09aIosInitialSyncScenario } from "../../scenarios/live/s09a-ios-initial-sync";
 import { s09aWindowsInitialSyncScenario } from "../../scenarios/live/s09a-windows-initial-sync";
+import { s09aRequestAttributionScenario } from "../../scenarios/live/s09a-request-attribution";
 import { s09aDualDeviceReadinessScenario } from "../../scenarios/live/s09a-dual-device-readiness";
 import { s09bBidirectionalSyncScenario } from "../../scenarios/live/s09b-bidirectional-sync";
 import { s09bCleanTextMergeScenario } from "../../scenarios/live/s09b-clean-text-merge";
@@ -48,6 +49,12 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
     description: "Exercise an authenticated paired Windows participant through the real initial synchronization path.",
     requiredDeviceLabels: ["windows"],
     createScenario: () => s09aWindowsInitialSyncScenario,
+  },
+  "s09a-request-attribution": {
+    name: "s09a-request-attribution",
+    description: "Perform one controlled non-initial Windows synchronization with a bounded isolated canary and S09A HTTP attribution.",
+    requiredDeviceLabels: ["windows"],
+    createScenario: () => s09aRequestAttributionScenario,
   },
   "s09b-bidirectional-sync": {
     name: "s09b-bidirectional-sync",
