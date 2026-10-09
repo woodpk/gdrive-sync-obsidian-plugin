@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { s09aWindowsInitialSyncScenario as scenario } from "../scenarios/live/s09a-windows-initial-sync";
-import { loadLateCompletionRecovery } from "../src/live-device/late-completion-recovery";
+import { loadLateCompletionRecovery, withLateCompletionRecovery } from "./batteries/late-completion-recovery";
 import { createLiveScenarioExecutor, liveCommandId, liveSequenceFor } from "../src/live-device/live-scenario-executor";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "../src/live-device/device-command-agent";
@@ -99,10 +99,10 @@ test("late receipt resumes the exact run with read-only observations, never redi
     const executor = await createLiveScenarioExecutor({
       scenario, runId, deviceIds, relayRoot: f.relayRoot,
       checkpointFile: join(f.directory, "checkpoint.json"),
-      expectedValidationSourceCommit: sourceCommit, lateCompletionRecovery: recovery,
+      expectedValidationSourceCommit: sourceCommit,
       resultTimeoutMs: 5000, pollIntervalMs: 1,
     });
-    const running = new DeterministicScenarioRunner({}, executor).run(scenario);
+    const running = new DeterministicScenarioRunner({}, withLateCompletionRecovery(executor, recovery)).run(scenario);
     const first = await respond(f.relayRoot, response);
     const second = await respond(f.relayRoot, response);
     const result = await running;
