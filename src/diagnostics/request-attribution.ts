@@ -37,6 +37,7 @@ type Operation = Totals & {
 type Run = Totals & {
   operations: Map<string, Operation>; byIndex: Map<number, Operation>;
   unattributed: number; closed: boolean; completedOperations: number;
+  reconciliationCount: number; reconciliationMs: number; reconciliationFailures: number;
 };
 const purposes: readonly RequestPurpose[] = [
   "full-reconciliation-tree", "reconciliation-provenance", "parent-path-resolution",
@@ -104,7 +105,8 @@ export class RequestAttributionMonitor {
   constructor(private logger: DiagnosticLogger, private now: () => number = () => globalThis.performance?.now?.() ?? Date.now()) {}
   private run(id: number): Run {
     let r = this.runs.get(id);
-    if (!r) { r = { ...empty(), operations: new Map(), byIndex: new Map(), unattributed: 0, closed: false, completedOperations: 0 }; this.runs.set(id, r); }
+    if (!r) { r = { ...empty(), operations: new Map(), byIndex: new Map(), unattributed: 0, closed: false, completedOperations: 0,
+      reconciliationCount: 0, reconciliationMs: 0, reconciliationFailures: 0 }; this.runs.set(id, r); }
     return r;
   }
   start(id: number, op: PlannedOperation, index: number): void {
@@ -144,8 +146,12 @@ export class RequestAttributionMonitor {
       if (!scope) return;
       const entry = this.runs.get(scope.runId)?.byIndex.get(scope.operationIndex);
       if (!entry || entry.ended || entry.kind !== scope.operationKind) return;
-      entry.passes++; entry.passMs += Number.isFinite(ms) ? Math.max(0, ms) : 0;
+      const observedMs = Number.isFinite(ms) ? Math.max(0, ms) : 0;
+      entry.passes++; entry.passMs += observedMs;
       if (failed) entry.passFailed++;
+      const run = this.runs.get(scope.runId)!;
+      run.reconciliationCount++; run.reconciliationMs += observedMs;
+      if (failed) run.reconciliationFailures++;
     } catch { /* Measurement is non-authoritative. */ }
   }
   finish(id: number, op: PlannedOperation, result?: string): void {
@@ -174,6 +180,9 @@ export class RequestAttributionMonitor {
       this.logger.syncInfo("sync.attribution", "run-request-attribution", id, {
         attributionVersion: 1, operationCount: r.completedOperations + r.operations.size,
         incompleteOperationCount: incomplete,
+        reconciliationCount: r.reconciliationCount,
+        reconciliationWallMs: Math.round(r.reconciliationMs),
+        reconciliationFailureCount: r.reconciliationFailures,
         attributionComplete: incomplete === 0 && r.unattributed === 0,
         ...keys(r),
       });
