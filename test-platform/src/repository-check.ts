@@ -27,10 +27,10 @@ const canonicalDevDirectories = new Set([
   "test-results",
   "scratch",
 ]);
-const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
+const canonicalDevFiles = new Set(["README.md", "_ca-output.md", "_ca-output.json"]);
 const brainPackageName = "brain-google-drive-sync";
 const acceptedProductionMainSha256 =
-  "c139115f8eb9b83792818ed0ec832240fdf0b0aa6dbf593ada54e68b7fc29390";
+  "5014602d5ae319beb151276117da7c6efc4f9cd50d8bef3503c2ef0514f02a3a";
 
 interface DevRootViolation {
   readonly path: string;
