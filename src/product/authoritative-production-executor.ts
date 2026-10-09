@@ -27,6 +27,7 @@ import {
 } from "./authoritative-production-executor-base";
 import { recoverMatchingDurableIntentToVerifiedReceipt } from "./durable-intent-recovery";
 import type { ProductSynchronizationExecutor } from "./production-executor";
+import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 
 export type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor-base";
 
@@ -278,6 +279,45 @@ function predecessorToV1_3(result: ExecutionResult): ExecutionResultV1_3 {
  * physical authority; structured operational provenance is captured orthogonally
  * from the frozen successor ports and is never derived from reason strings.
  */
+function scopedV1_3RemotePort(
+  remote: ReliableRemoteMutationPortV1_3,
+  cancellation: SynchronizationCancellationSignal | undefined,
+  outcomes: RemoteMutationOutcomeV1_3[],
+): NonNullable<RecoverableProductionMutationDependencies["reliableRemoteMutationPort"]> {
+  const adapted = {
+    reserveFileCreateIdentity: (...args: Parameters<ReliableRemoteMutationPortV1_3["reserveFileCreateIdentity"]>) => remote.reserveFileCreateIdentity(...args),
+    reserveFolderCreateIdentity: (...args: Parameters<ReliableRemoteMutationPortV1_3["reserveFolderCreateIdentity"]>) => remote.reserveFolderCreateIdentity(...args),
+    createReserved: async (...args: Parameters<ReliableRemoteMutationPortV1_3["createReserved"]> extends [infer I, infer C, ...unknown[]] ? [I, C] : never) => {
+      const outcome = await remote.createReserved(...args, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    updateExisting: async (...args: Parameters<ReliableRemoteMutationPortV1_3["updateExisting"]> extends [infer I, infer C, ...unknown[]] ? [I, C] : never) => {
+      const outcome = await remote.updateExisting(...args, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    moveExisting: async (identity: Parameters<ReliableRemoteMutationPortV1_3["moveExisting"]>[0]) => {
+      const outcome = await remote.moveExisting(identity, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    trashExisting: async (identity: Parameters<ReliableRemoteMutationPortV1_3["trashExisting"]>[0]) => {
+      const outcome = await remote.trashExisting(identity, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+  };
+  const withAttribution = (remote as ReliableRemoteMutationPortV1_3 & {
+    withRequestAttribution?: (scope: RequestAttributionScope) => ReliableRemoteMutationPortV1_3;
+  }).withRequestAttribution;
+  if (typeof withAttribution !== "function") return adapted;
+  return Object.assign(adapted, {
+    withRequestAttribution: (scope: RequestAttributionScope) =>
+      scopedV1_3RemotePort(withAttribution.call(remote, scope), cancellation, outcomes),
+  });
+}
+
 export function createAuthoritativeProductExecutorV1_3(
   legacy: ProductSynchronizationExecutor,
   authorityStore: SynchronizationAuthorityStoreV1_1,
@@ -294,30 +334,7 @@ export function createAuthoritativeProductExecutorV1_3(
   const local = explicitDependencies.localTransactionalMutationPort;
   const adaptedDependencies: RecoverableProductionMutationDependencies = {
     ...(remote ? {
-      reliableRemoteMutationPort: {
-        reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
-        reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
-        createReserved: async (identity, content) => {
-          const outcome = await remote.createReserved(identity, content, cancellation);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        updateExisting: async (identity, content) => {
-          const outcome = await remote.updateExisting(identity, content, cancellation);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        moveExisting: async identity => {
-          const outcome = await remote.moveExisting(identity, cancellation);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        trashExisting: async identity => {
-          const outcome = await remote.trashExisting(identity, cancellation);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-      },
+      reliableRemoteMutationPort: scopedV1_3RemotePort(remote, cancellation, remoteOutcomes),
     } : {}),
     ...(local ? {
       localTransactionalMutationPort: {
