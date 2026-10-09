@@ -79,10 +79,21 @@ function mergeIntent(missing = false) {
   return { intent: intent as RecoverableOperationIntentV1_1, tx: tx as never };
 }
 function entry(pathValue: VaultPath = target, remoteObjectId = reserved, content: any = v1, kind: "file" | "folder" = "file", remoteRevision?: string): RemoteEntry { return { path: pathValue, entityKind: kind, remoteObjectId, ...(kind === "file" ? { content: { hash: content.hash, sizeBytes: content.sizeBytes, ...(remoteRevision ? { revision: remoteRevision } : {}) } } : {}), trashed: false }; }
-function fixture(canonical: CanonicalStore, entries: () => readonly RemoteEntry[]) {
+function fixture(canonical: CanonicalStore, entries: () => readonly RemoteEntry[], scopedRead?: (scope: RequestAttributionScope) => void) {
   let raw = 0;
   const local = { observe: async (pathValue: VaultPath) => ({ status: "absent", side: "local", path: pathValue }) } as unknown as LocalVaultPort;
   const drive = { observe: async (_root: RemoteObjectId, pathValue: VaultPath) => { const found = entries().find(e => e.path === pathValue); return found ? { ok: true, value: { status: "present", side: "remote", path: pathValue, entityKind: found.entityKind, remoteObjectId: found.remoteObjectId, content: found.content, stability: "stable" } } : { ok: true, value: { status: "absent", side: "remote", path: pathValue } }; }, listForReconciliation: async () => ({ ok: true, value: { entries: entries(), completeness: { status: "complete" } } }), create: async () => { raw++; throw new Error("raw create forbidden"); }, update: async () => { raw++; throw new Error("raw update forbidden"); }, move: async () => { raw++; throw new Error("raw move forbidden"); }, trash: async () => { raw++; throw new Error("raw trash forbidden"); } } as unknown as GoogleDrivePort;
+  if (scopedRead) {
+    (drive as GoogleDrivePort & {
+      withRequestAttribution?: (scope: RequestAttributionScope) => GoogleDrivePort;
+    }).withRequestAttribution = (scope: RequestAttributionScope) => ({
+      ...drive,
+      listForReconciliation: async rootId => {
+        scopedRead(scope);
+        return drive.listForReconciliation(rootId);
+      },
+    });
+  }
   return { executor: new ProductSynchronizationExecutor(local, drive, canonical as never, context, () => ({ managedRemote, remoteEnumerationComplete: true })), raw: () => raw };
 }
 function executable(content: any = v2, claimed?: RemoteObjectId) { return { operationId: createIntent().operationId, kind: "upload-create", path: target, targetSide: "remote", ...(claimed ? { remoteObjectId: claimed } : {}), contentVersion: { path: target, entityKind: "file", content: { hash: content.hash, sizeBytes: content.sizeBytes } }, authorityComplete: true, destructive: false, preconditions: [{ kind: "path-observation", side: "remote", path: target, expected: "absent" }], reasons: [] } as never; }
@@ -390,4 +401,23 @@ test("S09A base durable recovery keeps active operation scope for both REMOTE co
   assert.equal(observed.length, 2);
   assert.deepEqual(observed, [scope, scope]);
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
+});
+
+test("S09A V1.3 matching durable-intent recovery keeps scope on actual REMOTE reads", async () => {
+  const scope: RequestAttributionScope = {
+    runId: 56, operationIndex: 9, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const seen: RequestAttributionScope[] = [];
+  const canonical = new CanonicalStore();
+  const authority = Object.assign(new AuthorityStore([createIntent()]), {
+    executionRequestAttribution: () => scope,
+  });
+  const f = fixture(canonical, () => [entry()], current => seen.push(current));
+  const executor = createAuthoritativeProductExecutor(
+    f.executor, authority, canonical as never, context as never, managedRemote,
+  );
+  const result = await executor.execute(executable(v1));
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(f.raw(), 0);
+  assert.deepEqual(seen, [scope]);
 });
