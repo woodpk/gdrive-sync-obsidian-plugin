@@ -210,6 +210,18 @@ export function createAuthoritativeProductExecutor(
       try { recoveryLegacy = legacy.withRequestAttribution(recoveryScope); }
       catch { /* Attribution is observational; retain the original execution port. */ }
     }
+    const reader = configured.remoteFolderCreateRecoveryReadPort;
+    let recoveryReader = reader;
+    if (reader && recoveryScope) {
+      try {
+        const scopedReader = reader as typeof reader & {
+          withRequestAttribution?: (scope: RequestAttributionScope) => typeof reader;
+        };
+        recoveryReader = scopedReader.withRequestAttribution?.({
+          ...recoveryScope, purpose: "create-result-verification",
+        }) ?? reader;
+      } catch { /* Diagnostic scoping must not affect recovery. */ }
+    }
     const recovery = await recoverMatchingDurableIntentToVerifiedReceipt(
       recoveryLegacy,
       authorityStore,
@@ -219,7 +231,7 @@ export function createAuthoritativeProductExecutor(
       operation.operationId,
       {
         localTransactionalMutationPort: configured.localTransactionalMutationPort,
-        remoteFolderCreateRecoveryReadPort: configured.remoteFolderCreateRecoveryReadPort,
+        remoteFolderCreateRecoveryReadPort: recoveryReader,
       },
     );
     if (recovery.status === "recovery-required") return { status: "recovery-required", reason: recovery.reason };
