@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-request-attribution-01
+- Source build HEAD requested: 000ea1d6426825d7702787a2de5828b858b5bd3d
+- Verification checkout HEAD: 000ea1d6426825d7702787a2de5828b858b5bd3d
+- Evidence publication target: origin/bvp-s09a-request-attribution-01
