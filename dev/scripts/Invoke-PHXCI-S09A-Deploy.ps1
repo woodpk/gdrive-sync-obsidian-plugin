@@ -54,7 +54,7 @@ if ($code -eq 0) {
   }
 }
 if ($code -eq 0) {
-  git.exe -C $repo fetch origin "+refs/heads/\${branch}:refs/remotes/origin/\${branch}"
+  git.exe -C $repo fetch origin "+refs/heads/${branch}:refs/remotes/origin/${branch}"
   if ($LASTEXITCODE -ne 0) { Block 93 'Git fetch failed.' }
 }
 if ($code -eq 0) {
