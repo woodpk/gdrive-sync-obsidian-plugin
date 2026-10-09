@@ -421,3 +421,49 @@ test("S09A V1.3 matching durable-intent recovery keeps scope on actual REMOTE re
   assert.equal(f.raw(), 0);
   assert.deepEqual(seen, [scope]);
 });
+
+test("S09A V1.3 folder-create recovery scopes the frozen recovery reader without redispatch", async () => {
+  const scope: RequestAttributionScope = {
+    runId: 57, operationIndex: 10, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const seen: RequestAttributionScope[] = [];
+  const canonical = new CanonicalStore();
+  const intent = folderIntent("outcome-unknown");
+  const authority = Object.assign(new AuthorityStore([intent]), {
+    executionRequestAttribution: () => scope,
+  });
+  const f = fixture(canonical, () => [entry(folder, reserved, v1, "folder")]);
+  const proof = {
+    status: "folder" as const, targetPath: folder,
+    pathComparisonKey: "folders/recovered", remoteObjectId: reserved, parentRemoteObjectId: root,
+  };
+  let unscoped = 0;
+  const reader = {
+    async observeFolderCreateRecovery() {
+      unscoped++;
+      return proof;
+    },
+    withRequestAttribution(current: RequestAttributionScope) {
+      return {
+        async observeFolderCreateRecovery() {
+          seen.push(current);
+          return proof;
+        },
+      };
+    },
+  };
+  const executor = createAuthoritativeProductExecutor(
+    f.executor, authority, canonical as never, context as never, managedRemote,
+    { remoteFolderCreateRecoveryReadPort: reader as never },
+  );
+  const operation = {
+    operationId: intent.operationId, kind: "upload-create", path: folder, targetSide: "remote",
+    authorityComplete: true, destructive: false, preconditions: [], reasons: [],
+    contentVersion: { path: folder, entityKind: "folder" },
+  } as never;
+  const result = await executor.execute(operation);
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(unscoped, 0);
+  assert.equal(f.raw(), 0);
+  assert.deepEqual(seen, [{ ...scope, purpose: "create-result-verification" }]);
+});
