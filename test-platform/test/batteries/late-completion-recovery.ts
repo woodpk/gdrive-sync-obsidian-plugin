@@ -69,6 +69,9 @@ export async function loadLateCompletionRecovery(options: RecoveryOptions): Prom
         !Object.prototype.hasOwnProperty.call(prior.captures, defined.captureAs)) reject("prior-capture-missing");
     if (i < index && defined.kind === "production") reject("prior-production-replay-unsupported");
   }
+  if (scenario.steps.slice(index + 1).some(next => next.kind !== "observe" && next.kind !== "assert")) {
+    reject("continuation-could-dispatch-effects");
+  }
   // A captured reference must not cross the recovery seam except via the saved
   // prior captures; every re-evaluated assertion uses that original evidence.
   for (const folder of ["outbox", "sent"]) {
