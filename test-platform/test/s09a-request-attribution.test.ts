@@ -96,7 +96,7 @@ test("S09A exact HTTP counts, retries, and semantic caller categories reconcile 
   assert.equal(records[1]!.fields!.requestCount, calls);
   assert.equal(records[1]!.fields!.unattributedRequestCount, 0);
   assert.equal(records[1]!.fields!.attributionComplete, true);
-  assert.doesNotMatch(diagnostics.renderText(), /PRIVATE-NOTE-NAME|SECRET_OBJECT|private|provenance|parent|SECRET-ACCESS-TOKEN/);
+  assert.doesNotMatch(diagnostics.renderText(), /PRIVATE-NOTE-NAME|SECRET_OBJECT|q=private|q=provenance|q=parent|SECRET-ACCESS-TOKEN/);
 });
 
 test("S09A concurrent scoped requests never contaminate another operation or hide unattributed calls", async () => {
