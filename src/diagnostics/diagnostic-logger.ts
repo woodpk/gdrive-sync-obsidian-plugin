@@ -151,7 +151,9 @@ export type DiagnosticFieldKey =
   | "fullTreeRequestMs" | "provenanceRequestMs" | "parentPathRequestMs"
   | "reservedIdRequestMs" | "createVerifyRequestMs" | "preconditionRequestMs"
   | "rootAccountRequestMs" | "unattributedRequestMs"
-  | "otherReadRequestCount" | "writeRequestCount" | "otherReadRequestMs" | "writeRequestMs";
+  | "otherReadRequestCount" | "writeRequestCount" | "otherReadRequestMs" | "writeRequestMs"
+  | "intentPreparationRequestCount" | "mutationDispatchRequestCount"
+  | "intentPreparationRequestMs" | "mutationDispatchRequestMs";
 export type DiagnosticFieldValue = string | number | boolean | null;
 export type SafeDiagnosticFields = Partial<Record<DiagnosticFieldKey, DiagnosticFieldValue>>;
 
@@ -235,7 +237,8 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "provenanceRequestMs", "parentPathRequestMs", "reservedIdRequestMs",
   "createVerifyRequestMs", "preconditionRequestMs", "rootAccountRequestMs",
   "unattributedRequestMs", "otherReadRequestCount", "writeRequestCount",
-  "otherReadRequestMs", "writeRequestMs",
+  "otherReadRequestMs", "writeRequestMs", "intentPreparationRequestCount",
+  "mutationDispatchRequestCount", "intentPreparationRequestMs", "mutationDispatchRequestMs",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
 const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|request[_ -]?body|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
