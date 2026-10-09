@@ -146,7 +146,11 @@ export type DiagnosticFieldKey =
   | "fullTreeRequestCount" | "provenanceRequestCount" | "parentPathRequestCount"
   | "reservedIdRequestCount" | "createVerifyRequestCount" | "preconditionRequestCount"
   | "rootAccountRequestCount" | "unattributedRequestCount" | "reconciliationCount"
-  | "reconciliationWallMs" | "reconciliationFailureCount" | "incompleteOperationCount";
+  | "reconciliationWallMs" | "reconciliationFailureCount" | "incompleteOperationCount"
+  | "listRequestMs" | "getRequestMs" | "aboutRequestMs"
+  | "fullTreeRequestMs" | "provenanceRequestMs" | "parentPathRequestMs"
+  | "reservedIdRequestMs" | "createVerifyRequestMs" | "preconditionRequestMs"
+  | "rootAccountRequestMs" | "unattributedRequestMs";
 export type DiagnosticFieldValue = string | number | boolean | null;
 export type SafeDiagnosticFields = Partial<Record<DiagnosticFieldKey, DiagnosticFieldValue>>;
 
@@ -226,6 +230,10 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "createVerifyRequestCount", "preconditionRequestCount", "rootAccountRequestCount",
   "unattributedRequestCount", "reconciliationCount", "reconciliationWallMs",
   "reconciliationFailureCount", "incompleteOperationCount",
+  "listRequestMs", "getRequestMs", "aboutRequestMs", "fullTreeRequestMs",
+  "provenanceRequestMs", "parentPathRequestMs", "reservedIdRequestMs",
+  "createVerifyRequestMs", "preconditionRequestMs", "rootAccountRequestMs",
+  "unattributedRequestMs",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
 const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|request[_ -]?body|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
