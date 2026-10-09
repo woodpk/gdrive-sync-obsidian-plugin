@@ -31,7 +31,7 @@ type Totals = {
 };
 type Operation = Totals & {
   index: number; kind: string; started: number; ended: boolean;
-  scope: RequestAttributionScope; passes: number; passMs: number; passFailed: number;
+  scope: RequestAttributionScope; passes: number; passMs: number; passFailed: number; unknownDuringOperation: boolean;
 };
 type Run = Totals & {
   operations: Map<string, Operation>; byIndex: Map<number, Operation>;
@@ -95,7 +95,7 @@ export class RequestAttributionMonitor {
       const scope = Object.freeze({ runId: id, operationIndex: index,
         operationKind: op.kind, purpose: "precondition-validation" as const });
       const entry: Operation = { ...empty(), scope, index, kind: op.kind,
-        started: this.now(), ended: false, passes: 0, passMs: 0, passFailed: 0 };
+        started: this.now(), ended: false, passes: 0, passMs: 0, passFailed: 0, unknownDuringOperation: false };
       r.operations.set(key, entry); r.byIndex.set(index, entry);
     } catch { /* Measurement is non-authoritative. */ }
   }
@@ -112,7 +112,11 @@ export class RequestAttributionMonitor {
       const valid = !!entry && !entry.ended && entry.kind === scope?.operationKind;
       const purpose = valid && purposes.includes(scope!.purpose) ? scope!.purpose : "unattributed";
       add(r, value, purpose);
-      if (valid) add(entry!, value, purpose); else r.unattributed++;
+      if (valid) add(entry!, value, purpose);
+      else {
+        r.unattributed++;
+        for (const active of r.operations.values()) if (!active.ended) active.unknownDuringOperation = true;
+      }
     } catch { /* Measurement is non-authoritative. */ }
   }
   reconciliation(scope: RequestAttributionScope | undefined, ms: number, failed: boolean): void {
@@ -133,7 +137,7 @@ export class RequestAttributionMonitor {
         attributionVersion: 1, operationIndex: entry.index, operationKind: entry.kind,
         operationWallMs: Math.round(Math.max(0, this.now() - entry.started)),
         reconciliationCount: entry.passes, reconciliationWallMs: Math.round(entry.passMs),
-        reconciliationFailureCount: entry.passFailed, attributionComplete: true,
+        reconciliationFailureCount: entry.passFailed, attributionComplete: !entry.unknownDuringOperation,
         ...(result ? { result } : {}), ...keys(entry),
       });
     } catch { /* Measurement is non-authoritative. */ }
