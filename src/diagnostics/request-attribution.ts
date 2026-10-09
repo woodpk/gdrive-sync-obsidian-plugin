@@ -35,7 +35,7 @@ type Operation = Totals & {
 };
 type Run = Totals & {
   operations: Map<string, Operation>; byIndex: Map<number, Operation>;
-  unattributed: number; closed: boolean;
+  unattributed: number; closed: boolean; completedOperations: number;
 };
 const purposes: readonly RequestPurpose[] = [
   "full-reconciliation-tree", "reconciliation-provenance", "parent-path-resolution",
@@ -97,7 +97,7 @@ export class RequestAttributionMonitor {
   constructor(private logger: DiagnosticLogger, private now: () => number = () => globalThis.performance?.now?.() ?? Date.now()) {}
   private run(id: number): Run {
     let r = this.runs.get(id);
-    if (!r) { r = { ...empty(), operations: new Map(), byIndex: new Map(), unattributed: 0, closed: false }; this.runs.set(id, r); }
+    if (!r) { r = { ...empty(), operations: new Map(), byIndex: new Map(), unattributed: 0, closed: false, completedOperations: 0 }; this.runs.set(id, r); }
     return r;
   }
   start(id: number, op: PlannedOperation, index: number): void {
@@ -145,6 +145,10 @@ export class RequestAttributionMonitor {
       const entry = this.runs.get(id)?.operations.get(String(op.operationId));
       if (!entry || entry.ended) return;
       entry.ended = true;
+      const run = this.runs.get(id)!;
+      run.operations.delete(String(op.operationId));
+      run.byIndex.delete(entry.index);
+      run.completedOperations++;
       this.logger.syncInfo("sync.attribution", "operation-request-attribution", id, {
         attributionVersion: 1, operationIndex: entry.index, operationKind: entry.kind,
         operationWallMs: Math.round(Math.max(0, this.now() - entry.started)),
@@ -160,7 +164,7 @@ export class RequestAttributionMonitor {
       r.closed = true;
       const incomplete = [...r.operations.values()].filter(op => !op.ended).length;
       this.logger.syncInfo("sync.attribution", "run-request-attribution", id, {
-        attributionVersion: 1, operationCount: r.operations.size,
+        attributionVersion: 1, operationCount: r.completedOperations + r.operations.size,
         incompleteOperationCount: incomplete,
         attributionComplete: incomplete === 0 && r.unattributed === 0,
         ...keys(r),
