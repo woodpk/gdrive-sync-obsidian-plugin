@@ -284,25 +284,25 @@ function scopedV1_3RemotePort(
   cancellation: SynchronizationCancellationSignal | undefined,
   outcomes: RemoteMutationOutcomeV1_3[],
 ): NonNullable<RecoverableProductionMutationDependencies["reliableRemoteMutationPort"]> {
-  const adapted = {
-    reserveFileCreateIdentity: (...args: Parameters<ReliableRemoteMutationPortV1_3["reserveFileCreateIdentity"]>) => remote.reserveFileCreateIdentity(...args),
-    reserveFolderCreateIdentity: (...args: Parameters<ReliableRemoteMutationPortV1_3["reserveFolderCreateIdentity"]>) => remote.reserveFolderCreateIdentity(...args),
-    createReserved: async (...args: Parameters<ReliableRemoteMutationPortV1_3["createReserved"]> extends [infer I, infer C, ...unknown[]] ? [I, C] : never) => {
-      const outcome = await remote.createReserved(...args, cancellation);
+  const adapted: NonNullable<RecoverableProductionMutationDependencies["reliableRemoteMutationPort"]> = {
+    reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
+    reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
+    createReserved: async (identity, content) => {
+      const outcome = await remote.createReserved(identity, content, cancellation);
       outcomes.push(outcome);
       return outcome;
     },
-    updateExisting: async (...args: Parameters<ReliableRemoteMutationPortV1_3["updateExisting"]> extends [infer I, infer C, ...unknown[]] ? [I, C] : never) => {
-      const outcome = await remote.updateExisting(...args, cancellation);
+    updateExisting: async (identity, content) => {
+      const outcome = await remote.updateExisting(identity, content, cancellation);
       outcomes.push(outcome);
       return outcome;
     },
-    moveExisting: async (identity: Parameters<ReliableRemoteMutationPortV1_3["moveExisting"]>[0]) => {
+    moveExisting: async identity => {
       const outcome = await remote.moveExisting(identity, cancellation);
       outcomes.push(outcome);
       return outcome;
     },
-    trashExisting: async (identity: Parameters<ReliableRemoteMutationPortV1_3["trashExisting"]>[0]) => {
+    trashExisting: async identity => {
       const outcome = await remote.trashExisting(identity, cancellation);
       outcomes.push(outcome);
       return outcome;
