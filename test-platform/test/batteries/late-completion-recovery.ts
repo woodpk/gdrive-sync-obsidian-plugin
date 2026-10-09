@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ScenarioDefinition, ScenarioAssertionStep } from "../../src/scenario/scenario-contract";
-import type { ScenarioExecutionResult } from "../../src/scenario/scenario-runner";
+import type { ScenarioExecutionResult, ScenarioCapabilityResult } from "../../src/scenario/scenario-runner";
 import { assertScenarioObservation } from "../../src/scenario/scenario-evidence";
 import type { DeviceCommandResult } from "../../src/live-device/device-command-agent";
 import { liveCommandId, liveSequenceFor, type LiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
@@ -102,7 +102,7 @@ export function withLateCompletionRecovery(executor: LiveScenarioExecutor, recov
     buildIdentity: executor.buildIdentity,
     pendingCheckpoint: () => executor.pendingCheckpoint(),
     async dispose() { await executor.dispose?.(); },
-    async execute(step, context) {
+    async execute(step, context): Promise<ScenarioCapabilityResult> {
       if (context.stepIndex > recovery.completedStepIndex) return executor.execute(step, context);
       if (context.stepIndex === recovery.completedStepIndex) {
         return { status: "completed", value: recovery.result };
