@@ -6,6 +6,8 @@ import { StateCommitCoordinator } from "../../../src/core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/execution-coordinator";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
+import { createAuthoritativeProductExecutor as createBaseAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor-base";
+import type { RequestAttributionScope } from "../../../src/diagnostics/request-attribution";
 import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "../../../src/product/durable-intent-recovery";
 import { ProductController } from "../../../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../../../src/product/production-executor";
@@ -344,4 +346,48 @@ test("LOG-05 trace reconstructs remote learning advancing semantic authority bef
   assert.equal(events[learnedIndex]?.fields?.semanticGeneration, String(learned.semanticGeneration));
   assert.equal(events[recoveryIndex]?.fields?.semanticGeneration, String(initial.semanticGeneration));
   assert.equal(events[recoveryIndex]?.fields?.reason, "persisted durable intent belongs to stale semantic generation");
+});
+
+test("S09A base durable recovery keeps active operation scope for both REMOTE convergence passes", async () => {
+  const canonical = new CanonicalStore();
+  const scope: RequestAttributionScope = {
+    runId: 52, operationIndex: 8, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const authority = Object.assign(new AuthorityStore([createIntent("dispatch-authorized")]), {
+    executionRequestAttribution: () => scope,
+  });
+  const observed: RequestAttributionScope[] = [];
+  let unscopedReads = 0;
+  const listing = async () => ({
+    ok: true as const,
+    value: { entries: [entry()], completeness: { status: "complete" as const } },
+  });
+  const drive = {
+    async listForReconciliation() {
+      unscopedReads++;
+      return listing();
+    },
+    withRequestAttribution(current: RequestAttributionScope) {
+      return {
+        listForReconciliation: async () => {
+          observed.push(current);
+          return listing();
+        },
+      };
+    },
+  };
+  const legacy = {
+    drive,
+    validatePreconditions: async () => ({ status: "valid" as const }),
+    runEvidence: () => ({ managedRemote, remoteEnumerationComplete: true }),
+  };
+  const executor = createBaseAuthoritativeProductExecutor(
+    legacy as never, authority, canonical as never, context as never, managedRemote,
+  );
+  const result = await executor.execute(executable(v1));
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(unscopedReads, 0);
+  assert.equal(observed.length, 2);
+  assert.deepEqual(observed, [scope, scope]);
+  assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
 });
