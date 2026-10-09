@@ -1,3 +1,4 @@
+import type { DriveResult, ManagedRemoteIdentity } from "./google-drive";
 import type {
   ContentEvidence,
   EntityKind,
@@ -292,6 +293,8 @@ export type RemoteFolderCreateObservation =
  * `outcome-unknown` without redispatching merely because the pre-crash response was lost.
  */
 export interface RemoteFolderCreateRecoveryReadPort {
+  /** Authoritatively resolves the exact intended Drive parent before durable intent persistence. */
+  resolveFolderCreatePhysicalParent?(root: ManagedRemoteIdentity, path: VaultPath): Promise<DriveResult<RemoteObjectId>>;
   observeFolderCreateRecovery(
     descriptor: RemoteFolderCreatePhysicalMutationDescriptor,
     cancellation?: SynchronizationCancellationSignal,
@@ -326,9 +329,7 @@ export function folderCreateDescriptorIsSelfConsistent(descriptor: FolderCreateP
   if (descriptor.targetPath !== descriptor.pathAuthority.targetPath) return false;
   if (descriptor.kind === "remote-folder-create") {
     return descriptor.intentId === descriptor.remoteMutation.intentId
-      && descriptor.targetPath === descriptor.remoteMutation.path
-      && (descriptor.remoteMutation.parentRemoteObjectId === undefined
-        || descriptor.parentRemoteObjectId === descriptor.remoteMutation.parentRemoteObjectId);
+      && descriptor.targetPath === descriptor.remoteMutation.path;
   }
   return true;
 }
@@ -391,8 +392,7 @@ export function verifyRemoteFolderCreate(
   if (observation.status === "occupied") {
     return { status: "conflict-preserved", reason: "remote-folder-logical-path-occupied-by-non-authoritative-object" };
   }
-  const legacyTopLevelParentProven = descriptor.remoteMutation.parentRemoteObjectId === undefined
-    && observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
+  const legacyTopLevelParentProven = observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
   if (observation.remoteObjectId !== reservedRemoteObjectId
     || (observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId && !legacyTopLevelParentProven)) {
     return { status: "conflict-preserved", reason: "remote-folder-identity-or-parent-mismatch" };
