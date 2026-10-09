@@ -1,0 +1,60 @@
+phx-ci standardized local verification
+Run name: operator-bvp-s09a-request-attribution-01
+Source branch: bvp-s09a-request-attribution-01
+Source build HEAD: 9e7437b7fcf767ab2a3d861aaf5012d8d5eaad9e
+Verification checkout HEAD: 9e7437b7fcf767ab2a3d861aaf5012d8d5eaad9e
+Base SHA: 7b4297adceb2fd6268a5801a207b7dce1f7b7728
+Control repository: C:\temp-efa3366f1b3c42828c0919ec2542f647
+Verification worktree: C:\phx-1703522189c344e7\w
+Framework HEAD: 69c4aa077d4a1a46d1e85e59f39d36285be99e83
+Framework version: 0.2.0-dev.2
+Task version: 3.53.1
+Task executable: C:\Users\woodpk\.dotnet\tools\task.exe
+Started UTC: 2026-10-09T19:38:23.9139764Z
+
+===== task ci output =====
+
+task: [run:start] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Start-VerificationRun.ps1" -ProjectRoot "C:/phx-1703522189c344e7/w" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -ArtifactsPath "C:/phx-1703522189c344e7/w/.phx-ci/artifacts.json" -EvidencePath "C:/phx-1703522189c344e7/generated-evidence/_ca-output.md" -EvidenceRoot "C:/phx-1703522189c344e7/generated-evidence" -RunId "8af6c21f-fddd-4d49-9da0-d40e945584f8"
+verificationRun=8af6c21f-fddd-4d49-9da0-d40e945584f8
+task: [windows:preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage preflight -WorkingDirectory "C:/phx-1703522189c344e7/w" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -FailureClassification "ENVIRONMENT FAILURE" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -TempRoot "C:/"
+os=Microsoft Windows NT 10.0.26200.0
+powershell=7.6.6
+task=3.53.1
+taskExecutable=C:\Users\woodpk\.dotnet\tools\task.exe
+pathWithSpaces=PASS
+task: [adapter-preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-preflight" -WorkingDirectory "C:/phx-1703522189c344e7/w" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -TempRoot "C:/" -Optional
+node=v22.23.2
+npm=10.9.8
+nodeExecutable=C:\Program Files\nodejs\node.exe
+npmExecutable=C:\Program Files\nodejs\npm.cmd
+task: [adapter-project-files] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-project-files" -WorkingDirectory "C:/phx-1703522189c344e7/w" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -FailureClassification "REPOSITORY-GATE FAILURE" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -TempRoot "C:/" -Optional
+package.json=present
+package-lock.json=present
+task: [install] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage install -WorkingDirectory "C:/phx-1703522189c344e7/w" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -TempRoot "C:/"
+
+added 16 packages, and audited 17 packages in 5s
+
+found 0 vulnerabilities
+task: [typecheck] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage typecheck -WorkingDirectory "C:/phx-1703522189c344e7/w" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -FailureClassification "PRODUCT FAILURE" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -TempRoot "C:/"
+
+> brain-google-drive-sync@0.1.18 typecheck
+> tsc --noEmit
+
+src/drive/transport.ts(141,5): error TS2322: Type 'Promise<{ readonly ok: false; readonly signal: DriveSignal; } | { readonly ok: true; readonly value: Response; } | { ok: boolean; signal: { readonly kind: "authentication-required" | "transient-failure" | "permission-denied"; readonly detail?: string | undefined; }; value?: undefined; } | { ...; }>' is not assignable to type 'Promise<DriveResult<Response>>'.
+  Type '{ readonly ok: false; readonly signal: DriveSignal; } | { readonly ok: true; readonly value: Response; } | { ok: boolean; signal: { readonly kind: "authentication-required" | "transient-failure" | "permission-denied"; readonly detail?: string | undefined; }; value?: undefined; } | { ...; }' is not assignable to type 'DriveResult<Response>'.
+    Type '{ ok: boolean; signal: { readonly kind: "authentication-required" | "transient-failure" | "permission-denied"; readonly detail?: string; }; value?: undefined; }' is not assignable to type 'DriveResult<Response>'.
+      Type '{ ok: boolean; signal: { readonly kind: "authentication-required" | "transient-failure" | "permission-denied"; readonly detail?: string; }; value?: undefined; }' is not assignable to type '{ readonly ok: true; readonly value: Response; }'.
+        Types of property 'ok' are incompatible.
+          Type 'boolean' is not assignable to type 'true'.
+task: [evidence:render] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Write-Evidence.ps1" -FrameworkRoot "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83" -ProjectRoot "C:/phx-1703522189c344e7/w" -ProjectName "gdrive-sync-obsidian-plugin" -RecordsDirectory "C:/phx-1703522189c344e7/w/.phx-ci/records" -ArtifactsPath "C:/phx-1703522189c344e7/w/.phx-ci/artifacts.json" -EvidencePath "C:/phx-1703522189c344e7/generated-evidence/_ca-output.md" -RequiredStages "preflight;node-preflight;node-project-files;install;typecheck;test-focused;test;build;repository-check;check;artifacts" -ToolVersionsPath "C:/phx-1703522189c344e7/w/.phx-ci/tool-versions.json" -RunIdentityPath "C:/phx-1703522189c344e7/w/.phx-ci/run.json" -ExpectedHead "9e7437b7fcf767ab2a3d861aaf5012d8d5eaad9e" -ExpectedBaseSha "7b4297adceb2fd6268a5801a207b7dce1f7b7728"
+
+PHX-CI RUN RESULT
+Change-set verification: BLOCKED
+Repository verification: BLOCKED
+Overall verification: BLOCKED
+evidence: C:/phx-1703522189c344e7/generated-evidence/_ca-output.md (BLOCKED; run 8af6c21f-fddd-4d49-9da0-d40e945584f8)
+task: Failed to run task "ci": task: Failed to run task "typecheck": exit status 2
+
+===== task ci finished =====
+Task exit code: 201
+Ended UTC: 2026-10-09T19:38:43.8148105Z
