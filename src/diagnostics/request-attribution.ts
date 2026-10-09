@@ -64,6 +64,8 @@ function add(t: Totals, value: RequestMeasurement, purpose: RequestPurpose): voi
 function keys(t: Totals): SafeDiagnosticFields {
   const e = (key: string) => t.endpoints.get(key)?.count ?? 0;
   const p = (key: RequestPurpose) => t.purposes.get(key)?.count ?? 0;
+  const pm = (key: RequestPurpose) => Math.round(t.purposes.get(key)?.ms ?? 0);
+  const em = (key: string) => Math.round(t.endpoints.get(key)?.ms ?? 0);
   return {
     requestCount: t.requests, failedRequestCount: t.failed,
     notFoundRequestCount: t.missing, retryCount: t.retries,
@@ -77,6 +79,16 @@ function keys(t: Totals): SafeDiagnosticFields {
     preconditionRequestCount: p("precondition-validation"),
     rootAccountRequestCount: p("managed-root-account"),
     unattributedRequestCount: p("unattributed"),
+    listRequestMs: em("drive.files.list"), getRequestMs: em("drive.files.get"),
+    aboutRequestMs: em("drive.about"),
+    fullTreeRequestMs: pm("full-reconciliation-tree"),
+    provenanceRequestMs: pm("reconciliation-provenance"),
+    parentPathRequestMs: pm("parent-path-resolution"),
+    reservedIdRequestMs: pm("reserved-id-observation"),
+    createVerifyRequestMs: pm("create-result-verification"),
+    preconditionRequestMs: pm("precondition-validation"),
+    rootAccountRequestMs: pm("managed-root-account"),
+    unattributedRequestMs: pm("unattributed"),
   };
 }
 
