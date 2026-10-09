@@ -201,18 +201,10 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
   ): ReturnType<ReliableRemoteMutationPort["reserveFileCreateIdentity"]> {
     const validation = await this.validateRoot(root);
     if (validation) return validation;
-    if (
-      intendedContent.algorithm !== "sha256" ||
-      !String(intendedContent.hash).startsWith("sha256:") ||
-      intendedContent.sizeBytes < 0
-    ) {
-      return {
-        ok: false,
-        signal: {
-          kind: "conflict",
-          detail: "canonical-create-content-proof-required",
-        },
-      };
+    if (intendedContent.algorithm !== "sha256"
+      || !String(intendedContent.hash).startsWith("sha256:")
+      || intendedContent.sizeBytes < 0) {
+      return { ok: false, signal: { kind: "conflict", detail: "canonical-create-content-proof-required" } };
     }
     return {
       ok: true,
