@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 887248 bytes; SHA-256 5014602d5ae319beb151276117da7c6efc4f9cd50d8bef3503c2ef0514f02a3a
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-folder-parent-recovery-01
+- Source build HEAD requested: d0836e4b682f851351c69f015f2694bdd72d4441
+- Verification checkout HEAD: d0836e4b682f851351c69f015f2694bdd72d4441
+- Evidence publication target: origin/bvp-s09a-folder-parent-recovery-01
