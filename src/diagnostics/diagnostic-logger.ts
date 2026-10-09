@@ -25,6 +25,7 @@ export type DiagnosticComponent =
   | "sync.plan"
   | "sync.execute"
   | "sync.effect"
+  | "sync.attribution"
   | "drive"
   | "drive.http"
   | "drive.semantic"
@@ -138,7 +139,14 @@ export type DiagnosticFieldKey =
   | "commitStatus"
   | "batchId"
   | "changeCount"
-  | "verificationEvidenceRef";
+  | "verificationEvidenceRef"
+  | "attributionVersion" | "attributionComplete" | "operationWallMs"
+  | "requestCount" | "failedRequestCount" | "notFoundRequestCount" | "retryCount"
+  | "summedRequestMs" | "listRequestCount" | "getRequestCount" | "aboutRequestCount"
+  | "fullTreeRequestCount" | "provenanceRequestCount" | "parentPathRequestCount"
+  | "reservedIdRequestCount" | "createVerifyRequestCount" | "preconditionRequestCount"
+  | "rootAccountRequestCount" | "unattributedRequestCount" | "reconciliationCount"
+  | "reconciliationWallMs" | "reconciliationFailureCount" | "incompleteOperationCount";
 export type DiagnosticFieldValue = string | number | boolean | null;
 export type SafeDiagnosticFields = Partial<Record<DiagnosticFieldKey, DiagnosticFieldValue>>;
 
@@ -211,6 +219,13 @@ const ALLOWED_FIELD_KEYS = new Set<string>([
   "occupantRemoteObjectIds", "trashed", "candidateVerified", "predecessorVerified", "convergenceStatus", "fromStage",
   "toStage", "persistenceRevision", "semanticGeneration", "stateRevision", "semanticChanged", "commitStatus",
   "batchId", "changeCount", "verificationEvidenceRef",
+  "attributionVersion", "attributionComplete", "operationWallMs",
+  "requestCount", "failedRequestCount", "notFoundRequestCount", "retryCount", "summedRequestMs",
+  "listRequestCount", "getRequestCount", "aboutRequestCount", "fullTreeRequestCount",
+  "provenanceRequestCount", "parentPathRequestCount", "reservedIdRequestCount",
+  "createVerifyRequestCount", "preconditionRequestCount", "rootAccountRequestCount",
+  "unattributedRequestCount", "reconciliationCount", "reconciliationWallMs",
+  "reconciliationFailureCount", "incompleteOperationCount",
 ]);
 const URL_WITH_QUERY = /https?:\/\/[^\s<>"']*\?[^\s<>"']*/gi;
 const SENSITIVE_ASSIGNMENT = /\b(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization[_ -]?code|oauth[_ -]?state|pkce[_ -]?(?:verifier|challenge)|code[_ -]?(?:verifier|challenge)|request[_ -]?body|cookie|password|passcode)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
