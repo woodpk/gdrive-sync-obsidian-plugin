@@ -138,7 +138,7 @@ export class GoogleHttpTransport {
         });
       } catch { /* Telemetry must not affect HTTP results. */ }
     };
-    return this.semaphore.run(async () => {
+    return this.semaphore.run(async (): Promise<DriveResult<Response>> => {
       started = this.monotonicNow();
       const replaySafe = retry && automaticReplaySafe(init);
       const method = (init.method ?? "GET").toUpperCase();
