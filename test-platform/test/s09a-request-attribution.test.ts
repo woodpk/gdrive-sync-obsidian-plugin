@@ -228,3 +228,43 @@ test("S09A scoped Drive adapter classifies real reconciliation traversal indepen
   assert.equal(value.reconciliationFailureCount, 0);
   assert.equal(value.attributionComplete, true);
 });
+
+test("S09A telemetry failure cannot replace a successful transport result or escape operation closure", async () => {
+  const diagnostics = logger();
+  const monitor = new RequestAttributionMonitor(diagnostics);
+  registerRequestAttributionMonitor(diagnostics, monitor);
+  const run = diagnostics.beginSyncRun(), op = operation("op:diagnostic-failure");
+  monitor.start(run, op, 1);
+  const scope = monitor.scopeFor(run, op)!;
+  const transport = new GoogleHttpTransport(session(),
+    async () => new Response("{}", { status: 200 }),
+    policy, async () => undefined, () => 0, () => 0, diagnostics);
+  diagnostics.syncInfo = () => { throw new Error("simulated diagnostic persistence failure"); };
+  const response = await transport.request("https://www.googleapis.com/drive/v3/files?q=untouched", {}, true, scope);
+  assert.equal(response.ok, true);
+  assert.doesNotThrow(() => monitor.finish(run, op));
+  assert.doesNotThrow(() => monitor.close(run));
+});
+
+test("S09A network failure preserves transport signal and records one terminal failure", async () => {
+  const diagnostics = logger();
+  const monitor = new RequestAttributionMonitor(diagnostics);
+  registerRequestAttributionMonitor(diagnostics, monitor);
+  const run = diagnostics.beginSyncRun(), op = operation("op:network-failure");
+  monitor.start(run, op, 1);
+  let attempts = 0;
+  const transport = new GoogleHttpTransport(session(), async () => {
+    attempts++;
+    throw new Error("network unavailable");
+  }, policy, async () => undefined, () => 0, () => 0, diagnostics);
+  const result = await transport.request("https://www.googleapis.com/drive/v3/files?q=unavailable", {}, true, monitor.scopeFor(run, op));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.signal.kind, "transient-failure");
+  monitor.finish(run, op); monitor.close(run);
+  const totals = snapshots(diagnostics)[0]!.fields!;
+  assert.equal(attempts, policy.maxAttempts);
+  assert.equal(totals.requestCount, 1);
+  assert.equal(totals.failedRequestCount, 1);
+  assert.equal(totals.retryCount, policy.maxAttempts - 1);
+  assert.equal(totals.attributionComplete, true);
+});
