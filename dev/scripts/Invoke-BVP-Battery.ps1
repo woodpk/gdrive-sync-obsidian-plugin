@@ -8,6 +8,7 @@ param(
   [ValidatePattern("^[0-9a-fA-F]{40}$")]
   [string]$ValidationSourceCommit,
   [int]$ResultTimeoutMs = 60000,
+  [int]$ProductionResultTimeoutMs = 600000,
   [int]$PollIntervalMs = 250,
   [string]$RunId,
   [string[]]$ResumeEvidence = @(),
@@ -38,6 +39,9 @@ if ($RunId -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
 }
 if ($ResultTimeoutMs -le 0) {
   throw "ResultTimeoutMs must be positive."
+}
+if ($ProductionResultTimeoutMs -le 0) {
+  throw "ProductionResultTimeoutMs must be positive."
 }
 if ($PollIntervalMs -le 0) {
   throw "PollIntervalMs must be positive."
@@ -375,6 +379,7 @@ try {
       "--validation-source-commit", $ValidationSourceCommit,
       "--run-id", $RunId,
       "--result-timeout-ms", $ResultTimeoutMs.ToString(),
+      "--production-result-timeout-ms", $ProductionResultTimeoutMs.ToString(),
       "--poll-interval-ms", $PollIntervalMs.ToString()
     )
     if ($RecoverTimedOutRun) {
