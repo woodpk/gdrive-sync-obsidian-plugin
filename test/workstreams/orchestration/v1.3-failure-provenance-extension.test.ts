@@ -17,6 +17,11 @@ import {
   type VaultPath,
 } from "../../../src/contracts";
 import { createAuthoritativeProductExecutorV1_3 } from "../../../src/product/authoritative-production-executor";
+import { DiagnosticLogger } from "../../../src/diagnostics/diagnostic-logger";
+import { RequestAttributionMonitor, registerRequestAttributionMonitor, type RequestAttributionScope } from "../../../src/diagnostics/request-attribution";
+import { REQUIRED_DRIVE_SCOPE } from "../../../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../../src/drive/auth";
+import { GoogleHttpTransport } from "../../../src/drive/transport";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const p = (value: string) => id<"VaultPath">(value) as VaultPath;
@@ -90,8 +95,10 @@ function harness(
   path: VaultPath,
   remoteOutcome: RemoteMutationOutcomeV1_3,
   localStageResult?: (transaction: any) => LocalTransactionResultV1_3,
+  scopedRequest?: { readonly scope: RequestAttributionScope; readonly onDispatch: (scope: RequestAttributionScope) => Promise<void> },
 ) {
   const authority = new Authority(path);
+  if (scopedRequest) Object.assign(authority, { executionRequestAttribution: () => scopedRequest.scope });
   const canonical: TrustedSynchronizationState = {
     schemaVersion: 1,
     stateRevision: rev("state:1"),
@@ -133,6 +140,18 @@ function harness(
     async moveExisting() { remoteMutationCalls += 1; return remoteOutcome; },
     async trashExisting() { remoteMutationCalls += 1; return remoteOutcome; },
   };
+  const scopedRemotePort = scopedRequest ? {
+    ...remotePort,
+    withRequestAttribution(scope: RequestAttributionScope) {
+      return {
+        ...remotePort,
+        async createReserved() {
+          await scopedRequest.onDispatch(scope);
+          return remotePort.createReserved();
+        },
+      };
+    },
+  } : remotePort;
   const localPort = {
     async stageAndVerify(transaction: any) {
       return localStageResult?.(transaction) ?? { status: "staged-verified" as const, transaction: { ...transaction, stage: "staged-verified" } };
@@ -146,7 +165,7 @@ function harness(
     stateStore as never,
     stateContext as never,
     managedRemote as never,
-    { reliableRemoteMutationPort: remotePort as never, localTransactionalMutationPort: localPort as never },
+    { reliableRemoteMutationPort: scopedRemotePort as never, localTransactionalMutationPort: localPort as never },
   );
   return { authority, canonical, executor, remoteMutationCalls: () => remoteMutationCalls };
 }
@@ -236,4 +255,59 @@ test("D V1.3 uncertain execution never advances canonical BASE/state and restart
   assert.notEqual(second.status, "durable-verified-success");
   assert.equal(h.remoteMutationCalls(), 1, "restart must reconcile durable unresolved state before any redispatch");
   assert.equal(h.authority.value.operationIntents[0]?.effects[0]?.stage, "outcome-unknown");
+});
+
+test("S09A V1.3 production executor preserves per-operation HTTP scope through the remote mutation wrapper", async () => {
+  const path = p("instrumented-create.md");
+  const diagnostics = new DiagnosticLogger({
+    persistence: { loadDiagnostics: async () => undefined, saveDiagnostics: async () => undefined },
+    level: "info", retentionLimit: 100, consoleMirror: false, platform: "desktop",
+  });
+  const monitor = new RequestAttributionMonitor(diagnostics);
+  registerRequestAttributionMonitor(diagnostics, monitor);
+  const run = diagnostics.beginSyncRun(), operation = uploadOperation(path, "op:v1.3-attribution");
+  monitor.start(run, operation, 7);
+  const scope = monitor.scopeFor(run, operation)!;
+  const tokens = JSON.stringify({
+    accessToken: "SCOPED-TEST-TOKEN", refreshToken: "TEST-REFRESH",
+    expiresAtMs: Date.now() + 3_600_000, tokenType: "Bearer", scope: REQUIRED_DRIVE_SCOPE,
+  });
+  const oauth = new GoogleOAuthSession(
+    { clientId: "test-client", redirectUri: "https://callback.example/" },
+    new ObsidianSecretStore({
+      getSecret: key => key === GoogleOAuthSession.TOKEN_SECRET_ID ? tokens : null,
+      setSecret: () => undefined, deleteSecret: () => undefined,
+    }),
+  );
+  let realRequests = 0;
+  const transport = new GoogleHttpTransport(oauth, async () => {
+    realRequests++;
+    return new Response("{}", { status: 200 });
+  }, { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, maxConcurrency: 2 }, async () => undefined, () => 0, () => 0, diagnostics);
+  const seen: RequestAttributionScope[] = [];
+  const h = harness(path, { status: "outcome-unknown", reason: "preserved-provider-uncertainty" }, undefined, {
+    scope,
+    onDispatch: async current => {
+      seen.push(current);
+      const response = await transport.request(
+        "https://www.googleapis.com/drive/v3/files/reserved-id?fields=id", {}, false, current,
+      );
+      assert.equal(response.ok, true);
+    },
+  });
+  const result = await h.executor.execute(operation);
+  assert.equal(result.status, "uncertain");
+  assert.equal(h.remoteMutationCalls(), 1);
+  assert.equal(realRequests, 1);
+  assert.equal(seen.length, 1);
+  assert.deepEqual(seen[0], { ...scope, purpose: "mutation-dispatch" });
+  monitor.finish(run, operation, result.status);
+  monitor.close(run);
+  const fields = diagnostics.snapshot().find(event => event.event === "operation-request-attribution")?.fields;
+  assert.equal(fields?.requestCount, realRequests);
+  assert.equal(fields?.getRequestCount, 1);
+  assert.equal(fields?.mutationDispatchRequestCount, 1);
+  assert.equal(fields?.unattributedRequestCount, 0);
+  assert.equal(fields?.attributionComplete, true);
+  assert.doesNotMatch(diagnostics.renderText(), /SCOPED-TEST-TOKEN|reserved-id/);
 });
