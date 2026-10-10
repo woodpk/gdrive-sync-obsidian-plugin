@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert/strict";
 import { test } from "node:test";
-import { s09aRequestAttributionScenario } from "../../scenarios/live/s09a-request-attribution";
+import { s09aRequestAttributionScenario } from "../scenarios/live/s09a-request-attribution";
 import { assertScenarioObservation } from "../src/scenario/scenario-evidence";
 import { DeterministicScenarioRunner, type ScenarioStepExecutor } from "../src/scenario/scenario-runner";
 
