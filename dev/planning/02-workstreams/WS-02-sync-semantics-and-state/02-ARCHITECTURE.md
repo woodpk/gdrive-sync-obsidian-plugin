@@ -16,6 +16,11 @@ The frozen shared contracts established by WS-01 are inherited. This workstream 
 - `XFER-005` checkpoint semantics and the state-facing portion of `XFER-001`/`XFER-004`.
 - `INV-001` through `INV-009`, `INV-015`, `INV-016`, and `INV-019` as core invariants.
 
+
+## Approved metadata-inventory evolution (planning only)
+
+WS-02 owns the durable device-local metadata inventory, distinct from authoritative BASE/history, in Target Specification §7.9. Persist stable file/folder and parent mappings with revisions/provenance, observation coverage/freshness, and crash-consistent change-cursor incorporation. Missing, stale, partial, ambiguous, or corrupt inventory cannot establish absence or authorize destructive decisions. Define safe migration/reconstruction before implementation; do not retroactively reopen accepted Phase-2 evidence.
+
 ## Dependency direction
 
 Phase 1 only.
