@@ -189,7 +189,7 @@ A performance claim is permitted **only** when equivalent workloads and semantic
 
 ## 12. Rollout, invalidation and stop gates
 
-1. **Design review gate (current):** independently challenge §§2–9 against actual code and Drive API contracts, amend within locked DEC-339 scope. This architecture is **not** an authorization to create product code.
+1. **Design review gate (completed for first-unit preparation):** supervisor adversarial review and corrections are recorded in `dev/reviews/dec339-inventory-architecture-adversarial-review-2026-10-10.md`. Its nine findings were corrected; D339-01 contract preparation is the next action. This is **not** separate human review, implementation verification or authorization to bypass ordinary engineering dispatch boundaries.
 2. **Storage-only shadow deployment:** additive DB stores, metadata observation in shadow/non-authoritative mode; preserve old planner/executor and no behavior switch.
 3. **Observation mode:** enable full baseline + Changes maintenance and compare with existing reconciliation under PHX-CI; unknown and discrepancy force fallback, never mutation.
 4. **Planner cutover:** feature-gated, after safety-equivalent snapshot evidence. Maintain legacy full fallback.

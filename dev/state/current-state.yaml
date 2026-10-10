@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Independent adversarial review of persisted DEC-339 architecture design and cross-workstream contracts; resolve design review findings, then SHA-bind bounded D339-01 implementation unit. No production inventory implementation, physical mutation, S09A rerun, or Stage 3 entry is authorized yet."
+next_action: "Prepare an exact-SHA-bound, narrow WS-02 D339-01 inventory-contract work package, after rechecking branch HEAD and contract ownership; code implementation not yet begun. No physical mutation, S09A rerun or Stage 3 entry."
 updated_at: "2026-10-10"
 
 context:
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "DETAILED_DESIGN_PERSISTED; INDEPENDENT_REVIEW_PENDING; IMPLEMENTATION_NOT_STARTED"
+  inventory_design_status: "ADVERSARIALLY_REVIEWED_AND_AMENDED; D339-01_CONTRACT_UNIT_READY_FOR_DISPATCH_PREPARATION; IMPLEMENTATION_NOT_STARTED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -53,6 +53,8 @@ context:
     target_spec_section: "7.9"
   inventory_design_branch: "planning/dec339-verified-inventory-design-20261010"
   inventory_design_document: "dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md"
+  inventory_architecture_review: "dev/reviews/dec339-inventory-architecture-adversarial-review-2026-10-10.md"
+  inventory_architecture_review_disposition: "NINE_FINDINGS_CORRECTED; NO_OPEN_DESIGN_BLOCKER_FOR_D339_01; NO_IMPL_ACCEPTANCE"
   stage_3_started: false
   authority:
     decision_register: "dev/authority/decision-register.yaml"
