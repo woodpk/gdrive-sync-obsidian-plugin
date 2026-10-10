@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 902987 bytes; SHA-256 e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-request-attribution-01
+- Source build HEAD requested: fa6eef858aa55bdafd11c9b92eb82c75c764c418
+- Verification checkout HEAD: fa6eef858aa55bdafd11c9b92eb82c75c764c418
+- Evidence publication target: origin/bvp-s09a-request-attribution-01
