@@ -6,6 +6,7 @@ import { assertScenarioObservation } from "../src/scenario/scenario-evidence";
 import { DeterministicScenarioRunner, type ScenarioStepExecutor } from "../src/scenario/scenario-runner";
 
 const verifiedCanary = "path-sha256:788c8a656d7aab99f9283b50a9ade906fb04a66e6daf50ca79fae6788970940e";
+const approvedParent = "path-sha256:ed8bb613e5cec385af7e7ec055e08fd01d98209270b2f4fe93ff425bb70758d1";
 interface Preview {
   operationCount: number;
   operationKinds?: readonly string[];
@@ -18,8 +19,8 @@ interface Preview {
 const expectedPlan: Preview = {
   operationCount: 25,
   operationKinds: ["noop", "upload-create"],
-  nonNoopOperationCount: 1,
-  uploadCreatePathKeys: [verifiedCanary],
+  nonNoopOperationCount: 2,
+  uploadCreatePathKeys: [verifiedCanary, approvedParent],
   executionDisposition: "safe-auto-eligible",
   globalExecutionGate: "none",
   recoveryCheckpointRequired: false,
@@ -56,8 +57,18 @@ test("S09A blocks no effective upload", async () => {
   strictEqual(result.status, "failed");
   strictEqual(dispatchCount, 0);
 });
-test("S09A blocks multiple effective operations despite many harmless noops", async () => {
-  const { result, dispatchCount } = await exercise({ ...expectedPlan, nonNoopOperationCount: 2, operationCount: 26, uploadCreatePathKeys: [verifiedCanary, verifiedCanary] });
+test("S09A blocks third effective operation despite many harmless noops", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, nonNoopOperationCount: 3, operationCount: 26, uploadCreatePathKeys: [verifiedCanary, approvedParent, approvedParent] });
+  strictEqual(result.status, "failed");
+  strictEqual(dispatchCount, 0);
+});
+test("S09A blocks the old one-operation plan without its required parent", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, nonNoopOperationCount: 1, operationCount: 24, uploadCreatePathKeys: [verifiedCanary] });
+  strictEqual(result.status, "failed");
+  strictEqual(dispatchCount, 0);
+});
+test("S09A blocks duplicate upload targets even when count is two", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, uploadCreatePathKeys: [verifiedCanary, verifiedCanary] });
   strictEqual(result.status, "failed");
   strictEqual(dispatchCount, 0);
 });
@@ -88,7 +99,7 @@ test("S09A blocks recovery-required plan", async () => {
   strictEqual(result.status, "failed");
   strictEqual(dispatchCount, 0);
 });
-test("S09A executes one exact approved canary upload with no-op companion entries", async () => {
+test("S09A executes only the approved canary and missing parent with no-op companions", async () => {
   const { result, dispatchCount } = await exercise(expectedPlan);
   strictEqual(result.status, "completed");
   strictEqual(dispatchCount, 1);
@@ -96,4 +107,5 @@ test("S09A executes one exact approved canary upload with no-op companion entrie
 
 test("S09A canary path key matches the earlier verified physical fixture", async () => {
   strictEqual(await bvpOpaquePathKey("BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md"), verifiedCanary);
+  strictEqual(await bvpOpaquePathKey("BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02"), approvedParent);
 });
