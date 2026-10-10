@@ -9,3 +9,4 @@ export * from "./execution";
 export * from "./status-audit-actions";
 export * from "./synchronization-foundation";
 export * from "./synchronization-folder-create-foundation";
+export * from "./verified-metadata-inventory";
