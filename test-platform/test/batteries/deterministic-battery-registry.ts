@@ -56,6 +56,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
 ] as const;
 
 const S09_LATE_COMPLETION_RECOVERY = [
+  "s09a-attribution-live-guard.test.js",
   "s09a-late-completion-recovery.test.js",
 ] as const;
 
@@ -93,7 +94,7 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
     },
     "s09-late-completion-recovery": {
       name: "s09-late-completion-recovery",
-      description: "S09A guarded late-completion recovery tests.",
+      description: "S09A guarded request-attribution and late-completion recovery tests.",
       testFiles: S09_LATE_COMPLETION_RECOVERY,
     },
     "all-platform-tests": {
