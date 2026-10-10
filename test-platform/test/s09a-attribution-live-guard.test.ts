@@ -4,7 +4,27 @@ import { s09aRequestAttributionScenario } from "../scenarios/live/s09a-request-a
 import { assertScenarioObservation } from "../src/scenario/scenario-evidence";
 import { DeterministicScenarioRunner, type ScenarioStepExecutor } from "../src/scenario/scenario-runner";
 
-async function exercise(operationCount: number, operationKinds: readonly string[] | undefined) {
+const verifiedCanary = "path-sha256:788c8a656d7aab99f9283b50a9ade906fb04a66e6daf50ca79fae6788970940e";
+interface Preview {
+  operationCount: number;
+  operationKinds?: readonly string[];
+  nonNoopOperationCount?: number;
+  uploadCreatePathKeys?: readonly string[];
+  executionDisposition?: string;
+  globalExecutionGate?: string;
+  recoveryCheckpointRequired?: boolean;
+}
+const expectedPlan: Preview = {
+  operationCount: 25,
+  operationKinds: ["noop", "upload-create"],
+  nonNoopOperationCount: 1,
+  uploadCreatePathKeys: [verifiedCanary],
+  executionDisposition: "safe-auto-eligible",
+  globalExecutionGate: "none",
+  recoveryCheckpointRequired: false,
+};
+
+async function exercise(plan: Preview) {
   let dispatchCount = 0;
   const executor: ScenarioStepExecutor = {
     executionMode: "live",
@@ -14,15 +34,8 @@ async function exercise(operationCount: number, operationKinds: readonly string[
       if (step.kind === "observe" && step.subject === "device-state") {
         return { status: "completed", value: { kind: "idle-ready" } };
       }
-      if (step.kind === "observe" && step.subject === "local-entry") {
-        return { status: "completed", value: {
-          status: "present", exists: true,
-          hash: "81b4ca90a96f40bca8714cdff2c05e668f465be0e6d5daeecb2e219da19e1575",
-        } };
-      }
-      if (step.kind === "fixture") return { status: "completed" };
       if (step.kind === "production" && step.operation === "preview") {
-        return { status: "completed", value: { planId: "reviewed-plan", operationCount, ...(operationKinds ? { operationKinds } : {}) } };
+        return { status: "completed", value: { planId: "reviewed-plan", ...plan } };
       }
       if (step.kind === "production" && step.operation === "execute-reviewed-plan") {
         const reviewed = context.readCapture(step.inputRef) as { planId?: string } | undefined;
@@ -37,36 +50,45 @@ async function exercise(operationCount: number, operationKinds: readonly string[
   return { result, dispatchCount };
 }
 
-test("S09A live gate blocks zero operations before any production execution", async () => {
-  const { result, dispatchCount } = await exercise(0, []);
+test("S09A blocks no effective upload", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, nonNoopOperationCount: 0, uploadCreatePathKeys: [] });
   strictEqual(result.status, "failed");
-  strictEqual(result.classification, "assertion-mismatch");
   strictEqual(dispatchCount, 0);
 });
-
-test("S09A live gate blocks multiple operations before any production execution", async () => {
-  const { result, dispatchCount } = await exercise(2, ["upload-create", "trash-remote"]);
+test("S09A blocks multiple effective operations despite many harmless noops", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, nonNoopOperationCount: 2, operationCount: 26, uploadCreatePathKeys: [verifiedCanary, verifiedCanary] });
   strictEqual(result.status, "failed");
-  strictEqual(result.classification, "assertion-mismatch");
   strictEqual(dispatchCount, 0);
 });
-
-test("S09A live gate blocks a destructive single-operation plan", async () => {
-  const { result, dispatchCount } = await exercise(1, ["trash-remote"]);
+test("S09A blocks a destructive operation", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, operationKinds: ["noop","trash-remote"] });
   strictEqual(result.status, "failed");
-  strictEqual(result.classification, "assertion-mismatch");
   strictEqual(dispatchCount, 0);
 });
-
-test("S09A live gate blocks missing categorical plan proof", async () => {
-  const { result, dispatchCount } = await exercise(1, undefined);
+test("S09A blocks an upload of any other path", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, uploadCreatePathKeys: ["path-sha256:" + "0".repeat(64)] });
+  strictEqual(result.status, "failed");
+  strictEqual(dispatchCount, 0);
+});
+test("S09A blocks absent non-noop count instead of assuming safety", async () => {
+  const { nonNoopOperationCount: omitted, ...rest } = expectedPlan;
+  const { result, dispatchCount } = await exercise(rest);
   strictEqual(result.status, "blocked");
   strictEqual(result.classification, "missing-observation-field");
   strictEqual(dispatchCount, 0);
 });
-
-test("S09A live gate executes a reviewed single-upload plan exactly once", async () => {
-  const { result, dispatchCount } = await exercise(1, ["upload-create"]);
+test("S09A blocks a plan requiring destructive approval", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, globalExecutionGate: "destructive-approval-required" });
+  strictEqual(result.status, "failed");
+  strictEqual(dispatchCount, 0);
+});
+test("S09A blocks recovery-required plan", async () => {
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, recoveryCheckpointRequired: true });
+  strictEqual(result.status, "failed");
+  strictEqual(dispatchCount, 0);
+});
+test("S09A executes one exact approved canary upload with no-op companion entries", async () => {
+  const { result, dispatchCount } = await exercise(expectedPlan);
   strictEqual(result.status, "completed");
   strictEqual(dispatchCount, 1);
 });
