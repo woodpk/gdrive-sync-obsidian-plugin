@@ -421,7 +421,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   ): Promise<InventoryPublishResult> {
     try {
       const db = await this.open();
-      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, STAGES, COVERAGE], "readwrite");
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, STAGES, COVERAGE, ENTITIES], "readwrite");
       const done = finished(tx);
       const fail = async (status: "stale" | "invalid" | "recovery-required", reason: string):
         Promise<InventoryPublishResult> => {
@@ -462,6 +462,14 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
 
       for (const domain of ["content", "portable-config"] as const) {
         const rootId = contentDomainRoot(input.fence, domain);
+        const root = await request(tx.objectStore(ENTITIES).get(
+          [String(m.generation), String(rootId)])) as EntityRow | undefined;
+        if ((m.parentGeneration === null && (root?.kind !== "upsert" ||
+             root.entity?.parentRemoteObjectId !== null ||
+             root.entity?.kind !== "folder" || root.entity?.domain !== domain ||
+             root.entity?.managedRootId !== input.fence.managedRootId)) ||
+            (m.parentGeneration !== null && root?.kind === "mask"))
+          return await fail("invalid", "required-domain-root-inventory-identity-missing");
         const coverage = await request(tx.objectStore(COVERAGE).get(
           [String(m.generation), domain, String(rootId)])) as InventoryCoverage | undefined;
         if (!coverage || coverage.scopeKind !== "domain" || coverage.state !== "complete" ||
