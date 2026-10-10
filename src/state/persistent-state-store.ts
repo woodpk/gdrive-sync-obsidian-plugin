@@ -832,3 +832,67 @@ export function createInitialAuthorityState(values: { persistenceRevision: Persi
 export function createInitialAuthorityStateV1(values: { persistenceRevision: PersistenceRevision; semanticGeneration: SemanticStateGeneration; vaultIdentity: VaultIdentity; deviceIdentity: DeviceIdentity; schemaVersion?: number }): DurableSynchronizationAuthorityStateV1 {
   return { ...createInitialTrustedState({ stateRevision: values.persistenceRevision, vaultIdentity: values.vaultIdentity, deviceIdentity: values.deviceIdentity, schemaVersion: values.schemaVersion }), authoritySchemaVersion: 1, persistenceRevision: values.persistenceRevision, semanticGeneration: values.semanticGeneration, learnedRemoteBatches: [], learnedRemoteReductions: [], pathConvergence: [], operationIntents: [] as readonly RecoverableOperationIntent[], localTransactions: [] as readonly LocalMutationTransaction[], baseAuthority: [] };
 }
+
+/**
+ * D339-02: prepare, but DO NOT persist, the canonical authority half of an
+ * inventory publication. The caller must commit the returned bytes together
+ * with the inventory generation/control pointer in ONE multi-store IDB txn.
+ * This helper shares the existing checksum and semantic-generation rules.
+ */
+export type InventoryAuthorityPublicationResult =
+  | { readonly status: "prepared"; readonly replacement: Uint8Array;
+      readonly persistenceRevision: PersistenceRevision; readonly semanticGeneration: SemanticStateGeneration }
+  | { readonly status: "stale" | "recovery-required"; readonly reason: string };
+
+export function prepareInventoryAuthorityPublication(
+  currentBytes: Uint8Array | undefined,
+  expected: {
+    readonly persistenceRevision: PersistenceRevision;
+    readonly semanticGeneration: SemanticStateGeneration;
+    readonly canonicalCursor: import("../contracts").ChangeCursor | null;
+    readonly terminalCursor: import("../contracts").ChangeCursor;
+    readonly mode: "baseline" | "incremental";
+    readonly learnedBatch?: DurableRemoteChangeBatch;
+  },
+): InventoryAuthorityPublicationResult {
+  if (!currentBytes) return { status: "recovery-required", reason: "missing-trusted-canonical-state" };
+  const parsed = parseEnvelope(currentBytes);
+  if (parsed.status !== "ok" || !isDurableSynchronizationAuthorityState(parsed.envelope.state))
+    return { status: "recovery-required", reason: "untrusted-canonical-authority-envelope" };
+  const state = parsed.envelope.state;
+  if (new DurableSemanticStateValidator().validate(state).length !== 0)
+    return { status: "recovery-required", reason: "invalid-canonical-authority" };
+  if (state.persistenceRevision !== expected.persistenceRevision ||
+      state.semanticGeneration !== expected.semanticGeneration ||
+      (state.changeCursor ?? null) !== expected.canonicalCursor)
+    return { status: "stale", reason: "authority-persistence-semantic-or-cursor-raced" };
+  if (state.operationIntents.some(intent => !recoverableOperationV1_1IsComplete(intent)))
+    return { status: "recovery-required", reason: "unresolved-durable-intent-blocks-inventory-publication" };
+  if (expected.mode === "incremental") {
+    const batch = expected.learnedBatch;
+    if (!batch || batch.checkpoint.startingToken !== expected.canonicalCursor ||
+        batch.checkpoint.terminalStartToken !== expected.terminalCursor ||
+        state.learnedRemoteBatches.some(old => old.checkpoint.batchId === batch.checkpoint.batchId))
+      return { status: "recovery-required", reason: "missing-duplicate-or-discontinuous-learned-batch" };
+  } else if (expected.learnedBatch) {
+    return { status: "recovery-required", reason: "baseline-must-not-invent-learned-batch" };
+  }
+  const learnedRemoteBatches = expected.learnedBatch
+    ? appendDurableRemoteChangeBatch(state.learnedRemoteBatches, expected.learnedBatch)
+    : state.learnedRemoteBatches;
+  const pending: DurableSynchronizationAuthorityState = {
+    ...state, changeCursor: expected.terminalCursor, learnedRemoteBatches,
+  };
+  const issues = new DurableSemanticStateValidator().validate(pending);
+  if (issues.length) return { status: "recovery-required", reason: "candidate-authority-semantic-inconsistency" };
+  const semanticGeneration = sameSemanticAuthority(state, pending)
+    ? state.semanticGeneration : nextSemanticGeneration(state.semanticGeneration);
+  const persistenceRevision = nextPersistenceRevision(state.persistenceRevision);
+  const replacement: DurableSynchronizationAuthorityState = {
+    ...pending, stateRevision: persistenceRevision, persistenceRevision, semanticGeneration,
+  };
+  if (new DurableSemanticStateValidator().validate(replacement).length)
+    return { status: "recovery-required", reason: "candidate-authority-transition-invalid" };
+  return { status: "prepared", replacement: serialize(replacement),
+    persistenceRevision, semanticGeneration };
+}
