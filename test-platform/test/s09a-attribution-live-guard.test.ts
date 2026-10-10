@@ -45,14 +45,14 @@ test("S09A live gate blocks zero operations before any production execution", as
 });
 
 test("S09A live gate blocks multiple operations before any production execution", async () => {
-  const { result, dispatchCount } = await exercise(2, ["upload-create", "remote-trash"]);
+  const { result, dispatchCount } = await exercise(2, ["upload-create", "trash-remote"]);
   strictEqual(result.status, "failed");
   strictEqual(result.classification, "assertion-mismatch");
   strictEqual(dispatchCount, 0);
 });
 
 test("S09A live gate blocks a destructive single-operation plan", async () => {
-  const { result, dispatchCount } = await exercise(1, ["remote-trash"]);
+  const { result, dispatchCount } = await exercise(1, ["trash-remote"]);
   strictEqual(result.status, "failed");
   strictEqual(result.classification, "assertion-mismatch");
   strictEqual(dispatchCount, 0);
