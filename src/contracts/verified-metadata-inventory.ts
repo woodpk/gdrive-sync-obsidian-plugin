@@ -116,6 +116,11 @@ export type InventoryTargetedProofResult =
   | { readonly status: "verified-current-proof"; readonly proof: InventoryTargetedProof }
   | { readonly status: InventoryTrustFailure; readonly reason: string };
 
+/** Pure shape checks cannot mint a provider-backed current physical proof. */
+export type InventoryTargetedProofAssessment =
+  | { readonly status: "structurally-eligible"; readonly purpose: InventoryTargetedProof["purpose"] }
+  | { readonly status: InventoryTrustFailure; readonly reason: string };
+
 export interface InventoryReadLease {
   readonly generation: InventoryGeneration;
   readonly fence: InventoryIdentityFence;
