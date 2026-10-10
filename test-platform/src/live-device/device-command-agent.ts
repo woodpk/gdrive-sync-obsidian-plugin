@@ -50,6 +50,7 @@ export interface DeviceCommandResult {
     readonly planId: string;
     readonly trigger: string;
     readonly operationCount: number;
+    readonly operationKinds: readonly string[];
     readonly executionDisposition: string;
     readonly recoveryCheckpointRequired: boolean;
     readonly globalExecutionGate: string;
@@ -228,6 +229,7 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
           planId: String(plan.planId),
           trigger: plan.trigger,
           operationCount: plan.operations.length,
+          operationKinds: [...new Set(plan.operations.map(operation => String(operation.kind)))].sort(),
           executionDisposition: plan.executionDisposition,
           recoveryCheckpointRequired: plan.recoveryCheckpointRequired,
           globalExecutionGate: plan.globalExecutionGate,
