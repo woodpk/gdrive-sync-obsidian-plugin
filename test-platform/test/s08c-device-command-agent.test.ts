@@ -59,7 +59,7 @@ function productionHarness(term: "complete" | "uncertain" = "complete") {
   const manualPlan: any = {
     planId: "plan-manual",
     trigger: "manual",
-    operations: [{ operationId: "op-1" }],
+    operations: [{ operationId: "op-1", kind: "upload-create" }],
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: false,
     globalExecutionGate: "none",
@@ -191,6 +191,7 @@ test("production commands remain bounded and terminal receipt authority is propa
     planId: "plan-manual",
     trigger: "manual",
     operationCount: 1,
+    operationKinds: ["upload-create"],
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: false,
     globalExecutionGate: "none",
