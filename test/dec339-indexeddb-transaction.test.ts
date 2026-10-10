@@ -250,3 +250,42 @@ test("existing v2 canonical state reader can open without a forced v1 VersionErr
   assert.ok(await canonical.read());
   assert.equal(db.version, 2);
 });
+
+test("a legacy canonical cursor writer invalidates active inventory atomically instead of fast-forwarding it", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate();
+  assert.equal((await inventory.stage({ candidate: baseline.manifest,
+    overlays: rows(baseline.rows), coverage: rows(baseline.coverage) })).status, "verified-observation");
+  const published = await inventory.publishAtomically({
+    candidateGeneration: baseline.manifest.generation, validationReceipt: baseline.manifest.validationReceipt,
+    expectedActiveGeneration: null, expectedAuthorityPersistenceRevision: r0,
+    expectedAuthoritySemanticGeneration: s0, expectedCanonicalCursor: null,
+    nextCanonicalCursor: cursor1, fence,
+  });
+  assert.equal(published.status, "published");
+  const canonical = new PersistentSynchronizationStateStore(
+    new IndexedDbStateByteStorage("device:idb:test", factory));
+  const loaded = await canonical.loadAuthority();
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status !== "trusted") return;
+  const saved = await canonical.saveAuthority(
+    { ...loaded.state, changeCursor: c("changes:outside-inventory") },
+    loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+  assert.equal(saved.status, "saved");
+  assert.equal((await inventory.openRead()).status, "stale");
+});
+
+test("duplicate candidate IDs cannot replace sealed or published generations", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const first = candidate();
+  const initial = await inventory.stage({ candidate: first.manifest,
+    overlays: rows(first.rows), coverage: rows(first.coverage) });
+  assert.equal(initial.status, "verified-observation");
+  const retry = await inventory.stage({ candidate: first.manifest,
+    overlays: rows(first.rows), coverage: rows(first.coverage) });
+  assert.equal(retry.status, "stale");
+});
