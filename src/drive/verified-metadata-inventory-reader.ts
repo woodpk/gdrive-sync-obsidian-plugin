@@ -112,7 +112,8 @@ export class VerifiedMetadataInventoryReader {
       seen.add(file.id);
       const entry = graph.get(file.id);
       if (!entry || !live(file) || !this.provenance(file, fence, entry.domain) ||
-          entry.parentId !== file.parents[0] || file.parents.length !== 1)
+          entry.parentId !== file.parents[0] || file.parents.length !== 1 ||
+          entry.file.name !== file.name || entry.file.version !== file.version)
         return error("root-wide-managed-object-outside-known-domain", "recovery-required");
     }
     return { status: "ok", value: undefined };
@@ -410,7 +411,7 @@ export class VerifiedMetadataInventoryReader {
     const exact = await this.source.getFile(String(request.remoteObjectId));
     if (exact.status !== "ok") return exact;
     const f = exact.value;
-    if (f.trashed || f.parents.length !== 1 ||
+    if (f.trashed || !suitableName(f.name) || f.parents.length !== 1 ||
         f.parents[0] !== String(request.parentRemoteObjectId) ||
         f.name !== request.name || !this.provenance(f, fence, request.domain))
       return error("target-object-identity-not-current");
@@ -437,9 +438,9 @@ export class VerifiedMetadataInventoryReader {
     }
     if (ancestors.at(-1) !== root) return error("target-not-under-expected-domain");
     const siblings = await this.allPages(token =>
-      this.source.listChildren(String(request.parentRemoteObjectId), token, request.name));
+      this.source.listChildren(String(request.parentRemoteObjectId), token));
     if (siblings.status !== "ok") return siblings;
-    const matches = siblings.value.filter(x => !x.trashed);
+    const matches = siblings.value.filter(x => !x.trashed && norm(x.name) === norm(request.name));
     if (matches.length !== 1 || matches[0].id !== f.id)
       return error("nonunique-or-missing-target-sibling", "unknown");
     // Same-parent occupancy never substitutes for the root-wide provenance requirement.
