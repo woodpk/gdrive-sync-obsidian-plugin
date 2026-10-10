@@ -70,6 +70,15 @@ Phase 1 only.
 - Do not implement final UI, onboarding, or settings screens.
 - Do not embed platform-specific policy in the domain engine.
 
-## Prospective DEC-339 units — design only, not executable
+## DEC-339 work units — D339-01 bound for dispatch; later units design only
 
 Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind: **D339-01** inventory contracts, invariants, proof result types and owner API; **D339-02** additive indexed storage, atomic generation/cursor publication and backup-safe migration; **D339-04** single-owner integration of storage with Drive deltas and recovery-safe publication. D339-01 precedes WS-03 and WS-05 consumers; D339-04 follows D339-02 and WS-03 D339-03. No work order may consume guessed predecessor state. Historical accepted Phase-2 scope stays closed.
+
+
+### D339-01 dispatch binding (prepared, not yet executed)
+
+- Pinned prompt document: `tasks/D339-01-inventory-contracts.md`, at planning source commit `ea96219e81fb8fc3cd57a48f6e64eb230c8b60de` (read by immutable commit, not moving branch).
+- Exact implementation base: `44368eb7bb94b751c069c09a95012b9179155f0c`.
+- Precreated implementation branch: `dec339/d339-01-inventory-contracts-01` at that exact base.
+- Scope: additive inventory contract, pure validation foundation, focused deterministic tests and evidence only; exact writable path list and PHX-CI gates are in the task document. No D339-02–08 source implementation, production cutover, or physical test is authorized here.
+- Status: **task prepared; agent not dispatched; code not implemented; verification not run**.

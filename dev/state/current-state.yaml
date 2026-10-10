@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Prepare an exact-SHA-bound, narrow WS-02 D339-01 inventory-contract work package, after rechecking branch HEAD and contract ownership; code implementation not yet begun. No physical mutation, S09A rerun or Stage 3 entry."
+next_action: "Dispatch pinned D339-01 task from planning commit ea96219e81fb8fc3cd57a48f6e64eb230c8b60de to the coding agent against exact worker-branch HEAD 44368eb7bb94b751c069c09a95012b9179155f0c. Preserve PHX-CI-only tests, file allowlist and independent review boundary; no implementation started by supervisor."
 updated_at: "2026-10-10"
 
 context:
@@ -55,6 +55,11 @@ context:
   inventory_design_document: "dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md"
   inventory_architecture_review: "dev/reviews/dec339-inventory-architecture-adversarial-review-2026-10-10.md"
   inventory_architecture_review_disposition: "NINE_FINDINGS_CORRECTED; NO_OPEN_DESIGN_BLOCKER_FOR_D339_01; NO_IMPL_ACCEPTANCE"
+  d339_01_task_status: "PREPARED_EXACT_SHA_BOUND; NOT_DISPATCHED; NOT_IMPLEMENTED"
+  d339_01_task_doc: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/D339-01-inventory-contracts.md"
+  d339_01_task_prompt_commit: "ea96219e81fb8fc3cd57a48f6e64eb230c8b60de"
+  d339_01_source_base_sha: "44368eb7bb94b751c069c09a95012b9179155f0c"
+  d339_01_worker_branch: "dec339/d339-01-inventory-contracts-01"
   stage_3_started: false
   authority:
     decision_register: "dev/authority/decision-register.yaml"
