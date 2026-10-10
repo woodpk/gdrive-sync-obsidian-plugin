@@ -82,6 +82,7 @@ class FakeDatabase {
         const data = snapshots.get(name);
         if (!data) throw new Error("NotFoundError");
         const enqueue = (action: () => unknown): IDBRequest => {
+          if (closed || aborted) throw new Error("TransactionInactiveError");
           const req: { result?: unknown; error?: Error; onsuccess?: () => void; onerror?: () => void } = {};
           pending++;
           queueMicrotask(() => {
@@ -93,7 +94,11 @@ class FakeDatabase {
               tx.abort();
             }
             pending--;
-            queueMicrotask(finish);
+            // IndexedDB commits after the request's event task and its promise
+            // microtasks, not before awaited request handlers can queue more work.
+            // Queueing finish as a microtask closed this fake too early, leaving
+            // transactionComplete() without an oncomplete event.
+            setImmediate(finish);
           });
           return req as unknown as IDBRequest;
         };
