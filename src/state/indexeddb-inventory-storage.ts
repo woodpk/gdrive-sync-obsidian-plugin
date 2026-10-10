@@ -10,7 +10,7 @@ import type {
   InventoryRemoteEntity, InventoryStageRequest, RemoteObjectId, VaultPath,
 } from "../contracts";
 import { inventoryFenceMatches } from "./verified-metadata-inventory-validation";
-import { prepareInventoryAuthorityPublication } from "./persistent-state-store";
+import { inspectInventoryAuthorityFence, prepareInventoryAuthorityPublication } from "./persistent-state-store";
 
 const DB_VERSION = 2;
 const AUTHORITY = "sync-state";
@@ -254,3 +254,246 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       else this.readers.set(name, count - 1);
     }
   }
+
+  /** No inferred absence: a missing ID returns unknown, never a verified undefined. */
+  async openRead(): Promise<InventoryReadResult<InventoryReadLease>> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS], "readonly");
+      const done = finished(tx);
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      const canonical = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const authority = inspectInventoryAuthorityFence(canonical);
+      if (control?.status !== "ready" || authority.status !== "trusted" ||
+          authority.unresolvedEffects || authority.vaultIdentity !== control.fence.vaultIdentity ||
+          authority.deviceIdentity !== control.fence.deviceIdentity ||
+          authority.canonicalCursor !== control.terminalCursor ||
+          authority.persistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+          authority.semanticGeneration !== control.authoritySemanticGenerationAtPublish) {
+        await done;
+        return error("stale", "inactive-or-authority-mismatched-inventory");
+      }
+      const history: InventoryGenerationManifest[] = [];
+      const seen = new Set<string>();
+      let id: InventoryGeneration | null = control.activeGeneration;
+      while (id) {
+        if (seen.has(String(id)) || history.length > MAX_DEPTH) {
+          await done;
+          return error("invalid", "cyclic-or-unbounded-manifest-chain");
+        }
+        seen.add(String(id));
+        const record = await request(tx.objectStore(MANIFESTS).get(String(id))) as StagedManifest | undefined;
+        const m = record?.manifest;
+        if (!record?.sealed || !m || m.status !== "complete" ||
+            !inventoryFenceMatches(m.fence, control.fence) ||
+            m.generation !== id || m.overlayDepth > MAX_DEPTH) {
+          await done;
+          return error("invalid", "unsealed-or-missing-generation-ancestor");
+        }
+        history.unshift(m);
+        id = m.parentGeneration;
+      }
+      await done;
+      if (!history.length || history[0].parentGeneration !== null ||
+          history[0].overlayDepth !== 0 ||
+          history[history.length - 1].terminalCursor !== control.terminalCursor)
+        return error("invalid", "discontinuous-active-generation");
+      for (let i = 1; i < history.length; i++) {
+        if (history[i].parentGeneration !== history[i - 1].generation ||
+            history[i].inputCursor !== history[i - 1].terminalCursor ||
+            history[i].overlayDepth !== history[i - 1].overlayDepth + 1)
+          return error("invalid", "discontinuous-parent-cursor-or-depth");
+      }
+      this.pin(history);
+      let released = false;
+      const active = history[history.length - 1];
+      const deny = (): InventoryReadResult<never> => error("stale", "inventory-read-lease-released");
+      const byId = async (id: RemoteObjectId): Promise<InventoryReadResult<InventoryRemoteEntity | undefined>> => {
+        if (released) return deny();
+        const tx = stores(db, [ENTITIES], "readonly");
+        const complete = finished(tx);
+        let result: EntityRow | undefined;
+        for (let n = history.length - 1; n >= 0; n--) {
+          const candidate = await request(tx.objectStore(ENTITIES).get([String(history[n].generation), String(id)])) as EntityRow | undefined;
+          if (candidate) { result = candidate; break; }
+        }
+        await complete;
+        if (!result) return error("unknown", "unmapped-id-does-not-prove-absence");
+        if (result.kind === "mask") return error("unknown", "masked-id-is-not-deletion-proof");
+        if (!result.entity || result.entity.access !== "visible" || result.entity.trashed ||
+            result.entity.pathValidity !== "verified")
+          return error("unknown", "untrusted-entity-observation");
+        return { status: "verified-observation", generation: active.generation, value: result.entity };
+      };
+      const byScope = async (
+        dimension: "parent" | "path", domain: InventoryDomain, key: RemoteObjectId | VaultPath,
+        name?: string, limit = DEFAULT_PAGE_SIZE,
+      ): Promise<InventoryReadResult<readonly InventoryRemoteEntity[]>> => {
+        if (released) return deny();
+        if (!Number.isSafeInteger(limit) || limit <= 0 || limit > DEFAULT_PAGE_SIZE)
+          return error("invalid", "invalid-or-unbounded-inventory-query-limit");
+        const scope = await getCoverage(domain, contentDomainRoot(control.fence, domain));
+        if (scope.status !== "verified-observation") return scope;
+        const tx = stores(db, [ENTITIES], "readonly");
+        const complete = finished(tx);
+        const store = tx.objectStore(ENTITIES);
+        const candidateIds = new Set<string>();
+        let overfull = false;
+        for (const generation of history) {
+          const prefix = dimension === "parent"
+            ? [String(generation.generation), domain, String(key)]
+            : [String(generation.generation), domain, norm(String(key))];
+          const index = store.index(dimension === "parent" ? "by-parent" : "by-path");
+          const list = await request(index.getAll(IDBKeyRange.only(prefix), limit + 1)) as EntityRow[];
+          if (list.length > limit) { overfull = true; break; }
+          for (const entry of list) {
+            if (dimension === "parent" && name !== undefined && entry.normalizedName !== norm(name)) continue;
+            candidateIds.add(String(entry.remoteObjectId));
+            if (candidateIds.size > limit) { overfull = true; break; }
+          }
+          if (overfull) break;
+        }
+        if (overfull) {
+          await complete;
+          return error("partial", "bounded-index-query-truncated");
+        }
+        const result: InventoryRemoteEntity[] = [];
+        for (const objectId of candidateIds) {
+          let winning: EntityRow | undefined;
+          for (let n = history.length - 1; n >= 0; n--) {
+            const current = await request(store.get([String(history[n].generation), objectId])) as EntityRow | undefined;
+            if (current) { winning = current; break; }
+          }
+          if (!winning || winning.kind === "mask") continue;
+          const e = winning.entity;
+          if (!e || e.domain !== domain) continue;
+          if (dimension === "parent" && (e.parentRemoteObjectId !== key ||
+              (name !== undefined && norm(e.name) !== norm(name)))) continue;
+          if (dimension === "path" && norm(String(e.logicalPath ?? "")) !== norm(String(key))) continue;
+          if (e.access !== "visible" || e.trashed || e.pathValidity !== "verified") {
+            await complete;
+            return error("unknown", "ambiguous-or-inaccessible-index-member");
+          }
+          result.push(e);
+        }
+        await complete;
+        result.sort((a, b) => String(a.remoteObjectId).localeCompare(String(b.remoteObjectId)));
+        if (result.length > limit) return error("partial", "bounded-index-result-exceeds-limit");
+        return { status: "verified-observation", generation: active.generation, value: result };
+      };
+      const getCoverage = async (
+        domain: InventoryDomain, scopeId: RemoteObjectId,
+      ): Promise<InventoryReadResult<InventoryCoverage>> => {
+        if (released) return deny();
+        const tx = stores(db, [COVERAGE], "readonly");
+        const complete = finished(tx);
+        const c = await request(tx.objectStore(COVERAGE).get([String(active.generation), domain, String(scopeId)])) as InventoryCoverage | undefined;
+        await complete;
+        if (!c || c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
+            !c.provenanceVerified || c.visibility !== "app-visible" ||
+            c.terminalCursor !== active.terminalCursor)
+          return error("unknown", "coverage-unproven-at-active-horizon");
+        return { status: "verified-observation", generation: active.generation, value: c };
+      };
+      const lease: InventoryReadLease = {
+        generation: active.generation, fence: control.fence,
+        getById: byId,
+        listByParent: (domain, parent, name, limit) => byScope("parent", domain, parent, name, limit),
+        listByPath: (domain, path, limit) => byScope("path", domain, path, undefined, limit),
+        coverage: getCoverage,
+        release: async () => { if (!released) { released = true; this.unpin(history); } },
+      };
+      return { status: "verified-observation", generation: active.generation, value: lease };
+    } catch (cause) {
+      return error("recovery-required", cause instanceof Error ? cause.message : "inventory-open-read-failed");
+    }
+  }
+
+  /**
+   * Short single-transaction linearization of the canonical authority cursor and
+   * the complete staged candidate. No network or vault reads are performed here.
+   * An absent/rejected candidate cannot change either authoritative cursor or active pointer.
+   */
+  async publishAtomically(
+    input: InventoryPublishRequest,
+    learnedBatch?: DurableRemoteChangeBatch,
+  ): Promise<InventoryPublishResult> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, STAGES, COVERAGE], "readwrite");
+      const done = finished(tx);
+      const fail = async (status: "stale" | "invalid" | "recovery-required", reason: string):
+        Promise<InventoryPublishResult> => {
+        tx.abort();
+        await done.catch(() => undefined);
+        return { status, reason };
+      };
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      const staged = await request(tx.objectStore(MANIFESTS).get(String(input.candidateGeneration))) as StagedManifest | undefined;
+      const count = await request(tx.objectStore(STAGES).get(String(input.candidateGeneration))) as StagedCounter | undefined;
+      const current = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const m = staged?.manifest;
+      if (!m || !staged?.sealed || !count?.sealed ||
+          staged.count !== m.recordCount || count.count !== m.recordCount ||
+          count.coverageCount !== staged.coverageCount ||
+          m.status !== "complete" || m.validationReceipt !== input.validationReceipt ||
+          m.terminalCursor !== input.nextCanonicalCursor ||
+          !inventoryFenceMatches(m.fence, input.fence))
+        return await fail("invalid", "candidate-stage-or-validation-receipt-unproven");
+      if (control?.status === "ready") {
+        if (control.activeGeneration !== input.expectedActiveGeneration ||
+            control.terminalCursor !== input.expectedCanonicalCursor ||
+            !inventoryFenceMatches(control.fence, input.fence) ||
+            m.parentGeneration !== control.activeGeneration ||
+            m.inputCursor !== control.terminalCursor)
+          return await fail("stale", "active-inventory-generation-or-cursor-mismatch");
+      } else if (input.expectedActiveGeneration !== null || m.parentGeneration !== null || m.overlayDepth !== 0) {
+        return await fail("stale", "untrusted-control-requires-full-baseline");
+      }
+      if (input.learnedBatchId && (!learnedBatch ||
+          String(learnedBatch.checkpoint.batchId) !== input.learnedBatchId))
+        return await fail("invalid", "requested-learned-batch-not-supplied");
+      if (m.parentGeneration !== null && !learnedBatch)
+        return await fail("invalid", "incremental-publication-needs-continuous-learned-batch");
+      if (m.parentGeneration === null && learnedBatch)
+        return await fail("invalid", "baseline-cannot-commit-incremental-batch");
+
+      for (const domain of ["content", "portable-config"] as const) {
+        const rootId = contentDomainRoot(input.fence, domain);
+        const coverage = await request(tx.objectStore(COVERAGE).get(
+          [String(m.generation), domain, String(rootId)])) as InventoryCoverage | undefined;
+        if (!coverage || coverage.scopeKind !== "domain" || coverage.state !== "complete" ||
+            !coverage.allPagesRead || coverage.incompleteSearch ||
+            coverage.visibility !== "app-visible" || !coverage.provenanceVerified ||
+            coverage.terminalCursor !== m.terminalCursor)
+          return await fail("invalid", "required-managed-domain-coverage-unproven");
+      }
+      const prepared = prepareInventoryAuthorityPublication(current, {
+        persistenceRevision: input.expectedAuthorityPersistenceRevision,
+        semanticGeneration: input.expectedAuthoritySemanticGeneration,
+        canonicalCursor: input.expectedCanonicalCursor,
+        terminalCursor: input.nextCanonicalCursor,
+        mode: m.parentGeneration === null ? "baseline" : "incremental",
+        ...(learnedBatch ? { learnedBatch } : {}),
+      });
+      if (prepared.status !== "prepared")
+        return await fail(prepared.status === "stale" ? "stale" : "recovery-required", prepared.reason);
+      const publication: InventoryGenerationManifest = {
+        ...m, authorityPersistenceRevision: prepared.persistenceRevision,
+        authoritySemanticGeneration: prepared.semanticGeneration,
+      };
+      tx.objectStore(AUTHORITY).put(prepared.replacement, AUTHORITY_KEY);
+      tx.objectStore(MANIFESTS).put({ ...staged, manifest: publication }, String(m.generation));
+      tx.objectStore(CONTROL).put({
+        status: "ready", activeGeneration: m.generation, terminalCursor: m.terminalCursor,
+        fence: m.fence, authorityPersistenceRevisionAtPublish: prepared.persistenceRevision,
+        authoritySemanticGenerationAtPublish: prepared.semanticGeneration,
+      } satisfies InventoryControl, POINTER);
+      await done;
+      return { status: "published", generation: m.generation, terminalCursor: m.terminalCursor };
+    } catch (cause) {
+      return { status: "recovery-required",
+        reason: cause instanceof Error ? cause.message : "atomic-inventory-publication-failed" };
+    }
+  }
+}
