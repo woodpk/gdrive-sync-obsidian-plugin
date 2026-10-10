@@ -247,6 +247,7 @@ export class VerifiedMetadataInventoryReader {
             error("unclassifiable-managed-domain-entry");
         }
         if (file.parents.length !== 1 || trackedParent.file.mimeType !== FOLDER ||
+            file.mimeType === FOLDER ||
             !this.provenance(file, fence, trackedParent.domain) || !suitableName(file.name))
           return error("unproven-entering-object-provenance");
         graph.set(id, { file, parentId: parent, domain: trackedParent.domain });
@@ -256,8 +257,9 @@ export class VerifiedMetadataInventoryReader {
       if (file.parents.length !== 1 || file.parents[0] !== existing.parentId ||
           !this.provenance(file, fence, existing.domain))
         return error("tracked-object-parent-or-provenance-change-needs-rebaseline");
-      if (existing.file.mimeType === FOLDER && existing.file.name !== file.name)
-        return error("folder-rename-needs-descendant-rebaseline");
+      if (existing.file.mimeType !== file.mimeType ||
+          (existing.file.mimeType === FOLDER && existing.file.name !== file.name))
+        return error("folder-kind-or-name-change-needs-descendant-rebaseline");
       if (!suitableName(file.name)) return error("invalid-managed-change-name");
       graph.set(id, { ...existing, file });
       if (existing.parentId) changedParents.add(existing.parentId);
@@ -374,7 +376,9 @@ export class VerifiedMetadataInventoryReader {
           error("tracked-id-left-domain-or-unclassifiable-new-entry");
       }
       if (parent.kind !== "folder" || !this.provenance(file, fence, parent.domain) ||
-          !suitableName(file.name) || (original && original.domain !== parent.domain))
+          (!original && file.mimeType === FOLDER) ||
+          !suitableName(file.name) || (original && original.domain !== parent.domain) ||
+          (original && original.kind !== (file.mimeType === FOLDER ? "folder" : "file")))
         return error("invalid-changed-object-provenance-or-parent");
       if (original && original.kind === "folder" &&
           (original.name !== file.name || original.parentRemoteObjectId !== rid(file.parents[0])))
@@ -441,13 +445,18 @@ export class VerifiedMetadataInventoryReader {
       this.source.listChildren(String(request.parentRemoteObjectId), token));
     if (siblings.status !== "ok") return siblings;
     const matches = siblings.value.filter(x => !x.trashed && norm(x.name) === norm(request.name));
-    if (matches.length !== 1 || matches[0].id !== f.id)
-      return error("nonunique-or-missing-target-sibling", "unknown");
+    if (matches.length !== 1 || matches[0].id !== f.id ||
+        matches[0].parents.length !== 1 ||
+        matches[0].parents[0] !== String(request.parentRemoteObjectId) ||
+        matches[0].version !== f.version ||
+        !this.provenance(matches[0], fence, request.domain))
+      return error("nonunique-missing-or-drifted-target-sibling", "unknown");
     // Same-parent occupancy never substitutes for the root-wide provenance requirement.
     const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
     if (marked.status !== "ok") return marked;
     for (const candidate of marked.value) {
-      if (candidate.trashed || !candidate.appProperties.brainSyncDomain)
+      if (candidate.trashed || candidate.appProperties.brainManagedRootId !== String(fence.managedRootId) ||
+          !candidate.appProperties.brainSyncDomain)
         return error("marked-object-provenance-unproven");
       const d = candidate.appProperties.brainSyncDomain;
       if (d !== "content" && d !== "portable-config") return error("marked-object-domain-invalid");
@@ -460,7 +469,9 @@ export class VerifiedMetadataInventoryReader {
         if (item.parents.length !== 1) return error("marked-object-parent-ambiguous");
         if (item.parents[0] === expectedRoot) { reached = true; break; }
         const prev = await this.source.getFile(item.parents[0]);
-        if (prev.status !== "ok") return error("marked-object-ancestry-unavailable");
+        if (prev.status !== "ok" || prev.value.trashed || prev.value.mimeType !== FOLDER ||
+            !this.provenance(prev.value, fence, d))
+          return error("marked-object-ancestry-unavailable");
         item = prev.value;
       }
       if (!reached) return error("marked-object-outside-domain");
