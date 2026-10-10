@@ -15,6 +15,11 @@ The frozen shared contracts established by WS-01 are inherited. This workstream 
 - `PRIV-001` through `PRIV-004` as applied to authentication, API, callback, and diagnostics.
 - `INV-002`, `INV-010`, `INV-011`, and `INV-014` at the Drive/auth boundary.
 
+
+## Approved Drive metadata-inventory boundary (planning only)
+
+WS-03 provides exact managed-root/domain-scoped Google Drive file/folder ID, parent, revision, provenance, completeness and Changes API evidence for Target Specification §7.9. Drive permits same-name siblings; `files.generateIds` and creation with a reserved ID protect retry identity, **not** name/parent uniqueness. The existing managed-root, `drive.file` scope, duplicate-path detection, uncertain-outcome recovery and full reconciliation remain mandatory. Reuse proven mappings and narrow ID reads instead of repeated broad traversal only where completeness, uniqueness, current authority and convergence are preserved; record request attribution and validate equivalence through PHX-CI before optimization.
+
 ## Dependency direction
 
 Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
