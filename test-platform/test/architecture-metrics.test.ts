@@ -182,7 +182,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
     ),
     true,
   );
-  strictEqual(value.current.bvpPowerShellScriptCount, 2);
+  strictEqual(value.current.bvpPowerShellScriptCount, 3);
 });
 
 test("architecture metrics pass a compliant synthetic baseline and list real production imports", () => {
