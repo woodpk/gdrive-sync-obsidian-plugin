@@ -175,9 +175,10 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       const active = await request(reserve.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
       if (found || active?.activeGeneration === m.generation ||
           (active?.status === "ready" &&
-           (m.parentGeneration !== active.activeGeneration || m.inputCursor !== active.terminalCursor ||
-            !inventoryFenceMatches(m.fence, active.fence))) ||
-          (!active && m.parentGeneration !== null)) {
+           (!inventoryFenceMatches(m.fence, active.fence) ||
+            (m.parentGeneration !== null &&
+             (m.parentGeneration !== active.activeGeneration || m.inputCursor !== active.terminalCursor)))) ||
+          (active?.status !== "ready" && m.parentGeneration !== null)) {
         reserve.abort();
         await done.catch(() => undefined);
         return error("stale", "candidate-generation-parent-or-cursor-conflict");
@@ -444,8 +445,9 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         if (control.activeGeneration !== input.expectedActiveGeneration ||
             control.terminalCursor !== input.expectedCanonicalCursor ||
             !inventoryFenceMatches(control.fence, input.fence) ||
-            m.parentGeneration !== control.activeGeneration ||
-            m.inputCursor !== control.terminalCursor)
+            (m.parentGeneration !== null &&
+             (m.parentGeneration !== control.activeGeneration ||
+              m.inputCursor !== control.terminalCursor)))
           return await fail("stale", "active-inventory-generation-or-cursor-mismatch");
       } else if (input.expectedActiveGeneration !== null || m.parentGeneration !== null || m.overlayDepth !== 0) {
         return await fail("stale", "untrusted-control-requires-full-baseline");
