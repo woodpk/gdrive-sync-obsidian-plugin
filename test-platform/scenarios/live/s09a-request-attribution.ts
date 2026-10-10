@@ -1,22 +1,23 @@
 import { defineScenario } from "../../src/scenario/scenario-contract";
 
+// Reuses the immutable canary verified by S09A live02 before its fail-closed
+// plan gate. No new local or remote fixture is created by this scenario.
 export const s09aRequestAttributionScenario = defineScenario({
-  id: "battery-s09a-request-attribution-01",
-  description: "Exercise exactly one non-initial Windows production synchronization with a single isolated BVP canary, preserving all normal authority, convergence, and recovery checks while collecting bounded S09A request attribution.",
+  id: "battery-s09a-request-attribution-03",
+  description: "Observe and execute at most one exact previously verified canary upload, with no other non-noop operations, while retaining per-request S09A attribution.",
   traceability: { targets: [{ kind: "completion-evidence", id: "BVP-S09A-REQUEST-ATTRIBUTION" }] },
   executionModes: ["live"],
   steps: [
     { id: "observe-ready-before", kind: "observe", subject: "device-state", device: "windows", captureAs: "before" },
     { id: "assert-ready-before", kind: "assert", assertion: "field-equals", observationRef: "before", field: "kind", expected: "idle-ready" },
-    { id: "seed-attribution-canary", kind: "fixture", operation: "put-local-file", device: "windows", path: "s09a-attribution-canary.md", content: { encoding: "utf8", value: "# BVP S09A request attribution\n\nSingle controlled non-initial synchronization canary.\n" } },
-    { id: "observe-canary-before", kind: "observe", subject: "local-entry", device: "windows", path: "s09a-attribution-canary.md", captureAs: "canary-before" },
-    { id: "assert-canary-before", kind: "assert", assertion: "field-equals", observationRef: "canary-before", field: "hash", expected: "81b4ca90a96f40bca8714cdff2c05e668f465be0e6d5daeecb2e219da19e1575" },
-    { id: "review-canary-plan", kind: "production", operation: "preview", device: "windows", captureAs: "canary-plan" },
-    { id: "require-single-operation", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "operationCount", expected: 1 },
-    { id: "require-canary-upload", kind: "assert", assertion: "contains", observationRef: "canary-plan", field: "operationKinds", expected: "upload-create" },
-    { id: "execute-reviewed-canary", kind: "production", operation: "execute-reviewed-plan", device: "windows", inputRef: "canary-plan", captureAs: "attribution-result" },
-    { id: "observe-canary-after", kind: "observe", subject: "local-entry", device: "windows", path: "s09a-attribution-canary.md", captureAs: "canary-after" },
-    { id: "assert-canary-after", kind: "assert", assertion: "field-equals", observationRef: "canary-after", field: "hash", expected: "81b4ca90a96f40bca8714cdff2c05e668f465be0e6d5daeecb2e219da19e1575" },
+    { id: "review-existing-canary-plan", kind: "production", operation: "preview", device: "windows", captureAs: "canary-plan" },
+    { id: "require-one-nonnoop", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "nonNoopOperationCount", expected: 1 },
+    { id: "require-no-other-kinds", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "operationKinds", expected: ["noop", "upload-create"] },
+    { id: "require-exact-canary-target", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "uploadCreatePathKeys", expected: ["path-sha256:788c8a656d7aab99f9283b50a9ade906fb04a66e6daf50ca79fae6788970940e"] },
+    { id: "require-eligible", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "executionDisposition", expected: "safe-auto-eligible" },
+    { id: "require-open-gate", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "globalExecutionGate", expected: "none" },
+    { id: "require-no-recovery-checkpoint", kind: "assert", assertion: "field-equals", observationRef: "canary-plan", field: "recoveryCheckpointRequired", expected: false },
+    { id: "execute-exact-reviewed-canary-once", kind: "production", operation: "execute-reviewed-plan", device: "windows", inputRef: "canary-plan", captureAs: "attribution-result" },
     { id: "observe-ready-after", kind: "observe", subject: "device-state", device: "windows", captureAs: "after" },
     { id: "assert-ready-after", kind: "assert", assertion: "field-equals", observationRef: "after", field: "kind", expected: "idle-ready" },
   ],
