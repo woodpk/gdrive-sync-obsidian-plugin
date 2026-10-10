@@ -216,6 +216,15 @@ test("targeted sibling ambiguity refuses sole-occupancy claim", async () => {
   })).status, "unknown");
 });
 
+test("targeted normalized case collisions cannot masquerade as unique occupancy", async () => {
+  const p = new Provider();
+  p.children.get("dir")?.push(item("different-case", "DOC.md", "dir", "content"));
+  assert.equal((await reader(p).targeted(fence, generation("g1"), {
+    remoteObjectId: id("doc"), parentRemoteObjectId: id("dir"),
+    name: "doc.md", domain: "content", purpose: "precondition",
+  })).status, "unknown");
+});
+
 test("paired identity loss or stale revision defeats targeted read", async () => {
   const p = new Provider();
   p.verified = false;
