@@ -2,34 +2,6 @@ import type { StateByteStorage } from "./persistent-state-store";
 
 const STATE_KEY = "current-state";
 const STORE_NAME = "sync-state";
-const INVENTORY_CONTROL = "inventory-control";
-
-/** This is solely a fail-closed compatibility fence, not a parser for trusted authority. */
-function inventoryRelevantState(bytes: Uint8Array | undefined): string {
-  if (!bytes) return "missing";
-  try {
-    const state = (JSON.parse(new TextDecoder().decode(bytes)) as { state?: Record<string, unknown> }).state;
-    if (!state || typeof state !== "object") return "unreadable";
-    return JSON.stringify({
-      vaultIdentity: state.vaultIdentity, deviceIdentity: state.deviceIdentity,
-      changeCursor: state.changeCursor,
-    });
-  } catch { return "unreadable"; }
-}
-
-async function invalidateInventoryOnUnfencedAuthorityChange(
-  transaction: IDBTransaction, previous: Uint8Array | undefined, next: Uint8Array,
-): Promise<void> {
-  if (!transaction.db.objectStoreNames.contains(INVENTORY_CONTROL)) return;
-  const store = transaction.objectStore(INVENTORY_CONTROL);
-  const record = await requestResult(store.get("active")) as
-    ({ readonly status?: string; readonly activeGeneration?: string; readonly terminalCursor?: string } | undefined);
-  if (record?.status !== "ready") return;
-  if (inventoryRelevantState(previous) !== inventoryRelevantState(next)) {
-    store.put({ ...record, status: "invalid", reason: "unfenced-authority-cursor-or-identity-write" }, "active");
-  }
-}
-
 
 function clone(bytes: Uint8Array): Uint8Array { return bytes.slice(); }
 function equal(a: Uint8Array | undefined, b: Uint8Array | undefined): boolean {
@@ -89,26 +61,18 @@ export class IndexedDbStateByteStorage implements StateByteStorage {
 
   async write(bytes: Uint8Array): Promise<void> {
     const database = await this.open();
-    const guarded = database.objectStoreNames.contains(INVENTORY_CONTROL);
-    const transaction = database.transaction(guarded ? [STORE_NAME, INVENTORY_CONTROL] : [STORE_NAME], "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const previous = await requestResult(store.get(STATE_KEY)) as Uint8Array | undefined;
-    await invalidateInventoryOnUnfencedAuthorityChange(transaction, previous, bytes);
-    store.put(clone(bytes), STATE_KEY);
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    transaction.objectStore(STORE_NAME).put(clone(bytes), STATE_KEY);
     await transactionComplete(transaction);
   }
 
   async compareAndSwap(expected: Uint8Array | undefined, replacement: Uint8Array): Promise<boolean> {
     const database = await this.open();
-    const guarded = database.objectStoreNames.contains(INVENTORY_CONTROL);
-    const transaction = database.transaction(guarded ? [STORE_NAME, INVENTORY_CONTROL] : [STORE_NAME], "readwrite");
+    const transaction = database.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const current = await requestResult(store.get(STATE_KEY)) as Uint8Array | undefined;
     const matched = equal(current, expected);
-    if (matched) {
-      await invalidateInventoryOnUnfencedAuthorityChange(transaction, current, replacement);
-      store.put(clone(replacement), STATE_KEY);
-    }
+    if (matched) store.put(clone(replacement), STATE_KEY);
     await transactionComplete(transaction);
     return matched;
   }
@@ -123,25 +87,16 @@ export class IndexedDbStateByteStorage implements StateByteStorage {
   }
 
   private open(): Promise<IDBDatabase> {
-    if (!this.database) {
-      const pending = new Promise<IDBDatabase>((resolve, reject) => {
-        // Unversioned opens work with both the existing v1 and additive inventory v2 databases.
-        // An older binary that explicitly opens v1 cannot be assumed rollback compatible.
-        const request = this.indexedDb.open(this.databaseName);
-        request.onupgradeneeded = () => {
-          const database = request.result;
-          if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
-        };
-        request.onsuccess = () => {
-          const db = request.result;
-          db.onversionchange = () => { db.close(); this.database = undefined; };
-          resolve(db);
-        };
-        request.onerror = () => reject(request.error ?? new Error("Unable to open synchronization state database"));
-        request.onblocked = () => reject(new Error("Synchronization state database upgrade is blocked"));
-      });
-      this.database = pending.catch(error => { this.database = undefined; throw error; });
-    }
+    this.database ??= new Promise<IDBDatabase>((resolve, reject) => {
+      const request = this.indexedDb.open(this.databaseName, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error("Unable to open synchronization state database"));
+      request.onblocked = () => reject(new Error("Synchronization state database upgrade is blocked"));
+    });
     return this.database;
   }
 }
