@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Proceed to bounded DEC-339 verified device-local metadata inventory design (schema/storage/migration, trusted baseline + Changes API, cursor atomicity, duplicate-name/path authority, targeted-proof equivalence and PHX-CI tests) using dev/research/s09a-request-attribution-live-analysis-2026-10-10.md. Do not rerun the completed S09A canary; no production inventory implementation yet."
+next_action: "Independent adversarial review of persisted DEC-339 architecture design and cross-workstream contracts; resolve design review findings, then SHA-bind bounded D339-01 implementation unit. No production inventory implementation, physical mutation, S09A rerun, or Stage 3 entry is authorized yet."
 updated_at: "2026-10-10"
 
 context:
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "NEXT; NOT_STARTED"
+  inventory_design_status: "DETAILED_DESIGN_PERSISTED; INDEPENDENT_REVIEW_PENDING; IMPLEMENTATION_NOT_STARTED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -51,6 +51,8 @@ context:
     implementation_started: false
     verification_completed: false
     target_spec_section: "7.9"
+  inventory_design_branch: "planning/dec339-verified-inventory-design-20261010"
+  inventory_design_document: "dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md"
   stage_3_started: false
   authority:
     decision_register: "dev/authority/decision-register.yaml"

@@ -66,3 +66,6 @@ Phases 2, 3, and 4, all completed against Phase 1 shared contracts.
 - Do not perform final large-scale mobile/performance/fault hardening that requires the complete integrated system; that belongs in Phase 6.
 - Do not perform Stage 3 independent validation within the construction phase.
 
+## Prospective DEC-339 units — design only, not executable
+
+Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind **D339-05** for snapshot assembly, safe fallback and current planner observations, then **D339-06** for optional targeted convergence read substitution by the authoritative executor. Both depend on integrated WS-02/03 D339-04; D339-06 also requires D339-05. One shared orchestration/lifecycle owner at a time; independently changing remote mutation/recovery authority is prohibited. Require PHX-CI semantic equivalence before enabling the optimization. Existing accepted Phase-5 work is not reopened.

@@ -24,3 +24,7 @@ WS-05 integrates WS-02's local authoritative-state/inventory boundary with WS-03
 Phases 2, 3, and 4, all completed against Phase 1 shared contracts.
 
 Repository-specific implementation mechanics remain engineering discretion only within these fixed ownership and invariant boundaries.
+
+## DEC-339 detailed design — pending independent architecture review
+
+See `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. WS-05 alone consumes the coherent inventory/Changes evidence in the existing `ProductSnapshotAssembler`/controller and optionally in the existing executor's *remote verification-read* boundary. It must preserve the one planner/executor, fresh LOCAL observation, trustworthy BASE, identical ambiguity/global gates, current semantic-CAS and durable-intent recovery; missing/partial/stale inventory falls back to full reconciliation or recovery. No targeted proof may bypass independent current ID/parent/occupancy/precondition/convergence checks, nor authorize a destructive or uncertain mutation by itself. Existing S09A historical status is unchanged.

@@ -25,3 +25,7 @@ WS-03 provides exact managed-root/domain-scoped Google Drive file/folder ID, par
 Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
 
 Repository-specific implementation mechanics remain engineering discretion only within these fixed ownership and invariant boundaries.
+
+## DEC-339 detailed design — pending independent architecture review
+
+See `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. WS-03 owns managed-root/account/domain-verified two-domain baseline capture with pre-scan Changes token and post-scan catch-up; remote ID/parent/name/revision/provenance reads; paginated Changes classification with identity continuity; duplicate-sibling-aware targeted occupancy and convergence observations; and explicit partial/inaccessible/out-of-domain outcomes. It does not own the IndexedDB authority/CAS implementation or declare BASE/deletions. A reserved Drive ID is **not** a path-occupancy proof. Shared typed boundary is supplied first by WS-02 D339-01.
