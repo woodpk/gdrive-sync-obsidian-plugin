@@ -2,6 +2,7 @@ import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ProductionVerificationControl } from "../../src/product/live-validation-control-seam";
+import { diagnosticPathKey } from "../../src/diagnostics/diagnostic-logger";
 import {
   createBoundedDeviceCommandAgent,
   type DeviceCommand,
@@ -59,7 +60,7 @@ function productionHarness(term: "complete" | "uncertain" = "complete") {
   const manualPlan: any = {
     planId: "plan-manual",
     trigger: "manual",
-    operations: [{ operationId: "op-1", kind: "upload-create" }],
+    operations: [{ operationId: "op-1", kind: "upload-create", path: "BVP-VALIDATION/one-canary.md" }],
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: false,
     globalExecutionGate: "none",
@@ -192,6 +193,8 @@ test("production commands remain bounded and terminal receipt authority is propa
     trigger: "manual",
     operationCount: 1,
     operationKinds: ["upload-create"],
+    nonNoopOperationCount: 1,
+    uploadCreatePathKeys: [diagnosticPathKey("BVP-VALIDATION/one-canary.md")],
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: false,
     globalExecutionGate: "none",
