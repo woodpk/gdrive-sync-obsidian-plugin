@@ -289,3 +289,104 @@ test("duplicate candidate IDs cannot replace sealed or published generations", a
     overlays: rows(first.rows), coverage: rows(first.coverage) });
   assert.equal(retry.status, "stale");
 });
+
+test("complete baseline can replace a previously published generation without a predecessor copy", async () => {
+  withRangeOnly();
+  const factory = new FakeDatabase().openFactory();
+  const inventory = await seeded(factory);
+  const first = candidate();
+  await inventory.stage({ candidate: first.manifest, overlays: rows(first.rows),
+    coverage: rows(first.coverage) });
+  const firstCommit = await inventory.publishAtomically({
+    candidateGeneration: first.manifest.generation, validationReceipt: first.manifest.validationReceipt,
+    expectedActiveGeneration: null, expectedAuthorityPersistenceRevision: r0,
+    expectedAuthoritySemanticGeneration: s0, expectedCanonicalCursor: null,
+    nextCanonicalCursor: cursor1, fence,
+  });
+  assert.equal(firstCommit.status, "published");
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status !== "trusted") return;
+  const next = candidate(g("full-rebaseline"), c("changes:next"));
+  assert.equal((await inventory.stage({ candidate: next.manifest, overlays: rows(next.rows),
+    coverage: rows(next.coverage) })).status, "verified-observation");
+  const replaced = await inventory.publishAtomically({
+    candidateGeneration: next.manifest.generation, validationReceipt: next.manifest.validationReceipt,
+    expectedActiveGeneration: first.manifest.generation,
+    expectedAuthorityPersistenceRevision: canonical.state.persistenceRevision,
+    expectedAuthoritySemanticGeneration: canonical.state.semanticGeneration,
+    expectedCanonicalCursor: cursor1, nextCanonicalCursor: c("changes:next"), fence,
+  });
+  assert.equal(replaced.status, "published");
+  const read = await inventory.openRead();
+  assert.equal(read.status, "verified-observation");
+  if (read.status === "verified-observation") {
+    assert.equal(read.value.generation, next.manifest.generation);
+    await read.value.release();
+  }
+});
+
+test("incremental COW generation keeps older indexed roots reachable after atomic Changes learning", async () => {
+  withRangeOnly();
+  const factory = new FakeDatabase().openFactory();
+  const inventory = await seeded(factory);
+  const first = candidate();
+  await inventory.stage({ candidate: first.manifest, overlays: rows(first.rows),
+    coverage: rows(first.coverage) });
+  assert.equal((await inventory.publishAtomically({
+    candidateGeneration: first.manifest.generation, validationReceipt: first.manifest.validationReceipt,
+    expectedActiveGeneration: null, expectedAuthorityPersistenceRevision: r0,
+    expectedAuthoritySemanticGeneration: s0, expectedCanonicalCursor: null,
+    nextCanonicalCursor: cursor1, fence,
+  })).status, "published");
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status !== "trusted") return;
+  const nextGen = g("delta:1"), nextCursor = c("changes:2");
+  const child = id("remote:child");
+  const overlay: InventoryOverlayRecord = {
+    kind: "upsert", generation: nextGen, entity: {
+      generation: nextGen, remoteObjectId: child, parentRemoteObjectId: fence.contentDomainRootId,
+      domain: "content", name: "child.md", kind: "file", logicalPath: contractId<"VaultPath">("child.md"),
+      pathValidity: "verified", access: "visible", trashed: false,
+      managedRootId: fence.managedRootId, provenanceDomain: "content",
+    },
+  };
+  const manifest: InventoryGenerationManifest = {
+    ...first.manifest, generation: nextGen, parentGeneration: first.manifest.generation,
+    overlayDepth: 1, inputCursor: cursor1, terminalCursor: nextCursor,
+    recordCount: 1, authorityPersistenceRevision: canonical.state.persistenceRevision,
+    authoritySemanticGeneration: canonical.state.semanticGeneration,
+  };
+  const cover = first.coverage.map(row => ({
+    ...row, generation: nextGen, terminalCursor: nextCursor,
+  }));
+  assert.equal((await inventory.stage({ candidate: manifest, overlays: rows([overlay]),
+    coverage: rows(cover) })).status, "verified-observation");
+  const learned = {
+    checkpoint: { batchId: contractId<"RemoteIngestionBatchId">("delta:1"),
+      startingToken: cursor1, terminalStartToken: nextCursor,
+      persistenceRevision: canonical.state.persistenceRevision, status: "learned" as const },
+    changes: [],
+  };
+  const published = await inventory.publishAtomically({
+    candidateGeneration: nextGen, validationReceipt: manifest.validationReceipt,
+    expectedActiveGeneration: first.manifest.generation,
+    expectedAuthorityPersistenceRevision: canonical.state.persistenceRevision,
+    expectedAuthoritySemanticGeneration: canonical.state.semanticGeneration,
+    expectedCanonicalCursor: cursor1, nextCanonicalCursor: nextCursor, fence,
+    learnedBatchId: String(learned.checkpoint.batchId),
+  }, learned);
+  assert.equal(published.status, "published");
+  const read = await inventory.openRead();
+  assert.equal(read.status, "verified-observation");
+  if (read.status === "verified-observation") {
+    assert.equal((await read.value.getById(fence.contentDomainRootId)).status, "verified-observation");
+    const children = await read.value.listByParent("content", fence.contentDomainRootId);
+    assert.equal(children.status, "verified-observation");
+    if (children.status === "verified-observation") assert.equal(children.value[0]?.remoteObjectId, child);
+    await read.value.release();
+  }
+});
