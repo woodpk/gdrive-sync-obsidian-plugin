@@ -57,7 +57,8 @@ function parseFile(value: unknown): InventoryDriveFile | undefined {
       typeof value.trashed !== "boolean") return undefined;
   if (value.version !== undefined && !valid(value.version)) return undefined;
   if (value.sha256Checksum !== undefined && !valid(value.sha256Checksum)) return undefined;
-  if (value.size !== undefined && (!valid(value.size) || !/^\d+$/.test(value.size))) return undefined;
+  if (value.size !== undefined && (!valid(value.size) || !/^\d+$/.test(value.size) ||
+      !Number.isSafeInteger(Number(value.size)))) return undefined;
   if (value.appProperties !== undefined && (!object(value.appProperties) ||
       !Object.values(value.appProperties).every(x => typeof x === "string"))) return undefined;
   return { id: value.id, name: value.name, mimeType: value.mimeType,
