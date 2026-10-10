@@ -896,3 +896,24 @@ export function prepareInventoryAuthorityPublication(
   return { status: "prepared", replacement: serialize(replacement),
     persistenceRevision, semanticGeneration };
 }
+
+/** Read-only integrity-checked authority fence for a versioned inventory snapshot. */
+export function inspectInventoryAuthorityFence(bytes: Uint8Array | undefined):
+  | { readonly status: "trusted"; readonly vaultIdentity: VaultIdentity;
+      readonly deviceIdentity: DeviceIdentity; readonly persistenceRevision: PersistenceRevision;
+      readonly semanticGeneration: SemanticStateGeneration;
+      readonly canonicalCursor: import("../contracts").ChangeCursor | null;
+      readonly unresolvedEffects: boolean }
+  | { readonly status: "recovery-required"; readonly reason: string } {
+  if (!bytes) return { status: "recovery-required", reason: "canonical-state-missing" };
+  const parsed = parseEnvelope(bytes);
+  if (parsed.status !== "ok" || !isDurableSynchronizationAuthorityState(parsed.envelope.state))
+    return { status: "recovery-required", reason: "untrusted-canonical-envelope" };
+  const state = parsed.envelope.state;
+  if (new DurableSemanticStateValidator().validate(state).length !== 0)
+    return { status: "recovery-required", reason: "canonical-semantic-invalid" };
+  return { status: "trusted", vaultIdentity: state.vaultIdentity, deviceIdentity: state.deviceIdentity,
+    persistenceRevision: state.persistenceRevision, semanticGeneration: state.semanticGeneration,
+    canonicalCursor: state.changeCursor ?? null,
+    unresolvedEffects: state.operationIntents.some(intent => !recoverableOperationV1_1IsComplete(intent)) };
+}
