@@ -79,3 +79,7 @@ The BVP is complete only when objective evidence proves all of the following.
 ## Stage-3 boundary
 
 WS-06 and WS-07 prepare construction evidence and Stage-3 readiness. Stage 3 remains an independent product/system validation activity and is not satisfied merely by Stage-2A construction verification.
+
+## Future metadata-inventory architecture verification (DEC-339)
+
+Target Specification §7.9 is owned by WS-02 (durable inventory/BASE separation, restart and migration), WS-03 (Drive ID/parent/provenance and complete/incremental observations), WS-05 (safe production planning/execution integration), and WS-07 (PHX-CI-consumed deterministic and appropriate physical evidence). Require exact safety parity for duplicate identities, invalid/stale change cursors, partial enumeration, multi-device moves/deletions, uncertain outcomes and crashes, plus bounded iOS memory/storage. Quantify per-operation request count/latency before and after; targeted reads may replace full-tree passes only with proven equivalent authority, uniqueness and convergence. No live-run authorization follows from this planning update.
