@@ -291,7 +291,7 @@ export class VerifiedMetadataInventoryReader {
       if (roots.some(root => String(root) === id)) return "";
       const cached = resolved.get(id);
       if (cached !== undefined) return cached;
-      if (visiting.has(id)) return undefined;
+      if (visiting.has(id) || visiting.size >= 128) return undefined;
       visiting.add(id);
       const entry = graph.get(id);
       const parent = entry?.parentId ? graph.get(entry.parentId) : undefined;
