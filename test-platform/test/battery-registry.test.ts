@@ -10,6 +10,7 @@ import { validateScenarioDefinition } from "../src/scenario/scenario-contract";
 const EXPECTED_BATTERIES = [
   "s09a-dual-device-readiness",
   "s09a-ios-initial-sync",
+  "s09a-request-attribution",
   "s09a-windows-initial-sync",
   "s09b-bidirectional-sync",
   "s09b-clean-text-merge",
@@ -46,8 +47,9 @@ test("every compiled live scenario module is represented by one registered batte
 
   deepStrictEqual(scenarioModules, [
     "s09a-dual-device-readiness",
-  "s09a-ios-initial-sync",
-  "s09a-windows-initial-sync",
+    "s09a-ios-initial-sync",
+    "s09a-request-attribution",
+    "s09a-windows-initial-sync",
     "s09b-bidirectional-sync",
     "s09b-clean-text-merge",
     "s09c-interruption-resume",
