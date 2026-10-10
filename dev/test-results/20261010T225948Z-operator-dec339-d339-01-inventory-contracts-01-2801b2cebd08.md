@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 902987 bytes; SHA-256 e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: dec339/d339-01-inventory-contracts-01
+- Source build HEAD requested: 2801b2cebd085cd3d56d40f6b8b906f7d16429aa
+- Verification checkout HEAD: 2801b2cebd085cd3d56d40f6b8b906f7d16429aa
+- Evidence publication target: origin/dec339/d339-01-inventory-contracts-01
