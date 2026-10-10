@@ -683,6 +683,19 @@ Configuration is split into:
 - secrets, which are always local and non-synchronizable;
 - plugin operational synchronization state, which is always local except for deliberately designed shared protocol metadata.
 
+
+### 7.9 Verified Per-Device Metadata Inventory (Approved Direction — 2026-10-10)
+
+BRAIN MUST evolve its existing device-local file/folder-ID mappings and change-cursor state into a compact, persistent metadata inventory for **every in-scope** vault file and folder and its known managed-remote counterpart. Store logical path and entity kind, stable Drive object and parent IDs when established, relevant revision/content/provenance evidence, and explicit observation completeness, freshness and authority generation. Missing or unobserved data remains **unknown**, never proven absent. The inventory is not a substitute for trustworthy synchronization BASE/history.
+
+Maintain the remote inventory from an established complete baseline and durably incorporated Google Drive Changes API events, with periodic and on-demand complete reconciliation retained. Each device maintains its own device-local inventory; do not synchronize the inventory, cursors, secrets or operational state as ordinary vault/configuration content. Design for indexed/selective access and bounded working memory on iOS and Windows; exact database format, migration, invalidation and retention implementation remain engineering choices.
+
+Prefer reuse of trustworthy, scope-bound folder/file ID and parent mappings and targeted identity/effect verification over redundant full-tree or ancestry discovery, but **only** where the narrower proof satisfies the same identity, uniqueness, provenance, precondition, convergence and recovery requirements. No cached record alone authorizes deletion or a mutation after intervening uncertainty. Stale, incomplete, invalid, ambiguous, corrupt, lost-cursor or incompatible inventory fails closed and triggers suitable scoped re-observation or conservative re-baselining. Preserve STATE-001–017, CHANGE-004–007, REM-001–010, and all existing safety invariants.
+
+Google Drive permits same-name sibling folders/files. Pre-generated Drive IDs and durable intents protect retry identity but do not mean another same-name object is the same object: verify logical-path occupancy and managed-root/domain provenance, handle duplicates/unknown outcomes conservatively, and never adopt an object based solely on display name.
+
+This architecture is **approved for future planning, not yet implemented**. First finish the active S09A safety/attribution investigation; then require measured per-operation request attribution, precise local-state/schema/migration design, bounded mobile storage/memory evidence, and PHX-CI-owned safety-equivalence and performance tests before implementation or performance claims. No physical S09A mutation is authorized by this section.
+
 ## 8. System Invariants
 
 The following conditions MUST remain true regardless of implementation:
