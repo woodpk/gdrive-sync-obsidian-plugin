@@ -96,7 +96,8 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
       "?" + new URLSearchParams({ fields: FIELDS }));
     if (response.status !== "ok") return response;
     const value = parseFile(response.value);
-    return value ? { status: "ok", value } : fail("incomplete-file-metadata", "partial");
+    return !value ? fail("incomplete-file-metadata", "partial") : value.id !== id ?
+      fail("exact-id-provider-response-mismatch", "recovery-required") : { status: "ok", value };
   }
 
   private async list(q: string, token?: string): Promise<InventoryDriveFetch<InventoryDriveListPage>> {
@@ -183,6 +184,10 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     });
     if (!result.ok || result.value.status !== "valid")
       return fail("paired-managed-root-not-valid", "incompatible");
+    if (result.value.identity.rootId !== fence.managedRootId ||
+        result.value.identity.vaultIdentity !== fence.vaultIdentity ||
+        result.value.identity.protocolVersion !== fence.protocolVersion)
+      return fail("managed-root-identity-not-exact", "incompatible");
     const ids = [String(fence.managedRootId), String(fence.contentDomainRootId),
       String(fence.configDomainRootId)];
     if (new Set(ids).size !== 3) return fail("duplicate-managed-root-ids", "incompatible");
