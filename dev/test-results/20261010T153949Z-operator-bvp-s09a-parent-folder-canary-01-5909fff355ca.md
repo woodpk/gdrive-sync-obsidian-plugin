@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-parent-folder-canary-01
+- Source build HEAD requested: 5909fff355ca3d39809645d0157bc2705c20a77c
+- Verification checkout HEAD: 5909fff355ca3d39809645d0157bc2705c20a77c
+- Evidence publication target: origin/bvp-s09a-parent-folder-canary-01
