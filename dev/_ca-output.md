@@ -55,10 +55,10 @@ Final verdict: COMPLETE
 - Repository: `woodpk/gdrive-sync-obsidian-plugin`.
 - Branch: `dec339/d339-03-remote-reader-01`.
 - Exact predecessor: accepted D339-02 PHX-CI evidence `1dc1762fd8fd4e60923759e766ea35f1336c2cd9`.
-- Exact implementation source before this evidence-only append: `75ebd19eaed3360c6cf23fb807501d5d01399dd0`.
+- Exact final implementation source before the final evidence-only update: `de3d400e04e0dc742a692380ffb0288880429939`.
 - New `src/drive/inventory-metadata-source.ts`: GET-only Drive files.list/changes.list/startPageToken/files.get adapter; exact paired managed-root fence; app-visible `drive.file` scope; paged `incompleteSearch`/token enforcement; malformed identity and provider errors fail closed.
 - New `src/drive/verified-metadata-inventory-reader.ts`: two-domain traversal; bounded ID/parent/path observations; pre-scan start Changes token, replay through terminal token; unknown/account-wide membership classification; no deletion on removed/access loss; changed-parent rescan; root-wide marked-object provenance census; duplicate ID/path and case-normalization handling; read-only incremental overlay translation; scoped exact-ID/sibling/ancestor targeted observation without pretending it is mutation proof.
-- New `test/dec339-remote-reader.test.ts`: 16 deterministic tests authored for complete/partial baseline, duplicate siblings, pagination cycles, managed-object escape, Changes loss, unrelated external object, replay, incremental invalidations, targeted occupancy, root and account uncertainty, and HTTP GET completeness.
+- New `test/dec339-remote-reader.test.ts`: 18 deterministic tests authored for complete/partial baseline, duplicate siblings, pagination cycles, managed-object escape, Changes loss, unrelated external object, replay, incremental invalidations, targeted occupancy, root and account uncertainty, and HTTP GET completeness.
 - Only three code/test paths altered; no production entrypoint or index import; remote reader **dormant**, no actual Drive call made by agent and no live plugin upgrade/migration/synchronization.
 - The returned objects explicitly mark `publishAuthorized: false` or `executorProofAuthorized: false`. Provider observations must pass future D339-04 complete-graph validation, WS-02 atomic publication and eventual feature-level safety equivalence. Independent review deferred until complete DEC-339 feature per owner instruction.
 - PHX-CI focused tests, full suite, typecheck, build, repository checks and artifacts: **NOT RUN for this source**. Do not claim PASS.
