@@ -131,3 +131,9 @@ The BVP is complete only when objective evidence proves all of the following.
 ## Verification authority
 
 All executable acceptance is PHX-CI-controlled under DEC-334. Architecture guard and metrics are repository-controlled checks consumed by PHX-CI. Physical Windows/iOS/Obsidian/provider execution belongs to the physical-validation stage defined by the BVP specification and does not become implied evidence merely because deterministic automation passes.
+
+## Future metadata-inventory optimization evidence (planned, not executed)
+
+PHX-CI-owned BVP deterministic coverage must establish baseline completeness, every-in-scope identity mapping, incremental Changes API incorporation and restart/cursor continuity, duplicate same-name siblings, wrong-root/provenance, file/folder moves, stale multi-device state, partial/failed listings, corrupt/migrated device-local inventory, ambiguous create/crash recovery, and safe full-reconciliation fallback. Verify bounded Windows/iOS-scale working memory and persisted storage, unchanged sync outcomes, and targeted-proofs equivalent to the independent authority/convergence checks they replace. Measure before/after Google Drive request counts and wall time by semantic caller class; no optimization PASS absent evidence.
+
+The current S09A canary battery remains blocked: the unexpected second `upload-create` hash resolves to the canary parent folder, but its remote existence/authority has not been independently determined. This planning decision neither weakens the scenario guard nor authorizes folder creation or a new physical run.
