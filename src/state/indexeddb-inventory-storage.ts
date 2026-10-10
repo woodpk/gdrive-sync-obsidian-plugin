@@ -86,7 +86,7 @@ function createSchema(db: IDBDatabase): void {
   if (!db.objectStoreNames.contains(STAGES)) db.createObjectStore(STAGES);
   if (!db.objectStoreNames.contains(LOCAL)) db.createObjectStore(LOCAL, { keyPath: ["generation", "path"] });
   if (!db.objectStoreNames.contains(COVERAGE))
-    db.createObjectStore(COVERAGE, { keyPath: ["generation", "domain", "scopeId"] });
+    db.createObjectStore(COVERAGE, { keyPath: ["generation", "domain", "scopeKind", "scopeId"] });
   if (!db.objectStoreNames.contains(ENTITIES)) {
     const entities = db.createObjectStore(ENTITIES, { keyPath: ["generation", "remoteObjectId"] });
     entities.createIndex("by-parent", ["generation", "domain", "parentRemoteObjectId"], { unique: false });
@@ -388,7 +388,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         if (released) return deny();
         const tx = stores(db, [COVERAGE], "readonly");
         const complete = finished(tx);
-        const c = await request(tx.objectStore(COVERAGE).get([String(active.generation), domain, String(scopeId)])) as InventoryCoverage | undefined;
+        const c = await request(tx.objectStore(COVERAGE).get([String(active.generation), domain, "domain", String(scopeId)])) as InventoryCoverage | undefined;
         await complete;
         if (!c || c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
             !c.provenanceVerified || c.visibility !== "app-visible" ||
@@ -471,7 +471,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
             (m.parentGeneration !== null && root?.kind === "mask"))
           return await fail("invalid", "required-domain-root-inventory-identity-missing");
         const coverage = await request(tx.objectStore(COVERAGE).get(
-          [String(m.generation), domain, String(rootId)])) as InventoryCoverage | undefined;
+          [String(m.generation), domain, "domain", String(rootId)])) as InventoryCoverage | undefined;
         if (!coverage || coverage.scopeKind !== "domain" || coverage.state !== "complete" ||
             !coverage.allPagesRead || coverage.incompleteSearch ||
             coverage.visibility !== "app-visible" || !coverage.provenanceVerified ||
