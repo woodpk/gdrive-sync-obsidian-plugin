@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: dec339/d339-02-indexeddb-persistence-01
+- Source build HEAD requested: 8e4c849bd93d4240663ce856cb2113288faf7686
+- Verification checkout HEAD: 8e4c849bd93d4240663ce856cb2113288faf7686
+- Evidence publication target: origin/dec339/d339-02-indexeddb-persistence-01
