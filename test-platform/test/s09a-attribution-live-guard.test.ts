@@ -1,5 +1,5 @@
 import { strictEqual } from "node:assert/strict";
-import { diagnosticPathKey } from "../../src/diagnostics/diagnostic-logger";
+import { bvpOpaquePathKey } from "../src/live-device/device-command-agent";
 import { test } from "node:test";
 import { s09aRequestAttributionScenario } from "../scenarios/live/s09a-request-attribution";
 import { assertScenarioObservation } from "../src/scenario/scenario-evidence";
@@ -94,6 +94,6 @@ test("S09A executes one exact approved canary upload with no-op companion entrie
   strictEqual(dispatchCount, 1);
 });
 
-test("S09A canary path key matches the earlier verified physical fixture", () => {
-  strictEqual(diagnosticPathKey("BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md"), verifiedCanary);
+test("S09A canary path key matches the earlier verified physical fixture", async () => {
+  strictEqual(await bvpOpaquePathKey("BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md"), verifiedCanary);
 });
