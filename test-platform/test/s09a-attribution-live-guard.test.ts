@@ -78,7 +78,7 @@ test("S09A blocks a destructive operation", async () => {
   strictEqual(dispatchCount, 0);
 });
 test("S09A blocks an upload of any other path", async () => {
-  const { result, dispatchCount } = await exercise({ ...expectedPlan, uploadCreatePathKeys: ["path-sha256:" + "0".repeat(64)] });
+  const { result, dispatchCount } = await exercise({ ...expectedPlan, uploadCreatePathKeys: [verifiedCanary, "path-sha256:" + "0".repeat(64)] });
   strictEqual(result.status, "failed");
   strictEqual(dispatchCount, 0);
 });
