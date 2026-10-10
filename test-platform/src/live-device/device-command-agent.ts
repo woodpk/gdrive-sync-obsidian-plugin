@@ -1,4 +1,5 @@
 import type { ProductionVerificationControl } from "../../../src/product/live-validation-control-seam";
+import { diagnosticPathKey } from "../../../src/diagnostics/diagnostic-logger";
 
 type ProductionReceipt = Exclude<ReturnType<ProductionVerificationControl["latestProductionRunReceipt"]>, undefined>;
 type ProductionStatus = ReturnType<ProductionVerificationControl["currentStatus"]>;
@@ -51,6 +52,8 @@ export interface DeviceCommandResult {
     readonly trigger: string;
     readonly operationCount: number;
     readonly operationKinds?: readonly string[];
+    readonly nonNoopOperationCount?: number;
+    readonly uploadCreatePathKeys?: readonly string[];
     readonly executionDisposition: string;
     readonly recoveryCheckpointRequired: boolean;
     readonly globalExecutionGate: string;
@@ -230,6 +233,8 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
           trigger: plan.trigger,
           operationCount: plan.operations.length,
           operationKinds: [...new Set(plan.operations.map(operation => String(operation.kind)))].sort(),
+          nonNoopOperationCount: plan.operations.filter(operation => operation.kind !== "noop").length,
+          uploadCreatePathKeys: plan.operations.filter(operation => operation.kind === "upload-create").map(operation => diagnosticPathKey(String(operation.path))).sort(),
           executionDisposition: plan.executionDisposition,
           recoveryCheckpointRequired: plan.recoveryCheckpointRequired,
           globalExecutionGate: plan.globalExecutionGate,
