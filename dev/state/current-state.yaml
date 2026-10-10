@@ -1,43 +1,43 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
-active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
-status: "IN_PROGRESS"
-last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: null
-blockers: []
-next_action: "Run authoritative deployed-runtime PHX-CI verification against dev-directory-standardization-phase10 with publication mode push and Phase-9 as the explicit base; return the complete console output. PHX-CI must publish canonical result.md, result.json, and terminal.log under dev/test-results/<runId>/ before Phase 10 may close."
-updated_at: "2026-10-07"
+active_workstream: "WS-07-brain-verification-platform"
+active_build_unit: "BVP-S09A_REQUEST_AMPLIFICATION_ATTRIBUTION"
+status: "BLOCKED"
+last_accepted_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
+last_phx_ci_run_id: "0305ae37-f999-4938-b3ef-50cee012f4ae"
+blockers:
+  - "S09A live03 preview: 23 noops and two upload-create operations; fail-closed one-canary assertion stopped execution before production execute."
+  - "The second planned path is the canary parent directory; authoritative remote presence/identity/provenance is not yet established."
+  - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
+  - "S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
+next_action: "Read-only confirm remote occupancy/provenance for the exact canary parent folder, determine the narrowest safe scenario resolution, and obtain approval before any new physical run. Any source change requires PHX-CI. Approved metadata-inventory architecture remains planning-only."
+updated_at: "2026-10-10"
 
 context:
-  canonical_source_branch: "automated-testing-platform-branch"
-  canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  current_migration_branch: "dev-directory-standardization-phase10"
-  migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-  migration_phases_completed:
-    - "PHASE_1_INVENTORY_AND_DISPOSITION"
-    - "PHASE_2_CANONICAL_DIRECTORY_SKELETON"
-    - "PHASE_3_AUTHORITY_NORMALIZATION"
-    - "PHASE_4_PLANNING_AND_WORKSTREAM_NORMALIZATION"
-    - "PHASE_5_STATE_AND_HANDOFF_NORMALIZATION"
-    - "PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
-    - "PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
-    - "PHASE_8_NORMALIZE_ENGINEERING_SCRIPTS"
-    - "PHASE_9_UPDATE_PATH_REFERENCES"
-  product_workstream_context: "WS-07-brain-verification-platform"
-  retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
-  s09_started: false
+  investigation_branch: "bvp-s09a-request-attribution-01"
+  investigation_branch_head_at_review: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
+  installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
+  earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
+  latest_phx_ci_result: "BLOCKED overall exit 201; focused S09A battery failed; full repository test suite PASS"
+  latest_physical_run: "bvp-s09a-request-attribution-261520fd-live03"
+  latest_physical_result: "FAILED require-one-nonnoop; production execution was not dispatched"
+  previous_windows_sync: "23 committed and verified effects; zero skipped; 1737 production Drive HTTP calls; ~227 seconds; battery acceptance incomplete"
+  approved_canary_path: "BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md"
+  unexpected_second_path: "BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02"
+  remote_parent_occupancy_confirmed: false
+  future_metadata_inventory:
+    decision: "DEC-339"
+    status: "APPROVED_PLANNING_ONLY"
+    implementation_started: false
+    verification_completed: false
+    target_spec_section: "7.9"
   stage_3_started: false
-  verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/test-results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
-    workstream_index: "dev/planning/02-workstreams/00-INDEX.md"
     bvp_specification: "dev/planning/01-target-system/bvp-subsystem-specification.md"
     bvp_governance_lock: "dev/authority/governance/locks/testing-platform-boundary.yaml"
   evidence:
     current_work_unit_surface: "dev/_ca-output.md"
     historical_phx_ci_root: "dev/test-results/"
-    historical_run_count: 105
