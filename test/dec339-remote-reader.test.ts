@@ -225,6 +225,23 @@ test("targeted normalized case collisions cannot masquerade as unique occupancy"
   })).status, "unknown");
 });
 
+test("new folder in the Changes scan window requires subtree rebaseline", async () => {
+  const p = new Provider();
+  p.events = [{ fileId: "new-folder", removed: false,
+    file: item("new-folder", "created", "content", "content", folder) }];
+  assert.equal((await reader(p).baseline(fence, generation("g1"))).status, "unknown");
+});
+
+test("targeted exact-ID and sibling metadata must match across separate reads", async () => {
+  const p = new Provider();
+  const diverged = { ...p.files.get("doc")!, version: "2" };
+  p.children.set("dir", [diverged]);
+  assert.equal((await reader(p).targeted(fence, generation("g1"), {
+    remoteObjectId: id("doc"), parentRemoteObjectId: id("dir"),
+    name: "doc.md", domain: "content", purpose: "effect-convergence",
+  })).status, "unknown");
+});
+
 test("paired identity loss or stale revision defeats targeted read", async () => {
   const p = new Provider();
   p.verified = false;
