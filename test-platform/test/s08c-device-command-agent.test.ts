@@ -2,9 +2,9 @@ import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ProductionVerificationControl } from "../../src/product/live-validation-control-seam";
-import { diagnosticPathKey } from "../../src/diagnostics/diagnostic-logger";
 import {
   createBoundedDeviceCommandAgent,
+  bvpOpaquePathKey,
   type DeviceCommand,
   type DeviceCommandResult,
   type DeviceFixturePort,
@@ -194,7 +194,7 @@ test("production commands remain bounded and terminal receipt authority is propa
     operationCount: 1,
     operationKinds: ["upload-create"],
     nonNoopOperationCount: 1,
-    uploadCreatePathKeys: [diagnosticPathKey("BVP-VALIDATION/one-canary.md")],
+    uploadCreatePathKeys: ["path-sha256:b04c7a9d6d5485535ef8b220ee72f5a72854f033312a5f91667cbaa1bc210ec4"],
     executionDisposition: "requires-user-approval",
     recoveryCheckpointRequired: false,
     globalExecutionGate: "none",
@@ -266,4 +266,8 @@ test("atomic durable claim permits only one concurrent physical execution", asyn
   const [first,second]=await Promise.all([createBoundedDeviceCommandAgent(otherOptions).execute(commandOne),createBoundedDeviceCommandAgent(otherOptions).execute(conflicting)]);
   equal(otherFixtures.calls.filter(value=>value.startsWith("text:")).length,1);
   equal([first,second].some(value=>value.classification==="sequence-conflict"),true);
+});
+
+test("validation-only path digest matches independent SHA-256 golden vector", async () => {
+  equal(await bvpOpaquePathKey("BVP-VALIDATION/one-canary.md"), "path-sha256:b04c7a9d6d5485535ef8b220ee72f5a72854f033312a5f91667cbaa1bc210ec4");
 });
