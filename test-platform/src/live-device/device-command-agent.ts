@@ -1,5 +1,4 @@
 import type { ProductionVerificationControl } from "../../../src/product/live-validation-control-seam";
-import { diagnosticPathKey } from "../../../src/diagnostics/diagnostic-logger";
 
 type ProductionReceipt = Exclude<ReturnType<ProductionVerificationControl["latestProductionRunReceipt"]>, undefined>;
 type ProductionStatus = ReturnType<ProductionVerificationControl["currentStatus"]>;
@@ -21,6 +20,13 @@ export type DeviceCommand = CommandHeader & (
   | { readonly kind: "production-control"; readonly action: "pause" | "resume" | "cancel-active-sync" }
   | { readonly kind: "observe-product" }
 );
+
+/** BVP-only, browser-safe opaque path key; matches production diagnostic path normalization. */
+export async function bvpOpaquePathKey(path: string): Promise<string> {
+  const normalized = path.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/{2,}/g, "/").replace(/\/$/, "").normalize("NFC");
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized)));
+  return "path-sha256:" + Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+}
 
 export interface FixtureObservation {
   readonly exists: boolean;
@@ -48,15 +54,10 @@ export interface DeviceCommandResult {
   readonly classification: string;
   readonly replayed?: true;
   readonly plan?: {
-    readonly planId: string;
-    readonly trigger: string;
-    readonly operationCount: number;
-    readonly operationKinds?: readonly string[];
-    readonly nonNoopOperationCount?: number;
-    readonly uploadCreatePathKeys?: readonly string[];
-    readonly executionDisposition: string;
-    readonly recoveryCheckpointRequired: boolean;
-    readonly globalExecutionGate: string;
+    readonly planId: string; readonly trigger: string; readonly operationCount: number;
+    readonly operationKinds?: readonly string[]; readonly nonNoopOperationCount?: number;
+    readonly uploadCreatePathKeys?: readonly string[]; readonly executionDisposition: string;
+    readonly recoveryCheckpointRequired: boolean; readonly globalExecutionGate: string;
   };
   readonly actionResult?: ProductionActionResult;
   readonly receipt?: ProductionReceipt;
@@ -225,6 +226,7 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
     if (command.kind === "production-preview") {
       const plan = command.mode === "manual" ? await production.previewManual() : await production.previewVerifyReconcile();
       if (!plan) return resultFor(options, command, "rejected", "production-preview-unavailable");
+      const uploadCreatePathKeys = (await Promise.all(plan.operations.filter(operation => operation.kind === "upload-create").map(operation => bvpOpaquePathKey(String(operation.path))))).sort();
       return {
         ...base,
         classification: "production-preview-ready",
@@ -234,7 +236,7 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
           operationCount: plan.operations.length,
           operationKinds: [...new Set(plan.operations.map(operation => String(operation.kind)))].sort(),
           nonNoopOperationCount: plan.operations.filter(operation => operation.kind !== "noop").length,
-          uploadCreatePathKeys: plan.operations.filter(operation => operation.kind === "upload-create").map(operation => diagnosticPathKey(String(operation.path))).sort(),
+          uploadCreatePathKeys,
           executionDisposition: plan.executionDisposition,
           recoveryCheckpointRequired: plan.recoveryCheckpointRequired,
           globalExecutionGate: plan.globalExecutionGate,
