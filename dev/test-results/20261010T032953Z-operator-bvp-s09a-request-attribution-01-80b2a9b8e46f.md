@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: REPOSITORY-GATE FAILURE
+
+## Core-runner provenance
+
+- Source branch: bvp-s09a-request-attribution-01
+- Source build HEAD requested: 80b2a9b8e46f6e8d5fd6aec378157c7bee7d4ca5
+- Verification checkout HEAD: 80b2a9b8e46f6e8d5fd6aec378157c7bee7d4ca5
+- Evidence publication target: origin/bvp-s09a-request-attribution-01
