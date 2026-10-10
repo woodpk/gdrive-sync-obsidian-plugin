@@ -51,7 +51,7 @@ function validManifest(x: unknown): x is InventoryGenerationManifest {
     integer(x.overlayDepth) && validId(x.inputCursor) && validId(x.terminalCursor) &&
     validId(x.baseStartToken) && validFence(x.fence) && validId(x.authorityPersistenceRevision) &&
     validId(x.authoritySemanticGeneration) && integer(x.recordCount) && validId(x.coverageDigest) &&
-    validId(x.validationReceipt) && ["staging", "complete", "invalid"].includes(String(x.status));
+    validId(x.validationReceipt) && (x.status === "staging" || x.status === "complete" || x.status === "invalid");
 }
 
 function validEntity(x: unknown): x is InventoryRemoteEntity {
@@ -64,8 +64,8 @@ function validEntity(x: unknown): x is InventoryRemoteEntity {
     (x.logicalPath === undefined || validId(x.logicalPath)) &&
     (x.parentRemoteObjectId === null || x.pathValidity !== "verified" ||
       (validId(x.logicalPath) && (x.logicalPath === x.name || x.logicalPath.endsWith(`/${x.name}`)))) &&
-    ["verified", "unknown", "invalid"].includes(String(x.pathValidity)) &&
-    ["visible", "inaccessible", "unknown"].includes(String(x.access)) &&
+    (x.pathValidity === "verified" || x.pathValidity === "unknown" || x.pathValidity === "invalid") &&
+    (x.access === "visible" || x.access === "inaccessible" || x.access === "unknown") &&
     typeof x.trashed === "boolean" && validId(x.managedRootId) && domain(x.provenanceDomain) &&
     (x.revision === undefined || validId(x.revision)) &&
     (x.content === undefined || record(x.content));
@@ -81,7 +81,7 @@ function validCoverage(x: unknown): x is InventoryCoverage {
   if (!record(x)) return false;
   return validId(x.generation) && domain(x.domain) && validId(x.scopeId) &&
     (x.scopeKind === "domain" || x.scopeKind === "parent") &&
-    ["complete", "partial", "unknown", "invalid"].includes(String(x.state)) &&
+    (x.state === "complete" || x.state === "partial" || x.state === "unknown" || x.state === "invalid") &&
     (x.visibility === "app-visible" || x.visibility === "unknown") &&
     typeof x.allPagesRead === "boolean" && typeof x.incompleteSearch === "boolean" &&
     typeof x.provenanceVerified === "boolean" && validId(x.terminalCursor);
@@ -260,7 +260,7 @@ export function validateInventoryTargetedProof(
       !validId(p.name) || !domain(p.domain) || !validId(expectedSemanticGeneration) ||
       p.authoritySemanticGeneration !== expectedSemanticGeneration ||
       p.siblingCoverage !== "complete" || p.nonLocalManagedProvenance !== "verified-current" ||
-      !["precondition", "effect-convergence", "durable-recovery"].includes(String(p.purpose)) ||
+      !(p.purpose === "precondition" || p.purpose === "effect-convergence" || p.purpose === "durable-recovery") ||
       !Array.isArray(p.siblingIds) || !p.siblingIds.every(validId))
     return { status: "unknown", reason: "stale-or-unproved-physical-read" };
   if (p.siblingIds.length !== 1 || p.siblingIds[0] !== p.remoteObjectId)
