@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Obtain independent implementation review of verified D339-01 source SHA 2801b2cebd085cd3d56d40f6b8b906f7d16429aa using pinned reviewer task at 590fa208832e66eea324e5cfa1b9bdff98269b98. Do not rerun passing PHX-CI for administrative evidence or begin D339-02 until review disposition."
+next_action: "Execute PHX-CI for D339-02 source on branch dec339/d339-02-indexeddb-persistence-01 against exact D339-01 evidence predecessor 2fe8555e46ad31abef2b83bd0d2fbf12b695ebf7; then continue DEC-339 units. Independent third-party code review is deferred until the whole inventory feature is implemented and verified."
 updated_at: "2026-10-10"
 
 context:
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "ADVERSARIALLY_REVIEWED_AND_AMENDED; D339-01_CONTRACT_UNIT_READY_FOR_DISPATCH_PREPARATION; IMPLEMENTATION_NOT_STARTED"
+  inventory_design_status: "DESIGN_REVIEWED; D339-01_PHX_CI_PASS; D339-02_IMPLEMENTED_PHX_CI_PENDING; FEATURE_LEVEL_REVIEW_DEFERRED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -55,7 +55,7 @@ context:
   inventory_design_document: "dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md"
   inventory_architecture_review: "dev/reviews/dec339-inventory-architecture-adversarial-review-2026-10-10.md"
   inventory_architecture_review_disposition: "NINE_FINDINGS_CORRECTED; NO_OPEN_DESIGN_BLOCKER_FOR_D339_01; NO_IMPL_ACCEPTANCE"
-  d339_01_task_status: "IMPLEMENTED; PHX_CI_COMPLETE_PASS; EVIDENCE_PUBLISHED; INDEPENDENT_IMPLEMENTATION_REVIEW_PENDING"
+  d339_01_task_status: "IMPLEMENTED; PHX_CI_COMPLETE_PASS; EVIDENCE_PUBLISHED; REVIEW_DEFERRED_TO_COMPLETE_DEC339_FEATURE"
   d339_01_task_doc: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/D339-01-inventory-contracts.md"
   d339_01_task_prompt_commit: "ea96219e81fb8fc3cd57a48f6e64eb230c8b60de"
   d339_01_source_base_sha: "44368eb7bb94b751c069c09a95012b9179155f0c"
@@ -66,6 +66,11 @@ context:
   d339_01_phx_ci_result: "COMPLETE; CHANGE_SET_PASS; REPOSITORY_PASS; ALL_11_STAGES_PASS"
   d339_01_reviewer_task: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/D339-01-independent-review.md"
   d339_01_reviewer_task_commit: "590fa208832e66eea324e5cfa1b9bdff98269b98"
+  independent_review_policy: "DEFER_UNTIL_WHOLE_DEC339_INVENTORY_FEATURE_COMPLETE_AND_VERIFIED"
+  d339_02_source_branch: "dec339/d339-02-indexeddb-persistence-01"
+  d339_02_base_sha: "2fe8555e46ad31abef2b83bd0d2fbf12b695ebf7"
+  d339_02_implementation_sha: "8584322b4523f03622ec18bfe28be9a2fbf6c35f"
+  d339_02_status: "IMPLEMENTED_PENDING_PHX_CI; DORMANT_STORAGE; NO_LIVE_MIGRATION"
   stage_3_started: false
   authority:
     decision_register: "dev/authority/decision-register.yaml"
