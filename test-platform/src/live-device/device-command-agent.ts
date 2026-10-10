@@ -50,7 +50,7 @@ export interface DeviceCommandResult {
     readonly planId: string;
     readonly trigger: string;
     readonly operationCount: number;
-    readonly operationKinds: readonly string[];
+    readonly operationKinds?: readonly string[];
     readonly executionDisposition: string;
     readonly recoveryCheckpointRequired: boolean;
     readonly globalExecutionGate: string;
