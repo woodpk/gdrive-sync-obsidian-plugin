@@ -25,7 +25,8 @@ async function exercise(operationCount: number, operationKinds: readonly string[
         return { status: "completed", value: { planId: "reviewed-plan", operationCount, ...(operationKinds ? { operationKinds } : {}) } };
       }
       if (step.kind === "production" && step.operation === "execute-reviewed-plan") {
-        strictEqual(context.readCapture(step.inputRef)?.["planId"], "reviewed-plan");
+        const reviewed = context.readCapture(step.inputRef) as { planId?: string } | undefined;
+        strictEqual(reviewed?.planId, "reviewed-plan");
         dispatchCount++;
         return { status: "completed", value: { receipt: { terminal: "complete" } } };
       }
