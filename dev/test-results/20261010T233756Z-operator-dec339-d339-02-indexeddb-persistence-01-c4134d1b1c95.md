@@ -46,3 +46,10 @@ STATUS: COMPLETE
 - main.js: 902987 bytes; SHA-256 e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e
 
 Final verdict: COMPLETE
+
+## Core-runner provenance
+
+- Source branch: dec339/d339-02-indexeddb-persistence-01
+- Source build HEAD requested: c4134d1b1c959c81e32ca944fa84ce33c44a4d6c
+- Verification checkout HEAD: c4134d1b1c959c81e32ca944fa84ce33c44a4d6c
+- Evidence publication target: origin/dec339/d339-02-indexeddb-persistence-01
