@@ -208,7 +208,7 @@ test("targeted convergence rejects stale, nonlocal provenance gap, ambiguous sib
     siblingCoverage: "complete" as const, nonLocalManagedProvenance: "verified-current" as const,
     authoritySemanticGeneration: s1, purpose: "effect-convergence" as const,
   };
-  assert.equal(validateInventoryTargetedProof(proof, s1).status, "verified-current-proof");
+  assert.equal(validateInventoryTargetedProof(proof, s1).status, "structurally-eligible");
   assert.equal(validateInventoryTargetedProof(proof, semantic("semantic:old")).status, "unknown");
   assert.equal(validateInventoryTargetedProof({ ...proof, nonLocalManagedProvenance: "cached" }, s1).status, "unknown");
   assert.equal(validateInventoryTargetedProof({ ...proof,
@@ -225,5 +225,7 @@ test("hostile/nonplain records and invalid counters fail closed", () => {
     ...base.manifests[0], validationReceipt: "" }] }).status, "invalid");
   assert.equal(validateInventoryCandidate({ ...base, expectedFence: {
     ...fence, inventorySchemaVersion: -1 } }).status, "invalid");
+  assert.equal(validateInventoryCandidate({ ...base, expectedFence: {
+    ...fence, inventorySchemaVersion: 999 } }).status, "invalid");
   assert.equal(validateInventoryCandidate({ ...base, overlays: [] }).status, "invalid");
 });
