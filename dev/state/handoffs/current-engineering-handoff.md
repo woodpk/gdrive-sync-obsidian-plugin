@@ -1,64 +1,21 @@
-# Current Engineering Handoff
+# Current Engineering Handoff — 2026-10-10
 
-## Current state
+## Active status
 
-The completed automated testing platform remains historically anchored to exact green source SHA `5b57c1ded6d314810ac2cca2a363342e67d9bee3`. The formerly recorded PHX-CI run ID `38b52d07-dce9-4e2f-aa61-3fd7188703f7` is not present among the 105 canonical `dev/test-results/` run directories after migration, so canonical state no longer asserts that missing run ID; Phase 10 will establish a new authoritative source/run/evidence identity.
+Stage 2A / WS-07 / BVP-S09A physical Windows/iOS validation remains **BLOCKED**, not accepted. The investigation branch `bvp-s09a-request-attribution-01` was confirmed at `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`; the installed instrumented plugin source is `261520fd44fcec46b1e392a620481e8b14c72848` (previously green PHX-CI evidence head `bd743b9a5791bcb81b57540272866a06c23ed43f`). The most recent PHX-CI run `0305ae37-f999-4938-b3ef-50cee012f4ae` is **BLOCKED**: focused S09A battery failed, full repository tests passed; it is not a green verification run.
 
-The repository is in the separate canonical `dev/**` standardization migration. Product behavior and BVP architecture are not being reopened.
+Previous Windows initial synchronization completed 23 verified durable effects (zero skipped), while recording 1,737 production Google HTTP requests over ~227 seconds. Per-operation attribution instrumentation was implemented and previously verified, but has not yet been successfully measured in a physical execution. S09A `live03` reviewed a plan of 23 no-ops plus two `upload-create` operations, then **stopped before physical execution** at `require-one-nonnoop`.
 
-## Completed standardization phases
+The approved canary is `BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md`. The second opaque path hash resolves to its parent `BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02`. A read-only local scan found the canary file; **remote parent-folder occupancy and provenance have not been independently established**. Do not silently broaden the one-operation authorization to two or rerun the failed physical scenario.
 
-1. Phase 1 — complete inventory/disposition of all original `dev/**` files.
-2. Phase 2 — canonical directory skeleton and READMEs.
-3. Phase 3 — canonical authority hierarchy.
-4. Phase 4 — canonical target-system/workstream/verification planning hierarchy.
-5. Phase 5 — canonical current state and concise handoff.
-6. Phase 6 — retired legacy agent/prompt hierarchies and retained only future S09 task contracts under WS-07.
-7. Phase 7 — historically moved all 105 PHX-CI run triples into `dev/Test-Results/<runId>/`, retiring the then-existing lowercase directory; preserved their Git blobs unchanged; removed redundant `dev/_ca-output.json`; and rebound PHX-CI history to `dev/test-results`.
-8. Phase 8 — archived all five legacy `dev/scripts/*.ps1` files under `archive/pre-standard-dev-layout-2026-10/DEV/scripts/` with unchanged Git blobs; moved BVP architecture guard/metrics implementation into `test-platform/src/architecture-governance.ts`; rebound `test-platform/src/repository-check.ts` and the guard/metrics/integration tests to that PHX-CI-consumed TypeScript surface; and updated the BVP governance lock/specification to prohibit standalone PowerShell validation authority.
-9. Phase 9 — retired `dev/archive/`, `dev/evidence/`, `dev/governance/`, and `dev/planning-and-building/`; verified exact external-archive preservation for all 366 retired source blobs; removed remaining live retired-script/path exceptions; and completed the active-reference sweep without compatibility aliases.
-10. Phase 10 — implementation preparation is complete: canonical `dev/` structure enforcement now executes inside the PHX-CI repository check; negative coverage rejects noncanonical top-level `dev/` entries; and the repository check now validates the post-build `main.js` SHA-256 against the accepted pre-migration artifact, with a negative regression for mismatch. No new repository PowerShell launcher was added; the owner boundary uses the deployed PHX-CI operator front door directly. Authoritative deployed-runtime PHX-CI execution remains pending.
+A separate `data.json` corruption/loss incident required recovery of original pairing/device identity with IndexedDB preserved. Subsequent authority observations were trusted, but the corruption cause remains unknown. Do not reset, re-pair, or reauthenticate as a shortcut. S09A iOS acceptance, later S09, and Stage 3 are still pending.
 
-## Evidence model
+## Future architecture — approved for planning only
 
-- Current work-unit surface: `dev/_ca-output.md`
-- Historical PHX-CI runs: `dev/test-results/<runId>/result.md`, `result.json`, and `terminal.log`
-- Historical run count migrated in Phase 7: **105**
-- Historical evidence blobs rewritten during migration: **0**
-- The removed root `dev/_ca-output.json` was byte-identical to the canonical S08V result JSON for run `cf16c8cc-179d-4fb9-8ca4-96aaad0bb742`.
+DEC-339 and Target Specification §7.9 record the agreed per-device compact, persistent **file/folder metadata inventory**, updated from a trustworthy baseline plus Google Drive Changes API. Preserve BASE/history as distinct authority, existing durable-intent/ID retry guarantees, fail-closed partial/stale/ambiguous handling, and independent verification obligations. WS-02 owns state/authority, WS-03 Drive metadata/change detection, WS-05 integration, WS-07 PHX-CI verification. Exact data schema, indexing/migration, and safe targeted-proof substitutions are future design work. No implementation or new physical mutation is authorized by this planning update.
 
-## Phase 8 verification boundary
+## Next action
 
-- GitHub comparison recognizes the five retired active PowerShell files as zero-content-change renames into the external archive.
-- No authoritative PHX-CI run was executed or claimed for Phase 8.
-- The last accepted substantive software verification remains the previously accepted green source/run recorded in canonical state.
-- Comprehensive migration verification remains reserved for Phase 10, after Phase 9 finishes the atomic path-reference sweep.
+Read-only establish whether the canary parent directory already exists in the exact managed Drive domain and whether planner identity/provenance is correct. Then determine the narrowest safe scenario correction with explicit owner authorization. New source and validation changes require PHX-CI; no GitHub Actions or separate validation framework.
 
-## Phase 9 verification boundary
-
-- Authoritative Phase-9 branch: `dev-directory-standardization-phase9-r2`, based directly on completed Phase-8 head `2d18de7b9828fc1a6bc205a614330d10b6ea8497`.
-- The earlier out-of-sequence `dev-directory-standardization-phase9` branch remains historical and is not the authoritative continuation.
-- Retired top-level legacy-tree source blobs checked: **366**.
-- Exact archived blob matches: **366**.
-- Missing archived source blobs: **0**.
-- No compatibility aliases were created.
-- Critical active authority/config/build/PHX-CI/BVP surfaces have no stale live bindings to the retired paths or Phase-8 validator/helper scripts.
-- No authoritative PHX-CI acceptance run is claimed for Phase 9.
-
-## Phase 10 execution boundary
-
-- Source branch: `dev-directory-standardization-phase10`.
-- Verification base: `dev-directory-standardization-phase9-r2`.
-- PHX-CI runtime pin: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
-- The owner-facing action must be a small direct invocation of the deployed PHX-CI operator front door.
-- `-PublicationMode push` is required so PHX-CI itself publishes canonical evidence back to the branch.
-- The owner returns only the complete console output; the engineering agent retrieves and inspects repository-published evidence directly.
-- No Phase-10 PASS or migration closure is claimed until the authoritative PHX-CI run is green and its canonical evidence has been inspected.
-
-## Immediate next action
-
-Run the audited small deployed-runtime PHX-CI operator command against `dev-directory-standardization-phase10`, using `origin/dev-directory-standardization-phase9-r2` as the explicit base and publication mode `push`. Return the complete console output only.
-
-Do not begin S09 or Stage 3 until Phase 10 closes green.
-
-**2026-10-08 lowercase normalization:** The active BVP branch has restored `dev/test-results/` as the current evidence path under the updated shared manuals and explicit owner decision. All historical evidence blobs were preserved; the Phase 7 account above records the earlier migration rather than current casing authority.
+This handoff supersedes the October 7 directory-standardization next action; migration history remains in Git history and existing PHX-CI records.
