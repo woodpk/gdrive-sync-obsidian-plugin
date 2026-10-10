@@ -7,10 +7,10 @@ status: "IN_PROGRESS"
 last_accepted_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
 last_phx_ci_run_id: "0ddaa1b0-f249-449f-b4d1-5d1c8e5c2f2c"
 blockers:
-  - "S09A live canary completed and all effects were verified, but the per-operation and per-request attribution summaries have not yet been extracted from the installed device diagnostic log."
+  - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Use existing BRAIN Obsidian command 'Copy device diagnostic log' and preserve the sanitized text for analysis of sync.attribution operation-request-attribution and run-request-attribution events from physical run bvp-s09a-request-attribution-91213c1ce4274ebead2bc7e9b0c9794c. No further physical canary run. Reconcile request counts, latency and attribution completeness before transitioning to DEC-339 inventory architecture implementation planning."
+next_action: "Proceed to bounded DEC-339 verified device-local metadata inventory design (schema/storage/migration, trusted baseline + Changes API, cursor atomicity, duplicate-name/path authority, targeted-proof equivalence and PHX-CI tests) using dev/research/s09a-request-attribution-live-analysis-2026-10-10.md. Do not rerun the completed S09A canary; no production inventory implementation yet."
 updated_at: "2026-10-10"
 
 context:
@@ -26,7 +26,14 @@ context:
   physical_s09a_phx_ci_run_id: "0ddaa1b0-f249-449f-b4d1-5d1c8e5c2f2c"
   physical_s09a_phx_ci_evidence_commit: "d19380b45d33d2b5689ae974a3c282d3cda73762"
   physical_s09a_bvp_result_json_local_path: "C:/temp-357ee3399e49405fa43f411850fc6668/result.json"
-  request_attribution_export_status: "PENDING_EXISTING_DEVICE_LOG_EXPORT; NO_RERUN"
+  request_attribution_export_status: "ANALYZED; OPERATION_COMPLETE; RUN_INCOMPLETE_35_PRE_EXECUTION_UNSCOPED; NO_RERUN"
+  request_attribution_report: "dev/research/s09a-request-attribution-live-analysis-2026-10-10.md"
+  measured_physical_http_requests: 223
+  measured_http_list_get_requests: 198
+  measured_operation_scoped_requests: 188
+  measured_pre_execution_unattributed_requests: 35
+  measured_per_effect_reconciliations: 2
+  inventory_design_status: "NEXT; NOT_STARTED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
