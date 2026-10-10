@@ -231,15 +231,11 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
         ...base,
         classification: "production-preview-ready",
         plan: {
-          planId: String(plan.planId),
-          trigger: plan.trigger,
-          operationCount: plan.operations.length,
+          planId: String(plan.planId), trigger: plan.trigger, operationCount: plan.operations.length,
           operationKinds: [...new Set(plan.operations.map(operation => String(operation.kind)))].sort(),
           nonNoopOperationCount: plan.operations.filter(operation => operation.kind !== "noop").length,
-          uploadCreatePathKeys,
-          executionDisposition: plan.executionDisposition,
-          recoveryCheckpointRequired: plan.recoveryCheckpointRequired,
-          globalExecutionGate: plan.globalExecutionGate,
+          uploadCreatePathKeys, executionDisposition: plan.executionDisposition,
+          recoveryCheckpointRequired: plan.recoveryCheckpointRequired, globalExecutionGate: plan.globalExecutionGate,
         },
       };
     }
