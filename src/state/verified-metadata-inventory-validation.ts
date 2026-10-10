@@ -4,7 +4,7 @@ import type {
   InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryGenerationManifest,
   InventoryIdentityFence, InventoryMembershipClassification, InventoryOverlayRecord,
   InventoryPublishRequest, InventoryReadResult, InventoryRemoteEntity,
-  InventoryTargetedProof, InventoryTargetedProofResult,
+  InventoryTargetedProof, InventoryTargetedProofAssessment,
 } from "../contracts/verified-metadata-inventory";
 
 export interface InventoryValidationInput {
@@ -42,7 +42,7 @@ function validFence(x: unknown): x is InventoryIdentityFence {
   if (!record(x)) return false;
   return ["vaultIdentity", "deviceIdentity", "pairedAccountKey", "managedRootId",
     "protocolVersion", "contentDomainRootId", "configDomainRootId", "scopePolicyFingerprint"]
-    .every(key => validId(x[key])) && integer(x.inventorySchemaVersion) && x.inventorySchemaVersion > 0;
+    .every(key => validId(x[key])) && integer(x.inventorySchemaVersion) && x.inventorySchemaVersion === 1;
 }
 
 function validManifest(x: unknown): x is InventoryGenerationManifest {
@@ -59,9 +59,11 @@ function validEntity(x: unknown): x is InventoryRemoteEntity {
   return validId(x.generation) && validId(x.remoteObjectId) &&
     (x.parentRemoteObjectId === null || validId(x.parentRemoteObjectId)) &&
     domain(x.domain) && typeof x.name === "string" && x.name.length > 0 &&
-    !x.name.includes("/") && x.name !== "." && x.name !== ".." &&
+    !x.name.includes("/") && !/[\u0000-\u001f]/.test(x.name) && x.name !== "." && x.name !== ".." &&
     (x.kind === "file" || x.kind === "folder") &&
     (x.logicalPath === undefined || validId(x.logicalPath)) &&
+    (x.parentRemoteObjectId === null || x.pathValidity !== "verified" ||
+      (validId(x.logicalPath) && (x.logicalPath === x.name || x.logicalPath.endsWith(`/${x.name}`)))) &&
     ["verified", "unknown", "invalid"].includes(String(x.pathValidity)) &&
     ["visible", "inaccessible", "unknown"].includes(String(x.access)) &&
     typeof x.trashed === "boolean" && validId(x.managedRootId) && domain(x.provenanceDomain) &&
@@ -182,7 +184,8 @@ export function validateInventoryCandidate(value: unknown, maxRows = 10000): Inv
     }
     if (!cursor || cursor.remoteObjectId !== root(entity.domain)) return fail("unrooted-ancestry");
     if (!isRoot && entity.parentRemoteObjectId) {
-      const key = JSON.stringify([entity.domain, entity.parentRemoteObjectId, entity.name]);
+      const key = JSON.stringify([entity.domain, entity.parentRemoteObjectId,
+        entity.name.normalize("NFC").toLocaleLowerCase("en-US")]);
       collisions.set(key, (collisions.get(key) ?? 0) + 1);
     }
   }
@@ -250,7 +253,7 @@ export function assessInventoryPublishPreconditions(
 /** No inventory row or stale read can substitute for a fresh, purpose-specific physical check. */
 export function validateInventoryTargetedProof(
   candidate: unknown, expectedSemanticGeneration: SemanticStateGeneration,
-): InventoryTargetedProofResult {
+): InventoryTargetedProofAssessment {
   if (!record(candidate)) return { status: "unknown", reason: "missing-targeted-proof" };
   const p = candidate as Partial<InventoryTargetedProof>;
   if (!validId(p.remoteObjectId) || !validId(p.parentRemoteObjectId) ||
@@ -262,5 +265,5 @@ export function validateInventoryTargetedProof(
     return { status: "unknown", reason: "stale-or-unproved-physical-read" };
   if (p.siblingIds.length !== 1 || p.siblingIds[0] !== p.remoteObjectId)
     return { status: "ambiguous", reason: "physical-sibling-occupancy-unproved" };
-  return { status: "verified-current-proof", proof: p as InventoryTargetedProof };
+  return { status: "structurally-eligible", purpose: p.purpose as InventoryTargetedProof["purpose"] };
 }
