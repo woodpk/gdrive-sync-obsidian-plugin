@@ -860,6 +860,8 @@ export function prepareInventoryAuthorityPublication(
   if (parsed.status !== "ok" || !isDurableSynchronizationAuthorityState(parsed.envelope.state))
     return { status: "recovery-required", reason: "untrusted-canonical-authority-envelope" };
   const state = parsed.envelope.state;
+  if (state.schemaVersion !== 1)
+    return { status: "recovery-required", reason: "unsupported-authority-product-schema" };
   if (new DurableSemanticStateValidator().validate(state).length !== 0)
     return { status: "recovery-required", reason: "invalid-canonical-authority" };
   if (state.persistenceRevision !== expected.persistenceRevision ||
@@ -868,10 +870,13 @@ export function prepareInventoryAuthorityPublication(
     return { status: "stale", reason: "authority-persistence-semantic-or-cursor-raced" };
   if (state.operationIntents.some(intent => !recoverableOperationV1_1IsComplete(intent)))
     return { status: "recovery-required", reason: "unresolved-durable-intent-blocks-inventory-publication" };
+  if (expected.mode === "baseline" && state.learnedRemoteBatches.length > 0)
+    return { status: "recovery-required", reason: "unreduced-legacy-changes-block-baseline-publication" };
   if (expected.mode === "incremental") {
     const batch = expected.learnedBatch;
     if (!batch || batch.checkpoint.startingToken !== expected.canonicalCursor ||
         batch.checkpoint.terminalStartToken !== expected.terminalCursor ||
+        batch.checkpoint.persistenceRevision !== state.persistenceRevision ||
         state.learnedRemoteBatches.some(old => old.checkpoint.batchId === batch.checkpoint.batchId))
       return { status: "recovery-required", reason: "missing-duplicate-or-discontinuous-learned-batch" };
   } else if (expected.learnedBatch) {
