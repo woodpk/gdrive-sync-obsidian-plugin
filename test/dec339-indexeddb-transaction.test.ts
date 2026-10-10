@@ -7,6 +7,7 @@ import {
   type RemoteObjectId, type SemanticStateGeneration, type VaultIdentity,
 } from "../src/contracts";
 import { IndexedDbStateByteStorage } from "../src/state/indexeddb-state-storage";
+import { IndexedDbInventoryAwareStateByteStorage } from "../src/state/indexeddb-inventory-authority-storage";
 import { IndexedDbInventoryObservationStore } from "../src/state/indexeddb-inventory-storage";
 import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
 
@@ -245,18 +246,28 @@ test("staged, uncommitted replacement never publishes a new cursor or active gen
   assert.equal((await store.openRead()).status, "stale");
 });
 
-test("existing v2 canonical state reader can open without a forced v1 VersionError", async () => {
+test("inventory-aware v2 canonical state reader opens upgraded DB without VersionError", async () => {
   const db = new FakeDatabase(), factory = db.openFactory();
   const inventory = await seeded(factory);
   const staged = candidate();
   await inventory.stage({ candidate: staged.manifest,
     overlays: rows(staged.rows), coverage: rows(staged.coverage) });
-  const canonical = new IndexedDbStateByteStorage("device:idb:test", factory);
+  const canonical = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
   assert.ok(await canonical.read());
   assert.equal(db.version, 2);
 });
 
-test("a legacy canonical cursor writer invalidates active inventory atomically instead of fast-forwarding it", async () => {
+test("unmodified v1 reader fails closed against an upgraded v2 database", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const staged = candidate();
+  assert.equal((await inventory.stage({ candidate: staged.manifest,
+    overlays: rows(staged.rows), coverage: rows(staged.coverage) })).status, "verified-observation");
+  const oldReader = new IndexedDbStateByteStorage("device:idb:test", factory);
+  await assert.rejects(oldReader.read(), /VersionError/);
+});
+
+test("inventory-aware canonical cursor writer atomically invalidates stale inventory", async () => {
   withRangeOnly();
   const db = new FakeDatabase(), factory = db.openFactory();
   const inventory = await seeded(factory);
@@ -271,7 +282,7 @@ test("a legacy canonical cursor writer invalidates active inventory atomically i
   });
   assert.equal(published.status, "published");
   const canonical = new PersistentSynchronizationStateStore(
-    new IndexedDbStateByteStorage("device:idb:test", factory));
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
   const loaded = await canonical.loadAuthority();
   assert.equal(loaded.status, "trusted");
   if (loaded.status !== "trusted") return;
@@ -310,7 +321,7 @@ test("complete baseline can replace a previously published generation without a 
   });
   assert.equal(firstCommit.status, "published");
   const canonical = await new PersistentSynchronizationStateStore(
-    new IndexedDbStateByteStorage("device:idb:test", factory)).loadAuthority();
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
   assert.equal(canonical.status, "trusted");
   if (canonical.status !== "trusted") return;
   const next = candidate(g("full-rebaseline"), c("changes:next"));
@@ -346,7 +357,7 @@ test("incremental COW generation keeps older indexed roots reachable after atomi
     nextCanonicalCursor: cursor1, fence,
   })).status, "published");
   const canonical = await new PersistentSynchronizationStateStore(
-    new IndexedDbStateByteStorage("device:idb:test", factory)).loadAuthority();
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
   assert.equal(canonical.status, "trusted");
   if (canonical.status !== "trusted") return;
   const nextGen = g("delta:1"), nextCursor = c("changes:2");
