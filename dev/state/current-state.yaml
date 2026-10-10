@@ -8,15 +8,18 @@ last_accepted_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
 last_phx_ci_run_id: "0305ae37-f999-4938-b3ef-50cee012f4ae"
 blockers:
   - "S09A live03 preview: 23 noops and two upload-create operations; fail-closed one-canary assertion stopped execution before production execute."
-  - "The second planned path is the canary parent directory; authoritative remote presence/identity/provenance is not yet established."
+  - "The canary parent is absent from the currently accessible managed Drive folder listing; the exact-two-operation scenario correction awaits PHX-CI and fresh physical authorization."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Read-only confirm remote occupancy/provenance for the exact canary parent folder, determine the narrowest safe scenario resolution, and obtain approval before any new physical run. Any source change requires PHX-CI. Approved metadata-inventory architecture remains planning-only."
+next_action: "Verify exact S09A scenario/test candidate 5909fff355ca3d39809645d0157bc2705c20a77c through deployed PHX-CI; review canonical evidence. Only after PHX-CI PASS and explicit live-run approval may a fresh bounded two-creation attribution canary be attempted. Metadata-inventory refactoring remains deferred until attribution."
 updated_at: "2026-10-10"
 
 context:
   investigation_branch: "bvp-s09a-request-attribution-01"
   investigation_branch_head_at_review: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
+  proposed_s09a_correction_branch: "bvp-s09a-parent-folder-canary-01"
+  proposed_s09a_correction_sha: "5909fff355ca3d39809645d0157bc2705c20a77c"
+  proposed_s09a_correction_verification: "NOT_YET_RUN"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "BLOCKED overall exit 201; focused S09A battery failed; full repository test suite PASS"
@@ -25,7 +28,9 @@ context:
   previous_windows_sync: "23 committed and verified effects; zero skipped; 1737 production Drive HTTP calls; ~227 seconds; battery acceptance incomplete"
   approved_canary_path: "BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02/s09a-attribution-canary.md"
   unexpected_second_path: "BVP-VALIDATION/bvp-s09a-request-attribution-fa6eef85-live02"
-  remote_parent_occupancy_confirmed: false
+  remote_parent_occupancy_confirmed: true
+  remote_parent_observation: "ABSENT in read-only listing of BRAIN Sync/vault/BVP-VALIDATION (eight immediate children) and matching Drive search at time of check; parent folder need not have an ID until created"
+  remote_ancestry_ids: "managed root 1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-; content domain 1jQh8QxcJP62w4Jj9GDkeoI6OIZ2D3Mcx; BVP-VALIDATION 1aXh7jPWn6ma_bmkpqMkxV1Qiqnka_PTW"
   future_metadata_inventory:
     decision: "DEC-339"
     status: "APPROVED_PLANNING_ONLY"
