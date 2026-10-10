@@ -47,3 +47,10 @@ STATUS: BLOCKED
 
 Final verdict: BLOCKED
 Failure classification: TEST FAILURE
+
+## Core-runner provenance
+
+- Source branch: dec339/d339-02-indexeddb-persistence-01
+- Source build HEAD requested: 7215db9a64d417040b6cc5f0104f39dd9a4b1b82
+- Verification checkout HEAD: 7215db9a64d417040b6cc5f0104f39dd9a4b1b82
+- Evidence publication target: origin/dec339/d339-02-indexeddb-persistence-01
