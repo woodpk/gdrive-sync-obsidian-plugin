@@ -54,10 +54,8 @@ export interface DeviceCommandResult {
   readonly classification: string;
   readonly replayed?: true;
   readonly plan?: {
-    readonly planId: string; readonly trigger: string; readonly operationCount: number;
-    readonly operationKinds?: readonly string[]; readonly nonNoopOperationCount?: number;
-    readonly uploadCreatePathKeys?: readonly string[]; readonly executionDisposition: string;
-    readonly recoveryCheckpointRequired: boolean; readonly globalExecutionGate: string;
+    readonly planId: string; readonly trigger: string; readonly operationCount: number; readonly operationKinds?: readonly string[];
+    readonly nonNoopOperationCount?: number; readonly uploadCreatePathKeys?: readonly string[]; readonly executionDisposition: string; readonly recoveryCheckpointRequired: boolean; readonly globalExecutionGate: string;
   };
   readonly actionResult?: ProductionActionResult;
   readonly receipt?: ProductionReceipt;
