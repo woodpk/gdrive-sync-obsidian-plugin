@@ -86,7 +86,7 @@ export class VerifiedInventoryBaselineCoordinator {
     if (typeof generation !== "string" || !generation.trim())
       return failed("invalid", "invalid-candidate-generation");
     const before = await this.storage.publicationSnapshot(fence);
-    if (before.status !== "verified-observation") return failed(before.status, before.reason);
+    if (before.status !== "trusted-fence") return failed(before.status, before.reason);
     const provider = await this.reader.baseline(fence, generation);
     if (provider.status !== "ok") return failed(provider.status, provider.reason);
     const candidate = provider.value;
@@ -124,7 +124,7 @@ export class VerifiedInventoryBaselineCoordinator {
       return failed(validation.status, validation.reason);
     // Recheck authority *before* touching the shadow stores. Publication also CASes.
     const again = await this.storage.publicationSnapshot(fence);
-    if (again.status !== "verified-observation") return failed(again.status, again.reason);
+    if (again.status !== "trusted-fence") return failed(again.status, again.reason);
     if (again.value.activeGeneration !== before.value.activeGeneration ||
         again.value.canonicalCursor !== before.value.canonicalCursor ||
         again.value.persistenceRevision !== before.value.persistenceRevision ||
