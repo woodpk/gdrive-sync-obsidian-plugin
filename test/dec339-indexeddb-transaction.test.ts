@@ -578,3 +578,146 @@ test("D339-04 discards stale remote scan if canonical CAS changes before staging
   assert.equal(stages, 0);
   assert.equal(publications, 0);
 });
+
+
+/** D339-04B uses a deterministic provider fixture; PHX-CI executes these tests. */
+function simulatedDelta(
+  base: ReturnType<typeof candidate>,
+  next: {
+    readonly generation: InventoryGeneration; readonly token: ChangeCursor;
+    readonly overlays: readonly InventoryOverlayRecord[];
+    readonly changes: readonly import("../src/contracts/google-drive").RemoteChange[];
+    readonly partial?: boolean;
+  },
+): Pick<VerifiedMetadataInventoryReader, "baseline" | "incremental"> {
+  const cover = (["content", "portable-config"] as const).flatMap(domain => {
+    const rootId = domain === "content" ? fence.contentDomainRootId : fence.configDomainRootId;
+    return (["domain", "parent"] as const).map(scopeKind => ({
+      generation: next.generation, domain, scopeId: rootId, scopeKind,
+      state: "complete" as const, visibility: "app-visible" as const,
+      allPagesRead: true, incompleteSearch: false, provenanceVerified: true,
+      terminalCursor: next.token,
+    }));
+  });
+  return {
+    ...simulatedBaseline(base),
+    incremental: async () => ({
+      status: "ok" as const, value: {
+        inputCursor: cursor1, terminalCursor: next.token,
+        overlays: [...next.overlays], invalidatedParentIds: [fence.contentDomainRootId],
+        coverage: next.partial ? cover.filter(row => row.domain !== "content") : cover,
+        learnedChanges: [...next.changes], publishAuthorized: false as const,
+      },
+    }),
+  };
+}
+
+function integratedFile(generation: InventoryGeneration, name: string): Extract<InventoryOverlayRecord, { kind: "upsert" }> {
+  const remoteObjectId = id("remote:delta-file");
+  const path = contractId<"VaultPath">(name);
+  return { kind: "upsert", generation, entity: {
+    generation, remoteObjectId, parentRemoteObjectId: fence.contentDomainRootId,
+    domain: "content", name, kind: "file", logicalPath: path,
+    pathValidity: "verified", access: "visible", trashed: false,
+    managedRootId: fence.managedRootId, provenanceDomain: "content",
+  } };
+}
+
+test("D339-04B publishes COW file delta and Changes checkpoint in one authority transaction", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), idb = db.openFactory();
+  const store = await seeded(idb);
+  const first = candidate(g("integrated-COW-first"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(first), store)
+    .publishBaseline(fence, first.manifest.generation)).status, "published");
+  const previous = await store.openRead();
+  assert.equal(previous.status, "verified-observation");
+  const gen = g("integrated-COW-next"), terminal = c("changes:2");
+  const file = integratedFile(gen, "changed.md");
+  const source = simulatedDelta(first, {
+    generation: gen, token: terminal, overlays: [file],
+    changes: [{ kind: "upsert", entry: {
+      path: file.entity.logicalPath!, entityKind: "file",
+      remoteObjectId: file.entity.remoteObjectId, trashed: false,
+    } }],
+  });
+  const batchId = contractId<"RemoteIngestionBatchId">("changes:batch2");
+  const result = await new VerifiedInventoryBaselineCoordinator(source, store)
+    .publishIncremental(fence, gen, batchId);
+  assert.equal(result.status, "published");
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status === "trusted") {
+    assert.equal(canonical.state.changeCursor, terminal);
+    assert.equal(canonical.state.learnedRemoteBatches.length, 1);
+    assert.equal(canonical.state.learnedRemoteBatches[0].checkpoint.batchId, batchId);
+  }
+  const restarted = new IndexedDbInventoryObservationStore("device:idb:test", idb);
+  const active = await restarted.openRead();
+  assert.equal(active.status, "verified-observation");
+  if (active.status === "verified-observation") {
+    assert.equal(active.value.generation, gen);
+    const member = await active.value.getById(file.entity.remoteObjectId);
+    assert.equal(member.status, "verified-observation");
+    const children = await active.value.listByParent("content", fence.contentDomainRootId);
+    assert.equal(children.status, "verified-observation");
+    if (children.status === "verified-observation") assert.equal(children.value.length, 1);
+    await active.value.release();
+  }
+  if (previous.status === "verified-observation") {
+    assert.equal((await previous.value.getById(file.entity.remoteObjectId)).status, "unknown");
+    await previous.value.release();
+  }
+});
+
+test("D339-04B refuses coverage gaps without learning Changes or altering active generation", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), idb = db.openFactory();
+  const store = await seeded(idb);
+  const initial = candidate(g("coverage-COW-first"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), store)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const gen = g("coverage-COW-next"), terminal = c("changes:second");
+  const changed = integratedFile(gen, "new.md");
+  const delta = simulatedDelta(initial, {
+    generation: gen, token: terminal, overlays: [changed], changes: [], partial: true,
+  });
+  const result = await new VerifiedInventoryBaselineCoordinator(delta, store)
+    .publishIncremental(fence, gen, contractId<"RemoteIngestionBatchId">("changes:coverage-gap"));
+  assert.equal(result.status, "unknown");
+  const current = await store.openRead();
+  assert.equal(current.status, "verified-observation");
+  if (current.status === "verified-observation") {
+    assert.equal(current.value.generation, initial.manifest.generation);
+    await current.value.release();
+  }
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status === "trusted") {
+    assert.equal(canonical.state.changeCursor, cursor1);
+    assert.equal(canonical.state.learnedRemoteBatches.length, 0);
+  }
+});
+
+test("D339-04B rejects attempted mask without a tracked stable ID", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), idb = db.openFactory();
+  const store = await seeded(idb);
+  const initial = candidate(g("untracked-mask-first"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), store)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const gen = g("untracked-mask-next");
+  const delta = simulatedDelta(initial, {
+    generation: gen, token: c("changes:next"),
+    overlays: [{ kind: "mask", generation: gen, remoteObjectId: id("not-tracked") }],
+    changes: [{ kind: "removed", remoteObjectId: id("not-tracked") }],
+  });
+  const result = await new VerifiedInventoryBaselineCoordinator(delta, store)
+    .publishIncremental(fence, gen, contractId<"RemoteIngestionBatchId">("changes:unknown-mask"));
+  assert.equal(result.status, "unknown");
+  const active = await store.openRead();
+  assert.equal(active.status, "verified-observation");
+  if (active.status === "verified-observation") await active.value.release();
+});
