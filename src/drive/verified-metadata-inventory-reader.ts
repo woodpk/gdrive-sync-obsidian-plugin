@@ -55,6 +55,8 @@ export interface InventoryTargetedReadObservation {
   readonly object: InventoryRemoteEntity;
   readonly siblingIds: readonly RemoteObjectId[];
   readonly parentChain: readonly RemoteObjectId[];
+  /** Freshly resolved named ancestry, not an inventory-derived or cached path. */
+  readonly observedLogicalPath: VaultPath;
   readonly appVisibleOnly: true;
   readonly rootWideMarkedProvenanceRechecked: true;
   /** This is NOT a physical convergence proof or an executor authorization. */
@@ -526,6 +528,7 @@ export class VerifiedMetadataInventoryReader {
         f.sha256Checksum?.toLowerCase() !== request.expectedSha256.toLowerCase())
       return error("target-hash-mismatch", "stale");
     const ancestors: string[] = [];
+    const pathParts: string[] = [f.name];
     const seen = new Set<string>([f.id]);
     let parent = f.parents[0];
     for (let depth = 0; depth < 128; depth++) {
@@ -537,6 +540,8 @@ export class VerifiedMetadataInventoryReader {
           meta.value.mimeType !== FOLDER || meta.value.parents.length !== 1 ||
           !this.provenance(meta.value, fence, request.domain))
         return error("target-parent-ancestry-unproven");
+      if (!suitableName(meta.value.name)) return error("target-ancestor-name-invalid");
+      pathParts.unshift(meta.value.name);
       parent = meta.value.parents[0];
     }
     if (ancestors.at(-1) !== root) return error("target-not-under-expected-domain");
@@ -580,7 +585,9 @@ export class VerifiedMetadataInventoryReader {
     const entity = this.toEntity(f, request.domain, f.parents[0], undefined, generation, fence);
     return { status: "ok", value: {
       object: entity, siblingIds: matches.map(x => rid(x.id)),
-      parentChain: ancestors.map(rid), appVisibleOnly: true,
+      parentChain: ancestors.map(rid),
+      observedLogicalPath: pathId((request.domain === "portable-config" ? "__brain_sync_portable_config__/" : "") + pathParts.join("/")),
+      appVisibleOnly: true,
       rootWideMarkedProvenanceRechecked: true, executorProofAuthorized: false,
     } };
   }
