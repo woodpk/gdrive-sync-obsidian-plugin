@@ -10,6 +10,8 @@ import { IndexedDbStateByteStorage } from "../src/state/indexeddb-state-storage"
 import { IndexedDbInventoryAwareStateByteStorage } from "../src/state/indexeddb-inventory-authority-storage";
 import { IndexedDbInventoryObservationStore } from "../src/state/indexeddb-inventory-storage";
 import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
+import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
+import type { VerifiedMetadataInventoryReader } from "../src/drive/verified-metadata-inventory-reader";
 
 /** Deterministic IDB transaction fixture; software validation is executed exclusively by PHX-CI. */
 interface StoredTable {
@@ -405,4 +407,88 @@ test("incremental COW generation keeps older indexed roots reachable after atomi
     if (children.status === "verified-observation") assert.equal(children.value[0]?.remoteObjectId, child);
     await read.value.release();
   }
+});
+
+
+function simulatedBaseline(c: ReturnType<typeof candidate>): Pick<VerifiedMetadataInventoryReader, "baseline"> {
+  return {
+    baseline: async () => ({
+      status: "ok" as const,
+      value: {
+        inputCursor: c.manifest.inputCursor, terminalCursor: c.manifest.terminalCursor,
+        entities: c.rows.filter((r): r is Extract<InventoryOverlayRecord, { readonly kind: "upsert" }> =>
+          r.kind === "upsert").map(r => r.entity),
+        coverage: c.coverage, normalizedSiblingCollisions: [],
+        replayedEvents: 0, publishAuthorized: false as const,
+      },
+    }),
+  };
+}
+
+test("D339-04 full provider baseline validates and atomically publishes canonical cursor with indexed generation", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const initial = candidate(g("integrated-baseline"));
+  const coordinator = new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), storage);
+  const result = await coordinator.publishBaseline(fence, initial.manifest.generation);
+  assert.equal(result.status, "published");
+  const authority = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status === "trusted") assert.equal(authority.state.changeCursor, cursor1);
+  const restarted = new IndexedDbInventoryObservationStore("device:idb:test", idb);
+  const read = await restarted.openRead();
+  assert.equal(read.status, "verified-observation");
+  if (read.status === "verified-observation") {
+    assert.equal(read.value.generation, initial.manifest.generation);
+    assert.equal((await read.value.getById(fence.contentDomainRootId)).status, "verified-observation");
+    await read.value.release();
+  }
+});
+
+test("D339-04 refuses partial parent coverage without staging or advancing the cursor", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const c = candidate(g("partial-coverage"));
+  const bad = { ...c, coverage: c.coverage.filter(x => x.domain !== "content") };
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(bad), storage)
+    .publishBaseline(fence, c.manifest.generation);
+  assert.equal(result.status, "unknown");
+  const authority = await new PersistentSynchronizationStateStore(
+    new IndexedDbStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status === "trusted") assert.equal(authority.state.changeCursor ?? null, null);
+});
+
+test("D339-04 rejects unrooted provider inventory before issuing staged writes", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const c = candidate(g("orphaned-baseline"));
+  const invalid = { ...c, rows: c.rows.filter(r =>
+    r.kind !== "upsert" || r.entity.remoteObjectId !== fence.contentDomainRootId) };
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(invalid), storage)
+    .publishBaseline(fence, c.manifest.generation);
+  assert.equal(result.status, "invalid");
+  assert.equal((await storage.openRead()).status, "stale");
+});
+
+test("D339-04 duplicate generation cannot publish twice even with the same metadata receipt", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const c = candidate(g("replayed-generation"));
+  const coordinator = new VerifiedInventoryBaselineCoordinator(simulatedBaseline(c), storage);
+  assert.equal((await coordinator.publishBaseline(fence, c.manifest.generation)).status, "published");
+  const retry = await coordinator.publishBaseline(fence, c.manifest.generation);
+  assert.notEqual(retry.status, "published");
+});
+
+test("D339-04 incremental path fails closed pending predecessor coverage and mask integration", async () => {
+  const c = candidate(g("blocked-delta"));
+  const store = {} as IndexedDbInventoryObservationStore;
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(c), store).publishIncremental();
+  assert.equal(result.status, "recovery-required");
 });
