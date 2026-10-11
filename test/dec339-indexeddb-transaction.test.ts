@@ -492,3 +492,67 @@ test("D339-04 incremental path fails closed pending predecessor coverage and mas
   const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(c), store).publishIncremental();
   assert.equal(result.status, "recovery-required");
 });
+
+
+test("D339-04 full rebaseline atomically replaces the active generation while an earlier reader remains usable", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const first = candidate(g("integrated-first"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(first), storage)
+    .publishBaseline(fence, first.manifest.generation)).status, "published");
+  const old = await storage.openRead();
+  assert.equal(old.status, "verified-observation");
+  const secondCursor = c("changes:next");
+  const second = candidate(g("integrated-second"), secondCursor);
+  const updated = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(second), storage)
+    .publishBaseline(fence, second.manifest.generation);
+  assert.equal(updated.status, "published");
+  const now = await storage.openRead();
+  assert.equal(now.status, "verified-observation");
+  if (now.status === "verified-observation") {
+    assert.equal(now.value.generation, second.manifest.generation);
+    await now.value.release();
+  }
+  if (old.status === "verified-observation") {
+    assert.equal(old.value.generation, first.manifest.generation);
+    assert.equal((await old.value.getById(fence.contentDomainRootId)).status, "verified-observation");
+    await old.value.release();
+  }
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status === "trusted") assert.equal(canonical.state.changeCursor, secondCursor);
+});
+
+test("D339-04 discards stale remote scan if canonical CAS changes before staging", async () => {
+  const fixture = candidate(g("racing-scan"));
+  const first = {
+    status: "trusted-fence" as const,
+    value: {
+      activeGeneration: null, canonicalCursor: null,
+      persistenceRevision: r0, semanticGeneration: s0,
+    },
+  };
+  let checks = 0, stages = 0, publications = 0;
+  const racing = {
+    publicationSnapshot: async () => ++checks === 1 ? first :
+      { status: "trusted-fence" as const,
+        value: { ...first.value, persistenceRevision: rev("state:99") } },
+    stage: async () => { stages++; return {
+      status: "verified-observation" as const, generation: fixture.manifest.generation,
+      value: fixture.manifest.generation,
+    }; },
+    publishAtomically: async () => { publications++; return {
+      status: "published" as const,
+      generation: fixture.manifest.generation, terminalCursor: cursor1,
+    }; },
+  } as unknown as Pick<IndexedDbInventoryObservationStore,
+    "publicationSnapshot" | "stage" | "publishAtomically">;
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(fixture), racing)
+    .publishBaseline(fence, fixture.manifest.generation);
+  assert.equal(result.status, "stale");
+  assert.equal(checks, 2);
+  assert.equal(stages, 0);
+  assert.equal(publications, 0);
+});
