@@ -41,7 +41,11 @@ function coverageComplete(
   fence: InventoryIdentityFence, cursor: ChangeCursor,
 ): boolean {
   const keys = new Set<string>();
+  const folders = new Set(entities.filter(e => e.kind === "folder")
+    .map(e => JSON.stringify([e.domain, e.remoteObjectId])));
   for (const c of receipts) {
+    if (c.scopeKind === "parent" &&
+        !folders.has(JSON.stringify([c.domain, c.scopeId]))) return false;
     if (c.terminalCursor !== cursor || c.visibility !== "app-visible" ||
         c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
         !c.provenanceVerified) return false;
