@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Proceed with bounded D339-06 (WS-05): optional targeted current remote proof at the existing executor verification boundary, exact predecessor D339-05 evidence 0486766df0202fb6af1ebca2fc8ceaea307ab7a6; preserve durable intent, BASE, the existing executor/planner and full reconciliation fallback. Inventory remains dormant until safety and equivalence gates."
+next_action: "D339-06A dormant targeted-convergence consumer and provider reader are PHX-CI verified at evidence c67f5518958b2f3d330368fb465933ce47cd9b46. Next D339-06B: make the optional dependency consumable by the existing authoritative executor at post-dispatch convergence only; feature flag OFF, current full-reconciliation fallback, existing recovery and dispatch lifecycle unchanged. Then PHX-CI and evaluate D339-07."
 updated_at: "2026-10-10"
 
 context:
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "DESIGN_REVIEWED; D339-01_THROUGH_D339-05_PHX_CI_COMPLETE_PASS; D339-06_NEXT; FEATURE_DORMANT; FEATURE_LEVEL_REVIEW_DEFERRED"
+  inventory_design_status: "DESIGN_REVIEWED; D339-01_THROUGH_D339-05_PHX_CI_COMPLETE_PASS; D339-06A_PHX_CI_COMPLETE_PASS; D339-06B_EXECUTOR_WIRING_PENDING; D339-07_NEXT_AFTER_D339-06; FEATURE_DORMANT; FEATURE_LEVEL_REVIEW_DEFERRED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -47,7 +47,7 @@ context:
   remote_ancestry_ids: "managed root 1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-; content domain 1jQh8QxcJP62w4Jj9GDkeoI6OIZ2D3Mcx; BVP-VALIDATION 1aXh7jPWn6ma_bmkpqMkxV1Qiqnka_PTW"
   future_metadata_inventory:
     decision: "DEC-339"
-    status: "IMPLEMENTATION_IN_PROGRESS; D339-05_VERIFIED; FEATURE_NOT_ACTIVATED"
+    status: "IMPLEMENTATION_IN_PROGRESS; D339-06A_VERIFIED; D339-06B_PENDING; FEATURE_NOT_ACTIVATED"
     implementation_started: true
     verification_completed: false
     target_spec_section: "7.9"
@@ -99,7 +99,16 @@ context:
   d339_05_phx_ci_run_id: "46ab2823-c30f-4835-9e54-51c7727e6caf"
   d339_05_status: "INVENTORY_BACKED_SNAPSHOT_ASSEMBLY_IMPLEMENTED; PHX_CI_COMPLETE_PASS; ALL_11_STAGES_PASS; DORMANT_NO_SHIPPING_ACTIVATION; REVIEW_DEFERRED"
   d339_05_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
-  d339_06_status: "NEXT; EXACT_PREDECESSOR_D339_05_EVIDENCE"
+  d339_06_source_branch: "dec339/d339-06-targeted-convergence-proof-01"
+  d339_06_base_sha: "0486766df0202fb6af1ebca2fc8ceaea307ab7a6"
+  d339_06a_verified_source_sha: "218c2233ba11b16a8df6c6648d01e93d4144bfa9"
+  d339_06a_evidence_commit: "c67f5518958b2f3d330368fb465933ce47cd9b46"
+  d339_06a_phx_ci_run_id: "b3de82da-22f3-4767-b261-3d77fce1d039"
+  d339_06a_status: "DORMANT_TARGETED_PROOF_HELPER; PHX_CI_COMPLETE_PASS; ALL_11_STAGES_PASS; NOT_WIRED_INTO_EXISTING_EXECUTOR; NO_SHIPPING_ACTIVATION"
+  d339_06a_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
+  d339_06_status: "PARTIAL_SCOPE_VERIFIED; EXECUTOR_CONSUMPTION_UNIMPLEMENTED"
+  d339_06b_status: "NEXT; EXACT_PREDECESSOR_D339_06A_EVIDENCE; REQUIRES_NEW_SUBSTANTIVE_PHX_CI_VERIFICATION"
+  d339_07_status: "WAIT_FOR_D339_06B_EXECUTOR_INTEGRATION"
 
   stage_3_started: false
   authority:
