@@ -2,8 +2,8 @@
  * DEC-339 / D339-07A: existing BVP world is the baseline control, not proof
  * that the dormant inventory optimizer is active. PHX-CI owns execution.
  */
-import assert from "node:assert/strict";
-import test from "node:test";
+import * as assert from "node:assert/strict";
+import { test } from "node:test";
 import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
 import { afterRemoteEffectScenario } from "../scenarios/07a/after-remote-effect";
 import { ambiguousAppliedScenario } from "../scenarios/07a/ambiguous-applied";
