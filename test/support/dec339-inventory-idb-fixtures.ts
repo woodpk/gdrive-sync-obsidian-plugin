@@ -120,6 +120,17 @@ export class FakeDatabase {
         };
         return {
           get: (key: unknown) => enqueue(() => data.records.get(keyOf(key))),
+          count: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) => enqueue(() => {
+            if (!range) return data.records.size;
+            if (!Array.isArray(range.lower) || !Array.isArray(range.upper) ||
+                range.lower.length !== 1 || range.upper.length !== 2 ||
+                range.upper[0] !== range.lower[0] || !Array.isArray(range.upper[1]))
+              throw new Error("Unsupported IDB primary-key range in fixture");
+            return [...data.records.keys()].filter(encoded => {
+              const key: unknown = JSON.parse(encoded);
+              return Array.isArray(key) && key[0] === range.lower![0];
+            }).length;
+          }),
           add: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, true)),
           put: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, false)),
           index: (name: string) => {
@@ -152,10 +163,15 @@ export class FakeDatabase {
   }
 }
 
-/** IDBKeyRange only is sufficient for the inventory's bounded indexed-read queries. */
+/** Bounded indexed reads and generation-prefix row-count integrity queries. */
 export function withRangeOnly(): void {
-  (globalThis as unknown as { IDBKeyRange: { only: (value: unknown) => { key: unknown } } }).IDBKeyRange =
-    { only: value => ({ key: value }) };
+  (globalThis as unknown as { IDBKeyRange: {
+    only: (value: unknown) => { key: unknown };
+    bound: (lower: unknown, upper: unknown) => { lower: unknown; upper: unknown };
+  } }).IDBKeyRange = {
+    only: value => ({ key: value }),
+    bound: (lower, upper) => ({ lower, upper }),
+  };
 }
 
 export const id = (s: string) => contractId<"RemoteObjectId">(s) as RemoteObjectId;
