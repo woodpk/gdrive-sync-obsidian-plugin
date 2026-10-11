@@ -378,9 +378,18 @@ test("incremental COW generation keeps older indexed roots reachable after atomi
     recordCount: 1, authorityPersistenceRevision: canonical.state.persistenceRevision,
     authoritySemanticGeneration: canonical.state.semanticGeneration,
   };
-  const cover = first.coverage.map(row => ({
-    ...row, generation: nextGen, terminalCursor: nextCursor,
-  }));
+  const cover = [
+    ...first.coverage.map(row => ({
+      ...row, generation: nextGen, terminalCursor: nextCursor,
+    })),
+    {
+      generation: nextGen, domain: "content" as const,
+      scopeId: fence.contentDomainRootId, scopeKind: "parent" as const,
+      state: "complete" as const, visibility: "app-visible" as const,
+      allPagesRead: true, incompleteSearch: false, provenanceVerified: true,
+      terminalCursor: nextCursor,
+    },
+  ];
   assert.equal((await inventory.stage({ candidate: manifest, overlays: rows([overlay]),
     coverage: rows(cover) })).status, "verified-observation");
   const learned = {
