@@ -59,3 +59,10 @@ PHX-CI **COMPLETE / PASS** for D339-02 source `c4134d1b1c959c81e32ca944fa84ce33c
 D339-03 remote metadata reader verified **COMPLETE / PASS** by PHX-CI from source `1a3fb2ae35922c031eeab36f9bab4c758dff0364` on branch `dec339/d339-03-remote-reader-01`. Run ID `584838f8-84e8-44fc-8772-0ad61bc463ba`; evidence published `c8218a7659ce8cb66bbff292e3ac29e5512972d3`. All 11 stages passed (including focused/full tests, typecheck, build, repository check and artifacts). Accepted shipping `main.js` hash remains `e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e`. No further D339-03 rerun required.
 
 **Next:** D339-04, single owning integrator for WS-02 staged IndexedDB generations and WS-03 metadata observations, graph validation, atomic cursor/inventory publication, rebaseline and invalidation. Bind to exact D339-03 evidence SHA. Do not activate live inventory until integration safety gates pass; third-party review remains deferred until whole DEC-339 feature completion.
+
+
+## D339-04A verified — D339-04B next
+
+D339-04A dormant baseline storage/reader integration verified **COMPLETE / PASS** by PHX-CI from source `03e50fccf847b381fedcffe564da638bf352ee88`. Published evidence commit: `206f6c95b3d3f67af0b5de41ce7b88f48ede71f2`; run ID `0b5abff6-e300-49c0-a3cf-92eb26dc2102`. Change-set verification PASS, repository verification PASS, overall verification PASS, compatibility COMPLETE, exit 0. Canonical evidence was published and the control checkout preserved. No re-run is necessary for this accepted source.
+
+D339-04 remains **OPEN**. Next bounded increment is D339-04B, based on the exact D339-04A evidence commit: validated incremental copy-on-write overlays, stable-ID masks, inherited and invalidated parent coverage, root-wide provenance, generation/Changes cursor CAS atomicity, crash/restart and adversarial negative tests. Preserve the existing production entrypoint and shipping artifact: inventory remains dormant, with no live Drive, local vault, or deployed IndexedDB mutation. Independent code review stays deferred until the complete DEC-339 feature has been implemented and PHX-CI verified.
