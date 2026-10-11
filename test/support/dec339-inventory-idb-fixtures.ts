@@ -135,8 +135,8 @@ export class FakeDatabase {
           get: (key: unknown) => enqueue(() => data.records.get(keyOf(key))),
           count: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) =>
             enqueue(() => selectByPrimaryRange(range).length),
-          getAll: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) =>
-            enqueue(() => selectByPrimaryRange(range)),
+          getAll: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }, count?: number) =>
+            enqueue(() => selectByPrimaryRange(range).slice(0, count)),
           add: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, true)),
           put: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, false)),
           delete: (key: unknown) => enqueue(() => {
