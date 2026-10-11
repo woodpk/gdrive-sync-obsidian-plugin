@@ -721,3 +721,35 @@ test("D339-04B rejects attempted mask without a tracked stable ID", async () => 
   assert.equal(active.status, "verified-observation");
   if (active.status === "verified-observation") await active.value.release();
 });
+
+
+test("D339-04B known stable-ID mask hides prior row without becoming deletion authority", async () => {
+  withRangeOnly();
+  const factory = new FakeDatabase().openFactory();
+  const store = await seeded(factory);
+  const initial = candidate(g("mask-first"));
+  const oldRow = integratedFile(initial.manifest.generation, "old.md");
+  initial.rows.push(oldRow);
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), store)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const now = g("mask-next"), terminal = c("changes:masked");
+  const masked = simulatedDelta(initial, {
+    generation: now, token: terminal,
+    overlays: [{ kind: "mask", generation: now, remoteObjectId: oldRow.entity.remoteObjectId }],
+    changes: [{ kind: "removed", remoteObjectId: oldRow.entity.remoteObjectId,
+      lastKnownPath: oldRow.entity.logicalPath }],
+  });
+  const result = await new VerifiedInventoryBaselineCoordinator(masked, store).publishIncremental(
+    fence, now, contractId<"RemoteIngestionBatchId">("changes:mask-learned"));
+  assert.equal(result.status, "published");
+  const read = await store.openRead();
+  assert.equal(read.status, "verified-observation");
+  if (read.status === "verified-observation") {
+    // A mask means "do not trust this cached ID"; it is not physical deletion proof.
+    assert.equal((await read.value.getById(oldRow.entity.remoteObjectId)).status, "unknown");
+    const children = await read.value.listByParent("content", fence.contentDomainRootId);
+    assert.equal(children.status, "verified-observation");
+    if (children.status === "verified-observation") assert.equal(children.value.length, 0);
+    await read.value.release();
+  }
+});
