@@ -203,7 +203,16 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         this.options.diagnostics, this.options.reliableChanges, this.boundAuthority ?? this.options.authorityStore,
       );
       const assembled = await existing.assembleFull(runId);
-      if (assembled.managedRemote.rootId === remote.rootId &&
+      const finalFence = await this.options.currentFence();
+      const final = await inventory.publicationSnapshot(fence);
+      if (inventoryFenceMatches(finalFence, fence) &&
+          final.status === "trusted-fence" &&
+          final.value.activeGeneration === before.value.activeGeneration &&
+          final.value.canonicalCursor === before.value.canonicalCursor &&
+          final.value.persistenceRevision === before.value.persistenceRevision &&
+          final.value.semanticGeneration === before.value.semanticGeneration &&
+          !this.options.fullReconcileRequired?.() &&
+          assembled.managedRemote.rootId === remote.rootId &&
           assembled.managedRemote.vaultIdentity === remote.vaultIdentity &&
           assembled.managedRemote.protocolVersion === remote.protocolVersion &&
           assembled.nextCursor === liveCursor.value &&
