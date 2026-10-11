@@ -171,15 +171,19 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     readonly canonicalCursor: ChangeCursor | null;
     readonly persistenceRevision: import("../contracts").PersistenceRevision;
     readonly semanticGeneration: import("../contracts").SemanticStateGeneration;
+    readonly activeManifest: InventoryGenerationManifest | null;
     } }
     | InventoryError
   > {
     try {
       const db = await this.open();
-      const tx = stores(db, [AUTHORITY, CONTROL], "readonly");
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS], "readonly");
       const done = finished(tx);
       const bytes = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
       const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      const activeRecord = control?.status === "ready" ?
+        await request(tx.objectStore(MANIFESTS).get(String(control.activeGeneration))) as StagedManifest | undefined :
+        undefined;
       await done;
       const authority = inspectInventoryAuthorityFence(bytes);
       if (authority.status !== "trusted" || authority.unresolvedEffects)
@@ -193,7 +197,15 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
            control.authorityPersistenceRevisionAtPublish !== authority.persistenceRevision ||
            control.authoritySemanticGenerationAtPublish !== authority.semanticGeneration))
         return error("stale", "active-control-and-canonical-authority-disagree");
+      if (control?.status === "ready" && (!activeRecord?.sealed ||
+          activeRecord.manifest.status !== "complete" ||
+          activeRecord.manifest.generation !== control.activeGeneration ||
+          activeRecord.manifest.terminalCursor !== control.terminalCursor ||
+          activeRecord.manifest.authorityPersistenceRevision !== authority.persistenceRevision ||
+          activeRecord.manifest.authoritySemanticGeneration !== authority.semanticGeneration))
+        return error("stale", "active-manifest-is-not-coherent-with-canonical-control");
       return { status: "trusted-fence", value: {
+          activeManifest: control?.status === "ready" ? activeRecord!.manifest : null,
           activeGeneration: control?.status === "ready" ? control.activeGeneration : null,
           canonicalCursor: authority.canonicalCursor,
           persistenceRevision: authority.persistenceRevision,
