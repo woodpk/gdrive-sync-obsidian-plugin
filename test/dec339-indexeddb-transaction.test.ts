@@ -418,7 +418,16 @@ function simulatedBaseline(c: ReturnType<typeof candidate>): Pick<VerifiedMetada
         inputCursor: c.manifest.inputCursor, terminalCursor: c.manifest.terminalCursor,
         entities: c.rows.filter((r): r is Extract<InventoryOverlayRecord, { readonly kind: "upsert" }> =>
           r.kind === "upsert").map(r => r.entity),
-        coverage: c.coverage, normalizedSiblingCollisions: [],
+        coverage: [...c.coverage, ...c.rows.flatMap(row => {
+          if (row.kind !== "upsert" || row.entity.kind !== "folder") return [];
+          return [{
+            generation: row.generation, domain: row.entity.domain,
+            scopeId: row.entity.remoteObjectId, scopeKind: "parent" as const,
+            state: "complete" as const, visibility: "app-visible" as const,
+            allPagesRead: true, incompleteSearch: false, provenanceVerified: true,
+            terminalCursor: c.manifest.terminalCursor,
+          }];
+        })], normalizedSiblingCollisions: [],
         replayedEvents: 0, publishAuthorized: false as const,
       },
     }),
@@ -457,7 +466,7 @@ test("D339-04 refuses partial parent coverage without staging or advancing the c
     .publishBaseline(fence, c.manifest.generation);
   assert.equal(result.status, "unknown");
   const authority = await new PersistentSynchronizationStateStore(
-    new IndexedDbStateByteStorage("device:idb:test", idb)).loadAuthority();
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
   assert.equal(authority.status, "trusted");
   if (authority.status === "trusted") assert.equal(authority.state.changeCursor ?? null, null);
 });
