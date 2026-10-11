@@ -229,3 +229,34 @@ test("D339-05 incomplete local observation and trusted tombstones remain existin
   assert.equal(existing?.base.status, "trusted");
   assert.equal(assembled.localEnumeration?.status, "partial");
 });
+
+test("D339-05 uninitialized first sync retains the authoritative safe-union full path", async () => {
+  const sample = fixture();
+  const candidate = new InventoryBackedSnapshotAssembler({
+    ...sample.settings,
+    state: { load: async () => ({ status: "uninitialized" as const }) } as never,
+    inventory: {
+      publicationSnapshot: async () => { throw new Error("inventory must not be read"); },
+      openRead: async () => { throw new Error("inventory must not be read"); },
+    } as never,
+    currentFence: async () => fence,
+  });
+  const result = await candidate.assemble();
+  assert.equal(result.input.state.status, "uninitialized");
+  assert.equal(result.mode, "full");
+  assert.equal(result.input.snapshots.find(entry => entry.path === path)?.remote.status, "present");
+});
+
+test("D339-05 outstanding operation intent disables cached observations", async () => {
+  const pending: TrustedSynchronizationState = {
+    ...state, operations: [{
+      operationId: id<"OperationId">("op:pending"),
+      status: "uncertain", path,
+    }],
+  };
+  const sample = fixture({ state: pending });
+  const result = await sample.optimized.assemble();
+  assert.equal(sample.remoteLists, 1);
+  assert.equal(sample.invReads, 0);
+  assert.equal(result.input.state.status, "trusted");
+});
