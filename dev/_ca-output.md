@@ -46,3 +46,9 @@ STATUS: COMPLETE
 - main.js: 902987 bytes; SHA-256 e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e
 
 Final verdict: COMPLETE
+
+## DEC-339 D339-04A baseline integration — PHX-CI pending
+
+Source: `803c16c5485565d5c9cfe3a0263fc2426a739c3b` from verified D339-03 evidence `c8218a7659ce8cb66bbff292e3ac29e5512972d3`.
+
+Added a dormant baseline coordinator, whole-graph and parent-coverage validation, checksummed canonical publication snapshots, atomic cursor/inventory publication, and IndexedDB fixture tests. Incremental publication remains blocked until its coverage and overlay proofs are implemented. No live activation. Full D339-04 remains open. PHX-CI has not been run for this source. Independent review is reserved for completion of the full DEC-339 feature.
