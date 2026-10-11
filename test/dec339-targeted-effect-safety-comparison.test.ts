@@ -199,3 +199,33 @@ test("B2-A03 enabled targeted convergence with wrong effect ID delegates to cano
   assert.equal(targeted, 1);
   assert.equal(canonicalReads, 1);
 });
+
+test("B2-A03 incomplete second sibling page stops targeted effect observation before provenance claim", async () => {
+  const FOLDER = "application/vnd.google-apps.folder";
+  const dir: InventoryDriveFile = { id: "dir", name: "A", mimeType: FOLDER, parents: ["content"],
+    trashed: false, appProperties: { brainManagedRootId: "managed", brainSyncDomain: "content" } };
+  const target: InventoryDriveFile = { id: "doc", name: "note.md", mimeType: "text/plain",
+    parents: ["dir"], trashed: false, version: "2",
+    appProperties: { brainManagedRootId: "managed", brainSyncDomain: "content" } };
+  const pages: string[] = [];
+  let census = 0;
+  const source: InventoryMetadataSource = {
+    verifyFence: async () => ({ status: "ok", value: undefined }),
+    getStartToken: async () => ({ status: "ok", value: "t0" }),
+    getFile: async key => ({ status: "ok", value: key === "doc" ? target : dir }),
+    listChildren: async (_parent, token) => {
+      pages.push(token ?? "");
+      return { status: "ok", value: token ? { files: [], incompleteSearch: true } :
+        { files: [target], incompleteSearch: false, nextPageToken: "second" } };
+    },
+    listMarked: async () => { census++; return { status: "ok", value: { files: [], incompleteSearch: false } }; },
+    listChanges: async () => ({ status: "ok", value: { changes: [], newStartPageToken: "t1" } }),
+  };
+  const result = await new VerifiedMetadataInventoryReader(source).targeted(fence, gen, {
+    remoteObjectId: doc, parentRemoteObjectId: id<"RemoteObjectId">("dir"),
+    domain: "content", name: "note.md", purpose: "effect-convergence",
+  });
+  assert.equal(result.status, "partial");
+  assert.deepEqual(pages, ["", "second"]);
+  assert.equal(census, 0);
+});
