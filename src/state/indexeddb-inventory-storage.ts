@@ -26,6 +26,24 @@ const LOCAL_POINTER = "local-active";
 const BATCH = 128;
 const MAX_DEPTH = 32;
 const DEFAULT_PAGE_SIZE = 256;
+const GC_BATCH = 128;
+const GC_MAX_PASSES = 32;
+interface InventoryRuntimeActivity {
+  readonly readers: Map<string, number>;
+  readonly staging: Set<string>;
+  acquiringReaders: number;
+}
+const sharedActivity = new WeakMap<IDBFactory, Map<string, InventoryRuntimeActivity>>();
+function activityFor(factory: IDBFactory, name: string): InventoryRuntimeActivity {
+  let databases = sharedActivity.get(factory);
+  if (!databases) { databases = new Map(); sharedActivity.set(factory, databases); }
+  let activity = databases.get(name);
+  if (!activity) {
+    activity = { readers: new Map(), staging: new Set(), acquiringReaders: 0 };
+    databases.set(name, activity);
+  }
+  return activity;
+}
 const MAX_DIGEST_BYTES = 12 * 1024 * 1024;
 
 interface InventoryControl {
@@ -161,12 +179,14 @@ function contentDomainRoot(f: InventoryIdentityFence, domain: InventoryDomain): 
  */
 export class IndexedDbInventoryObservationStore implements InventoryObservationStore {
   private database?: Promise<IDBDatabase>;
-  private readonly readers = new Map<string, number>();
+  private readonly activity: InventoryRuntimeActivity;
+  private get readers(): Map<string, number> { return this.activity.readers; }
   constructor(
     private readonly databaseName: string,
     private readonly indexedDb: IDBFactory = globalThis.indexedDB,
   ) {
     if (!indexedDb) throw new Error("indexeddb-unavailable");
+    this.activity = activityFor(indexedDb, databaseName);
   }
 
   private open(): Promise<IDBDatabase> {
@@ -250,6 +270,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         !Number.isSafeInteger(m.recordCount) || m.recordCount < 0 ||
         !Number.isSafeInteger(m.overlayDepth) || m.overlayDepth > MAX_DEPTH)
       return error("invalid", "candidate-stage-manifest-invalid");
+    this.activity.staging.add(String(m.generation));
+    let sealed = false;
     try {
       const db = await this.open();
       // Reserve the candidate key, rejecting concurrent/retried/previously published identities.
@@ -330,9 +352,14 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         persistedDigest: integrity } satisfies StagedManifest,
         String(m.generation));
       await sealDone;
+      sealed = true;
       return { status: "verified-observation", generation: m.generation, value: m.generation };
     } catch (cause) {
       return error("recovery-required", cause instanceof Error ? cause.message : "inventory-stage-failed");
+    } finally {
+      // Successfully sealed stages stay reserved until publication finishes;
+      // failed stages are reclaimable after this writer has stopped.
+      if (!sealed) this.activity.staging.delete(String(m.generation));
     }
   }
 
@@ -350,6 +377,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
 
   /** No inferred absence: a missing ID returns unknown, never a verified undefined. */
   async openRead(): Promise<InventoryReadResult<InventoryReadLease>> {
+    this.activity.acquiringReaders++;
     try {
       const db = await this.open();
       const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, ENTITIES, COVERAGE], "readonly");
@@ -526,6 +554,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       return { status: "verified-observation", generation: active.generation, value: lease };
     } catch (cause) {
       return error("recovery-required", cause instanceof Error ? cause.message : "inventory-open-read-failed");
+    } finally {
+      this.activity.acquiringReaders--;
     }
   }
 
@@ -632,6 +662,84 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   }
 
   /**
+   * Bounded crash-resumable cleanup of generations unreachable from both the
+   * active manifest chain and pinned readers. The caller holds the vault's
+   * existing cross-instance synchronization lease; otherwise defer collection.
+   * Each batch commits independently: interrupted cleanup can safely resume.
+   */
+  async collectGarbage(exclusiveRunLeaseHeld: boolean): Promise<
+    | { readonly status: "collected"; readonly removedRows: number; readonly removedGenerations: number }
+    | InventoryError
+  > {
+    if (!exclusiveRunLeaseHeld) return error("stale", "garbage-collection-requires-cross-instance-lease");
+    try {
+      const db = await this.open();
+      let removedRows = 0;
+      let removedGenerations = 0;
+      for (let pass = 0; pass < GC_MAX_PASSES; pass++) {
+        if (this.activity.acquiringReaders) break;
+        const tx = stores(db, [CONTROL, MANIFESTS, ENTITIES, COVERAGE, LOCAL, STAGES], "readwrite");
+        const done = finished(tx);
+        const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+        if (control?.status !== "ready" || this.activity.acquiringReaders) {
+          tx.abort(); await done.catch(() => undefined);
+          return error("stale", "collector-requires-ready-control-and-no-acquiring-readers");
+        }
+        const reachable = new Set<string>(this.readers.keys());
+        let id: InventoryGeneration | null = control.activeGeneration;
+        let depth = 0;
+        while (id) {
+          if (reachable.has(String(id)) || ++depth > MAX_DEPTH + 1) {
+            // Active ancestry is checked independently even when a reader pinned it.
+            if (depth > MAX_DEPTH + 1) {
+              tx.abort(); await done.catch(() => undefined);
+              return error("invalid", "unbounded-collector-ancestry");
+            }
+          }
+          reachable.add(String(id));
+          const record = await request(tx.objectStore(MANIFESTS).get(String(id))) as StagedManifest | undefined;
+          if (!record?.sealed || !record.manifest || record.manifest.generation !== id) {
+            tx.abort(); await done.catch(() => undefined);
+            return error("invalid", "collector-missing-active-ancestor");
+          }
+          id = record.manifest.parentGeneration;
+        }
+        const manifests = await request(tx.objectStore(MANIFESTS).getAll()) as StagedManifest[];
+        const victims = manifests.filter(item => item?.manifest &&
+          !reachable.has(String(item.manifest.generation)) &&
+          !this.activity.staging.has(String(item.manifest.generation)));
+        const abandoned = await request(tx.objectStore(STAGES).getAll()) as StagedCounter[];
+        const victim = victims[0]?.manifest.generation ??
+          abandoned.find(item => !reachable.has(String(item.generation)) &&
+            !this.activity.staging.has(String(item.generation)))?.generation;
+        if (!victim) { await done; break; }
+        const scope = IDBKeyRange.bound([String(victim)], [String(victim), []]);
+        const entities = await request(tx.objectStore(ENTITIES).getAll(scope, GC_BATCH)) as EntityRow[];
+        const coverage = await request(tx.objectStore(COVERAGE).getAll(scope, GC_BATCH)) as InventoryCoverage[];
+        const local = await request(tx.objectStore(LOCAL).getAll(scope, GC_BATCH)) as InventoryLocalObservation[];
+        for (const row of entities) tx.objectStore(ENTITIES).delete([String(victim), String(row.remoteObjectId)]);
+        for (const row of coverage)
+          tx.objectStore(COVERAGE).delete([String(victim), row.domain, row.scopeKind, String(row.scopeId)]);
+        for (const row of local) tx.objectStore(LOCAL).delete([String(victim), String(row.path)]);
+        // Only remove the tombstoned generation marker when all its row sets
+        // fit in this batch; a crash before then leaves harmless unreachable data.
+        const finishedGeneration = entities.length < GC_BATCH && coverage.length < GC_BATCH &&
+          local.length < GC_BATCH;
+        if (finishedGeneration) {
+          tx.objectStore(MANIFESTS).delete(String(victim));
+          tx.objectStore(STAGES).delete(String(victim));
+        }
+        await done;
+        removedRows += entities.length + coverage.length + local.length;
+        if (finishedGeneration) removedGenerations++;
+      }
+      return { status: "collected", removedRows, removedGenerations };
+    } catch {
+      return error("recovery-required", "inventory-garbage-collection-storage-unavailable");
+    }
+  }
+
+  /**
    * Short single-transaction linearization of the canonical authority cursor and
    * the complete staged candidate. No network or vault reads are performed here.
    * An absent/rejected candidate cannot change either authoritative cursor or active pointer.
@@ -729,6 +837,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     } catch (cause) {
       return { status: "recovery-required",
         reason: cause instanceof Error ? cause.message : "atomic-inventory-publication-failed" };
+    } finally {
+      this.activity.staging.delete(String(input.candidateGeneration));
     }
   }
 }
