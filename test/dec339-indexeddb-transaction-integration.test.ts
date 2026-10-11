@@ -118,6 +118,38 @@ test("D339-04 full rebaseline atomically replaces the active generation while an
   if (canonical.status === "trusted") assert.equal(canonical.state.changeCursor, secondCursor);
 });
 
+test("D339-08A missing persisted entity rows invalidate a sealed inventory read", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const initial = candidate(g("lost-persisted-row"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), storage)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const entities = fake.tables.get("inventory-entities");
+  assert.ok(entities);
+  assert.equal(entities.records.delete(JSON.stringify([initial.manifest.generation, fence.configDomainRootId])), true);
+  const restarted = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
+  assert.equal(restarted.status, "invalid");
+  if (restarted.status === "invalid") assert.match(restarted.reason, /row-count/);
+});
+
+test("D339-08A missing persisted coverage rows invalidate a sealed inventory read", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const initial = candidate(g("lost-coverage-row"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), storage)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const coverage = fake.tables.get("inventory-coverage");
+  assert.ok(coverage);
+  assert.equal(coverage.records.delete(JSON.stringify([
+    initial.manifest.generation, "content", "parent", fence.contentDomainRootId,
+  ])), true);
+  const restarted = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
+  assert.equal(restarted.status, "invalid");
+  if (restarted.status === "invalid") assert.match(restarted.reason, /row-count/);
+});
+
 test("D339-08A full reconstruction accepts unchanged cursor after inventory invalidation", async () => {
   withRangeOnly();
   const fake = new FakeDatabase(), idb = fake.openFactory();
