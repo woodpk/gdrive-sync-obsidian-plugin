@@ -552,7 +552,9 @@ export async function verifyPostDispatchConvergenceRead(
         descriptor.remoteMutation.kind === "reserved-file-create"
       ? descriptor.remoteMutation.reservedRemoteObjectId
       : undefined;
-  if (option?.enabled !== true || !reserved || descriptor.targetSide !== "remote") {
+  const targetPath = descriptor.kind === "remote-file" || descriptor.kind === "remote-folder-create"
+    ? descriptor.targetPath : undefined;
+  if (option?.enabled !== true || !reserved || !targetPath || descriptor.targetSide !== "remote") {
     return completeReconciliation();
   }
 
@@ -565,7 +567,7 @@ export async function verifyPostDispatchConvergenceRead(
     });
     if (result.status === "verified-convergence-read" &&
         result.operationId === operationId && result.effectId === effectId &&
-        result.remoteObjectId === reserved && result.targetPath === descriptor.targetPath) {
+        result.remoteObjectId === reserved && result.targetPath === targetPath) {
       return { ok: true };
     }
   } catch {
