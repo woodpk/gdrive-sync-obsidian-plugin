@@ -7,7 +7,7 @@ import type {
   InventoryGeneration, InventoryGenerationManifest, InventoryIdentityFence,
   InventoryObservationStore, InventoryOverlayRecord, InventoryPublishRequest,
   InventoryPublishResult, InventoryReadLease, InventoryReadResult,
-  InventoryRemoteEntity, InventoryStageRequest, RemoteObjectId, VaultPath,
+  InventoryRemoteEntity, InventoryStageRequest, InventoryLocalObservation, RemoteObjectId, VaultPath,
 } from "../contracts";
 import { inventoryFenceMatches } from "./verified-metadata-inventory-validation";
 import { inspectInventoryAuthorityFence, prepareInventoryAuthorityPublication } from "./persistent-state-store";
@@ -22,6 +22,7 @@ const COVERAGE = "inventory-coverage";
 const LOCAL = "inventory-local";
 const STAGES = "inventory-stage";
 const POINTER = "active";
+const LOCAL_POINTER = "local-active";
 const BATCH = 128;
 const MAX_DEPTH = 32;
 const DEFAULT_PAGE_SIZE = 256;
@@ -34,6 +35,12 @@ interface InventoryControl {
   readonly fence: InventoryIdentityFence;
   readonly authorityPersistenceRevisionAtPublish: string;
   readonly authoritySemanticGenerationAtPublish: string;
+  readonly reason?: string;
+}
+interface LocalSnapshotMarker {
+  readonly generation: InventoryGeneration;
+  readonly status: "complete" | "invalid";
+  readonly count: number;
   readonly reason?: string;
 }
 interface StagedManifest {
@@ -519,6 +526,108 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       return { status: "verified-observation", generation: active.generation, value: lease };
     } catch (cause) {
       return error("recovery-required", cause instanceof Error ? cause.message : "inventory-open-read-failed");
+    }
+  }
+
+  /**
+   * Atomically replaces a complete, freshly enumerated LOCAL hint snapshot for
+   * the current remote inventory generation. No local absence/deletion is stored.
+   * This is advisory state only; normal planning must enumerate the vault again.
+   */
+  async replaceLocalSnapshot(
+    fence: InventoryIdentityFence, generation: InventoryGeneration,
+    observations: readonly InventoryLocalObservation[], complete: boolean,
+  ): Promise<InventoryReadResult<number>> {
+    if (!complete) return error("partial", "local-enumeration-is-not-complete");
+    if (observations.length > 12000) return error("partial", "local-inventory-row-budget-exceeded");
+    const seen = new Set<string>();
+    for (const item of observations) {
+      const path = String(item.path);
+      const key = norm(path);
+      if (item.generation !== generation || !valid(path) || path.includes("\\") ||
+          seen.has(key) ||
+          (item.presence === "present" && item.kind !== "file" && item.kind !== "folder") ||
+          !["present", "unreadable", "unknown"].includes(item.presence))
+        return error("invalid", "invalid-or-colliding-local-observation");
+      seen.add(key);
+    }
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL, LOCAL], "readwrite");
+      const done = finished(tx);
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      const canonical = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const authority = inspectInventoryAuthorityFence(canonical);
+      if (control?.status !== "ready" || control.activeGeneration !== generation ||
+          !inventoryFenceMatches(control.fence, fence) ||
+          authority.status !== "trusted" || authority.unresolvedEffects ||
+          authority.vaultIdentity !== fence.vaultIdentity ||
+          authority.deviceIdentity !== fence.deviceIdentity ||
+          authority.canonicalCursor !== control.terminalCursor ||
+          authority.persistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+          authority.semanticGeneration !== control.authoritySemanticGenerationAtPublish) {
+        tx.abort();
+        await done.catch(() => undefined);
+        return error("stale", "local-snapshot-generation-or-authority-changed");
+      }
+      const local = tx.objectStore(LOCAL);
+      const prior = await request(local.getAll(IDBKeyRange.bound([String(generation)], [String(generation), []])))
+        as InventoryLocalObservation[];
+      for (const item of prior) local.delete([String(generation), String(item.path)]);
+      for (const item of observations) local.put(item);
+      tx.objectStore(CONTROL).put({
+        generation, status: "complete", count: observations.length,
+      } satisfies LocalSnapshotMarker, LOCAL_POINTER);
+      await done;
+      return { status: "verified-observation", generation, value: observations.length };
+    } catch {
+      return error("recovery-required", "local-inventory-snapshot-storage-unavailable");
+    }
+  }
+
+  /** A watcher, incomplete scan, or changed policy invalidates hints, not canonical BASE. */
+  async invalidateLocalSnapshot(reason: string): Promise<void> {
+    const db = await this.open();
+    const tx = stores(db, [CONTROL], "readwrite");
+    const done = finished(tx);
+    const control = await request(tx.objectStore(CONTROL).get(LOCAL_POINTER)) as LocalSnapshotMarker | undefined;
+    if (control) tx.objectStore(CONTROL).put({
+      ...control, status: "invalid", reason: reason || "local-hints-invalidation",
+    } satisfies LocalSnapshotMarker, LOCAL_POINTER);
+    await done;
+  }
+
+  /** Returns an advisory hint, NEVER authoritative local absence or write stability. */
+  async readLocalHint(
+    fence: InventoryIdentityFence, path: VaultPath,
+  ): Promise<{ readonly status: "advisory"; readonly value: InventoryLocalObservation } | InventoryError> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL, LOCAL], "readonly");
+      const done = finished(tx);
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      const local = await request(tx.objectStore(CONTROL).get(LOCAL_POINTER)) as LocalSnapshotMarker | undefined;
+      const bytes = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const authority = inspectInventoryAuthorityFence(bytes);
+      const row = control?.activeGeneration && local?.status === "complete"
+        ? await request(tx.objectStore(LOCAL).get([String(control.activeGeneration), String(path)]))
+          as InventoryLocalObservation | undefined
+        : undefined;
+      await done;
+      if (control?.status !== "ready" || local?.status !== "complete" ||
+          local.generation !== control.activeGeneration ||
+          !inventoryFenceMatches(fence, control.fence) ||
+          authority.status !== "trusted" || authority.unresolvedEffects ||
+          authority.vaultIdentity !== fence.vaultIdentity || authority.deviceIdentity !== fence.deviceIdentity ||
+          authority.canonicalCursor !== control.terminalCursor ||
+          authority.persistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+          authority.semanticGeneration !== control.authoritySemanticGenerationAtPublish)
+        return error("stale", "no-current-local-observation-snapshot");
+      if (!row || row.generation !== local.generation || row.path !== path)
+        return error("unknown", "local-path-not-observed-no-absence-inference");
+      return { status: "advisory", value: row };
+    } catch {
+      return error("recovery-required", "local-inventory-hint-read-unavailable");
     }
   }
 
