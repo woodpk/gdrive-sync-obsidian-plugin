@@ -25,6 +25,7 @@ const POINTER = "active";
 const BATCH = 128;
 const MAX_DEPTH = 32;
 const DEFAULT_PAGE_SIZE = 256;
+const MAX_DIGEST_BYTES = 12 * 1024 * 1024;
 
 interface InventoryControl {
   readonly status: "ready" | "invalid";
@@ -40,6 +41,8 @@ interface StagedManifest {
   readonly sealed: boolean;
   readonly count: number;
   readonly coverageCount: number;
+  /** Hash of sealed persisted overlay rows and coverage, independent of index counts. */
+  readonly persistedDigest?: string;
 }
 interface EntityRow {
   readonly generation: InventoryGeneration;
@@ -62,6 +65,23 @@ type InventoryError = { readonly status: "unknown" | "partial" | "stale" | "inva
 const error = (status: InventoryError["status"], reason: string): InventoryError => ({ status, reason });
 const norm = (value: string) => value.normalize("NFC").toLocaleLowerCase("en-US");
 const valid = (s: unknown): s is string => typeof s === "string" && s.length > 0;
+
+/** Bounded integrity digest over stored records; never a provider-side mutation proof. */
+async function persistedDigest(rows: readonly EntityRow[], coverage: readonly InventoryCoverage[]): Promise<string> {
+  const normalizedRows = [...rows].sort((a, b) =>
+    String(a.remoteObjectId).localeCompare(String(b.remoteObjectId)));
+  const normalizedCoverage = [...coverage].sort((a, b) =>
+    JSON.stringify([a.domain, a.scopeKind, a.scopeId]).localeCompare(
+      JSON.stringify([b.domain, b.scopeKind, b.scopeId])));
+  const bytes = new TextEncoder().encode(JSON.stringify({
+    rows: normalizedRows, coverage: normalizedCoverage,
+  }));
+  if (bytes.byteLength > MAX_DIGEST_BYTES || !globalThis.crypto?.subtle)
+    throw new Error("inventory-persisted-integrity-digest-unavailable-or-unbounded");
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return "sha256:" + Array.from(new Uint8Array(digest),
+    byte => byte.toString(16).padStart(2, "0")).join("");
+}
 
 function request<T>(value: IDBRequest<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -248,6 +268,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
 
       let count = 0;
       let coverageCount = 0;
+      const sealedRows: EntityRow[] = [];
+      const sealedCoverage: InventoryCoverage[] = [];
       // Each batch is its own short transaction; unfinished generations are invisible to readers.
       let batch: EntityRow[] = [];
       const flushEntities = async (): Promise<void> => {
@@ -263,7 +285,9 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       };
       for await (const item of input.overlays) {
         if (!validRow(item, m.generation)) return error("invalid", "invalid-overlay-row-staging-incomplete");
-        batch.push(entityRecord(item));
+        const encoded = entityRecord(item);
+        sealedRows.push(encoded);
+        batch.push(encoded);
         if (batch.length >= BATCH) await flushEntities();
       }
       await flushEntities();
@@ -283,16 +307,20 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       };
       for await (const item of input.coverage) {
         if (!goodCoverage(item, m)) return error("invalid", "invalid-coverage-row-staging-incomplete");
+        sealedCoverage.push(item);
         coverageBatch.push(item);
         if (coverageBatch.length >= BATCH) await flushCoverage();
       }
       await flushCoverage();
 
-      // A seal is a crash-consistent receipt, not provider-completeness proof.
+      // The seal binds the durable layer to its precise staged rows. This is
+      // checked again against indexed records before any trusted read is exposed.
+      const integrity = await persistedDigest(sealedRows, sealedCoverage);
       const seal = stores(db, [STAGES, MANIFESTS], "readwrite");
       const sealDone = finished(seal);
       seal.objectStore(STAGES).put({ generation: m.generation, count, coverageCount, sealed: true }, String(m.generation));
-      seal.objectStore(MANIFESTS).put({ manifest: m, sealed: true, count, coverageCount } satisfies StagedManifest,
+      seal.objectStore(MANIFESTS).put({ manifest: m, sealed: true, count, coverageCount,
+        persistedDigest: integrity } satisfies StagedManifest,
         String(m.generation));
       await sealDone;
       return { status: "verified-observation", generation: m.generation, value: m.generation };
@@ -332,6 +360,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         return error("stale", "inactive-or-authority-mismatched-inventory");
       }
       const history: InventoryGenerationManifest[] = [];
+      const layerChecks: Array<{ readonly record: StagedManifest; readonly rows: EntityRow[];
+        readonly coverage: InventoryCoverage[] }> = [];
       const seen = new Set<string>();
       let id: InventoryGeneration | null = control.activeGeneration;
       while (id) {
@@ -352,16 +382,28 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         // Count the actual durable rows in the same snapshot as the manifest.
         // A deleted indexed child must never be mistaken for an empty covered parent.
         const scope = IDBKeyRange.bound([String(id)], [String(id), []]);
-        const entities = await request(tx.objectStore(ENTITIES).count(scope));
-        const coverage = await request(tx.objectStore(COVERAGE).count(scope));
-        if (entities !== record.count || coverage !== record.coverageCount) {
+        const entities = await request(tx.objectStore(ENTITIES).getAll(scope)) as EntityRow[];
+        const coverage = await request(tx.objectStore(COVERAGE).getAll(scope)) as InventoryCoverage[];
+        if (entities.length !== record.count || coverage.length !== record.coverageCount ||
+            !record.persistedDigest) {
           await done;
-          return error("invalid", "persistent-inventory-row-count-disagrees-with-sealed-generation");
+          return error("invalid", "persistent-inventory-row-count-or-seal-invalid");
         }
+        layerChecks.push({ record, rows: entities, coverage });
         history.unshift(m);
         id = m.parentGeneration;
       }
       await done;
+      // Integrity is checked once per read lease, not on every indexed query.
+      // A partial/mismatched durable row set can no longer be a complete scope.
+      try {
+        for (const layer of layerChecks) {
+          if (await persistedDigest(layer.rows, layer.coverage) !== layer.record.persistedDigest)
+            return error("invalid", "sealed-inventory-payload-integrity-mismatch");
+        }
+      } catch {
+        return error("recovery-required", "sealed-inventory-integrity-check-unavailable");
+      }
       if (!history.length || history[0].parentGeneration !== null ||
           history[0].overlayDepth !== 0 ||
           history[history.length - 1].terminalCursor !== control.terminalCursor)
