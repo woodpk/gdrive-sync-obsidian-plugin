@@ -133,6 +133,24 @@ test("D339-08A missing persisted entity rows invalidate a sealed inventory read"
   if (restarted.status === "invalid") assert.match(restarted.reason, /row-count/);
 });
 
+test("D339-08A same-count persisted entity corruption invalidates a sealed inventory read", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const initial = candidate(g("tampered-persistent-entity"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(initial), storage)
+    .publishBaseline(fence, initial.manifest.generation)).status, "published");
+  const entities = fake.tables.get("inventory-entities");
+  assert.ok(entities);
+  const key = JSON.stringify([initial.manifest.generation, fence.contentDomainRootId]);
+  const saved = entities.records.get(key) as { entity?: Record<string, unknown> } | undefined;
+  assert.ok(saved?.entity);
+  entities.records.set(key, { ...saved, entity: { ...saved.entity, name: "corrupted-root" } });
+  const restarted = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
+  assert.equal(restarted.status, "invalid");
+  if (restarted.status === "invalid") assert.match(restarted.reason, /integrity-mismatch/);
+});
+
 test("D339-08A missing persisted coverage rows invalidate a sealed inventory read", async () => {
   withRangeOnly();
   const fake = new FakeDatabase(), idb = fake.openFactory();
