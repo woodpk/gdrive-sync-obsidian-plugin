@@ -9,7 +9,7 @@ import type {
 } from "../contracts";
 import type { IndexedDbInventoryObservationStore } from "./indexeddb-inventory-storage";
 
-type Failure = { readonly status: "invalid" | "partial" | "unknown" | "stale" | "incompatible" | "recovery-required";
+type Failure = { readonly status: "invalid" | "partial" | "unknown" | "ambiguous" | "stale" | "incompatible" | "recovery-required";
   readonly reason: string };
 export type LocalInventoryRefreshResult =
   | { readonly status: "recorded"; readonly generation: InventoryGeneration; readonly count: number }
