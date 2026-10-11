@@ -28,6 +28,7 @@ const getField = (value: unknown, path: string): unknown => (value as Record<str
 export class FakeDatabase {
   version = 0;
   abortNextPublication = false;
+  abortedPublicationStores: readonly string[] | null = null;
   tables = new Map<string, StoredTable>();
   openFactory(): IDBFactory {
     return { open: (_name: string, version?: number) => {
@@ -136,8 +137,10 @@ export class FakeDatabase {
     const finish = () => {
       if (aborted || closed || pending !== 0) return;
       if (this.abortNextPublication && mode === "readwrite" &&
-          names.includes("inventory-control") && names.includes("inventory-generations")) {
+          names.includes("sync-state") && names.includes("inventory-control") &&
+          names.includes("inventory-generations")) {
         this.abortNextPublication = false;
+        this.abortedPublicationStores = [...names];
         tx.abort();
         return;
       }
