@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Run first authoritative D339-07B1 PHX-CI on committed source b07e0190f1b07307f2db7e93268dbb0e78b1399e, branch dec339/d339-07b1-idb-crash-cursor-01, base e14b25273321cd1d603ac7bc02996d97d8fc4ce9. Owner-authorized atomic test split under task at c29468db19e9f32a6f8584635d2f073980353be9; 21 previous tests preserved and four additional new test cases added, six total D339-07B1 cases. Confirm focused/full product and BVP, build, repository guard, approved shipping artifact, published evidence. No feature activation, D339-07B2, Stage 3 or rollout until accepted."
+next_action: "D339-07B1 PHX-CI typecheck failed (TS2307) at relocated fixture line 240; run 50a6e626-c2a6-47ac-a66b-0a814fd6ffa8, evidence 6447e49fb42fe02c6a9dd85b612c70c7fb5b0e2e; prerequisite/install PASS, focused/full test/build/check/artifact NOT EXECUTED. Fixed exactly one relative type import in test/support/dec339-inventory-idb-fixtures.ts at source 55a316d77e488ca403997a00dc5f8b8bf4a66be0. Request owner PHX-CI exact SHA, source branch dec339/d339-07b1-idb-crash-cursor-01, comparison base 6447e49fb42fe02c6a9dd85b612c70c7fb5b0e2e, runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83. No D339-07B1 acceptance or later advancement yet."
 updated_at: "2026-10-11"
 
 context:
@@ -156,8 +156,12 @@ context:
   d339_07b1_authorized_task_amendment_sha: "c29468db19e9f32a6f8584635d2f073980353be9"
   d339_07b1_legacy_tests_preserved: 21
   d339_07b1_new_tests_total: 6
-  d339_07b1_phx_ci_verification: "NOT_RUN"
-  d339_07b1_blocker: "Further edits to single permitted large test file rejected by connected repository write safety checks; do not treat partial code as accepted or request PHX verification yet."
+  d339_07b1_phx_ci_verification: "BLOCKED_ON_SOURCE_B07E0190; TYPECHECK_TS2307; FOCUSED_FULL_BUILD_ARTIFACTS_NOT_EXECUTED; CORRECTED_SOURCE_PHX_PENDING"
+  d339_07b1_failed_run_id: "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8"
+  d339_07b1_failed_evidence_commit: "6447e49fb42fe02c6a9dd85b612c70c7fb5b0e2e"
+  d339_07b1_corrected_source_sha: "55a316d77e488ca403997a00dc5f8b8bf4a66be0"
+  d339_07b1_corrected_test_issue: "Relocated type-only import path corrected from ../src to ../../src; no new test/production edits."
+  d339_07b1_blocker: "The earlier large-file connector limitation was resolved by owner-authorized test split. Current only known failure is TypeScript TS2307 import path, repaired at 55a316; PHX-CI verification pending."
   d339_07b2_status: "AWAIT_07B1_ACCEPTED_EVIDENCE"
   d339_07c_status: "PLANNED_NOT_DISPATCHED; DEPENDS_ON_07B_EVIDENCE"
 
