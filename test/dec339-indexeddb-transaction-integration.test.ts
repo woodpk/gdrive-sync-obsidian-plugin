@@ -118,6 +118,37 @@ test("D339-04 full rebaseline atomically replaces the active generation while an
   if (canonical.status === "trusted") assert.equal(canonical.state.changeCursor, secondCursor);
 });
 
+test("D339-08A atomically refuses altered staged rows before committing the canonical cursor", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), factory = fake.openFactory();
+  const storage = await seeded(factory);
+  const staged = candidate(g("tampered-before-publication"));
+  assert.equal((await storage.stage({
+    candidate: staged.manifest, overlays: rows(staged.rows), coverage: rows(staged.coverage),
+  })).status, "verified-observation");
+  const entities = fake.tables.get("inventory-entities");
+  assert.ok(entities);
+  const key = JSON.stringify([staged.manifest.generation, fence.contentDomainRootId]);
+  const row = entities.records.get(key) as { entity?: Record<string, unknown> } | undefined;
+  assert.ok(row?.entity);
+  entities.records.set(key, { ...row, entity: { ...row.entity, name: "tampered-stage" } });
+  const result = await storage.publishAtomically({
+    candidateGeneration: staged.manifest.generation,
+    validationReceipt: staged.manifest.validationReceipt,
+    expectedActiveGeneration: null,
+    expectedAuthorityPersistenceRevision: r0,
+    expectedAuthoritySemanticGeneration: s0,
+    expectedCanonicalCursor: null,
+    nextCanonicalCursor: cursor1,
+    fence,
+  });
+  assert.equal(result.status, "invalid");
+  const authority = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status === "trusted") assert.equal(authority.state.changeCursor ?? null, null);
+});
+
 test("D339-08A missing persisted entity rows invalidate a sealed inventory read", async () => {
   withRangeOnly();
   const fake = new FakeDatabase(), idb = fake.openFactory();
