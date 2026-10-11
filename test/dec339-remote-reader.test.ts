@@ -246,6 +246,7 @@ test("targeted query requires exact object, exhaustive unique siblings and root-
     assert.equal(result.value.rootWideMarkedProvenanceRechecked, true);
     assert.equal(result.value.executorProofAuthorized, false);
     assert.equal(result.value.appVisibleOnly, true);
+    assert.equal(result.value.observedLogicalPath, "A/doc.md");
   }
 });
 
