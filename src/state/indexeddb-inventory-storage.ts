@@ -378,7 +378,9 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         if (released) return deny();
         if (!Number.isSafeInteger(limit) || limit <= 0 || limit > DEFAULT_PAGE_SIZE)
           return error("invalid", "invalid-or-unbounded-inventory-query-limit");
-        const scope = await getCoverage(domain, contentDomainRoot(control.fence, domain));
+        const scope = dimension === "parent"
+          ? await getCoverage(domain, key as RemoteObjectId, "parent")
+          : await getCoverage(domain, contentDomainRoot(control.fence, domain), "domain");
         if (scope.status !== "verified-observation") return scope;
         const tx = stores(db, [ENTITIES], "readonly");
         const complete = finished(tx);
@@ -428,12 +430,12 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         return { status: "verified-observation", generation: active.generation, value: result };
       };
       const getCoverage = async (
-        domain: InventoryDomain, scopeId: RemoteObjectId,
+        domain: InventoryDomain, scopeId: RemoteObjectId, kind: "domain" | "parent",
       ): Promise<InventoryReadResult<InventoryCoverage>> => {
         if (released) return deny();
         const tx = stores(db, [COVERAGE], "readonly");
         const complete = finished(tx);
-        const c = await request(tx.objectStore(COVERAGE).get([String(active.generation), domain, "domain", String(scopeId)])) as InventoryCoverage | undefined;
+        const c = await request(tx.objectStore(COVERAGE).get([String(active.generation), domain, kind, String(scopeId)])) as InventoryCoverage | undefined;
         await complete;
         if (!c || c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
             !c.provenanceVerified || c.visibility !== "app-visible" ||
@@ -446,7 +448,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         getById: byId,
         listByParent: (domain, parent, name, limit) => byScope("parent", domain, parent, name, limit),
         listByPath: (domain, path, limit) => byScope("path", domain, path, undefined, limit),
-        coverage: getCoverage,
+        coverage: (domain, scope) => getCoverage(domain, scope,
+          scope === contentDomainRoot(control.fence, domain) ? "domain" : "parent"),
         release: async () => { if (!released) { released = true; this.unpin(history); } },
       };
       return { status: "verified-observation", generation: active.generation, value: lease };
