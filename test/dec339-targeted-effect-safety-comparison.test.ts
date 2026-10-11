@@ -174,7 +174,7 @@ test("B2-A03 unrelated escaped marked object fails fresh targeted proof despite 
     domain: "content" as const, name: "note.md", purpose: "effect-convergence" as const };
   const outcome = await new VerifiedMetadataInventoryReader(source).targeted(fence, gen, request);
   assert.equal(outcome.status, "unknown");
-  if (outcome.status !== "ok") assert.equal(outcome.reason, "marked-object-ancestry-unavailable");
+  assert.equal(outcome.reason, "marked-object-ancestry-unavailable");
   assert.deepEqual(reads, ["get:doc", "get:dir", "list:dir:", "marked", "get:dir", "get:outside"]);
 });
 test("B2-A03 enabled targeted convergence with wrong effect ID delegates to canonical result", async () => {
