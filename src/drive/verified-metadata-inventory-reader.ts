@@ -3,6 +3,7 @@
  * These are provider observations for future WS-02 validation, never mutation,
  * BASE, deletion, recovery or cursor-commit authority. All absence is app-visible.
  */
+import type { RemoteChange } from "../contracts/google-drive";
 import { contractId, type ChangeCursor, type RemoteObjectId, type VaultPath } from "../contracts/common";
 import type {
   InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryIdentityFence,
@@ -36,6 +37,8 @@ export interface InventoryProviderDelta {
   readonly terminalCursor: ChangeCursor;
   readonly overlays: readonly InventoryOverlayRecord[];
   readonly invalidatedParentIds: readonly RemoteObjectId[];
+  readonly coverage: readonly InventoryCoverage[];
+  readonly learnedChanges: readonly RemoteChange[];
   readonly publishAuthorized: false;
 }
 export interface InventoryTargetedReadRequest {
@@ -344,64 +347,160 @@ export class VerifiedMetadataInventoryReader {
     } };
   }
 
-  /** Fail-closed account-wide Changes translation; no cursor or inventory write. */
+  /**
+   * Account-wide Changes -> complete, conservative COW observation.
+   * A confirmed trashed stable ID may be masked as no-longer-present in this
+   * inventory, NEVER as deletion authority. Missing file or permission-loss
+   * responses remain unknown. Untracked removals are never silently ignored.
+   * Full managed parent scopes are checked before the returned delta is usable.
+   */
   async incremental(fence: InventoryIdentityFence, generation: InventoryGeneration,
     inputCursor: ChangeCursor, tracked: readonly InventoryRemoteEntity[]):
     Promise<InventoryDriveFetch<InventoryProviderDelta>> {
-    const verify = await this.source.verifyFence(fence);
-    if (verify.status !== "ok") return verify;
-    const entities = new Map<string, InventoryRemoteEntity>();
+    const first = await this.source.verifyFence(fence);
+    if (first.status !== "ok") return first;
+    if (tracked.length > this.maximumObjects) return error("unbounded-predecessor-graph", "partial");
+    const graph = new Map<string, InventoryRemoteEntity>();
     for (const e of tracked) {
-      if (entities.has(String(e.remoteObjectId)) ||
-          e.managedRootId !== fence.managedRootId) return error("untrusted-incremental-predecessor");
-      entities.set(String(e.remoteObjectId), e);
+      if (graph.has(String(e.remoteObjectId)) || e.managedRootId !== fence.managedRootId ||
+          e.provenanceDomain !== e.domain || e.pathValidity !== "verified" ||
+          e.access !== "visible" || e.trashed)
+        return error("untrusted-incremental-predecessor", "recovery-required");
+      graph.set(String(e.remoteObjectId), e);
+    }
+    for (const domain of ["content", "portable-config"] as const) {
+      const root = graph.get(domainRoot(fence, domain));
+      if (!root || root.domain !== domain || root.kind !== "folder" ||
+          root.parentRemoteObjectId !== null) return error("incremental-domain-root-unproven");
     }
     const affected = new Set<string>();
     const rows = new Map<string, InventoryOverlayRecord>();
+    const learned: RemoteChange[] = [];
     const processed = await this.changes(fence, inputCursor, async change => {
-      const original = entities.get(change.fileId);
-      if (change.removed || !change.file || change.file.trashed)
-        return error(original ? "tracked-id-disappearance-needs-scoped-reobservation" :
-          "unclassifiable-account-wide-loss-of-access");
-      const file = change.file;
-      if (file.id === String(fence.managedRootId) ||
-          file.id === String(fence.contentDomainRootId) ||
-          file.id === String(fence.configDomainRootId))
-        return error("root-changed-during-incremental");
-      const parent = file.parents.length === 1 ? entities.get(file.parents[0]) : undefined;
-      if (!parent) {
-        const outside = await this.outsideDomain(file, fence, new Set(entities.keys()));
-        return outside.status !== "ok" ? outside :
-          outside.value && !original ? { status: "ok", value: undefined } :
-          error("tracked-id-left-domain-or-unclassifiable-new-entry");
+      const existing = graph.get(change.fileId);
+      const f = change.file;
+      if (change.fileId === String(fence.managedRootId) ||
+          change.fileId === String(fence.contentDomainRootId) ||
+          change.fileId === String(fence.configDomainRootId))
+        return error("managed-root-change-requires-full-baseline", "recovery-required");
+
+      if (change.removed || !f || f.trashed) {
+        // A Drive removed event alone may mean access loss; it is not deletion.
+        if (!existing || existing.kind === "folder" || !f || !f.trashed)
+          return error("unknown-removed-or-inaccessible-change-requires-rebaseline");
+        const exact = await this.source.getFile(change.fileId);
+        if (exact.status !== "ok" || !exact.value.trashed ||
+            exact.value.parents.length !== 1 ||
+            exact.value.parents[0] !== String(existing.parentRemoteObjectId) ||
+            !this.provenance(exact.value, fence, existing.domain))
+          return error("removed-file-exact-trash-not-proven");
+        rows.set(change.fileId, { kind: "mask", generation, remoteObjectId: existing.remoteObjectId });
+        graph.delete(change.fileId);
+        if (existing.parentRemoteObjectId) affected.add(String(existing.parentRemoteObjectId));
+        learned.push({
+          kind: "removed", remoteObjectId: existing.remoteObjectId,
+          ...(existing.logicalPath ? { lastKnownPath: existing.logicalPath } : {}),
+        });
+        return { status: "ok", value: undefined };
       }
-      if (parent.kind !== "folder" || !this.provenance(file, fence, parent.domain) ||
-          (!original && file.mimeType === FOLDER) ||
-          !suitableName(file.name) || (original && original.domain !== parent.domain) ||
-          (original && original.kind !== (file.mimeType === FOLDER ? "folder" : "file")))
-        return error("invalid-changed-object-provenance-or-parent");
-      if (original && original.kind === "folder" &&
-          (original.name !== file.name || original.parentRemoteObjectId !== rid(file.parents[0])))
-        return error("folder-relocation-requires-full-descendant-recompute");
-      const logical = parent.logicalPath ?
-        String(parent.logicalPath) + "/" + file.name :
-        (parent.remoteObjectId === fence.configDomainRootId ?
-          "__brain_sync_portable_config__/" + file.name : file.name);
-      const entity = this.toEntity(file, parent.domain, file.parents[0],
-        logical, generation, fence);
-      if (original?.parentRemoteObjectId) affected.add(String(original.parentRemoteObjectId));
-      affected.add(file.parents[0]);
-      rows.set(file.id, { kind: "upsert", generation, entity });
-      entities.set(file.id, entity);
+
+      const parent = f.parents.length === 1 ? graph.get(f.parents[0]) : undefined;
+      if (!parent) {
+        const outside = await this.outsideDomain(f, fence, new Set(graph.keys()));
+        return outside.status !== "ok" ? outside :
+          outside.value && !existing ? { status: "ok", value: undefined } :
+          error("uncertain-managed-domain-entry-or-exit");
+      }
+      if (parent.kind !== "folder" || !this.provenance(f, fence, parent.domain) ||
+          !suitableName(f.name) || f.trashed ||
+          (!existing && f.mimeType === FOLDER) ||
+          (existing && (existing.domain !== parent.domain ||
+            existing.kind !== (f.mimeType === FOLDER ? "folder" : "file"))))
+        return error("unsupported-changed-object-or-foreign-provenance");
+      if (existing?.kind === "folder" &&
+          (existing.name !== f.name || existing.parentRemoteObjectId !== rid(f.parents[0])))
+        return error("folder-subtree-relocation-requires-full-baseline");
+      const logical = parent.logicalPath ? String(parent.logicalPath) + "/" + f.name :
+        parent.remoteObjectId === fence.configDomainRootId ?
+          "__brain_sync_portable_config__/" + f.name : f.name;
+      const entity = this.toEntity(f, parent.domain, f.parents[0], logical, generation, fence);
+      if (existing?.parentRemoteObjectId) affected.add(String(existing.parentRemoteObjectId));
+      affected.add(f.parents[0]);
+      rows.set(f.id, { kind: "upsert", generation, entity });
+      graph.set(f.id, entity);
+      learned.push({ kind: "upsert", entry: {
+        path: entity.logicalPath!, entityKind: entity.kind, remoteObjectId: entity.remoteObjectId,
+        trashed: false, ...(entity.content ? { content: entity.content } : {}),
+      } });
       return { status: "ok", value: undefined };
     });
     if (processed.status !== "ok") return processed;
-    const checked = await this.source.verifyFence(fence);
-    if (checked.status !== "ok") return checked;
+    const terminal = processed.value.terminal;
+
+    // A managed-root census prevents a same-parent query from hiding a marked
+    // object that escaped its domain. Also detects unobserved marked objects.
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    const seenMarked = new Set<string>();
+    for (const file of marked.value) {
+      if (seenMarked.has(file.id)) return error("duplicate-managed-census-identity");
+      seenMarked.add(file.id);
+      const e = graph.get(file.id);
+      if (!e || file.trashed || !this.provenance(file, fence, e.domain) ||
+          file.parents.length !== 1 || file.parents[0] !== e.parentRemoteObjectId ||
+          file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined) ||
+          (file.mimeType === FOLDER ? "folder" : "file") !== e.kind)
+        return error("root-wide-managed-census-disagrees-with-changes");
+    }
+    for (const e of graph.values()) {
+      if (e.parentRemoteObjectId !== null && !seenMarked.has(String(e.remoteObjectId)))
+        return error("tracked-managed-id-missing-from-root-wide-census");
+    }
+
+    // Re-read each mutated parent; fresh provider result must be identical to
+    // the Changes-materialized occupants. Unknown, extra or duplicated IDs block.
+    for (const parent of affected) {
+      const observed = await this.allPages(token => this.source.listChildren(parent, token));
+      if (observed.status !== "ok") return observed;
+      const expected = [...graph.values()].filter(e => String(e.parentRemoteObjectId) === parent);
+      const expectedIds = expected.map(e => String(e.remoteObjectId)).sort();
+      const actualIds = observed.value.map(f => f.id).sort();
+      if (new Set(actualIds).size !== actualIds.length ||
+          JSON.stringify(expectedIds) !== JSON.stringify(actualIds))
+        return error("post-changes-parent-occupancy-not-coherent");
+      for (const file of observed.value) {
+        const e = graph.get(file.id);
+        if (!e || !this.provenance(file, fence, e.domain) ||
+            file.parents.length !== 1 || file.parents[0] !== parent ||
+            file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined))
+          return error("post-changes-parent-metadata-not-coherent");
+      }
+    }
+    const renewed = await this.source.verifyFence(fence);
+    if (renewed.status !== "ok") return renewed;
+
+    // Complete at the terminal Changes horizon only under the existing trusted
+    // app-visible baseline + continuous replay. This is not global Drive absence.
+    const coverage: InventoryCoverage[] = [];
+    for (const d of ["content", "portable-config"] as const) {
+      const root = rid(domainRoot(fence, d));
+      coverage.push({
+        generation, domain: d, scopeId: root, scopeKind: "domain",
+        state: "complete", visibility: "app-visible", allPagesRead: true,
+        incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+      });
+    }
+    for (const e of graph.values()) if (e.kind === "folder") {
+      coverage.push({
+        generation, domain: e.domain, scopeId: e.remoteObjectId, scopeKind: "parent",
+        state: "complete", visibility: "app-visible", allPagesRead: true,
+        incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+      });
+    }
     return { status: "ok", value: {
-      inputCursor, terminalCursor: processed.value.terminal,
-      overlays: [...rows.values()], invalidatedParentIds: [...affected].map(rid),
-      publishAuthorized: false,
+      inputCursor, terminalCursor: terminal, overlays: [...rows.values()],
+      invalidatedParentIds: [...affected].map(rid), coverage,
+      learnedChanges: learned, publishAuthorized: false,
     } };
   }
 
