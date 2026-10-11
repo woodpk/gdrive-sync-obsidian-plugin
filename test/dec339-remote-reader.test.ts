@@ -193,6 +193,47 @@ test("incremental edits preserve predecessor as read-only input and invalidate a
   }
 });
 
+test("verified trashed stable-ID becomes an observational mask, not a deletion proof", async () => {
+  const p = new Provider();
+  const baseline = await reader(p).baseline(fence, generation("g1"));
+  assert.equal(baseline.status, "ok");
+  if (baseline.status !== "ok") return;
+  const trashed = { ...p.files.get("doc")!, trashed: true };
+  p.files.set("doc", trashed);
+  p.children.set("dir", []);
+  p.marked = [p.files.get("dir")!];
+  p.events = [{ fileId: "doc", removed: true, file: trashed }];
+  p.token = "t2";
+  const delta = await reader(p).incremental(fence, generation("g2"), cursor("t1"), baseline.value.entities);
+  assert.equal(delta.status, "ok");
+  if (delta.status === "ok") {
+    assert.deepEqual(delta.value.overlays.map(row => row.kind), ["mask"]);
+    assert.deepEqual(delta.value.learnedChanges.map(change => change.kind), ["removed"]);
+    assert.equal(delta.value.publishAuthorized, false);
+    assert.equal(delta.value.coverage.every(c => c.visibility === "app-visible"), true);
+  }
+});
+
+test("bare removed event never turns a previously tracked file into a deletion claim", async () => {
+  const p = new Provider();
+  const baseline = await reader(p).baseline(fence, generation("g1"));
+  assert.equal(baseline.status, "ok");
+  if (baseline.status !== "ok") return;
+  p.events = [{ fileId: "doc", removed: true }];
+  assert.equal((await reader(p).incremental(fence, generation("g2"), cursor("t1"),
+    baseline.value.entities)).status, "unknown");
+});
+
+test("incremental root-wide census refuses an unobserved marked entrant", async () => {
+  const p = new Provider();
+  const baseline = await reader(p).baseline(fence, generation("g1"));
+  assert.equal(baseline.status, "ok");
+  if (baseline.status !== "ok") return;
+  p.marked.push(item("unexpected", "entered.md", "dir", "content"));
+  assert.equal((await reader(p).incremental(fence, generation("g2"), cursor("t1"),
+    baseline.value.entities)).status, "unknown");
+});
+
 test("targeted query requires exact object, exhaustive unique siblings and root-wide provenance", async () => {
   const p = new Provider();
   const result = await reader(p).targeted(fence, generation("g1"), {
