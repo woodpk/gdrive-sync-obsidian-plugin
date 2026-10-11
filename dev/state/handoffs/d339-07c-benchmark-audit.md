@@ -4,8 +4,8 @@
 
 - Exact accepted predecessor: `edb628410c7f1a541c2966f282dc3eec1421bc0b`; D339-07B2 tested source `84a8d90b59f54330ba93092dcc3550b6015d8ef5`; 11/11 PHX-CI PASS, run `91784b87-1d85-4434-9d4a-69f99176d7ed`.
 - D339-07C planning authority: `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07C-matched-inventory-performance-measurement.md`, initial task commit `e3ceadcc6deaefa97b2c2c6927ee59529b863c40`.
-- Implementation branch: `dec339/d339-07c-matched-benchmark-01`; source `9ec9f9e40d784c7954ebc7580c16ee6e5d15f4a9`.
-- Writable source diff: **two created product-test files only**: `test/dec339-matched-optimizer-benchmark.test.ts` (159 logical lines), `test/dec339-benchmark-observability.test.ts` (144 logical lines). No product, other tests, scripts, PHX-CI runtime, BVP lock, or feature-gate change.
+- Implementation branch: `dec339/d339-07c-matched-benchmark-01`; source `c77f1b71c5c5e7c27c7a288312e3ab4ed6b9b279`.
+- Writable source diff: **two created product-test files only**: `test/dec339-matched-optimizer-benchmark.test.ts` (159 logical lines), `test/dec339-benchmark-observability.test.ts` (150 logical lines). No product, other tests, scripts, PHX-CI runtime, BVP lock, or feature-gate change.
 
 ## Matched case / proof audit (assertions not yet PHX-CI results)
 
@@ -24,6 +24,8 @@ Metrics from PHX-CI terminal evidence have prefix `D339_07C_METRIC=`: controlled
 
 ## Proactive audit and next gate
 
-29/29 checked fixture/source/scope assertions passed on read-only static inspection, including paired fixture construction, complete visibility/terminal cursor, exact production planner semantics, bounded tests (≤250 lines each), fallback branch call verification and no effect dispatch. This is **not** an executable validation substitute. PHX-CI compilation, runtime behavior, BVP and product suites, build and repo/artifact verification remain **NOT RUN** on source `9ec9f9e40d784c7954ebc7580c16ee6e5d15f4a9`. If any failure arises, inspect all results and re-audit consolidated tests before the next run. No previous accepted 07B2 or S09A rerun for bookkeeping.
+20/20 final checked fixture/source/scope assertions passed on read-only static inspection, including paired fixture construction, complete visibility/terminal cursor, exact production planner semantics, bounded tests (≤250 lines each), fallback branch call verification and no effect dispatch. This is **not** an executable validation substitute. PHX-CI compilation, runtime behavior, BVP and product suites, build and repo/artifact verification remain **NOT RUN** on source `c77f1b71c5c5e7c27c7a288312e3ab4ed6b9b279`. If any failure arises, inspect all results and re-audit consolidated tests before the next run. No previous accepted 07B2 or S09A rerun for bookkeeping.
 
-**Next human action**: execute a single owner PHX-CI command on exact source `9ec9f9e40d784c7954ebc7580c16ee6e5d15f4a9`, source branch above, base `edb628410c7f1a541c2966f282dc3eec1421bc0b`, installed runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, focused two 07C modules and accepted 07A/B regressions and BVP, then the standard suite. Only after PASS assess measurements and prepare D339-07 integrated closure and independent D339-08; keep optimization dormant.
+**Next human action**: execute a single owner PHX-CI command on exact source `c77f1b71c5c5e7c27c7a288312e3ab4ed6b9b279`, source branch above, base `edb628410c7f1a541c2966f282dc3eec1421bc0b`, installed runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, focused two 07C modules and accepted 07A/B regressions and BVP, then the standard suite. Only after PASS assess measurements and prepare D339-07 integrated closure and independent D339-08; keep optimization dormant.
+
+**Final source extension:** The fallback module now also asserts the actual `ProductionSynchronizationPlanner` plan equality on all five fallback scenarios; it uses the same existing deterministic planner implementation (no custom planner or verification runner). Final source at the SHA above; 160/151 physical lines in the two allowed modules. No executable validation has occurred.
