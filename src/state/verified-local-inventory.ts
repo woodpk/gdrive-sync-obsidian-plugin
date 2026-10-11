@@ -39,11 +39,14 @@ export class VerifiedLocalInventoryCoordinator {
       for (const item of enumeration.entries) {
         if (!this.included(item.path)) continue;
         if (item.status === "present") {
+          if (item.stability !== "stable") {
+            observed.push({ generation, path: item.path, kind: item.entityKind, presence: "unknown" });
+            continue;
+          }
           observed.push({
             generation, path: item.path, kind: item.entityKind,
-            presence: item.stability === "stable" ? "present" : "unknown",
-            ...(item.stability === "stable" && item.observationToken
-              ? { observationToken: item.observationToken } : {}),
+            presence: "present",
+            ...(item.observationToken ? { observationToken: item.observationToken } : {}),
             ...(item.remoteObjectId ? { remoteObjectId: item.remoteObjectId } : {}),
           });
         } else if (item.status === "unreadable" || item.status === "inaccessible" ||
