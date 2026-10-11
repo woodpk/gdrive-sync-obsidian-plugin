@@ -53,3 +53,9 @@ D339-02 IndexedDB storage implementation lives on `dec339/d339-02-indexeddb-pers
 ## D339-02 verified — proceed to D339-03
 
 PHX-CI **COMPLETE / PASS** for D339-02 source `c4134d1b1c959c81e32ca944fa84ce33c44a4d6c`, run `dc4bcfe7-c099-4709-be3e-5bb7e1393281`, evidence published at `1dc1762fd8fd4e60923759e766ea35f1336c2cd9`. Focused and full tests, typecheck, build, repository check and artifact hash all PASS; shipping `main.js` matches the accepted baseline. D339-02 storage remains dormant; no live migration. Next is D339-03 WS-03 baseline / Changes / targeted remote reader on exact predecessor evidence. Independent review remains postponed until the whole DEC-339 feature is implemented and verified.
+
+## D339-03 verification complete — 2026-10-10
+
+D339-03 remote metadata reader verified **COMPLETE / PASS** by PHX-CI from source `1a3fb2ae35922c031eeab36f9bab4c758dff0364` on branch `dec339/d339-03-remote-reader-01`. Run ID `584838f8-84e8-44fc-8772-0ad61bc463ba`; evidence published `c8218a7659ce8cb66bbff292e3ac29e5512972d3`. All 11 stages passed (including focused/full tests, typecheck, build, repository check and artifacts). Accepted shipping `main.js` hash remains `e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e`. No further D339-03 rerun required.
+
+**Next:** D339-04, single owning integrator for WS-02 staged IndexedDB generations and WS-03 metadata observations, graph validation, atomic cursor/inventory publication, rebaseline and invalidation. Bind to exact D339-03 evidence SHA. Do not activate live inventory until integration safety gates pass; third-party review remains deferred until whole DEC-339 feature completion.
