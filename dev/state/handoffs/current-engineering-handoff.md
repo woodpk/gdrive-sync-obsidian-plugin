@@ -111,3 +111,21 @@ On 2026-10-11 the software owner explicitly authorized the controlled update to 
 **Exact tasking:** `dev/reviews/dec339-d339-06b-shipping-artifact-approval-2026-10-11.md`. Controlled-governance branch `dec339/d339-06b-shipping-approval-01`, source `64199ff7902a0dc09f60b0c3974fe23096adef60`, exact predecessor `af1d58c40a772ed85e941c20433b3ac3c5771e0a`. The supervisor-approved change adds **only** SHA-256 `acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881` to the fixed shipping allowlist while retaining old digest `e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e`. Arbitrary hashes remain blocked even for governance-classified work. Existing frozen-file protection stays: this bounded approval requires `BVP_CHANGE_CLASS=authorized-governance` in the PHX-CI verification environment, not any code-side bypass. The associated BVP repository-check integration test was extended. Governance core LOC budget was preserved by consolidating error-report formatting.
 
 **Status:** Implemented/committed, **not yet verified by PHX-CI**. The prior substantive source passed typecheck, targeted/full tests, build and artifact collection but overall BLOCKED at the old hash gate; published evidence `af1d58c40a772ed85e941c20433b3ac3c5771e0a`. A PHX-CI run on the new substantive governance change is required. Do not treat the change as PASS, ship/install the plugin, activate inventory, start D339-07, begin independent review or Stage 3 before the required gate. When green, record exact source/evidence/run ID and move to D339-07 with feature still dormant.
+
+
+## D339-06B verified COMPLETE — D339-07 tasking next
+
+The exact owner-approved D339-06B shipping-artifact transition is now **PHX-CI COMPLETE / PASS**, exit 0, all **11** stages PASS including typecheck, focused BVP repository-check/DEC-339 regressions, full tests, build, repository-check, check, and artifact hashing.
+
+- **Source branch:** `dec339/d339-06b-shipping-approval-01`
+- **Verified source SHA:** `64199ff7902a0dc09f60b0c3974fe23096adef60`
+- **Published evidence commit / next exact predecessor:** `9881c13b542586ff6797f15a7903c22bebb83d4d`
+- **PHX-CI run ID:** `cec6119b-df58-4bd5-b502-6af1ff852d48`
+- **Shipping candidate `main.js`:** 904453 bytes, SHA-256 `acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881`
+- **Owner-authorized fixed gate:** `test-platform/src/repository-check.ts` accepts only the original production digest `e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e` and the exact new digest. The frozen BVP architecture guard was not weakened or bypassed. The governance classification was explicitly `authorized-governance`, as required.
+
+The prior BLOCKED result on source `3a545794321b3a1ad91266dd3adf74e010dfbc9b`, evidence `af1d58c40a772ed85e941c20433b3ac3c5771e0a`, remains retained for historical diagnosis. It is superseded for D339-06B acceptance by the full green run above. **Do not request an administrative-only rerun of accepted D339-06B.**
+
+**Next:** prepare bounded D339-07 WS-07 PHX-CI-owned deterministic virtual-world cases, adverse/fault cases, contract/equivalence comparisons, attribution and measurable comparable-workload performance evidence. The architecture's task row is in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`, implementation order/constraints in `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` under **“Prospective DEC-339 verification unit — design only, not executable.”** No executable D339-07 task prompt yet exists in WS-07 `tasks/`; freeze exact ownership, allowlist, test selection and acceptance criteria before agent dispatch. The exact technical predecessor is the accepted evidence commit `9881c13b542586ff6797f15a7903c22bebb83d4d`.
+
+D339-07 and D339-08 feature-level integration and independent review are **not completed**, and the inventory optimization remains **off**. No live Drive/vault mutation, plugin install/release, iOS rollout, feature activation, Stage 3 entry, or S09A canary rerun is authorized by this D339-06B verification.
