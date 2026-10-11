@@ -408,6 +408,22 @@ test("unrelated dev-root JSON files remain prohibited", () => {
   });
 });
 
+test("shipping acceptance recognizes only two explicitly pinned digests, not a change-class override", () => {
+  const source = readFileSync(repositoryCheckSourcePath, "utf8");
+  match(source, /const approvedProductionMainSha256: ReadonlySet<string> = new Set/);
+  const approvalStart = source.indexOf("const approvedProductionMainSha256: ReadonlySet<string> = new Set([");
+  const approvalEnd = source.indexOf("]);", approvalStart);
+  strictEqual(approvalStart >= 0 && approvalEnd > approvalStart, true);
+  const approvedHashes = [
+    ...source.slice(approvalStart, approvalEnd).matchAll(/"([0-9a-f]{64})"/g),
+  ].map(match => match[1]);
+  strictEqual(approvedHashes.length, 2, "A future digest must be separately approved and pinned");
+  strictEqual(new Set(approvedHashes).size, 2, "Duplicate digests cannot claim another approval");
+  strictEqual(approvedHashes[0], "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e");
+  strictEqual(approvedHashes[1], "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881");
+  match(source, /if \(!approvedProductionMainSha256\.has\(actualSha256\)\)/);
+});
+
 test("built shipping artifact identity mismatch blocks repository check", () => {
   withFixture((root, baseSha) => {
     const packageModel = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
