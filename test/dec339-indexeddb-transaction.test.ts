@@ -225,6 +225,7 @@ test("v1 authority survives additive v2 schema, stage, atomic publish and restar
   assert.equal(domain.status, "verified-observation");
   const missing = await read.value.getById(id("not-present"));
   assert.equal(missing.status, "unknown");
+  assert.equal((await read.value.listByParent("content", fence.contentDomainRootId)).status, "unknown");
   await read.value.release();
   assert.equal((await read.value.getById(fence.contentDomainRootId)).status, "stale");
 });
@@ -461,6 +462,8 @@ test("D339-04 full provider baseline validates and atomically publishes canonica
   if (read.status === "verified-observation") {
     assert.equal(read.value.generation, initial.manifest.generation);
     assert.equal((await read.value.getById(fence.contentDomainRootId)).status, "verified-observation");
+    const children = await read.value.listByParent("content", fence.contentDomainRootId);
+    assert.equal(children.status, "verified-observation");
     await read.value.release();
   }
 });
