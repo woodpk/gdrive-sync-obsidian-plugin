@@ -761,3 +761,66 @@ test("D339-04B known stable-ID mask hides prior row without becoming deletion au
     await read.value.release();
   }
 });
+
+/** Assert the persisted canonical cursor and active generation as one accepted pair. */
+async function assertDurablePair(idb: IDBFactory, generation: InventoryGeneration | null,
+  cursor: ChangeCursor | null, batches = 0): Promise<void> {
+  const authority = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status !== "trusted") return;
+  assert.equal(authority.state.changeCursor ?? null, cursor);
+  assert.equal(authority.state.learnedRemoteBatches.length, batches);
+  const pointer = await new IndexedDbInventoryObservationStore("device:idb:test", idb)
+    .publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status !== "trusted-fence") return;
+  assert.equal(pointer.value.activeGeneration, generation);
+  assert.equal(pointer.value.canonicalCursor, cursor);
+  assert.equal(pointer.value.persistenceRevision, authority.state.persistenceRevision);
+  assert.equal(pointer.value.semanticGeneration, authority.state.semanticGeneration);
+}
+
+test("D339-07B1 A02 aborted baseline publication does not commit cursor or active generation", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), idb = db.openFactory(), store = await seeded(idb);
+  const first = candidate(g("abort-baseline"));
+  assert.equal((await store.stage({ candidate: first.manifest, overlays: rows(first.rows),
+    coverage: rows(first.coverage) })).status, "verified-observation");
+  db.abortNextPublication = true;
+  const result = await store.publishAtomically({
+    candidateGeneration: first.manifest.generation, validationReceipt: first.manifest.validationReceipt,
+    expectedActiveGeneration: null, expectedAuthorityPersistenceRevision: r0,
+    expectedAuthoritySemanticGeneration: s0, expectedCanonicalCursor: null,
+    nextCanonicalCursor: cursor1, fence,
+  });
+  assert.equal(result.status, "recovery-required");
+  assert.equal(db.abortNextPublication, false);
+  await assertDurablePair(idb, null, null);
+  assert.equal((await new IndexedDbInventoryObservationStore("device:idb:test", idb)
+    .openRead()).status, "stale");
+});
+
+test("D339-07B1 A02 aborted delta publication rolls back learned batch and generation", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), idb = db.openFactory(), store = await seeded(idb);
+  const first = candidate(g("abort-delta-base"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(first), store)
+    .publishBaseline(fence, first.manifest.generation)).status, "published");
+  const next = g("abort-delta-next"), terminal = c("changes:2");
+  const file = integratedFile(next, "uncommitted.md");
+  db.abortNextPublication = true;
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedDelta(first, {
+    generation: next, token: terminal, overlays: [file], changes: [],
+  }), store).publishIncremental(fence, next, contractId<"RemoteIngestionBatchId">("abort-batch"));
+  assert.equal(result.status, "recovery-required");
+  assert.equal(db.abortNextPublication, false);
+  await assertDurablePair(idb, first.manifest.generation, cursor1);
+  const restart = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
+  assert.equal(restart.status, "verified-observation");
+  if (restart.status === "verified-observation") {
+    assert.equal(restart.value.generation, first.manifest.generation);
+    assert.equal((await restart.value.getById(file.entity.remoteObjectId)).status, "unknown");
+    await restart.value.release();
+  }
+});
