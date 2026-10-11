@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/phx-56938863869a4cac/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "b07e0190f1b07307f2db7e93268dbb0e78b1399e",
+    "verifiedTree": "d667f34af0b24cf79531752ac041096926af0aca",
+    "expectedHead": "b07e0190f1b07307f2db7e93268dbb0e78b1399e",
+    "baseSha": "e14b25273321cd1d603ac7bc02996d97d8fc4ce9"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-11T16:59:50.1069392Z",
+  "endedAt": "2026-10-11T17:00:16.5007715Z",
+  "stages": [
+    {
+      "result": "PASS",
+      "exitCode": 0,
+      "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "name": "preflight",
+      "stderr": "",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/'",
+      "startedAt": "2026-10-11T16:59:50.9596884Z",
+      "classification": "NONE",
+      "endedAt": "2026-10-11T16:59:52.1732934Z"
+    },
+    {
+      "endedAt": "2026-10-11T16:59:56.4819597Z",
+      "classification": "NONE",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/phx-56938863869a4cac/w' -OutputPath 'C:/phx-56938863869a4cac/w/.phx-ci/tool-versions.json'",
+      "startedAt": "2026-10-11T16:59:53.2351579Z",
+      "name": "node-preflight",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "exitCode": 0,
+      "result": "PASS",
+      "stderr": "",
+      "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8"
+    },
+    {
+      "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8",
+      "endedAt": "2026-10-11T16:59:58.2749566Z",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "name": "node-project-files",
+      "classification": "NONE",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/phx-56938863869a4cac/w'",
+      "result": "PASS",
+      "stderr": "",
+      "startedAt": "2026-10-11T16:59:57.3325824Z",
+      "exitCode": 0
+    },
+    {
+      "startedAt": "2026-10-11T16:59:58.994844Z",
+      "exitCode": 0,
+      "command": "npm ci",
+      "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8",
+      "name": "install",
+      "classification": "NONE",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 5s\n\nfound 0 vulnerabilities\n",
+      "stderr": "",
+      "result": "PASS",
+      "endedAt": "2026-10-11T17:00:05.2912767Z"
+    },
+    {
+      "exitCode": 2,
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\ntest/support/dec339-inventory-idb-fixtures.ts(240,39): error TS2307: Cannot find module '../src/contracts/google-drive' or its corresponding type declarations.\r\n",
+      "runId": "50a6e626-c2a6-47ac-a66b-0a814fd6ffa8",
+      "startedAt": "2026-10-11T17:00:06.3002464Z",
+      "stderr": "",
+      "command": "npm run typecheck",
+      "name": "typecheck",
+      "result": "FAIL",
+      "endedAt": "2026-10-11T17:00:15.0478757Z",
+      "classification": "PRODUCT FAILURE"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}
