@@ -95,7 +95,17 @@ test("D339-07B1 A02 canonical writer races staged publish and invalidates cached
   assert.notEqual(attempt.status, "published");
   const after = await authority.loadAuthority();
   assert.equal(after.status, "trusted");
-  if (after.status === "trusted") assert.equal(after.state.changeCursor, external);
+  if (after.status === "trusted") {
+    assert.equal(after.state.changeCursor, external);
+    assert.equal(after.state.learnedRemoteBatches.length, 0);
+  }
+  const pointer = await new IndexedDbInventoryObservationStore("device:idb:test", idb)
+    .publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status === "trusted-fence") {
+    assert.equal(pointer.value.activeGeneration, null);
+    assert.equal(pointer.value.canonicalCursor, external);
+  }
   assert.equal((await new IndexedDbInventoryObservationStore("device:idb:test", idb)
     .openRead()).status, "stale");
 });
@@ -137,7 +147,11 @@ test("D339-07B1 A01 two COW generations mask ancestor without affecting pinned r
   for (const lease of [pinned, prior]) {
     assert.equal(lease.status, "verified-observation");
     if (lease.status === "verified-observation") {
-      assert.equal((await lease.value.getById(old.entity.remoteObjectId)).status, "verified-observation");
+      const item = await lease.value.getById(old.entity.remoteObjectId);
+      assert.equal(item.status, "verified-observation");
+      if (item.status === "verified-observation") {
+        assert.equal(item.value?.name, lease === pinned ? "original.md" : "renamed.md");
+      }
       await lease.value.release();
     }
   }
