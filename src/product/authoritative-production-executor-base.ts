@@ -21,6 +21,7 @@ import {
   type LocalVaultPort,
   type ManagedRemoteIdentity,
   type MutationIntentId,
+  type OperationId,
   type ObservationToken,
   type RecoverableMutationEffectV1_1,
   type RecoverableOperationIntentV1_1,
@@ -47,11 +48,23 @@ import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } 
 import type { ExecutorRunEvidence, ProductSynchronizationExecutor } from "./production-executor";
 import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
 import type { ProductTextVersionStore } from "./text-version-store";
+import type { InventoryTargetedConvergenceReader, TargetedConvergenceContext } from "./inventory-targeted-convergence-read";
 
 export interface RecoverableProductionMutationDependencies {
   readonly reliableRemoteMutationPort?: ReliableRemoteMutationPort;
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPort;
   readonly remoteFolderCreateRecoveryReadPort?: RemoteFolderCreateRecoveryReadPort;
+  /**
+   * D339-06B: optional post-dispatch positive CREATE read only. No production
+   * composition provides this option; omission/false retains full reconciliation.
+   * It must not be consulted by restart recovery or pre-dispatch authorization.
+   */
+  readonly targetedConvergence?: {
+    readonly enabled?: boolean;
+    readonly reader: Pick<InventoryTargetedConvergenceReader, "observe">;
+    readonly expectedFence: TargetedConvergenceContext["expectedFence"];
+    readonly generation: TargetedConvergenceContext["generation"];
+  };
 }
 
 type LegacyReads = {
@@ -516,6 +529,51 @@ async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: 
   }
   return { ok: true };
 }
+/**
+ * D339-06B opt-in post-dispatch read substitution.
+ *
+ * The existing executor calls this only after the durable lifecycle has
+ * recorded effect-verified. Freshly observed targeted proofs must match this
+ * exact operation, effect, reserved ID and path. Any missing, contradictory or
+ * throwing provider observation runs the same original complete reconciliation.
+ * In particular, recovery and every non-create mutation bypass this seam.
+ */
+export async function verifyPostDispatchConvergenceRead(
+  operationId: OperationId,
+  effectId: string,
+  descriptor: RecoverablePhysicalMutationDescriptorV1_1,
+  dependencies: Pick<RecoverableProductionMutationDependencies, "targetedConvergence">,
+  completeReconciliation: () => Promise<Convergence>,
+): Promise<Convergence> {
+  const option = dependencies.targetedConvergence;
+  const reserved = descriptor.kind === "remote-folder-create"
+    ? descriptor.remoteMutation.reservedRemoteObjectId
+    : descriptor.kind === "remote-file" && descriptor.mutationKind === "create" &&
+        descriptor.remoteMutation.kind === "reserved-file-create"
+      ? descriptor.remoteMutation.reservedRemoteObjectId
+      : undefined;
+  if (option?.enabled !== true || !reserved || descriptor.targetSide !== "remote") {
+    return completeReconciliation();
+  }
+
+  try {
+    const result = await option.reader.observe({
+      enabled: true,
+      operationId, effectId, descriptor,
+      expectedFence: option.expectedFence,
+      generation: option.generation,
+    });
+    if (result.status === "verified-convergence-read" &&
+        result.operationId === operationId && result.effectId === effectId &&
+        result.remoteObjectId === reserved && result.targetPath === descriptor.targetPath) {
+      return { ok: true };
+    }
+  } catch {
+    // A faulty optional reader has no authority to suppress canonical reads.
+  }
+  return completeReconciliation();
+}
+
 async function verifyLocal(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1): Promise<Convergence> {
   const local = internal(legacy).local;
   if (descriptor.kind === "local-file") {
@@ -854,7 +912,10 @@ async function dispatchEffect(
     fromStage: "effect-verified",
     observationSource: "post-dispatch",
   }));
-  const converged = await convergenceFor(legacy, descriptor, scope);
+  const converged = await verifyPostDispatchConvergenceRead(
+    operation.operationId, prepared.effect.effectId, descriptor, deps,
+    () => convergenceFor(legacy, descriptor, scope),
+  );
   diagnostics?.(operation, "sync.effect", converged.ok ? "convergence-verification-complete" : "convergence-verification-failed", effectFields(intentId, prepared.effect, {
     convergenceStatus: converged.ok ? "converged" : "not-converged",
     observationSource: "post-dispatch",
