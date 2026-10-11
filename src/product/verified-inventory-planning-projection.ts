@@ -61,7 +61,7 @@ function usableEntity(entity: InventoryRemoteEntity, domain: InventoryDomain,
 async function materialize(
   lease: InventoryReadLease, fence: InventoryIdentityFence, cursor: ChangeCursor,
 ): Promise<InventoryPlanningProjectionResult | { readonly status: "ok"; readonly entries: readonly RemoteEntry[] }> {
-  const seen = new Set<string>();
+  const registeredIds = new Set<string>();
   const entries: RemoteEntry[] = [];
   for (const domain of ["content", "portable-config"] as const) {
     const rootId = domain === "content" ? fence.contentDomainRootId : fence.configDomainRootId;
@@ -71,13 +71,14 @@ async function materialize(
         root.value.kind !== "folder" || root.value.parentRemoteObjectId !== null ||
         root.value.remoteObjectId !== rootId)
       return failed("unknown", "unproven-inventory-domain-root");
+    if (registeredIds.has(String(rootId))) return failed("invalid", "duplicate-cross-domain-root-id");
+    registeredIds.add(String(rootId));
     const queue: InventoryRemoteEntity[] = [root.value];
     for (let next = 0; next < queue.length; next++) {
       const parent = queue[next]!;
       const parentId = String(parent.remoteObjectId);
-      if (seen.has(parentId)) return failed("invalid", "duplicate-or-cyclic-inventory-parent");
-      seen.add(parentId);
-      if (seen.size > MAX_ENTITIES) return failed("partial", "bounded-inventory-projection-exceeded");
+      if (!registeredIds.has(parentId)) return failed("invalid", "unregistered-inventory-parent");
+      if (registeredIds.size > MAX_ENTITIES) return failed("partial", "bounded-inventory-projection-exceeded");
 
       const receipt = await lease.coverage(domain, parent.remoteObjectId);
       if (!completeAt(receipt, domain, parent.remoteObjectId,
@@ -94,11 +95,11 @@ async function materialize(
             child.parentRemoteObjectId !== parent.remoteObjectId ||
             !child.logicalPath || !String(child.logicalPath).trim())
           return failed("unknown", "uncertain-inventory-child-or-ancestry");
-        if (seen.has(id) || queue.some(item => item.remoteObjectId === child.remoteObjectId) ||
-            entries.some(item => item.remoteObjectId === child.remoteObjectId))
+        if (registeredIds.has(id))
           return failed("invalid", "duplicate-stable-id-in-projected-graph");
-        if (entries.length + queue.length >= MAX_ENTITIES)
+        if (registeredIds.size >= MAX_ENTITIES)
           return failed("partial", "bounded-inventory-projection-exceeded");
+        registeredIds.add(id);
         entries.push({
           path: child.logicalPath as VaultPath,
           remoteObjectId: child.remoteObjectId,
@@ -107,7 +108,6 @@ async function materialize(
           trashed: false,
         });
         if (child.kind === "folder") queue.push(child);
-        else seen.add(id);
       }
     }
   }
