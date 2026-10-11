@@ -420,7 +420,7 @@ test("incremental COW generation keeps older indexed roots reachable after atomi
 });
 
 
-function simulatedBaseline(c: ReturnType<typeof candidate>): Pick<VerifiedMetadataInventoryReader, "baseline"> {
+function simulatedBaseline(c: ReturnType<typeof candidate>): Pick<VerifiedMetadataInventoryReader, "baseline" | "incremental"> {
   return {
     baseline: async () => ({
       status: "ok" as const,
