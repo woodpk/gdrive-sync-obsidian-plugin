@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Verify BVP suite alignment correction under separate D339-07A corrective task at dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07A-BVP-SUITE-ALIGNMENT-01.md. Exact correction branch dec339/d339-07a-bvp-suite-alignment-01 at source 59ceba8b71bd5f59436793d192c07d9e4581d086; base PHX-CI evidence commit 240b9d591ffa19933ff08196860feefde485a2ad. Prior run c5d3a5d2-cc18-49da-ae5d-11b46d5b662b passed independent full product tests but BVP focused 390/395 (5 stale assertions/registration failures); build/repository-check/check/artifacts unexecuted. Corrections confined to four BVP test/registry paths; source unverified. PHX-CI with product test plus full BVP root and all gates needed. No feature activation, D339-07B, or release."
+next_action: "D339-07A COMPLETE: accepted PHX-CI run bdc80034-567e-4411-bb5d-9494ca6868a1, source 59ceba8b71bd5f59436793d192c07d9e4581d086, evidence e14b25273321cd1d603ac7bc02996d97d8fc4ce9 (11/11 PASS). Execute D339-07B1 test-only crash/cursor/IDB lineage matrix from dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07B1-indexeddb-atomicity-fault-matrix.md pinned task commit 61893e706265e38e67251fa99ac7f8ae39e06ee5; branch dec339/d339-07b1-idb-crash-cursor-01 created at exact accepted 07A evidence e14b25273321cd1d603ac7bc02996d97d8fc4ce9. Do not activate feature, deploy, or begin D339-08 before remaining gates."
 updated_at: "2026-10-11"
 
 context:
@@ -125,7 +125,7 @@ context:
   d339_06b_verified_phx_ci_run_id: "cec6119b-df58-4bd5-b502-6af1ff852d48"
   d339_06b_verified_artifact_sha256: "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881"
   d339_06b_shipping_transition_approval_record: "dev/reviews/dec339-d339-06b-shipping-artifact-approval-2026-10-11.md"
-  d339_07_status: "D339_07A_BVP_FOCUSED_FAIL_5_OF_395; CORRECTION_COMMITTED_PHX_CI_PENDING; NO_FEATURE_ACCEPTANCE"
+  d339_07_status: "D339_07A_COMPLETE_PASS; D339_07B_SPLIT_07B1_07B2; D339_07B1_EXACT_TASK_READY; D339_07C_NOT_STARTED; FEATURE_DORMANT"
   d339_07a_task_doc: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07A-inventory-safety-equivalence.md"
   d339_07a_task_prompt_commit: "4273eca8ae9b773ed77e386c6e219b2de646e062"
   d339_07a_source_branch: "dec339/d339-07a-safety-equivalence-01"
@@ -140,8 +140,18 @@ context:
   d339_07a_correction_branch: "dec339/d339-07a-bvp-suite-alignment-01"
   d339_07a_correction_base_sha: "240b9d591ffa19933ff08196860feefde485a2ad"
   d339_07a_correction_source_sha: "59ceba8b71bd5f59436793d192c07d9e4581d086"
-  d339_07a_correction_status: "FOUR_BVP_TEST_AND_REGISTRY_PATHS_ONLY; PHX_CI_PENDING; FEATURE_DORMANT"
-  d339_07b_status: "PLANNED_NOT_DISPATCHED; DEPENDS_ON_07A_EVIDENCE"
+  d339_07a_correction_status: "COMPLETE; PHX_CI_11_OF_11_PASS; FEATURE_DORMANT"
+  d339_07a_accepted_source_sha: "59ceba8b71bd5f59436793d192c07d9e4581d086"
+  d339_07a_accepted_evidence_commit: "e14b25273321cd1d603ac7bc02996d97d8fc4ce9"
+  d339_07a_accepted_phx_ci_run_id: "bdc80034-567e-4411-bb5d-9494ca6868a1"
+  d339_07a_accepted_artifact_sha256: "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881"
+  d339_07b_status: "SPLIT_07B1_07B2; 07B1_EXACT_BRANCH_AND_TASK_READY; 07B2_NOT_YET_SCOPED"
+  d339_07b1_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07B1-indexeddb-atomicity-fault-matrix.md"
+  d339_07b1_task_prompt_commit: "61893e706265e38e67251fa99ac7f8ae39e06ee5"
+  d339_07b1_branch: "dec339/d339-07b1-idb-crash-cursor-01"
+  d339_07b1_base_sha: "e14b25273321cd1d603ac7bc02996d97d8fc4ce9"
+  d339_07b1_status: "READY_TEST_ONLY_IMPLEMENTATION; PHX_CI_NOT_RUN"
+  d339_07b2_status: "AWAIT_07B1_ACCEPTED_EVIDENCE"
   d339_07c_status: "PLANNED_NOT_DISPATCHED; DEPENDS_ON_07B_EVIDENCE"
 
   stage_3_started: false
