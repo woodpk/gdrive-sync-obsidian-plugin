@@ -66,3 +66,12 @@ D339-03 remote metadata reader verified **COMPLETE / PASS** by PHX-CI from sourc
 D339-04A dormant baseline storage/reader integration verified **COMPLETE / PASS** by PHX-CI from source `03e50fccf847b381fedcffe564da638bf352ee88`. Published evidence commit: `206f6c95b3d3f67af0b5de41ce7b88f48ede71f2`; run ID `0b5abff6-e300-49c0-a3cf-92eb26dc2102`. Change-set verification PASS, repository verification PASS, overall verification PASS, compatibility COMPLETE, exit 0. Canonical evidence was published and the control checkout preserved. No re-run is necessary for this accepted source.
 
 D339-04 remains **OPEN**. Next bounded increment is D339-04B, based on the exact D339-04A evidence commit: validated incremental copy-on-write overlays, stable-ID masks, inherited and invalidated parent coverage, root-wide provenance, generation/Changes cursor CAS atomicity, crash/restart and adversarial negative tests. Preserve the existing production entrypoint and shipping artifact: inventory remains dormant, with no live Drive, local vault, or deployed IndexedDB mutation. Independent code review stays deferred until the complete DEC-339 feature has been implemented and PHX-CI verified.
+
+
+## D339-04B verified — D339-05 next
+
+D339-04B incremental copy-on-write inventory integration verified **COMPLETE / PASS** by PHX-CI from source `d2eaacdcf77b7e6c30bc42a0aa1aa8c8056ae6d2` on branch `dec339/d339-04b-incremental-integration-01`. Run ID `d470ff99-805c-4bf5-9e1f-565270c873db`; evidence published at `9fb6d72479db4074e153b44e28c03e5c4bb2e991`. All 11 stages PASS, including focused and full tests, typecheck, build, repository check and artifacts. Control checkout preserved. No further D339-04B rerun required for accepted source.
+
+**D339-04A and D339-04B verification is complete** within the bounded storage/remote-reader integration work package. This does not mean the DEC-339 feature is activated or independently reviewed. Existing product shipping entrypoint remains unchanged; no live Drive or local vault mutation authorized by the inventory.
+
+**Next:** D339-05 (WS-05), inventory-backed snapshot assembly with fail-closed fallback to authoritative existing paths. Preserve current local observations, BASE semantics, and the single established controller/planner. Bind to exact D339-04B evidence commit `9fb6d72479db4074e153b44e28c03e5c4bb2e991`. Do not treat inventory observations as deletion, mutation or recovery authorization. Independent third-party review remains deferred until all DEC-339 units are implemented and PHX-CI verified.
