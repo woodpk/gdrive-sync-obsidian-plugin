@@ -553,6 +553,9 @@ export class VerifiedMetadataInventoryReader {
         matches[0].parents.length !== 1 ||
         matches[0].parents[0] !== String(request.parentRemoteObjectId) ||
         matches[0].version !== f.version ||
+        matches[0].mimeType !== f.mimeType ||
+        matches[0].sha256Checksum !== f.sha256Checksum ||
+        matches[0].size !== f.size ||
         !this.provenance(matches[0], fence, request.domain))
       return error("nonunique-missing-or-drifted-target-sibling", "unknown");
     // Same-parent occupancy never substitutes for the root-wide provenance requirement.
