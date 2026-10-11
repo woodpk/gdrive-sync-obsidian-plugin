@@ -27,6 +27,7 @@ const getField = (value: unknown, path: string): unknown => (value as Record<str
 
 class FakeDatabase {
   version = 0;
+  abortNextPublication = false;
   tables = new Map<string, StoredTable>();
   openFactory(): IDBFactory {
     return { open: (_name: string, version?: number) => {
@@ -134,6 +135,12 @@ class FakeDatabase {
     };
     const finish = () => {
       if (aborted || closed || pending !== 0) return;
+      if (this.abortNextPublication && mode === "readwrite" &&
+          names.includes("inventory-control") && names.includes("inventory-generations")) {
+        this.abortNextPublication = false;
+        tx.abort();
+        return;
+      }
       closed = true;
       if (mode === "readwrite") for (const [name, data] of snapshots) this.tables.set(name, data);
       tx.oncomplete?.();
@@ -585,6 +592,7 @@ function simulatedDelta(
   base: ReturnType<typeof candidate>,
   next: {
     readonly generation: InventoryGeneration; readonly token: ChangeCursor;
+    readonly inputCursor?: ChangeCursor;
     readonly overlays: readonly InventoryOverlayRecord[];
     readonly changes: readonly import("../src/contracts/google-drive").RemoteChange[];
     readonly partial?: boolean;
@@ -603,7 +611,7 @@ function simulatedDelta(
     ...simulatedBaseline(base),
     incremental: async () => ({
       status: "ok" as const, value: {
-        inputCursor: cursor1, terminalCursor: next.token,
+        inputCursor: next.inputCursor ?? cursor1, terminalCursor: next.token,
         overlays: [...next.overlays], invalidatedParentIds: [fence.contentDomainRootId],
         coverage: next.partial ? cover.filter(row => row.domain !== "content") : cover,
         learnedChanges: [...next.changes], publishAuthorized: false as const,
