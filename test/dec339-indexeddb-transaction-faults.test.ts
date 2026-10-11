@@ -31,6 +31,10 @@ test("D339-07B1 A02 aborted baseline publication does not commit cursor or activ
   });
   assert.equal(result.status, "recovery-required");
   assert.equal(db.abortNextPublication, false);
+  assert.deepEqual(new Set(db.abortedPublicationStores), new Set([
+    "sync-state", "inventory-control", "inventory-generations",
+    "inventory-stage", "inventory-coverage", "inventory-entities",
+  ]));
   await assertDurablePair(idb, null, null);
   assert.equal((await new IndexedDbInventoryObservationStore("device:idb:test", idb)
     .openRead()).status, "stale");
@@ -50,6 +54,10 @@ test("D339-07B1 A02 aborted delta publication rolls back learned batch and gener
   }), store).publishIncremental(fence, next, contractId<"RemoteIngestionBatchId">("abort-batch"));
   assert.equal(result.status, "recovery-required");
   assert.equal(db.abortNextPublication, false);
+  assert.deepEqual(new Set(db.abortedPublicationStores), new Set([
+    "sync-state", "inventory-control", "inventory-generations",
+    "inventory-stage", "inventory-coverage", "inventory-entities",
+  ]));
   await assertDurablePair(idb, first.manifest.generation, cursor1);
   const restart = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
   assert.equal(restart.status, "verified-observation");
