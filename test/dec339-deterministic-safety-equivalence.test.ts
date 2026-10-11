@@ -165,7 +165,7 @@ test("D339-07A A04/A05 never accepts incomplete pages, stale tokens, wrong scope
   }
 });
 
-test("D339-07A A01/A07 same-name IDs, normalized collisions and broken ancestry force full fallback", async () => {
+test("D339-07A A01/A07 duplicate IDs, normalized collisions and contradictory path/provenance force fallback", async () => {
   const cases: readonly (readonly InventoryRemoteEntity[])[] = [
     [rootRow("content"), rootRow("portable-config"), fileRow(),
       fileRow({ remoteObjectId: id<"RemoteObjectId">("second") })],
@@ -173,7 +173,7 @@ test("D339-07A A01/A07 same-name IDs, normalized collisions and broken ancestry 
       fileRow({ remoteObjectId: id<"RemoteObjectId">("second"), name: "NOTE.md",
         logicalPath: id<"VaultPath">("NOTE.md") })],
     [rootRow("content"), rootRow("portable-config"),
-      fileRow({ parentRemoteObjectId: id<"RemoteObjectId">("orphan") })],
+      fileRow({ logicalPath: id<"VaultPath">("contradictory.md") })],
     [rootRow("content"), rootRow("portable-config"),
       fileRow({ provenanceDomain: "portable-config" })],
   ];
