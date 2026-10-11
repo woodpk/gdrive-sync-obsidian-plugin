@@ -603,8 +603,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         return error("stale", "local-snapshot-generation-or-authority-changed");
       }
       const local = tx.objectStore(LOCAL);
-      const prior = await request(local.getAll(IDBKeyRange.bound([String(generation)], [String(generation), []])))
-        as InventoryLocalObservation[];
+      const prior = (await request(local.getAll(IDBKeyRange.bound([String(generation)], [String(generation), []])))) as InventoryLocalObservation[];
       for (const item of prior) local.delete([String(generation), String(item.path)]);
       for (const item of observations) local.put(item);
       tx.objectStore(CONTROL).put({
@@ -642,8 +641,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       const bytes = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
       const authority = inspectInventoryAuthorityFence(bytes);
       const row = control?.activeGeneration && local?.status === "complete"
-        ? await request(tx.objectStore(LOCAL).get([String(control.activeGeneration), String(path)]))
-          as InventoryLocalObservation | undefined
+        ? (await request(tx.objectStore(LOCAL).get([String(control.activeGeneration), String(path)]))) as InventoryLocalObservation | undefined
         : undefined;
       await done;
       if (control?.status !== "ready" || local?.status !== "complete" ||
