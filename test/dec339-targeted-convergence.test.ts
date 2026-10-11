@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type InventoryIdentityFence, type InventoryTargetedReadObservation,
+import { contractId, type InventoryIdentityFence,
   type RecoverablePhysicalMutationDescriptorV1_1 } from "../src/contracts";
+import type { InventoryTargetedReadObservation } from "../src/drive/verified-metadata-inventory-reader";
 import {
   InventoryTargetedConvergenceReader, observeRemoteConvergenceWithFallback,
 } from "../src/product/inventory-targeted-convergence-read";
