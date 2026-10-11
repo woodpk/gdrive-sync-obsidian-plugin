@@ -125,12 +125,7 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   if (!approvedProductionMainSha256.has(actualSha256)) {
     return [{
       path: "main.js",
-      detail:
-        "Built shipping artifact SHA-256 changed from accepted production baseline/owner-approved candidate. Approved exact hashes: " +
-        [...approvedProductionMainSha256].join(", ") +
-        "; actual " +
-        actualSha256 +
-        ".",
+      detail: `Built shipping artifact SHA-256 changed from accepted production baseline/owner-approved candidate. Approved exact hashes: ${[...approvedProductionMainSha256].join(", ")}; actual ${actualSha256}.`,
     }];
   }
 
