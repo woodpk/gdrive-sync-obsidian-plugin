@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type VaultPath } from "../src/contracts";
 import { VerifiedInventoryPlanningProjection } from "../src/product/verified-inventory-planning-projection";
+import { readInventoryRemoteListing } from "../src/product/inventory-backed-snapshot-assembler";
 import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
 import { FakeDatabase, candidate, c, cursor1, fence, g, id, integratedFile, seeded, simulatedBaseline, withRangeOnly } from "./support/dec339-inventory-idb-fixtures";
 
@@ -86,4 +87,49 @@ test("D339-09A changed authority during projection fails closed", async () => {
   });
   assert.equal((await source.read(fence, cursor1)).status, "stale");
   assert.equal(snapshots, 2);
+});
+
+test("D339-09B forged parent-child path cannot yield complete planning absence", async () => {
+  withRangeOnly();
+  const storage = await seeded(new FakeDatabase().openFactory());
+  const next = candidate(g("projection-forged-path"));
+  const file = integratedFile(next.manifest.generation, "alpha.md");
+  next.rows.push({ ...file, entity: { ...file.entity, logicalPath: path("other/alpha.md") } });
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(next), storage)
+    .publishBaseline(fence, next.manifest.generation)).status, "published");
+  const projected = await new VerifiedInventoryPlanningProjection(storage).read(fence, cursor1);
+  assert.equal(projected.status, "unknown");
+  const lease = await storage.openRead();
+  assert.equal(lease.status, "verified-observation");
+  if (lease.status === "verified-observation") {
+    try {
+      assert.equal(await readInventoryRemoteListing(lease.value, fence, cursor1), undefined);
+    } finally {
+      await lease.value.release();
+    }
+  }
+});
+
+test("D339-09B ordinary content cannot collide with portable namespace projection", async () => {
+  withRangeOnly();
+  const storage = await seeded(new FakeDatabase().openFactory());
+  const next = candidate(g("projection-reserved-namespace"));
+  const namespace = path("__brain_sync_portable_config__");
+  const portable = path("__brain_sync_portable_config__/appearance.json");
+  const folderId = id("remote:ordinary-folder");
+  const folder = integratedFile(next.manifest.generation, String(namespace));
+  const underFolder = integratedFile(next.manifest.generation, "appearance.json");
+  next.rows.push(
+    { ...folder, entity: { ...folder.entity, remoteObjectId: folderId,
+      kind: "folder", logicalPath: namespace } },
+    { ...underFolder, entity: { ...underFolder.entity, remoteObjectId: id("remote:ordinary-file"),
+      parentRemoteObjectId: folderId, logicalPath: portable } },
+    { ...underFolder, entity: { ...underFolder.entity, remoteObjectId: id("remote:portable-file"),
+      parentRemoteObjectId: fence.configDomainRootId, domain: "portable-config",
+      provenanceDomain: "portable-config", logicalPath: portable } },
+  );
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(next), storage)
+    .publishBaseline(fence, next.manifest.generation)).status, "published");
+  const projected = await new VerifiedInventoryPlanningProjection(storage).read(fence, cursor1);
+  assert.equal(projected.status, "ambiguous");
 });
