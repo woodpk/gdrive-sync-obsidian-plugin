@@ -29,8 +29,24 @@ const canonicalDevDirectories = new Set([
 ]);
 const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
 const brainPackageName = "brain-google-drive-sync";
-const acceptedProductionMainSha256 =
-  "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e";
+/**
+ * Exact-byte shipping gate. The second digest is a bounded, owner-authorized
+ * DEC-339 D339-06B verification candidate, not permission to activate/release.
+ *
+ * The D339-06B source at 3a545794321b3a1ad91266dd3adf74e010dfbc9b
+ * passed typecheck, focused/full tests, build and artifact verification in
+ * PHX-CI run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb. Its first run was
+ * blocked only because this repository gate previously accepted one digest.
+ * Explicit software-owner approval authorizes THIS exact hash, not arbitrary
+ * future artifact changes. Any further digest needs separate owner approval.
+ */
+const approvedProductionMainSha256 = new Set([
+  // Previously accepted and still permitted production baseline:
+  "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e",
+  // D339-06B source 3a545794321b3a1ad91266dd3adf74e010dfbc9b46;
+  // published PHX-CI evidence af1d58c40a772ed85e941c20433b3ac3c5771e0a:
+  "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881",
+] as const);
 
 interface DevRootViolation {
   readonly path: string;
@@ -106,12 +122,13 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   const actualSha256 = createHash("sha256")
     .update(readFileSync(artifactPath))
     .digest("hex");
-  if (actualSha256 !== acceptedProductionMainSha256) {
+  if (!approvedProductionMainSha256.has(actualSha256 as
+    typeof approvedProductionMainSha256 extends Set<infer T> ? T : never)) {
     return [{
       path: "main.js",
       detail:
-        "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
-        acceptedProductionMainSha256 +
+        "Built shipping artifact SHA-256 changed from accepted production baseline/owner-approved candidate. Approved exact hashes: " +
+        [...approvedProductionMainSha256].join(", ") +
         "; actual " +
         actualSha256 +
         ".",
