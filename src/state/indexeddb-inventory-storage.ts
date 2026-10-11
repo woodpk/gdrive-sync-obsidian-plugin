@@ -317,7 +317,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   async openRead(): Promise<InventoryReadResult<InventoryReadLease>> {
     try {
       const db = await this.open();
-      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS], "readonly");
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, ENTITIES, COVERAGE], "readonly");
       const done = finished(tx);
       const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
       const canonical = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
@@ -344,9 +344,19 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         const m = record?.manifest;
         if (!record?.sealed || !m || m.status !== "complete" ||
             !inventoryFenceMatches(m.fence, control.fence) ||
-            m.generation !== id || m.overlayDepth > MAX_DEPTH) {
+            m.generation !== id || m.overlayDepth > MAX_DEPTH ||
+            record.count !== m.recordCount || !Number.isSafeInteger(record.coverageCount)) {
           await done;
           return error("invalid", "unsealed-or-missing-generation-ancestor");
+        }
+        // Count the actual durable rows in the same snapshot as the manifest.
+        // A deleted indexed child must never be mistaken for an empty covered parent.
+        const scope = IDBKeyRange.bound([String(id)], [String(id), []]);
+        const entities = await request(tx.objectStore(ENTITIES).count(scope));
+        const coverage = await request(tx.objectStore(COVERAGE).count(scope));
+        if (entities !== record.count || coverage !== record.coverageCount) {
+          await done;
+          return error("invalid", "persistent-inventory-row-count-disagrees-with-sealed-generation");
         }
         history.unshift(m);
         id = m.parentGeneration;
@@ -497,6 +507,10 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       if (!m || !staged?.sealed || !count?.sealed ||
           staged.count !== m.recordCount || count.count !== m.recordCount ||
           count.coverageCount !== staged.coverageCount ||
+          await request(tx.objectStore(ENTITIES).count(IDBKeyRange.bound(
+            [String(m.generation)], [String(m.generation), []]))) !== count.count ||
+          await request(tx.objectStore(COVERAGE).count(IDBKeyRange.bound(
+            [String(m.generation)], [String(m.generation), []]))) !== count.coverageCount ||
           m.status !== "complete" || m.validationReceipt !== input.validationReceipt ||
           m.terminalCursor !== input.nextCanonicalCursor ||
           !inventoryFenceMatches(m.fence, input.fence))
