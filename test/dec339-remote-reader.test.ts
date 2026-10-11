@@ -181,6 +181,8 @@ test("incremental edits preserve predecessor as read-only input and invalidate a
   p.token = "t2";
   const updated = { ...p.files.get("doc")!, version: "3" };
   p.events = [{ fileId: "doc", removed: false, file: updated }];
+  p.marked = [p.files.get("dir")!, updated];
+  p.children.set("dir", [updated]);
   const delta = await reader(p).incremental(fence, generation("g2"), cursor("t1"), base.value.entities);
   assert.equal(delta.status, "ok");
   if (delta.status === "ok") {
