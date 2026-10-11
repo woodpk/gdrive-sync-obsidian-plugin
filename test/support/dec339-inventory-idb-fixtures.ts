@@ -237,7 +237,7 @@ export function simulatedDelta(
     readonly generation: InventoryGeneration; readonly token: ChangeCursor;
     readonly inputCursor?: ChangeCursor;
     readonly overlays: readonly InventoryOverlayRecord[];
-    readonly changes: readonly import("../src/contracts/google-drive").RemoteChange[];
+    readonly changes: readonly import("../../src/contracts/google-drive").RemoteChange[];
     readonly partial?: boolean;
   },
 ): Pick<VerifiedMetadataInventoryReader, "baseline" | "incremental"> {
