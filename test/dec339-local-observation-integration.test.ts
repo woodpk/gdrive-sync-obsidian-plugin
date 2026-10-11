@@ -123,3 +123,30 @@ test("D339-08A local path policy and invalidations fail closed without affecting
   assert.equal(remote.status, "verified-observation");
   if (remote.status === "verified-observation") await remote.value.release();
 });
+
+test("D339-08A file changes during fresh enumeration invalidate the local snapshot", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), factory = fake.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("local-during-scan-base"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("during-scan.md");
+  let fileChanged: ((event: import("../src/contracts").LocalVaultChange) => void) | undefined;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => {
+      fileChanged?.({ kind: "modified", path: note });
+      return { completeness: { status: "complete" }, entries: [
+        { status: "present" as const, side: "local" as const, path: note,
+          entityKind: "file" as const, stability: "stable" as const },
+      ] };
+    },
+    onChange: listener => { fileChanged = listener; return () => { fileChanged = undefined; }; },
+    onLifecycle: () => () => undefined,
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, store, () => true);
+  const unsubscribe = coordinator.subscribe();
+  assert.equal((await coordinator.refresh(fence)).status, "stale");
+  assert.notEqual((await store.readLocalHint(fence, note)).status, "advisory");
+  unsubscribe();
+});
