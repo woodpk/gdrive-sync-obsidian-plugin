@@ -6,6 +6,8 @@ import type { InventoryTargetedReadObservation } from "../src/drive/verified-met
 import {
   InventoryTargetedConvergenceReader, observeRemoteConvergenceWithFallback,
 } from "../src/product/inventory-targeted-convergence-read";
+import { verifyPostDispatchConvergenceRead } from "../src/product/authoritative-production-executor-base";
+import type { RecoverableProductionMutationDependenciesV1_3 } from "../src/product/authoritative-production-executor";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const root = id<"RemoteObjectId">("root");
@@ -216,4 +218,134 @@ test("D339-06 no optional read adapter always uses the existing authoritative re
   const f = fixture();
   assert.deepEqual(await observeRemoteConvergenceWithFallback(undefined, f.context, f.fallback),
     { ok: false, reason: "canonical-remote-reconciliation" });
+});
+
+test("D339-06B executor's post-dispatch seam consumes real fresh read only after opted-in verified create", async () => {
+  const f = fixture();
+  let fullReads = 0;
+  const targetedConvergence = {
+    enabled: true, reader: f.observer, expectedFence: f.context.expectedFence,
+    generation: f.context.generation,
+  };
+  const configuredV13: RecoverableProductionMutationDependenciesV1_3 = { targetedConvergence };
+  assert.equal(configuredV13.targetedConvergence, targetedConvergence);
+  const outcome = await verifyPostDispatchConvergenceRead(
+    opId, "effect:1", fileCreate, { targetedConvergence },
+    async () => { fullReads++; return { ok: false, reason: "full-read-not-converged" }; },
+  );
+  assert.deepEqual(outcome, { ok: true });
+  assert.equal(fullReads, 0);
+  assert.equal(f.reads, 1);
+  assert.equal(f.targeted, 1);
+});
+
+test("D339-06B missing or default-disabled option uses existing complete reconciliation", async () => {
+  let fullReads = 0, optionalReads = 0;
+  const fallback = async () => {
+    fullReads++;
+    return { ok: false as const, reason: "full-reconciliation" };
+  };
+  const disabledReader = { observe: async () => {
+    optionalReads++;
+    throw new Error("disabled-reader-was-called");
+  } };
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {}, fallback),
+    { ok: false, reason: "full-reconciliation" });
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {
+    targetedConvergence: {
+      reader: disabledReader, expectedFence: fence, generation,
+    },
+  }, fallback), { ok: false, reason: "full-reconciliation" });
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {
+    targetedConvergence: {
+      enabled: false, reader: disabledReader, expectedFence: fence, generation,
+    },
+  }, fallback), { ok: false, reason: "full-reconciliation" });
+  assert.equal(optionalReads, 0);
+  assert.equal(fullReads, 3);
+});
+
+test("D339-06B mismatched targeted identity, effect, operation or path never verifies the effect", async () => {
+  const cases = [
+    { remoteObjectId: id<"RemoteObjectId">("not-reserved") },
+    { effectId: "effect:unrelated" },
+    { operationId: id<"OperationId">("op:unrelated") },
+    { targetPath: id<"VaultPath">("other/file.md") },
+  ];
+  for (const alteration of cases) {
+    let fullReads = 0;
+    const observer = { observe: async () => ({
+      status: "verified-convergence-read" as const,
+      operationId: opId, effectId: "effect:1",
+      targetPath: path, remoteObjectId: target,
+      ...alteration,
+    }) };
+    const observed = await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {
+      targetedConvergence: { enabled: true, reader: observer, expectedFence: fence, generation },
+    }, async () => { fullReads++; return { ok: false, reason: "full-read" }; });
+    assert.deepEqual(observed, { ok: false, reason: "full-read" }, JSON.stringify(alteration));
+    assert.equal(fullReads, 1);
+  }
+});
+
+test("D339-06B provider exceptions, missing proof and ambiguous occupancy invoke full read", async () => {
+  let fullReads = 0;
+  const fallback = async () => { fullReads++; return { ok: false as const, reason: "canonical-listing" }; };
+  const throws = { observe: async () => { throw new Error("provider-offline"); } };
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {
+    targetedConvergence: { enabled: true, reader: throws, expectedFence: fence, generation },
+  }, fallback), { ok: false, reason: "canonical-listing" });
+  for (const option of [
+    { badSiblings: true }, { noContent: true }, { missingProvenance: true },
+    { stateDrift: true }, { intentStage: "outcome-unknown" as const },
+  ]) {
+    const f = fixture(option);
+    assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", fileCreate, {
+      targetedConvergence: {
+        enabled: true, reader: f.observer,
+        expectedFence: f.context.expectedFence, generation: f.context.generation,
+      },
+    }, fallback), { ok: false, reason: "canonical-listing" });
+  }
+  assert.equal(fullReads, 6);
+});
+
+test("D339-06B move/trash/update are never sent to targeted proof even when option enabled", async () => {
+  const unsupported = [
+    { ...fileCreate, mutationKind: "update" },
+    { kind: "move", targetSide: "remote", fromPath: path, toPath: folderPath, remoteObjectId: target },
+    { kind: "trash", targetSide: "remote", path, remoteObjectId: target },
+  ];
+  let fullReads = 0, targetedReads = 0;
+  const reader = { observe: async () => {
+    targetedReads++;
+    throw new Error("non-create-proof-should-not-run");
+  } };
+  for (const descriptor of unsupported) {
+    assert.deepEqual(await verifyPostDispatchConvergenceRead(
+      opId, "effect:1", descriptor as never,
+      { targetedConvergence: { enabled: true, reader, expectedFence: fence, generation } },
+      async () => { fullReads++; return { ok: false, reason: "existing-convergence" }; },
+    ), { ok: false, reason: "existing-convergence" });
+  }
+  assert.equal(fullReads, unsupported.length);
+  assert.equal(targetedReads, 0);
+});
+
+test("D339-06B eligible folder-create positive read and conflicting folder proof are fenced", async () => {
+  const accepted = fixture({ descriptor: folderCreate });
+  const deps = { targetedConvergence: {
+    enabled: true, reader: accepted.observer,
+    expectedFence: accepted.context.expectedFence, generation: accepted.context.generation,
+  } };
+  let fallbackCount = 0;
+  const fallback = async () => { fallbackCount++; return { ok: false as const, reason: "canonical-folder-read" }; };
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", folderCreate, deps, fallback),
+    { ok: true });
+  assert.equal(fallbackCount, 0);
+  const mismatched = fixture({ descriptor: folderCreate, badPath: true });
+  assert.deepEqual(await verifyPostDispatchConvergenceRead(opId, "effect:1", folderCreate, {
+    targetedConvergence: { ...deps.targetedConvergence, reader: mismatched.observer },
+  }, fallback), { ok: false, reason: "canonical-folder-read" });
+  assert.equal(fallbackCount, 1);
 });
