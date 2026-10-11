@@ -667,16 +667,18 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
    * existing cross-instance synchronization lease; otherwise defer collection.
    * Each batch commits independently: interrupted cleanup can safely resume.
    */
-  async collectGarbage(exclusiveRunLeaseHeld: boolean): Promise<
+  async collectGarbage(exclusiveRunLeaseHeld: boolean, maxPasses = GC_MAX_PASSES): Promise<
     | { readonly status: "collected"; readonly removedRows: number; readonly removedGenerations: number }
     | InventoryError
   > {
     if (!exclusiveRunLeaseHeld) return error("stale", "garbage-collection-requires-cross-instance-lease");
+    if (!Number.isSafeInteger(maxPasses) || maxPasses < 1 || maxPasses > GC_MAX_PASSES)
+      return error("invalid", "invalid-garbage-collection-pass-budget");
     try {
       const db = await this.open();
       let removedRows = 0;
       let removedGenerations = 0;
-      for (let pass = 0; pass < GC_MAX_PASSES; pass++) {
+      for (let pass = 0; pass < maxPasses; pass++) {
         if (this.activity.acquiringReaders) break;
         const tx = stores(db, [CONTROL, MANIFESTS, ENTITIES, COVERAGE, LOCAL, STAGES], "readwrite");
         const done = finished(tx);
