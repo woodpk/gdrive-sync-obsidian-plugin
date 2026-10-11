@@ -107,7 +107,8 @@ function fixture(options: {
     },
     siblingIds: options.badSiblings ? [expectedId, id<"RemoteObjectId">("other")] : [expectedId],
     parentChain: [parent, content], appVisibleOnly: true,
-    rootWideMarkedProvenanceRechecked: !options.missingProvenance,
+    // Intentionally corrupt the provider proof at runtime for negative testing.
+    rootWideMarkedProvenanceRechecked: (options.missingProvenance ? false : true) as true,
     executorProofAuthorized: false,
     observedLogicalPath: options.badPath ? id<"VaultPath">("other/note.md") : expectedPath,
   };
