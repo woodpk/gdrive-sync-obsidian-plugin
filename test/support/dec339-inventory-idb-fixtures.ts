@@ -139,6 +139,10 @@ export class FakeDatabase {
             enqueue(() => selectByPrimaryRange(range)),
           add: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, true)),
           put: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, false)),
+          delete: (key: unknown) => enqueue(() => {
+            if (mode !== "readwrite") throw new Error("ReadOnlyError");
+            data.records.delete(keyOf(key));
+          }),
           index: (name: string) => {
             const path = data.indexes.get(name);
             if (!path) throw new Error("IndexNotFoundError");
