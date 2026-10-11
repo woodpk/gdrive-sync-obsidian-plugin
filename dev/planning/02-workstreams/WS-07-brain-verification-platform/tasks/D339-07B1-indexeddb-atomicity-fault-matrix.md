@@ -57,3 +57,18 @@ The owner's launcher must receive all applicable Section 19 pre-/post-print audi
 ## 5. Handoff
 
 Report exact source/evidence identities, new cases, demonstrated old/new cursor pairs, any unproven A01/A02/A08 case and next 07B child. D339-07B is not complete after 07B1: provider/Changes faults (A05/A06), planner/effect comparisons, D339-07C matched-workload performance and D339-08 integrated independent-review/rollout decisions remain outstanding.
+
+
+## 6. Owner-authorized test-file split — supersedes only earlier single-file restriction
+
+**Software-owner authorization:** On 2026-10-11 the owner explicitly directed splitting the oversized test file and completing D339-07B1. The sole-file writable restriction in §§2–3 is therefore **replaced only** by the following exact, finite file set, preserving the same acceptance and production-read-only boundaries:
+
+- **DELETE** `test/dec339-indexeddb-transaction.test.ts`, but only as part of one atomic Git commit that recreates **all** its 21 existing tests byte-for-byte in the resulting test files (apart from import/export relocation). No omitted original tests.
+- **CREATE** `test/support/dec339-inventory-idb-fixtures.ts`: relocate the existing deterministic FakeDatabase and helper functions; export only named fixtures.
+- **CREATE** `test/dec339-indexeddb-transaction-core.test.ts`: relocate the first eight existing standalone storage tests, retaining their assertions.
+- **CREATE** `test/dec339-indexeddb-transaction-integration.test.ts`: relocate the eleven remaining D339-04/A/B baseline, incremental and mask integration tests, retaining their assertions.
+- **CREATE** `test/dec339-indexeddb-transaction-faults.test.ts`: relocate the two D339-07B1 atomic-abort tests from partial HEAD `bb059f530efdff3e9488431704a1238885036e0d` and add the outstanding A01/A02/A08 negative fault cases.
+
+The split must be committed **atomically** through Git tree/commit/reference update with an expected SHA lease, never a sequence that permanently drops the source before replacement. Keep production, BVP core, governance and all other tests read-only. Use a fresh original connected Google Drive protocol read immediately before creating **each** test/fixture file. Preserve no-delete/no-duplicate test counts and the existing ≤220 net **new test-logic** LOC budget; relocating original assertions/fixtures does not count as new logic. The source commit remains pinned at `bb059f530efdff3e9488431704a1238885036e0d` as the starting partial state.
+
+**Updated focused verification target:** after PHX-CI compiles `tsconfig.test.json`, execute the three resulting compiled tests `dec339-indexeddb-transaction-core.test.js`, `dec339-indexeddb-transaction-integration.test.js`, `dec339-indexeddb-transaction-faults.test.js`; keep `dec339-remote-reader.test.js` and D339-07A focused test in the same PHX-CI call where feasible. Ordinary full product suite includes all split modules automatically. Repository gates and feature dormancy remain unchanged.
