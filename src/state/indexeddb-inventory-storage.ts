@@ -270,6 +270,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         !Number.isSafeInteger(m.recordCount) || m.recordCount < 0 ||
         !Number.isSafeInteger(m.overlayDepth) || m.overlayDepth > MAX_DEPTH)
       return error("invalid", "candidate-stage-manifest-invalid");
+    if (this.activity.staging.has(String(m.generation)))
+      return error("stale", "candidate-generation-already-staging");
     this.activity.staging.add(String(m.generation));
     let sealed = false;
     try {
@@ -688,16 +690,14 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
           return error("stale", "collector-requires-ready-control-and-no-acquiring-readers");
         }
         const reachable = new Set<string>(this.readers.keys());
+        const walked = new Set<string>();
         let id: InventoryGeneration | null = control.activeGeneration;
-        let depth = 0;
         while (id) {
-          if (reachable.has(String(id)) || ++depth > MAX_DEPTH + 1) {
-            // Active ancestry is checked independently even when a reader pinned it.
-            if (depth > MAX_DEPTH + 1) {
-              tx.abort(); await done.catch(() => undefined);
-              return error("invalid", "unbounded-collector-ancestry");
-            }
+          if (walked.has(String(id)) || walked.size >= MAX_DEPTH + 1) {
+            tx.abort(); await done.catch(() => undefined);
+            return error("invalid", "cyclic-or-unbounded-collector-ancestry");
           }
+          walked.add(String(id));
           reachable.add(String(id));
           const record = await request(tx.objectStore(MANIFESTS).get(String(id))) as StagedManifest | undefined;
           if (!record?.sealed || !record.manifest || record.manifest.generation !== id) {
