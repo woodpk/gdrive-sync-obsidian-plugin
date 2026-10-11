@@ -141,7 +141,10 @@ for (const { workload, size, nested } of [
     assert.equal(off.stats.fullLists, 1); assert.equal(on.stats.fullLists, 0);
     assert.equal(off.stats.leaseOpens, 0); assert.equal(on.stats.leaseOpens, 1);
     assert.ok(on.stats.byParent >= (nested ? 3 : 2));
-    assert.ok(on.stats.coverageReads >= (nested ? 5 : 4));
+    // The unified walker checks each distinct scope once: the two domain
+    // roots plus the optional nested folder. The prior double-read of each
+    // domain root provided no additional coverage or independent proof.
+    assert.equal(on.stats.coverageReads, nested ? 3 : 2);
     assert.equal(off.stats.mutationCalls + on.stats.mutationCalls, 0);
     for (const x of [off, on]) {
       console.log("D339_07C_METRIC=" + JSON.stringify({ workload, scale: size, nested,
