@@ -56,7 +56,7 @@ test("D339-09A truncated complete sibling scope is rejected, never treated as ab
   assert.equal(read.status, "partial");
 });
 
-test("D339-09A same-path independent stable IDs remain distinct for planner ambiguity handling", async () => {
+test("D339-09B same-path independent stable IDs force conservative fallback", async () => {
   withRangeOnly();
   const storage = await seeded(new FakeDatabase().openFactory());
   const next = candidate(g("projection-collision"));
@@ -66,9 +66,7 @@ test("D339-09A same-path independent stable IDs remain distinct for planner ambi
   assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(next), storage)
     .publishBaseline(fence, next.manifest.generation)).status, "published");
   const projected = await new VerifiedInventoryPlanningProjection(storage).read(fence, cursor1);
-  assert.equal(projected.status, "verified-observation");
-  if (projected.status === "verified-observation")
-    assert.equal(projected.listing.entries.filter(row => row.path === path("colliding.md")).length, 2);
+  assert.equal(projected.status, "ambiguous");
 });
 
 test("D339-09A changed authority during projection fails closed", async () => {
