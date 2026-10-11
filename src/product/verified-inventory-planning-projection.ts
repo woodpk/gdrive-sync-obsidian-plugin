@@ -14,6 +14,7 @@ import type {
 } from "../contracts";
 import type { IndexedDbInventoryObservationStore } from "../state/indexeddb-inventory-storage";
 import { inventoryFenceMatches } from "../state/verified-metadata-inventory-validation";
+import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
 
 const MAX_ENTITIES = 6000;
 const MAX_CHILDREN_PER_PARENT = 256;
@@ -35,10 +36,11 @@ function failed(status: InventoryTrustFailure, reason: string): InventoryPlannin
 
 function completeAt(
   c: Awaited<ReturnType<InventoryReadLease["coverage"]>>,
-  domain: InventoryDomain, scopeId: RemoteObjectId,
+  generation: InventoryGeneration, domain: InventoryDomain, scopeId: RemoteObjectId,
   kind: "parent" | "domain", cursor: ChangeCursor,
 ): boolean {
   return c.status === "verified-observation" &&
+    c.generation === generation && c.value.generation === generation &&
     c.value.domain === domain && c.value.scopeId === scopeId &&
     c.value.scopeKind === kind && c.value.terminalCursor === cursor &&
     c.value.state === "complete" && c.value.visibility === "app-visible" &&
@@ -58,30 +60,36 @@ function usableEntity(entity: InventoryRemoteEntity, domain: InventoryDomain,
  * can be returned; a truncated sibling set, inaccessible path, corrupt parent,
  * duplicate ID, or incomplete coverage rejects the WHOLE projection.
  */
-async function materialize(
+export async function readVerifiedInventoryListing(
   lease: InventoryReadLease, fence: InventoryIdentityFence, cursor: ChangeCursor,
 ): Promise<InventoryPlanningProjectionResult | { readonly status: "ok"; readonly entries: readonly RemoteEntry[] }> {
+  if (!inventoryFenceMatches(lease.fence, fence))
+    return failed("incompatible", "inventory-lease-identity-mismatch");
   const registeredIds = new Set<string>();
+  const visitedPaths = new Set<string>();
   const entries: RemoteEntry[] = [];
   for (const domain of ["content", "portable-config"] as const) {
     const rootId = domain === "content" ? fence.contentDomainRootId : fence.configDomainRootId;
     const root = await lease.getById(rootId);
-    if (root.status !== "verified-observation" || !root.value ||
+    if (root.status !== "verified-observation" || root.generation !== lease.generation || !root.value ||
         !usableEntity(root.value, domain, fence) ||
         root.value.kind !== "folder" || root.value.parentRemoteObjectId !== null ||
         root.value.remoteObjectId !== rootId)
       return failed("unknown", "unproven-inventory-domain-root");
     if (registeredIds.has(String(rootId))) return failed("invalid", "duplicate-cross-domain-root-id");
     registeredIds.add(String(rootId));
-    const queue: InventoryRemoteEntity[] = [root.value];
+    const queue: Array<{ readonly entity: InventoryRemoteEntity; readonly prefix: string }> = [
+      { entity: root.value, prefix: domain === "content" ? "" : CONFIG_REMOTE_NAMESPACE },
+    ];
     for (let next = 0; next < queue.length; next++) {
-      const parent = queue[next]!;
+      const { entity: parent, prefix } = queue[next]!;
       const parentId = String(parent.remoteObjectId);
       if (!registeredIds.has(parentId)) return failed("invalid", "unregistered-inventory-parent");
+      const siblingNames = new Set<string>();
       if (registeredIds.size > MAX_ENTITIES) return failed("partial", "bounded-inventory-projection-exceeded");
 
       const receipt = await lease.coverage(domain, parent.remoteObjectId);
-      if (!completeAt(receipt, domain, parent.remoteObjectId,
+      if (!completeAt(receipt, lease.generation, domain, parent.remoteObjectId,
           parent.remoteObjectId === rootId ? "domain" : "parent", cursor))
         return failed("unknown", "unproven-parent-or-domain-coverage");
 
@@ -89,14 +97,24 @@ async function materialize(
         undefined, MAX_CHILDREN_PER_PARENT);
       if (children.status !== "verified-observation")
         return failed(children.status, children.reason);
+      if (children.generation !== lease.generation)
+        return failed("stale", "cross-generation-child-read");
       for (const child of children.value) {
         const id = String(child.remoteObjectId);
+        const logicalPath = prefix ? prefix + "/" + child.name : child.name;
+        const nameKey = child.name.normalize("NFC").toLocaleLowerCase("en-US");
+        const pathKey = logicalPath.normalize("NFC").toLocaleLowerCase("en-US");
         if (!usableEntity(child, domain, fence) ||
             child.parentRemoteObjectId !== parent.remoteObjectId ||
-            !child.logicalPath || !String(child.logicalPath).trim())
+            !child.name || child.name === "." || child.name === ".." || child.name.includes("/") ||
+            !child.logicalPath || String(child.logicalPath) !== logicalPath)
           return failed("unknown", "uncertain-inventory-child-or-ancestry");
+        if (siblingNames.has(nameKey) || visitedPaths.has(pathKey))
+          return failed("ambiguous", "normalized-sibling-or-logical-path-collision");
         if (registeredIds.has(id))
           return failed("invalid", "duplicate-stable-id-in-projected-graph");
+        siblingNames.add(nameKey);
+        visitedPaths.add(pathKey);
         if (registeredIds.size >= MAX_ENTITIES)
           return failed("partial", "bounded-inventory-projection-exceeded");
         registeredIds.add(id);
@@ -107,7 +125,7 @@ async function materialize(
           content: child.content,
           trashed: false,
         });
-        if (child.kind === "folder") queue.push(child);
+        if (child.kind === "folder") queue.push({ entity: child, prefix: logicalPath });
       }
     }
   }
@@ -136,12 +154,12 @@ export class VerifiedInventoryPlanningProjection {
       const current = await this.storage.openRead();
       if (current.status !== "verified-observation")
         return failed(current.status, current.reason);
-      let projection: Awaited<ReturnType<typeof materialize>>;
+      let projection: Awaited<ReturnType<typeof readVerifiedInventoryListing>>;
       try {
         if (current.value.generation !== before.value.activeGeneration ||
             !inventoryFenceMatches(current.value.fence, fence))
           return failed("stale", "inventory-read-fence-mismatch");
-        projection = await materialize(current.value, fence, expectedCanonicalCursor);
+        projection = await readVerifiedInventoryListing(current.value, fence, expectedCanonicalCursor);
       } finally {
         await current.value.release();
       }
