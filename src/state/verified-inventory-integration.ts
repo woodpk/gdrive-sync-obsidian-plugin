@@ -181,7 +181,8 @@ export class VerifiedInventoryBaselineCoordinator {
           return failed("partial", "active-materialization-row-limit");
         const cov = await lease.coverage(domain, parent.remoteObjectId);
         if (cov.status !== "verified-observation" ||
-            cov.value.scopeKind !== "parent" || cov.value.scopeId !== parent.remoteObjectId)
+            cov.value.scopeId !== parent.remoteObjectId ||
+            (cov.value.scopeKind !== "parent" && parent.remoteObjectId !== root))
           return failed("unknown", "active-parent-coverage-unproven");
         const children = await lease.listByParent(domain, parent.remoteObjectId);
         if (children.status !== "verified-observation")
