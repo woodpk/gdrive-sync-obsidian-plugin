@@ -10,8 +10,8 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Software owner authorized a controlled D339-06B shipping-artifact approval on 2026-10-11. Candidate branch dec339/d339-06b-shipping-approval-01 at 64199ff7902a0dc09f60b0c3974fe23096adef60 pins old and new exact digests without bypass; supervisor-owned frozen BVP gate and negative tests updated. PHX-CI with BVP_CHANGE_CLASS=authorized-governance is NOW REQUIRED before closing D339-06B or starting D339-07. Do not activate or release feature."
-updated_at: "2026-10-10"
+next_action: "D339-06B COMPLETE / PHX-CI PASS at source 64199ff7902a0dc09f60b0c3974fe23096adef60 and published evidence 9881c13b542586ff6797f15a7903c22bebb83d4d. Next: prepare exact-SHA-bound D339-07 WS-07 deterministic virtual-world and negative/fault/equivalence scenario tasking from the reviewed DEC-339 architecture and WS-07 decomposition; no D339-07 executable task exists yet. Keep feature dormant; no independent feature review, Stage 3, physical Drive/vault mutation, installation, or deployment."
+updated_at: "2026-10-11"
 
 context:
   investigation_branch: "bvp-s09a-request-attribution-01"
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "DESIGN_REVIEWED; D339-01_THROUGH_D339-05_PHX_CI_COMPLETE_PASS; D339-06A_PHX_CI_COMPLETE_PASS; D339-06B_SUBSTANTIVE_TESTS_PASS_SHIPPING_GATE_BLOCKED; D339-07_NOT_STARTED; FEATURE_DORMANT; FEATURE_LEVEL_REVIEW_DEFERRED"
+  inventory_design_status: "DESIGN_REVIEWED; D339-01_THROUGH_D339-06B_PHX_CI_COMPLETE_PASS; D339-07_PLANNING_NEXT; FEATURE_DORMANT; FEATURE_LEVEL_REVIEW_DEFERRED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -106,22 +106,26 @@ context:
   d339_06a_phx_ci_run_id: "b3de82da-22f3-4767-b261-3d77fce1d039"
   d339_06a_status: "DORMANT_TARGETED_PROOF_HELPER; PHX_CI_COMPLETE_PASS; ALL_11_STAGES_PASS; NOT_WIRED_INTO_EXISTING_EXECUTOR; NO_SHIPPING_ACTIVATION"
   d339_06a_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
-  d339_06_status: "D339_06A_VERIFIED; D339_06B_EXECUTOR_INTEGRATED_BUT_REPOSITORY_GATE_BLOCKED; NOT_ACCEPTED"
+  d339_06_status: "D339_06A_AND_D339_06B_COMPLETE; ALL_RELEVANT_PHX_CI_STAGES_PASS; FEATURE_DORMANT"
   d339_06b_source_branch: "dec339/d339-06b-executor-convergence-01"
   d339_06b_base_sha: "c67f5518958b2f3d330368fb465933ce47cd9b46"
   d339_06b_source_sha: "3a545794321b3a1ad91266dd3adf74e010dfbc9b"
   d339_06b_evidence_commit: "af1d58c40a772ed85e941c20433b3ac3c5771e0a"
   d339_06b_phx_ci_run_id: "7417f3d1-c4c5-4a25-9010-2eef6cee0deb"
-  d339_06b_status: "BLOCKED; TYPECHECK_PASS; FOCUSED_PASS; FULL_TEST_PASS; BUILD_PASS; ARTIFACTS_PASS; REPOSITORY_CHECK_FAIL; CHECK_NOT_EXECUTED; SHIPPING_ARTIFACT_IDENTITY_GUARD"
+  d339_06b_initial_run_status: "BLOCKED; TYPECHECK_PASS; FOCUSED_PASS; FULL_TEST_PASS; BUILD_PASS; ARTIFACTS_PASS; REPOSITORY_CHECK_FAIL; CHECK_NOT_EXECUTED; SHIPPING_ARTIFACT_IDENTITY_GUARD"
+  d339_06b_status: "COMPLETE; PHX_CI_ALL_11_STAGES_PASS; GOVERNANCE_APPROVAL_VERIFIED; NO_FEATURE_ACTIVATION"
   d339_06b_shipped_main_candidate_sha256: "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881"
   d339_06b_expected_shipping_main_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
-  d339_06b_blocker: "Original fixed-hash repository gate blocked legitimate compiled code; owner explicitly authorized exact digest approval, but PHX-CI must still verify the controlled change."
+  d339_06b_prior_blocker: "Original fixed-hash repository gate rejected updated compiled plugin; owner-approved exact digest verified by subsequent PHX-CI run. RESOLVED."
   d339_06b_shipping_transition_branch: "dec339/d339-06b-shipping-approval-01"
   d339_06b_shipping_transition_sha: "64199ff7902a0dc09f60b0c3974fe23096adef60"
-  d339_06b_shipping_transition_status: "OWNER_AUTHORIZED; CODE_AND_REGRESSIONS_COMMITTED; PHX_CI_PENDING; NO_FEATURE_ACTIVATION"
+  d339_06b_shipping_transition_status: "OWNER_AUTHORIZED; COMPLETE; PHX_CI_ALL_11_STAGES_PASS; NO_FEATURE_ACTIVATION"
+  d339_06b_verified_source_sha: "64199ff7902a0dc09f60b0c3974fe23096adef60"
+  d339_06b_verified_evidence_commit: "9881c13b542586ff6797f15a7903c22bebb83d4d"
+  d339_06b_verified_phx_ci_run_id: "cec6119b-df58-4bd5-b502-6af1ff852d48"
+  d339_06b_verified_artifact_sha256: "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881"
   d339_06b_shipping_transition_approval_record: "dev/reviews/dec339-d339-06b-shipping-artifact-approval-2026-10-11.md"
-  d339_07_status: "NOT_STARTED; D339_06B_ACCEPTANCE_BLOCKED"
-  d339_07_status: "WAIT_FOR_D339_06B_EXECUTOR_INTEGRATION"
+  d339_07_status: "NEXT_TASKING_PREPARATION; NO_EXECUTABLE_TASK_FROZEN; PREDECESSOR_D339_06B_EVIDENCE_9881C13B"
 
   stage_3_started: false
   authority:
