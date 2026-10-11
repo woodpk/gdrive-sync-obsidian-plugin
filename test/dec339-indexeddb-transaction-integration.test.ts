@@ -118,6 +118,40 @@ test("D339-04 full rebaseline atomically replaces the active generation while an
   if (canonical.status === "trusted") assert.equal(canonical.state.changeCursor, secondCursor);
 });
 
+test("D339-08A full reconstruction accepts unchanged cursor after inventory invalidation", async () => {
+  withRangeOnly();
+  const fake = new FakeDatabase(), idb = fake.openFactory();
+  const storage = await seeded(idb);
+  const first = candidate(g("equal-cursor-original"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(first), storage)
+    .publishBaseline(fence, first.manifest.generation)).status, "published");
+
+  // Canonical authority is still trusted, but the observational active pointer
+  // has been invalidated. No remote change is needed to rebuild its coverage.
+  const controlTable = fake.tables.get("inventory-control");
+  assert.ok(controlTable);
+  const key = JSON.stringify("active");
+  const previous = controlTable.records.get(key) as Record<string, unknown> | undefined;
+  assert.ok(previous);
+  controlTable.records.set(key, { ...previous, status: "invalid", reason: "reconstruct" });
+  assert.notEqual((await storage.openRead()).status, "verified-observation");
+
+  const replacement = candidate(g("equal-cursor-replacement"), cursor1);
+  const result = await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(replacement), storage)
+    .publishBaseline(fence, replacement.manifest.generation);
+  assert.equal(result.status, "published");
+  const active = await new IndexedDbInventoryObservationStore("device:idb:test", idb).openRead();
+  assert.equal(active.status, "verified-observation");
+  if (active.status === "verified-observation") {
+    assert.equal(active.value.generation, replacement.manifest.generation);
+    await active.value.release();
+  }
+  const canonical = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", idb)).loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status === "trusted") assert.equal(canonical.state.changeCursor, cursor1);
+});
+
 test("D339-04 discards stale remote scan if canonical CAS changes before staging", async () => {
   const fixture = candidate(g("racing-scan"));
   const first = {
