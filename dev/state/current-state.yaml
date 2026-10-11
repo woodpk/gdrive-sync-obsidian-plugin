@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "D339-07B1 PARTIAL (NOT VERIFIED): branch dec339/d339-07b1-idb-crash-cursor-01, exact HEAD bb059f530efdff3e9488431704a1238885036e0d, accepted source base e14b25273321cd1d603ac7bc02996d97d8fc4ce9. Two atomic rollback tests and fault-injection seam added in sole authorized test file; remaining A01/A02/A08 cases needed to meet 5-8-test task. Connected GitHub file writes rejected on larger updated file; resume only with permitted repository-editing capability, retain original allowlist, do not claim test PASS or request PHX-CI on incomplete unit. Feature dormant."
+next_action: "Run first authoritative D339-07B1 PHX-CI on committed source b07e0190f1b07307f2db7e93268dbb0e78b1399e, branch dec339/d339-07b1-idb-crash-cursor-01, base e14b25273321cd1d603ac7bc02996d97d8fc4ce9. Owner-authorized atomic test split under task at c29468db19e9f32a6f8584635d2f073980353be9; 21 previous tests preserved and four additional new test cases added, six total D339-07B1 cases. Confirm focused/full product and BVP, build, repository guard, approved shipping artifact, published evidence. No feature activation, D339-07B2, Stage 3 or rollout until accepted."
 updated_at: "2026-10-11"
 
 context:
@@ -150,8 +150,13 @@ context:
   d339_07b1_task_prompt_commit: "61893e706265e38e67251fa99ac7f8ae39e06ee5"
   d339_07b1_branch: "dec339/d339-07b1-idb-crash-cursor-01"
   d339_07b1_base_sha: "e14b25273321cd1d603ac7bc02996d97d8fc4ce9"
-  d339_07b1_status: "PARTIAL; TWO_ABORT_TESTS_COMMITTED; MORE_NEGATIVE_CASES_REQUIRED; PHX_CI_NOT_RUN; REPOSITORY_WRITE_BLOCKER"
+  d339_07b1_status: "IMPLEMENTED_SPLIT_COMPLETE; 21_PRIOR_TESTS_PRESERVED; 6_FAULT_TESTS; PHX_CI_PENDING; NO_ACCEPTANCE_CLAIM"
   d339_07b1_partial_sha: "bb059f530efdff3e9488431704a1238885036e0d"
+  d339_07b1_complete_implementation_sha: "b07e0190f1b07307f2db7e93268dbb0e78b1399e"
+  d339_07b1_authorized_task_amendment_sha: "c29468db19e9f32a6f8584635d2f073980353be9"
+  d339_07b1_legacy_tests_preserved: 21
+  d339_07b1_new_tests_total: 6
+  d339_07b1_phx_ci_verification: "NOT_RUN"
   d339_07b1_blocker: "Further edits to single permitted large test file rejected by connected repository write safety checks; do not treat partial code as accepted or request PHX verification yet."
   d339_07b2_status: "AWAIT_07B1_ACCEPTED_EVIDENCE"
   d339_07c_status: "PLANNED_NOT_DISPATCHED; DEPENDS_ON_07B_EVIDENCE"
