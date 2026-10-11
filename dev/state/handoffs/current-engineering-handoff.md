@@ -129,3 +129,20 @@ The prior BLOCKED result on source `3a545794321b3a1ad91266dd3adf74e010dfbc9b`, e
 **Next:** prepare bounded D339-07 WS-07 PHX-CI-owned deterministic virtual-world cases, adverse/fault cases, contract/equivalence comparisons, attribution and measurable comparable-workload performance evidence. The architecture's task row is in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`, implementation order/constraints in `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` under **“Prospective DEC-339 verification unit — design only, not executable.”** No executable D339-07 task prompt yet exists in WS-07 `tasks/`; freeze exact ownership, allowlist, test selection and acceptance criteria before agent dispatch. The exact technical predecessor is the accepted evidence commit `9881c13b542586ff6797f15a7903c22bebb83d4d`.
 
 D339-07 and D339-08 feature-level integration and independent review are **not completed**, and the inventory optimization remains **off**. No live Drive/vault mutation, plugin install/release, iOS rollout, feature activation, Stage 3 entry, or S09A canary rerun is authorized by this D339-06B verification.
+
+
+## D339-07A executable task frozen — implementation next
+
+D339-06B accepted verification predecessor remains exact `9881c13b542586ff6797f15a7903c22bebb83d4d` (source `64199ff7902a0dc09f60b0c3974fe23096adef60`, PHX-CI `cec6119b-df58-4bd5-b502-6af1ff852d48`, all 11 gates PASS). DEC-339 feature remains disabled; no deployment/independent review authorization.
+
+**Exact tasking:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/D339-07A-inventory-safety-equivalence.md` on immutable planning commit `4273eca8ae9b773ed77e386c6e219b2de646e062`. Do **not** substitute moving planning HEAD.
+
+- Agent: `agt-brain-dec339-d339-07a-safety-equivalence-01`
+- Repository: `woodpk/gdrive-sync-obsidian-plugin`
+- Implementation branch: `dec339/d339-07a-safety-equivalence-01`, **precreated at exact HEAD** `9881c13b542586ff6797f15a7903c22bebb83d4d`.
+- Writable implementation paths: CREATE only `test/dec339-deterministic-safety-equivalence.test.ts` and `test-platform/test/dec339-legacy-safety-parity.test.ts`; PHX-CI owns standard evidence only.
+- Grounded scope: existing real inventory/legacy production read semantics and conservative failures, plus the existing canonical BVP crash, partial-listing, cursor, wrong-root and destructive-safety scenarios; no production/BVP-core or shipping changes.
+- Verification: installed pinned PHX-CI `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, exact source SHA, focused new product and BVP tests, complete full pipeline and evidence publication. Freshly re-read the original connected Drive engineering protocol immediately before authoring **each** new test file. No standalone validators/PowerShell test frameworks/GitHub Actions.
+- Bounded scope: at most two test files / ~450 logical LOC / <=12 purposeful tests. Any missing product seam or uncovered invariant yields a documented gap/corrective unit, not an authority bypass.
+
+WS-07 `03-BUILD-DECOMPOSITION.md` now splits remaining D339-07 into 07A safety, 07B crash/cursor lineage, 07C matched-workload performance/attribution, then supervisor integrated closure. **Only D339-07A is source-grounded and dispatch-ready.** D339-07B and 07C require later exact accepted evidence rebind. D339-08 still governs broader integrated equivalence, independent implementation review, Windows/iOS resource/physical evidence and rollout decision. Do not repeat S09A physical canary, activate inventory, install/release the plugin or start Stage 3.
