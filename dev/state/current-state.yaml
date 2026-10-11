@@ -10,7 +10,7 @@ blockers:
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Proceed with D339-04B: implement validated incremental COW generations, inherited and invalidated parent coverage, stable-ID masks, root-wide provenance and atomic Changes/cursor publication. Bind to D339-04A verified evidence 206f6c95b3d3f67af0b5de41ce7b88f48ede71f2. Keep feature dormant and defer independent review until full DEC-339 completion."
+next_action: "Proceed with D339-05 (WS-05): inventory-backed snapshot assembly with safe fallback, preserving current local/BASE semantics and single existing controller/planner. Bind to D339-04B verified evidence 9fb6d72479db4074e153b44e28c03e5c4bb2e991. Keep feature dormant until integration safety gates; defer independent third-party review until whole DEC-339 feature completion."
 updated_at: "2026-10-10"
 
 context:
@@ -33,7 +33,7 @@ context:
   measured_operation_scoped_requests: 188
   measured_pre_execution_unattributed_requests: 35
   measured_per_effect_reconciliations: 2
-  inventory_design_status: "DESIGN_REVIEWED; D339-01_PHX_CI_PASS; D339-02_PHX_CI_COMPLETE_PASS; D339-03_PHX_CI_COMPLETE_PASS; D339-04A_PHX_CI_COMPLETE_PASS; D339-04B_NEXT; FEATURE_LEVEL_REVIEW_DEFERRED"
+  inventory_design_status: "DESIGN_REVIEWED; D339-01_PHX_CI_PASS; D339-02_PHX_CI_COMPLETE_PASS; D339-03_PHX_CI_COMPLETE_PASS; D339-04A_PHX_CI_COMPLETE_PASS; D339-04B_PHX_CI_COMPLETE_PASS; D339-05_NEXT; FEATURE_LEVEL_REVIEW_DEFERRED"
   installed_instrumented_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
   earlier_green_phx_ci_evidence_head: "bd743b9a5791bcb81b57540272866a06c23ed43f"
   latest_phx_ci_result: "PASS; all 11 PHX-CI stages; live S09A scenario completed; focused source bd0b53c349fd1bf1f4c4d96efa322b857ada2cb9"
@@ -85,7 +85,13 @@ context:
   d339_04a_evidence_commit: "206f6c95b3d3f67af0b5de41ce7b88f48ede71f2"
   d339_04a_phx_ci_run_id: "0b5abff6-e300-49c0-a3cf-92eb26dc2102"
   d339_04a_status: "BASELINE_INTEGRATION_COMPLETE; PHX_CI_COMPLETE_PASS; DORMANT_NO_LIVE_ACTIVATION"
-  d339_04b_status: "NEXT; INCREMENTAL_COW_COVERAGE_AND_INVALIDATION_NOT_YET_IMPLEMENTED"
+  d339_04b_source_branch: "dec339/d339-04b-incremental-integration-01"
+  d339_04b_base_sha: "206f6c95b3d3f67af0b5de41ce7b88f48ede71f2"
+  d339_04b_verified_source_sha: "d2eaacdcf77b7e6c30bc42a0aa1aa8c8056ae6d2"
+  d339_04b_evidence_commit: "9fb6d72479db4074e153b44e28c03e5c4bb2e991"
+  d339_04b_phx_ci_run_id: "d470ff99-805c-4bf5-9e1f-565270c873db"
+  d339_04b_status: "INCREMENTAL_COW_INTEGRATION_COMPLETE; PHX_CI_COMPLETE_PASS; DORMANT_NO_LIVE_ACTIVATION"
+  d339_04_status: "D339_04A_AND_D339_04B_PHX_CI_PASS; HANDOFF_TO_D339_05"
 
   stage_3_started: false
   authority:
