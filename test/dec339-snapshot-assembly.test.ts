@@ -169,7 +169,7 @@ test("D339-05 missing, stale, wrong-scope and invalid coverage always fall back 
     { cursor: id<"ChangeCursor">("cursor:old") },
     { coverageValid: false },
     { storeThrows: true },
-    { rows: [rootEntity("content"), rootEntity("portable-config")] },
+    { rows: [rootEntity("content"), fileEntity()] },
     { rows: [rootEntity("content"), rootEntity("portable-config"), fileEntity({ pathValidity: "unknown" })] },
   ];
   for (const condition of conditions) {
