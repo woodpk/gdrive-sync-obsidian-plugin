@@ -5,6 +5,8 @@ import { contractId, type InventoryIdentityFence, type InventoryRemoteEntity,
   type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { InventoryBackedSnapshotAssembler } from "../src/product/inventory-backed-snapshot-assembler";
+import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const root = id<"RemoteObjectId">("root"), content = id<"RemoteObjectId">("content");
@@ -122,6 +124,10 @@ for (const scenario of ["full-required", "pending-effect", "stale-cursor",
     const startOff = performance.now(), expected = await off.off.assembleFull();
     const elapsedOff = performance.now() - startOff, afterOff = process.memoryUsage();
     assert.deepEqual(actual.input, expected.input);
+    const planner = new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner({
+      assess: async () => { throw new Error("fallback fixture unexpectedly requires conflict adjudication"); },
+    } as never));
+    assert.deepEqual(await planner.plan(actual.input), await planner.plan(expected.input));
     assert.equal(actual.nextCursor, expected.nextCursor);
     assert.deepEqual(actual.managedRemote, expected.managedRemote);
     assert.equal(on.calls.lists, 1);
