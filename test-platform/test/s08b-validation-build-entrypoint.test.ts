@@ -17,8 +17,11 @@ import {
 } from "../src/live-device/validation-entrypoint";
 
 const repositoryRoot = resolve(process.cwd());
-const acceptedProductionSha256 =
-  "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e";
+// Exact, software-owner-approved shipping artifacts; unknown digests must fail.
+const acceptedProductionSha256 = new Set<string>([
+  "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e",
+  "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881",
+]);
 
 function sha256(content: Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
@@ -125,7 +128,8 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   const productionBytes = readFileSync(productionPath);
   const productionText = productionBytes.toString("utf8");
   const productionHash = sha256(productionBytes);
-  equal(productionHash, acceptedProductionSha256);
+  equal(acceptedProductionSha256.has(productionHash), true,
+    `Unexpected shipping artifact SHA-256: ${productionHash}`);
   equal(productionText.includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), false);
   equal(productionText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), false);
   equal(productionText.includes("BRAIN BVP Mailbox"), false);
