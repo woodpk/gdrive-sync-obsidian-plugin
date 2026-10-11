@@ -752,6 +752,24 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   ): Promise<InventoryPublishResult> {
     try {
       const db = await this.open();
+      // Verify the sealed staged bytes before the short authority/pointer CAS.
+      // No asynchronous cryptographic digest is awaited while a read-write IDB
+      // transaction is open: that would risk an early IndexedDB auto-commit.
+      const proofTx = stores(db, [MANIFESTS, ENTITIES, COVERAGE], "readonly");
+      const proofDone = finished(proofTx);
+      const preparedStage = await request(proofTx.objectStore(MANIFESTS).get(
+        String(input.candidateGeneration))) as StagedManifest | undefined;
+      const proofRange = IDBKeyRange.bound(
+        [String(input.candidateGeneration)], [String(input.candidateGeneration), []]);
+      const stagedRows = await request(proofTx.objectStore(ENTITIES).getAll(proofRange)) as EntityRow[];
+      const stagedCoverage = await request(proofTx.objectStore(COVERAGE).getAll(proofRange)) as InventoryCoverage[];
+      await proofDone;
+      if (!preparedStage?.sealed || !preparedStage.persistedDigest ||
+          stagedRows.length !== preparedStage.count ||
+          stagedCoverage.length !== preparedStage.coverageCount ||
+          await persistedDigest(stagedRows, stagedCoverage) !== preparedStage.persistedDigest)
+        return { status: "invalid", reason: "staged-payload-does-not-match-sealed-integrity-digest" };
+
       const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, STAGES, COVERAGE, ENTITIES], "readwrite");
       const done = finished(tx);
       const fail = async (status: "stale" | "invalid" | "recovery-required", reason: string):
@@ -766,6 +784,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       const current = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
       const m = staged?.manifest;
       if (!m || !staged?.sealed || !count?.sealed ||
+          staged.persistedDigest !== preparedStage.persistedDigest ||
           staged.count !== m.recordCount || count.count !== m.recordCount ||
           count.coverageCount !== staged.coverageCount ||
           await request(tx.objectStore(ENTITIES).count(IDBKeyRange.bound(
