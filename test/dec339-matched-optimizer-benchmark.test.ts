@@ -5,6 +5,8 @@ import { contractId, type InventoryReadLease, type InventoryIdentityFence,
   type InventoryRemoteEntity, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
 import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
 import { InventoryBackedSnapshotAssembler } from "../src/product/inventory-backed-snapshot-assembler";
+import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
 
 const cid = <T extends string>(s: string) => contractId<T>(s);
 const root = cid<"RemoteObjectId">("managed"), content = cid<"RemoteObjectId">("content");
@@ -127,6 +129,13 @@ for (const { workload, size, nested } of [
     assert.deepEqual(on.result.input, off.result.input);
     assert.deepEqual(on.result.managedRemote, off.result.managedRemote);
     assert.equal(on.result.nextCursor, off.result.nextCursor);
+    const planner = new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner({
+      assess: async () => { throw new Error("matched fixture unexpectedly required conflict adjudication"); },
+    } as never));
+    const offPlan = await planner.plan(off.result.input);
+    const onPlan = await planner.plan(on.result.input);
+    assert.deepEqual(onPlan, offPlan);
+    assert.ok(onPlan.operations.length >= size);
     assert.equal(on.result.mode, "full"); assert.equal(off.result.mode, "full");
     assert.equal(on.result.input.snapshots.find(x => x.path === f.deleted)?.base.status, "trusted");
     assert.equal(off.stats.fullLists, 1); assert.equal(on.stats.fullLists, 0);
@@ -136,7 +145,8 @@ for (const { workload, size, nested } of [
     assert.equal(off.stats.mutationCalls + on.stats.mutationCalls, 0);
     for (const x of [off, on]) {
       console.log("D339_07C_METRIC=" + JSON.stringify({ workload, scale: size, nested,
-        mode: x.mode, semanticEqual: true, localVsRemoteInput: "same-controlled-fixture",
+        mode: x.mode, semanticEqual: true, exactPlanEqual: true,
+        plannedOperations: offPlan.operations.length, localVsRemoteInput: "same-controlled-fixture",
         logicalReconciliationLists: x.stats.fullLists, inventoryReads: x.stats,
         wallMs: x.wallMs, observedHeapBytes: x.observedHeapBytes,
         observedRssBytes: x.observedRssBytes,
