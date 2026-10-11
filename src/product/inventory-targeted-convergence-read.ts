@@ -10,8 +10,9 @@
  * feature-wide safety-equivalence and rollout gates own eventual activation.
  */
 import type {
-  InventoryGeneration, InventoryIdentityFence, MutationIntentId, OperationId,
-  RecoverablePhysicalMutationDescriptorV1_1, RemoteObjectId,
+  InventoryGeneration, InventoryIdentityFence, OperationId,
+  RecoverablePhysicalMutationDescriptorV1_1, RemoteFileCreatePhysicalMutationDescriptor,
+  RemoteFolderCreatePhysicalMutationDescriptor, RemoteObjectId,
   SynchronizationAuthorityStoreV1_1, VaultPath,
 } from "../contracts";
 import type { InventoryMetadataSource } from "../drive/inventory-metadata-source";
@@ -20,9 +21,7 @@ import type {
 } from "../drive/verified-metadata-inventory-reader";
 
 type Descriptor = RecoverablePhysicalMutationDescriptorV1_1;
-type CreateDescriptor =
-  | Extract<Descriptor, { readonly kind: "remote-file" }>
-  | Extract<Descriptor, { readonly kind: "remote-folder-create" }>;
+type CreateDescriptor = RemoteFileCreatePhysicalMutationDescriptor | RemoteFolderCreatePhysicalMutationDescriptor;
 
 export type TargetedConvergenceRead =
   | { readonly status: "verified-convergence-read"; readonly remoteObjectId: RemoteObjectId;
@@ -47,7 +46,6 @@ export interface TargetedConvergenceDependencies {
 }
 
 const fallback = (reason: string): TargetedConvergenceRead => ({ status: "fallback-required", reason });
-const norm = (text: string) => text.normalize("NFC").toLocaleLowerCase("en-US");
 const forbidden = (path: string) =>
   !path || path.startsWith("/") || path.endsWith("/") || path.includes("\\") ||
   path.split("/").some(piece => !piece || piece === "." || piece === "..");
