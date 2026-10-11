@@ -96,10 +96,13 @@ export class VerifiedInventoryBaselineCoordinator {
     const provider = await this.reader.baseline(fence, generation);
     if (provider.status !== "ok") return failed(provider.status, provider.reason);
     const candidate = provider.value;
+    // A verified full baseline may replace an invalid or stale inventory even when
+    // the terminal Changes cursor is unchanged. Cursor progress is mandatory only
+    // for incremental publication; baseline completeness comes from the provider
+    // scan/replay, graph validation, and the subsequent atomic authority CAS.
     if (candidate.publishAuthorized !== false ||
-        candidate.terminalCursor === before.value.canonicalCursor ||
         candidate.entities.length + candidate.coverage.length + 1 > MAX_VALIDATED_ROWS)
-      return failed("invalid", "unbounded-or-nonprogressing-baseline");
+      return failed("invalid", "unbounded-or-unauthorized-baseline");
     if (!coverageComplete(candidate.entities, candidate.coverage, fence, candidate.terminalCursor))
       return failed("unknown", "unproven-provider-visible-parent-or-domain-coverage");
     const overlays = orderedRows(generation, candidate.entities);
