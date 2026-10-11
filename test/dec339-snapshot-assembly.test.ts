@@ -12,7 +12,7 @@ const root = id<"RemoteObjectId">("drive:managed");
 const content = id<"RemoteObjectId">("drive:content");
 const config = id<"RemoteObjectId">("drive:config");
 const cursor = id<"ChangeCursor">("cursor:5");
-const revision = id<"PersistenceRevision">("rev:7");
+const revision = id<"StateRevision">("rev:7");
 const generation = "inventory:5" as import("../src/contracts").InventoryGeneration;
 const fence: InventoryIdentityFence = {
   vaultIdentity: vault, deviceIdentity: device, pairedAccountKey: "opaque:paired",
