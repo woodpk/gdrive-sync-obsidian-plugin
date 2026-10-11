@@ -6,7 +6,7 @@
  * Full/recovery reconciliation bypasses this optimization deliberately.
  */
 import type {
-  ChangeCursor, GoogleDrivePort, InventoryDomain, InventoryIdentityFence,
+  ChangeCursor, GoogleDrivePort, InventoryIdentityFence,
   InventoryReadLease, InventoryRemoteEntity, LocalVaultPort, ManagedRemoteIdentity,
   RemoteEntry, RemoteListing, RemoteObjectId, StateLoadContext, SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore, VaultPath, ReliableRemoteChangePort,
@@ -39,11 +39,12 @@ export interface InventorySnapshotAssemblyOptions {
 
 /** Every read is pinned to one generation; any missing coverage requires fallback. */
 export async function readInventoryRemoteListing(
-  lease: InventoryReadLease, expectedFence: InventoryIdentityFence,
+  lease: InventoryReadLease, expectedFence: InventoryIdentityFence, expectedCursor: ChangeCursor,
 ): Promise<RemoteListing | undefined> {
   if (!inventoryFenceMatches(lease.fence, expectedFence)) return undefined;
   const entries: RemoteEntry[] = [];
   const seen = new Set<string>();
+  const observedPaths = new Set<string>();
   for (const domain of ["content", "portable-config"] as const) {
     const root = domain === "content" ? expectedFence.contentDomainRootId : expectedFence.configDomainRootId;
     const domainCoverage = await lease.coverage(domain, root);
@@ -51,7 +52,10 @@ export async function readInventoryRemoteListing(
         domainCoverage.generation !== lease.generation ||
         domainCoverage.value.scopeKind !== "domain" ||
         domainCoverage.value.scopeId !== root ||
-        domainCoverage.value.terminalCursor !== undefined && !domainCoverage.value.provenanceVerified)
+        domainCoverage.value.state !== "complete" ||
+        domainCoverage.value.terminalCursor !== expectedCursor ||
+        !domainCoverage.value.provenanceVerified || !domainCoverage.value.allPagesRead ||
+        domainCoverage.value.incompleteSearch || domainCoverage.value.visibility !== "app-visible")
       return undefined;
     const rootRead = await lease.getById(root);
     if (rootRead.status !== "verified-observation" || rootRead.generation !== lease.generation ||
@@ -73,7 +77,7 @@ export async function readInventoryRemoteListing(
           coverage.value.scopeId !== parent.remoteObjectId ||
           coverage.value.state !== "complete" || !coverage.value.provenanceVerified ||
           !coverage.value.allPagesRead || coverage.value.incompleteSearch ||
-          coverage.value.visibility !== "app-visible")
+          coverage.value.visibility !== "app-visible" || coverage.value.terminalCursor !== expectedCursor)
         return undefined;
       const children = await lease.listByParent(domain, parent.remoteObjectId);
       if (children.status !== "verified-observation" || children.generation !== lease.generation)
@@ -85,7 +89,7 @@ export async function readInventoryRemoteListing(
         const comparison = norm(child.name);
         // Same-name siblings, case/Unicode collisions and ambiguous ancestors
         // require the original authoritative reconciliation, not a collapsed map.
-        if (occupiedNames.has(comparison) || seen.has(id) ||
+        if (occupiedNames.has(comparison) || observedPaths.has(norm(logical)) || seen.has(id) ||
             queue.some(item => item.entity.remoteObjectId === child.remoteObjectId) ||
             !child.name || child.name === "." || child.name === ".." || child.name.includes("/") ||
             child.pathValidity !== "verified" || child.access !== "visible" || child.trashed ||
@@ -95,6 +99,7 @@ export async function readInventoryRemoteListing(
             child.logicalPath === undefined || String(child.logicalPath) !== logical)
           return undefined;
         occupiedNames.add(comparison);
+        observedPaths.add(norm(logical));
         entries.push({
           path: child.logicalPath, entityKind: child.kind,
           remoteObjectId: child.remoteObjectId, content: child.content, trashed: false,
@@ -117,6 +122,13 @@ export async function readInventoryRemoteListing(
  * existing assembler, substituting only a rigorously fenced REMOTE listing.
  */
 export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
+  private boundAuthority?: SynchronizationAuthorityStoreV1_1;
+
+  override bindAuthorityStore(authorityStore: SynchronizationAuthorityStoreV1_1): void {
+    super.bindAuthorityStore(authorityStore);
+    this.boundAuthority = authorityStore;
+  }
+
   constructor(private readonly options: InventorySnapshotAssemblyOptions) {
     super(options.local, options.drive, options.state, options.stateContext,
       options.remoteIdentity, options.pathIncluded, options.fullReconcileRequired,
@@ -160,7 +172,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       try {
         if (read.generation === before.value.activeGeneration &&
             read.value.generation === before.value.activeGeneration)
-          listing = await readInventoryRemoteListing(read.value, fence);
+          listing = await readInventoryRemoteListing(read.value, fence, before.value.canonicalCursor);
       } finally {
         await read.value.release();
       }
@@ -188,7 +200,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       const existing = new ProductSnapshotAssembler(
         this.options.local, fencedDrive, state, stateContext,
         this.options.remoteIdentity, this.options.pathIncluded, this.options.fullReconcileRequired,
-        this.options.diagnostics, this.options.reliableChanges, this.options.authorityStore,
+        this.options.diagnostics, this.options.reliableChanges, this.boundAuthority ?? this.options.authorityStore,
       );
       const assembled = await existing.assembleFull(runId);
       if (assembled.managedRemote.rootId === remote.rootId &&
