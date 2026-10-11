@@ -315,7 +315,9 @@ export class VerifiedInventoryBaselineCoordinator {
       authoritySemanticGeneration: before.value.semanticGeneration,
       recordCount: touched.length, coverageDigest, status: "complete" as const,
     };
-    const receipt = await digest({ basis, touched, fullGraphDigest: await digest(normalized), coverage });
+    const fullGraphDigest = await digest(normalized);
+    if (!fullGraphDigest) return failed("recovery-required", "effective-graph-digest-unavailable");
+    const receipt = await digest({ basis, touched, fullGraphDigest, coverage });
     if (!receipt) return failed("recovery-required", "delta-validation-receipt-unavailable");
     const manifest: InventoryGenerationManifest = { ...basis, validationReceipt: receipt };
     const again = await this.storage.publicationSnapshot(fence);
