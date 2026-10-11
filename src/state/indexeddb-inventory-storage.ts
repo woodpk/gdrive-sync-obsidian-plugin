@@ -165,12 +165,15 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
    * Explicitly dormant. The subsequent multi-store CAS always rechecks these values.
    * An invalid/absent active pointer permits a fresh full baseline only.
    */
-  async publicationSnapshot(expectedFence: InventoryIdentityFence): Promise<InventoryReadResult<{
+  async publicationSnapshot(expectedFence: InventoryIdentityFence): Promise<
+    | { readonly status: "trusted-fence"; readonly value: {
     readonly activeGeneration: InventoryGeneration | null;
     readonly canonicalCursor: ChangeCursor | null;
     readonly persistenceRevision: import("../contracts").PersistenceRevision;
     readonly semanticGeneration: import("../contracts").SemanticStateGeneration;
-  }>> {
+    } }
+    | InventoryError
+  > {
     try {
       const db = await this.open();
       const tx = stores(db, [AUTHORITY, CONTROL], "readonly");
@@ -190,10 +193,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
            control.authorityPersistenceRevisionAtPublish !== authority.persistenceRevision ||
            control.authoritySemanticGenerationAtPublish !== authority.semanticGeneration))
         return error("stale", "active-control-and-canonical-authority-disagree");
-      return { status: "verified-observation",
-        generation: control?.status === "ready" ? control.activeGeneration :
-          ("" as InventoryGeneration),
-        value: {
+      return { status: "trusted-fence", value: {
           activeGeneration: control?.status === "ready" ? control.activeGeneration : null,
           canonicalCursor: authority.canonicalCursor,
           persistenceRevision: authority.persistenceRevision,
