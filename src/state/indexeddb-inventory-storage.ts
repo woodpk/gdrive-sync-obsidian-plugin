@@ -160,6 +160,51 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     return this.database;
   }
 
+  /**
+   * A consistent, integrity-checked read of canonical authority and inventory control.
+   * Explicitly dormant. The subsequent multi-store CAS always rechecks these values.
+   * An invalid/absent active pointer permits a fresh full baseline only.
+   */
+  async publicationSnapshot(expectedFence: InventoryIdentityFence): Promise<InventoryReadResult<{
+    readonly activeGeneration: InventoryGeneration | null;
+    readonly canonicalCursor: ChangeCursor | null;
+    readonly persistenceRevision: import("../contracts").PersistenceRevision;
+    readonly semanticGeneration: import("../contracts").SemanticStateGeneration;
+  }>> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL], "readonly");
+      const done = finished(tx);
+      const bytes = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      await done;
+      const authority = inspectInventoryAuthorityFence(bytes);
+      if (authority.status !== "trusted" || authority.unresolvedEffects)
+        return error("recovery-required", "canonical-authority-untrusted-or-effect-outstanding");
+      if (authority.vaultIdentity !== expectedFence.vaultIdentity ||
+          authority.deviceIdentity !== expectedFence.deviceIdentity)
+        return error("incompatible", "canonical-identity-fence-mismatch");
+      if (control?.status === "ready" &&
+          (!inventoryFenceMatches(control.fence, expectedFence) ||
+           control.terminalCursor !== authority.canonicalCursor ||
+           control.authorityPersistenceRevisionAtPublish !== authority.persistenceRevision ||
+           control.authoritySemanticGenerationAtPublish !== authority.semanticGeneration))
+        return error("stale", "active-control-and-canonical-authority-disagree");
+      return { status: "verified-observation",
+        generation: control?.status === "ready" ? control.activeGeneration :
+          ("" as InventoryGeneration),
+        value: {
+          activeGeneration: control?.status === "ready" ? control.activeGeneration : null,
+          canonicalCursor: authority.canonicalCursor,
+          persistenceRevision: authority.persistenceRevision,
+          semanticGeneration: authority.semanticGeneration,
+        },
+      };
+    } catch {
+      return error("recovery-required", "publication-snapshot-storage-unavailable");
+    }
+  }
+
   async stage(input: InventoryStageRequest): Promise<InventoryReadResult<InventoryGeneration>> {
     const m = input.candidate;
     if (!valid(m.generation) || !valid(m.validationReceipt) || m.status !== "complete" ||
