@@ -1,4 +1,4 @@
-STATUS: COMPLETE
+STATUS: BLOCKED
 
 # phx-ci evidence - gdrive-sync-obsidian-plugin
 
@@ -6,16 +6,16 @@ STATUS: COMPLETE
 
 - Change-set verification: PASS
 - Repository verification: PASS
-- Overall verification: PASS
+- Overall verification: BLOCKED; REPOSITORY-GATE FAILURE; A required non-verification gate did not complete successfully.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: b3de82da-22f3-4767-b261-3d77fce1d039
-- Repository: C:/phx-9ec5787a51224dec/w
+- Run ID: 7417f3d1-c4c5-4a25-9010-2eef6cee0deb
+- Repository: C:/phx-066aefe358504796/w
 - Branch:
-- Verified HEAD: 218c2233ba11b16a8df6c6648d01e93d4144bfa9
-- Verified tree: 4c5ff731e9ad640a539f44b63717afdce9de42ff
-- Expected HEAD: 218c2233ba11b16a8df6c6648d01e93d4144bfa9
-- Base SHA: 0486766df0202fb6af1ebca2fc8ceaea307ab7a6
+- Verified HEAD: 3a545794321b3a1ad91266dd3adf74e010dfbc9b
+- Verified tree: 8be282f00b0cfbbc54ac35451b802837f6eb4e7b
+- Expected HEAD: 3a545794321b3a1ad91266dd3adf74e010dfbc9b
+- Base SHA: c67f5518958b2f3d330368fb465933ce47cd9b46
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
 - PowerShell: 7.6.6
@@ -24,25 +24,26 @@ STATUS: COMPLETE
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-11T03:54:13.2552641Z
-- Ended: 2026-10-11T03:56:09.9426217Z
+- Started: 2026-10-11T13:56:31.7462104Z
+- Ended: 2026-10-11T13:58:43.0952082Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- node-preflight: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- node-project-files: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- install: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- typecheck: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- test-focused: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- test: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- build: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- repository-check: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- check: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
-- artifacts: PASS (exit 0; NONE; run b3de82da-22f3-4767-b261-3d77fce1d039)
+- preflight: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- node-preflight: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- node-project-files: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- install: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- typecheck: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- test-focused: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- test: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- build: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- repository-check: FAIL (exit 1; REPOSITORY-GATE FAILURE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- artifacts: PASS (exit 0; NONE; run 7417f3d1-c4c5-4a25-9010-2eef6cee0deb)
+- check: MISSING (FRAMEWORK FAILURE)
 
 ## Artifacts
 
-- main.js: 902987 bytes; SHA-256 e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e
+- main.js: 904453 bytes; SHA-256 acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881
 
-Final verdict: COMPLETE
+Final verdict: BLOCKED
+Failure classification: REPOSITORY-GATE FAILURE
