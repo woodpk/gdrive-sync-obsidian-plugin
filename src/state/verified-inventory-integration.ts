@@ -78,7 +78,8 @@ export class VerifiedInventoryBaselineCoordinator {
   constructor(
     private readonly reader: Pick<VerifiedMetadataInventoryReader, "baseline" | "incremental">,
     private readonly storage: Pick<IndexedDbInventoryObservationStore,
-      "publicationSnapshot" | "stage" | "publishAtomically" | "openRead">,
+      "publicationSnapshot" | "stage" | "publishAtomically"> &
+      Partial<Pick<IndexedDbInventoryObservationStore, "openRead">>,
   ) {}
 
   async publishBaseline(
@@ -225,6 +226,7 @@ export class VerifiedInventoryBaselineCoordinator {
       return failed("stale", "no-coherent-active-inventory-to-extend");
     if (prior.overlayDepth >= 32)
       return failed("recovery-required", "overlay-depth-requires-full-rebaseline");
+    if (!this.storage.openRead) return failed("recovery-required", "active-lease-read-unavailable");
     const read = await this.storage.openRead();
     if (read.status !== "verified-observation") return failed(read.status, read.reason);
     let materialized: Awaited<ReturnType<VerifiedInventoryBaselineCoordinator["materialize"]>>;
