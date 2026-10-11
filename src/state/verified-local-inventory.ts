@@ -17,6 +17,7 @@ export type LocalInventoryRefreshResult =
 
 /** The caller supplies the same effective in-scope path policy as ordinary snapshot assembly. */
 export class VerifiedLocalInventoryCoordinator {
+  private localChangeEpoch = 0;
   constructor(
     private readonly local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle">,
     private readonly inventory: Pick<IndexedDbInventoryObservationStore,
@@ -28,6 +29,7 @@ export class VerifiedLocalInventoryCoordinator {
     const before = await this.inventory.publicationSnapshot(fence);
     if (before.status !== "trusted-fence") return { status: before.status, reason: before.reason };
     const generation = before.value.activeGeneration;
+    const observedEpoch = this.localChangeEpoch;
     if (!generation) return { status: "unknown", reason: "no-established-remote-inventory-generation" };
     try {
       const enumeration = await this.local.enumerate();
@@ -59,6 +61,7 @@ export class VerifiedLocalInventoryCoordinator {
       }
       const after = await this.inventory.publicationSnapshot(fence);
       if (after.status !== "trusted-fence" ||
+          this.localChangeEpoch !== observedEpoch ||
           after.value.activeGeneration !== generation ||
           after.value.canonicalCursor !== before.value.canonicalCursor ||
           after.value.persistenceRevision !== before.value.persistenceRevision ||
@@ -68,6 +71,10 @@ export class VerifiedLocalInventoryCoordinator {
       }
       const saved = await this.inventory.replaceLocalSnapshot(fence, generation, observed, true);
       if (saved.status !== "verified-observation") return { status: saved.status, reason: saved.reason };
+      if (this.localChangeEpoch !== observedEpoch) {
+        await this.inventory.invalidateLocalSnapshot("local-change-during-snapshot-publication");
+        return { status: "stale", reason: "local-observations-changed-during-snapshot-publication" };
+      }
       return { status: "recorded", generation, count: saved.value };
     } catch {
       await this.inventory.invalidateLocalSnapshot("local-enumeration-or-persistence-failed").catch(() => undefined);
@@ -78,6 +85,7 @@ export class VerifiedLocalInventoryCoordinator {
   /** Invalidate hints promptly on file events and on resume, without affecting canonical state. */
   subscribe(): () => void {
     const invalidate = () => {
+      this.localChangeEpoch++;
       void this.inventory.invalidateLocalSnapshot("local-observation-may-be-stale")
         .catch(() => undefined);
     };
