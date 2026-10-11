@@ -118,19 +118,25 @@ export class FakeDatabase {
           data.records.set(encoded, value);
           return chosen;
         };
+        const selectByPrimaryRange = (
+          range?: { lower?: readonly unknown[]; upper?: readonly unknown[] },
+        ): unknown[] => {
+          if (!range) return [...data.records.values()];
+          if (!Array.isArray(range.lower) || !Array.isArray(range.upper) ||
+              range.lower.length !== 1 || range.upper.length !== 2 ||
+              range.upper[0] !== range.lower[0] || !Array.isArray(range.upper[1]))
+            throw new Error("Unsupported IDB primary-key range in fixture");
+          return [...data.records.entries()].filter(([encoded]) => {
+            const key: unknown = JSON.parse(encoded);
+            return Array.isArray(key) && key[0] === range.lower![0];
+          }).map(([, value]) => value);
+        };
         return {
           get: (key: unknown) => enqueue(() => data.records.get(keyOf(key))),
-          count: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) => enqueue(() => {
-            if (!range) return data.records.size;
-            if (!Array.isArray(range.lower) || !Array.isArray(range.upper) ||
-                range.lower.length !== 1 || range.upper.length !== 2 ||
-                range.upper[0] !== range.lower[0] || !Array.isArray(range.upper[1]))
-              throw new Error("Unsupported IDB primary-key range in fixture");
-            return [...data.records.keys()].filter(encoded => {
-              const key: unknown = JSON.parse(encoded);
-              return Array.isArray(key) && key[0] === range.lower![0];
-            }).length;
-          }),
+          count: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) =>
+            enqueue(() => selectByPrimaryRange(range).length),
+          getAll: (range?: { lower?: readonly unknown[]; upper?: readonly unknown[] }) =>
+            enqueue(() => selectByPrimaryRange(range)),
           add: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, true)),
           put: (value: unknown, key?: unknown) => enqueue(() => entryPut(value, key, false)),
           index: (name: string) => {
