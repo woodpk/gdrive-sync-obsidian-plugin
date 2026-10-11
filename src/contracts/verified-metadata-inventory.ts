@@ -61,15 +61,24 @@ export interface InventoryRemoteEntity {
   readonly content?: ContentEvidence;
 }
 
-/** Advisory only: no missing local row can prove deletion. */
-export interface InventoryLocalObservation {
-  readonly generation: InventoryGeneration;
-  readonly path: VaultPath;
-  readonly kind: EntityKind;
-  readonly presence: "present" | "unreadable" | "unknown";
-  readonly observationToken?: ObservationToken;
-  readonly remoteObjectId?: RemoteObjectId;
-}
+/** Advisory only. A cached local observation never proves current presence or absence. */
+export type InventoryLocalObservation =
+  | {
+      readonly generation: InventoryGeneration;
+      readonly path: VaultPath;
+      readonly presence: "present";
+      readonly kind: EntityKind;
+      readonly observationToken?: ObservationToken;
+      readonly remoteObjectId?: RemoteObjectId;
+    }
+  | {
+      readonly generation: InventoryGeneration;
+      readonly path: VaultPath;
+      readonly presence: "unreadable" | "unknown";
+      readonly kind?: EntityKind;
+      readonly observationToken?: ObservationToken;
+      readonly remoteObjectId?: RemoteObjectId;
+    };
 
 /** Provider-visible coverage is not a claim over files unavailable under drive.file. */
 export interface InventoryCoverage {
