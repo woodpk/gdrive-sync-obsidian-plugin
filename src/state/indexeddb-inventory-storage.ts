@@ -715,8 +715,10 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
 
   /**
    * Bounded crash-resumable cleanup of generations unreachable from both the
-   * active manifest chain and pinned readers. The caller holds the vault's
-   * existing cross-instance synchronization lease; otherwise defer collection.
+   * active manifest chain and durably pinned readers across independent tabs.
+   * Pins do not expire: a crashed reader may delay cleanup, but no live reader
+   * loses its ancestry through another context's garbage collection.
+   * The caller holds the vault's existing cross-instance synchronization lease.
    * Each batch commits independently: interrupted cleanup can safely resume.
    */
   async collectGarbage(exclusiveRunLeaseHeld: boolean, maxPasses = GC_MAX_PASSES): Promise<
@@ -740,6 +742,19 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
           return error("stale", "collector-requires-ready-control-and-no-acquiring-readers");
         }
         const reachable = new Set<string>(this.readers.keys());
+        // These records, unlike the shared JavaScript activity map, are
+        // visible to other workers/tabs under the SAME IDB transaction.
+        const stageRecords = await request(tx.objectStore(STAGES).getAll()) as unknown[];
+        for (const entry of stageRecords) {
+          if (entry && typeof entry === "object" &&
+              (entry as { kind?: unknown }).kind === "reader-pin") {
+            if (!isReaderPin(entry)) {
+              tx.abort(); await done.catch(() => undefined);
+              return error("invalid", "malformed-durable-reader-pin");
+            }
+            for (const generation of entry.generations) reachable.add(generation);
+          }
+        }
         const walked = new Set<string>();
         let id: InventoryGeneration | null = control.activeGeneration;
         while (id) {
@@ -760,7 +775,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         const victims = manifests.filter(item => item?.manifest &&
           !reachable.has(String(item.manifest.generation)) &&
           !this.activity.staging.has(String(item.manifest.generation)));
-        const abandoned = await request(tx.objectStore(STAGES).getAll()) as StagedCounter[];
+        const abandoned = stageRecords.filter(isStagedCounter);
         const victim = victims[0]?.manifest.generation ??
           abandoned.find(item => !reachable.has(String(item.generation)) &&
             !this.activity.staging.has(String(item.generation)))?.generation;
