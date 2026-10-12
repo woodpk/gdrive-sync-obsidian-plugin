@@ -18,6 +18,10 @@ import { readVerifiedInventoryListing } from "./verified-inventory-planning-proj
 import { ProductSnapshotAssembler, type AssembledPlanningInput } from "./snapshot-assembler";
 
 type InventoryStore = Pick<IndexedDbInventoryObservationStore, "publicationSnapshot" | "openRead">;
+/** Opt-in capability; the frozen GoogleDrivePort contract stays byte-for-byte unchanged. */
+type ProvenanceCheckedDrive = GoogleDrivePort & {
+  verifyRootWideManagedProvenance?: (rootId: RemoteObjectId) => Promise<{ readonly ok: boolean }>;
+};
 
 export interface InventorySnapshotAssemblyOptions {
   readonly local: LocalVaultPort;
@@ -151,7 +155,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         // expected domain is invisible to inventory's parent-scoped traversal.
         // This fresh root-wide check uses the exact reconciliation validator.
         // An absent/failed capability always falls back to full reconciliation.
-        const provenance = await drive.verifyRootWideManagedProvenance?.(remote.rootId);
+        const provenance = await (drive as ProvenanceCheckedDrive).verifyRootWideManagedProvenance?.(remote.rootId);
         if (provenance?.ok) return assembled;
       }
     } catch {
