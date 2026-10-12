@@ -52,6 +52,7 @@ function fixture(options: {
   readonly storeThrows?: boolean;
   readonly provenanceFailure?: boolean;
   readonly provenanceMissing?: boolean;
+  readonly fullListingFailure?: boolean;
   readonly state?: TrustedSynchronizationState;
 } = {}) {
   const rows = options.rows ?? [rootEntity("content"), rootEntity("portable-config"), fileEntity()];
@@ -113,9 +114,12 @@ function fixture(options: {
           : { ok: true as const, value: undefined };
       },
     } : {}),
-    listForReconciliation: async () => { remoteLists++; return {
-      ok: true as const, value: { entries, completeness: { status: "complete" as const } },
-    }; },
+    listForReconciliation: async () => {
+      remoteLists++;
+      if (options.fullListingFailure) return { ok: false as const,
+        signal: { kind: "recovery-required" as const, detail: "managed-object-left-remote-domain" } };
+      return { ok: true as const, value: { entries, completeness: { status: "complete" as const } } };
+    },
   };
   const store = { load: async () => ({ status: "trusted" as const, state: options.state ?? state }) };
   const settings = {
@@ -202,6 +206,13 @@ test("D339-10 missing or invalid root-wide provenance proof forces full reconcil
     assert.equal(result.input.snapshots[0]?.remote.status, "present");
     assert.equal(sample.provenanceReads, condition.provenanceMissing ? 0 : 1);
   }
+});
+
+test("D339-10 managed-marked object outside domain blocks optimized and fallback planning", async () => {
+  const sample = fixture({ provenanceFailure: true, fullListingFailure: true });
+  await assert.rejects(sample.optimized.assemble(), /remote reconciliation listing failed/);
+  assert.equal(sample.provenanceReads, 1, "cached observations require a fresh provenance check");
+  assert.equal(sample.remoteLists, 1, "unsafe cached result must fall through to the real listing");
 });
 
 test("D339-05 same-name duplicates never become a false unique or empty occupancy", async () => {
