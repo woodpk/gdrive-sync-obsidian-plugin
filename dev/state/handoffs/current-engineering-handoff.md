@@ -19,6 +19,12 @@ Master promotion is **not authorized** by this isolated integration. The 1836 ca
 
 WS-07 S09A physical canary: 223 Drive HTTP requests; 198 list/get; 188 operation-scoped; 35 pre-execution unattributed; 25 verified operations; zero skipped; 8/8 assertions PASS. Broader Windows/iOS S09A and S09 acceptance is incomplete. Existing `data.json` loss/corruption root cause remains undetermined. Do not rerun the accepted physical canary for administrative output.
 
+## Integration PHX-CI result — 2026-10-12
+
+PHX-CI verified exact integration source `f1d4ce30ad89ddc5ab076ba24ba634b493241bc8` with **11/11 stages PASS** (change-set, repository and overall PASS; task exit 0). Canonical run ID `6dd104c5-5640-42bb-989f-0f7ca74653d8`, framework `0.2.0-dev.2` pinned to `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. Evidence published at `7864af7d9e0f522215fee2a4c746c82ffb96f142`; source build and verification checkout SHAs match. Artifact `main.js`: 904453 bytes, SHA-256 `acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881`.
+
+The original evidence was published as timestamp-named files; unchanged source/result/log bytes are also linked under the canonical run-ID directory with an administrative provenance note. No re-execution was required to arrange that evidence.
+
 ## Next action
 
-Run PHX-CI only for the isolated integration candidate, exact SHA-bound, and publish canonical evidence. If integration PHX-CI is inconclusive or fails, repair only the demonstrated owned defect. Retain master promotion/feature activation as separate owner-controlled decisions, not inferred from a green build. Exact tasking: `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md` §§10–12 and `dev/planning/02-workstreams/WS-05-integrated-sync-product/03-BUILD-DECOMPOSITION.md`, DEC-339 prospective units (historical planning now implemented).
+Establish the exact master-promotion scope and obtain the necessary owner decision before modifying `master`. Passing integration PHX-CI validates the isolated candidate; it does not approve wholesale promotion of 1836 historical commits or activate inventory behavior. Exact tasking: `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md` §§10–12 and `dev/planning/02-workstreams/WS-05-integrated-sync-product/03-BUILD-DECOMPOSITION.md`, DEC-339 prospective units (historical planning now implemented).
