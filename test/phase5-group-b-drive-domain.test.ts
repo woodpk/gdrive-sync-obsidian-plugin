@@ -96,6 +96,28 @@ test("B2 full reconciliation rejects a provenance-marked managed object moved ou
   if(!result.ok){ assert.equal(result.signal.kind,"recovery-required"); assert.match("detail" in result.signal ? result.signal.detail : "",/left-remote-domain/); }
 });
 
+test("D339-10 optimized provenance census catches managed-marked object outside both domains",async()=>{
+  const moved=object("content","outside","note.md");
+  let rootWideQueries=0, domainListingQueries=0;
+  const a=adapter(async url=>{
+    const fixture=common(url); if(fixture) return fixture;
+    if(isManagedProvenanceQuery(url)) { rootWideQueries++; return ok({files:[moved]}); }
+    if(url.includes("/files/outside?")) return ok(outside());
+    if(isChildrenOf(url,"content") || isChildrenOf(url,"config")) {
+      domainListingQueries++; return ok({files:[]});
+    }
+    throw new Error(url);
+  });
+  const proof=await a.verifyRootWideManagedProvenance(id("root"));
+  assert.equal(proof.ok,false);
+  if(!proof.ok) {
+    assert.equal(proof.signal.kind,"recovery-required");
+    assert.match("detail" in proof.signal ? proof.signal.detail : "", /left-remote-domain/);
+  }
+  assert.equal(rootWideQueries,1, "root-wide marked-object census must be fresh");
+  assert.equal(domainListingQueries,0, "provenance proof must not depend on a complete tree listing");
+});
+
 test("B2 same-session cache cannot convert structural move-out into removal",async()=>{
   let moved=false;
   const current=()=>object("content",moved?"outside":"content","note.md");
