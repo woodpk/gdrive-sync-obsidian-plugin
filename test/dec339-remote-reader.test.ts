@@ -90,7 +90,7 @@ test("D339-10 fresh root-wide managed census rejects out-of-domain marked file",
   p.marked.push(moved);
   const proof = await reader(p).verifyRootWideManagedProvenance(fence);
   assert.equal(proof.status, "recovery-required");
-  if (proof.status !== "ok") assert.match(proof.reason, /outside-expected-domain/);
+  assert.match(proof.reason, /outside-expected-domain/);
 });
 
 test("D339-10 fresh root-wide managed census rejects incomplete or untrusted provider evidence", async () => {
