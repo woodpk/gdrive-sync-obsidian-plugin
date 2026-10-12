@@ -3,15 +3,15 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
-status: "IN_PROGRESS"
+status: "REVIEW"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: "ceedd28f-408b-47c6-bea1-ac57a4599f63"  # latest run failed its focused suite; do not treat as acceptance
+last_phx_ci_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
 blockers:
-  - "PHX-CI run ceedd28f-408b-47c6-bea1-ac57a4599f63: focused BVP tests 384/388 PASS and four failed on stale scenario registry/script-count expectations; repository suite 850/850 PASS. Corrected expectations need fresh PHX-CI verification."
+  - "Independent adversarial platform-governance and architecture review remains PENDING; PHX-CI PASS alone does not authorize master promotion."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Run PHX-CI against bounded repair source for the four failed BVP focused test expectations; publish evidence. After PASS, independently review platform/governance scope. No master mutation."
+next_action: "Dispatch strictly read-only independent adversarial platform review at dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md; evaluate findings, repair justified defects if any, and independently reassess before owner-controlled master promotion. No rerun for evidence bookkeeping."
 updated_at: "2026-10-12"
 
 context:
@@ -21,12 +21,17 @@ context:
     master_source_sha_at_start: "caf4a03418b89b57893e3bd5d4c6f89c28604242"
     baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
     baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
-    baseline_candidate_phx_ci: "BLOCKED; 4 of 388 BVP-focused tests failed, 850 product tests passed at e554e49098ac86a446f9665a782aa8c8087237f9"
+    baseline_candidate_phx_ci: "PASS: 11/11 PHX-CI stages; 388/388 BVP tests; 850/850 product tests"
+    baseline_verified_source_sha: "2ad791a07b210384c4572b37192407b49313a93e"
+    baseline_verified_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
+    baseline_verified_evidence_commit_sha: "6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0"
+    baseline_shipping_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
+    baseline_shipping_artifact_size_bytes: 902987
     baseline_failed_run_id: "ceedd28f-408b-47c6-bea1-ac57a4599f63"
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
-    bounded_repair_status: "IMPLEMENTED; PHX-CI_REVERIFICATION_PENDING"
-    baseline_independent_review: "PENDING"
+    bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
+    baseline_independent_review: "PENDING; task dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md"
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
     master_promoted: false
@@ -50,7 +55,7 @@ context:
     - "PHASE_9_UPDATE_PATH_REFERENCES"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; BASELINE_PROMOTION_UNVERIFIED"
+  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; BASELINE_PHXCI_PASS_INDEPENDENT_REVIEW_PENDING"
   s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
   stage_3_started: false
   verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/test-results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."

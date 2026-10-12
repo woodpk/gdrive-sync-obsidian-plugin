@@ -91,3 +91,11 @@ Do not begin S09 or Stage 3 until Phase 10 closes green.
 - Smallest owned correction: three test/BVP registry files only, repair commit `2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3`. No product source, frozen architecture limit or PHX-CI configuration changed. **No PASS is claimed for the repaired source yet.**
 - Original failed-run evidence was copied byte-for-byte to `dev/test-results/ceedd28f-408b-47c6-bea1-ac57a4599f63/`; originals remain. Administrative evidence reorganization did not rerun tests.
 - Next: PHX-CI exact corrected candidate, focused `npm run test:bvp-root` and full repository suite, base `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`, publication `push`; then independent platform assessment. Master remains untouched.
+
+
+## Platform PHX-CI passed; independent review next — 2026-10-12
+
+- Exact verified source `2ad791a07b210384c4572b37192407b49313a93e`; PHX-CI run `3dc05b3e-08a8-4f3d-af25-7f653c2821e8`; original evidence commit `6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0` (direct child of source). 11/11 stages PASS, BVP **388/388**, product **850/850**, build, repository check, check and artifact PASS. `main.js`: 902987 bytes, SHA-256 `e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e`.
+- Canonical evidence under `dev/test-results/3dc05b3e-08a8-4f3d-af25-7f653c2821e8/` consists of the **unchanged original Git blobs**; publication flat-file originals retained. No administrative rerun.
+- Supersedes the four failed BVP focused expectations from the prior source/run only for the newly verified source. No new product code or frozen architecture changes were made by the bounded repair.
+- **Current status:** `REVIEW`. Independent adversarial platform review is not yet completed and cannot be signed by the implementing agent. Review-only assignment: `dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md`. Hold `master` and DEC-339 production activation.

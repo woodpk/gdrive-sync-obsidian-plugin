@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12  
 **Branch:** `integration/pre-dec339-platform-baseline-20261012`  
-**Status:** `STAGED / PHX-CI AND INDEPENDENT REVIEW PENDING`
+**Status:** `PHX-CI PASS / INDEPENDENT REVIEW PENDING`
 
 ## Decision and boundaries
 
@@ -39,6 +39,6 @@ At the pre-feature source `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`, `dev/_ca-o
 
 ## Current state, restrictions, and next action
 
-**Current:** isolated platform candidate staged; no new baseline PHX-CI run yet; independent platform review not yet complete; master unchanged. The previously verified DEC-339 isolated integration remains on separate branch `integration/dec339-postreview-master-reconcile-20261012` and is not the platform candidate.
+**Current:** isolated platform candidate source `2ad791a07b210384c4572b37192407b49313a93e` has all 11 PHX-CI stages PASS (388/388 BVP; 850/850 product). Run `3dc05b3e-08a8-4f3d-af25-7f653c2821e8`; evidence commit `6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0`. Independent platform review is not yet complete. Master unchanged. The previously verified DEC-339 isolated integration remains on separate branch `integration/dec339-postreview-master-reconcile-20261012` and is not the platform candidate.
 
-**Next:** invoke the pinned, deployed PHX-CI operator on the exact platform candidate HEAD through a disposable source clone, using project-controlled `npm run test:bvp-root` as focused command; publish result on this isolated branch. Require owner-operated execution and return complete terminal output. No custom validation script, no GitHub Actions, no non-PHX-CI repository tests or build.
+**Next:** commission read-only independent review using `dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md`. PHX-CI acceptance is satisfied for the exact pre-review candidate; do not repeat substantive checks for canonical evidence reorganization. Repair any independently confirmed defect before a new PHX-CI qualification and independent reassessment. No custom validation script, no GitHub Actions, no non-PHX-CI repository tests or build.
