@@ -105,15 +105,6 @@ function fixture(options: {
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor }),
-    ...(!options.provenanceMissing ? {
-      verifyRootWideManagedProvenance: async () => {
-        provenanceReads++;
-        return options.provenanceFailure
-          ? { ok: false as const, signal: { kind: "recovery-required" as const,
-            detail: "managed-object-left-remote-domain:out-of-scope" } }
-          : { ok: true as const, value: undefined };
-      },
-    } : {}),
     listForReconciliation: async () => {
       remoteLists++;
       if (options.fullListingFailure) return { ok: false as const,
@@ -130,6 +121,14 @@ function fixture(options: {
   };
   const optimized = new InventoryBackedSnapshotAssembler({
     ...settings, inventory: inventory as never, currentFence: async () => fence,
+    ...(!options.provenanceMissing ? { provenanceReader: {
+      verifyRootWideManagedProvenance: async () => {
+        provenanceReads++;
+        return options.provenanceFailure
+          ? { status: "recovery-required" as const, reason: "managed-object-left-remote-domain" }
+          : { status: "ok" as const, value: undefined };
+      },
+    } } : {}),
   });
   const ordinary = new ProductSnapshotAssembler(
     settings.local, settings.drive, settings.state, settings.stateContext,
