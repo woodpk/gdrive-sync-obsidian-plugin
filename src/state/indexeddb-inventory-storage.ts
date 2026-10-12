@@ -21,6 +21,8 @@ const ENTITIES = "inventory-entities";
 const COVERAGE = "inventory-coverage";
 const LOCAL = "inventory-local";
 const STAGES = "inventory-stage";
+/** Durable reader pins are stored alongside existing v2 stage records. */
+const READER_PIN_PREFIX = "reader-pin:";
 const POINTER = "active";
 const LOCAL_POINTER = "local-active";
 const BATCH = 128;
@@ -84,6 +86,23 @@ interface StagedCounter {
   readonly count: number;
   readonly coverageCount: number;
   readonly sealed: boolean;
+}
+interface DurableReaderPin {
+  readonly kind: "reader-pin";
+  readonly generations: readonly string[];
+}
+function isReaderPin(value: unknown): value is DurableReaderPin {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Partial<DurableReaderPin>;
+  return row.kind === "reader-pin" && Array.isArray(row.generations) &&
+    row.generations.length > 0 && row.generations.length <= MAX_DEPTH + 1 &&
+    row.generations.every(valid);
+}
+function isStagedCounter(value: unknown): value is StagedCounter {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Partial<StagedCounter>;
+  return valid(row.generation) && Number.isSafeInteger(row.count) &&
+    Number.isSafeInteger(row.coverageCount) && typeof row.sealed === "boolean";
 }
 
 type InventoryError = { readonly status: "unknown" | "partial" | "stale" | "invalid" | "incompatible" | "recovery-required"; readonly reason: string };
@@ -377,12 +396,23 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     }
   }
 
+  /** A durable pin is released only after its removal transaction commits. */
+  private async releaseDurablePin(db: IDBDatabase, key: string): Promise<void> {
+    const tx = stores(db, [STAGES], "readwrite");
+    const done = finished(tx);
+    tx.objectStore(STAGES).delete(key);
+    await done;
+  }
+
   /** No inferred absence: a missing ID returns unknown, never a verified undefined. */
   async openRead(): Promise<InventoryReadResult<InventoryReadLease>> {
     this.activity.acquiringReaders++;
+    let durablePin: { readonly db: IDBDatabase; readonly key: string } | undefined;
     try {
       const db = await this.open();
-      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, ENTITIES, COVERAGE], "readonly");
+      // The snapshot read and durable pin are ONE transaction. GC also writes
+      // STAGES, preventing cross-context reclamation during lease acquisition.
+      const tx = stores(db, [AUTHORITY, CONTROL, MANIFESTS, ENTITIES, COVERAGE, STAGES], "readwrite");
       const done = finished(tx);
       const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
       const canonical = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
