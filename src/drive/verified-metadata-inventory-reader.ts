@@ -132,7 +132,7 @@ export class VerifiedMetadataInventoryReader {
       let reached = false;
       for (let depth = 0; depth < 128; depth++) {
         if (current.parents.length !== 1)
-          return error("managed-object-parent-ancestry-unprovable", "recovery-required");
+          return error("managed-object-outside-expected-domain", "recovery-required");
         const parentId = current.parents[0]!;
         if (parentId === expectedRoot) { reached = true; break; }
         if (parentId === otherRoot || parentId === String(fence.managedRootId) ||
