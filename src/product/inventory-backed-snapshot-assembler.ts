@@ -16,7 +16,7 @@ import type { IndexedDbInventoryObservationStore } from "../state/indexeddb-inve
 import { inventoryFenceMatches } from "../state/verified-metadata-inventory-validation";
 import { readVerifiedInventoryListing } from "./verified-inventory-planning-projection";
 import type { VerifiedMetadataInventoryReader } from "../drive/verified-metadata-inventory-reader";
-import { ProductSnapshotAssembler, type AssembledPlanningInput } from "./snapshot-assembler";
+import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
 
 type InventoryStore = Pick<IndexedDbInventoryObservationStore, "publicationSnapshot" | "openRead">;
 
@@ -71,6 +71,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
   override async assemble(preferIncremental = true, runId?: number): Promise<AssembledPlanningInput> {
     if (!preferIncremental || this.options.fullReconcileRequired?.())
       return super.assemble(preferIncremental, runId);
+    let provenanceUnproven = false;
     try {
       const { inventory, state, stateContext, drive } = this.options;
       const loaded = await state.load(stateContext);
@@ -154,13 +155,22 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         // Critical independent Drive safety proof: a marked object outside its
         // expected domain is invisible to inventory's parent-scoped traversal.
         // This fresh root-wide check uses the exact reconciliation validator.
-        // An absent/failed capability always falls back to full reconciliation.
+        // Once this proof is required, a failed, missing, or throwing census
+        // must never delegate to an incremental Changes-only assembly.
+        provenanceUnproven = true;
         const provenance = await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
         if (provenance?.status === "ok") return assembled;
       }
     } catch {
-      // Any storage, fence, coverage or verification uncertainty uses the
-      // established authoritative Changes/full reconciliation behavior.
+      // Pre-provenance uncertainty retains existing fallback behavior;
+      // a failed/throwing provenance check must force physical reconciliation.
+    }
+    if (provenanceUnproven) {
+      const full = await super.assembleFull(runId);
+      if (full.remoteEnumeration.status !== "complete")
+        throw new SnapshotAssemblyError("recovery-required",
+          "root-wide managed provenance unproven and full reconciliation incomplete");
+      return full;
     }
     return super.assemble(preferIncremental, runId);
   }
