@@ -82,3 +82,12 @@ Run the audited small deployed-runtime PHX-CI operator command against `dev-dire
 Do not begin S09 or Stage 3 until Phase 10 closes green.
 
 **2026-10-08 lowercase normalization:** The active BVP branch has restored `dev/test-results/` as the current evidence path under the updated shared manuals and explicit owner decision. All historical evidence blobs were preserved; the Phase 7 account above records the earlier migration rather than current casing authority.
+
+
+## Focused-test failure and bounded repair — 2026-10-12
+
+- PHX-CI source `e554e49098ac86a446f9665a782aa8c8087237f9`: `BLOCKED` (test-focused **384/388 PASS**, **4 FAIL**; full repository **850/850 PASS**). Run `ceedd28f-408b-47c6-bea1-ac57a4599f63`, published evidence commit `bce853340cdccc1695e857b51ca08d86890341b0`. Remaining build/repository-check/artifact stages did not execute; they are not accepted.
+- Verified four focused failures in the original terminal evidence: stale script-count expectation 2 versus 3 allowed scripts; missing pre-existing `s09a-request-attribution` from two live-battery expected lists; omission of pre-existing `s09a-attribution-live-guard.test.js` from deterministic battery registry.
+- Smallest owned correction: three test/BVP registry files only, repair commit `2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3`. No product source, frozen architecture limit or PHX-CI configuration changed. **No PASS is claimed for the repaired source yet.**
+- Original failed-run evidence was copied byte-for-byte to `dev/test-results/ceedd28f-408b-47c6-bea1-ac57a4599f63/`; originals remain. Administrative evidence reorganization did not rerun tests.
+- Next: PHX-CI exact corrected candidate, focused `npm run test:bvp-root` and full repository suite, base `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`, publication `push`; then independent platform assessment. Master remains untouched.

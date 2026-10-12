@@ -5,13 +5,13 @@ active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
 status: "IN_PROGRESS"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: null  # No accepted PHX-CI run for this new baseline integration candidate
+last_phx_ci_run_id: "ceedd28f-408b-47c6-bea1-ac57a4599f63"  # latest run failed its focused suite; do not treat as acceptance
 blockers:
-  - "Prerequisite platform baseline branch requires fresh exact-SHA PHX-CI acceptance and independent architecture/governance review before master promotion."
+  - "PHX-CI run ceedd28f-408b-47c6-bea1-ac57a4599f63: focused BVP tests 384/388 PASS and four failed on stale scenario registry/script-count expectations; repository suite 850/850 PASS. Corrected expectations need fresh PHX-CI verification."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Perform exact source-bound PHX-CI full-repository plus BVP focused verification of the isolated pre-DEC339 platform baseline; publish evidence, independently review platform/governance scope, and leave master untouched pending acceptance."
+next_action: "Run PHX-CI against bounded repair source for the four failed BVP focused test expectations; publish evidence. After PASS, independently review platform/governance scope. No master mutation."
 updated_at: "2026-10-12"
 
 context:
@@ -21,7 +21,11 @@ context:
     master_source_sha_at_start: "caf4a03418b89b57893e3bd5d4c6f89c28604242"
     baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
     baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
-    baseline_candidate_phx_ci: "PENDING"
+    baseline_candidate_phx_ci: "BLOCKED; 4 of 388 BVP-focused tests failed, 850 product tests passed at e554e49098ac86a446f9665a782aa8c8087237f9"
+    baseline_failed_run_id: "ceedd28f-408b-47c6-bea1-ac57a4599f63"
+    baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
+    bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
+    bounded_repair_status: "IMPLEMENTED; PHX-CI_REVERIFICATION_PENDING"
     baseline_independent_review: "PENDING"
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
