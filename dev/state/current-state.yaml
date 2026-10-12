@@ -1,19 +1,34 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "WS-07-brain-verification-platform"
-active_build_unit: "BVP-S09A_REQUEST_AMPLIFICATION_ATTRIBUTION"
+active_workstream: "WS-05-integrated-sync-product"
+active_build_unit: "DEC339_POSTREVIEW_CONTROLLED_INTEGRATION"
 status: "IN_PROGRESS"
-last_accepted_source_sha: "261520fd44fcec46b1e392a620481e8b14c72848"
-last_phx_ci_run_id: "0ddaa1b0-f249-449f-b4d1-5d1c8e5c2f2c"
+last_accepted_source_sha: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
+last_phx_ci_run_id: "c14791cb-96b9-45b8-ab19-3f444900add6"
 blockers:
+  - "DEC-339 master promotion remains blocked: the candidate contains 1836 commits absent from master; the isolated merge preserves both histories but does not authorize promoting unrelated work."
+  - "DEC-339 integration candidate requires fresh PHX-CI verification before integration closure; no production activation is authorized."
   - "S09A physical canary and execution-scoped request attribution are complete; 35 pre-execution planning requests lack semantic-purpose attribution, so end-to-end attributionComplete remains false."
   - "Earlier recovered data.json configuration-loss/corruption incident has no established root cause."
   - "Other S09A Windows/iOS acceptance and later S09 physical-validation gates remain incomplete."
-next_action: "Prepare an exact-SHA-bound, narrow WS-02 D339-01 inventory-contract work package, after rechecking branch HEAD and contract ownership; code implementation not yet begun. No physical mutation, S09A rerun or Stage 3 entry."
-updated_at: "2026-10-10"
+next_action: "Complete PHX-CI verification of the isolated DEC-339 master-lineage integration candidate; preserve owner-controlled master promotion and separate production-activation gates."
+updated_at: "2026-10-12"
 
 context:
+  dec339_postreview:
+    accepted_implementation_sha: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
+    prior_phx_ci_evidence_sha: "6c4e4511ccf6ae8c48d80656e3a1f02ee4669b72"
+    prior_phx_ci_run_id: "c14791cb-96b9-45b8-ab19-3f444900add6"
+    prior_phx_ci_status: "PASS (395 focused, 985 full tests; all 11 stages)"
+    independent_review: "APPROVE; read-only D339-11 re-review; no outstanding findings in reviewed scope"
+    master_at_integration_start: "caf4a03418b89b57893e3bd5d4c6f89c28604242"
+    merge_base: "7b4297adceb2fd6268a5801a207b7dce1f7b7728"
+    integration_branch: "integration/dec339-postreview-master-reconcile-20261012"
+    integration_phx_ci: "PENDING"
+    integrated_into_master: false
+    shipping_inventory_activated: false
+    stage_3_authorized: false
   investigation_branch: "bvp-s09a-request-attribution-01"
   investigation_branch_head_at_review: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
   proposed_s09a_correction_branch: "bvp-s09a-parent-folder-canary-01"
@@ -47,9 +62,9 @@ context:
   remote_ancestry_ids: "managed root 1ELFZgG55vMW7FcI1DGBjc2MAqtctN2_-; content domain 1jQh8QxcJP62w4Jj9GDkeoI6OIZ2D3Mcx; BVP-VALIDATION 1aXh7jPWn6ma_bmkpqMkxV1Qiqnka_PTW"
   future_metadata_inventory:
     decision: "DEC-339"
-    status: "APPROVED_PLANNING_ONLY"
-    implementation_started: false
-    verification_completed: false
+    status: "IMPLEMENTED_VERIFIED_INDEPENDENTLY_APPROVED_INTEGRATION_PENDING"
+    implementation_started: true
+    verification_completed: true
     target_spec_section: "7.9"
   inventory_design_branch: "planning/dec339-verified-inventory-design-20261010"
   inventory_design_document: "dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md"
