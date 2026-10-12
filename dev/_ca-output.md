@@ -9,13 +9,13 @@ STATUS: BLOCKED
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 0305ae37-f999-4938-b3ef-50cee012f4ae
-- Repository: C:/phx-07390e207580491e/w
+- Run ID: ceedd28f-408b-47c6-bea1-ac57a4599f63
+- Repository: C:/phx-b392acac2c354726/w
 - Branch:
-- Verified HEAD: bd743b9a5791bcb81b57540272866a06c23ed43f
-- Verified tree: 084c646141a1670cca36d13e2818aa4384ef17e4
-- Expected HEAD: bd743b9a5791bcb81b57540272866a06c23ed43f
-- Base SHA: ec1e2e1a27577587aa3ab14cced01f0804eb2e58
+- Verified HEAD: e554e49098ac86a446f9665a782aa8c8087237f9
+- Verified tree: d7594454b524d2d6dd8b5a32333bf77be2b7714f
+- Expected HEAD: e554e49098ac86a446f9665a782aa8c8087237f9
+- Base SHA: 32b9ec2f2c3ed53d7cf345185b044ee002b9f26b
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
 - PowerShell: 7.6.6
@@ -24,18 +24,18 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-10T04:30:07.0851896Z
-- Ended: 2026-10-10T04:31:04.6247510Z
+- Started: 2026-10-12T21:06:08.6571270Z
+- Ended: 2026-10-12T21:07:56.3171414Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- node-preflight: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- node-project-files: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- install: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- typecheck: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
-- test: PASS (exit 0; NONE; run 0305ae37-f999-4938-b3ef-50cee012f4ae)
+- preflight: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- node-preflight: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- node-project-files: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- install: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- typecheck: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- test-focused: FAIL (exit 1; TEST FAILURE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
+- test: PASS (exit 0; NONE; run ceedd28f-408b-47c6-bea1-ac57a4599f63)
 - build: MISSING (FRAMEWORK FAILURE)
 - repository-check: MISSING (FRAMEWORK FAILURE)
 - check: MISSING (FRAMEWORK FAILURE)
