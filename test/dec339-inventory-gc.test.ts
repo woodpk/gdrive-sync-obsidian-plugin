@@ -8,16 +8,21 @@ import {
   simulatedBaseline, withRangeOnly,
 } from "./support/dec339-inventory-idb-fixtures";
 
-test("D339-08A collection preserves active ancestry and a reader pinned by another store instance", async () => {
+test("D339-10 cross-context GC preserves an older-generation reader using an independent IDBFactory", async () => {
   withRangeOnly();
   const fake = new FakeDatabase(), factory = fake.openFactory();
   const store = await seeded(factory);
   const first = candidate(g("gc-pinned-first"));
   assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(first), store)
     .publishBaseline(fence, first.manifest.generation)).status, "published");
-  const another = new IndexedDbInventoryObservationStore("device:idb:test", factory);
+  // Distinct IDBFactory objects model separate workers/tabs with the same disk DB.
+  // A shared JavaScript WeakMap cannot protect this reader.
+  const another = new IndexedDbInventoryObservationStore("device:idb:test", fake.openFactory());
   const old = await another.openRead();
   assert.equal(old.status, "verified-observation");
+  const durablePins = () => [...(fake.tables.get("inventory-stage")?.records.values() ?? [])]
+    .filter(value => (value as { kind?: string }).kind === "reader-pin");
+  assert.equal(durablePins().length, 1, "reader pin must be visible outside its execution context");
 
   const second = candidate(g("gc-current-second"), c("changes:2"));
   assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(second), store)
@@ -30,6 +35,7 @@ test("D339-08A collection preserves active ancestry and a reader pinned by anoth
     assert.equal((await old.value.getById(fence.contentDomainRootId)).status, "verified-observation");
     await old.value.release();
   }
+  assert.equal(durablePins().length, 0, "a released lease must remove its durable pin");
   const cleaned = await store.collectGarbage(true);
   assert.equal(cleaned.status, "collected");
   assert.equal(fake.tables.get("inventory-generations")?.records.has(JSON.stringify(first.manifest.generation)), false);
