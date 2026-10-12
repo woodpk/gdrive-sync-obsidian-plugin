@@ -28,3 +28,12 @@ The original evidence was published as timestamp-named files; unchanged source/r
 ## Next action
 
 Establish the exact master-promotion scope and obtain the necessary owner decision before modifying `master`. Passing integration PHX-CI validates the isolated candidate; it does not approve wholesale promotion of 1836 historical commits or activate inventory behavior. Exact tasking: `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md` §§10–12 and `dev/planning/02-workstreams/WS-05-integrated-sync-product/03-BUILD-DECOMPOSITION.md`, DEC-339 prospective units (historical planning now implemented).
+
+
+## Bounded master-promotion scope assessment — 2026-10-12
+
+The exact pre-DEC-339 baseline is `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`: **1,612 commits** between existing master and the pre-feature platform; **223 commits** from that baseline to accepted DEC-339 source `dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902`. Separate source-tree comparisons account for all changed paths without relying on GitHub's 300-file compare display limit. See `dev/authority/reconciliations/dec339-master-promotion-scope-assessment-2026-10-12.md` for the feature-owned 15 product and 24 test/platform files, prerequisite architecture differences, and authorized bounds.
+
+**Current status: BLOCKED on a material owner promotion-scope decision**, not a PHX-CI failure. Recommended option: separately verify/review/authorize the pre-DEC-339 platform modernization as its own promotion before a bounded DEC-339 change. Alternative: commission a new legacy-master port. No master changes, PR promoting 1,612 hidden commits, inventory activation, release, or Stage 3. The already-green PHX-CI run remains valid for its original exact source; no administrative SUT rerun.
+
+**Next action:** obtain explicit owner choice (A separate platform-baseline promotion, preferred; B legacy-master DEC-339 port). Exact tasking: `dev/authority/reconciliations/dec339-master-promotion-scope-assessment-2026-10-12.md`, Proposed safe promotion sequence; WS-05 `dev/planning/02-workstreams/WS-05-integrated-sync-product/03-BUILD-DECOMPOSITION.md`, prospective DEC-339 units.
