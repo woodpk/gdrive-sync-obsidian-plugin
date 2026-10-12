@@ -210,7 +210,7 @@ test("D339-10 missing or invalid root-wide provenance proof forces full reconcil
 
 test("D339-10 managed-marked object outside domain blocks optimized and fallback planning", async () => {
   const sample = fixture({ provenanceFailure: true, fullListingFailure: true });
-  await assert.rejects(sample.optimized.assemble(), /remote reconciliation listing failed/);
+  await assert.rejects(sample.optimized.assemble(), /managed-object-left-remote-domain/);
   assert.equal(sample.provenanceReads, 1, "cached observations require a fresh provenance check");
   assert.equal(sample.remoteLists, 1, "unsafe cached result must fall through to the real listing");
 });
