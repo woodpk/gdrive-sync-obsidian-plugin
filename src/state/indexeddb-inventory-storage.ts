@@ -460,7 +460,17 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         history.unshift(m);
         id = m.parentGeneration;
       }
+      const pinId = globalThis.crypto?.randomUUID?.();
+      if (!pinId) {
+        tx.abort(); await done.catch(() => undefined);
+        return error("recovery-required", "durable-reader-pin-identity-unavailable");
+      }
+      const pinKey = READER_PIN_PREFIX + pinId;
+      tx.objectStore(STAGES).add({
+        kind: "reader-pin", generations: history.map(item => String(item.generation)),
+      } satisfies DurableReaderPin, pinKey);
       await done;
+      durablePin = { db, key: pinKey };
       // Integrity is checked once per read lease, not on every indexed query.
       // A partial/mismatched durable row set can no longer be a complete scope.
       try {
@@ -483,6 +493,8 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       }
       this.pin(history);
       let released = false;
+      const ownedPin = durablePin;
+      durablePin = undefined;
       const active = history[history.length - 1];
       const deny = (): InventoryReadResult<never> => error("stale", "inventory-read-lease-released");
       const byId = async (id: RemoteObjectId): Promise<InventoryReadResult<InventoryRemoteEntity | undefined>> => {
@@ -581,12 +593,22 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         listByPath: (domain, path, limit) => byScope("path", domain, path, undefined, limit),
         coverage: (domain, scope) => getCoverage(domain, scope,
           scope === contentDomainRoot(control.fence, domain) ? "domain" : "parent"),
-        release: async () => { if (!released) { released = true; this.unpin(history); } },
+        release: async () => {
+          if (released) return;
+          released = true;
+          try { await this.releaseDurablePin(ownedPin!.db, ownedPin!.key); }
+          finally { this.unpin(history); }
+        },
       };
       return { status: "verified-observation", generation: active.generation, value: lease };
     } catch (cause) {
       return error("recovery-required", cause instanceof Error ? cause.message : "inventory-open-read-failed");
     } finally {
+      if (durablePin) {
+        // Failed cleanup retains protection rather than exposing a live reader.
+        try { await this.releaseDurablePin(durablePin.db, durablePin.key); }
+        catch { /* Orphaned pins are deliberately not expired by GC. */ }
+      }
       this.activity.acquiringReaders--;
     }
   }
