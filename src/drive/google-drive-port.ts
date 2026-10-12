@@ -222,6 +222,17 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     return { ok: true, value: { currentVersion: pversion(observed), compatible: observed === "1" } };
   }
 
+  /** Fresh root-wide census used by the inventory optimization. The same
+   * validator and ancestry proof used by full reconciliation are mandatory.
+   * Neither a cached inventory nor domain-only listings replace this check. */
+  async verifyRootWideManagedProvenance(rootId: RemoteObjectId): Promise<DriveResult<void>> {
+    const guarded = await this.withPurpose("managed-root-account").guardPairedAccount();
+    if (!guarded.ok) return guarded;
+    const roots = await this.withPurpose("managed-root-account").domainRoots(rootId);
+    if (!roots.ok) return roots;
+    return this.withPurpose("reconciliation-provenance").validateManagedObjectProvenance(rootId, roots.value);
+  }
+
   async listForReconciliation(rootId: RemoteObjectId): Promise<DriveResult<RemoteListing>> {
     const started = globalThis.performance?.now?.() ?? Date.now();
     let complete = false;
