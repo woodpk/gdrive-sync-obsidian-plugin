@@ -107,6 +107,50 @@ export class VerifiedMetadataInventoryReader {
       file.appProperties.brainSyncDomain === domain;
   }
 
+  /**
+   * Independent, fresh, root-wide marked-object provenance check for optional
+   * cached planning. Uses provider metadata, never cached inventory rows.
+   * Unknown ancestry/page completeness fails closed; no provider mutation.
+   */
+  async verifyRootWideManagedProvenance(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
+    const start = await this.source.verifyFence(fence);
+    if (start.status !== "ok") return start;
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    const ids = new Set<string>();
+    for (const file of marked.value) {
+      if (ids.has(file.id)) return error("duplicate-managed-provenance-identity", "recovery-required");
+      ids.add(file.id);
+      const domain = file.appProperties.brainSyncDomain;
+      if ((domain !== "content" && domain !== "portable-config") ||
+          !live(file) || !this.provenance(file, fence, domain))
+        return error("invalid-root-wide-managed-provenance", "recovery-required");
+      const expectedRoot = domainRoot(fence, domain);
+      const otherRoot = domainRoot(fence, domain === "content" ? "portable-config" : "content");
+      let current = file;
+      const visited = new Set<string>([file.id]);
+      let reached = false;
+      for (let depth = 0; depth < 128; depth++) {
+        if (current.parents.length !== 1)
+          return error("managed-object-parent-ancestry-unprovable", "recovery-required");
+        const parentId = current.parents[0]!;
+        if (parentId === expectedRoot) { reached = true; break; }
+        if (parentId === otherRoot || parentId === String(fence.managedRootId) ||
+            visited.has(parentId))
+          return error("managed-object-outside-expected-domain", "recovery-required");
+        visited.add(parentId);
+        const parent = await this.source.getFile(parentId);
+        if (parent.status !== "ok") return error("managed-object-ancestor-unavailable", "recovery-required");
+        if (parent.value.trashed || parent.value.mimeType !== FOLDER)
+          return error("managed-object-ancestor-not-live-folder", "recovery-required");
+        current = parent.value;
+      }
+      if (!reached) return error("managed-object-outside-expected-domain", "recovery-required");
+    }
+    const end = await this.source.verifyFence(fence);
+    return end.status === "ok" ? { status: "ok", value: undefined } : end;
+  }
+
   private async collectMarked(fence: InventoryIdentityFence,
     graph: ReadonlyMap<string, RawManaged>): Promise<InventoryDriveFetch<void>> {
     const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
