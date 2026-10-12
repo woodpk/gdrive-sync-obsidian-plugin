@@ -4,18 +4,18 @@ STATUS: BLOCKED
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited 1.
-- Repository verification: FAIL; TEST FAILURE; Stage 'test' exited 1.
-- Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
+- Change-set verification: BLOCKED; PRODUCT FAILURE; Stage 'test-focused' did not execute because required stage 'typecheck' failed first.
+- Repository verification: BLOCKED; PRODUCT FAILURE; Stage 'test' did not execute because required stage 'typecheck' failed first.
+- Overall verification: BLOCKED; PRODUCT FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c
-- Repository: C:/phx-bbdd3710ec3246e9/w
+- Run ID: 277c0dd1-c39e-4e79-b4b2-141afb30402e
+- Repository: C:/phx-d74da8da2acf4e84/w
 - Branch:
-- Verified HEAD: 1838ea4e22ebebf487706c5d1d86ebf9a0d066ba
-- Verified tree: 7042bee703645a1fd494a9c3661c8f7b811dc9c4
-- Expected HEAD: 1838ea4e22ebebf487706c5d1d86ebf9a0d066ba
-- Base SHA: a338b9cbe4bb97c907de04bcb2c2ab30fea1e08b
+- Verified HEAD: c1a72e2ff514884b52976ef37c23bd2221d17319
+- Verified tree: 3d51281fd03dff4fed986bdf414f0983024c4340
+- Expected HEAD: c1a72e2ff514884b52976ef37c23bd2221d17319
+- Base SHA: 72529cb966a461e3254b25cd02daf3e83e381c1c
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
 - PowerShell: 7.6.6
@@ -24,18 +24,18 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-12T04:05:54.6866674Z
-- Ended: 2026-10-12T04:08:13.4959580Z
+- Started: 2026-10-12T04:34:04.9194171Z
+- Ended: 2026-10-12T04:34:33.4524902Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- node-preflight: PASS (exit 0; NONE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- node-project-files: PASS (exit 0; NONE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- install: PASS (exit 0; NONE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- typecheck: PASS (exit 0; NONE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- test-focused: FAIL (exit 1; TEST FAILURE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
-- test: FAIL (exit 1; TEST FAILURE; run fa970e64-d4fa-4d9c-8e68-3871ba1c7f3c)
+- preflight: PASS (exit 0; NONE; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+- node-preflight: PASS (exit 0; NONE; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+- node-project-files: PASS (exit 0; NONE; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+- install: PASS (exit 0; NONE; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+- typecheck: FAIL (exit 2; PRODUCT FAILURE; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+- test-focused: MISSING (FRAMEWORK FAILURE)
+- test: MISSING (FRAMEWORK FAILURE)
 - build: MISSING (FRAMEWORK FAILURE)
 - repository-check: MISSING (FRAMEWORK FAILURE)
 - check: MISSING (FRAMEWORK FAILURE)
@@ -46,4 +46,4 @@ STATUS: BLOCKED
 - None recorded for current run
 
 Final verdict: BLOCKED
-Failure classification: TEST FAILURE
+Failure classification: PRODUCT FAILURE

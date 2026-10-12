@@ -1,0 +1,55 @@
+phx-ci standardized local verification
+Run name: operator-dec339-d339-10-review-remediation-01
+Source branch: dec339/d339-10-review-remediation-01
+Source build HEAD: c1a72e2ff514884b52976ef37c23bd2221d17319
+Verification checkout HEAD: c1a72e2ff514884b52976ef37c23bd2221d17319
+Base SHA: 72529cb966a461e3254b25cd02daf3e83e381c1c
+Control repository: C:\temp-1e20c866712740eaa972de524914e2b8
+Verification worktree: C:\phx-d74da8da2acf4e84\w
+Framework HEAD: 69c4aa077d4a1a46d1e85e59f39d36285be99e83
+Framework version: 0.2.0-dev.2
+Task version: 3.53.1
+Task executable: C:\Users\woodpk\.dotnet\tools\task.exe
+Started UTC: 2026-10-12T04:34:04.2332647Z
+
+===== task ci output =====
+
+task: [run:start] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Start-VerificationRun.ps1" -ProjectRoot "C:/phx-d74da8da2acf4e84/w" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -ArtifactsPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/artifacts.json" -EvidencePath "C:/phx-d74da8da2acf4e84/generated-evidence/_ca-output.md" -EvidenceRoot "C:/phx-d74da8da2acf4e84/generated-evidence" -RunId "277c0dd1-c39e-4e79-b4b2-141afb30402e"
+verificationRun=277c0dd1-c39e-4e79-b4b2-141afb30402e
+task: [windows:preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage preflight -WorkingDirectory "C:/phx-d74da8da2acf4e84/w" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -FailureClassification "ENVIRONMENT FAILURE" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -TempRoot "C:/"
+os=Microsoft Windows NT 10.0.26200.0
+powershell=7.6.6
+task=3.53.1
+taskExecutable=C:\Users\woodpk\.dotnet\tools\task.exe
+pathWithSpaces=PASS
+task: [adapter-preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-preflight" -WorkingDirectory "C:/phx-d74da8da2acf4e84/w" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -TempRoot "C:/" -Optional
+node=v22.23.2
+npm=10.9.8
+nodeExecutable=C:\Program Files\nodejs\node.exe
+npmExecutable=C:\Program Files\nodejs\npm.cmd
+task: [adapter-project-files] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-project-files" -WorkingDirectory "C:/phx-d74da8da2acf4e84/w" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -FailureClassification "REPOSITORY-GATE FAILURE" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -TempRoot "C:/" -Optional
+package.json=present
+package-lock.json=present
+task: [install] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage install -WorkingDirectory "C:/phx-d74da8da2acf4e84/w" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -TempRoot "C:/"
+
+added 16 packages, and audited 17 packages in 6s
+
+found 0 vulnerabilities
+task: [typecheck] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage typecheck -WorkingDirectory "C:/phx-d74da8da2acf4e84/w" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -FailureClassification "PRODUCT FAILURE" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -TempRoot "C:/"
+
+> brain-google-drive-sync@0.1.18 typecheck
+> tsc --noEmit
+
+test/dec339-remote-reader.test.ts(93,7): error TS2367: This comparison appears to be unintentional because the types '"recovery-required"' and '"ok"' have no overlap.
+task: [evidence:render] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Write-Evidence.ps1" -FrameworkRoot "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83" -ProjectRoot "C:/phx-d74da8da2acf4e84/w" -ProjectName "gdrive-sync-obsidian-plugin" -RecordsDirectory "C:/phx-d74da8da2acf4e84/w/.phx-ci/records" -ArtifactsPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/artifacts.json" -EvidencePath "C:/phx-d74da8da2acf4e84/generated-evidence/_ca-output.md" -RequiredStages "preflight;node-preflight;node-project-files;install;typecheck;test-focused;test;build;repository-check;check;artifacts" -ToolVersionsPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/tool-versions.json" -RunIdentityPath "C:/phx-d74da8da2acf4e84/w/.phx-ci/run.json" -ExpectedHead "c1a72e2ff514884b52976ef37c23bd2221d17319" -ExpectedBaseSha "72529cb966a461e3254b25cd02daf3e83e381c1c"
+
+PHX-CI RUN RESULT
+Change-set verification: BLOCKED
+Repository verification: BLOCKED
+Overall verification: BLOCKED
+evidence: C:/phx-d74da8da2acf4e84/generated-evidence/_ca-output.md (BLOCKED; run 277c0dd1-c39e-4e79-b4b2-141afb30402e)
+task: Failed to run task "ci": task: Failed to run task "typecheck": exit status 2
+
+===== task ci finished =====
+Task exit code: 201
+Ended UTC: 2026-10-12T04:34:33.9653698Z
