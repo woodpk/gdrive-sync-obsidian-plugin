@@ -146,8 +146,14 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           assembled.managedRemote.protocolVersion === remote.protocolVersion &&
           assembled.nextCursor === liveCursor.value &&
           assembled.input.state.status === "trusted" &&
-          assembled.input.state.state.stateRevision === loaded.state.stateRevision)
-        return assembled;
+          assembled.input.state.state.stateRevision === loaded.state.stateRevision) {
+        // Critical independent Drive safety proof: a marked object outside its
+        // expected domain is invisible to inventory's parent-scoped traversal.
+        // This fresh root-wide check uses the exact reconciliation validator.
+        // An absent/failed capability always falls back to full reconciliation.
+        const provenance = await drive.verifyRootWideManagedProvenance?.(remote.rootId);
+        if (provenance?.ok) return assembled;
+      }
     } catch {
       // Any storage, fence, coverage or verification uncertainty uses the
       // established authoritative Changes/full reconciliation behavior.
