@@ -100,6 +100,7 @@ function fixture(options: {
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor }),
+    verifyRootWideManagedProvenance: async () => ({ ok: true as const, value: undefined }),
     listForReconciliation: async () => {
       fullLists++;
       return { ok: true as const, value: {
