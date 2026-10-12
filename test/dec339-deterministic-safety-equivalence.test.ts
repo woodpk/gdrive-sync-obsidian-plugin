@@ -100,7 +100,6 @@ function fixture(options: {
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor }),
-    verifyRootWideManagedProvenance: async () => ({ ok: true as const, value: undefined }),
     listForReconciliation: async () => {
       fullLists++;
       return { ok: true as const, value: {
@@ -130,6 +129,8 @@ function fixture(options: {
     ),
     inventory: new InventoryBackedSnapshotAssembler({
       ...settings, inventory: store as never, currentFence: async () => fence,
+      provenanceReader: { verifyRootWideManagedProvenance: async () =>
+        ({ status: "ok" as const, value: undefined }) },
     }),
     get fullLists() { return fullLists; }, get mutationCalls() { return mutationCalls; },
   };
