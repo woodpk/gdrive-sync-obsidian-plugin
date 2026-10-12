@@ -85,7 +85,6 @@ function instance(f: ReturnType<typeof fixtures>) {
     validateManagedRoot: async () => { stats.rootValidations++;
       return { ok: true as const, value: { status: "valid" as const, identity } }; },
     getStartCursor: async () => { stats.cursorReads++; return { ok: true as const, value: cursor }; },
-    verifyRootWideManagedProvenance: async () => ({ ok: true as const, value: undefined }),
     listForReconciliation: async () => { stats.fullLists++;
       return { ok: true as const, value: { entries: f.listing,
         completeness: { status: "complete" as const } } }; },
@@ -110,6 +109,7 @@ function instance(f: ReturnType<typeof fixtures>) {
     off: new ProductSnapshotAssembler(common.local, common.drive,
       common.state, common.stateContext, common.remoteIdentity),
     on: new InventoryBackedSnapshotAssembler({ ...common, inventory: store as never,
+      provenanceReader: { verifyRootWideManagedProvenance: async () => ({ status: "ok" as const, value: undefined }) },
       currentFence: async () => fence }) };
 }
 async function sample(f: ReturnType<typeof fixtures>, mode: "OFF" | "ON") {
