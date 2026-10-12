@@ -56,6 +56,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
 ] as const;
 
 const S09_LATE_COMPLETION_RECOVERY = [
+  "s09a-attribution-live-guard.test.js",
   "s09a-late-completion-recovery.test.js",
 ] as const;
 
