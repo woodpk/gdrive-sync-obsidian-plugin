@@ -50,12 +50,14 @@ function fixture(options: {
   readonly fence?: InventoryIdentityFence;
   readonly cursor?: typeof cursor;
   readonly storeThrows?: boolean;
+  readonly provenanceFailure?: boolean;
+  readonly provenanceMissing?: boolean;
   readonly state?: TrustedSynchronizationState;
 } = {}) {
   const rows = options.rows ?? [rootEntity("content"), rootEntity("portable-config"), fileEntity()];
   const expected = options.fence ?? fence;
   const activeCursor = options.cursor ?? cursor;
-  let releases = 0, remoteLists = 0, localReads = 0, invReads = 0;
+  let releases = 0, remoteLists = 0, localReads = 0, invReads = 0, provenanceReads = 0;
   const lease: InventoryReadLease = {
     generation, fence: expected,
     getById: async remoteObjectId => {
@@ -102,6 +104,15 @@ function fixture(options: {
   const drive = {
     validateManagedRoot: async () => ({ ok: true as const, value: { status: "valid" as const, identity } }),
     getStartCursor: async () => ({ ok: true as const, value: cursor }),
+    ...(!options.provenanceMissing ? {
+      verifyRootWideManagedProvenance: async () => {
+        provenanceReads++;
+        return options.provenanceFailure
+          ? { ok: false as const, signal: { kind: "recovery-required" as const,
+            detail: "managed-object-left-remote-domain:out-of-scope" } }
+          : { ok: true as const, value: undefined };
+      },
+    } : {}),
     listForReconciliation: async () => { remoteLists++; return {
       ok: true as const, value: { entries, completeness: { status: "complete" as const } },
     }; },
@@ -125,6 +136,7 @@ function fixture(options: {
     get remoteLists() { return remoteLists; },
     get localReads() { return localReads; },
     get invReads() { return invReads; },
+    get provenanceReads() { return provenanceReads; },
   };
 }
 
@@ -132,6 +144,7 @@ test("D339-05 coherent inventory yields exactly the established LOCAL/REMOTE/BAS
   const actual = fixture();
   const projection = await actual.optimized.assemble();
   assert.equal(actual.remoteLists, 0);
+  assert.equal(actual.provenanceReads, 1, "the optimized result requires a fresh Drive provenance census");
   assert.equal(actual.releases, 1);
   assert.equal(actual.localReads, 1);
   assert.equal(projection.nextCursor, cursor);
@@ -178,6 +191,16 @@ test("D339-05 missing, stale, wrong-scope and invalid coverage always fall back 
     assert.equal(sample.remoteLists, 1, JSON.stringify(condition));
     assert.equal(result.input.snapshots.find(entry => entry.path === path)?.remote.status, "present");
     assert.equal(sample.releases, sample.invReads, "every acquired read lease must be released");
+  }
+});
+
+test("D339-10 missing or invalid root-wide provenance proof forces full reconciliation", async () => {
+  for (const condition of [{ provenanceFailure: true }, { provenanceMissing: true }]) {
+    const sample = fixture(condition);
+    const result = await sample.optimized.assemble();
+    assert.equal(sample.remoteLists, 1, "cached inventory must not authorize planning without proof");
+    assert.equal(result.input.snapshots[0]?.remote.status, "present");
+    assert.equal(sample.provenanceReads, condition.provenanceMissing ? 0 : 1);
   }
 });
 
