@@ -52,13 +52,16 @@ function fixture(options: {
   readonly storeThrows?: boolean;
   readonly provenanceFailure?: boolean;
   readonly provenanceMissing?: boolean;
+  readonly provenanceThrows?: boolean;
+  readonly emptyIncrementalChanges?: boolean;
   readonly fullListingFailure?: boolean;
+  readonly fullListingPartial?: boolean;
   readonly state?: TrustedSynchronizationState;
 } = {}) {
   const rows = options.rows ?? [rootEntity("content"), rootEntity("portable-config"), fileEntity()];
   const expected = options.fence ?? fence;
   const activeCursor = options.cursor ?? cursor;
-  let releases = 0, remoteLists = 0, localReads = 0, invReads = 0, provenanceReads = 0;
+  let releases = 0, remoteLists = 0, localReads = 0, invReads = 0, provenanceReads = 0, changesReads = 0;
   const lease: InventoryReadLease = {
     generation, fence: expected,
     getById: async remoteObjectId => {
@@ -109,7 +112,10 @@ function fixture(options: {
       remoteLists++;
       if (options.fullListingFailure) return { ok: false as const,
         signal: { kind: "recovery-required" as const, detail: "managed-object-left-remote-domain" } };
-      return { ok: true as const, value: { entries, completeness: { status: "complete" as const } } };
+      return { ok: true as const, value: { entries,
+        completeness: options.fullListingPartial
+          ? { status: "partial" as const, reason: "incomplete-full-listing" }
+          : { status: "complete" as const } } };
     },
   };
   const store = { load: async () => ({ status: "trusted" as const, state: options.state ?? state }) };
@@ -121,9 +127,18 @@ function fixture(options: {
   };
   const optimized = new InventoryBackedSnapshotAssembler({
     ...settings, inventory: inventory as never, currentFence: async () => fence,
+    ...(options.emptyIncrementalChanges ? { reliableChanges: {
+      readChangePage: async (_identity: unknown, requestedToken: typeof cursor) => {
+        changesReads++;
+        return { ok: true as const, value: {
+          kind: "terminal" as const, requestedToken, changes: [], newStartPageToken: cursor,
+        } };
+      },
+    } } : {}),
     ...(!options.provenanceMissing ? { provenanceReader: {
       verifyRootWideManagedProvenance: async () => {
         provenanceReads++;
+        if (options.provenanceThrows) throw new Error("provenance-census-unavailable");
         return options.provenanceFailure
           ? { status: "recovery-required" as const, reason: "managed-object-left-remote-domain" }
           : { status: "ok" as const, value: undefined };
@@ -140,6 +155,7 @@ function fixture(options: {
     get localReads() { return localReads; },
     get invReads() { return invReads; },
     get provenanceReads() { return provenanceReads; },
+    get changesReads() { return changesReads; },
   };
 }
 
@@ -212,6 +228,28 @@ test("D339-10 managed-marked object outside domain blocks optimized and fallback
   await assert.rejects(sample.optimized.assemble(), /managed-object-left-remote-domain/);
   assert.equal(sample.provenanceReads, 1, "cached observations require a fresh provenance check");
   assert.equal(sample.remoteLists, 1, "unsafe cached result must fall through to the real listing");
+});
+
+test("D339-11 failed, missing or throwing provenance census cannot use empty incremental Changes", async () => {
+  for (const unsafe of [
+    { provenanceFailure: true }, { provenanceMissing: true }, { provenanceThrows: true },
+  ]) {
+    const sample = fixture({ ...unsafe, emptyIncrementalChanges: true });
+    const result = await sample.optimized.assemble();
+    assert.equal(result.mode, "full", "unproven census requires physical reconciliation");
+    assert.equal(result.remoteEnumeration.status, "complete");
+    assert.equal(sample.remoteLists, 1, "fresh full listing must run");
+    assert.equal(sample.changesReads, 0, "empty incremental Changes must not bypass census");
+  }
+});
+
+test("D339-11 failed census with empty Changes cannot bypass unsafe or incomplete full listing", async () => {
+  for (const failure of [{ fullListingFailure: true }, { fullListingPartial: true }]) {
+    const sample = fixture({ provenanceFailure: true, emptyIncrementalChanges: true, ...failure });
+    await assert.rejects(sample.optimized.assemble(), /managed-object-left-remote-domain|root-wide managed provenance unproven/);
+    assert.equal(sample.remoteLists, 1);
+    assert.equal(sample.changesReads, 0, "incremental reconciliation may not replace failed full proof");
+  }
 });
 
 test("D339-05 same-name duplicates never become a false unique or empty occupancy", async () => {
