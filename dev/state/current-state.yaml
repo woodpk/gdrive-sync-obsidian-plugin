@@ -1,16 +1,35 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "REPOSITORY_DEVELOPMENT_STANDARDIZATION"
-active_build_unit: "DEV_DIRECTORY_STANDARDIZATION_PHASE_10_FINAL_COMPREHENSIVE_VERIFICATION"
+active_workstream: "WS-07-brain-verification-platform"
+active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
 status: "IN_PROGRESS"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: null
-blockers: []
-next_action: "Run authoritative deployed-runtime PHX-CI verification against dev-directory-standardization-phase10 with publication mode push and Phase-9 as the explicit base; return the complete console output. PHX-CI must publish canonical result.md, result.json, and terminal.log under dev/test-results/<runId>/ before Phase 10 may close."
-updated_at: "2026-10-07"
+last_phx_ci_run_id: null  # No accepted PHX-CI run for this new baseline integration candidate
+blockers:
+  - "Prerequisite platform baseline branch requires fresh exact-SHA PHX-CI acceptance and independent architecture/governance review before master promotion."
+  - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
+  - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
+  - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
+next_action: "Perform exact source-bound PHX-CI full-repository plus BVP focused verification of the isolated pre-DEC339 platform baseline; publish evidence, independently review platform/governance scope, and leave master untouched pending acceptance."
+updated_at: "2026-10-12"
 
 context:
+  platform_baseline_promotion:
+    authorization: "OWNER_SELECTED_OPTION_A_PLATFORM_FIRST_ON_2026-10-12"
+    baseline_source_sha: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
+    master_source_sha_at_start: "caf4a03418b89b57893e3bd5d4c6f89c28604242"
+    baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
+    baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
+    baseline_candidate_phx_ci: "PENDING"
+    baseline_independent_review: "PENDING"
+    commits_pre_dec339_ahead: 1612
+    commits_master_exclusive: 26
+    master_promoted: false
+    inventory_activated: false
+    dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
+    tasking_record: "dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md"
+    historical_legacy_state_below: "Previous standardized-dev Phase-10 status retained as history; no longer current task"
   canonical_source_branch: "automated-testing-platform-branch"
   canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
   current_migration_branch: "dev-directory-standardization-phase10"
@@ -27,8 +46,8 @@ context:
     - "PHASE_9_UPDATE_PATH_REFERENCES"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "SUBSTANTIVELY_GREEN_AND_READY_FOR_S09_AFTER_REPOSITORY_STANDARDIZATION_CLOSURE"
-  s09_started: false
+  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; BASELINE_PROMOTION_UNVERIFIED"
+  s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
   stage_3_started: false
   verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/test-results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."
   authority:
