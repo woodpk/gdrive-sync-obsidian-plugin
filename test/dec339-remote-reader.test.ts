@@ -82,6 +82,28 @@ class Provider implements InventoryMetadataSource {
 }
 const reader = (provider: Provider) => new VerifiedMetadataInventoryReader(provider);
 
+test("D339-10 fresh root-wide managed census rejects out-of-domain marked file", async () => {
+  const p = new Provider();
+  const moved = item("escaped", "escaped.md", "outside", "content");
+  p.files.set("outside", { id: "outside", name: "Elsewhere", mimeType: folder,
+    parents: [], trashed: false, appProperties: {} });
+  p.marked.push(moved);
+  const proof = await reader(p).verifyRootWideManagedProvenance(fence);
+  assert.equal(proof.status, "recovery-required");
+  if (proof.status !== "ok") assert.match(proof.reason, /outside-expected-domain/);
+});
+
+test("D339-10 fresh root-wide managed census rejects incomplete or untrusted provider evidence", async () => {
+  const p = new Provider();
+  assert.equal((await reader(p).verifyRootWideManagedProvenance(fence)).status, "ok");
+  p.verified = false;
+  assert.equal((await reader(p).verifyRootWideManagedProvenance(fence)).status, "incompatible");
+  p.verified = true;
+  p.marked = [{ ...p.marked[0]!, appProperties: { brainManagedRootId: "managed",
+    brainSyncDomain: "portable-config" } }];
+  assert.equal((await reader(p).verifyRootWideManagedProvenance(fence)).status, "recovery-required");
+});
+
 test("baseline retains stable IDs, parent ancestry, domain coverage, cursor and no publication authority", async () => {
   const p = new Provider();
   const result = await reader(p).baseline(fence, generation("g1"));
