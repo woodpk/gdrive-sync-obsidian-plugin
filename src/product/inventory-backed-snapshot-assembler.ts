@@ -15,13 +15,11 @@ import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import type { IndexedDbInventoryObservationStore } from "../state/indexeddb-inventory-storage";
 import { inventoryFenceMatches } from "../state/verified-metadata-inventory-validation";
 import { readVerifiedInventoryListing } from "./verified-inventory-planning-projection";
+import type { VerifiedMetadataInventoryReader } from "../drive/verified-metadata-inventory-reader";
 import { ProductSnapshotAssembler, type AssembledPlanningInput } from "./snapshot-assembler";
 
 type InventoryStore = Pick<IndexedDbInventoryObservationStore, "publicationSnapshot" | "openRead">;
-/** Opt-in capability; the frozen GoogleDrivePort contract stays byte-for-byte unchanged. */
-type ProvenanceCheckedDrive = GoogleDrivePort & {
-  verifyRootWideManagedProvenance?: (rootId: RemoteObjectId) => Promise<{ readonly ok: boolean }>;
-};
+
 
 export interface InventorySnapshotAssemblyOptions {
   readonly local: LocalVaultPort;
@@ -30,6 +28,8 @@ export interface InventorySnapshotAssemblyOptions {
   readonly stateContext: StateLoadContext;
   readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>;
   readonly inventory: InventoryStore;
+  /** Fresh provider-backed managed-object census; absent/unproven means full fallback. */
+  readonly provenanceReader?: Pick<VerifiedMetadataInventoryReader, "verifyRootWideManagedProvenance">;
   /** Calculated from the current paired account, root, device and effective scope policy. */
   readonly currentFence: () => Promise<InventoryIdentityFence>;
   readonly pathIncluded?: (path: VaultPath) => boolean;
@@ -155,8 +155,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         // expected domain is invisible to inventory's parent-scoped traversal.
         // This fresh root-wide check uses the exact reconciliation validator.
         // An absent/failed capability always falls back to full reconciliation.
-        const provenance = await (drive as ProvenanceCheckedDrive).verifyRootWideManagedProvenance?.(remote.rootId);
-        if (provenance?.ok) return assembled;
+        const provenance = await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
+        if (provenance?.status === "ok") return assembled;
       }
     } catch {
       // Any storage, fence, coverage or verification uncertainty uses the
