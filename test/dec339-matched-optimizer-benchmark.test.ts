@@ -85,6 +85,7 @@ function instance(f: ReturnType<typeof fixtures>) {
     validateManagedRoot: async () => { stats.rootValidations++;
       return { ok: true as const, value: { status: "valid" as const, identity } }; },
     getStartCursor: async () => { stats.cursorReads++; return { ok: true as const, value: cursor }; },
+    verifyRootWideManagedProvenance: async () => ({ ok: true as const, value: undefined }),
     listForReconciliation: async () => { stats.fullLists++;
       return { ok: true as const, value: { entries: f.listing,
         completeness: { status: "complete" as const } } }; },
