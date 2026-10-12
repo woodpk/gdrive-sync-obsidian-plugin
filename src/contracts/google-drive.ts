@@ -53,6 +53,9 @@ export interface GoogleDrivePort {
   validateManagedRoot(identity: ManagedRemoteIdentity): Promise<DriveResult<ManagedRemoteValidation>>;
   protocolInfo(rootId: RemoteObjectId): Promise<DriveResult<RemoteProtocolInfo>>;
   listForReconciliation(rootId: RemoteObjectId): Promise<DriveResult<RemoteListing>>;
+  /** Optional until installed on an actual Drive adapter; cached planning MUST fall back when absent.
+   * Performs the same fresh root-wide marked-object provenance check as full reconciliation. */
+  verifyRootWideManagedProvenance?(rootId: RemoteObjectId): Promise<DriveResult<void>>;
   getStartCursor(rootId: RemoteObjectId): Promise<DriveResult<ChangeCursor>>;
   readChanges(rootId: RemoteObjectId, cursor: ChangeCursor): Promise<DriveResult<RemoteChangePage>>;
   observe(rootId: RemoteObjectId, path: VaultPath): Promise<DriveResult<RemoteObservation>>;
