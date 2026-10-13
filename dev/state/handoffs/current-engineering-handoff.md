@@ -107,3 +107,12 @@ Do not begin S09 or Stage 3 until Phase 10 closes green.
 - Direct live battery operation now intentionally **BLOCKED** until an actual PHX-CI-owned/coordinated physical-battery adapter is implemented and reviewed. Deterministic BVP tests remain available as `npm run test:bvp-root` only **within PHX-CI**. Do not misrepresent a stub as delivering PHX-CI physical execution.
 - **NO PHX-CI RUN on the repaired source**, no independent F1 reassessment, no master merge, no DEC-339 feature integration, and **NO F2 source change**. The prior PASS applies strictly to source `2ad791a07b210384c4572b37192407b49313a93e`, not this new commit.
 - Next authorized continuation only after owner request: address F2 separately, then run PHX-CI with exact combined source and re-review both blockers; avoid premature physical activation.
+
+## F2 shipping-artifact identity correction — 2026-10-13
+
+- Starting integration HEAD: `1975c3429dd37d83f478b0eadd955768eb43394e`. Reviewer F2 confirmed: missing, malformed, or unexpected `package.json` identity previously skipped `main.js` SHA-256 enforcement.
+- This bounded correction makes package presence, valid JSON, exact `brain-google-drive-sync` identity, shipping artifact presence/readability, and the frozen accepted `main.js` SHA-256 mandatory. No runtime override or fixture exemption was added.
+- Existing repository-check fixtures use a deliberately synthetic `main.js`; their unrelated guard/metrics assertions now explicitly expect the independent shipping-artifact failure. New negative regressions cover missing/malformed/unexpected/nonobject package, missing artifact, and preserve the existing hash-mismatch test. A successful accepted production artifact is proven by the subsequent PHX-CI build/repository gate, not fabricated in fixtures.
+- This is a supervisor-authorized governance correction of frozen `test-platform/src/repository-check.ts`; the existing `BVP_CHANGE_CLASS=authorized-governance` classification is required for PHX-CI. Architecture lock, acceptance hash, PHX-CI pin, and F1 fail-closed battery entrypoints are unchanged.
+- **STATUS: IMPLEMENTED IN SOURCE; NOT PHX-CI VERIFIED; NOT INDEPENDENTLY APPROVED.** Prior PASS remains specific to `2ad791a07b210384c4572b37192407b49313a93e`. PR #150 remains draft/unmerged; no live S09, DEC-339, activation, release, or Stage 3.
+- Next: exact corrected-HEAD PHX-CI with authorized-governance classification; inspect published full evidence, then request independent combined F1/F2 reassessment before considering promotion.

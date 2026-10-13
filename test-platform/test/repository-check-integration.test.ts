@@ -129,7 +129,7 @@ function createFixture(): { readonly root: string; readonly baseSha: string } {
     "package.json",
     JSON.stringify(
       {
-        name: "repository-check-fixture",
+        name: "brain-google-drive-sync",
         private: true,
         main: "main.js",
         scripts: { build: "node scripts/build.mjs" },
@@ -212,6 +212,13 @@ function runRepositoryCheck(
   };
 }
 
+function expectFixtureArtifactMismatch(result: RunResult): void {
+  if (result.error) throw result.error;
+  strictEqual(result.status, 1, result.output);
+  match(result.output, /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=main\.js .*Built shipping artifact SHA-256 changed/);
+  match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
+}
+
 function withFixture(
   run: (root: string, baseSha: string) => void,
 ): void {
@@ -286,7 +293,7 @@ test("authoritative context supplies exact base and changed-path count", () => {
       BVP_CHANGE_CLASS: "ordinary",
     });
     if (result.error) throw result.error;
-    strictEqual(result.status, 0, result.output);
+    expectFixtureArtifactMismatch(result);
     match(
       result.output,
       new RegExp(
@@ -300,7 +307,7 @@ test("authoritative context supplies exact base and changed-path count", () => {
     match(result.output, /DEV_ROOT_STRUCTURE_RESULT=PASS violations=0/);
     match(result.output, /ARCH_GUARD_RESULT=PASS violations=0/);
     match(result.output, /"baseSha":/);
-    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=PASS/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL/);
   });
 });
 
@@ -316,10 +323,10 @@ test("authorized governance classification permits an explicitly frozen-surface 
       BVP_CHANGE_CLASS: "authorized-governance",
     });
     if (result.error) throw result.error;
-    strictEqual(result.status, 0, result.output);
+    expectFixtureArtifactMismatch(result);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=0.*changeClass=authorized-governance/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0.*changeClass=authorized-governance/,
     );
   });
 });
@@ -340,7 +347,7 @@ test("architecture guard failure blocks repository check", () => {
     if (result.error) throw result.error;
     notStrictEqual(result.status, 0, result.output);
     match(result.output, /rule=PRODUCTION_IMPORTS_TEST_PLATFORM/);
-    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=0 guardExit=1/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=1/);
   });
 });
 
@@ -369,7 +376,7 @@ test("hard-budget metrics failure blocks repository check while guard still pass
     match(result.output, /"id": "SCENARIO_LOC:oversized"/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=1/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=1/,
     );
   });
 });
@@ -393,7 +400,7 @@ test("noncanonical active dev top-level entries block repository check", () => {
     match(result.output, /DEV_ROOT_STRUCTURE_RESULT=FAIL violations=1/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=1 shippingArtifactExit=0 guardExit=0 metricsExit=0/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=1 shippingArtifactExit=1 guardExit=0 metricsExit=0/,
     );
   });
 });
@@ -406,7 +413,7 @@ test("PHX-CI structured evidence is an optional canonical dev-root file", () => 
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
     });
     if (result.error) throw result.error;
-    strictEqual(result.status, 0, result.output);
+    expectFixtureArtifactMismatch(result);
     match(result.output, /DEV_ROOT_STRUCTURE_RESULT=PASS violations=0/);
   });
 });
@@ -424,11 +431,64 @@ test("unrelated dev-root JSON files remain prohibited", () => {
   });
 });
 
+
+test("F2 fails closed when package.json is missing, malformed, or has an unexpected identity", () => {
+  const cases: ReadonlyArray<{
+    readonly label: string;
+    readonly mutate: (root: string) => void;
+    readonly violation: RegExp;
+  }> = [
+    {
+      label: "missing",
+      mutate: (root) => rmSync(join(root, "package.json")),
+      violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Required BRAIN package manifest is missing\./,
+    },
+    {
+      label: "malformed",
+      mutate: (root) => writeText(root, "package.json", "{ broken json"),
+      violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Required BRAIN package manifest is unreadable or invalid JSON\./,
+    },
+    {
+      label: "unexpected-name",
+      mutate: (root) => writeText(root, "package.json", '{"name":"repository-check-fixture"}\n'),
+      violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Unexpected package identity; expected brain-google-drive-sync\./,
+    },
+    {
+      label: "non-object-json",
+      mutate: (root) => writeText(root, "package.json", "null\n"),
+      violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Unexpected package identity; expected brain-google-drive-sync\./,
+    },
+  ];
+  for (const scenario of cases) {
+    withFixture((root) => {
+      scenario.mutate(root);
+      const result = runRepositoryCheck(root);
+      if (result.error) throw result.error;
+      strictEqual(result.status, 1, scenario.label + ": " + result.output);
+      match(result.output, scenario.violation, scenario.label);
+      match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/, scenario.label);
+      match(
+        result.output,
+        /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/,
+        scenario.label,
+      );
+    });
+  }
+});
+
+test("F2 fails closed when a correctly named package has no shipping artifact", () => {
+  withFixture((root) => {
+    rmSync(join(root, "main.js"));
+    const result = runRepositoryCheck(root);
+    if (result.error) throw result.error;
+    strictEqual(result.status, 1, result.output);
+    match(result.output, /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=main\.js detail=Required shipping artifact is missing after build\./);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/);
+  });
+});
+
 test("built shipping artifact identity mismatch blocks repository check", () => {
   withFixture((root, baseSha) => {
-    const packageModel = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-    packageModel.name = "brain-google-drive-sync";
-    writeText(root, "package.json", JSON.stringify(packageModel, null, 2) + "\n");
     writeText(root, "main.js", 'console.log("changed artifact");\n');
     const contextPath = writeContext(root, baseSha, {
       changedPaths: ["main.js"],
@@ -494,13 +554,13 @@ test("routine local mode runs both repository-controlled checks without fabricat
   withFixture((root) => {
     const result = runRepositoryCheck(root);
     if (result.error) throw result.error;
-    strictEqual(result.status, 0, result.output);
+    expectFixtureArtifactMismatch(result);
     match(result.output, /BVP_REPOSITORY_CHECK_CONTEXT unavailable mode=local/);
     match(result.output, /ARCH_GUARD_RESULT=PASS violations=0/);
     match(result.output, /"baseSha": null/);
     match(
       result.output,
-      /BVP_REPOSITORY_CHECK_RESULT=PASS devRootExit=0 shippingArtifactExit=0 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
+      /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
     );
   });
 });

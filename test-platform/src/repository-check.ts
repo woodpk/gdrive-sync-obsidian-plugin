@@ -85,15 +85,24 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
 
 function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   const packagePath = resolve(repositoryRoot, "package.json");
-  if (!existsSync(packagePath)) return [];
+  if (!existsSync(packagePath)) {
+    return [{ path: "package.json", detail: "Required BRAIN package manifest is missing." }];
+  }
 
-  let packageModel: { name?: unknown };
+  let packageModel: unknown;
   try {
     packageModel = JSON.parse(readFileSync(packagePath, "utf8"));
   } catch {
-    return [];
+    return [{ path: "package.json", detail: "Required BRAIN package manifest is unreadable or invalid JSON." }];
   }
-  if (packageModel.name !== brainPackageName) return [];
+  if (
+    typeof packageModel !== "object" ||
+    packageModel === null ||
+    Array.isArray(packageModel) ||
+    (packageModel as { name?: unknown }).name !== brainPackageName
+  ) {
+    return [{ path: "package.json", detail: "Unexpected package identity; expected " + brainPackageName + "." }];
+  }
 
   const artifactPath = resolve(repositoryRoot, "main.js");
   if (!existsSync(artifactPath)) {
@@ -103,9 +112,12 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
     }];
   }
 
-  const actualSha256 = createHash("sha256")
-    .update(readFileSync(artifactPath))
-    .digest("hex");
+  let actualSha256: string;
+  try {
+    actualSha256 = createHash("sha256").update(readFileSync(artifactPath)).digest("hex");
+  } catch {
+    return [{ path: "main.js", detail: "Required shipping artifact is unreadable." }];
+  }
   if (actualSha256 !== acceptedProductionMainSha256) {
     return [{
       path: "main.js",

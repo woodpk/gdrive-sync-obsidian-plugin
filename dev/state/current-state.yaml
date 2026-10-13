@@ -7,11 +7,11 @@ status: "CORRECTION_PENDING_VERIFICATION"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
 blockers:
-  - "Independent adversarial review REJECTED PR #150: F1 standalone BVP operator authority corrected fail-closed on this branch but requires PHX-CI verification and independent reassessment; F2 shipping-artifact fail-open identity guard remains UNMODIFIED and BLOCKING."
+  - "Independent adversarial review REJECTED PR #150: F1 standalone BVP operator authority mitigated fail-closed; F2 shipping-artifact identity bypass repaired fail-closed in source. Combined F1/F2 changes require exact-SHA PHX-CI verification and independent reassessment before promotion."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "OWNER STOP AFTER F1 SOURCE CORRECTION. Do not begin F2, perform local verification, request PHX-CI, or merge in this session. On separately authorized continuation, F2 remains uncorrected; reverify resulting source via PHX-CI and independently reassess."
+next_action: "F2 source correction committed after F1. Run PHX-CI on exact corrected integration HEAD with authorized-governance change classification, inspect evidence, then obtain independent F1/F2 reassessment. Do not merge, activate, release, or begin Stage 3."
 updated_at: "2026-10-12"
 
 context:
@@ -31,7 +31,7 @@ context:
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
     bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
-    baseline_independent_review: "REJECT; F1 fail-closed repair source committed (verification pending); F2 remains blocking and unmodified; see PR 150"
+    baseline_independent_review: "REJECT; F1 and F2 source mitigations committed, combined PHX-CI verification and independent reassessment pending; see PR 150"
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
     master_promoted: false
