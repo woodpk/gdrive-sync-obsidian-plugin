@@ -5,14 +5,15 @@ active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
 status: "CORRECTION_PENDING_VERIFICATION"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
+last_phx_ci_run_id: "71fb8c5c-f9fb-42d6-b90c-4035454c5e18"
 blockers:
+  - "PHX-CI run 71fb8c5c-f9fb-42d6-b90c-4035454c5e18 failed focused architecture metrics at framework-core LOC 4012/4000. A bounded source reduction now requires new exact-HEAD PHX-CI qualification."
   - "Independent adversarial review REJECTED PR #150: F1 standalone BVP operator authority mitigated fail-closed; F2 shipping-artifact identity bypass repaired fail-closed in source. Combined F1/F2 changes require exact-SHA PHX-CI verification and independent reassessment before promotion."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "F2 source correction committed after F1. Run PHX-CI on exact corrected integration HEAD with authorized-governance change classification, inspect evidence, then obtain independent F1/F2 reassessment. Do not merge, activate, release, or begin Stage 3."
-updated_at: "2026-10-12"
+next_action: "PHX-CI run 71fb8c5c-f9fb-42d6-b90c-4035454c5e18 blocked at 4012/4000 framework-core LOC (390/391 BVP tests PASS; product suite PASS). Bounded F2 simplification committed; exact-HEAD PHX-CI with authorized-governance classification and independent F1/F2 reassessment pending. No merge or activation."
+updated_at: "2026-10-13"
 
 context:
   platform_baseline_promotion:
