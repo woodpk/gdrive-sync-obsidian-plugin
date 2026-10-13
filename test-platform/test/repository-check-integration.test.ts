@@ -437,24 +437,29 @@ test("F2 fails closed when package.json is missing, malformed, or has an unexpec
     readonly label: string;
     readonly mutate: (root: string) => void;
     readonly violation: RegExp;
+    readonly guardExit: 0 | 1;
   }> = [
     {
       label: "missing",
+      guardExit: 1,
       mutate: (root) => rmSync(join(root, "package.json")),
       violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Required BRAIN package manifest is missing\./,
     },
     {
       label: "malformed",
+      guardExit: 1,
       mutate: (root) => writeText(root, "package.json", "{ broken json"),
       violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Required BRAIN package manifest is unreadable or invalid JSON\./,
     },
     {
       label: "unexpected-name",
+      guardExit: 0,
       mutate: (root) => writeText(root, "package.json", '{"name":"repository-check-fixture"}\n'),
       violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Unexpected package identity; expected brain-google-drive-sync\./,
     },
     {
       label: "non-object-json",
+      guardExit: 0,
       mutate: (root) => writeText(root, "package.json", "null\n"),
       violation: /SHIPPING_ARTIFACT_IDENTITY_VIOLATION path=package\.json detail=Unexpected package identity; expected brain-google-drive-sync\./,
     },
@@ -469,7 +474,7 @@ test("F2 fails closed when package.json is missing, malformed, or has an unexpec
       match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/, scenario.label);
       match(
         result.output,
-        /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/,
+        new RegExp("BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=" + scenario.guardExit + " metricsExit=0"),
         scenario.label,
       );
     });
