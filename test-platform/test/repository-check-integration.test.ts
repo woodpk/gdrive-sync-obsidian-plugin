@@ -223,6 +223,22 @@ function withFixture(
   }
 }
 
+test("F1 retired entrypoints cannot execute or publish standalone BVP validation", () => {
+  for (const name of [
+    "Invoke-BVP-Battery.ps1",
+    "Invoke-BVP-Deterministic-Battery.ps1",
+  ]) {
+    const source = readFileSync(join(repositoryRoot, "dev", "scripts", name), "utf8");
+    const executableStatements = source
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith("#"));
+    strictEqual(executableStatements.length, 1, name + " must remain fail-closed");
+    match(executableStatements[0], /^throw 'BVP_F1_PHX_CI_REQUIRED:/, name);
+    strictEqual(/\b(?:Invoke-RecordedExternal|Start-Process|git\s+(?:add|commit|push)|npm\s+test|node\s+)\b/i.test(source), false, name);
+  }
+});
+
 test("PHX consumer configuration selects the frozen BVP repository-check command", () => {
   const projectConfig = JSON.parse(
     readFileSync(join(repositoryRoot, "phx-ci.json"), "utf8"),

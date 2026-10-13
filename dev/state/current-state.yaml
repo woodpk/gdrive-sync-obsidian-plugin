@@ -3,15 +3,15 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
-status: "REVIEW"
+status: "CORRECTION_PENDING_VERIFICATION"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
 blockers:
-  - "Independent adversarial platform-governance and architecture review remains PENDING; PHX-CI PASS alone does not authorize master promotion."
+  - "Independent adversarial review REJECTED PR #150: F1 standalone BVP operator authority corrected fail-closed on this branch but requires PHX-CI verification and independent reassessment; F2 shipping-artifact fail-open identity guard remains UNMODIFIED and BLOCKING."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Dispatch strictly read-only independent adversarial platform review at dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md; evaluate findings, repair justified defects if any, and independently reassess before owner-controlled master promotion. No rerun for evidence bookkeeping."
+next_action: "OWNER STOP AFTER F1 SOURCE CORRECTION. Do not begin F2, perform local verification, request PHX-CI, or merge in this session. On separately authorized continuation, F2 remains uncorrected; reverify resulting source via PHX-CI and independently reassess."
 updated_at: "2026-10-12"
 
 context:
@@ -31,7 +31,7 @@ context:
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
     bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
-    baseline_independent_review: "PENDING; task dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md"
+    baseline_independent_review: "REJECT; F1 fail-closed repair source committed (verification pending); F2 remains blocking and unmodified; see PR 150"
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
     master_promoted: false
