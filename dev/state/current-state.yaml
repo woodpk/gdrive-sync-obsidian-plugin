@@ -3,16 +3,16 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
-status: "CORRECTION_PENDING_VERIFICATION"
+status: "INDEPENDENT_REVIEW_PENDING"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
-last_phx_ci_run_id: "71fb8c5c-f9fb-42d6-b90c-4035454c5e18"
+last_phx_ci_run_id: "cc94e259-4672-4350-ab46-1dae00b0b830"
 blockers:
-  - "PHX-CI run 71fb8c5c-f9fb-42d6-b90c-4035454c5e18 failed focused architecture metrics at framework-core LOC 4012/4000. A bounded source reduction now requires new exact-HEAD PHX-CI qualification."
-  - "Independent adversarial review REJECTED PR #150: F1 standalone BVP operator authority mitigated fail-closed; F2 shipping-artifact identity bypass repaired fail-closed in source. Combined F1/F2 changes require exact-SHA PHX-CI verification and independent reassessment before promotion."
+  - "PR #150 independent adversarial review REJECT remains outstanding; F1/F2 source changes have exact-SHA PHX-CI PASS, but no independent reassessment approval."
+  - "F1 standalone validation authority and F2 shipping-artifact fail-open issues are source-corrected and PHX-CI-verified; independent reviewer must independently assess their resolution and any residual promotion blockers."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "Owner-locked AGENTS.md wording differs from master because of standardized task/archive paths; semantic equivalence must be independently reviewed prior to master mutation."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "PHX-CI run 71fb8c5c-f9fb-42d6-b90c-4035454c5e18 blocked at 4012/4000 framework-core LOC (390/391 BVP tests PASS; product suite PASS). Bounded F2 simplification committed; exact-HEAD PHX-CI with authorized-governance classification and independent F1/F2 reassessment pending. No merge or activation."
+next_action: "Commission read-only independent platform/F1/F2 reassessment at verified source 33536500f5fc7afa4002acc7ab87fb88075add15 and published run cc94e259-4672-4350-ab46-1dae00b0b830; await reviewer approval and owner promotion gate. No merge or activation."
 updated_at: "2026-10-13"
 
 context:
@@ -24,6 +24,11 @@ context:
     baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
     baseline_candidate_phx_ci: "PASS: 11/11 PHX-CI stages; 388/388 BVP tests; 850/850 product tests"
     baseline_verified_source_sha: "2ad791a07b210384c4572b37192407b49313a93e"
+    latest_verified_source_sha: "33536500f5fc7afa4002acc7ab87fb88075add15"
+    latest_verified_source_tree_sha: "339db392cd02839a3a2a58efe7cb893ad7c651bd"
+    latest_phx_ci_run_id: "cc94e259-4672-4350-ab46-1dae00b0b830"
+    latest_phx_ci_evidence_commit: "0468cc623f51f1e622a4b639862e7d03f7d664f5"
+    latest_phx_ci_qualification: "PASS 11/11; focused BVP 391/391; product 850/850; core LOC 3998/4000; main.js hash unchanged"
     baseline_verified_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
     baseline_verified_evidence_commit_sha: "6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0"
     baseline_shipping_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
@@ -32,7 +37,7 @@ context:
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
     bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
-    baseline_independent_review: "REJECT; F1 and F2 source mitigations committed, combined PHX-CI verification and independent reassessment pending; see PR 150"
+    baseline_independent_review: "REJECT; F1/F2 source mitigations PHX-CI PASS at 33536500f5fc7afa4002acc7ab87fb88075add15; independent reassessment pending; see PR 150"
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
     master_promoted: false
