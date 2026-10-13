@@ -730,6 +730,7 @@ export class ProductControllerBase implements ProductControlPort {
         this.setStatus({ kind: "attention-required", attentionCount: 0, attentionIdentity: await this.attentionIdentityFor(planned.plan, false), conflictCount: 0, safeOperationsCommitted: committedCount, phase: "completed", ledgerAvailable: false });
       }
     } catch (error) {
+      outcome = "failed";
       terminalClassification = "failed";
       terminalReason = "execution-failure";
       if (!stageFailureReported) this.syncFailure(runId, "sync-run-failed", error, { stage: "execution", classification: terminalReason, result: "failed" });
@@ -742,6 +743,7 @@ export class ProductControllerBase implements ProductControlPort {
         if (finished.reconcileAgain && !this.options.recoveryActive?.()) void this.runAutomatic("local-change");
         else if (this.surface.status.kind === "syncing") this.setStatus(this.options.recoveryActive?.() ? { kind: "recovery-required", reason: "recovery reconstruction is incomplete" } : { kind: "idle-ready" });
       } catch (error) {
+        outcome = "failed";
         terminalClassification = "failed";
         terminalReason = "run-lease-release-failure";
         this.syncFailure(runId, "sync-run-failed", error, { stage: "run-lease-release", classification: terminalReason, result: "failed" });

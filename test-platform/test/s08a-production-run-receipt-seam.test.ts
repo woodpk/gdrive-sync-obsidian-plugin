@@ -1,10 +1,14 @@
-import { deepEqual, equal, match, notEqual, ok } from "node:assert/strict";
+import { deepEqual, equal, match, notEqual, ok, rejects } from "node:assert/strict";
 import { test } from "node:test";
 
 import { readLatestProductionRunReceipt } from "../../src/product/run-receipt-seam";
 import { virtualDrivePath } from "../src/virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
 import { VirtualSynchronizationWorld } from "../src/virtual-world/virtual-world";
+
+type InjectableLeasePort = {
+  tryAcquire(vault: unknown, device: unknown, holder: string): Promise<{ release(): Promise<void> } | undefined>;
+};
 
 const source = (values: readonly number[]) => ({
   sizeBytes: values.length,
@@ -113,5 +117,69 @@ test("read-only seam cannot create a receipt or mutate remote reality by observa
   const after = await world.drive.observe(world.managedRemote.rootId, path);
   equal(after.ok, true);
   if (after.ok) equal(after.value.status, "absent");
+  await device.dispose();
+});
+
+test("R1: rejecting post-completion callback cannot publish a successful receipt", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  const device = await world.reconstructDevice("device-a");
+  const callbacks = (device.controller as unknown as {
+    options: { onTrustedBaselineEstablished?: () => Promise<void> };
+  }).options;
+  callbacks.onTrustedBaselineEstablished = async () => {
+    throw new Error("R1 post-completion callback rejected");
+  };
+  const path = "r1-post-completion.bin";
+  await world.deviceBacking("device-a").local.replaceFile(virtualVaultPath(path), source([31, 32, 33]));
+  const plan = await device.controller.previewManual();
+  ok(plan);
+  await rejects(
+    device.controller.request({ kind: "execute-plan", planId: plan.planId }),
+    /R1 post-completion callback rejected/,
+  );
+
+  const receipt = readLatestProductionRunReceipt(device.controller);
+  ok(receipt);
+  equal(receipt.terminal, "failed");
+  equal(receipt.requiredEffectsCommittedAndVerified, false);
+  equal(receipt.reasonCode, "execution-failure");
+  ok(receipt.committedOperationCount > 0);
+  const remote = await world.drive.observe(world.managedRemote.rootId, virtualDrivePath(path));
+  equal(remote.ok, true);
+  if (remote.ok) equal(remote.value.status, "present");
+  await device.dispose();
+});
+
+test("R1: rejecting run-lease release cannot publish a successful receipt", async () => {
+  const world = await VirtualSynchronizationWorld.create();
+  const port = (world as unknown as { leasePort: InjectableLeasePort }).leasePort;
+  const originalAcquire = port.tryAcquire.bind(port);
+  port.tryAcquire = async (...args) => {
+    const lease = await originalAcquire(...args);
+    if (!lease) return undefined;
+    return {
+      release: async () => {
+        await lease.release();
+        throw new Error("R1 run-lease release rejected");
+      },
+    };
+  };
+
+  const device = await world.reconstructDevice("device-a");
+  const path = "r1-release-failure.bin";
+  await world.deviceBacking("device-a").local.replaceFile(virtualVaultPath(path), source([41, 42, 43]));
+  const plan = await device.controller.previewManual();
+  ok(plan);
+  await rejects(
+    device.controller.request({ kind: "execute-plan", planId: plan.planId }),
+    /R1 run-lease release rejected/,
+  );
+
+  const receipt = readLatestProductionRunReceipt(device.controller);
+  ok(receipt);
+  equal(receipt.terminal, "failed");
+  equal(receipt.requiredEffectsCommittedAndVerified, false);
+  equal(receipt.reasonCode, "run-lease-release-failure");
+  ok(receipt.committedOperationCount > 0);
   await device.dispose();
 });
