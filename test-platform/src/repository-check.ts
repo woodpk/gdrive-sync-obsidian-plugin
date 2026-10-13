@@ -85,9 +85,7 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
 
 function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   const packagePath = resolve(repositoryRoot, "package.json");
-  if (!existsSync(packagePath)) {
-    return [{ path: "package.json", detail: "Required BRAIN package manifest is missing." }];
-  }
+  if (!existsSync(packagePath)) return [{ path: "package.json", detail: "Required BRAIN package manifest is missing." }];
 
   let packageModel: unknown;
   try {
@@ -96,8 +94,7 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
     return [{ path: "package.json", detail: "Required BRAIN package manifest is unreadable or invalid JSON." }];
   }
   if (
-    typeof packageModel !== "object" ||
-    packageModel === null ||
+    typeof packageModel !== "object" || packageModel === null ||
     Array.isArray(packageModel) ||
     (packageModel as { name?: unknown }).name !== brainPackageName
   ) {
@@ -105,12 +102,7 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   }
 
   const artifactPath = resolve(repositoryRoot, "main.js");
-  if (!existsSync(artifactPath)) {
-    return [{
-      path: "main.js",
-      detail: "Required shipping artifact is missing after build.",
-    }];
-  }
+  if (!existsSync(artifactPath)) return [{ path: "main.js", detail: "Required shipping artifact is missing after build." }];
 
   let actualSha256: string;
   try {
@@ -118,19 +110,12 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   } catch {
     return [{ path: "main.js", detail: "Required shipping artifact is unreadable." }];
   }
-  if (actualSha256 !== acceptedProductionMainSha256) {
-    return [{
-      path: "main.js",
-      detail:
-        "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
-        acceptedProductionMainSha256 +
-        "; actual " +
-        actualSha256 +
-        ".",
-    }];
-  }
-
-  return [];
+  if (actualSha256 === acceptedProductionMainSha256) return [];
+  return [{
+    path: "main.js",
+    detail: "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
+      acceptedProductionMainSha256 + "; actual " + actualSha256 + ".",
+  }];
 }
 
 function fail(message: string, exitCode = 2): never {
