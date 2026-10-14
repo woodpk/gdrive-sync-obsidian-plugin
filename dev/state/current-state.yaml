@@ -3,14 +3,13 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
-status: "REVIEW"
-last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+status: "COMPLETE"
+last_accepted_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
 last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
 blockers:
-  - "Owner-controlled platform-only promotion gate 4 remains pending; independent F1/F2 and R1 approvals do not authorize an automatic master merge."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Request explicit owner decision for pre-DEC339 platform-only master promotion under dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md gate 4, anchored to verified R1 software 5078ad72a48df1c327b96fe781b1c7fbf0765509 and current master caf4a03418b89b57893e3bd5d4c6f89c28604242. Recheck both exact Git refs immediately before any authorized fast-forward; no merge or activation without authorization."
+next_action: "Platform-only PR #150 promotion completed with merge commit 7922411e1d65d3931b12df7878907f5915945e69; next consider separately gated DEC-339 post-baseline candidate assessment and explicit owner approval. G1 physical S09/data.json integrity remains unresolved; no activation, release or Stage 3."
 updated_at: "2026-10-13"
 
 context:
@@ -21,10 +20,12 @@ context:
     baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
     baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
     r1_correction_branch: "fix/pre-dec339-r1-authoritative-receipt-20261013"
-    r1_source_qualification: "PHX_CI_PASS_AND_R1_INDEPENDENTLY_APPROVED_MASTER_PROMOTION_PENDING"
+    r1_source_qualification: "PHX_CI_PASS_AND_INDEPENDENTLY_APPROVED_MASTER_PROMOTED"
     r1_independent_review_record: "dev/reviews/pre-dec339-r1-20261013/independent-reassessment.md"
     r1_independent_review_verdict: "APPROVE_R1_ONLY"
-    owner_master_promotion_authorized: false
+    owner_master_promotion_authorized: true
+    master_promotion_merge_sha: "7922411e1d65d3931b12df7878907f5915945e69"
+    master_promotion_pr_number: 150
     r1_verified_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
     r1_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
     r1_original_evidence_commit_sha: "aa8cbf22933591c88b1e4abe32dfcc97cb47ccc3"
@@ -44,10 +45,10 @@ context:
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
     bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
-    baseline_independent_review: "F1/F2, master governance and platform boundaries PASS by original reviewer; R1 independently APPROVE at 5078ad72a48df1c327b96fe781b1c7fbf0765509; owner gate 4 remains pending. G1 physical S09/data.json deferred."
+    baseline_independent_review: "F1/F2, master governance and platform boundaries PASS by original reviewer; R1 independently APPROVE at 5078ad72a48df1c327b96fe781b1c7fbf0765509; owner authorized platform-only gate 4; PR 150 merged 7922411e1d65d3931b12df7878907f5915945e69. G1 physical S09/data.json deferred."
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
-    master_promoted: false
+    master_promoted: true
     inventory_activated: false
     dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
     tasking_record: "dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md"
@@ -68,7 +69,7 @@ context:
     - "PHASE_9_UPDATE_PATH_REFERENCES"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; PRE_DEC339_PLATFORM_REVIEW_PASSED_OWNER_PROMOTION_PENDING"
+  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; PRE_DEC339_PLATFORM_MASTER_PROMOTED_G1_PHYSICAL_INCOMPLETE"
   s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
   stage_3_started: false
   verification_note: "Historical R7 migration metadata above is retained as history. Current pre-DEC339 platform software SHA 5078ad72a48df1c327b96fe781b1c7fbf0765509 has exact-source PHX-CI PASS run 0dfc5f13-8da0-4f08-addc-caab4c913216 and owner-supplied R1 independent APPROVE. The PR #150 platform-only owner promotion gate remains pending; no DEC-339 activation or S09 physical acceptance."

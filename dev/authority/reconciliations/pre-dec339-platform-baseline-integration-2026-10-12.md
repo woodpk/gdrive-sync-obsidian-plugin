@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12  
 **Branch:** `integration/pre-dec339-platform-baseline-20261012`  
-**Status:** `PHX-CI PASS / F1-F2-R1 INDEPENDENT REVIEW PASSED / OWNER MASTER PROMOTION GATE PENDING`
+**Status:** `PHX-CI PASS / F1-F2-R1 APPROVED / PLATFORM MASTER PROMOTION COMPLETE`
 
 ## Decision and boundaries
 
@@ -53,3 +53,11 @@ This addendum supersedes only the earlier status/next-action notes; historical s
 - **Candidate reconciliation:** fast-forward `integration/pre-dec339-platform-baseline-20261012` to the accepted R1 source plus its original evidence/canonicalization and this administrative review record. Later commits after verified source are documentation/evidence only and do **not** claim a second build verification. The integration candidate includes the exact verified software source in its ancestry.
 - **Current master inspected:** `caf4a03418b89b57893e3bd5d4c6f89c28604242`, an ancestor of the candidate (no missing master-exclusive commit); recheck exact refs with a lease immediately before an owner-authorized merge. No automatic merge or force mutation. Promotion remains subject to the owner choosing an explicit master action under gate 4. Until that action, PR #150 is DRAFT and unmerged.
 - **Separate deferred gate:** G1 unresolved live S09 / `data.json` integrity is **NOT** an accepted physical result and blocks release, activation and Stage 3; DEC-339 is excluded from this promotion.
+
+## 2026-10-13 — Gate 4 complete, platform-only merge verified
+
+- Human owner expressly authorized promotion of the **pre-DEC-339 platform only**.
+- The final PR #150 head was `3465ec1af49038bc819cc8e9be9572de392ff5c5`, and `master` before promotion was `caf4a03418b89b57893e3bd5d4c6f89c28604242`. Final ancestry check confirmed old `master` is the common ancestor and candidate contains its full governance history.
+- GitHub completed PR #150 with merge commit `7922411e1d65d3931b12df7878907f5915945e69`, parents `caf4a03418b89b57893e3bd5d4c6f89c28604242` and `3465ec1af49038bc819cc8e9be9572de392ff5c5`. Result tree `49dae417760ef5060f767181df95d728ffb4c569` exactly matches the candidate, **zero merged file differences**. GitHub PR status: CLOSED / MERGED.
+- Executable software verification remains source `5078ad72a48df1c327b96fe781b1c7fbf0765509`, PHX-CI `0dfc5f13-8da0-4f08-addc-caab4c913216` (11/11 PASS, BVP 393/393, product 850/850), with independent acceptance of F1, F2 and R1. Later commits are repository evidence and documentation only; this status update is not a new software build.
+- **Gate 4 CLOSED.** No release, plugin installation, DEC-339 inventory activation, live operations, Stage 3, or physical S09 acceptance was approved. **Gate 5** separately governs subsequent DEC-339 consideration and promotion. G1 data.json integrity remains unresolved.
