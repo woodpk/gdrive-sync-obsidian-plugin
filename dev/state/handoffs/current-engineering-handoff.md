@@ -1,3 +1,15 @@
+# Latest handoff — G1 interface consumer repair after PHX-CI BLOCKED (2026-10-14)
+
+- Root cause of exact PHX-CI run `e8adb542-d2c2-42d9-918a-fd1c0151568c` BLOCKED was **four TypeScript TS2345 errors** from an incomplete `PluginDataHost.dataFileExists()` interface migration, NOT a PHX-CI launcher problem. Tested candidate `eceb42a87d87b00997a9ab1a11f9d11a95fe4166`; evidence commit `64c9cb99b2567b9b7101d0e52a81720467adf51d`.
+- Exact corrections to all four offending test fake hosts: two new-installation `loadData=undefined` fixtures return `dataFileExists=false`; two valid existing-data fixtures return `true`. Changes in `test/phase6-alpha-mixed-plan-isolation.test.ts`, `test/phase6-alpha-plan-errors-stability-rejection.test.ts`, `test/phase6-alpha-plan-errors-stability.test.ts`.
+- The blocked run had PASS preflight/node-project-files/npm-ci, but substantive focused/product tests, build, repository check and artifacts **did not execute**, so a new PHX-CI run is permitted under Section 37.1. Do not claim the corrected branch has passed.
+- Owner-visible disposable clones must use the current protocol's exact `C:\temp\<new-guid>` naming and a freshly generated 32-hex GUID. Windows Git requires long-path enablement for archived paths. Preserve diagnostic state on failure.
+- Next: pinned PHX-CI exact-source verification, `npm run test:bvp-root`, `BRAIN_ARTIFACT_PURPOSE=development`, `BVP_CHANGE_CLASS=authorized-governance` (because DEC-343 changes an explicitly authorized frozen source), base `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; inspect published evidence. Independent review and exact release hash approval remain pending.
+- **No** installation, release, activation, physical S09, Drive/vault writes, or Stage 3. Original G1 historical data-loss mechanism unproved. DEC-340-01 remains deferred/unfixed.
+- **Exact tasking:** `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md`, plus `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` S09.
+
+---
+
 # Immediate handoff — S09 G1 + DEC-343 development SHA gate (2026-10-14)
 
 - `master` unchanged at `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; branch `fix/s09g1-plugin-data-existing-null-guard-20261014` retains staged G1 fix `68b75447f5ca8d0a8b4aff52f547bc763805ddaf`.
