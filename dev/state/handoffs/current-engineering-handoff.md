@@ -1,3 +1,14 @@
+# Current Engineering Handoff — S09 G1 data.json preservation investigation (2026-10-14)
+
+- `master` **unchanged** at `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; previous DEC-339 software promotion PR #151 remains accepted, but installation/release/activation blocked.
+- Isolated branch `fix/s09g1-plugin-data-existing-null-guard-20261014`, unverified correction commit `68b75447f5ca8d0a8b4aff52f547bc763805ddaf`. Four software/test paths: `src/main.ts`, `src/product/plugin-data.ts`, `test/phase5-product.test.ts`, `test/plugin-data-integrity-regression.test.ts`. No live effects or PHX-CI executed.
+- Root cause of historical physical file loss/corruption **NOT ESTABLISHED**. Established source risk: null/unreadable existing `data.json` previously defaulted to new-install state; staged mitigation now checks file existence and fails closed rather than silently reinitializing and potentially overwriting.
+- Next gate is **PHX-CI validation of changed source**. Existing `DEC-340` development-observation path only works under `authorized-governance` classification; this is ordinary safety code. Do **not** fabricate governance classification or automatically authorize a new shipping hash. Remedy missing ordinary-development PHX-CI capability under explicit governance before requesting owner run.
+- Existing `DEC-340-01` review finding remains **REJECT / deferred by owner**, not repaired. **No installation, release, activation, physical S09 execution, real Drive/vault operations, Stage 3**.
+- **Exact Tasking Location:** `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md`, *Required before acceptance*; S09 formal work unit: `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` S09 and tasks/s09/09a (*not yet executable*).
+
+---
+
 # Current Engineering Handoff — DEC-339 Gate 4 SOFTWARE MASTER PROMOTION COMPLETE (2026-10-14)
 
 ## Current authoritative state — release and activation BLOCKED
