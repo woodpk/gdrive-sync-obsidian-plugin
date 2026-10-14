@@ -8,9 +8,9 @@ last_accepted_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
 last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
 blockers:
   - "Scoped DEC-339 candidate combines previously verified sources, but its exact integrated source has NOT passed PHX-CI or independent integration assessment."
-  - "Frozen F2 production-artifact identity guard retains only three previously accepted hashes; new combined production bundle requires PHX-CI-observed SHA and explicit governance/owner approval, not automatic rebaseline."
+  - "DEC-340 bounded development-artifact observation correction is unverified; no new bundle hash has promotion approval and the unchanged frozen release hashes still gate deployment."
   - "S09A physical acceptance remains incomplete; data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Inspect scoped DEC-339 integration on integration/dec339-after-platform-gate5-20261013 against platform master 429c4b947a2ec6b50f4c25c1f363665125286f6e and accepted feature dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902; qualify via PHX-CI without circumventing frozen artifact policy. If newly generated main.js differs, record actual PHX-CI artifact SHA and obtain distinct approval before rebaseline. New candidate integration independent review and owner-controlled merge remain separate. No activation."
+next_action: "Run pinned PHX-CI against the new corrected DEC-340 integration source with explicit BRAIN_ARTIFACT_PURPOSE=development plus BVP_CHANGE_CLASS=authorized-governance, publish exact-source evidence. Preserve prior failed run dd55aa0d-bc3e-483c-8c76-95be5b8d03b7 and do not rerun its unchanged SUT. After PHX-CI PASS, obtain focused independent integration reassessment before owner-controlled promotion; no activation."
 updated_at: "2026-10-13"
 
 context:
@@ -54,7 +54,12 @@ context:
     dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
     dec339_gate5_candidate_branch: "integration/dec339-after-platform-gate5-20261013"
     dec339_gate5_predecessor_master_sha: "429c4b947a2ec6b50f4c25c1f363665125286f6e"
-    dec339_gate5_status: "SCOPED_INTEGRATION_UNVERIFIED"
+    dec339_gate5_status: "DEVELOPMENT_ARTIFACT_GATE_CORRECTION_UNVERIFIED"
+    dec339_sha_governance_decision: "DEC-340"
+    dec339_prior_blocked_run_id: "dd55aa0d-bc3e-483c-8c76-95be5b8d03b7"
+    dec339_prior_blocked_source_sha: "49415dd335c7a15da9644b6880482f5e44689191"
+    dec339_prior_blocked_evidence_commit: "9a011de9b028f99f2b6bce48a5f304aed87a1c4e"
+    dec339_observed_development_artifact_sha256: "57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c"
     dec339_predecessor_approved_review: "APPROVE_D339_11_ONLY"
     dec339_activation_authorized: false
     tasking_record: "dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md"
