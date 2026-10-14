@@ -82,7 +82,7 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   return violations;
 }
 
-function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
+function inspectShippingArtifactIdentity(developmentObservation: boolean): readonly DevRootViolation[] {
   const packagePath = resolve(repositoryRoot, "package.json");
   if (!existsSync(packagePath)) return [{ path: "package.json", detail: "Required BRAIN package manifest is missing." }];
 
@@ -109,7 +109,9 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   } catch {
     return [{ path: "main.js", detail: "Required shipping artifact is unreadable." }];
   }
-  if (approvedProductionMainSha256.has(actualSha256)) return [];
+  console.log("SHIPPING_ARTIFACT_SHA256=" + actualSha256);
+  console.log("SHIPPING_ARTIFACT_MODE=" + (developmentObservation ? "development-observation" : "approved-artifact-enforcement"));
+  if (developmentObservation || approvedProductionMainSha256.has(actualSha256)) return [];
   return [{
     path: "main.js",
     detail: "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
@@ -180,6 +182,14 @@ if (
 }
 const changeClass = rawChangeClass as ChangeClass;
 const context = readAuthoritativeContext();
+const artifactPurpose = process.env.BRAIN_ARTIFACT_PURPOSE?.trim() || "promotion";
+if (artifactPurpose !== "development" && artifactPurpose !== "promotion") {
+  fail("BRAIN_ARTIFACT_PURPOSE must be development or promotion");
+}
+if (artifactPurpose === "development" && (!context || changeClass !== "authorized-governance")) {
+  fail("Development artifact observation requires PHX-CI verification context and authorized governance classification");
+}
+const developmentObservation = artifactPurpose === "development";
 
 if (context) {
   console.log(
@@ -196,7 +206,7 @@ if (context) {
 
 const devRootViolations = inspectCanonicalDevRoot();
 reportViolations("DEV_ROOT_STRUCTURE", devRootViolations);
-const shippingArtifactViolations = inspectShippingArtifactIdentity();
+const shippingArtifactViolations = inspectShippingArtifactIdentity(developmentObservation);
 reportViolations("SHIPPING_ARTIFACT_IDENTITY", shippingArtifactViolations);
 
 console.log("=== BVP ARCHITECTURE GUARD ===");
