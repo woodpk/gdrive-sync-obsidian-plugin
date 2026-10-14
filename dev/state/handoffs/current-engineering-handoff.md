@@ -1,3 +1,13 @@
+# Immediate handoff — S09 G1 + DEC-343 development SHA gate (2026-10-14)
+
+- `master` unchanged at `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; branch `fix/s09g1-plugin-data-existing-null-guard-20261014` retains staged G1 fix `68b75447f5ca8d0a8b4aff52f547bc763805ddaf`.
+- DEC-343 changes frozen `test-platform/src/repository-check.ts` and its tests to permit PHX-CI-coordinated **ordinary** development artifact observation; strict production SHA pins untouched. This frozen-surface change is explicitly supervisor-owned, so the **combined verification run** uses genuine `authorized-governance` classification, not a fraudulent label for the G1 production code.
+- NEXT: pinned exact-source PHX-CI against `b1e2ebaee3077e34a4eefaf601ee8124078b7400`, focused `npm run test:bvp-root`, `BRAIN_ARTIFACT_PURPOSE=development`, `BVP_CHANGE_CLASS=authorized-governance`, evidence publication `push`; then independently review software and governance changes. No PASS claimed until canonical evidence is inspected.
+- Unresolved: historical physical `data.json` loss root cause, independent DEC-340-01 review REJECT (previous owner deferral), release exact-hash approval and S09 physical acceptance. No release, install, Drive/vault activity, activation, or Stage 3.
+- **Exact Tasking Location:** `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md`, *DEC-343 — ordinary development verification gate staged, unverified*; `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` S09.
+
+---
+
 # Current Engineering Handoff — S09 G1 data.json preservation investigation (2026-10-14)
 
 - `master` **unchanged** at `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; previous DEC-339 software promotion PR #151 remains accepted, but installation/release/activation blocked.

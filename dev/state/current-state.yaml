@@ -3,15 +3,15 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "S09_G1_CORRECTION_STAGED_UNVERIFIED_RELEASE_BLOCKED"
+status: "S09_G1_AND_DEC343_CORRECTION_STAGED_UNVERIFIED"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
 blockers:
   - "Independent combined DEC-339/DEC-340 review remains REJECT: DEC-340-01 MAJOR verification-control defect unfixed; owner explicitly accepted deferral and separately authorized software-only master merge. Does not approve release/activation."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
-  - "S09 G1 new source 68b75447f5ca8d0a8b4aff52f547bc763805ddaf staged UNVERIFIED. Ordinary-source SHA-changing build cannot pass existing development artifact mode without misclassification; PHX-CI gate remediation required, no workaround."
+  - "S09 G1 correction plus DEC-343 bounded development artifact gate change staged UNVERIFIED; frozen repository-check edit requires authorized-governance for this combined PHX-CI run. Genuine fresh verification and review remain pending."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "G1 existing-data.json fail-closed correction staged at 68b75447f5ca8d0a8b4aff52f547bc763805ddaf; no new PHX-CI verification. Correct ordinary-development artifact gate under existing governance/PHX-CI before owner verification; do not use fraudulent authorized-governance classification, change accepted release hash, install, activate, release, run physical S09, or begin Stage 3. See dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md."
+next_action: "Qualify the exact S09 G1 + DEC-343 branch software by pinned PHX-CI against base b1e2ebaee3077e34a4eefaf601ee8124078b7400; focus npm run test:bvp-root, BRAIN_ARTIFACT_PURPOSE=development, and BVP_CHANGE_CLASS=authorized-governance because a supervisor-approved frozen repository-check file genuinely changed. Require complete original evidence and independent review before promotion. No release, install, activation, live S09 or Stage 3."
 updated_at: "2026-10-14"
 
 context:

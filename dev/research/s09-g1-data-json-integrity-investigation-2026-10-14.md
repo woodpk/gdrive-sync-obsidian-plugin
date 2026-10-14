@@ -26,3 +26,9 @@
 - This mitigation is **not closure of S09 G1**. The true physical loss/corruption mechanism remains unproved; after exact-source PHX-CI/review, require safe, owner-approved data-integrity assessment and separately gated S09 physical evidence. Retain live sync/release/install/Stage 3 BLOCKED.
 
 **Exact tasking:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` — S09 row, and `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/09a-windows-ios-install-authentication-and-pairing-baseline.md` (PREPLANNED, not authorized for live execution).
+
+## DEC-343 — ordinary development verification gate staged, unverified
+
+- Owner-authorized bounded change: development SHA observation now permits `BVP_CHANGE_CLASS=ordinary` with explicit `BRAIN_ARTIFACT_PURPOSE=development` and PHX-CI verification context, without historical hash pinning. Strict `promotion`/default accepted hashes and architecture/F1/F2 guards are unchanged.
+- Regression additions cover ordinary development observation, missing context, ordinary changed frozen surface rejection, wrong package/missing artifact, strict promotion hash mismatch. The current combined candidate includes the supervisor-owned frozen repository-check file, so its **one-time** PHX-CI check legitimately requires `BVP_CHANGE_CLASS=authorized-governance`; the unrelated G1 product modification is ordinary and is not being reclassified for a shortcut.
+- **DEC-340-01 unauthenticated context weakness remains deferred/unfixed.** Only genuinely PHX-CI-generated context and PHX-CI-published verification constitute accepted run evidence. The candidate remains UNVERIFIED pending the pinned PHX-CI run and independent review; no release/activation/live operations.
