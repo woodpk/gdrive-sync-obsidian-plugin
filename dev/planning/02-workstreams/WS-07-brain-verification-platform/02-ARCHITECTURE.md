@@ -147,3 +147,7 @@ A green functional test suite cannot override a failed architecture guard.
 ## Canonical governance lock
 
 The machine-readable boundary is `dev/authority/governance/locks/testing-platform-boundary.yaml`. Production remains under `src/**`; verification infrastructure remains under `test-platform/**`; ordinary production must not import or ship the test platform.
+
+## DEC-339 verification boundary — design only
+
+The prospective inventory safety/equivalence/performance gates are specified in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`, §11. WS-07 supplies deterministic virtual-world tests and a small number of authorized physical checks where needed; **PHX-CI exclusively executes or coordinates every executable validation**. The current production seam allowlist, scenario LOC, platform budgets and frozen BVP governance remain unchanged. Test cases must challenge stale or partial inventory, duplicate same-name siblings, cursor/CAS crash windows, loss of access, uncertain effects and safety equivalence, not create a second CI/verification engine.

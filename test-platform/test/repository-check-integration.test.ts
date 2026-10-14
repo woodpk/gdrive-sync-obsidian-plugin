@@ -569,3 +569,18 @@ test("routine local mode runs both repository-controlled checks without fabricat
     );
   });
 });
+
+test("DEC-339 shipping acceptance retains exactly the three pre-existing owner-approved hashes", () => {
+  const source = readFileSync(repositoryCheckSourcePath, "utf8");
+  match(source, /const approvedProductionMainSha256 = new Set/);
+  const start = source.indexOf("const approvedProductionMainSha256 = new Set([");
+  const end = source.indexOf("]);", start);
+  strictEqual(start >= 0 && end > start, true);
+  const hashes = [...source.slice(start, end).matchAll(/"([0-9a-f]{64})"/g)].map(match => match[1]);
+  strictEqual(hashes.length, 3);
+  strictEqual(new Set(hashes).size, 3);
+  strictEqual(hashes[0], "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e");
+  strictEqual(hashes[1], "4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52");
+  strictEqual(hashes[2], "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881");
+  match(source, /approvedProductionMainSha256\.has\(actualSha256\)/);
+});

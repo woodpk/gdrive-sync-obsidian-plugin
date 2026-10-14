@@ -1020,6 +1020,12 @@ decisions:
     supersedes: DEC-334
     decision: "GitHub Actions are prohibited for BVP verification. The canonical local CI/acceptance system is the installed PHX-CI deployed runtime selected by the consumer branch's exact phx-ci.json framework SHA. Authoritative verification uses the deployed PHX-CI operator front door and PHX-CI owns exact target/base/change-set resolution, detached verification worktrees, full test/build/repository/artifact gates, race protection, and canonical evidence publication. Historical PHX-CI run output MUST be stored under dev/test-results/<exact-runId>/ with result.md, result.json, terminal.log, and optional artifacts/. dev/_ca-output.md remains only the current coding-agent/work-unit evidence and handoff surface where required; it is not the historical run archive, and dev/_ca-output.json is not a standard root artifact. Project-specific guard/metrics logic remains repository-controlled and PHX-CI-consumed; task-specific independent verifier scripts are prohibited."
 
+
+  - id: DEC-339
+    status: locked
+    category: remote_metadata_inventory_architecture
+    decision: "BRAIN will evolve its existing device-local synchronization state into a compact, persistent, incrementally maintained metadata inventory for every in-scope vault file and folder, with stable Google Drive identities, parent relationships, relevant content/revision/provenance evidence, and explicit observation/coverage status. A verified baseline plus Google Drive Changes API observations maintain each device's own inventory. Inventory can optimize repeated discovery and support targeted verification but never independently authorizes destructive or uncertain mutation, replaces trustworthy BASE, or bypasses required precondition, uniqueness, managed-root, convergence, and recovery proofs. Missing, stale, partial, ambiguous or corrupt inventory fails closed and triggers scoped revalidation or full reconciliation. Google Drive names are not unique within a parent; pre-generated IDs protect retries but do not establish name/path uniqueness. Exact schema, IndexedDB/local storage choice, migrations and optimization mechanics require subsequent design and PHX-CI evidence. This is planning approval only, not implementation or S09A physical-mutation authorization."
+
 superseded_decisions:
   - id: SUP-001
     status: superseded

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/phx-a71aa8b3593e4ef8/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "fdc4ba3269ca83a661fa7dff05527292f6f9d919",
+    "verifiedTree": "1f0ca0d9a94f27535cde5a096bf532325ab208fc",
+    "expectedHead": "fdc4ba3269ca83a661fa7dff05527292f6f9d919",
+    "baseSha": "9fb6d72479db4074e153b44e28c03e5c4bb2e991"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-11T03:10:11.7524779Z",
+  "endedAt": "2026-10-11T03:10:33.8687144Z",
+  "stages": [
+    {
+      "stderr": "",
+      "exitCode": 0,
+      "result": "PASS",
+      "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+      "startedAt": "2026-10-11T03:10:12.5108046Z",
+      "classification": "NONE",
+      "endedAt": "2026-10-11T03:10:13.5847441Z",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/'",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "name": "preflight"
+    },
+    {
+      "result": "PASS",
+      "exitCode": 0,
+      "classification": "NONE",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/phx-a71aa8b3593e4ef8/w' -OutputPath 'C:/phx-a71aa8b3593e4ef8/w/.phx-ci/tool-versions.json'",
+      "startedAt": "2026-10-11T03:10:14.3608365Z",
+      "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "endedAt": "2026-10-11T03:10:16.4676147Z",
+      "stderr": "",
+      "name": "node-preflight"
+    },
+    {
+      "classification": "NONE",
+      "name": "node-project-files",
+      "endedAt": "2026-10-11T03:10:18.3386908Z",
+      "result": "PASS",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/phx-a71aa8b3593e4ef8/w'",
+      "exitCode": 0,
+      "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "stderr": "",
+      "startedAt": "2026-10-11T03:10:17.4024629Z"
+    },
+    {
+      "result": "PASS",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 5s\n\nfound 0 vulnerabilities\n",
+      "exitCode": 0,
+      "command": "npm ci",
+      "stderr": "",
+      "endedAt": "2026-10-11T03:10:25.4903785Z",
+      "startedAt": "2026-10-11T03:10:19.2839927Z",
+      "classification": "NONE",
+      "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+      "name": "install"
+    },
+    {
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\ntest/dec339-snapshot-assembly.test.ts(29,21): error TS2322: Type 'Brand<string, \"PersistenceRevision\">' is not assignable to type 'StateRevision'.\r\n  Type 'Brand<string, \"PersistenceRevision\">' is not assignable to type '{ readonly __brand: \"StateRevision\"; }'.\r\n    Types of property '__brand' are incompatible.\r\n      Type '\"PersistenceRevision\"' is not assignable to type '\"StateRevision\"'.\r\n",
+      "result": "FAIL",
+      "classification": "PRODUCT FAILURE",
+      "stderr": "",
+      "runId": "176c71a2-5fe4-49f4-b0e8-925e65bea3f3",
+      "exitCode": 2,
+      "startedAt": "2026-10-11T03:10:26.2373438Z",
+      "endedAt": "2026-10-11T03:10:32.4461399Z",
+      "command": "npm run typecheck",
+      "name": "typecheck"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}

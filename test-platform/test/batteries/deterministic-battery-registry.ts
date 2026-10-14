@@ -32,6 +32,7 @@ const S06_SYNC_SEMANTICS = [
 ] as const;
 
 const S07_FAULT_RECOVERY_SAFETY = [
+  "dec339-legacy-safety-parity.test.js",
   "s07a-crash-commit-ambiguity.test.js",
   "s07b-automatic-incremental-prerequisite.test.js",
   "s07b-persisted-recovery-gate-prerequisite.test.js",

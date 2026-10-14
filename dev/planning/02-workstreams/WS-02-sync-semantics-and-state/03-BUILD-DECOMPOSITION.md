@@ -70,3 +70,6 @@ Phase 1 only.
 - Do not implement final UI, onboarding, or settings screens.
 - Do not embed platform-specific policy in the domain engine.
 
+## Prospective DEC-339 units — design only, not executable
+
+Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind: **D339-01** inventory contracts, invariants, proof result types and owner API; **D339-02** additive indexed storage, atomic generation/cursor publication and backup-safe migration; **D339-04** single-owner integration of storage with Drive deltas and recovery-safe publication. D339-01 precedes WS-03 and WS-05 consumers; D339-04 follows D339-02 and WS-03 D339-03. No work order may consume guessed predecessor state. Historical accepted Phase-2 scope stays closed.

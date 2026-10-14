@@ -1,15 +1,16 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "WS-07-brain-verification-platform"
-active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
-status: "COMPLETE"
+active_workstream: "WS-05-integrated-sync-product"
+active_build_unit: "DEC339_POST_PLATFORM_SCOPED_INTEGRATION"
+status: "IN_PROGRESS"
 last_accepted_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
 last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
 blockers:
-  - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
-  - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Platform-only PR #150 promotion completed with merge commit 7922411e1d65d3931b12df7878907f5915945e69; next consider separately gated DEC-339 post-baseline candidate assessment and explicit owner approval. G1 physical S09/data.json integrity remains unresolved; no activation, release or Stage 3."
+  - "Scoped DEC-339 candidate combines previously verified sources, but its exact integrated source has NOT passed PHX-CI or independent integration assessment."
+  - "Frozen F2 production-artifact identity guard retains only three previously accepted hashes; new combined production bundle requires PHX-CI-observed SHA and explicit governance/owner approval, not automatic rebaseline."
+  - "S09A physical acceptance remains incomplete; data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
+next_action: "Inspect scoped DEC-339 integration on integration/dec339-after-platform-gate5-20261013 against platform master 429c4b947a2ec6b50f4c25c1f363665125286f6e and accepted feature dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902; qualify via PHX-CI without circumventing frozen artifact policy. If newly generated main.js differs, record actual PHX-CI artifact SHA and obtain distinct approval before rebaseline. New candidate integration independent review and owner-controlled merge remain separate. No activation."
 updated_at: "2026-10-13"
 
 context:
@@ -51,6 +52,11 @@ context:
     master_promoted: true
     inventory_activated: false
     dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
+    dec339_gate5_candidate_branch: "integration/dec339-after-platform-gate5-20261013"
+    dec339_gate5_predecessor_master_sha: "429c4b947a2ec6b50f4c25c1f363665125286f6e"
+    dec339_gate5_status: "SCOPED_INTEGRATION_UNVERIFIED"
+    dec339_predecessor_approved_review: "APPROVE_D339_11_ONLY"
+    dec339_activation_authorized: false
     tasking_record: "dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md"
     historical_legacy_state_below: "Previous standardized-dev Phase-10 status retained as history; no longer current task"
   canonical_source_branch: "automated-testing-platform-branch"
@@ -72,7 +78,7 @@ context:
   automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; PRE_DEC339_PLATFORM_MASTER_PROMOTED_G1_PHYSICAL_INCOMPLETE"
   s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
   stage_3_started: false
-  verification_note: "Historical R7 migration metadata above is retained as history. Current pre-DEC339 platform software SHA 5078ad72a48df1c327b96fe781b1c7fbf0765509 has exact-source PHX-CI PASS run 0dfc5f13-8da0-4f08-addc-caab4c913216 and owner-supplied R1 independent APPROVE. The PR #150 platform-only owner promotion gate remains pending; no DEC-339 activation or S09 physical acceptance."
+  verification_note: "Historical R7 migration metadata above is retained as history. Current pre-DEC339 platform software SHA 5078ad72a48df1c327b96fe781b1c7fbf0765509 has exact-source PHX-CI PASS run 0dfc5f13-8da0-4f08-addc-caab4c913216 and owner-supplied R1 independent APPROVE. The PR #150 platform-only owner promotion gate completed; scoped DEC-339 gate 5 is not yet verified or independently accepted; no activation or S09 physical acceptance."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
