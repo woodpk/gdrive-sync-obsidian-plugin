@@ -1,3 +1,17 @@
+# Current Engineering Handoff — DEC-339 owner-controlled Gate 4 preparation (2026-10-14)
+
+## Immediate current task — PREPARED, OWNER DECISION PENDING
+
+- Candidate: `integration/dec339-after-platform-gate5-20261013`; verified SUT source `5861b8b2861f9c38ea659be7c7cfcf78527da4d7`; platform/master base `429c4b947a2ec6b50f4c25c1f363665125286f6e`; current handoff before this administrative commit `870565b89da0890a6d26f43473264477731ff061`.
+- PHX-CI `ad77ffcc-cf2b-4f99-8d08-97170bb0be2f` PASS **11/11**, BVP **402/402**, product **985/985**; evidence `8491318b4e8d6901d810fa753be6dec16b8c8afb`. Unchanged tested source is not rerun.
+- Independent combined review **REJECT** (sole finding **DEC-340-01 MAJOR**, forged development-verification context can bypass development-mode historical artifact hash comparison). The reviewer reported **GREEN SUT** for DEC-339 production semantics, F1/F2/R1, dormant activation, platform governance, and source/evidence identity. **Do not claim independent combined APPROVE.**
+- Owner explicitly authorized **deferral/risk acceptance for presentation of the separate master-promotion gate** only; recorded as **DEC-341** and fully disclosed in the reconciliation. **No merge authorization** is granted by the deferral. The new `main.js` hash `57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c` is observed, **not release-approved**.
+- Next: present the **draft PR** for a separate explicit owner decision. Before any later authorized merge, confirm unchanged verified software and compare exact master/PR candidate identities; no automatic master mutation. Retain deferred DEC-340-01 for correction when development context would be relied upon as approval evidence.
+- **Prohibited:** release, install, inventory activation, live Drive/vault activities, physical S09 completion claims, Stage 3, and silent artifact hash rebaseline. G1 physical S09 and `data.json` integrity risk remain open.
+- **Exact Tasking Location:** `dev/authority/reconciliations/dec339-after-platform-gate5-2026-10-13.md`, *2026-10-14 — independent review REJECT, owner-accepted bounded exception, Gate 4 PREPARATION* and *Next acceptance gates* §4.
+
+---
+
 # Current Engineering Handoff — Platform Baseline Promotion (2026-10-12)
 
 ## Immediate current task

@@ -3,14 +3,14 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-05-integrated-sync-product"
 active_build_unit: "DEC339_POST_PLATFORM_SCOPED_INTEGRATION"
-status: "REVIEW"
+status: "AWAITING_OWNER_PROMOTION_DECISION"
 last_accepted_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
 last_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
 blockers:
-  - "Combined DEC-339 / DEC-340 source has PHX-CI PASS, but independent read-only combined integration assessment is pending."
+  - "Independent combined DEC-339 / DEC-340 review REJECT (single DEC-340-01 MAJOR verification-control defect). Owner expressly accepted a limited deferral for Gate 4 preparation only; no unconditional independent approval or merge permission."
   - "New development main.js SHA is observed but not release-approved; separate owner-controlled master promotion and eventual exact-hash release gates remain pending."
   - "S09A physical acceptance remains incomplete; data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Assign separate READ-ONLY combined integration reassessment at dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-post-platform-integration-independent-reassessment.md; review exact verified software 5861b8b2861f9c38ea659be7c7cfcf78527da4d7, PHX-CI ad77ffcc-cf2b-4f99-8d08-97170bb0be2f, evidence commit 8491318b4e8d6901d810fa753be6dec16b8c8afb. No re-verification of unchanged source; no master promotion pending explicit owner decision; no activation or release."
+next_action: "Present draft DEC-339/DEC-340 Gate 4 master-promotion PR for separate explicit owner decision. Disclose review REJECT and owner-accepted DEC-340-01 limited deferral. Check current source/master identities immediately before any later separately authorized merge. Do not reverify unchanged SUT; do not merge, activate, install, release or begin Stage 3."
 updated_at: "2026-10-14"
 
 context:
@@ -54,7 +54,7 @@ context:
     dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
     dec339_gate5_candidate_branch: "integration/dec339-after-platform-gate5-20261013"
     dec339_gate5_predecessor_master_sha: "429c4b947a2ec6b50f4c25c1f363665125286f6e"
-    dec339_gate5_status: "PHX_CI_PASS_INDEPENDENT_COMBINED_REVIEW_PENDING"
+    dec339_gate5_status: "PHX_CI_PASS_REVIEW_REJECT_DEC340_01_OWNER_DEFERRED_GATE4_PREPARED"
     dec339_gate5_verified_software_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
     dec339_gate5_verified_software_tree: "f062ce0606c042e3a9284f1a66582b0070bb453f"
     dec339_gate5_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
@@ -66,6 +66,11 @@ context:
     dec339_gate5_artifact_release_approved: false
     dec339_gate5_independent_review_task: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-post-platform-integration-independent-reassessment.md"
     dec339_gate5_master_promotion_authorized: false
+    dec339_gate5_independent_review_verdict: "REJECT"
+    dec339_gate5_independent_review_sut: "GREEN_WITH_NO_DEMONSTRATED_PRODUCT_DEFECT"
+    dec339_gate5_deferred_finding: "DEC-340-01 MAJOR: unauthenticated development-observation verification context"
+    dec339_gate5_owner_risk_decision: "DEC-341: deferral for Gate 4 preparation only, not merge/release"
+    dec339_gate5_gate4_status: "DRAFT_PR_PREPARATION_OWNER_DECISION_PENDING"
     dec339_sha_governance_decision: "DEC-340"
     dec339_prior_blocked_run_id: "dd55aa0d-bc3e-483c-8c76-95be5b8d03b7"
     dec339_prior_blocked_source_sha: "49415dd335c7a15da9644b6880482f5e44689191"
