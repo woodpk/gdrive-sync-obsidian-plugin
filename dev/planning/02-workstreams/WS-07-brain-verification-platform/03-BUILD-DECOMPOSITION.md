@@ -476,3 +476,7 @@ Every dispatched child session MUST:
 - return BLOCKED rather than weakening boundaries, raising budgets, or editing unlisted paths.
 
 Each primary BVP stage also ends with a separate integrated PHX-CI acceptance task before the next primary stage begins.
+
+## Prospective DEC-339 verification unit — design only, not executable
+
+Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After D339-01 freezes contracts, plan **D339-07** PHX-CI-owned deterministic/fault, negative safety, equivalence and comparable-workload scenarios, integrated with WS-02/03/05 units; **D339-08** is the later integrated PHX-CI + independent review/controlled rollout gate. Do not reactivate S09A–V preplanned prompts, rerun the completed S09A canary, bypass the frozen BVP architecture guard, or add scenario-specific PowerShell verification. Existing physical S09A Windows/iOS acceptance remains open.

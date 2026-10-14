@@ -36,6 +36,7 @@ export interface RecoverableProductionMutationDependenciesV1_3 {
   readonly reliableRemoteMutationPort?: ReliableRemoteMutationPortV1_3;
   readonly localTransactionalMutationPort?: LocalTransactionalMutationPortV1_3;
   readonly remoteFolderCreateRecoveryReadPort?: RecoverableProductionMutationDependencies["remoteFolderCreateRecoveryReadPort"];
+  readonly targetedConvergence?: RecoverableProductionMutationDependencies["targetedConvergence"];
 }
 
 type LegacyRecoveryReads = {
@@ -375,6 +376,7 @@ export function createAuthoritativeProductExecutorV1_3(
       },
     } : {}),
     remoteFolderCreateRecoveryReadPort: explicitDependencies.remoteFolderCreateRecoveryReadPort,
+    targetedConvergence: explicitDependencies.targetedConvergence,
   };
 
   const predecessor = createAuthoritativeProductExecutor(

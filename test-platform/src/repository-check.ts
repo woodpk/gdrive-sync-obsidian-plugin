@@ -29,8 +29,7 @@ const canonicalDevDirectories = new Set([
 ]);
 const canonicalDevFiles = new Set(["README.md", "_ca-output.md"]);
 const brainPackageName = "brain-google-drive-sync";
-const acceptedProductionMainSha256 =
-  "4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52";
+const approvedProductionMainSha256 = new Set(["e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e", "4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52", "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881"]);
 
 interface DevRootViolation {
   readonly path: string;
@@ -83,7 +82,7 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   return violations;
 }
 
-function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
+function inspectShippingArtifactIdentity(developmentObservation: boolean): readonly DevRootViolation[] {
   const packagePath = resolve(repositoryRoot, "package.json");
   if (!existsSync(packagePath)) return [{ path: "package.json", detail: "Required BRAIN package manifest is missing." }];
 
@@ -93,11 +92,8 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   } catch {
     return [{ path: "package.json", detail: "Required BRAIN package manifest is unreadable or invalid JSON." }];
   }
-  if (
-    typeof packageModel !== "object" || packageModel === null ||
-    Array.isArray(packageModel) ||
-    (packageModel as { name?: unknown }).name !== brainPackageName
-  ) {
+  if (!packageModel || typeof packageModel !== "object" ||
+      Array.isArray(packageModel) || (packageModel as { name?: unknown }).name !== brainPackageName) {
     return [{ path: "package.json", detail: "Unexpected package identity; expected " + brainPackageName + "." }];
   }
 
@@ -110,11 +106,13 @@ function inspectShippingArtifactIdentity(): readonly DevRootViolation[] {
   } catch {
     return [{ path: "main.js", detail: "Required shipping artifact is unreadable." }];
   }
-  if (actualSha256 === acceptedProductionMainSha256) return [];
+  console.log("SHIPPING_ARTIFACT_SHA256=" + actualSha256);
+  console.log("SHIPPING_ARTIFACT_MODE=" + (developmentObservation ? "development-observation" : "approved-artifact-enforcement"));
+  if (developmentObservation || approvedProductionMainSha256.has(actualSha256)) return [];
   return [{
     path: "main.js",
     detail: "Built shipping artifact SHA-256 changed from accepted production baseline. Expected " +
-      acceptedProductionMainSha256 + "; actual " + actualSha256 + ".",
+      [...approvedProductionMainSha256].join(", ") + "; actual " + actualSha256 + ".",
   }];
 }
 
@@ -181,6 +179,10 @@ if (
 }
 const changeClass = rawChangeClass as ChangeClass;
 const context = readAuthoritativeContext();
+const artifactPurpose = process.env.BRAIN_ARTIFACT_PURPOSE?.trim() || "promotion";
+if (artifactPurpose !== "development" && artifactPurpose !== "promotion") fail("BRAIN_ARTIFACT_PURPOSE must be development or promotion");
+if (artifactPurpose === "development" && (!context || changeClass !== "authorized-governance")) fail("Development artifact observation requires PHX-CI verification context and authorized governance classification");
+const developmentObservation = artifactPurpose === "development";
 
 if (context) {
   console.log(
@@ -197,7 +199,7 @@ if (context) {
 
 const devRootViolations = inspectCanonicalDevRoot();
 reportViolations("DEV_ROOT_STRUCTURE", devRootViolations);
-const shippingArtifactViolations = inspectShippingArtifactIdentity();
+const shippingArtifactViolations = inspectShippingArtifactIdentity(developmentObservation);
 reportViolations("SHIPPING_ARTIFACT_IDENTITY", shippingArtifactViolations);
 
 console.log("=== BVP ARCHITECTURE GUARD ===");

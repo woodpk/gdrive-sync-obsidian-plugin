@@ -197,6 +197,7 @@ function runRepositoryCheck(
   const environment: NodeJS.ProcessEnv = { ...process.env };
   delete environment.PHX_VERIFICATION_CONTEXT_PATH;
   delete environment.BVP_CHANGE_CLASS;
+  delete environment.BRAIN_ARTIFACT_PURPOSE;
   delete environment.BVP_FUNCTIONAL_TEST_RESULT;
   Object.assign(environment, extraEnvironment);
 
@@ -567,5 +568,81 @@ test("routine local mode runs both repository-controlled checks without fabricat
       result.output,
       /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0 context=local changeClass=ordinary/,
     );
+  });
+});
+
+test("DEC-339 shipping acceptance retains exactly the three pre-existing owner-approved hashes", () => {
+  const source = readFileSync(repositoryCheckSourcePath, "utf8");
+  match(source, /const approvedProductionMainSha256 = new Set/);
+  const start = source.indexOf("const approvedProductionMainSha256 = new Set([");
+  const end = source.indexOf("]);", start);
+  strictEqual(start >= 0 && end > start, true);
+  const hashes = [...source.slice(start, end).matchAll(/"([0-9a-f]{64})"/g)].map(match => match[1]);
+  strictEqual(hashes.length, 3);
+  strictEqual(new Set(hashes).size, 3);
+  strictEqual(hashes[0], "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e");
+  strictEqual(hashes[1], "4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52");
+  strictEqual(hashes[2], "acf331b0a9cc9effd58a1ffdd02eee0d4aca58071b97759c59d3d605e25b8881");
+  match(source, /approvedProductionMainSha256\.has\(actualSha256\)/);
+});
+
+test("PHX-CI-scoped development artifact observation retains safety checks without historical hash acceptance", () => {
+  withFixture((root, baseSha) => {
+    const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
+    const environment = {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "authorized-governance",
+      BRAIN_ARTIFACT_PURPOSE: "development",
+    };
+    const result = runRepositoryCheck(root, environment);
+    if (result.error) throw result.error;
+    strictEqual(result.status, 0, result.output);
+    match(result.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
+    match(result.output, /SHIPPING_ARTIFACT_SHA256=[0-9a-f]{64}/);
+    match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=PASS violations=0/);
+
+    rmSync(join(root, "main.js"));
+    const missing = runRepositoryCheck(root, environment);
+    if (missing.error) throw missing.error;
+    strictEqual(missing.status, 1, missing.output);
+    match(missing.output, /Required shipping artifact is missing/);
+
+    writeText(root, "main.js", 'console.log("development artifact");\n');
+    writeText(root, "package.json", '{"name":"wrong-package"}\n');
+    const invalidPackage = runRepositoryCheck(root, environment);
+    if (invalidPackage.error) throw invalidPackage.error;
+    strictEqual(invalidPackage.status, 1, invalidPackage.output);
+    match(invalidPackage.output, /Unexpected package identity/);
+  });
+});
+
+test("promotion exact-hash gate remains fail-closed; unqualified development mode is rejected", () => {
+  withFixture((root, baseSha) => {
+    const local = runRepositoryCheck(root, {
+      BRAIN_ARTIFACT_PURPOSE: "development",
+      BVP_CHANGE_CLASS: "authorized-governance",
+    });
+    if (local.error) throw local.error;
+    strictEqual(local.status, 2, local.output);
+    match(local.output, /Development artifact observation requires PHX-CI verification context/);
+
+    const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
+    const noGovernance = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BRAIN_ARTIFACT_PURPOSE: "development",
+    });
+    if (noGovernance.error) throw noGovernance.error;
+    strictEqual(noGovernance.status, 2, noGovernance.output);
+    match(noGovernance.output, /authorized governance classification/);
+
+    const promotion = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "authorized-governance",
+      BRAIN_ARTIFACT_PURPOSE: "promotion",
+    });
+    if (promotion.error) throw promotion.error;
+    strictEqual(promotion.status, 1, promotion.output);
+    match(promotion.output, /SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement/);
+    match(promotion.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
   });
 });

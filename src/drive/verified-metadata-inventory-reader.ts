@@ -1,0 +1,641 @@
+/**
+ * DEC-339 D339-03 — dormant metadata observation assembly.
+ * These are provider observations for future WS-02 validation, never mutation,
+ * BASE, deletion, recovery or cursor-commit authority. All absence is app-visible.
+ */
+import type { RemoteChange } from "../contracts/google-drive";
+import { contractId, type ChangeCursor, type RemoteObjectId, type VaultPath } from "../contracts/common";
+import type {
+  InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryIdentityFence,
+  InventoryOverlayRecord, InventoryRemoteEntity, InventoryTargetedProof,
+} from "../contracts/verified-metadata-inventory";
+import type {
+  InventoryDriveChange, InventoryDriveFile, InventoryDriveFetch, InventoryDriveListPage,
+  InventoryMetadataSource,
+} from "./inventory-metadata-source";
+
+const FOLDER = "application/vnd.google-apps.folder";
+const rid = (s: string) => contractId<"RemoteObjectId">(s) as RemoteObjectId;
+const pathId = (s: string) => contractId<"VaultPath">(s) as VaultPath;
+const cursorId = (s: string) => contractId<"ChangeCursor">(s) as ChangeCursor;
+const error = (reason: string, status: "unknown" | "partial" | "incompatible" | "stale" | "recovery-required" = "unknown"):
+  InventoryDriveFetch<never> => ({ status, reason });
+const norm = (value: string) => value.normalize("NFC").toLocaleLowerCase("en-US");
+
+export interface InventoryProviderBaseline {
+  readonly inputCursor: ChangeCursor;
+  readonly terminalCursor: ChangeCursor;
+  readonly entities: readonly InventoryRemoteEntity[];
+  readonly coverage: readonly InventoryCoverage[];
+  readonly normalizedSiblingCollisions: readonly string[];
+  readonly replayedEvents: number;
+  /** Explicitly cannot be published without independent WS-02 validation and CAS. */
+  readonly publishAuthorized: false;
+}
+export interface InventoryProviderDelta {
+  readonly inputCursor: ChangeCursor;
+  readonly terminalCursor: ChangeCursor;
+  readonly overlays: readonly InventoryOverlayRecord[];
+  readonly invalidatedParentIds: readonly RemoteObjectId[];
+  readonly coverage: readonly InventoryCoverage[];
+  readonly learnedChanges: readonly RemoteChange[];
+  readonly publishAuthorized: false;
+}
+export interface InventoryTargetedReadRequest {
+  readonly remoteObjectId: RemoteObjectId;
+  readonly parentRemoteObjectId: RemoteObjectId;
+  readonly domain: InventoryDomain;
+  readonly name: string;
+  readonly purpose: InventoryTargetedProof["purpose"];
+  readonly expectedRevision?: string;
+  readonly expectedSizeBytes?: number;
+  readonly expectedSha256?: string;
+}
+export interface InventoryTargetedReadObservation {
+  readonly object: InventoryRemoteEntity;
+  readonly siblingIds: readonly RemoteObjectId[];
+  readonly parentChain: readonly RemoteObjectId[];
+  /** Freshly resolved named ancestry, not an inventory-derived or cached path. */
+  readonly observedLogicalPath: VaultPath;
+  readonly appVisibleOnly: true;
+  readonly rootWideMarkedProvenanceRechecked: true;
+  /** This is NOT a physical convergence proof or an executor authorization. */
+  readonly executorProofAuthorized: false;
+}
+interface RawManaged {
+  readonly file: InventoryDriveFile;
+  readonly domain: InventoryDomain;
+  readonly parentId: string | null;
+}
+const domainRoot = (f: InventoryIdentityFence, d: InventoryDomain) =>
+  String(d === "content" ? f.contentDomainRootId : f.configDomainRootId);
+const live = (file: InventoryDriveFile) => !file.trashed;
+function suitableName(name: string): boolean {
+  return name.length > 0 && name !== "." && name !== ".." &&
+    !name.includes("/") && !/[\u0000-\u001f]/.test(name);
+}
+
+export class VerifiedMetadataInventoryReader {
+  constructor(private readonly source: InventoryMetadataSource,
+    private readonly maximumObjects = 20000, private readonly maximumPages = 2000) {}
+
+  private async allPages(
+    read: (token?: string) => Promise<InventoryDriveFetch<InventoryDriveListPage>>,
+  ): Promise<InventoryDriveFetch<readonly InventoryDriveFile[]>> {
+    const files: InventoryDriveFile[] = [];
+    const seen = new Set<string>();
+    let token: string | undefined;
+    for (let page = 0; page < this.maximumPages; page++) {
+      const result = await read(token);
+      if (result.status !== "ok") return result;
+      if (result.value.incompleteSearch) return error("incomplete-provider-list", "partial");
+      if (files.length + result.value.files.length > this.maximumObjects)
+        return error("inventory-page-resource-bound-exceeded", "partial");
+      files.push(...result.value.files);
+      const next = result.value.nextPageToken;
+      if (!next) return { status: "ok", value: files };
+      if (next === token || seen.has(next)) return error("repeated-provider-page-token", "recovery-required");
+      seen.add(next); token = next;
+    }
+    return error("provider-page-count-exceeded", "partial");
+  }
+
+  /** A missing marker on an otherwise reachable legacy file is uncertainty, not a permission to heal/stamp it. */
+  private provenance(file: InventoryDriveFile, fence: InventoryIdentityFence,
+    domain: InventoryDomain): boolean {
+    return file.appProperties.brainManagedRootId === String(fence.managedRootId) &&
+      file.appProperties.brainSyncDomain === domain;
+  }
+
+  /**
+   * Independent, fresh, root-wide marked-object provenance check for optional
+   * cached planning. Uses provider metadata, never cached inventory rows.
+   * Unknown ancestry/page completeness fails closed; no provider mutation.
+   */
+  async verifyRootWideManagedProvenance(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
+    const start = await this.source.verifyFence(fence);
+    if (start.status !== "ok") return start;
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    const ids = new Set<string>();
+    for (const file of marked.value) {
+      if (ids.has(file.id)) return error("duplicate-managed-provenance-identity", "recovery-required");
+      ids.add(file.id);
+      const domain = file.appProperties.brainSyncDomain;
+      if ((domain !== "content" && domain !== "portable-config") ||
+          !live(file) || !this.provenance(file, fence, domain))
+        return error("invalid-root-wide-managed-provenance", "recovery-required");
+      const expectedRoot = domainRoot(fence, domain);
+      const otherRoot = domainRoot(fence, domain === "content" ? "portable-config" : "content");
+      let current = file;
+      const visited = new Set<string>([file.id]);
+      let reached = false;
+      for (let depth = 0; depth < 128; depth++) {
+        if (current.parents.length !== 1)
+          return error("managed-object-outside-expected-domain", "recovery-required");
+        const parentId = current.parents[0]!;
+        if (parentId === expectedRoot) { reached = true; break; }
+        if (parentId === otherRoot || parentId === String(fence.managedRootId) ||
+            visited.has(parentId))
+          return error("managed-object-outside-expected-domain", "recovery-required");
+        visited.add(parentId);
+        const parent = await this.source.getFile(parentId);
+        if (parent.status !== "ok") return error("managed-object-ancestor-unavailable", "recovery-required");
+        if (parent.value.trashed || parent.value.mimeType !== FOLDER)
+          return error("managed-object-ancestor-not-live-folder", "recovery-required");
+        current = parent.value;
+      }
+      if (!reached) return error("managed-object-outside-expected-domain", "recovery-required");
+    }
+    const end = await this.source.verifyFence(fence);
+    return end.status === "ok" ? { status: "ok", value: undefined } : end;
+  }
+
+  private async collectMarked(fence: InventoryIdentityFence,
+    graph: ReadonlyMap<string, RawManaged>): Promise<InventoryDriveFetch<void>> {
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    const seen = new Set<string>();
+    for (const file of marked.value) {
+      if (seen.has(file.id)) return error("duplicate-root-marked-object-id", "recovery-required");
+      seen.add(file.id);
+      const entry = graph.get(file.id);
+      if (!entry || !live(file) || !this.provenance(file, fence, entry.domain) ||
+          entry.parentId !== file.parents[0] || file.parents.length !== 1 ||
+          entry.file.name !== file.name || entry.file.version !== file.version)
+        return error("root-wide-managed-object-outside-known-domain", "recovery-required");
+    }
+    return { status: "ok", value: undefined };
+  }
+
+  private async outsideDomain(file: InventoryDriveFile, fence: InventoryIdentityFence,
+    tracked: ReadonlySet<string>): Promise<InventoryDriveFetch<boolean>> {
+    const visited = new Set<string>();
+    let current = file;
+    for (let depth = 0; depth < 128; depth++) {
+      if (visited.has(current.id)) return error("unclassifiable-parent-cycle", "recovery-required");
+      visited.add(current.id);
+      if (tracked.has(current.id) ||
+          current.id === String(fence.managedRootId) ||
+          current.appProperties.brainManagedRootId === String(fence.managedRootId))
+        return { status: "ok", value: false };
+      if (current.parents.length === 0) return { status: "ok", value: true };
+      if (current.parents.length !== 1) return error("unclassifiable-multiple-parents");
+      const parent = await this.source.getFile(current.parents[0]);
+      if (parent.status !== "ok") return error("unknown-ancestor-for-account-wide-change");
+      current = parent.value;
+    }
+    return error("ancestry-depth-limit", "recovery-required");
+  }
+
+  private async changes(
+    fence: InventoryIdentityFence, start: ChangeCursor,
+    apply: (change: InventoryDriveChange) => Promise<InventoryDriveFetch<void>>,
+  ): Promise<InventoryDriveFetch<{ readonly terminal: ChangeCursor; readonly count: number }>> {
+    const seen = new Set<string>();
+    let token = String(start), count = 0;
+    for (let n = 0; n < this.maximumPages; n++) {
+      if (seen.has(token)) return error("cyclic-changes-pagination", "recovery-required");
+      seen.add(token);
+      const page = await this.source.listChanges(token);
+      if (page.status !== "ok") return page;
+      for (const change of page.value.changes) {
+        count++;
+        if (count > this.maximumObjects) return error("changes-resource-bound-exceeded", "partial");
+        const handled = await apply(change);
+        if (handled.status !== "ok") return handled;
+      }
+      if (page.value.newStartPageToken) {
+        if (page.value.nextPageToken) return error("changes-ambiguous-terminal", "recovery-required");
+        return { status: "ok", value: {
+          terminal: cursorId(page.value.newStartPageToken), count,
+        } };
+      }
+      const next = page.value.nextPageToken;
+      if (!next || next === token) return error("changes-terminal-or-progress-missing", "recovery-required");
+      token = next;
+    }
+    return error("changes-page-count-exceeded", "partial");
+  }
+
+  private toEntity(file: InventoryDriveFile, domain: InventoryDomain,
+    parent: string | null, logicalPath: string | undefined,
+    generation: InventoryGeneration, fence: InventoryIdentityFence): InventoryRemoteEntity {
+    return {
+      generation, remoteObjectId: rid(file.id), parentRemoteObjectId: parent === null ? null : rid(parent),
+      domain, name: file.name, kind: file.mimeType === FOLDER ? "folder" : "file",
+      ...(logicalPath === undefined ? {} : { logicalPath: pathId(logicalPath) }),
+      pathValidity: logicalPath === undefined && parent !== null ? "unknown" : "verified",
+      access: "visible", trashed: file.trashed,
+      managedRootId: fence.managedRootId, provenanceDomain: domain,
+      ...(file.version ? { revision: contractId<"RemoteRevisionId">(file.version) } : {}),
+      ...(file.mimeType !== FOLDER ? { content: {
+        ...(file.size ? { sizeBytes: Number(file.size) } : {}),
+        ...(file.sha256Checksum ? { hash: contractId<"ContentHash">(
+          "sha256:" + file.sha256Checksum.toLowerCase()) } : {}),
+        ...(file.version ? { revision: file.version } : {}),
+      } } : {}),
+    };
+  }
+
+  /** Full scoped baseline with scan-window Changes replay and fresh root-wide marked-object census. */
+  async baseline(fence: InventoryIdentityFence,
+    generation: InventoryGeneration): Promise<InventoryDriveFetch<InventoryProviderBaseline>> {
+    const verified = await this.source.verifyFence(fence);
+    if (verified.status !== "ok") return verified;
+    const start = await this.source.getStartToken();
+    if (start.status !== "ok") return start;
+    const roots = [fence.contentDomainRootId, fence.configDomainRootId];
+    const graph = new Map<string, RawManaged>();
+    const scanned = new Map<string, Set<string>>();
+    for (const domain of ["content", "portable-config"] as const) {
+      const rootId = domainRoot(fence, domain);
+      const root = await this.source.getFile(rootId);
+      if (root.status !== "ok") return root;
+      if (!live(root.value) || root.value.mimeType !== FOLDER)
+        return error("missing-managed-domain-root", "incompatible");
+      graph.set(rootId, { file: root.value, domain, parentId: null });
+      const queue = [rootId];
+      let index = 0;
+      while (index < queue.length) {
+        const parent = queue[index++];
+        const listing = await this.allPages(token => this.source.listChildren(parent, token));
+        if (listing.status !== "ok") return listing;
+        const ids = new Set<string>();
+        for (const child of listing.value) {
+          if (!live(child) || child.parents.length !== 1 || child.parents[0] !== parent ||
+              !suitableName(child.name) || !this.provenance(child, fence, domain))
+            return error("invalid-or-unmarked-scoped-child", "recovery-required");
+          if (graph.has(child.id) || ids.has(child.id)) return error("duplicate-scoped-object-id", "recovery-required");
+          ids.add(child.id);
+          graph.set(child.id, { file: child, domain, parentId: parent });
+          if (child.mimeType === FOLDER) queue.push(child.id);
+          if (graph.size > this.maximumObjects) return error("inventory-object-bound-exceeded", "partial");
+        }
+        scanned.set(parent, ids);
+      }
+    }
+    const changedParents = new Set<string>();
+    const replay = await this.changes(fence, cursorId(start.value), async change => {
+      const id = change.fileId;
+      if (id === String(fence.managedRootId) ||
+          roots.some(root => String(root) === id))
+        return error("managed-root-changed-during-baseline", "recovery-required");
+      const existing = graph.get(id);
+      if (change.removed || !change.file || change.file.trashed)
+        return existing ? error("tracked-id-removed-or-inaccessible-during-baseline") :
+          error("unclassifiable-removed-account-change");
+      const file = change.file;
+      if (!existing) {
+        const parent = file.parents[0];
+        const trackedParent = parent ? graph.get(parent) : undefined;
+        if (!trackedParent) {
+          const outside = await this.outsideDomain(file, fence, new Set(graph.keys()));
+          return outside.status !== "ok" ? outside :
+            outside.value ? { status: "ok", value: undefined } :
+            error("unclassifiable-managed-domain-entry");
+        }
+        if (file.parents.length !== 1 || trackedParent.file.mimeType !== FOLDER ||
+            file.mimeType === FOLDER ||
+            !this.provenance(file, fence, trackedParent.domain) || !suitableName(file.name))
+          return error("unproven-entering-object-provenance");
+        graph.set(id, { file, parentId: parent, domain: trackedParent.domain });
+        changedParents.add(parent);
+        return { status: "ok", value: undefined };
+      }
+      if (file.parents.length !== 1 || file.parents[0] !== existing.parentId ||
+          !this.provenance(file, fence, existing.domain))
+        return error("tracked-object-parent-or-provenance-change-needs-rebaseline");
+      if (existing.file.mimeType !== file.mimeType ||
+          (existing.file.mimeType === FOLDER && existing.file.name !== file.name))
+        return error("folder-kind-or-name-change-needs-descendant-rebaseline");
+      if (!suitableName(file.name)) return error("invalid-managed-change-name");
+      graph.set(id, { ...existing, file });
+      if (existing.parentId) changedParents.add(existing.parentId);
+      return { status: "ok", value: undefined };
+    });
+    if (replay.status !== "ok") return replay;
+    // Re-observe every affected parent. Never silently drop a concurrent sibling.
+    for (const parent of changedParents) {
+      const current = await this.allPages(token => this.source.listChildren(parent, token));
+      if (current.status !== "ok") return current;
+      const expected = [...graph.values()].filter(e => e.parentId === parent)
+        .map(e => e.file.id).sort();
+      const observed = current.value.map(e => e.id).sort();
+      if (JSON.stringify(expected) !== JSON.stringify(observed))
+        return error("post-changes-parent-occupancy-disagreement");
+      for (const child of current.value) {
+        const earlier = graph.get(child.id);
+        if (!earlier || !this.provenance(child, fence, earlier.domain) ||
+            child.name !== earlier.file.name || child.version !== earlier.file.version)
+          return error("post-changes-parent-metadata-disagreement");
+      }
+    }
+    const marked = await this.collectMarked(fence, graph);
+    if (marked.status !== "ok") return marked;
+    const renewed = await this.source.verifyFence(fence);
+    if (renewed.status !== "ok") return renewed;
+    // Rebuild full ancestry paths after Changes. Duplicate names are retained by stable ID.
+    const resolved = new Map<string, string>();
+    const visiting = new Set<string>();
+    const resolvePath = (id: string): string | undefined => {
+      if (roots.some(root => String(root) === id)) return "";
+      const cached = resolved.get(id);
+      if (cached !== undefined) return cached;
+      if (visiting.has(id) || visiting.size >= 128) return undefined;
+      visiting.add(id);
+      const entry = graph.get(id);
+      const parent = entry?.parentId ? graph.get(entry.parentId) : undefined;
+      const prefix = parent ? resolvePath(parent.file.id) : undefined;
+      visiting.delete(id);
+      if (!entry || !parent || parent.domain !== entry.domain ||
+          parent.file.mimeType !== FOLDER || prefix === undefined) return undefined;
+      const path = prefix ? prefix + "/" + entry.file.name : entry.file.name;
+      resolved.set(id, path);
+      return path;
+    };
+    const entities: InventoryRemoteEntity[] = [];
+    const occupancy = new Map<string, number>();
+    for (const [id, item] of graph) {
+      const p = resolvePath(id);
+      if (p === undefined || (!roots.some(r => String(r) === id) && !suitableName(item.file.name)))
+        return error("unrooted-or-cyclic-remote-path", "recovery-required");
+      entities.push(this.toEntity(item.file, item.domain, item.parentId,
+        item.parentId === null ? undefined :
+        item.domain === "portable-config" ? "__brain_sync_portable_config__/" + p : p,
+        generation, fence));
+      if (item.parentId) {
+        const key = JSON.stringify([item.domain, item.parentId, norm(item.file.name)]);
+        occupancy.set(key, (occupancy.get(key) ?? 0) + 1);
+      }
+    }
+    const terminal = replay.value.terminal;
+    const coverage: InventoryCoverage[] = [];
+    for (const domain of ["content", "portable-config"] as const) {
+      const root = domainRoot(fence, domain);
+      coverage.push({
+        generation, domain, scopeId: rid(root), scopeKind: "domain", state: "complete",
+        visibility: "app-visible", allPagesRead: true, incompleteSearch: false,
+        provenanceVerified: true, terminalCursor: terminal,
+      });
+      for (const [id, item] of graph) if (item.domain === domain && item.file.mimeType === FOLDER) {
+        coverage.push({
+          generation, domain, scopeId: rid(id), scopeKind: "parent", state: "complete",
+          visibility: "app-visible", allPagesRead: true, incompleteSearch: false,
+          provenanceVerified: true, terminalCursor: terminal,
+        });
+      }
+    }
+    return { status: "ok", value: {
+      inputCursor: cursorId(start.value), terminalCursor: terminal, entities, coverage,
+      normalizedSiblingCollisions: [...occupancy].filter(([, count]) => count > 1).map(([key]) => key),
+      replayedEvents: replay.value.count, publishAuthorized: false,
+    } };
+  }
+
+  /**
+   * Account-wide Changes -> complete, conservative COW observation.
+   * A confirmed trashed stable ID may be masked as no-longer-present in this
+   * inventory, NEVER as deletion authority. Missing file or permission-loss
+   * responses remain unknown. Untracked removals are never silently ignored.
+   * Full managed parent scopes are checked before the returned delta is usable.
+   */
+  async incremental(fence: InventoryIdentityFence, generation: InventoryGeneration,
+    inputCursor: ChangeCursor, tracked: readonly InventoryRemoteEntity[]):
+    Promise<InventoryDriveFetch<InventoryProviderDelta>> {
+    const first = await this.source.verifyFence(fence);
+    if (first.status !== "ok") return first;
+    if (tracked.length > this.maximumObjects) return error("unbounded-predecessor-graph", "partial");
+    const graph = new Map<string, InventoryRemoteEntity>();
+    for (const e of tracked) {
+      if (graph.has(String(e.remoteObjectId)) || e.managedRootId !== fence.managedRootId ||
+          e.provenanceDomain !== e.domain || e.pathValidity !== "verified" ||
+          e.access !== "visible" || e.trashed)
+        return error("untrusted-incremental-predecessor", "recovery-required");
+      graph.set(String(e.remoteObjectId), e);
+    }
+    for (const domain of ["content", "portable-config"] as const) {
+      const root = graph.get(domainRoot(fence, domain));
+      if (!root || root.domain !== domain || root.kind !== "folder" ||
+          root.parentRemoteObjectId !== null) return error("incremental-domain-root-unproven");
+    }
+    const affected = new Set<string>();
+    const rows = new Map<string, InventoryOverlayRecord>();
+    const learned: RemoteChange[] = [];
+    const processed = await this.changes(fence, inputCursor, async change => {
+      const existing = graph.get(change.fileId);
+      const f = change.file;
+      if (change.fileId === String(fence.managedRootId) ||
+          change.fileId === String(fence.contentDomainRootId) ||
+          change.fileId === String(fence.configDomainRootId))
+        return error("managed-root-change-requires-full-baseline", "recovery-required");
+
+      if (change.removed || !f || f.trashed) {
+        // A Drive removed event alone may mean access loss; it is not deletion.
+        if (!existing || existing.kind === "folder" || !f || !f.trashed)
+          return error("unknown-removed-or-inaccessible-change-requires-rebaseline");
+        const exact = await this.source.getFile(change.fileId);
+        if (exact.status !== "ok" || !exact.value.trashed ||
+            exact.value.parents.length !== 1 ||
+            exact.value.parents[0] !== String(existing.parentRemoteObjectId) ||
+            !this.provenance(exact.value, fence, existing.domain))
+          return error("removed-file-exact-trash-not-proven");
+        rows.set(change.fileId, { kind: "mask", generation, remoteObjectId: existing.remoteObjectId });
+        graph.delete(change.fileId);
+        if (existing.parentRemoteObjectId) affected.add(String(existing.parentRemoteObjectId));
+        learned.push({
+          kind: "removed", remoteObjectId: existing.remoteObjectId,
+          ...(existing.logicalPath ? { lastKnownPath: existing.logicalPath } : {}),
+        });
+        return { status: "ok", value: undefined };
+      }
+
+      const parent = f.parents.length === 1 ? graph.get(f.parents[0]) : undefined;
+      if (!parent) {
+        const outside = await this.outsideDomain(f, fence, new Set(graph.keys()));
+        return outside.status !== "ok" ? outside :
+          outside.value && !existing ? { status: "ok", value: undefined } :
+          error("uncertain-managed-domain-entry-or-exit");
+      }
+      if (parent.kind !== "folder" || !this.provenance(f, fence, parent.domain) ||
+          !suitableName(f.name) || f.trashed ||
+          (!existing && f.mimeType === FOLDER) ||
+          (existing && (existing.domain !== parent.domain ||
+            existing.kind !== (f.mimeType === FOLDER ? "folder" : "file"))))
+        return error("unsupported-changed-object-or-foreign-provenance");
+      if (existing?.kind === "folder" &&
+          (existing.name !== f.name || existing.parentRemoteObjectId !== rid(f.parents[0])))
+        return error("folder-subtree-relocation-requires-full-baseline");
+      const logical = parent.logicalPath ? String(parent.logicalPath) + "/" + f.name :
+        parent.remoteObjectId === fence.configDomainRootId ?
+          "__brain_sync_portable_config__/" + f.name : f.name;
+      const entity = this.toEntity(f, parent.domain, f.parents[0], logical, generation, fence);
+      if (existing?.parentRemoteObjectId) affected.add(String(existing.parentRemoteObjectId));
+      affected.add(f.parents[0]);
+      rows.set(f.id, { kind: "upsert", generation, entity });
+      graph.set(f.id, entity);
+      learned.push({ kind: "upsert", entry: {
+        path: entity.logicalPath!, entityKind: entity.kind, remoteObjectId: entity.remoteObjectId,
+        trashed: false, ...(entity.content ? { content: entity.content } : {}),
+      } });
+      return { status: "ok", value: undefined };
+    });
+    if (processed.status !== "ok") return processed;
+    const terminal = processed.value.terminal;
+
+    // A managed-root census prevents a same-parent query from hiding a marked
+    // object that escaped its domain. Also detects unobserved marked objects.
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    const seenMarked = new Set<string>();
+    for (const file of marked.value) {
+      if (seenMarked.has(file.id)) return error("duplicate-managed-census-identity");
+      seenMarked.add(file.id);
+      const e = graph.get(file.id);
+      if (!e || file.trashed || !this.provenance(file, fence, e.domain) ||
+          file.parents.length !== 1 || file.parents[0] !== e.parentRemoteObjectId ||
+          file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined) ||
+          (file.mimeType === FOLDER ? "folder" : "file") !== e.kind)
+        return error("root-wide-managed-census-disagrees-with-changes");
+    }
+    for (const e of graph.values()) {
+      if (e.parentRemoteObjectId !== null && !seenMarked.has(String(e.remoteObjectId)))
+        return error("tracked-managed-id-missing-from-root-wide-census");
+    }
+
+    // Re-read each mutated parent; fresh provider result must be identical to
+    // the Changes-materialized occupants. Unknown, extra or duplicated IDs block.
+    for (const parent of affected) {
+      const observed = await this.allPages(token => this.source.listChildren(parent, token));
+      if (observed.status !== "ok") return observed;
+      const expected = [...graph.values()].filter(e => String(e.parentRemoteObjectId) === parent);
+      const expectedIds = expected.map(e => String(e.remoteObjectId)).sort();
+      const actualIds = observed.value.map(f => f.id).sort();
+      if (new Set(actualIds).size !== actualIds.length ||
+          JSON.stringify(expectedIds) !== JSON.stringify(actualIds))
+        return error("post-changes-parent-occupancy-not-coherent");
+      for (const file of observed.value) {
+        const e = graph.get(file.id);
+        if (!e || !this.provenance(file, fence, e.domain) ||
+            file.parents.length !== 1 || file.parents[0] !== parent ||
+            file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined))
+          return error("post-changes-parent-metadata-not-coherent");
+      }
+    }
+    const renewed = await this.source.verifyFence(fence);
+    if (renewed.status !== "ok") return renewed;
+
+    // Complete at the terminal Changes horizon only under the existing trusted
+    // app-visible baseline + continuous replay. This is not global Drive absence.
+    const coverage: InventoryCoverage[] = [];
+    for (const d of ["content", "portable-config"] as const) {
+      const root = rid(domainRoot(fence, d));
+      coverage.push({
+        generation, domain: d, scopeId: root, scopeKind: "domain",
+        state: "complete", visibility: "app-visible", allPagesRead: true,
+        incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+      });
+    }
+    for (const e of graph.values()) if (e.kind === "folder") {
+      coverage.push({
+        generation, domain: e.domain, scopeId: e.remoteObjectId, scopeKind: "parent",
+        state: "complete", visibility: "app-visible", allPagesRead: true,
+        incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+      });
+    }
+    return { status: "ok", value: {
+      inputCursor, terminalCursor: terminal, overlays: [...rows.values()],
+      invalidatedParentIds: [...affected].map(rid), coverage,
+      learnedChanges: learned, publishAuthorized: false,
+    } };
+  }
+
+  /** Fresh targeted observation only, not a mutation or recovery proof. */
+  async targeted(fence: InventoryIdentityFence, generation: InventoryGeneration,
+    request: InventoryTargetedReadRequest):
+    Promise<InventoryDriveFetch<InventoryTargetedReadObservation>> {
+    const valid = await this.source.verifyFence(fence);
+    if (valid.status !== "ok") return valid;
+    const root = domainRoot(fence, request.domain);
+    const exact = await this.source.getFile(String(request.remoteObjectId));
+    if (exact.status !== "ok") return exact;
+    const f = exact.value;
+    if (f.trashed || !suitableName(f.name) || f.parents.length !== 1 ||
+        f.parents[0] !== String(request.parentRemoteObjectId) ||
+        f.name !== request.name || !this.provenance(f, fence, request.domain))
+      return error("target-object-identity-not-current");
+    if (request.expectedRevision !== undefined && f.version !== request.expectedRevision)
+      return error("target-revision-mismatch", "stale");
+    if (request.expectedSizeBytes !== undefined && Number(f.size) !== request.expectedSizeBytes)
+      return error("target-size-mismatch", "stale");
+    if (request.expectedSha256 !== undefined &&
+        f.sha256Checksum?.toLowerCase() !== request.expectedSha256.toLowerCase())
+      return error("target-hash-mismatch", "stale");
+    const ancestors: string[] = [];
+    const pathParts: string[] = [f.name];
+    const seen = new Set<string>([f.id]);
+    let parent = f.parents[0];
+    for (let depth = 0; depth < 128; depth++) {
+      if (seen.has(parent)) return error("target-parent-cycle");
+      seen.add(parent); ancestors.push(parent);
+      if (parent === root) break;
+      const meta = await this.source.getFile(parent);
+      if (meta.status !== "ok" || meta.value.trashed ||
+          meta.value.mimeType !== FOLDER || meta.value.parents.length !== 1 ||
+          !this.provenance(meta.value, fence, request.domain))
+        return error("target-parent-ancestry-unproven");
+      if (!suitableName(meta.value.name)) return error("target-ancestor-name-invalid");
+      pathParts.unshift(meta.value.name);
+      parent = meta.value.parents[0];
+    }
+    if (ancestors.at(-1) !== root) return error("target-not-under-expected-domain");
+    const siblings = await this.allPages(token =>
+      this.source.listChildren(String(request.parentRemoteObjectId), token));
+    if (siblings.status !== "ok") return siblings;
+    const matches = siblings.value.filter(x => !x.trashed && norm(x.name) === norm(request.name));
+    if (matches.length !== 1 || matches[0].id !== f.id ||
+        matches[0].parents.length !== 1 ||
+        matches[0].parents[0] !== String(request.parentRemoteObjectId) ||
+        matches[0].version !== f.version ||
+        matches[0].mimeType !== f.mimeType ||
+        matches[0].sha256Checksum !== f.sha256Checksum ||
+        matches[0].size !== f.size ||
+        !this.provenance(matches[0], fence, request.domain))
+      return error("nonunique-missing-or-drifted-target-sibling", "unknown");
+    // Same-parent occupancy never substitutes for the root-wide provenance requirement.
+    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+    if (marked.status !== "ok") return marked;
+    for (const candidate of marked.value) {
+      if (candidate.trashed || candidate.appProperties.brainManagedRootId !== String(fence.managedRootId) ||
+          !candidate.appProperties.brainSyncDomain)
+        return error("marked-object-provenance-unproven");
+      const d = candidate.appProperties.brainSyncDomain;
+      if (d !== "content" && d !== "portable-config") return error("marked-object-domain-invalid");
+      const expectedRoot = domainRoot(fence, d);
+      const visited = new Set<string>();
+      let item = candidate, reached = false;
+      for (let depth = 0; depth < 128; depth++) {
+        if (visited.has(item.id)) return error("marked-object-parent-cycle");
+        visited.add(item.id);
+        if (item.parents.length !== 1) return error("marked-object-parent-ambiguous");
+        if (item.parents[0] === expectedRoot) { reached = true; break; }
+        const prev = await this.source.getFile(item.parents[0]);
+        if (prev.status !== "ok" || prev.value.trashed || prev.value.mimeType !== FOLDER ||
+            !this.provenance(prev.value, fence, d))
+          return error("marked-object-ancestry-unavailable");
+        item = prev.value;
+      }
+      if (!reached) return error("marked-object-outside-domain");
+    }
+    const confirmed = await this.source.verifyFence(fence);
+    if (confirmed.status !== "ok") return confirmed;
+    const entity = this.toEntity(f, request.domain, f.parents[0], undefined, generation, fence);
+    return { status: "ok", value: {
+      object: entity, siblingIds: matches.map(x => rid(x.id)),
+      parentChain: ancestors.map(rid),
+      observedLogicalPath: pathId((request.domain === "portable-config" ? "__brain_sync_portable_config__/" : "") + pathParts.join("/")),
+      appVisibleOnly: true,
+      rootWideMarkedProvenanceRechecked: true, executorProofAuthorized: false,
+    } };
+  }
+}

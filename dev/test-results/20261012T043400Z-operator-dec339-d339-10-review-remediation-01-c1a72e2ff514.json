@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/phx-d74da8da2acf4e84/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "c1a72e2ff514884b52976ef37c23bd2221d17319",
+    "verifiedTree": "3d51281fd03dff4fed986bdf414f0983024c4340",
+    "expectedHead": "c1a72e2ff514884b52976ef37c23bd2221d17319",
+    "baseSha": "72529cb966a461e3254b25cd02daf3e83e381c1c"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-12T04:34:04.9194171Z",
+  "endedAt": "2026-10-12T04:34:33.4524902Z",
+  "stages": [
+    {
+      "startedAt": "2026-10-12T04:34:05.7748448Z",
+      "stderr": "",
+      "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/'",
+      "endedAt": "2026-10-12T04:34:06.9427172Z",
+      "classification": "NONE",
+      "name": "preflight",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "result": "PASS",
+      "exitCode": 0
+    },
+    {
+      "exitCode": 0,
+      "name": "node-preflight",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/phx-d74da8da2acf4e84/w' -OutputPath 'C:/phx-d74da8da2acf4e84/w/.phx-ci/tool-versions.json'",
+      "startedAt": "2026-10-12T04:34:07.9928686Z",
+      "stderr": "",
+      "endedAt": "2026-10-12T04:34:10.4102915Z",
+      "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+      "classification": "NONE",
+      "result": "PASS"
+    },
+    {
+      "exitCode": 0,
+      "stderr": "",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+      "startedAt": "2026-10-12T04:34:11.1415416Z",
+      "endedAt": "2026-10-12T04:34:11.9588129Z",
+      "name": "node-project-files",
+      "classification": "NONE",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/phx-d74da8da2acf4e84/w'",
+      "result": "PASS"
+    },
+    {
+      "classification": "NONE",
+      "command": "npm ci",
+      "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+      "name": "install",
+      "endedAt": "2026-10-12T04:34:21.2599622Z",
+      "result": "PASS",
+      "startedAt": "2026-10-12T04:34:13.884638Z",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 6s\n\nfound 0 vulnerabilities\n",
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\ntest/dec339-remote-reader.test.ts(93,7): error TS2367: This comparison appears to be unintentional because the types '\"recovery-required\"' and '\"ok\"' have no overlap.\r\n",
+      "startedAt": "2026-10-12T04:34:22.139528Z",
+      "result": "FAIL",
+      "exitCode": 2,
+      "endedAt": "2026-10-12T04:34:31.7721495Z",
+      "stderr": "",
+      "runId": "277c0dd1-c39e-4e79-b4b2-141afb30402e",
+      "command": "npm run typecheck",
+      "name": "typecheck",
+      "classification": "PRODUCT FAILURE"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}
