@@ -526,6 +526,7 @@ test("live relocation durably journals both exclusions before copying and clears
 test("persisted relocation journal is defensively rejected when either exact CSV path is unsafe", async () => {
   const repository = new PluginDataRepository({
     loadData: async () => ({ settings: { syncPlanErrorsRelocation: { sourcePath: "../sync-plan-errors.csv", destinationPath: "99-System/sync-plan-errors.csv" } } }),
+    dataFileExists: async () => true,
     saveData: async () => undefined,
   });
   await assert.rejects(() => repository.loadSettings(), /relocation path is invalid|safe vault-relative/u);
