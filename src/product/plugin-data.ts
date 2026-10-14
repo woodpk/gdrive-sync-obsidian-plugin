@@ -76,6 +76,8 @@ interface MutablePluginData {
 
 export interface PluginDataHost {
   loadData(): Promise<unknown>;
+  /** Distinguishes a new installation from an existing unreadable data.json. */
+  dataFileExists(): Promise<boolean>;
   saveData(data: unknown): Promise<void>;
 }
 
@@ -120,8 +122,15 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
   }
 
   private data(): Promise<MutablePluginData> {
-    this.loaded ??= this.host.loadData().then(raw => {
-      const value = raw && typeof raw === "object" ? raw as PersistedPluginData : {};
+    this.loaded ??= this.host.loadData().then(async raw => {
+      if (raw == null) {
+        if (await this.host.dataFileExists()) {
+          throw new Error("Existing BRAIN data.json could not be loaded; refusing to replace it with default settings.");
+        }
+      } else if (typeof raw !== "object" || Array.isArray(raw)) {
+        throw new Error("BRAIN data.json has an invalid top-level structure; refusing to overwrite persisted settings.");
+      }
+      const value = (raw ?? {}) as PersistedPluginData;
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
       merged.syncPlanErrorsDirectory = typeof merged.syncPlanErrorsDirectory === "string" ? merged.syncPlanErrorsDirectory : "";

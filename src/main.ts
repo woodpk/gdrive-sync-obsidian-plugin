@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from "obsidian";
+import { Notice, Platform, Plugin, normalizePath } from "obsidian";
 import { formatOAuthDiagnosticSuffix, type OAuthCallbackInput, type OAuthCompletion } from "./drive/auth";
 import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
@@ -23,7 +23,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
 
   async onload(): Promise<void> {
-    this.dataRepository = new PluginDataRepository({ loadData: () => this.loadData(), saveData: data => this.saveData(data) });
+    this.dataRepository = new PluginDataRepository({
+      loadData: () => this.loadData(),
+      dataFileExists: () => this.app.vault.adapter.exists(normalizePath(`${this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/data.json`)),
+      saveData: data => this.saveData(data),
+    });
     this.currentSettings = await this.dataRepository.loadSettings();
     this.diagnostics = new DiagnosticLogger({
       persistence: this.dataRepository,

@@ -49,7 +49,7 @@ test("Phase 5 desktop automatic policy does not invent a mobile network restrict
 
 test("Phase 5 plugin data repository serializes settings exclusions recovery gate and audit without clobbering projections", async () => {
   let persisted: unknown;
-  const repository = new PluginDataRepository({ loadData: async () => persisted, saveData: async data => { persisted = structuredClone(data); } });
+  const repository = new PluginDataRepository({ loadData: async () => persisted, dataFileExists: async () => persisted !== undefined, saveData: async data => { persisted = structuredClone(data); } });
   await repository.saveSettings({ ...DEFAULT_SETTINGS, vaultIdentity: "vault:test", deviceIdentity: "device:test", recoveryInProgress: true, userExclusionPatterns: ["private/**"] });
   await repository.save([{ id: "a", event: "plan-created", advisoryAtMs: 1 }]);
   const settings = await repository.loadSettings(); assert.equal(settings.vaultIdentity, "vault:test"); assert.equal(settings.recoveryInProgress, true); assert.deepEqual(settings.userExclusionPatterns, ["private/**"]); assert.equal((await repository.load()).length, 1);
