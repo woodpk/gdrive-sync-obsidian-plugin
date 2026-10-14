@@ -70,7 +70,9 @@ context:
     dec339_gate5_independent_review_sut: "GREEN_WITH_NO_DEMONSTRATED_PRODUCT_DEFECT"
     dec339_gate5_deferred_finding: "DEC-340-01 MAJOR: unauthenticated development-observation verification context"
     dec339_gate5_owner_risk_decision: "DEC-341: deferral for Gate 4 preparation only, not merge/release"
-    dec339_gate5_gate4_status: "DRAFT_PR_PREPARATION_OWNER_DECISION_PENDING"
+    dec339_gate5_gate4_status: "DRAFT_PR_151_OPEN_OWNER_MERGE_DECISION_PENDING"
+    dec339_gate5_promotion_pr_number: 151
+    dec339_gate5_promotion_pr_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/151"
     dec339_sha_governance_decision: "DEC-340"
     dec339_prior_blocked_run_id: "dd55aa0d-bc3e-483c-8c76-95be5b8d03b7"
     dec339_prior_blocked_source_sha: "49415dd335c7a15da9644b6880482f5e44689191"
