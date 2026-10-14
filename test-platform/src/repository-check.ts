@@ -92,11 +92,8 @@ function inspectShippingArtifactIdentity(developmentObservation: boolean): reado
   } catch {
     return [{ path: "package.json", detail: "Required BRAIN package manifest is unreadable or invalid JSON." }];
   }
-  if (
-    typeof packageModel !== "object" || packageModel === null ||
-    Array.isArray(packageModel) ||
-    (packageModel as { name?: unknown }).name !== brainPackageName
-  ) {
+  if (!packageModel || typeof packageModel !== "object" ||
+      Array.isArray(packageModel) || (packageModel as { name?: unknown }).name !== brainPackageName) {
     return [{ path: "package.json", detail: "Unexpected package identity; expected " + brainPackageName + "." }];
   }
 
@@ -183,12 +180,8 @@ if (
 const changeClass = rawChangeClass as ChangeClass;
 const context = readAuthoritativeContext();
 const artifactPurpose = process.env.BRAIN_ARTIFACT_PURPOSE?.trim() || "promotion";
-if (artifactPurpose !== "development" && artifactPurpose !== "promotion") {
-  fail("BRAIN_ARTIFACT_PURPOSE must be development or promotion");
-}
-if (artifactPurpose === "development" && (!context || changeClass !== "authorized-governance")) {
-  fail("Development artifact observation requires PHX-CI verification context and authorized governance classification");
-}
+if (artifactPurpose !== "development" && artifactPurpose !== "promotion") fail("BRAIN_ARTIFACT_PURPOSE must be development or promotion");
+if (artifactPurpose === "development" && (!context || changeClass !== "authorized-governance")) fail("Development artifact observation requires PHX-CI verification context and authorized governance classification");
 const developmentObservation = artifactPurpose === "development";
 
 if (context) {
