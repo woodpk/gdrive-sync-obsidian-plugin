@@ -649,6 +649,7 @@ test("promotion exact-hash gate remains fail-closed; context-free development mo
     strictEqual(frozenOrdinary.status, 1, frozenOrdinary.output);
     match(frozenOrdinary.output, /FROZEN_SURFACE_CHANGED/);
 
+    writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const promotion = runRepositoryCheck(root, {
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
       BVP_CHANGE_CLASS: "ordinary",
@@ -658,6 +659,7 @@ test("promotion exact-hash gate remains fail-closed; context-free development mo
     strictEqual(promotion.status, 1, promotion.output);
     match(promotion.output, /SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement/);
     match(promotion.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
+    match(promotion.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/);
   });
 });
 
