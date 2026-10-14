@@ -1,3 +1,17 @@
+# Current Engineering Handoff — DEC-339 Gate 4 SOFTWARE MASTER PROMOTION COMPLETE (2026-10-14)
+
+## Current authoritative state — release and activation BLOCKED
+
+- **Owner authorized and GitHub merged [PR #151](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/151)** for **software-only master promotion**. Merge commit `04a3976441be6309cf864c21870a27f1e77a07a9`, parents `429c4b947a2ec6b50f4c25c1f363665125286f6e` and `8d35bb5d64c56626376fb1cc21f57c3a09f45fd6`. Merge tree `7cbe765e710c8cde6936fea2432712b8ab102ef9` exactly matches approved PR candidate tree.
+- **Immutable tested implementation** `5861b8b2861f9c38ea659be7c7cfcf78527da4d7`, tree `f062ce0606c042e3a9284f1a66582b0070bb453f`, PHX-CI run `ad77ffcc-cf2b-4f99-8d08-97170bb0be2f`, runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. **11/11 PASS**; focused BVP 402/402; product 985/985; original evidence commit `8491318b4e8d6901d810fa753be6dec16b8c8afb`. No SUT changes after this qualification; later commits are administrative only.
+- Independent combined review remains **REJECT**, despite otherwise **GREEN SUT**. Its sole confirmed **DEC-340-01 MAJOR** development context spoofing finding is **unfixed**, expressly deferred by owner under DEC-341. Owner supplied a **separate explicit master merge authorization**, recorded as **DEC-342**, which does not turn the review into APPROVE.
+- Development `main.js` 904507 bytes, SHA-256 `57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c`, **not approved for release**. No shipping hash rebaseline or artifact-promotion authority was granted.
+- **Still prohibited:** installation, release, feature activation/cutover, live Google Drive/vault operations, Stage 3. **G1** physical S09 remains incomplete and `data.json` loss/corruption unresolved. Do not claim physical acceptance.
+- **Next:** preserve promoted source and evidence; seek new explicit scope for deferred DEC-340-01 remediation and/or G1 physical/data integrity work before any release or activation. No PHX-CI rerun for these administrative-only updates.
+- **Exact Tasking Location:** `dev/authority/reconciliations/dec339-after-platform-gate5-2026-10-13.md`, *2026-10-14 — owner-authorized Gate 4 PR #151 MERGED*. Original gate details: *Next acceptance gates* §§4–5.
+
+---
+
 # Current Engineering Handoff — DEC-339 owner-controlled Gate 4 preparation (2026-10-14)
 
 ## Immediate current task — PREPARED, OWNER DECISION PENDING

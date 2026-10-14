@@ -1,7 +1,7 @@
 # DEC-339 — Gate 5 Post-Platform Scoped Integration
 
 **Date:** 2026-10-13  
-**Status:** STAGING — NOT VERIFIED / NOT PROMOTION APPROVED  
+**Status:** GATE 4 SOFTWARE MASTER PROMOTION COMPLETE — RELEASE / ACTIVATION BLOCKED  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin`  
 **Candidate branch:** `integration/dec339-after-platform-gate5-20261013`
 
@@ -56,3 +56,10 @@
 - **No release exception:** previously accepted artifact digests remain frozen; do not treat the development-observation mode or this owner risk decision as proof of release eligibility. An exact SHA-approved artifact and the applicable PHX-CI-coordinated release/promotion gate are separate prerequisites. Physical S09/data.json integrity concern, inventory activation, installation, release, real Drive/vault operations and Stage 3 all remain **BLOCKED/NOT AUTHORIZED**.
 - **Gate status:** Gate 2 **PASS**; Gate 3 independent **REJECT** with owner-accepted **documented limited deferral** of its sole finding; Gate 4 **PREPARED FOR OWNER DECISION, NOT AUTHORIZED OR MERGED**. No SUT/test/PHX-CI runtime or shipping-pin changes under DEC-341.
 - **Gate 4 presentation artifact:** [Draft PR #151](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/151), opened against `master` `429c4b947a2ec6b50f4c25c1f363665125286f6e`; head at opening `b2a476d6bc1acfdf6db5423952f3e8f1d7088c57`. GitHub reported mergeable `true` with merge state `unstable`; neither is an owner approval or accepted release check. The PR remains DRAFT and unmerged. Its full body discloses independent review REJECT, deferred DEC-340-01, exact PHX-CI and artifact identities, and prohibited activation/release.
+## 2026-10-14 — owner-authorized Gate 4 PR #151 MERGED
+
+- The owner explicitly approved **software-only master promotion** of PR [#151](https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/151) after being informed that the combined independent review remained **REJECT**, that the system under test was **GREEN**, and that **DEC-340-01 MAJOR** remained unfixed under separately recorded owner deferral DEC-341. This separate merge authorization is **DEC-342**; it does not retroactively change the review verdict.
+- **GitHub merge confirmed:** `04a3976441be6309cf864c21870a27f1e77a07a9`. First parent `429c4b947a2ec6b50f4c25c1f363665125286f6e` (former master), second parent `8d35bb5d64c56626376fb1cc21f57c3a09f45fd6` (exact owner-approved PR HEAD). Git tree `7cbe765e710c8cde6936fea2432712b8ab102ef9` matches the second-parent tree **exactly**; there were **no merge-induced file modifications**. PR is closed/merged; master resolved to merge commit after merge.
+- Exact previously qualified implementation remains `5861b8b2861f9c38ea659be7c7cfcf78527da4d7` (tree `f062ce0606c042e3a9284f1a66582b0070bb453f`). All commits after this software source, including current recordkeeping, modify **only dev evidence/governance/state**, not SUT/tests/build controls. PHX-CI `ad77ffcc-cf2b-4f99-8d08-97170bb0be2f` **PASS 11/11**, focused **402/402**, product **985/985** remains authentic; no rerun for unchanged SUT.
+- **Open constraints:** independent review REJECT, confirmed/unfixed DEC-340-01, unapproved development `main.js` SHA-256 `57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c`; exact-hash release approval absent; physical S09/`data.json` loss/corruption unresolved. **No installation, release, feature activation, real Drive/vault operation, or Stage 3 authorized.**
+- **Gate 4 CLOSED: software master promotion only.** Next activity requires separately scoped and owner-authorized work, not silent release or activation.
