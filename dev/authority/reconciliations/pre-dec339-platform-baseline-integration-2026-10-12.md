@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12  
 **Branch:** `integration/pre-dec339-platform-baseline-20261012`  
-**Status:** `PHX-CI PASS / INDEPENDENT REVIEW PENDING`
+**Status:** `PHX-CI PASS / F1-F2-R1 INDEPENDENT REVIEW PASSED / OWNER MASTER PROMOTION GATE PENDING`
 
 ## Decision and boundaries
 
@@ -42,3 +42,14 @@ At the pre-feature source `32b9ec2f2c3ed53d7cf345185b044ee002b9f26b`, `dev/_ca-o
 **Current:** isolated platform candidate source `2ad791a07b210384c4572b37192407b49313a93e` has all 11 PHX-CI stages PASS (388/388 BVP; 850/850 product). Run `3dc05b3e-08a8-4f3d-af25-7f653c2821e8`; evidence commit `6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0`. Independent platform review is not yet complete. Master unchanged. The previously verified DEC-339 isolated integration remains on separate branch `integration/dec339-postreview-master-reconcile-20261012` and is not the platform candidate.
 
 **Next:** commission read-only independent review using `dev/state/handoffs/pre-dec339-platform-independent-review-assignment.md`. PHX-CI acceptance is satisfied for the exact pre-review candidate; do not repeat substantive checks for canonical evidence reorganization. Repair any independently confirmed defect before a new PHX-CI qualification and independent reassessment. No custom validation script, no GitHub Actions, no non-PHX-CI repository tests or build.
+
+## 2026-10-13 — independently accepted R1 and platform-only promotion gate
+
+This addendum supersedes only the earlier status/next-action notes; historical source identities and the original gate order above remain preserved.
+
+- F1/F2 and the prerequisite platform boundaries, master-exclusive AGENTS semantics, frozen architecture, evidence continuity and shipping exclusion were marked **PASS** by the original independent reviewer at source `33536500f5fc7afa4002acc7ab87fb88075add15`.
+- The sole new source blocker R1 was independently confirmed and then corrected. **Verified R1 software** `5078ad72a48df1c327b96fe781b1c7fbf0765509`, Git tree `322c3d638a3b7fe36fda16ffa045d4d5bf98e66b2`. **PHX-CI** run `0dfc5f13-8da0-4f08-addc-caab4c913216`, 11/11 PASS, 393/393 BVP, 850/850 product; original evidence publication `aa8cbf22933591c88b1e4abe32dfcc97cb47ccc3`, with identical canonical Git blobs under `dev/test-results/0dfc5f13-8da0-4f08-addc-caab4c913216/`. Accepted new `main.js`: 903041 bytes, SHA-256 `4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52`.
+- Owner-supplied separate R1 independent reassessment **APPROVE — R1 ONLY**; exact review record `dev/reviews/pre-dec339-r1-20261013/independent-reassessment.md`. The independent R1 reviewer approved the two failure fixes, regressions, terminal receipt/diagnostics, frozen budgets, unchanged F2 shipping guard semantics, new artifact identity, and evidence provenance.
+- **Candidate reconciliation:** fast-forward `integration/pre-dec339-platform-baseline-20261012` to the accepted R1 source plus its original evidence/canonicalization and this administrative review record. Later commits after verified source are documentation/evidence only and do **not** claim a second build verification. The integration candidate includes the exact verified software source in its ancestry.
+- **Current master inspected:** `caf4a03418b89b57893e3bd5d4c6f89c28604242`, an ancestor of the candidate (no missing master-exclusive commit); recheck exact refs with a lease immediately before an owner-authorized merge. No automatic merge or force mutation. Promotion remains subject to the owner choosing an explicit master action under gate 4. Until that action, PR #150 is DRAFT and unmerged.
+- **Separate deferred gate:** G1 unresolved live S09 / `data.json` integrity is **NOT** an accepted physical result and blocks release, activation and Stage 3; DEC-339 is excluded from this promotion.

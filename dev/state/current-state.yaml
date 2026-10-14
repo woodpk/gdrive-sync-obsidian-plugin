@@ -7,11 +7,10 @@ status: "REVIEW"
 last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
 last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
 blockers:
-  - "R1 defect is source-corrected and PHX-CI PASS on exact source 5078ad72a48df1c327b96fe781b1c7fbf0765509 (run 0dfc5f13-8da0-4f08-addc-caab4c913216); independent read-only R1-only reassessment remains required before PR #150 promotion."
-  - "R1 shipping artifact SHA update is PHX-CI matched but remains a protected accepted-identity rebaseline subject to independent governance review/acceptance, not automatic promotion."
+  - "Owner-controlled platform-only promotion gate 4 remains pending; independent F1/F2 and R1 approvals do not authorize an automatic master merge."
   - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
   - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
-next_action: "Assign independent READ-ONLY R1 focused reassessment at exact software source 5078ad72a48df1c327b96fe781b1c7fbf0765509 and PHX-CI run 0dfc5f13-8da0-4f08-addc-caab4c913216 using dev/state/handoffs/pre-dec339-r1-independent-reassessment.md. F1/F2 and master governance accepted by prior reviewer; do not re-review them absent newly demonstrated regression. No merge or activation."
+next_action: "Request explicit owner decision for pre-DEC339 platform-only master promotion under dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md gate 4, anchored to verified R1 software 5078ad72a48df1c327b96fe781b1c7fbf0765509 and current master caf4a03418b89b57893e3bd5d4c6f89c28604242. Recheck both exact Git refs immediately before any authorized fast-forward; no merge or activation without authorization."
 updated_at: "2026-10-13"
 
 context:
@@ -22,7 +21,10 @@ context:
     baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
     baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
     r1_correction_branch: "fix/pre-dec339-r1-authoritative-receipt-20261013"
-    r1_source_qualification: "PHX_CI_PASS_INDEPENDENT_REVIEW_PENDING"
+    r1_source_qualification: "PHX_CI_PASS_AND_R1_INDEPENDENTLY_APPROVED_MASTER_PROMOTION_PENDING"
+    r1_independent_review_record: "dev/reviews/pre-dec339-r1-20261013/independent-reassessment.md"
+    r1_independent_review_verdict: "APPROVE_R1_ONLY"
+    owner_master_promotion_authorized: false
     r1_verified_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
     r1_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
     r1_original_evidence_commit_sha: "aa8cbf22933591c88b1e4abe32dfcc97cb47ccc3"
@@ -42,7 +44,7 @@ context:
     baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
     bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
     bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
-    baseline_independent_review: "F1/F2 and master governance PASS by independent reviewer at 33536500f5fc7afa4002acc7ab87fb88075add15; reviewer REJECT on R1 only. R1 now PHX-CI PASS but R1 independent reassessment pending; see PR 150"
+    baseline_independent_review: "F1/F2, master governance and platform boundaries PASS by original reviewer; R1 independently APPROVE at 5078ad72a48df1c327b96fe781b1c7fbf0765509; owner gate 4 remains pending. G1 physical S09/data.json deferred."
     commits_pre_dec339_ahead: 1612
     commits_master_exclusive: 26
     master_promoted: false
@@ -66,10 +68,10 @@ context:
     - "PHASE_9_UPDATE_PATH_REFERENCES"
   product_workstream_context: "WS-07-brain-verification-platform"
   retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
-  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; BASELINE_PHXCI_PASS_INDEPENDENT_REVIEW_PENDING"
+  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; PRE_DEC339_PLATFORM_REVIEW_PASSED_OWNER_PROMOTION_PENDING"
   s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
   stage_3_started: false
-  verification_note: "The historical accepted substantive source remains the exact green R7 source above, but the previously recorded run ID 38b52d07-dce9-4e2f-aa61-3fd7188703f7 is not present among the 105 canonical dev/test-results run directories after migration and is therefore no longer asserted as canonical evidence identity. Phase 10 implementation includes PHX-CI-consumed canonical dev-root enforcement and a post-build main.js identity gate inside the repository check, with regression coverage for both. No Phase-10 PASS is claimed yet; the new deployed-runtime PHX-CI run will establish the next authoritative source/run/evidence identity."
+  verification_note: "Historical R7 migration metadata above is retained as history. Current pre-DEC339 platform software SHA 5078ad72a48df1c327b96fe781b1c7fbf0765509 has exact-source PHX-CI PASS run 0dfc5f13-8da0-4f08-addc-caab4c913216 and owner-supplied R1 independent APPROVE. The PR #150 platform-only owner promotion gate remains pending; no DEC-339 activation or S09 physical acceptance."
   authority:
     decision_register: "dev/authority/decision-register.yaml"
     target_system: "dev/planning/01-target-system/target-system-specification.md"
