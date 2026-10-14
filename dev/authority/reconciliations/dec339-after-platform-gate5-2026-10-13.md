@@ -39,3 +39,10 @@
 - Tests include negative development cases for missing `main.js` and invalid package identity, rejection of unauthenticated development mode, and promotion exact-hash enforcement.
 - **Status: new corrected source NOT YET PHX-CI VERIFIED.** A PHX-CI run of this changed development gate is required for the new software/tests (not to regenerate old evidence). The previous blocked source must not be rerun. No production activation or release is authorized.
 
+
+## 2026-10-14 — gate 2 closed by exact-source PHX-CI
+
+- Corrected integrated source `5861b8b2861f9c38ea659be7c7cfcf78527da4d7`, verified tree `f062ce0606c042e3a9284f1a66582b0070bb453f`, pinned PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. Run `ad77ffcc-cf2b-4f99-8d08-97170bb0be2f`, **11/11 PASS**, **402/402 focused**, **985/985 product**; check/build/repository/artifact PASS, framework core **4,000/4,000** PASS.
+- Actual generated `main.js` 904507 bytes, SHA-256 `57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c`. `BRAIN_ARTIFACT_PURPOSE=development` and `BVP_CHANGE_CLASS=authorized-governance`; PHX-CI observed and recorded the hash. This artifact has **not** been independently release-approved or pinned for promotion. Default/promotion check retains the previously approved hash allowlist.
+- PHX-CI original evidence commit `8491318b4e8d6901d810fa753be6dec16b8c8afb` is directly descended from the tested source; original published JSON `356b21ccafc8703006953159560457d7148996b4`, Markdown `839bd7ba627900ef301160bfbfb9dc048f2f498f`, terminal `4be838bb41be02348a6f61a0f5d51ee1c3e6c07b`. Identical blobs are available under `dev/test-results/ad77ffcc-cf2b-4f99-8d08-97170bb0be2f/`; preservation did not rerun SUT tests.
+- **Gate 2 complete. Gate 3 pending:** independent **combined integration**, including DEC-340 development/release controls, at `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-post-platform-integration-independent-reassessment.md`. Owner-controlled Gate 4 is **not authorized**, and G1 physical acceptance/activation/release remain BLOCKED.

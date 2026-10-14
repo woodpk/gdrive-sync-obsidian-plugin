@@ -3,15 +3,15 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-05-integrated-sync-product"
 active_build_unit: "DEC339_POST_PLATFORM_SCOPED_INTEGRATION"
-status: "IN_PROGRESS"
+status: "REVIEW"
 last_accepted_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
-last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
+last_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
 blockers:
-  - "Scoped DEC-339 candidate combines previously verified sources, but its exact integrated source has NOT passed PHX-CI or independent integration assessment."
-  - "DEC-340 bounded development-artifact observation correction is unverified; no new bundle hash has promotion approval and the unchanged frozen release hashes still gate deployment."
+  - "Combined DEC-339 / DEC-340 source has PHX-CI PASS, but independent read-only combined integration assessment is pending."
+  - "New development main.js SHA is observed but not release-approved; separate owner-controlled master promotion and eventual exact-hash release gates remain pending."
   - "S09A physical acceptance remains incomplete; data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Run pinned PHX-CI against the new corrected DEC-340 integration source with explicit BRAIN_ARTIFACT_PURPOSE=development plus BVP_CHANGE_CLASS=authorized-governance, publish exact-source evidence. Preserve prior failed run dd55aa0d-bc3e-483c-8c76-95be5b8d03b7 and do not rerun its unchanged SUT. After PHX-CI PASS, obtain focused independent integration reassessment before owner-controlled promotion; no activation."
-updated_at: "2026-10-13"
+next_action: "Assign separate READ-ONLY combined integration reassessment at dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-post-platform-integration-independent-reassessment.md; review exact verified software 5861b8b2861f9c38ea659be7c7cfcf78527da4d7, PHX-CI ad77ffcc-cf2b-4f99-8d08-97170bb0be2f, evidence commit 8491318b4e8d6901d810fa753be6dec16b8c8afb. No re-verification of unchanged source; no master promotion pending explicit owner decision; no activation or release."
+updated_at: "2026-10-14"
 
 context:
   platform_baseline_promotion:
@@ -54,7 +54,18 @@ context:
     dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
     dec339_gate5_candidate_branch: "integration/dec339-after-platform-gate5-20261013"
     dec339_gate5_predecessor_master_sha: "429c4b947a2ec6b50f4c25c1f363665125286f6e"
-    dec339_gate5_status: "DEVELOPMENT_ARTIFACT_GATE_CORRECTION_UNVERIFIED"
+    dec339_gate5_status: "PHX_CI_PASS_INDEPENDENT_COMBINED_REVIEW_PENDING"
+    dec339_gate5_verified_software_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
+    dec339_gate5_verified_software_tree: "f062ce0606c042e3a9284f1a66582b0070bb453f"
+    dec339_gate5_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
+    dec339_gate5_phx_ci_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+    dec339_gate5_original_evidence_commit: "8491318b4e8d6901d810fa753be6dec16b8c8afb"
+    dec339_gate5_artifact_path: "main.js"
+    dec339_gate5_artifact_bytes: 904507
+    dec339_gate5_development_artifact_sha256: "57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c"
+    dec339_gate5_artifact_release_approved: false
+    dec339_gate5_independent_review_task: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-post-platform-integration-independent-reassessment.md"
+    dec339_gate5_master_promotion_authorized: false
     dec339_sha_governance_decision: "DEC-340"
     dec339_prior_blocked_run_id: "dd55aa0d-bc3e-483c-8c76-95be5b8d03b7"
     dec339_prior_blocked_source_sha: "49415dd335c7a15da9644b6880482f5e44689191"
