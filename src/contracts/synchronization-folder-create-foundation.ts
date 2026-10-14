@@ -1,4 +1,6 @@
+import type { DriveResult, ManagedRemoteIdentity } from "./google-drive";
 import type {
+  ContentEvidence,
   EntityKind,
   MutationIntentId,
   ObservationToken,
@@ -10,6 +12,7 @@ import type {
 } from "./common";
 import {
   restartRecoveryDirective,
+  type CanonicalFileContentProof,
   type AuthoritativeBaseTransition,
   type DurableRemoteChangeBatch,
   type LocalMutationTransaction,
@@ -23,6 +26,77 @@ import {
   type SynchronizationAuthoritySaveResult,
   type SynchronizationCancellationSignal,
 } from "./synchronization-foundation";
+
+/**
+ * Additive Phase 6 file-create restart-recovery observation contract.
+ *
+ * The frozen synchronization-foundation predecessor remains byte-identical.
+ * This successor seam adds exact reserved-ID and logical-target observation
+ * needed to distinguish verified effect, verified-not-applied, conflict, and
+ * unresolved recovery without authorizing mutation.
+ */
+export type RemoteFileCreatePhysicalMutationDescriptor =
+  Extract<RecoverablePhysicalMutationDescriptor, { readonly kind: "remote-file" }> & {
+    readonly mutationKind: "create";
+    readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-file-create" }>;
+  };
+
+export type RemoteFileCreateObservation =
+  | { readonly status: "authoritative-absent"; readonly reservedRemoteObjectId: RemoteObjectId }
+  | { readonly status: "file"; readonly targetPath: VaultPath; readonly remoteObjectId: RemoteObjectId; readonly content: ContentEvidence }
+  | { readonly status: "occupied"; readonly targetPath: VaultPath; readonly remoteObjectId: RemoteObjectId; readonly entityKind: "file" | "folder" }
+  | { readonly status: "unobservable"; readonly reason: string };
+
+export interface RemoteFileCreateRecoveryReadPort {
+  observeFileCreateRecovery(
+    descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+    cancellation?: SynchronizationCancellationSignal,
+  ): Promise<RemoteFileCreateObservation>;
+}
+
+export type RemoteFileCreateRecoveryOutcome =
+  | { readonly status: "verified-effect"; readonly proof: { readonly remoteObjectId: RemoteObjectId; readonly targetPath: VaultPath; readonly intendedContent: CanonicalFileContentProof } }
+  | { readonly status: "verified-not-applied"; readonly reason: string }
+  | { readonly status: "conflict-preserved"; readonly reason: string }
+  | { readonly status: "outcome-unknown"; readonly reason: string };
+
+export function verifyRemoteFileCreate(
+  descriptor: RemoteFileCreatePhysicalMutationDescriptor,
+  observation: RemoteFileCreateObservation,
+): RemoteFileCreateRecoveryOutcome {
+  const mutation = descriptor.remoteMutation;
+  if (descriptor.mutationKind !== "create"
+    || mutation.kind !== "reserved-file-create"
+    || descriptor.targetPath !== mutation.path
+    || descriptor.intendedContent.hash !== mutation.intendedContent.hash
+    || descriptor.intendedContent.sizeBytes !== mutation.intendedContent.sizeBytes) {
+    return { status: "outcome-unknown", reason: "remote-file-create-descriptor-inconsistent" };
+  }
+  if (observation.status === "unobservable") return { status: "outcome-unknown", reason: observation.reason };
+  if (observation.status === "authoritative-absent") {
+    return observation.reservedRemoteObjectId === mutation.reservedRemoteObjectId
+      ? { status: "verified-not-applied", reason: "reserved-remote-file-authoritatively-absent" }
+      : { status: "outcome-unknown", reason: "remote-file-absence-did-not-check-reserved-identity" };
+  }
+  if (observation.status === "occupied") {
+    return { status: "conflict-preserved", reason: "remote-file-logical-path-occupied-by-non-authoritative-object" };
+  }
+  if (observation.remoteObjectId !== mutation.reservedRemoteObjectId || observation.targetPath !== descriptor.targetPath) {
+    return { status: "conflict-preserved", reason: "remote-file-create-identity-or-path-mismatch" };
+  }
+  if (observation.content.hash !== descriptor.intendedContent.hash
+    || observation.content.sizeBytes !== descriptor.intendedContent.sizeBytes) {
+    return { status: "conflict-preserved", reason: "remote-file-create-content-mismatch" };
+  }
+  return {
+    status: "verified-effect",
+    proof: {
+      remoteObjectId: observation.remoteObjectId,
+      targetPath: observation.targetPath,
+      intendedContent: descriptor.intendedContent,
+    },
+  };
+}
 
 /**
  * Additive Phase 6 v1.1 folder-create recovery contract.
@@ -60,7 +134,7 @@ export interface RemoteFolderCreatePhysicalMutationDescriptor {
   readonly parentRemoteObjectId: RemoteObjectId;
   readonly pathAuthority: FolderCreatePathAuthority;
   /** Reserved Drive identity must be durable before dispatch and reused after restart. */
-  readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }>;
+  readonly remoteMutation: Extract<RemoteMutationIdentity, { readonly kind: "reserved-folder-create" }> & { readonly parentRemoteObjectId?: RemoteObjectId };
 }
 
 export type FolderCreatePhysicalMutationDescriptor =
@@ -186,6 +260,8 @@ export type RemoteFolderCreateObservation =
       readonly pathComparisonKey: string;
       readonly remoteObjectId: RemoteObjectId;
       readonly parentRemoteObjectId: RemoteObjectId;
+      /** Read-only proof for a legacy top-level intent that recorded the managed root instead of its physical domain parent. */
+      readonly verifiedLegacyManagedRootParentId?: RemoteObjectId;
     }
   | {
       readonly status: "occupied";
@@ -217,6 +293,8 @@ export type RemoteFolderCreateObservation =
  * `outcome-unknown` without redispatching merely because the pre-crash response was lost.
  */
 export interface RemoteFolderCreateRecoveryReadPort {
+  /** Authoritatively resolves the exact intended Drive parent before durable intent persistence. */
+  resolveFolderCreatePhysicalParent?(root: ManagedRemoteIdentity, path: VaultPath): Promise<DriveResult<RemoteObjectId>>;
   observeFolderCreateRecovery(
     descriptor: RemoteFolderCreatePhysicalMutationDescriptor,
     cancellation?: SynchronizationCancellationSignal,
@@ -251,7 +329,8 @@ export function folderCreateDescriptorIsSelfConsistent(descriptor: FolderCreateP
   if (descriptor.targetPath !== descriptor.pathAuthority.targetPath) return false;
   if (descriptor.kind === "remote-folder-create") {
     return descriptor.intentId === descriptor.remoteMutation.intentId
-      && descriptor.targetPath === descriptor.remoteMutation.path;
+      && descriptor.targetPath === descriptor.remoteMutation.path
+      && (descriptor.remoteMutation.parentRemoteObjectId === undefined || descriptor.remoteMutation.parentRemoteObjectId === descriptor.parentRemoteObjectId);
   }
   return true;
 }
@@ -314,8 +393,10 @@ export function verifyRemoteFolderCreate(
   if (observation.status === "occupied") {
     return { status: "conflict-preserved", reason: "remote-folder-logical-path-occupied-by-non-authoritative-object" };
   }
+  const legacyTopLevelParentProven = descriptor.remoteMutation.parentRemoteObjectId === undefined
+    && observation.verifiedLegacyManagedRootParentId === descriptor.parentRemoteObjectId;
   if (observation.remoteObjectId !== reservedRemoteObjectId
-    || observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId) {
+    || (observation.parentRemoteObjectId !== descriptor.parentRemoteObjectId && !legacyTopLevelParentProven)) {
     return { status: "conflict-preserved", reason: "remote-folder-identity-or-parent-mismatch" };
   }
   return {

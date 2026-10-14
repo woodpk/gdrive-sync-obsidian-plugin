@@ -1,0 +1,70 @@
+phx-ci standardized local verification
+Run name: operator-bvp-s08f-desktop-live-canary
+Source branch: bvp-s08f-desktop-live-canary
+Source build HEAD: 132be57f76b31f787a05683faca548e11dec09d5
+Verification checkout HEAD: 132be57f76b31f787a05683faca548e11dec09d5
+Base SHA: 4f9c69c38c12c09d2f06f3f966dc8519ed45a99f
+Control repository: D:\obsidian-brain-dev
+Verification worktree: C:\1eb3f959e5e74dd3bf6b1e4e7ba66665\phx-0ed43fc794e04d11\w
+Framework HEAD: 192bc722bdd886c1b18731bf5fde35ec7cfe091c
+Framework version: 0.2.0-dev.2
+Task version: 3.53.1
+Task executable: C:\Users\woodpk\.dotnet\tools\task.exe
+Started UTC: 2026-10-04T21:57:12.7858718Z
+
+===== task ci output =====
+
+task: [run:start] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Start-VerificationRun.ps1" -ProjectRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -ArtifactsPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/artifacts.json" -EvidencePath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/dev/_ca-output.md"
+verificationRun=b297b808-98db-4678-9c53-3be004dbccd2
+task: [windows:preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Invoke-RecordedStage.ps1" -Stage preflight -WorkingDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -FailureClassification "ENVIRONMENT FAILURE" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -TempRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665"
+os=Microsoft Windows NT 10.0.26200.0
+powershell=7.6.6
+task=3.53.1
+taskExecutable=C:\Users\woodpk\.dotnet\tools\task.exe
+pathWithSpaces=PASS
+task: [adapter-preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-preflight" -WorkingDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -TempRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665" -Optional
+node=v22.23.2
+npm=10.9.8
+task: [adapter-project-files] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-project-files" -WorkingDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -FailureClassification "REPOSITORY-GATE FAILURE" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -TempRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665" -Optional
+package.json=present
+package-lock.json=present
+task: [install] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Invoke-RecordedStage.ps1" -Stage install -WorkingDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -TempRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665"
+npm warn cleanup Failed to remove some directories [
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\C:\\1eb3f959e5e74dd3bf6b1e4e7ba66665\\phx-0ed43fc794e04d11\\w\\node_modules\\@esbuild',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\1eb3f959e5e74dd3bf6b1e4e7ba66665\phx-0ed43fc794e04d11\w\node_modules\@esbuild\win32-x64'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'C:\\1eb3f959e5e74dd3bf6b1e4e7ba66665\\phx-0ed43fc794e04d11\\w\\node_modules\\@esbuild\\win32-x64'
+npm warn cleanup     }
+npm warn cleanup   ],
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\C:\\1eb3f959e5e74dd3bf6b1e4e7ba66665\\phx-0ed43fc794e04d11\\w\\node_modules',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\1eb3f959e5e74dd3bf6b1e4e7ba66665\phx-0ed43fc794e04d11\w\node_modules\@types\tern\lib'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'C:\\1eb3f959e5e74dd3bf6b1e4e7ba66665\\phx-0ed43fc794e04d11\\w\\node_modules\\@types\\tern\\lib'
+npm warn cleanup     }
+npm warn cleanup   ]
+npm warn cleanup ]
+npm error code 1
+npm error path C:\1eb3f959e5e74dd3bf6b1e4e7ba66665\phx-0ed43fc794e04d11\w\node_modules\esbuild
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c node install.js
+npm error 'node' is not recognized as an internal or external command,
+npm error operable program or batch file.
+npm error A complete log of this run can be found in: C:\Users\woodpk\AppData\Local\npm-cache\_logs\2026-10-04T21_57_19_964Z-debug-0.log
+task: [evidence:render] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c/scripts/common/Write-Evidence.ps1" -FrameworkRoot "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/192bc722bdd886c1b18731bf5fde35ec7cfe091c" -ProjectRoot "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w" -ProjectName "gdrive-sync-obsidian-plugin" -RecordsDirectory "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/records" -ArtifactsPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/artifacts.json" -EvidencePath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/dev/_ca-output.md" -RequiredStages "preflight;node-preflight;node-project-files;install;typecheck;test-focused;test;build;repository-check;check;artifacts" -ToolVersionsPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/tool-versions.json" -RunIdentityPath "C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/.phx-ci/run.json" -ExpectedHead "132be57f76b31f787a05683faca548e11dec09d5" -ExpectedBaseSha "4f9c69c38c12c09d2f06f3f966dc8519ed45a99f"
+
+PHX-CI RUN RESULT
+Change-set verification: BLOCKED
+Repository verification: BLOCKED
+Overall verification: BLOCKED
+evidence: C:/1eb3f959e5e74dd3bf6b1e4e7ba66665/phx-0ed43fc794e04d11/w/dev/_ca-output.md (BLOCKED; run b297b808-98db-4678-9c53-3be004dbccd2)
+task: Failed to run task "ci": task: Failed to run task "install": exit status 1
+
+===== task ci finished =====
+Task exit code: 201
+Ended UTC: 2026-10-04T21:57:25.8605364Z

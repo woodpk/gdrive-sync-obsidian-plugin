@@ -265,7 +265,7 @@ test("LOG-03 production composition routes the same host DiagnosticLogger throug
   const driveRuntime = readFileSync("src/drive/runtime.ts", "utf8");
   const productRuntime = readFileSync("src/product/runtime.ts", "utf8");
   assert.match(driveRuntime, /new GoogleHttpTransport\([^;]*options\.diagnostics\)/s);
-  assert.match(driveRuntime, /new GoogleDriveAdapter\([^;]*options\.diagnostics\)/s);
+  assert.match(driveRuntime, /new GoogleDriveAdapter\([^;]*options\.diagnostics, options\.managedRemoteIdentity\)/s);
   assert.match(productRuntime, /createObsidianGoogleDriveBoundary\(\{[\s\S]*?diagnostics: this\.host\.diagnostics/);
   assert.match(productRuntime, /new PersistentSynchronizationStateStore\([\s\S]{0,400}?this\.host\.diagnostics/);
   assert.match(productRuntime, /new ProductSnapshotAssembler\([\s\S]{0,800}?this\.host\.diagnostics/);

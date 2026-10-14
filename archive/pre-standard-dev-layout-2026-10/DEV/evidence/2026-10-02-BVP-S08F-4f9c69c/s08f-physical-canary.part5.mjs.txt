@@ -1,0 +1,75 @@
+    `- branch head: \`${branchHead}\``,
+    `- accepted runtime source: \`${sourceCommit}\``,
+    `- disposable vault: \`${vaultPath}\``,
+    `- installed main.js size: ${validationSize}`,
+    `- installed main.js SHA-256: \`${validationHash}\``,
+    `- expected validation SHA-256: \`${expectedValidationHash}\``,
+    `- renderer validation source: \`${validationIdentity?.sourceCommit ?? '<missing>'}\``,
+    `- data.json SHA-256 before production-bundle restoration: \`${dataHashBeforeRestore}\``,
+    '- working BRAIN vault was not used.', '',
+  ].join('\n');
+  await writeEvidenceFile('installed-validation-identity.md', identityMd);
+
+  const productionMainSource = path.join(repoWorktree, 'main.js');
+  const productionManifestSource = path.join(repoWorktree, 'manifest.json');
+  const productionHash = await sha256File(productionMainSource);
+  const productionSize = (await fs.stat(productionMainSource)).size;
+  if (productionHash !== expectedProductionHash || productionSize !== expectedProductionSize) fail('FAIL','production-baseline-mismatch',`Worktree production artifact mismatch: size=${productionSize} hash=${productionHash}`);
+  const productionText = await fs.readFile(productionMainSource, 'utf8');
+  const forbiddenMarkers = ['BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL','__BRAIN_BVP_MAILBOX_RUNTIME__','__BRAIN_BVP_DEVICE_AGENT_FACTORY__','BRAIN BVP Mailbox'];
+  const markerHits = forbiddenMarkers.filter(marker => productionText.includes(marker));
+  if (markerHits.length) fail('FAIL','production-bundle-validation-code-present',`Production artifact contains forbidden validation markers: ${markerHits.join(', ')}`);
+  await fs.copyFile(productionMainSource, mainJs);
+  await fs.copyFile(productionManifestSource, manifest);
+  const installedBuildIdentity = path.join(pluginDir, 'build-identity.json');
+  if (await exists(installedBuildIdentity)) await fs.rm(installedBuildIdentity, { force:true });
+  const restoredHash = await sha256File(mainJs);
+  const restoredSize = (await fs.stat(mainJs)).size;
+  const dataHashAfterRestore = await sha256File(dataJson);
+  if (restoredHash !== expectedProductionHash || restoredSize !== expectedProductionSize || dataHashAfterRestore !== dataHashBeforeRestore) fail('FAIL','production-restore-verification-failed',`Restore mismatch: size=${restoredSize} hash=${restoredHash} dataBefore=${dataHashBeforeRestore} dataAfter=${dataHashAfterRestore}`);
+  restoredProduction = { sizeBytes:restoredSize, sha256:restoredHash, forbiddenMarkerHits:markerHits, dataJsonHashBefore:dataHashBeforeRestore, dataJsonHashAfter:dataHashAfterRestore, buildIdentityRemoved:!(await exists(installedBuildIdentity)) };
+  const isolationMd = [
+    '# Production Bundle Isolation', '',
+    `- restored ordinary production main.js size: ${restoredSize}`,
+    `- restored ordinary production main.js SHA-256: \`${restoredHash}\``,
+    `- accepted ordinary production baseline SHA-256: \`${expectedProductionHash}\``,
+    `- forbidden validation marker hits: ${markerHits.length}`, 
+    `- data.json unchanged by artifact restoration: ${dataHashBeforeRestore === dataHashAfterRestore}`,
+    `- validation build-identity.json removed from installed disposable plugin: ${!(await exists(installedBuildIdentity))}`,
+    '- final repository architecture guard and source-boundary verification are delegated to authoritative PHX-CI after physical evidence publication.', '',
+  ].join('\n');
+  await writeEvidenceFile('production-bundle-isolation.md', isolationMd);
+  record('production-bundle-restoration','PASS','ordinary-production-restored',`Ordinary production artifact restored at ${restoredSize} bytes / ${restoredHash}; validation markers absent; data.json unchanged by restore.`);
+
+  physicalStatus = 'PASS';
+  classification = 'physical-canary-complete';
+  primaryReason = '';
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!message.startsWith('S08F_STOP:')) {
+    if (physicalStatus === 'BLOCKED' && classification === 'precondition-blocked') classification = 'harness-error';
+    primaryReason ||= message;
+    record('harness-terminal','FAIL',classification,primaryReason);
+  }
+} finally {
+  if (target) {
+    const shimCleanup = await restoreMailboxResultRecoveryShim(target).catch(error => ({ok:false,restored:false,error:error instanceof Error?error.message:String(error)}));
+    if (shimCleanup?.restored) record('mailbox-recovery-shim-finally','PASS','original-mailbox-restored','Finally path removed the temporary mailbox result recovery shim.',shimCleanup);
+    await stopControl(controlKey).catch(() => undefined);
+  }
+  await persistVerdict().catch(error => console.error('Unable to persist final S08F verdict evidence:', error));
+  console.log('============================================================');
+  console.log('S08F PHYSICAL CANARY SUMMARY');
+  console.log('============================================================');
+  console.log(`STATUS: ${physicalStatus}`);
+  console.log(`CLASSIFICATION: ${classification}`);
+  console.log(`SOURCE COMMIT: ${sourceCommit}`);
+  console.log(`BRANCH HEAD: ${branchHead}`);
+  console.log(`RETRY RUN: ${retryRunId}`);
+  console.log(`SCENARIO: ${scenarioId}`);
+  console.log(`STAGE COUNT: ${stages.length}`);
+  console.log(`PRIMARY REASON: ${primaryReason || 'none'}`);
+  console.log('============================================================');
+}
+
+process.exitCode = physicalStatus === 'PASS' ? 0 : physicalStatus === 'BLOCKED' ? 20 : 21;

@@ -1,4 +1,5 @@
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
+import type { ManagedRemoteIdentity } from "../contracts/google-drive";
 import { GoogleOAuthSession, ObsidianSecretStore, type OAuthClientConfiguration, type SecretStorageLike } from "./auth";
 import { GoogleDriveAdapter } from "./google-drive-port";
 import { createObsidianRequestUrlFetcher, type ObsidianRequestUrlLike } from "./obsidian-http";
@@ -10,6 +11,8 @@ export interface ObsidianGoogleDriveBoundaryOptions {
   readonly requestUrl: ObsidianRequestUrlLike;
   readonly retryPolicy?: RetryPolicy;
   readonly diagnostics?: DiagnosticLogger;
+  /** Explicit identity for this paired vault, not an account-wide root search. */
+  readonly managedRemoteIdentity?: () => ManagedRemoteIdentity | undefined;
 }
 
 /**
@@ -27,5 +30,5 @@ export function createObsidianGoogleDriveBoundary(options: ObsidianGoogleDriveBo
   const fetcher = createObsidianRequestUrlFetcher(options.requestUrl);
   const oauth = new GoogleOAuthSession(options.oauth, secrets, fetcher);
   const transport = new GoogleHttpTransport(oauth, fetcher, options.retryPolicy, undefined, undefined, undefined, options.diagnostics);
-  return { oauth, drive: new GoogleDriveAdapter(oauth, transport, secrets, options.diagnostics) };
+  return { oauth, drive: new GoogleDriveAdapter(oauth, transport, secrets, options.diagnostics, options.managedRemoteIdentity) };
 }

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/phx-1703522189c344e7/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "9e7437b7fcf767ab2a3d861aaf5012d8d5eaad9e",
+    "verifiedTree": "28286fb830f44bcb7f3bef482101c21dd9c54ec1",
+    "expectedHead": "9e7437b7fcf767ab2a3d861aaf5012d8d5eaad9e",
+    "baseSha": "7b4297adceb2fd6268a5801a207b7dce1f7b7728"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-09T19:38:24.4993157Z",
+  "endedAt": "2026-10-09T19:38:43.4508834Z",
+  "stages": [
+    {
+      "exitCode": 0,
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "classification": "NONE",
+      "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+      "stderr": "",
+      "name": "preflight",
+      "startedAt": "2026-10-09T19:38:25.1167602Z",
+      "endedAt": "2026-10-09T19:38:26.0080844Z",
+      "result": "PASS",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/'"
+    },
+    {
+      "result": "PASS",
+      "startedAt": "2026-10-09T19:38:26.614564Z",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/phx-1703522189c344e7/w' -OutputPath 'C:/phx-1703522189c344e7/w/.phx-ci/tool-versions.json'",
+      "endedAt": "2026-10-09T19:38:28.1366838Z",
+      "classification": "NONE",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "exitCode": 0,
+      "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+      "name": "node-preflight",
+      "stderr": ""
+    },
+    {
+      "classification": "NONE",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "result": "PASS",
+      "startedAt": "2026-10-09T19:38:28.7715049Z",
+      "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/phx-1703522189c344e7/w'",
+      "endedAt": "2026-10-09T19:38:29.5059036Z",
+      "name": "node-project-files",
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "startedAt": "2026-10-09T19:38:30.1281683Z",
+      "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+      "name": "install",
+      "endedAt": "2026-10-09T19:38:35.7022632Z",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 5s\n\nfound 0 vulnerabilities\n",
+      "command": "npm ci",
+      "result": "PASS",
+      "classification": "NONE",
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "result": "FAIL",
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\nsrc/drive/transport.ts(141,5): error TS2322: Type 'Promise<{ readonly ok: false; readonly signal: DriveSignal; } | { readonly ok: true; readonly value: Response; } | { ok: boolean; signal: { readonly kind: \"authentication-required\" | \"transient-failure\" | \"permission-denied\"; readonly detail?: string | undefined; }; value?: undefined; } | { ...; }>' is not assignable to type 'Promise<DriveResult<Response>>'.\r\n  Type '{ readonly ok: false; readonly signal: DriveSignal; } | { readonly ok: true; readonly value: Response; } | { ok: boolean; signal: { readonly kind: \"authentication-required\" | \"transient-failure\" | \"permission-denied\"; readonly detail?: string | undefined; }; value?: undefined; } | { ...; }' is not assignable to type 'DriveResult<Response>'.\r\n    Type '{ ok: boolean; signal: { readonly kind: \"authentication-required\" | \"transient-failure\" | \"permission-denied\"; readonly detail?: string; }; value?: undefined; }' is not assignable to type 'DriveResult<Response>'.\r\n      Type '{ ok: boolean; signal: { readonly kind: \"authentication-required\" | \"transient-failure\" | \"permission-denied\"; readonly detail?: string; }; value?: undefined; }' is not assignable to type '{ readonly ok: true; readonly value: Response; }'.\r\n        Types of property 'ok' are incompatible.\r\n          Type 'boolean' is not assignable to type 'true'.\r\n",
+      "endedAt": "2026-10-09T19:38:42.2227423Z",
+      "exitCode": 2,
+      "startedAt": "2026-10-09T19:38:36.3799501Z",
+      "command": "npm run typecheck",
+      "stderr": "",
+      "runId": "8af6c21f-fddd-4d49-9da0-d40e945584f8",
+      "name": "typecheck",
+      "classification": "PRODUCT FAILURE"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}

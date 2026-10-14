@@ -4,7 +4,7 @@
   "adapter": "node-typescript",
   "framework": {
     "version": "0.2.0-dev.2",
-    "sha": "f27088d51bfb62b4d6f14a1adc2213415766c24a",
+    "sha": "69c4aa077d4a1a46d1e85e59f39d36285be99e83",
     "pinPolicy": "exact"
   },
   "expectedArtifacts": [
@@ -17,5 +17,8 @@
   "repositoryPolicy": {
     "requiredPaths": [],
     "prohibitedChangedPaths": []
+  },
+  "commands": {
+    "repositoryCheck": "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js"
   }
 }

@@ -1,0 +1,84 @@
+schema_version: 1
+project: "woodpk/gdrive-sync-obsidian-plugin"
+lifecycle_stage: "STAGE_2A_PHASE_6"
+active_workstream: "WS-07-brain-verification-platform"
+active_build_unit: "PRE_DEC339_PLATFORM_BASELINE_INTEGRATION"
+status: "REVIEW"
+last_accepted_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+last_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
+blockers:
+  - "Owner-controlled platform-only promotion gate 4 remains pending; independent F1/F2 and R1 approvals do not authorize an automatic master merge."
+  - "Historical top-level dev/_ca-output.md at pre-DEC339 SHA records BLOCKED S09A focused physical battery; it does not certify this platform baseline."
+  - "S09A live acceptance is incomplete; earlier data.json loss/corruption root cause unresolved. No production activation or Stage 3 authorization."
+next_action: "Request explicit owner decision for pre-DEC339 platform-only master promotion under dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md gate 4, anchored to verified R1 software 5078ad72a48df1c327b96fe781b1c7fbf0765509 and current master caf4a03418b89b57893e3bd5d4c6f89c28604242. Recheck both exact Git refs immediately before any authorized fast-forward; no merge or activation without authorization."
+updated_at: "2026-10-13"
+
+context:
+  platform_baseline_promotion:
+    authorization: "OWNER_SELECTED_OPTION_A_PLATFORM_FIRST_ON_2026-10-12"
+    baseline_source_sha: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
+    master_source_sha_at_start: "caf4a03418b89b57893e3bd5d4c6f89c28604242"
+    baseline_merge_commit: "9b0a911079b3ff688028681505f91cdf43c431f9"
+    baseline_candidate_branch: "integration/pre-dec339-platform-baseline-20261012"
+    r1_correction_branch: "fix/pre-dec339-r1-authoritative-receipt-20261013"
+    r1_source_qualification: "PHX_CI_PASS_AND_R1_INDEPENDENTLY_APPROVED_MASTER_PROMOTION_PENDING"
+    r1_independent_review_record: "dev/reviews/pre-dec339-r1-20261013/independent-reassessment.md"
+    r1_independent_review_verdict: "APPROVE_R1_ONLY"
+    owner_master_promotion_authorized: false
+    r1_verified_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
+    r1_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
+    r1_original_evidence_commit_sha: "aa8cbf22933591c88b1e4abe32dfcc97cb47ccc3"
+    r1_artifact_sha256: "4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52"
+    baseline_candidate_phx_ci: "PASS: 11/11 PHX-CI stages; 388/388 BVP tests; 850/850 product tests"
+    baseline_verified_source_sha: "2ad791a07b210384c4572b37192407b49313a93e"
+    latest_verified_source_sha: "5078ad72a48df1c327b96fe781b1c7fbf0765509"
+    latest_verified_source_tree_sha: "322c3d638a3b7fe36fda16ffa045d4d5bf98e66b"
+    latest_phx_ci_run_id: "0dfc5f13-8da0-4f08-addc-caab4c913216"
+    latest_phx_ci_evidence_commit: "aa8cbf22933591c88b1e4abe32dfcc97cb47ccc3"
+    latest_phx_ci_qualification: "PASS 11/11; focused BVP 393/393; product 850/850; architecture guard and metrics PASS; main.js 903041 bytes SHA256 4106faaf25a4d7ba3611e32630571209fcc955f2a360702725f911257e6ade52"
+    baseline_verified_run_id: "3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
+    baseline_verified_evidence_commit_sha: "6b8ff6fd99b60aeff72e53afdda4d330cbfd67e0"
+    baseline_shipping_artifact_sha256: "e6bd40f9f780c3940de61669309b2c54732a1968d20739ecfefc1f0a710ec19e"
+    baseline_shipping_artifact_size_bytes: 902987
+    baseline_failed_run_id: "ceedd28f-408b-47c6-bea1-ac57a4599f63"
+    baseline_failed_evidence_commit: "bce853340cdccc1695e857b51ca08d86890341b0"
+    bounded_focused_test_repair_sha: "2bf6e97f75c6dddd714cdeaadfb9c756a39bbae3"
+    bounded_repair_status: "VERIFIED_IN_PHX_CI_RUN_3dc05b3e-08a8-4f3d-af25-7f653c2821e8"
+    baseline_independent_review: "F1/F2, master governance and platform boundaries PASS by original reviewer; R1 independently APPROVE at 5078ad72a48df1c327b96fe781b1c7fbf0765509; owner gate 4 remains pending. G1 physical S09/data.json deferred."
+    commits_pre_dec339_ahead: 1612
+    commits_master_exclusive: 26
+    master_promoted: false
+    inventory_activated: false
+    dec339_feature_source_sha_held_separately: "dadd62e93ba1c97cfc89ddf9fe604e3d5dc9c902"
+    tasking_record: "dev/authority/reconciliations/pre-dec339-platform-baseline-integration-2026-10-12.md"
+    historical_legacy_state_below: "Previous standardized-dev Phase-10 status retained as history; no longer current task"
+  canonical_source_branch: "automated-testing-platform-branch"
+  canonical_green_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+  current_migration_branch: "dev-directory-standardization-phase10"
+  migration_source_sha: "5b57c1ded6d314810ac2cca2a363342e67d9bee3"
+  migration_phases_completed:
+    - "PHASE_1_INVENTORY_AND_DISPOSITION"
+    - "PHASE_2_CANONICAL_DIRECTORY_SKELETON"
+    - "PHASE_3_AUTHORITY_NORMALIZATION"
+    - "PHASE_4_PLANNING_AND_WORKSTREAM_NORMALIZATION"
+    - "PHASE_5_STATE_AND_HANDOFF_NORMALIZATION"
+    - "PHASE_6_RETIRE_LEGACY_AGENT_PROMPT_HIERARCHIES"
+    - "PHASE_7_CANONICALIZE_PHX_CI_EVIDENCE"
+    - "PHASE_8_NORMALIZE_ENGINEERING_SCRIPTS"
+    - "PHASE_9_UPDATE_PATH_REFERENCES"
+  product_workstream_context: "WS-07-brain-verification-platform"
+  retained_future_task_contracts: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/"
+  automated_testing_platform_status: "S09A_CANARY_PERFORMED; BROADER_S09_ACCEPTANCE_INCOMPLETE; PRE_DEC339_PLATFORM_REVIEW_PASSED_OWNER_PROMOTION_PENDING"
+  s09_started: true  # historical S09A canary has occurred; broader S09 acceptance remains pending
+  stage_3_started: false
+  verification_note: "Historical R7 migration metadata above is retained as history. Current pre-DEC339 platform software SHA 5078ad72a48df1c327b96fe781b1c7fbf0765509 has exact-source PHX-CI PASS run 0dfc5f13-8da0-4f08-addc-caab4c913216 and owner-supplied R1 independent APPROVE. The PR #150 platform-only owner promotion gate remains pending; no DEC-339 activation or S09 physical acceptance."
+  authority:
+    decision_register: "dev/authority/decision-register.yaml"
+    target_system: "dev/planning/01-target-system/target-system-specification.md"
+    workstream_index: "dev/planning/02-workstreams/00-INDEX.md"
+    bvp_specification: "dev/planning/01-target-system/bvp-subsystem-specification.md"
+    bvp_governance_lock: "dev/authority/governance/locks/testing-platform-boundary.yaml"
+  evidence:
+    current_work_unit_surface: "dev/_ca-output.md"
+    historical_phx_ci_root: "dev/test-results/"
+    historical_run_count: 105

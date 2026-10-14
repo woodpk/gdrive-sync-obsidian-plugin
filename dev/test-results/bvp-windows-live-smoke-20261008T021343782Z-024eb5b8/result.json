@@ -1,0 +1,10 @@
+{
+  "battery": {
+    "name": "windows-live-smoke"
+  },
+  "result": {
+    "status": "failed",
+    "classification": "battery-result-not-produced",
+    "reason": "battery-result-not-produced"
+  }
+}

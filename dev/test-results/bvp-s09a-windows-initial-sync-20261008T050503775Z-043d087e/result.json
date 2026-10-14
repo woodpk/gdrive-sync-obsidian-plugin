@@ -1,0 +1,10 @@
+{
+  "battery": {
+    "name": "s09a-windows-initial-sync"
+  },
+  "result": {
+    "status": "failed",
+    "classification": "battery-result-not-produced",
+    "reason": "battery-result-not-produced"
+  }
+}

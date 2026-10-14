@@ -1,0 +1,706 @@
+import { match, notStrictEqual, strictEqual } from "node:assert";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { test } from "node:test";
+import { runArchitectureGuard, type GuardResult as GovernanceGuardResult } from "../src/architecture-governance";
+
+const repositoryRoot = resolve(__dirname, "../../../..");
+function writeText(root: string, relativePath: string, content: string): void {
+  const fullPath = join(root, ...relativePath.split("/"));
+  mkdirSync(dirname(fullPath), { recursive: true });
+  writeFileSync(fullPath, content, "utf8");
+}
+
+function boundaryManifest(): string {
+  return [
+    "schema_version: 2",
+    "status: authoritative_frozen_after_bvp_s01_persistence",
+    "name: BRAIN Verification Platform architecture boundary",
+    "",
+    "roots:",
+    "  production:",
+    "    - src/",
+    "  test_platform: test-platform/",
+    "  active_dev: dev/",
+    "  archive: archive/",
+    "",
+    "import_rules:",
+    "  production_must_not_import:",
+    "    - test-platform/",
+    "  test_platform_may_import_production_only_through_allowlist: true",
+    "  scenario_specific_production_code_allowed: false",
+    "",
+    "shipping_rules:",
+    "  production_bundle_must_exclude:",
+    "    - test-platform/",
+    "  production_validation_ui_allowed: false",
+    "  validation_device_agent_must_be_separate_artifact_or_entrypoint: true",
+    "",
+    "production_seam:",
+    "  allowlist_required: true",
+    "  max_logical_loc: 350",
+    "  max_files: 4",
+    "",
+    "complexity_budgets:",
+    "  test_platform_framework_core_logical_ts_loc_max: 4000",
+    "  live_device_agent_logical_ts_loc_max: 750",
+    "  ordinary_scenario_logical_loc_target: 120",
+    "  ordinary_scenario_logical_loc_hard_max: 200",
+    "  scenario_specific_powershell_scripts_max: 0",
+    "  bvp_powershell_scripts_max: 4",
+    "  bvp_powershell_combined_logical_loc_max: 1500",
+    "  scenario_specific_production_files_max: 0",
+    "",
+    "supervisor_owned_frozen_surfaces:",
+    "  - dev/authority/governance/locks/testing-platform-boundary.yaml",
+    "  - test-platform/src/architecture-governance.ts",
+    "  - test-platform/src/repository-check.ts",
+    "  - phx-ci.json",
+    "  - Taskfile.phx-ci.yml",
+    "  - bounded PHX-CI include block in Taskfile.yml",
+    "",
+    "archive_policy:",
+    "  archive_is_non_authoritative: true",
+    "  exclude_from_normal_grounding: true",
+    "  active_docs_must_not_depend_on_archived_prompts: true",
+    "",
+  ].join("\n");
+}
+
+function createBaselineFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), "brain-bvp-architecture-guard-"));
+
+  writeText(root, "src/main.ts", 'export const productionValue = "production";\n');
+  writeText(
+    root,
+    "test-platform/src/platform-root.ts",
+    'export const platformValue = "test-only";\n',
+  );
+  writeText(
+    root,
+    "test-platform/test/platform-root.test.ts",
+    'import { platformValue } from "../src/platform-root";\nvoid platformValue;\n',
+  );
+  writeText(
+    root,
+    "scripts/build.mjs",
+    [
+      'import { build } from "esbuild";',
+      'await build({ entryPoints: ["src/main.ts"], outfile: "main.js" });',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    root,
+    "scripts/verify-build.mjs",
+    'export const artifact = "main.js";\n',
+  );
+  writeText(
+    root,
+    "tsconfig.json",
+    JSON.stringify(
+      {
+        compilerOptions: { target: "ES2022" },
+        include: ["src/**/*.ts"],
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  writeText(
+    root,
+    "package.json",
+    JSON.stringify(
+      {
+        name: "architecture-guard-fixture",
+        private: true,
+        main: "main.js",
+        scripts: {
+          build: "node scripts/build.mjs && node scripts/verify-build.mjs",
+          "test:bvp-root": "tsc -p test-platform/tsconfig.json",
+        },
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  writeText(
+    root,
+    "dev/authority/governance/locks/testing-platform-boundary.yaml",
+    boundaryManifest(),
+  );
+  writeText(
+    root,
+    "dev/planning/01-target-system/bvp-subsystem-specification.md",
+    "Historical BVP material may be retained under archive/ as non-authoritative evidence only.\n",
+  );
+  writeText(root, "main.js", 'console.log("production bundle");\n');
+
+  return root;
+}
+
+interface GuardResult {
+  readonly status: number;
+  readonly output: string;
+}
+
+function runGuard(root: string, extraArgs: readonly string[] = []): GuardResult {
+  const changedPaths: string[] = [];
+  let changeClass: "ordinary" | "authorized-governance" = "ordinary";
+  for (let index = 0; index < extraArgs.length; index += 2) {
+    const name = extraArgs[index];
+    const value = extraArgs[index + 1];
+    if (name === "-ChangedPath" && value !== undefined) changedPaths.push(value);
+    else if (name === "-ChangeClass" && value !== undefined) {
+      changeClass = value as "ordinary" | "authorized-governance";
+    }
+  }
+  const result: GovernanceGuardResult = runArchitectureGuard({
+    repoRoot: root,
+    changedPaths,
+    changeClass,
+  });
+  return { status: result.exitCode, output: result.output };
+}
+
+function withFixture(run: (root: string) => void): void {
+  const root = createBaselineFixture();
+  try {
+    run(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function assertPass(result: GuardResult): void {
+    strictEqual(result.status, 0, result.output);
+  match(result.output, /ARCH_GUARD_RESULT=PASS violations=0/);
+}
+
+function assertFailsWithRule(result: GuardResult, rule: string): void {
+    notStrictEqual(result.status, 0, result.output);
+  match(result.output, new RegExp(`rule=${rule}\\b`));
+  match(result.output, /ARCH_GUARD_RESULT=FAIL violations=\d+/);
+}
+
+test("architecture guard is implemented in the PHX-CI-consumed TypeScript surface", () => {
+  const source = readFileSync(
+    join(repositoryRoot, "test-platform", "src", "architecture-governance.ts"),
+    "utf8",
+  );
+  match(source, /export function runArchitectureGuard/);
+  match(source, /ARCH_GUARD_RESULT=PASS violations=0/);
+  strictEqual(/(?:pwsh|powershell).*Test-TestingArchitectureGuard/i.test(source), false);
+});
+
+test("architecture guard passes the actual BRAIN repository baseline", () => {
+  assertPass(runGuard(repositoryRoot));
+});
+
+test("architecture guard passes a compliant baseline fixture", () => {
+  withFixture((root) => {
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard fails closed when the boundary manifest is missing", () => {
+  withFixture((root) => {
+    rmSync(join(root, "dev", "authority", "governance", "locks", "testing-platform-boundary.yaml"));
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_MISSING");
+  });
+});
+
+test("architecture guard fails closed when required manifest authority is incomplete", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      [
+        "schema_version: 2",
+        "status: authoritative",
+        "roots:",
+        "  production:",
+        "    - src/",
+        "  test_platform: test-platform/",
+        "",
+      ].join("\n"),
+    );
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_INVALID");
+  });
+});
+
+test("architecture guard rejects an archive nested under active dev", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      boundaryManifest().replace("  archive: archive/", "  archive: dev/archive/"),
+    );
+    assertFailsWithRule(runGuard(root), "BOUNDARY_MANIFEST_INVALID");
+  });
+});
+
+test("architecture guard consumes manifest-rebound architecture roots", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest()
+      .replace("  test_platform: test-platform/", "  test_platform: verification-platform/")
+      .replaceAll("    - test-platform/", "    - verification-platform/");
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "verification-platform/src/platform-root.ts",
+      'export const platformValue = "test-only";\n',
+    );
+    writeText(
+      root,
+      "src/manifest-root-violation.ts",
+      'import { platformValue } from "../verification-platform/src/platform-root";\nvoid platformValue;\n',
+    );
+    assertFailsWithRule(runGuard(root), "PRODUCTION_IMPORTS_TEST_PLATFORM");
+  });
+});
+
+test("architecture guard rejects production imports from test-platform", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "src/bad-import.ts",
+      'import { platformValue } from "../test-platform/src/platform-root";\nvoid platformValue;\n',
+    );
+    assertFailsWithRule(runGuard(root), "PRODUCTION_IMPORTS_TEST_PLATFORM");
+  });
+});
+
+test("architecture guard consumes the manifest-approved production seam", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest().replace(
+      "  allowlist_required: true\n  max_logical_loc: 350",
+      "  allowlist_required: true\n  approved_imports:\n    - src/main.ts\n  max_logical_loc: 350",
+    );
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "test-platform/test/approved-seam.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard treats absent approved imports as a valid empty allowlist", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "test-platform/test/unapproved-seam-absent.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+    );
+  });
+});
+
+test("architecture guard treats inline empty approved imports as a valid empty allowlist", () => {
+  withFixture((root) => {
+    const manifest = boundaryManifest().replace(
+      "  allowlist_required: true\n  max_logical_loc: 350",
+      "  allowlist_required: true\n  approved_imports: []\n  max_logical_loc: 350",
+    );
+    writeText(
+      root,
+      "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      manifest,
+    );
+    writeText(
+      root,
+      "test-platform/test/unapproved-seam-empty.test.ts",
+      'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+    );
+  });
+});
+
+test("architecture guard rejects actual production build inclusion of test-platform", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "scripts/build.mjs",
+      [
+        'import { build } from "esbuild";',
+        'await build({ entryPoints: ["test-platform/src/platform-root.ts"], outfile: "main.js" });',
+        "",
+      ].join("\n"),
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "PRODUCTION_BUILD_REFERENCES_TEST_PLATFORM",
+    );
+  });
+});
+
+test("architecture guard ignores inert test-platform text in build source", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "scripts/build.mjs",
+      [
+        'import { build } from "esbuild";',
+        '// entryPoints: ["test-platform/src/platform-root.ts"]',
+        'const note = "test-platform/src/platform-root.ts is not a build input";',
+        'const unrelated = { entryPoints: ["test-platform/src/platform-root.ts"] };',
+        'await build({ entryPoints: ["src/main.ts"], outfile: "main.js" });',
+        "void note;",
+        "void unrelated;",
+        "",
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard rejects shipping sentinel in main.js", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "main.js",
+      'console.log("BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL");\n',
+    );
+    assertFailsWithRule(
+      runGuard(root),
+      "PRODUCTION_BUNDLE_CONTAINS_TEST_PLATFORM",
+    );
+  });
+});
+
+test("architecture guard rejects actual production scenario control", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "src/scenario-control.ts",
+      'export const scenarioId = "BVP-C03";\n',
+    );
+    assertFailsWithRule(runGuard(root), "PRODUCTION_SCENARIO_CONTROL");
+  });
+});
+
+test("architecture guard ignores scenario-looking comments strings and unrelated terminology", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "src/scenario-prose.ts",
+      [
+        '// const scenarioId = "BVP-C03";',
+        'const note = "scenarioId BVP-C03 validationMode runScenario";',
+        'const businessScenarioDescription = "ordinary product scenario";',
+        "void note;",
+        "void businessScenarioDescription;",
+        "",
+      ].join("\n"),
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard recognizes the complete supported dependency matrix", () => {
+  const tick = String.fromCharCode(96);
+  const cases: ReadonlyArray<{
+    readonly name: string;
+    readonly source: string;
+    readonly relativePath?: string;
+  }> = [
+    {
+      name: "static-import",
+      source:
+        'import { productionValue } from "../../src/main";\nvoid productionValue;\n',
+    },
+    {
+      name: "type-only-import",
+      source:
+        'import type { ProductionType } from "../../src/main";\ntype Local = ProductionType;\nvoid (0 as unknown as Local);\n',
+    },
+    {
+      name: "re-export",
+      source: 'export { productionValue } from "../../src/main";\n',
+    },
+    {
+      name: "type-re-export",
+      source: 'export type { ProductionType } from "../../src/main";\n',
+    },
+    {
+      name: "require",
+      source:
+        'const production = require("../../src/main");\nvoid production;\n',
+    },
+    {
+      name: "dynamic-import",
+      source: 'void import("../../src/main");\n',
+    },
+    {
+      name: "template-interpolation-import",
+      source:
+        "const value = " +
+        tick +
+        "prefix $" +
+        '{await import("../../src/main")} suffix' +
+        tick +
+        ";\nvoid value;\n",
+    },
+    {
+      name: "nested-template-interpolation",
+      source:
+        "const value = " +
+        tick +
+        "outer $" +
+        "{" +
+        tick +
+        "inner $" +
+        '{await import("../../src/main")}' +
+        tick +
+        "}" +
+        tick +
+        ";\nvoid value;\n",
+    },
+    {
+      name: "normalized-relative-traversal",
+      source: 'void import("../../../src/../src/main");\n',
+      relativePath: "test-platform/test/nested/dependency.test.ts",
+    },
+    {
+      name: "dependency-after-division",
+      source:
+        'const value = total / require("../../src/main");\nvoid value;\n',
+    },
+    {
+      name: "dependency-after-control-block",
+      source:
+        'if (condition) { void condition; }\nvoid import("../../src/main");\n',
+    },
+    {
+      name: "dependency-after-class-declaration",
+      source:
+        'class Example {}\nvoid import("../../src/main");\nvoid Example;\n',
+    },
+    {
+      name: "dependency-after-function-declaration",
+      source:
+        'function example() {}\nrequire("../../src/main");\nvoid example;\n',
+    },
+  ];
+
+  for (const entry of cases) {
+    withFixture((root) => {
+      writeText(
+        root,
+        entry.relativePath ??
+          "test-platform/test/dependency-" + entry.name + ".test.ts",
+        entry.source,
+      );
+      const result = runGuard(root);
+      try {
+        assertFailsWithRule(
+          result,
+          "TEST_PLATFORM_IMPORTS_UNAPPROVED_PRODUCTION",
+        );
+      } catch (error) {
+        throw new Error(
+          entry.name + ": " + String(error) + "\n" + result.output,
+        );
+      }
+    });
+  }
+});
+
+test("architecture guard ignores dependency-shaped non-dependencies", () => {
+  const tick = String.fromCharCode(96);
+  const cases: ReadonlyArray<readonly [string, string]> = [
+    [
+      "quoted-strings",
+      [
+        'const values = [',
+        '  \'import { x } from "../../src/main";\',',
+        '  \'require("../../src/main")\',',
+        '  \'import("../../src/main")\',',
+        "];",
+        "void values;",
+        "",
+      ].join("\n"),
+    ],
+    [
+      "comments",
+      [
+        '// import { x } from "../../src/main";',
+        '/* require("../../src/main"); import("../../src/main"); */',
+        "export const harmless = true;",
+        "",
+      ].join("\n"),
+    ],
+    [
+      "plain-template-text",
+      "const value = " +
+        tick +
+        'require("../../src/main") import("../../src/main")' +
+        tick +
+        ";\nvoid value;\n",
+    ],
+    [
+      "regex-assignment",
+      'const value = /require("..\\/..\\/src\\/main")|import("..\\/..\\/src\\/main")/g;\nvoid value;\n',
+    ],
+    [
+      "regex-after-if",
+      'if (condition) /require("..\\/..\\/src\\/main")/.test(text);\n',
+    ],
+    [
+      "regex-after-block",
+      'if (condition) { void condition; }\n/require("..\\/..\\/src\\/main")/.test(text);\n',
+    ],
+    [
+      "regex-after-class",
+      'class Example {}\n/require("..\\/..\\/src\\/main")/.test(text);\nvoid Example;\n',
+    ],
+    [
+      "regex-after-function",
+      'function example() {}\n/import("..\\/..\\/src\\/main")/.test(text);\nvoid example;\n',
+    ],
+    [
+      "ordinary-division",
+      'const ratio = total / count / scale;\nvoid ratio;\n',
+    ],
+    [
+      "object-literal",
+      'const value = { text: \'require("../../src/main")\' };\nconst ratio = value.count / total;\nvoid ratio;\n',
+    ],
+    [
+      "property-access-lookalikes",
+      'loader.require("../../src/main");\nloader.import("../../src/main");\n',
+    ],
+    [
+      "shadowed-require",
+      'function local(require: (name: string) => unknown) { return require("../../src/main"); }\nvoid local;\n',
+    ],
+  ];
+
+  for (const [name, source] of cases) {
+    withFixture((root) => {
+      writeText(
+        root,
+        "test-platform/test/non-dependency-" + name + ".test.ts",
+        source,
+      );
+      const result = runGuard(root);
+      try {
+        assertPass(result);
+      } catch (error) {
+        throw new Error(name + ": " + String(error) + "\n" + result.output);
+      }
+    });
+  }
+});
+
+test("architecture guard rejects executable helpers hidden beneath scenario root", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/helper.ts", "export function runScenario() { return true; }\n");
+    assertFailsWithRule(runGuard(root), "SCENARIO_MODULE_NOT_DECLARATIVE");
+  });
+});
+
+test("architecture guard rejects nested executable syntax inside defineScenario", () => {
+  for (const [name,body] of [
+    ["iife",'defineScenario({ id: "iife", description: (() => "private")() })'],
+    ["call",'defineScenario({ id: "call", description: String("private") })'],
+    ["spread",'defineScenario({ ...{ id: "spread" } })'],
+  ] as const) {
+    withFixture((root) => {
+      writeText(root, `test-platform/scenarios/${name}.ts`, 'import { defineScenario } from "../src/scenario/scenario-contract";\nexport const scenario = '+body+';\n');
+      assertFailsWithRule(runGuard(root), "SCENARIO_MODULE_NOT_DECLARATIVE");
+    });
+  }
+});
+
+test("architecture guard rejects PowerShell beneath test-platform", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/C03.ps1", 'Write-Output "bad"\n');
+    assertFailsWithRule(runGuard(root), "TEST_PLATFORM_POWERSHELL_PROHIBITED");
+  });
+});
+
+test("architecture guard rejects active archive-as-authority linkage", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/fixture-current-task.md",
+      "Execute archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md as the governing task authority.\n",
+    );
+    assertFailsWithRule(runGuard(root), "ARCHIVE_USED_AS_CURRENT_AUTHORITY");
+  });
+});
+
+test("architecture guard allows historical non-authoritative archive prose", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/fixture-history-note.md",
+      "Historical reference only: archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md is non-authoritative and must not be used as current task authority.\n",
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("architecture guard rejects ordinary changes to frozen governance", () => {
+  withFixture((root) => {
+    assertFailsWithRule(
+      runGuard(root, [
+        "-ChangedPath",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      ]),
+      "FROZEN_SURFACE_CHANGED",
+    );
+  });
+});
+
+test("architecture guard accepts explicitly authorized governance change class for frozen surface", () => {
+  withFixture((root) => {
+    assertPass(
+      runGuard(root, [
+        "-ChangeClass",
+        "authorized-governance",
+        "-ChangedPath",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      ]),
+    );
+  });
+});
+
+test("authorized governance change class exempts only frozen-surface enforcement", () => {
+  withFixture((root) => {
+    writeText(root, "test-platform/scenarios/C03.ps1", 'Write-Output "bad"\n');
+    assertFailsWithRule(
+      runGuard(root, [
+        "-ChangeClass",
+        "authorized-governance",
+        "-ChangedPath",
+        "dev/authority/governance/locks/testing-platform-boundary.yaml",
+      ]),
+      "TEST_PLATFORM_POWERSHELL_PROHIBITED",
+    );
+  });
+});

@@ -6,6 +6,8 @@ import { StateCommitCoordinator } from "../../../src/core/commit-coordinator";
 import { AuthorityCompleteExecutionCoordinator } from "../../../src/core/execution-coordinator";
 import { InMemoryRunLeasePort } from "../../../src/core/run-coordinator";
 import { createAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor";
+import { createAuthoritativeProductExecutor as createBaseAuthoritativeProductExecutor } from "../../../src/product/authoritative-production-executor-base";
+import type { RequestAttributionScope } from "../../../src/diagnostics/request-attribution";
 import { recoverOutstandingDurableIntents, reconstructDurableRecovery } from "../../../src/product/durable-intent-recovery";
 import { ProductController } from "../../../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../../../src/product/production-executor";
@@ -77,10 +79,21 @@ function mergeIntent(missing = false) {
   return { intent: intent as RecoverableOperationIntentV1_1, tx: tx as never };
 }
 function entry(pathValue: VaultPath = target, remoteObjectId = reserved, content: any = v1, kind: "file" | "folder" = "file", remoteRevision?: string): RemoteEntry { return { path: pathValue, entityKind: kind, remoteObjectId, ...(kind === "file" ? { content: { hash: content.hash, sizeBytes: content.sizeBytes, ...(remoteRevision ? { revision: remoteRevision } : {}) } } : {}), trashed: false }; }
-function fixture(canonical: CanonicalStore, entries: () => readonly RemoteEntry[]) {
+function fixture(canonical: CanonicalStore, entries: () => readonly RemoteEntry[], scopedRead?: (scope: RequestAttributionScope) => void) {
   let raw = 0;
   const local = { observe: async (pathValue: VaultPath) => ({ status: "absent", side: "local", path: pathValue }) } as unknown as LocalVaultPort;
   const drive = { observe: async (_root: RemoteObjectId, pathValue: VaultPath) => { const found = entries().find(e => e.path === pathValue); return found ? { ok: true, value: { status: "present", side: "remote", path: pathValue, entityKind: found.entityKind, remoteObjectId: found.remoteObjectId, content: found.content, stability: "stable" } } : { ok: true, value: { status: "absent", side: "remote", path: pathValue } }; }, listForReconciliation: async () => ({ ok: true, value: { entries: entries(), completeness: { status: "complete" } } }), create: async () => { raw++; throw new Error("raw create forbidden"); }, update: async () => { raw++; throw new Error("raw update forbidden"); }, move: async () => { raw++; throw new Error("raw move forbidden"); }, trash: async () => { raw++; throw new Error("raw trash forbidden"); } } as unknown as GoogleDrivePort;
+  if (scopedRead) {
+    (drive as GoogleDrivePort & {
+      withRequestAttribution?: (scope: RequestAttributionScope) => GoogleDrivePort;
+    }).withRequestAttribution = (scope: RequestAttributionScope) => ({
+      ...drive,
+      listForReconciliation: async rootId => {
+        scopedRead(scope);
+        return drive.listForReconciliation(rootId);
+      },
+    });
+  }
   return { executor: new ProductSynchronizationExecutor(local, drive, canonical as never, context, () => ({ managedRemote, remoteEnumerationComplete: true })), raw: () => raw };
 }
 function executable(content: any = v2, claimed?: RemoteObjectId) { return { operationId: createIntent().operationId, kind: "upload-create", path: target, targetSide: "remote", ...(claimed ? { remoteObjectId: claimed } : {}), contentVersion: { path: target, entityKind: "file", content: { hash: content.hash, sizeBytes: content.sizeBytes } }, authorityComplete: true, destructive: false, preconditions: [{ kind: "path-observation", side: "remote", path: target, expected: "absent" }], reasons: [] } as never; }
@@ -109,6 +122,82 @@ test("D-C11 intent-persisted retires without mutation; stale generation and malf
   const oid = id<"OperationId">("op:bad-local"), iid = id<"MutationIntentId">("intent:bad-local"), txid = id<"LocalMutationTransactionId">("tx:missing"); const malformed = new AuthorityStore([{ logicalKind: "single-effect", operationId: oid, intentId: iid, semanticAuthority: { generation: gen }, effects: [{ effectId: "effect:bad", stage: "effect-verified", verificationEvidenceRef: "proof", descriptor: { kind: "local-file", targetSide: "local", mutationKind: "create", targetPath: target, localTransactionId: txid, intendedContent: v1 } }] } as never]); assert.equal((await recoverOutstandingDurableIntents(f.executor, malformed, canonical as never, context, managedRemote)).status, "recovery-required");
 });
 
+test("D-C11 verified-not-applied restart recovery retires dispatch-authorized and outcome-unknown reserved creates only with exact absence proof", async () => {
+  for (const stage of ["dispatch-authorized", "outcome-unknown"] as const) {
+    const canonical = new CanonicalStore();
+    const authority = new AuthorityStore([createIntent(stage)]);
+    const f = fixture(canonical, () => []);
+    let reads = 0;
+    const result = await recoverOutstandingDurableIntents(
+      f.executor,
+      authority,
+      canonical as never,
+      context,
+      managedRemote,
+      {
+        remoteFileCreateRecoveryReadPort: {
+          async observeFileCreateRecovery(descriptor) {
+            reads++;
+            return { status: "authoritative-absent", reservedRemoteObjectId: descriptor.remoteMutation.reservedRemoteObjectId };
+          },
+        },
+      },
+    );
+    assert.deepEqual(result, { status: "recovered", changed: true, recoveredCount: 0, retiredCount: 1 });
+    assert.equal(reads, 1);
+    assert.equal(authority.value.operationIntents.length, 0);
+    assert.equal(canonical.saves, 0);
+    assert.equal(canonical.value.base.length, 0);
+    assert.equal(f.raw(), 0);
+  }
+});
+
+test("D-C11 reserved create absence remains unresolved without exact-ID recovery proof", async () => {
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([createIntent("outcome-unknown")]);
+  const f = fixture(canonical, () => []);
+  const result = await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote);
+  assert.equal(result.status, "recovery-required");
+  assert.equal(authority.value.operationIntents.length, 1);
+  assert.equal(canonical.saves, 0);
+  assert.equal(f.raw(), 0);
+});
+
+test("D-C11 verified-not-applied recovery does not retire partially progressed multi-effect work", async () => {
+  const seed = createIntent("outcome-unknown");
+  const progressed = {
+    logicalKind: "clean-text-merge",
+    operationId: seed.operationId,
+    intentId: seed.intentId,
+    semanticAuthority: seed.semanticAuthority,
+    effects: [
+      { ...seed.effects[0]!, effectId: "effect:verified-sibling", stage: "effect-verified", verificationEvidenceRef: "proof:sibling" },
+      { ...seed.effects[0]!, effectId: "effect:not-applied", stage: "outcome-unknown" },
+    ],
+  } as RecoverableOperationIntentV1_1;
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([progressed]);
+  const f = fixture(canonical, () => []);
+  const result = await recoverOutstandingDurableIntents(
+    f.executor,
+    authority,
+    canonical as never,
+    context,
+    managedRemote,
+    {
+      remoteFileCreateRecoveryReadPort: {
+        async observeFileCreateRecovery(descriptor) {
+          return { status: "authoritative-absent", reservedRemoteObjectId: descriptor.remoteMutation.reservedRemoteObjectId };
+        },
+      },
+    },
+  );
+  assert.equal(result.status, "recovery-required");
+  assert.equal(authority.value.operationIntents.length, 1);
+  assert.equal(canonical.saves, 0);
+  assert.equal(f.raw(), 0);
+});
+
 test("D-C12 contradictory current REMOTE identity cannot replace persisted reserved identity", async () => {
   const canonical = new CanonicalStore(); const authority = new AuthorityStore([createIntent()]); const f = fixture(canonical, () => [entry()]); const adapter = createAuthoritativeProductExecutor(f.executor, authority, canonical as never, context, managedRemote); assert.equal((await adapter.validatePreconditions(executable(v2, wrong))).status, "recovery-required"); assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "dispatch-authorized"); assert.equal(f.raw(), 0);
 });
@@ -119,6 +208,31 @@ test("D-C12 persisted update candidate identity becomes canonical", async () => 
 
 test("D-C12 clean merge requires every verified durable effect and aggregate evidence is deterministic", async () => {
   const complete = mergeIntent(false), incomplete = mergeIntent(true), entries = [entry(target, candidate)]; const one = reconstructDurableRecovery(complete.intent, priorState(), entries), two = reconstructDurableRecovery(complete.intent, priorState(), entries); assert.ok(one); assert.equal(one?.receipt.resultingRemoteObjectId, candidate); assert.equal(one?.receipt.verificationEvidenceRef, two?.receipt.verificationEvidenceRef); assert.equal(reconstructDurableRecovery(incomplete.intent, priorState(), entries), undefined); const canonical = new CanonicalStore(priorState()); const authority = new AuthorityStore([incomplete.intent], gen, [incomplete.tx]); const f = fixture(canonical, () => entries); assert.equal((await recoverOutstandingDurableIntents(f.executor, authority, canonical as never, context, managedRemote)).status, "recovery-required"); assert.equal(f.raw(), 0);
+});
+
+test("D-C11 controller resumes ordinary planning after exact reserved-create absence retires no-effect work", async () => {
+  const canonical = new CanonicalStore();
+  const authority = new AuthorityStore([createIntent("dispatch-authorized")]);
+  const f = fixture(canonical, () => []);
+  let assemblyCalls = 0, plannerCalls = 0, reads = 0;
+  const assembler = { async assembleFull() { assemblyCalls++; return { input: { snapshots: [], state: await canonical.load() }, managedRemote, localEnumeration: { status: "complete" }, remoteEnumeration: { status: "complete" }, mode: "full" }; } };
+  const plan = { planId: id<"PlanId">("plan:replanned-after-no-effect") as any, trigger: "manual", operations: [{ operationId: id<"OperationId">("op:replanned"), kind: "noop", path: target, destructive: false, preconditions: [], reasons: [] }], executionDisposition: "safe-auto-eligible", recoveryCheckpointRequired: false, globalExecutionGate: "none" } as any;
+  const recoveryPort = {
+    async observeFileCreateRecovery(descriptor: any) {
+      reads++;
+      return { status: "authoritative-absent", reservedRemoteObjectId: descriptor.remoteMutation.reservedRemoteObjectId };
+    },
+  };
+  const controller = new ProductController({ vaultIdentity: vault as never, deviceIdentity: device as never, stateContext: context, stateStore: canonical as never, authorityStore: authority, snapshotAssembler: assembler as never, executor: f.executor, conflictResolver: { assess: async () => ({ kind: "none" }) } as never, reliableRemoteMutationPort: recoveryPort as never, plannerForTrigger: () => ({ async plan() { plannerCalls++; assert.equal(authority.value.operationIntents.length, 0); return plan; } }), leasePort: new InMemoryRunLeasePort(), audit: { append: async () => undefined, read: async () => [] } as never, holderId: "test:d-c11:no-effect" });
+  const preview = await controller.previewManual();
+  assert.ok(preview);
+  assert.equal(preview?.planId, plan.planId);
+  assert.equal(plannerCalls, 1);
+  assert.equal(assemblyCalls, 2);
+  assert.equal(reads, 1);
+  assert.equal(authority.value.operationIntents.length, 0);
+  assert.equal(canonical.saves, 0);
+  assert.equal(f.raw(), 0);
 });
 
 test("D-C11 controller recovers outstanding durable work before a fresh planner returns noop", async () => {
@@ -243,4 +357,124 @@ test("LOG-05 trace reconstructs remote learning advancing semantic authority bef
   assert.equal(events[learnedIndex]?.fields?.semanticGeneration, String(learned.semanticGeneration));
   assert.equal(events[recoveryIndex]?.fields?.semanticGeneration, String(initial.semanticGeneration));
   assert.equal(events[recoveryIndex]?.fields?.reason, "persisted durable intent belongs to stale semantic generation");
+});
+
+test("S09A base durable recovery keeps active operation scope for both REMOTE convergence passes", async () => {
+  const canonical = new CanonicalStore();
+  const scope: RequestAttributionScope = {
+    runId: 52, operationIndex: 8, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const authority = Object.assign(new AuthorityStore([createIntent("dispatch-authorized")]), {
+    executionRequestAttribution: () => scope,
+  });
+  const observed: RequestAttributionScope[] = [];
+  let unscopedReads = 0;
+  const listing = async () => ({
+    ok: true as const,
+    value: { entries: [entry()], completeness: { status: "complete" as const } },
+  });
+  const drive = {
+    async listForReconciliation() {
+      unscopedReads++;
+      return listing();
+    },
+    withRequestAttribution(current: RequestAttributionScope) {
+      return {
+        listForReconciliation: async () => {
+          observed.push(current);
+          return listing();
+        },
+      };
+    },
+  };
+  const legacy = {
+    drive,
+    validatePreconditions: async () => ({ status: "valid" as const }),
+    runEvidence: () => ({ managedRemote, remoteEnumerationComplete: true }),
+  };
+  const forbiddenDispatch = () => { throw new Error("Recovery fixture must not reserve or redispatch REMOTE mutations"); };
+  const executor = createBaseAuthoritativeProductExecutor(
+    legacy as never, authority, canonical as never, context as never, managedRemote,
+    {
+      reliableRemoteMutationPort: {
+        reserveFileCreateIdentity: forbiddenDispatch,
+        reserveFolderCreateIdentity: forbiddenDispatch,
+        createReserved: forbiddenDispatch,
+        updateExisting: forbiddenDispatch,
+        moveExisting: forbiddenDispatch,
+        trashExisting: forbiddenDispatch,
+      } as never,
+    },
+  );
+  const result = await executor.execute(executable(v1));
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(unscopedReads, 0);
+  assert.equal(observed.length, 2);
+  assert.deepEqual(observed, [scope, scope]);
+  assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
+});
+
+test("S09A V1.3 matching durable-intent recovery keeps scope on actual REMOTE reads", async () => {
+  const scope: RequestAttributionScope = {
+    runId: 56, operationIndex: 9, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const seen: RequestAttributionScope[] = [];
+  const canonical = new CanonicalStore();
+  const authority = Object.assign(new AuthorityStore([createIntent()]), {
+    executionRequestAttribution: () => scope,
+  });
+  const f = fixture(canonical, () => [entry()], current => seen.push(current));
+  const executor = createAuthoritativeProductExecutor(
+    f.executor, authority, canonical as never, context as never, managedRemote,
+  );
+  const result = await executor.execute(executable(v1));
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(f.raw(), 0);
+  assert.deepEqual(seen, [scope]);
+});
+
+test("S09A V1.3 folder-create recovery scopes the frozen recovery reader without redispatch", async () => {
+  const scope: RequestAttributionScope = {
+    runId: 57, operationIndex: 10, operationKind: "upload-create", purpose: "unattributed",
+  };
+  const seen: RequestAttributionScope[] = [];
+  const canonical = new CanonicalStore();
+  const intent = folderIntent("outcome-unknown");
+  const authority = Object.assign(new AuthorityStore([intent]), {
+    executionRequestAttribution: () => scope,
+  });
+  const f = fixture(canonical, () => [entry(folder, reserved, v1, "folder")]);
+  const proof = {
+    status: "folder" as const, targetPath: folder,
+    pathComparisonKey: "folders/recovered", remoteObjectId: reserved, parentRemoteObjectId: root,
+  };
+  let unscoped = 0;
+  const reader = {
+    async observeFolderCreateRecovery() {
+      unscoped++;
+      return proof;
+    },
+    withRequestAttribution(current: RequestAttributionScope) {
+      return {
+        async observeFolderCreateRecovery() {
+          seen.push(current);
+          return proof;
+        },
+      };
+    },
+  };
+  const executor = createAuthoritativeProductExecutor(
+    f.executor, authority, canonical as never, context as never, managedRemote,
+    { remoteFolderCreateRecoveryReadPort: reader as never },
+  );
+  const operation = {
+    operationId: intent.operationId, kind: "upload-create", path: folder, targetSide: "remote",
+    authorityComplete: true, destructive: false, preconditions: [], reasons: [],
+    contentVersion: { path: folder, entityKind: "folder" },
+  } as never;
+  const result = await executor.execute(operation);
+  assert.equal(result.status, "durable-verified-success");
+  assert.equal(unscoped, 0);
+  assert.equal(f.raw(), 0);
+  assert.deepEqual(seen, [{ ...scope, purpose: "create-result-verification" }]);
 });

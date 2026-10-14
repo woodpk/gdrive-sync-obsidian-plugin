@@ -1,0 +1,482 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { spawn, spawnSync } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { createServer } from 'node:net';
+
+const require = createRequire(import.meta.url);
+
+function arg(name, fallback) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 && index + 1 < process.argv.length ? process.argv[index + 1] : fallback;
+}
+
+const vaultPath = arg('--vault');
+const repoWorktree = arg('--worktree');
+const evidenceDir = arg('--evidence-dir');
+const configuredDebugPort = Number(arg('--debug-port', '63311'));
+const sourceCommit = arg('--source-commit', '57e5be079ded16ba50b4f95c49f78a9d90b47f3f');
+const branchHead = arg('--branch-head');
+const oldRunId = 's08f-desktop-canary-4f9c69c';
+const retryRunId = 's08f-desktop-canary-4f9c69c-r2';
+const scenarioId = 's08f-desktop-live-canary-r2';
+const deviceId = 'windows-brain-patrick';
+const fixtureRoot = 'BVP-VALIDATION/s08f-desktop-canary-4f9c69c';
+const canaryRelative = 'canary.md';
+const originalCanarySourceCommit = 'e1067f5159a316f328c492837b8c6ff59e08d226';
+const canaryText = `BVP S08F desktop live canary\nsource=${originalCanarySourceCommit}\n`;
+const canaryBytes = Buffer.from(canaryText, 'utf8');
+const canaryHash = createHash('sha256').update(canaryBytes).digest('hex');
+const expectedCanaryHash = 'db03eedf8f43902405abdc0f893649a3d9b3e166e3e21d35a3e06e3c6a6e259d';
+const expectedValidationHash = '6c676900aaaf4aaa3417215d1eda2c16e578822715536ef1ffc0ca8741ffc9cf';
+const expectedProductionHash = '550ea2de0b0db90b52270bb770818cf5cd2c2ea560636cb34af0fa3138a43477';
+const expectedProductionSize = 886635;
+const pluginDir = vaultPath ? path.join(vaultPath, '.obsidian', 'plugins', 'brain-google-drive-sync') : '';
+const relayRoot = pluginDir ? path.join(pluginDir, '.bvp-relay') : '';
+const stateDir = relayRoot ? path.join(relayRoot, 'device-state') : '';
+const oldStatePath = stateDir ? path.join(stateDir, `${oldRunId}--${deviceId}.json`) : '';
+const retryStatePath = stateDir ? path.join(stateDir, `${retryRunId}--${deviceId}.json`) : '';
+const canaryPath = vaultPath ? path.join(vaultPath, ...fixtureRoot.split('/'), canaryRelative) : '';
+const probeRelative = 'duplicate-probe.md';
+const probePath = vaultPath ? path.join(vaultPath, ...fixtureRoot.split('/'), probeRelative) : '';
+const probeText = 'S08F duplicate replay probe\n';
+const probeHash = createHash('sha256').update(Buffer.from(probeText, 'utf8')).digest('hex');
+
+const stages = [];
+let target;
+let physicalStatus = 'BLOCKED';
+let classification = 'precondition-blocked';
+let primaryReason = '';
+let attempt1SafeState = null;
+let lifecycleEvidence = null;
+let scenarioResult = null;
+let safetyResults = null;
+let buildIdentity = null;
+let validationIdentity = null;
+let restoredProduction = null;
+
+function record(name, status, classificationValue, summary, details = undefined) {
+  const stage = { name, status, classification: classificationValue, summary, ...(details === undefined ? {} : { details }) };
+  stages.push(stage);
+  console.log(`[${status}] ${name}: ${summary}`);
+  return stage;
+}
+
+function fail(status, cls, reason) {
+  physicalStatus = status;
+  classification = cls;
+  primaryReason = reason;
+  throw new Error(`S08F_STOP:${status}:${cls}:${reason}`);
+}
+
+async function exists(file) {
+  try { await fs.stat(file); return true; } catch { return false; }
+}
+
+async function sha256File(file) {
+  const bytes = await fs.readFile(file);
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+async function readJson(file) {
+  return JSON.parse(await fs.readFile(file, 'utf8'));
+}
+
+async function writeJson(file, value) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(value, null, 2) + '\n', 'utf8');
+}
+
+function normalized(value) {
+  return String(value ?? '').replace(/\\/g, '/').toLowerCase();
+}
+
+function psQuote(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+
+function pwshPath() {
+  return process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
+}
+
+function obsidianExeCandidates() {
+  return [
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Obsidian', 'Obsidian.exe') : '',
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Obsidian', 'Obsidian.exe') : '',
+    process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'Obsidian', 'Obsidian.exe') : '',
+  ].filter(Boolean);
+}
+
+async function findObsidianExe() {
+  for (const candidate of obsidianExeCandidates()) if (await exists(candidate)) return candidate;
+  return undefined;
+}
+
+function inspectObsidianRuntime() {
+  const script = [
+    "$ErrorActionPreference='SilentlyContinue'",
+    "$items=@(Get-CimInstance Win32_Process -Filter \"Name='Obsidian.exe'\" | Select-Object ProcessId,ParentProcessId,CommandLine)",
+    "$pids=@($items | ForEach-Object { [int]$_.ProcessId })",
+    "$windows=@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object Id,MainWindowTitle)",
+    "$listeners=@()",
+    "if(Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue){ $listeners=@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $pids -contains [int]$_.OwningProcess } | Select-Object LocalAddress,LocalPort,OwningProcess) }",
+    "[pscustomobject]@{processes=$items;windows=$windows;listeners=$listeners}|ConvertTo-Json -Depth 6 -Compress"
+  ].join(';');
+  const result = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',script], { encoding:'utf8', windowsHide:true });
+  if (result.status !== 0) {
+    return { ok:false, error:String(result.stderr || result.stdout || '').trim(), processes:[], windows:[], listeners:[] };
+  }
+  try {
+    const value = JSON.parse(String(result.stdout || '{}').trim() || '{}');
+    const asArray = input => input === undefined || input === null ? [] : Array.isArray(input) ? input : [input];
+    return { ok:true, processes:asArray(value.processes), windows:asArray(value.windows), listeners:asArray(value.listeners) };
+  } catch (error) {
+    return { ok:false, error:`Unable to parse Obsidian runtime snapshot: ${error}`, processes:[], windows:[], listeners:[] };
+  }
+}
+
+async function allocateLoopbackPort() {
+  return await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      server.close(error => error ? reject(error) : resolve(port));
+    });
+  });
+}
+
+async function launchDebugEnabledDisposableObsidian() {
+  const executable = await findObsidianExe();
+  if (!executable) return { ok:false, classification:'obsidian-executable-unavailable', reason:'Obsidian.exe was not found in approved install locations.' };
+  const port = await allocateLoopbackPort();
+  let child;
+  try {
+    child = spawn(executable, ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`], {
+      detached:true, stdio:'ignore', windowsHide:false,
+    });
+    const launchError = await new Promise(resolve => {
+      let settled = false;
+      const finish = value => { if (!settled) { settled = true; resolve(value); } };
+      child.once('error', error => finish(error));
+      child.once('spawn', () => globalThis.setTimeout(() => finish(null), 250));
+    });
+    if (launchError) {
+      return { ok:false, classification:'obsidian-process-launch-failed', reason:launchError instanceof Error?launchError.message:String(launchError), executable, port };
+    }
+    child.unref();
+  } catch (error) {
+    return { ok:false, classification:'obsidian-process-launch-failed', reason:error instanceof Error?error.message:String(error), executable, port };
+  }
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  const vaultUri = `obsidian://open?path=${encodeURIComponent(vaultPath)}`;
+  const openResult = spawnSync(pwshPath(), ['-NoProfile','-NonInteractive','-Command',`Start-Process ${psQuote(vaultUri)}`], { encoding:'utf8', windowsHide:true });
+  if (openResult.status !== 0) {
+    return { ok:false, classification:'disposable-vault-open-failed', reason:String(openResult.stderr || openResult.stdout || '').trim(), executable, port, pid:child.pid };
+  }
+  const deadline = Date.now() + 45000;
+  let lastError = '';
+  while (Date.now() < deadline) {
+    try {
+      const match = await findRenderer([port]);
+      return { ok:true, executable, port, pid:child.pid, target:match };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+  }
+  return { ok:false, classification:'devtools-bootstrap-timeout', reason:lastError || 'No disposable-vault renderer became reachable.', executable, port, pid:child.pid };
+}
+
+async function cdpEval(webSocketUrl, expression, timeoutMs = 20000) {
+  return await new Promise((resolve, reject) => {
+    const ws = new WebSocket(webSocketUrl);
+    const requestId = 1;
+    const timer = setTimeout(() => {
+      try { ws.close(); } catch {}
+      reject(new Error('CDP Runtime.evaluate timed out.'));
+    }, timeoutMs);
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ id: requestId, method: 'Runtime.evaluate', params: { expression, awaitPromise: true, returnByValue: true } }));
+    });
+    ws.addEventListener('message', event => {
+      let payload;
+      try { payload = JSON.parse(String(event.data)); } catch { return; }
+      if (payload.id !== requestId) return;
+      clearTimeout(timer);
+      try { ws.close(); } catch {}
+      if (payload.error) return reject(new Error(`CDP error: ${JSON.stringify(payload.error)}`));
+      if (payload.result?.exceptionDetails) return reject(new Error(`Renderer exception: ${payload.result.exceptionDetails.text ?? 'unknown'}`));
+      resolve(payload.result?.result?.value);
+    });
+    ws.addEventListener('error', () => {
+      clearTimeout(timer);
+      reject(new Error('CDP WebSocket error.'));
+    });
+  });
+}
+
+async function rendererSnapshot(candidate) {
+  const expression = `(() => ({ vault: typeof globalThis.app?.vault?.adapter?.getBasePath === 'function' ? globalThis.app.vault.adapter.getBasePath() : '', visibility: globalThis.document?.visibilityState ?? 'unknown', sourceCommit: globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit ?? null, identity: globalThis.__BRAIN_BVP_VALIDATION_BUILD__ ?? null }))()`;
+  return await cdpEval(candidate.webSocketDebuggerUrl, expression);
+}
+
+function discoverObsidianDebugPorts(runtime = inspectObsidianRuntime()) {
+  const ports = new Set();
+  for (const item of runtime.processes ?? []) {
+    const line = String(item.CommandLine ?? item.commandLine ?? '');
+    for (const match of line.matchAll(/--remote-debugging-port(?:=|\\s+)(\\d{2,5})/g)) ports.add(Number(match[1]));
+  }
+  for (const listener of runtime.listeners ?? []) ports.add(Number(listener.LocalPort ?? listener.localPort));
+  return [...ports].filter(value => Number.isInteger(value) && value > 0 && value <= 65535).sort((a,b) => a-b);
+}
+
+async function findRenderer(extraPorts = []) {
+  const runtime = inspectObsidianRuntime();
+  const ports = [...new Set([configuredDebugPort, ...extraPorts, ...discoverObsidianDebugPorts(runtime)].filter(value => Number.isInteger(value) && value > 0 && value <= 65535))];
+  const attempts = [];
+  const matches = [];
+  for (const port of ports) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(2500) });
+      if (!response.ok) {
+        attempts.push({ port, status: `http-${response.status}` });
+        continue;
+      }
+      const candidates = (await response.json()).filter(item => item?.type === 'page' && item.webSocketDebuggerUrl);
+      let portMatches = 0;
+      for (const candidate of candidates) {
+        const snapshot = await rendererSnapshot(candidate).catch(() => null);
+        if (snapshot && normalized(snapshot.vault) === normalized(vaultPath)) {
+          matches.push({ candidate, snapshot, debugPort: port });
+          portMatches += 1;
+        }
+      }
+      attempts.push({ port, status: 'reachable', pageTargets: candidates.length, disposableMatches: portMatches });
+    } catch (error) {
+      attempts.push({ port, status: 'unreachable', error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one reachable disposable-vault renderer; observed ${matches.length}. Runtime=${JSON.stringify(runtime)} DevTools attempts=${JSON.stringify(attempts)}`);
+  }
+  return { ...matches[0], runtime, attempts };
+}
+
+function realSuspendResumeTransition() {
+  const vaultWindowToken = path.basename(vaultPath);
+  const script = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class S08FWindow {
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
+"@;
+$token=${psQuote(path.basename(vaultPath))};
+$windows=@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like ("*" + $token + "*") });
+if ($windows.Count -ne 1) { Write-Error ('Expected exactly one disposable S08F Obsidian window containing title token ' + $token + '; observed ' + $windows.Count + '.'); [Environment]::ExitCode=41; return };
+$p=$windows[0];
+[void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,6);
+Start-Sleep -Milliseconds 900;
+[void][S08FWindow]::ShowWindowAsync($p.MainWindowHandle,9);
+[void][S08FWindow]::SetForegroundWindow($p.MainWindowHandle);
+Start-Sleep -Milliseconds 1200;
+Write-Output ('Disposable S08F Obsidian window transitioned: ' + $p.Id + ' / ' + $p.MainWindowTitle);
+`;
+  const pwsh = process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe') : 'pwsh';
+  const result = spawnSync(pwsh, ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', windowsHide: false });
+  if (result.status !== 0) throw new Error(`Unable to perform real Obsidian suspend/resume transition: ${(result.stderr || result.stdout || '').trim()}`);
+  return { stdout: String(result.stdout || '').trim(), exitCode: result.status };
+}
+
+function agentBootstrapExpression(runId, controlKey, requireFreshState, recoveryDirectPollFirst = false) {
+  return `(async () => {
+    const out={ok:false};
+    try {
+      const expectedSource=${JSON.stringify(sourceCommit)};
+      const expectedVault=${JSON.stringify(normalized(vaultPath))};
+      const runId=${JSON.stringify(runId)};
+      const deviceId=${JSON.stringify(deviceId)};
+      const fixtureRoot=${JSON.stringify(fixtureRoot)};
+      const controlKey=${JSON.stringify(controlKey)};
+      const recoveryDirectPollFirst=${recoveryDirectPollFirst ? 'true' : 'false'};
+      const pluginId='brain-google-drive-sync';
+      const actualVaultRaw=typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'';
+      const actualVault=String(actualVaultRaw).replace(/\\\\/g,'/').toLowerCase();
+      if(actualVault!==expectedVault)return{...out,reason:'vault-mismatch',actualVault};
+      const identity=globalThis.__BRAIN_BVP_VALIDATION_BUILD__;
+      if(!identity||identity.sourceCommit!==expectedSource)return{...out,reason:'validation-identity-mismatch',sourceCommit:identity?.sourceCommit??null};
+      const prior=globalThis[controlKey];
+      if(prior&&typeof prior.stop==='function')try{prior.stop()}catch{}
+      try{delete globalThis[controlKey]}catch{}
+      const factory=globalThis.__BRAIN_BVP_DEVICE_AGENT_FACTORY__;
+      const runtime=globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__;
+      if(typeof factory!=='function')return{...out,reason:'device-agent-factory-unavailable'};
+      if(!runtime||typeof runtime.pollDeviceOnce!=='function')return{...out,reason:'mailbox-runtime-unavailable'};
+      if(!runtime.relay||typeof runtime.relay.pumpOnce!=='function')return{...out,reason:'desktop-relay-unavailable'};
+      const plugin=globalThis.app?.plugins?.plugins?.[pluginId];
+      if(!plugin||typeof plugin.productionVerificationControl!=='function')return{...out,reason:'production-control-surface-unavailable'};
+      const production=plugin.productionVerificationControl();
+      if(!production)return{...out,reason:'production-control-unavailable'};
+      const adapter=globalThis.app.vault.adapter;
+      const relayRoot=\`${'${globalThis.app.vault.configDir}'}/plugins/${'${pluginId}'}/.bvp-relay\`;
+      const stateDir=\`${'${relayRoot}'}/device-state\`;
+      const statePath=\`${'${stateDir}'}/${'${runId}'}--${'${deviceId}'}.json\`;
+      async function ensureDir(p){let current='';for(const part of p.split('/').filter(Boolean)){current=current?\`${'${current}'}/${'${part}'}\`:part;if(!(await adapter.exists(current,true)))await adapter.mkdir(current)}}
+      async function ensureParent(p){const slash=p.lastIndexOf('/');if(slash>0)await ensureDir(p.slice(0,slash))}
+      async function sha256(buffer){const digest=await crypto.subtle.digest('SHA-256',buffer);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')}
+      const fixtures={
+        async putText(p,text){await ensureParent(p);await adapter.write(p,text)},
+        async putPattern(p,byteLength,seed){await ensureParent(p);const seedBytes=new TextEncoder().encode(seed);if(!seedBytes.length)throw new Error('empty-pattern-seed');const bytes=new Uint8Array(byteLength);for(let i=0;i<bytes.length;i+=1)bytes[i]=seedBytes[i%seedBytes.length]^(i&0xff);await adapter.writeBinary(p,bytes.buffer)},
+        async remove(p){if(await adapter.exists(p,true))await adapter.remove(p)},
+        async observe(p){if(!(await adapter.exists(p,true)))return{exists:false};const stat=await adapter.stat(p);if(!stat||stat.type!=='file')return{exists:false};const bytes=await adapter.readBinary(p);return{exists:true,sizeBytes:stat.size,sha256:await sha256(bytes)}}
+      };
+      await ensureDir(stateDir);
+      if(${requireFreshState ? 'true' : 'false'}&&await adapter.exists(statePath,true))return{...out,reason:'sequence-state-already-exists',statePath};
+      const sequenceState={
+        async load(requestRunId,requestDeviceId){if(requestRunId!==runId||requestDeviceId!==deviceId)throw new Error('sequence-state-identity-mismatch');if(!(await adapter.exists(statePath,true)))return undefined;return JSON.parse(await adapter.read(statePath))},
+        async save(requestRunId,requestDeviceId,state){if(requestRunId!==runId||requestDeviceId!==deviceId)throw new Error('sequence-state-identity-mismatch');await adapter.write(statePath,JSON.stringify(state))}
+      };
+      const agent=factory({runId,deviceId,fixtureRoot,fixtures,sequenceState,production});
+      let stopped=false,busy=false,timer,lastPoll={status:'not-run',processed:0};
+      async function pump(){
+        if(stopped||busy)return lastPoll;
+        if(globalThis.document?.visibilityState!=='visible')return{status:'deferred-hidden',processed:0};
+        busy=true;
+        try{await runtime.relay.pumpOnce();lastPoll=await runtime.pollDeviceOnce(agent,runId,deviceId);await runtime.relay.pumpOnce();return lastPoll}
+        catch(error){lastPoll={status:'error',processed:0,error:error instanceof Error?error.message:String(error)};return lastPoll}
+        finally{busy=false}
+      }
+      const visibility=()=>{if(globalThis.document?.visibilityState==='visible')globalThis.setTimeout(()=>void pump(),300)};
+      globalThis.document?.addEventListener?.('visibilitychange',visibility);
+      const control=Object.freeze({
+        runId,deviceId,fixtureRoot,relayRoot,statePath,
+        status:()=>({stopped,busy,visibility:globalThis.document?.visibilityState??'unknown',lastPoll:structuredClone(lastPoll),productStatus:production.currentStatus()}),
+        pumpNow:()=>pump(),
+        pollDeviceNow:()=>runtime.pollDeviceOnce(agent,runId,deviceId),
+        pumpRelayNow:()=>runtime.relay.pumpOnce(),
+        executeDirect:input=>agent.execute(input),
+        observe:relative=>fixtures.observe(\`${'${fixtureRoot}'}/${'${relative}'}\`),
+        stop:()=>{stopped=true;if(timer!==undefined)globalThis.clearInterval(timer);globalThis.document?.removeEventListener?.('visibilitychange',visibility)}
+      });
+      Object.defineProperty(globalThis,controlKey,{value:control,configurable:true,enumerable:false,writable:false});
+      let firstPoll={status:'deferred-recovery',processed:0};
+      if(!recoveryDirectPollFirst){timer=globalThis.setInterval(()=>void pump(),400);firstPoll=await pump()}
+      return{ok:true,runId,deviceId,fixtureRoot,statePath,visibility:globalThis.document?.visibilityState??'unknown',productStatus:production.currentStatus(),firstPoll,recoveryDirectPollFirst,identity};
+    }catch(error){return{...out,reason:'bootstrap-exception',error:error instanceof Error?(error.stack??error.message):String(error)}}
+  })()`;
+}
+
+async function injectAgent(runId, controlKey, requireFreshState = true, recoveryDirectPollFirst = false) {
+  const expression = agentBootstrapExpression(runId, controlKey, requireFreshState, recoveryDirectPollFirst);
+  try { new Function(`return ${expression};`); } catch (error) { throw new Error(`Generated agent bootstrap failed syntax validation: ${error}`); }
+  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 30000);
+  if (!result?.ok) throw new Error(`Renderer rejected S08F agent bootstrap: ${result?.reason ?? 'unknown'}${result?.error ? ` - ${result.error}` : ''}`);
+  return result;
+}
+
+async function invokeControlMethod(controlKey, method) {
+  const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c[${JSON.stringify(method)}]!=='function')return{__error:'control-method-unavailable'};try{return await c[${JSON.stringify(method)}]()}catch(error){return{__error:error instanceof Error?(error.stack??error.message):String(error)}}})()`;
+  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 120000);
+  if (result?.__error) throw new Error(result.__error);
+  return result;
+}
+async function quiesceControlAndObserve(renderer, controlKey) {
+  const expression = `(()=>{
+    const plugin=globalThis.app?.plugins?.plugins?.['brain-google-drive-sync'];
+    const production=plugin&&typeof plugin.productionVerificationControl==='function'?plugin.productionVerificationControl():undefined;
+    const prior=globalThis[${JSON.stringify(controlKey)}];
+    let controlStatus=null;
+    try{controlStatus=prior&&typeof prior.status==='function'?prior.status():null}catch(error){controlStatus={error:error instanceof Error?error.message:String(error)}}
+    try{if(prior&&typeof prior.stop==='function')prior.stop()}catch{}
+    try{delete globalThis[${JSON.stringify(controlKey)}]}catch{}
+    return{
+      vault:typeof globalThis.app?.vault?.adapter?.getBasePath==='function'?globalThis.app.vault.adapter.getBasePath():'',
+      visibility:globalThis.document?.visibilityState??'unknown',
+      sourceCommit:globalThis.__BRAIN_BVP_VALIDATION_BUILD__?.sourceCommit??null,
+      controlStatus,
+      productStatus:production?.currentStatus?.()??null,
+      latestReceipt:production?.latestProductionRunReceipt?.()??null,
+    };
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000);
+}
+
+async function installMailboxResultRecoveryShim(renderer, known) {
+  const markerKey='__BRAIN_BVP_S08F_R2_MAILBOX_RESULT_RECOVERY__';
+  const expression = `(()=>{
+    const runtime=globalThis.__BRAIN_BVP_MAILBOX_RUNTIME__;
+    if(!runtime?.mailbox||typeof runtime.mailbox.resultFor!=='function')return{ok:false,reason:'mailbox-runtime-unavailable'};
+    const markerKey=${JSON.stringify(markerKey)};
+    const known=${JSON.stringify(known)};
+    const prior=globalThis[markerKey];
+    if(prior?.installed===true)return{ok:true,alreadyInstalled:true,knownCommandIds:Object.keys(known)};
+    const original=runtime.mailbox.resultFor.bind(runtime.mailbox);
+    const headerExact=(a,b)=>a&&b&&a.runId===b.runId&&a.deviceId===b.deviceId&&a.sequence===b.sequence&&a.commandId===b.commandId&&a.kind===b.kind;
+    runtime.mailbox.resultFor=async command=>{
+      try{return await original(command)}
+      catch(error){
+        if(!(error instanceof Error)||error.message!=='mailbox-conflicting-result')throw error;
+        const entry=known[command?.commandId];
+        if(!entry||!headerExact(command,entry.command))throw error;
+        return structuredClone(entry.result);
+      }
+    };
+    Object.defineProperty(globalThis,markerKey,{value:{installed:true,original,mailbox:runtime.mailbox},configurable:true,enumerable:false,writable:false});
+    return{ok:true,alreadyInstalled:false,knownCommandIds:Object.keys(known)};
+  })()`;
+  const result=await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000);
+  if(!result?.ok)throw new Error(`Mailbox result recovery shim rejected: ${result?.reason??'unknown'}`);
+  return result;
+}
+
+async function restoreMailboxResultRecoveryShim(renderer) {
+  if(!renderer?.candidate?.webSocketDebuggerUrl)return {ok:true,restored:false,reason:'renderer-unavailable'};
+  const markerKey='__BRAIN_BVP_S08F_R2_MAILBOX_RESULT_RECOVERY__';
+  const expression = `(()=>{
+    const markerKey=${JSON.stringify(markerKey)};
+    const prior=globalThis[markerKey];
+    if(!prior?.installed)return{ok:true,restored:false};
+    try{prior.mailbox.resultFor=prior.original}catch(error){return{ok:false,restored:false,error:error instanceof Error?error.message:String(error)}}
+    try{delete globalThis[markerKey]}catch{}
+    return{ok:true,restored:true};
+  })()`;
+  return await cdpEval(renderer.candidate.webSocketDebuggerUrl, expression, 30000).catch(error=>({ok:false,restored:false,error:error instanceof Error?error.message:String(error)}));
+}
+
+async function directExecute(controlKey, command) {
+  const expression = `(async()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(!c||typeof c.executeDirect!=='function')return{__error:'control-unavailable'};return await c.executeDirect(${JSON.stringify(command)})})()`;
+  const result = await cdpEval(target.candidate.webSocketDebuggerUrl, expression, 30000);
+  if (result?.__error) throw new Error(result.__error);
+  return result;
+}
+
+async function stopControl(controlKey) {
+  const expression = `(()=>{const c=globalThis[${JSON.stringify(controlKey)}];if(c&&typeof c.stop==='function')c.stop();try{delete globalThis[${JSON.stringify(controlKey)}]}catch{};return true})()`;
+  await cdpEval(target.candidate.webSocketDebuggerUrl, expression).catch(() => undefined);
+}
+
+function commandCorrelates(command, result) {
+  return result && command.runId === result.runId && command.deviceId === result.deviceId && command.sequence === result.sequence && command.commandId === result.commandId && command.kind === result.kind;
+}
+
+async function relayRoundTrip(command, timeoutMs = 90000) {
+  const outbox = path.join(relayRoot, 'outbox');
+  const sent = path.join(relayRoot, 'sent');
+  const inbox = path.join(relayRoot, 'inbox');
+  await Promise.all([fs.mkdir(outbox,{recursive:true}),fs.mkdir(sent,{recursive:true}),fs.mkdir(inbox,{recursive:true})]);
+  const name = `${command.commandId}.json`;
+  const outPath = path.join(outbox, name);
+  const sentPath = path.join(sent, name);
+  const resultPath = path.join(inbox, `${name}.result.json`);
+  for (const file of [outPath, sentPath, resultPath]) if (await exists(file)) throw new Error(`Relay collision before command ${command.commandId}: ${file}`);
+  const temp = path.join(relayRoot, `.${name}.${randomUUID()}.tmp`);
+  await fs.writeFile(temp, JSON.stringify(command), 'utf8');
+  await fs.rename(temp, outPath);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {

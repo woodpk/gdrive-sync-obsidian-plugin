@@ -41,7 +41,8 @@ import {
 } from "../contracts";
 import type { SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
 import { sha256Text } from "../util/sha256";
-import { executionDiagnosticEmitterFor, type ExecutionDiagnosticEmitter } from "./authority-execution-diagnostics";
+import { executionDiagnosticEmitterFor, executionRequestAttributionFor, type ExecutionDiagnosticEmitter } from "./authority-execution-diagnostics";
+import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ExecutorRunEvidence, ProductSynchronizationExecutor } from "./production-executor";
 import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
@@ -68,6 +69,20 @@ type PreparedEffect = {
 type Convergence = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 type TrustedLoad = { readonly status: "trusted"; readonly state: TrustedSynchronizationState };
+function attributedPort<T>(port: T, scope?: RequestAttributionScope): T {
+  if (!scope || !port) return port;
+  const candidate = port as T & { withRequestAttribution?: (value: RequestAttributionScope) => T };
+  try { return candidate.withRequestAttribution?.(scope) ?? port; }
+  catch { return port; }
+}
+function attributedDependencies(original: RecoverableProductionMutationDependencies, scope?: RequestAttributionScope): RecoverableProductionMutationDependencies {
+  if (!scope) return original;
+  return {
+    ...original,
+    reliableRemoteMutationPort: original.reliableRemoteMutationPort ? attributedPort(original.reliableRemoteMutationPort, scope) : undefined,
+    remoteFolderCreateRecoveryReadPort: original.remoteFolderCreateRecoveryReadPort ? attributedPort(original.remoteFolderCreateRecoveryReadPort, scope) : undefined,
+  };
+}
 
 const cid = <T extends string>(value: string) => contractId<T>(value);
 const internal = (legacy: ProductSynchronizationExecutor) => legacy as unknown as LegacyReads;
@@ -268,14 +283,6 @@ async function remoteSource(legacy: ProductSynchronizationExecutor, version: Ver
   if (!read.ok || (version.content?.hash && read.value.evidence.hash !== version.content.hash)) return undefined;
   return { content: read.value.content, evidence: read.value.evidence };
 }
-async function folderParentId(operation: ExecutablePlannedOperation, stateStore: SynchronizationStateStore, context: StateLoadContext, root: ManagedRemoteIdentity): Promise<RemoteObjectId | undefined> {
-  const parent = parentPath(operation.path);
-  if (String(parent) === "") return root.rootId;
-  const loaded = await stateStore.load(context);
-  if (loaded.status !== "trusted") return undefined;
-  const matches = loaded.state.remoteMappings.filter(value => value.path === parent && value.entityKind === "folder");
-  return matches.length === 1 ? matches[0]?.remoteObjectId : undefined;
-}
 function localTransaction(operation: ExecutablePlannedOperation, intended: CanonicalFileContentProof, suffix: string, mutationKind: "create" | "replace"): LocalMutationTransaction | undefined {
   const transactionId = cid<"LocalMutationTransactionId">(`local-tx:${String(operation.operationId)}:${suffix}`) as LocalMutationTransactionId;
   const common = {
@@ -329,8 +336,10 @@ async function prepareIntent(
     if (version.entityKind === "folder") {
       const reserved = await remote.reserveFolderCreateIdentity(root, intentId, operation.path);
       if (!reserved.ok) return { status: "blocked", reason: `REMOTE folder identity reservation failed: ${reserved.signal.kind}` };
-      const parentRemoteObjectId = await folderParentId(operation, stateStore, context, root);
-      if (!parentRemoteObjectId) return { status: "blocked", reason: "REMOTE folder create lacks unique durable parent identity" };
+      if (!deps.remoteFolderCreateRecoveryReadPort?.resolveFolderCreatePhysicalParent) return { status: "blocked", reason: "REMOTE folder physical-parent authority read port unavailable" };
+      const observedParent = await deps.remoteFolderCreateRecoveryReadPort.resolveFolderCreatePhysicalParent(root, operation.path);
+      if (!observedParent.ok) return { status: "blocked", reason: `REMOTE folder physical-parent authority unavailable: ${observedParent.signal.kind}` };
+      const parentRemoteObjectId = observedParent.value;
       add("remote-folder", {
         kind: "remote-folder-create",
         targetSide: "remote",
@@ -476,9 +485,9 @@ async function prepareIntent(
   };
 }
 
-async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1): Promise<Convergence> {
+async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1, scope?: RequestAttributionScope): Promise<Convergence> {
   const reads = internal(legacy);
-  const result = await reads.drive.listForReconciliation(reads.runEvidence().managedRemote.rootId);
+  const result = await attributedPort(reads.drive, scope).listForReconciliation(reads.runEvidence().managedRemote.rootId);
   if (!result.ok || result.value.completeness.status !== "complete") return { ok: false, reason: "complete current REMOTE listing unavailable for logical convergence" };
   const active = result.value.entries.filter(value => !value.trashed);
   if (descriptor.kind === "remote-file") {
@@ -536,8 +545,8 @@ async function verifyLocal(legacy: ProductSynchronizationExecutor, descriptor: R
   }
   return { ok: true };
 }
-async function convergenceFor(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1): Promise<Convergence> {
-  return descriptor.targetSide === "remote" ? verifyRemote(legacy, descriptor) : verifyLocal(legacy, descriptor);
+async function convergenceFor(legacy: ProductSynchronizationExecutor, descriptor: RecoverablePhysicalMutationDescriptorV1_1, scope?: RequestAttributionScope): Promise<Convergence> {
+  return descriptor.targetSide === "remote" ? verifyRemote(legacy, descriptor, scope) : verifyLocal(legacy, descriptor);
 }
 
 async function recoverEffect(
@@ -547,6 +556,7 @@ async function recoverEffect(
   legacy: ProductSynchronizationExecutor,
   deps: RecoverableProductionMutationDependencies,
   diagnostics?: ExecutionDiagnosticEmitter,
+  scope?: RequestAttributionScope,
 ): Promise<ExecutionResult | undefined> {
   const intentId = intentIdFor(operation);
   diagnostics?.(operation, "sync.effect", "restart-effect-entry", effectFields(intentId, effect, {
@@ -590,7 +600,7 @@ async function recoverEffect(
         ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("local-file-recovery", String(tx.transactionId)) }
         : { status: "outcome-unknown", reason: recovered.status === "recovered" ? (converged.ok ? "LOCAL recovery convergence unavailable" : converged.reason) : resultReason(recovered, "LOCAL recovery unresolved") };
     } else {
-      const converged = await convergenceFor(legacy, effect.descriptor);
+      const converged = await convergenceFor(legacy, effect.descriptor, scope);
       physical = converged.ok
         ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("restart-observation", effect.effectId) }
         : { status: "outcome-unknown", reason: converged.reason };
@@ -628,7 +638,7 @@ async function recoverEffect(
     fromStage: current.stage,
     observationSource: "restart-recovery",
   }));
-  const converged = await convergenceFor(legacy, current.descriptor);
+  const converged = await convergenceFor(legacy, current.descriptor, scope);
   diagnostics?.(operation, "sync.effect", converged.ok ? "convergence-verification-complete" : "convergence-verification-failed", effectFields(intentId, current, {
     convergenceStatus: converged.ok ? "converged" : "not-converged",
     observationSource: "restart-recovery",
@@ -657,9 +667,10 @@ async function guardPhysicalDispatch(
   prepared: PreparedEffect,
   legacy: ProductSynchronizationExecutor,
   diagnostics?: ExecutionDiagnosticEmitter,
+  scope?: RequestAttributionScope,
 ): Promise<ExecutionResult | undefined> {
   const guardOperation = dispatchGuardOperation(operation, prepared.effect.descriptor);
-  const validation = await legacy.validatePreconditions(guardOperation);
+  const validation = await attributedPort(legacy, scope ? { ...scope, purpose: "precondition-validation" } : undefined).validatePreconditions(guardOperation);
   if (validation.status === "valid") return undefined;
 
   const reason = validation.status === "stale"
@@ -696,6 +707,7 @@ async function dispatchEffect(
   legacy: ProductSynchronizationExecutor,
   deps: RecoverableProductionMutationDependencies,
   diagnostics?: ExecutionDiagnosticEmitter,
+  scope?: RequestAttributionScope,
 ): Promise<ExecutionResult | undefined> {
   const intentId = intentIdFor(operation);
   diagnostics?.(operation, "sync.effect", "durable-effect-transition-start", effectFields(intentId, prepared.effect, {
@@ -715,7 +727,7 @@ async function dispatchEffect(
   }));
   if (authorized.status !== "dispatch-authorized") return { status: "recovery-required", reason: `dispatch authority not durably persisted (${authorized.status})` };
 
-  const guarded = await guardPhysicalDispatch(lifecycle, operation, prepared, legacy, diagnostics);
+  const guarded = await guardPhysicalDispatch(lifecycle, operation, prepared, legacy, diagnostics, scope);
   if (guarded) return guarded;
 
   const descriptor = prepared.effect.descriptor;
@@ -842,7 +854,7 @@ async function dispatchEffect(
     fromStage: "effect-verified",
     observationSource: "post-dispatch",
   }));
-  const converged = await convergenceFor(legacy, descriptor);
+  const converged = await convergenceFor(legacy, descriptor, scope);
   diagnostics?.(operation, "sync.effect", converged.ok ? "convergence-verification-complete" : "convergence-verification-failed", effectFields(intentId, prepared.effect, {
     convergenceStatus: converged.ok ? "converged" : "not-converged",
     observationSource: "post-dispatch",
@@ -866,6 +878,8 @@ export function createAuthoritativeProductExecutor(
   const diagnostics = executionDiagnosticEmitterFor(authorityStore);
 
   async function validateExact(operation: ExecutablePlannedOperation): Promise<AuthorityCompletePreconditionValidationResult> {
+    const scope = executionRequestAttributionFor(authorityStore, operation);
+    const measuredLegacy = attributedPort(legacy, scope ? { ...scope, purpose: "precondition-validation" } : undefined);
     diagnostics?.(operation, "sync.execute", "authority-resolution-start", { stage: "authority-resolution" });
     const [authorityLoad, identityLoad] = await Promise.all([authorityStore.loadAuthority(), identityStateStore.load(stateContext)]);
     if (authorityLoad.status !== "trusted") {
@@ -885,7 +899,7 @@ export function createAuthoritativeProductExecutor(
     const bootstrapCandidate = reviewedFirstSyncResolutionCandidate(operation);
     const bootstrapRecovery = bootstrapCandidate && reviewedFirstSyncRecoveryIntentMatches(operation, authorityLoad.state);
     const bootstrapCurrent = bootstrapRecovery || (bootstrapCandidate
-      ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, legacy, managedRemote)
+      ? await reviewedFirstSyncResolutionEvidenceCurrent(operation, authorityLoad.state, identityLoad, measuredLegacy, managedRemote)
       : false);
     if (bootstrapCandidate && !bootstrapCurrent) {
       diagnostics?.(operation, "sync.execute", "authority-resolution-failed", {
@@ -914,7 +928,7 @@ export function createAuthoritativeProductExecutor(
           failed.push(precondition);
         } else {
           const observedPath = operation.kind === "identity-preserving-move" && operation.targetSide === "local" && operation.toPath ? operation.toPath : mapping.path;
-          if (!await legacy.versionStillCurrent("remote", { path: observedPath, entityKind: mapping.entityKind, remoteObjectId: mapping.remoteObjectId }, managedRemote)) failed.push(precondition);
+          if (!await measuredLegacy.versionStillCurrent("remote", { path: observedPath, entityKind: mapping.entityKind, remoteObjectId: mapping.remoteObjectId }, managedRemote)) failed.push(precondition);
         }
       }
     }
@@ -938,7 +952,7 @@ export function createAuthoritativeProductExecutor(
       stateRevision: String(identityLoad.state.stateRevision),
     });
     if (bootstrapRecovery) return { status: "valid" };
-    const ordinary = await legacy.validatePreconditions(operation);
+    const ordinary = await measuredLegacy.validatePreconditions(operation);
     if (ordinary.status === "valid") return { status: "valid" };
     if (ordinary.status === "stale") {
       return { status: "stale", failed: ordinary.failed.filter((value): value is ExecutableOperationPrecondition => value.kind !== "base-trusted" && value.kind !== "identity-unambiguous") };
@@ -961,7 +975,14 @@ export function createAuthoritativeProductExecutor(
       if (validation.status === "stale") return { status: "stale-precondition", reason: "exact authority changed at production mutation boundary", failed: validation.failed };
       if (validation.status === "blocked") return { status: "blocking-failure", reason: validation.reason };
       if (validation.status === "recovery-required") return { status: "recovery-required", reason: validation.reason };
-      if (!physicalOperation(operation)) return legacy.execute(operation);
+      const requestScope = executionRequestAttributionFor(authorityStore, operation);
+      const mutationScope = requestScope ? { ...requestScope, purpose: "mutation-dispatch" as const } : undefined;
+      const preparationScope = requestScope ? { ...requestScope, purpose: "intent-preparation" as const } : undefined;
+      const measuredLegacy = attributedPort(legacy, mutationScope);
+      if (!physicalOperation(operation)) return measuredLegacy.execute(operation);
+      const measuredDependencies = attributedDependencies(dependencies, mutationScope);
+      const preparationLegacy = attributedPort(legacy, preparationScope);
+      const preparationDependencies = attributedDependencies(dependencies, preparationScope);
 
       const needsRemote = operation.targetSide === "remote" || operation.kind.startsWith("upload-") || operation.kind === "trash-remote" || operation.kind === "clean-text-merge";
       const needsLocalFile = ((operation.kind === "download-create" || operation.kind === "download-update") && operation.contentVersion?.entityKind !== "folder") || operation.kind === "clean-text-merge";
@@ -984,7 +1005,7 @@ export function createAuthoritativeProductExecutor(
         });
         if (existing.semanticAuthority.generation !== loaded.state.semanticGeneration) return { status: "recovery-required", reason: "persisted intent belongs to stale semantic authority" };
         for (const effect of existing.effects) {
-          const result = await recoverEffect(lifecycle, operation, effect, legacy, dependencies, diagnostics);
+          const result = await recoverEffect(lifecycle, operation, effect, measuredLegacy, measuredDependencies, diagnostics, requestScope);
           if (result) return result;
         }
         const final = await lifecycle.loadAuthority();
@@ -1003,7 +1024,7 @@ export function createAuthoritativeProductExecutor(
         return receipt;
       }
 
-      const prepared = await prepareIntent(operation, loaded.state, legacy, dependencies, identityStateStore, stateContext, managedRemote);
+      const prepared = await prepareIntent(operation, loaded.state, preparationLegacy, preparationDependencies, identityStateStore, stateContext, managedRemote);
       if (prepared.status === "blocked") return { status: "recovery-required", reason: prepared.reason };
       diagnostics?.(operation, "sync.effect", "durable-intent-prepared", {
         stage: "intent-preparation",
@@ -1034,7 +1055,7 @@ export function createAuthoritativeProductExecutor(
       });
       if (persisted.status !== "persisted") return { status: "recovery-required", reason: `physical intent not durably persisted (${persisted.status})` };
       for (const effect of prepared.prepared) {
-        const result = await dispatchEffect(lifecycle, operation, effect, legacy, dependencies, diagnostics);
+        const result = await dispatchEffect(lifecycle, operation, effect, measuredLegacy, measuredDependencies, diagnostics, requestScope);
         if (result) return result;
       }
       const final = await lifecycle.loadAuthority();

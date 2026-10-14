@@ -1,0 +1,167 @@
+BVP BATTERY RUN
+Battery: windows-live-smoke
+Run ID: bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca
+Controller branch: bvp-battery-pilot-01
+Controller HEAD: 01b9755dbb2039680c51d05c5021b9d86c7eb848
+Validation source: 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f
+Result package: dev/Test-Results/bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca
+
+>>> node-version
+COMMAND: node --version
+v22.23.2
+EXIT CODE: 0
+
+>>> npm-version
+COMMAND: npm --version
+10.9.8
+EXIT CODE: 0
+
+>>> bvp-typescript-compile
+COMMAND: node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json
+EXIT CODE: 0
+
+>>> bvp-live-battery
+COMMAND: node D:\obsidian-brain-dev\.test-build\bvp\test-platform\src\batteries\run-live-battery.js --battery windows-live-smoke --device-map-json {"windows":"device:8b7820faab2603b334a1c13d8c3bdba0"} --relay-root D:\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\.obsidian\plugins\brain-google-drive-sync\.bvp-relay --checkpoint-file D:\obsidian-brain-dev\dev\Test-Results\bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca\checkpoint.json --result-file D:\obsidian-brain-dev\dev\Test-Results\bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca\result.json --validation-source-commit 3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f --run-id bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca --result-timeout-ms 60000 --poll-interval-ms 250
+{
+  "battery": {
+    "name": "windows-live-smoke",
+    "description": "Observe the live Windows product state and verify one bounded local fixture round-trip."
+  },
+  "result": {
+    "scenarioId": "battery-windows-live-smoke-01",
+    "status": "completed",
+    "steps": [
+      {
+        "index": 0,
+        "stepId": "observe-windows-product",
+        "kind": "observe",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 1,
+        "stepId": "create-canary",
+        "kind": "fixture",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 2,
+        "stepId": "observe-canary",
+        "kind": "observe",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 3,
+        "stepId": "assert-canary-exists",
+        "kind": "assert",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 4,
+        "stepId": "assert-canary-size",
+        "kind": "assert",
+        "status": "completed",
+        "matchedExpectation": true
+      },
+      {
+        "index": 5,
+        "stepId": "assert-canary-hash",
+        "kind": "assert",
+        "status": "completed",
+        "matchedExpectation": true
+      }
+    ],
+    "captures": {
+      "product": {
+        "kind": "idle-ready"
+      },
+      "canary": {
+        "status": "present",
+        "exists": true,
+        "sizeBytes": 77,
+        "hash": "8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895"
+      }
+    },
+    "evidence": {
+      "machine": {
+        "schemaVersion": 1,
+        "scenarioId": "battery-windows-live-smoke-01",
+        "executionMode": "live",
+        "traceability": [
+          {
+            "kind": "completion-evidence",
+            "id": "BVP-WINDOWS-LIVE-SMOKE"
+          }
+        ],
+        "fixtures": [
+          {
+            "stepId": "create-canary",
+            "operation": "put-local-file",
+            "device": "windows",
+            "path": "windows-first-sync-canary.md",
+            "contentHash": "8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895",
+            "sizeBytes": 77
+          }
+        ],
+        "deviceIdentities": [
+          "device:8b7820faab2603b334a1c13d8c3bdba0"
+        ],
+        "liveIdentity": {
+          "runId": "bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca",
+          "sourceCommit": "3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f"
+        },
+        "observations": [
+          {
+            "stepId": "observe-windows-product",
+            "captureAs": "product",
+            "value": {
+              "kind": "idle-ready"
+            }
+          },
+          {
+            "stepId": "observe-canary",
+            "captureAs": "canary",
+            "value": {
+              "status": "present",
+              "exists": true,
+              "sizeBytes": 77,
+              "hash": "8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895"
+            }
+          }
+        ],
+        "assertions": [
+          {
+            "index": 3,
+            "stepId": "assert-canary-exists",
+            "kind": "assert",
+            "status": "completed",
+            "matchedExpectation": true
+          },
+          {
+            "index": 4,
+            "stepId": "assert-canary-size",
+            "kind": "assert",
+            "status": "completed",
+            "matchedExpectation": true
+          },
+          {
+            "index": 5,
+            "stepId": "assert-canary-hash",
+            "kind": "assert",
+            "status": "completed",
+            "matchedExpectation": true
+          }
+        ],
+        "verdict": {
+          "status": "completed"
+        }
+      },
+      "machineJson": "{\"schemaVersion\":1,\"scenarioId\":\"battery-windows-live-smoke-01\",\"executionMode\":\"live\",\"traceability\":[{\"kind\":\"completion-evidence\",\"id\":\"BVP-WINDOWS-LIVE-SMOKE\"}],\"fixtures\":[{\"stepId\":\"create-canary\",\"operation\":\"put-local-file\",\"device\":\"windows\",\"path\":\"windows-first-sync-canary.md\",\"contentHash\":\"8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895\",\"sizeBytes\":77}],\"deviceIdentities\":[\"device:8b7820faab2603b334a1c13d8c3bdba0\"],\"liveIdentity\":{\"runId\":\"bvp-windows-live-smoke-20261008T023436358Z-7d9bc2ca\",\"sourceCommit\":\"3e3724ed40d64d8e5cb26c92430eecdfdf9daa1f\"},\"observations\":[{\"stepId\":\"observe-windows-product\",\"captureAs\":\"product\",\"value\":{\"kind\":\"idle-ready\"}},{\"stepId\":\"observe-canary\",\"captureAs\":\"canary\",\"value\":{\"status\":\"present\",\"exists\":true,\"sizeBytes\":77,\"hash\":\"8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895\"}}],\"assertions\":[{\"index\":3,\"stepId\":\"assert-canary-exists\",\"kind\":\"assert\",\"status\":\"completed\",\"matchedExpectation\":true},{\"index\":4,\"stepId\":\"assert-canary-size\",\"kind\":\"assert\",\"status\":\"completed\",\"matchedExpectation\":true},{\"index\":5,\"stepId\":\"assert-canary-hash\",\"kind\":\"assert\",\"status\":\"completed\",\"matchedExpectation\":true}],\"verdict\":{\"status\":\"completed\"}}",
+      "human": "Scenario battery-windows-live-smoke-01 [live] verdict=completed; assertions=3/3; observations=2; traceability=BVP-WINDOWS-LIVE-SMOKE"
+    }
+  }
+}
+EXIT CODE: 0

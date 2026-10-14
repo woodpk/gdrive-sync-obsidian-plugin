@@ -19,6 +19,7 @@ import type {
   VersionReference,
 } from "../contracts";
 import { isSafelyRecognizedTextPath } from "../core/conflict-resolver";
+import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 import type { ProductTextVersionStore } from "./text-version-store";
 
 function evidenceMatches(actual: ContentEvidence | undefined, expected: ContentEvidence | undefined): boolean {
@@ -56,6 +57,23 @@ export class ProductSynchronizationExecutor implements SynchronizationExecutor {
     private readonly runEvidence: () => ExecutorRunEvidence,
     private readonly textVersions?: ProductTextVersionStore,
   ) {}
+
+  /** Creates an observational view without changing this executor's shared ports or state. */
+  withRequestAttribution(scope: RequestAttributionScope): ProductSynchronizationExecutor {
+    const port = this.drive as GoogleDrivePort & {
+      withRequestAttribution?: (context: RequestAttributionScope) => GoogleDrivePort;
+    };
+    if (typeof port.withRequestAttribution !== "function") return this;
+    const scoped = new ProductSynchronizationExecutor(
+      this.local, port.withRequestAttribution(scope), this.state,
+      this.stateContext, this.runEvidence, this.textVersions,
+    );
+    const dependencies = (this as unknown as { recoverableProductionMutationDependencies?: unknown }).recoverableProductionMutationDependencies;
+    if (dependencies !== undefined) {
+      (scoped as unknown as { recoverableProductionMutationDependencies: unknown }).recoverableProductionMutationDependencies = dependencies;
+    }
+    return scoped;
+  }
 
   async validatePreconditions(operation: PlannedOperation): Promise<PreconditionValidationResult> {
     const failed: OperationPrecondition[] = [];

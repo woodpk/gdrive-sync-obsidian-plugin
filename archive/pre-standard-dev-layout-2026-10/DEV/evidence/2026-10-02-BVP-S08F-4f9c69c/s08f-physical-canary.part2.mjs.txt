@@ -1,0 +1,74 @@
+    if (await exists(resultPath)) {
+      let result;
+      try { result = JSON.parse(await fs.readFile(resultPath, 'utf8')); }
+      catch (error) { throw new Error(`Unable to parse relay result for ${command.commandId}: ${error}`); }
+      await fs.rm(resultPath, { force: true });
+      const sentDeadline = Date.now() + 5000;
+      while (Date.now() <= sentDeadline && await exists(sentPath)) await new Promise(resolve => setTimeout(resolve, 100));
+      if (await exists(sentPath)) throw new Error(`Sent relay record remained after result correlation for ${command.commandId}.`);
+      if (!commandCorrelates(command, result)) throw new Error(`Result correlation mismatch for ${command.commandId}.`);
+      return result;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for relay result for ${command.commandId}.`);
+}
+
+async function relayEmpty() {
+  const result = {};
+  for (const dir of ['outbox','sent','inbox']) {
+    const full = path.join(relayRoot, dir);
+    result[dir] = await fs.readdir(full).catch(() => []);
+  }
+  return result;
+}
+
+async function writeEvidenceFile(name, content) {
+  await fs.mkdir(evidenceDir, { recursive: true });
+  await fs.writeFile(path.join(evidenceDir, name), content, 'utf8');
+}
+
+async function persistVerdict() {
+  await fs.mkdir(evidenceDir, { recursive: true });
+  const opposite = physicalStatus === 'PASS'
+    ? ['S08F-BLOCKED.json','S08F-BLOCKED.md']
+    : ['S08F-PASS.json','S08F-PASS.md'];
+  for (const name of opposite) await fs.rm(path.join(evidenceDir, name), { force: true });
+  const summary = {
+    schemaVersion: 1,
+    status: physicalStatus,
+    classification,
+    primaryReason: primaryReason || null,
+    sourceCommit,
+    branchHead,
+    vaultPath,
+    deviceId,
+    oldRunId,
+    retryRunId,
+    scenarioId,
+    fixtureRoot,
+    canary: { path: `${fixtureRoot}/${canaryRelative}`, sizeBytes: canaryBytes.length, sha256: canaryHash },
+    stages,
+  };
+  await writeJson(path.join(evidenceDir, physicalStatus === 'PASS' ? 'S08F-PASS.json' : 'S08F-BLOCKED.json'), summary);
+  const lines = [
+    `# S08F ${physicalStatus}`,
+    '',
+    `- classification: \`${classification}\``,
+    `- source commit: \`${sourceCommit}\``,
+    `- branch head at execution start: \`${branchHead}\``,
+    `- disposable vault: \`${vaultPath}\``,
+    `- device: \`${deviceId}\``,
+    `- attempt-1 run: \`${oldRunId}\``,
+    `- retry run: \`${retryRunId}\``,
+    `- scenario: \`${scenarioId}\``,
+    `- fixture: \`${fixtureRoot}/${canaryRelative}\``,
+    `- fixture SHA-256: \`${canaryHash}\``,
+    `- primary reason: ${primaryReason || 'none'}`,
+    '',
+    '## Stage results',
+    '',
+    ...stages.map(stage => `- **${stage.name}** — ${stage.status} / ${stage.classification}: ${stage.summary}`),
+    '',
+  ];
+  await writeEvidenceFile(physicalStatus === 'PASS' ? 'S08F-PASS.md' : 'S08F-BLOCKED.md', lines.join('\n'));

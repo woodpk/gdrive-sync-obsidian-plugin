@@ -148,6 +148,13 @@ export class ProductRuntime {
       secretStorage: this.host.app.secretStorage,
       requestUrl,
       diagnostics: this.host.diagnostics,
+      managedRemoteIdentity: () => current.remoteRootId && current.vaultIdentity
+        ? {
+          rootId: contractId<"RemoteObjectId">(current.remoteRootId) as RemoteObjectId,
+          vaultIdentity: contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity,
+          protocolVersion: PROTOCOL_VERSION,
+        }
+        : undefined,
     });
     this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
     diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });

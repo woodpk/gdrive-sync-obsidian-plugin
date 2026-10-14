@@ -1,0 +1,205 @@
+# BVP-S05B — External Deterministic Runner Core
+
+## 0. Status
+
+**Agent name:** `agt-brain-bvp-s05-scenario-platform-01`
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE
+**Primary work package:** BVP-S05 — Declarative Scenario Runner / Assertions / Evidence
+**Predecessor:** accepted S05A
+
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S05B is complete and accepted.
+
+- accepted S05A predecessor / PHX-CI base: `e7c02dacc2594cddc298f838078c5d21d2d5c622`;
+- bound S05B HEAD: `2abbb39cd18bf24469369e349b909c8ca8d280d4`;
+- accepted implementation SHA: `8960e15cb7d9d569e28aed8b0ec05402a57f2a5a`;
+- authoritative PHX-CI evidence SHA: `f7ee2f3764df2dff5d34868f19a07462e70b2b68`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused runner tests: PASS, 10/10;
+- integrated BVP tests: PASS, 147/147;
+- full repository tests: PASS, 822/822;
+- architecture guard and metrics: PASS;
+- framework-core delta: +223 logical TypeScript LOC, 3,275 / 4,000 current;
+- production source/seam delta: 0;
+- live-device/scenario-instance/scenario-specific production/PowerShell delta: 0;
+- production artifact unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The accepted runner creates a fresh deterministic virtual world per execution, interprets the frozen S05A step families in declared order, invokes the real S04 production controller for production steps, applies generic fixture and external-state controls through S04, exposes fixed observation/assertion/checkpoint extension hooks for later children, and returns typed terminal results. Unsupported or unavailable capabilities fail closed. Expected blocked/failed outcomes remain explicit and cannot silently become PASS. Async fixture/production/hook failures are awaited inside the runner failure boundary so rejected promises are deterministically converted to typed `step-exception` failures.
+
+No production seam, synchronization policy, checkpoint persistence, canonical evidence subsystem, live-device transport, plugin/router, scenario catalog, or scenario-ID-specific orchestration was added.
+
+This file is now a historical completion record and authorizes no further S05B implementation work.
+
+## 1. Objective
+
+Implement one small external deterministic runner that interprets the S05A scenario vocabulary against the accepted S04 virtual world and owns scenario sequence and terminal verdict.
+
+## 2. Required End State
+
+The runner can:
+
+- accept one typed declarative scenario;
+- establish a fresh deterministic execution context/world;
+- interpret supported step kinds in declared order;
+- invoke the real production path through S04 for production-operation steps;
+- apply fixture/external-state transitions through generic S04 controls;
+- request observations and assertions through stable generic hooks that 05C may extend;
+- stop deterministically on unsupported, failed, blocked, or missing-required-result conditions;
+- return a typed execution result sufficient for 05C evidence enrichment;
+- execute without scenario-specific orchestration classes or distributed state.
+
+## 3. Dispatch Binding — Hard Data Only
+
+The S05B contract is bound to the accepted S05A/S04 repository state as follows:
+
+- exact accepted S05A predecessor / PHX-CI base: `e7c02dacc2594cddc298f838078c5d21d2d5c622`;
+- exact task branch: `bvp-s05b-external-deterministic-runner`;
+- frozen S05A contract module: `test-platform/src/scenario/scenario-contract.ts`;
+- frozen scenario authority types: `ScenarioDefinition`, `ScenarioStep`, `ScenarioFixtureStep`, `ScenarioProductionStep`, `ScenarioExternalStateStep`, `ScenarioCheckpointStep`, `ScenarioObservationStep`, and `ScenarioAssertionStep`;
+- frozen validation/helpers: `validateScenarioDefinition`, `defineScenario`, and `assertNeverScenarioStep`;
+- frozen generic step families: `fixture`, `production`, `external-state`, `checkpoint`, `observe`, and `assert`; no new step family is authorized in S05B;
+- accepted S04 world builder: `VirtualSynchronizationWorld.create(deviceNames?)`;
+- accepted world/device surfaces: `deviceBacking(name)`, `reconstructDevice(name)`, shared `drive`, shared `orderGate`, `VirtualProductionDevice`, and retained per-device LOCAL/state/runtime reality;
+- accepted production controller surfaces available to the runner: `previewManual()`, `previewVerifyReconcile()`, `request(...)`, and `requestPreviewAction(...)`;
+- production synchronization decisions/results remain authoritative; the runner may sequence production entrypoints but may not mutate product synchronization state directly;
+- exact runner implementation path: `test-platform/src/scenario/scenario-runner.ts`;
+- exact runner test path: `test-platform/test/scenario-runner.test.ts`;
+- exact implementation-writable allowlist: `test-platform/src/scenario/scenario-runner.ts` and `test-platform/test/scenario-runner.test.ts` only;
+- S05A scenario-contract source is frozen for S05B and is not writable;
+- no production, production-seam, governance, PowerShell, canonical-evidence, checkpoint-persistence, live-device, plugin/router, or scenario-catalog changes are authorized;
+- authoritative PHX-CI runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- PHX-CI change classification: `ordinary`;
+- focused S05B command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/scenario-runner.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- current accepted framework core is 3,052 / 4,000 logical TypeScript LOC, leaving 948 LOC of hard-budget headroom before S05B;
+- BVP-GOV-010 size gate: PASS — one existing platform contract family is extended by one substantive non-test runner module plus one focused test file; no new platform-level contract family or dependency is authorized.
+
+Binding may not add new step families merely because one implementation strategy would prefer them.
+
+## 4. Required Runner Semantics
+
+### 4.1 External authority
+
+The runner owns:
+
+- current scenario step position during execution;
+- deterministic dispatch of each declared step;
+- propagation of failure/blocking;
+- terminal scenario execution classification.
+
+Production code remains authority for synchronization behavior and product results.
+
+### 4.2 Ordered execution
+
+Steps execute in declared order unless the frozen scenario semantics explicitly describe another deterministic behavior.
+
+No hidden background scenario state machine may alter sequence.
+
+### 4.3 Fail closed
+
+The runner MUST NOT return PASS when:
+
+- a step kind is unsupported;
+- a required executor capability is unavailable;
+- a required production result/observation is missing;
+- a step returns an ambiguous state that the scenario requires to be resolved before assertion;
+- a step fails or blocks and no explicit scenario semantics allow continuation.
+
+Unsupported operation is not a no-op.
+
+### 4.4 Generic dispatch
+
+Dispatch is by the frozen generic step vocabulary, not by scenario identity.
+
+Adding an ordinary scenario must not require adding an `if scenarioId == ...` branch to runner core.
+
+### 4.5 Production-path fidelity
+
+Production-operation steps invoke accepted S04 composition over real production planner/executor/state logic.
+
+The runner cannot directly mutate product synchronization state to manufacture expected outcomes.
+
+### 4.6 Deterministic execution
+
+No wall-clock sleeps are needed for semantic correctness. The runner uses S04 deterministic controls.
+
+## Invariants
+
+- The external runner is the sole owner of scenario sequencing and verdict state.
+- Production code remains the sole authority for synchronization decisions and product results.
+- Dispatch is by frozen generic step semantics, never by scenario identity.
+- Unsupported or missing required capability/evidence cannot become PASS.
+- The runner carries no durable distributed/per-device scenario state.
+- Deterministic execution does not depend on wall-clock sleeps.
+
+## 5. Result Semantics
+
+The core result must distinguish at least:
+
+- completed/pass-candidate execution;
+- assertion/step failure where known;
+- blocked/unavailable required capability/evidence;
+- unsupported/invalid scenario/step.
+
+05C may add canonical evidence fields, but 05B must not collapse these states into one boolean that loses failure meaning.
+
+## 6. Material Edge / Failure Cases
+
+Tests must cover:
+
+- valid multi-step scenario executes in order;
+- unsupported step fails/blocks deterministically;
+- missing required result does not PASS;
+- production-operation failure propagates;
+- fixture failure propagates;
+- same scenario produces deterministic execution ordering across repeated runs;
+- runner dispatch does not depend on scenario ID;
+- deliberate wrong/unknown step cannot be silently skipped;
+- runner does not persist distributed/per-device scenario state.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- internal dispatch structure;
+- handler registry limited to the frozen step vocabulary;
+- async control flow;
+- internal execution-context shape;
+- private error/result types.
+
+Do not introduce a general plugin/module router or extensibility framework.
+
+## 8. Dependencies
+
+Consumes accepted S04 world and S05A scenario contract.
+
+05C will add generic observation/assertion/evidence semantics; keep runner extension points narrow and vocabulary-driven rather than prebuilding a large framework.
+
+## 9. Acceptance Criteria
+
+Acceptance requires one common runner, deterministic ordered dispatch, fail-closed unsupported/missing-result behavior, real production-path invocation through S04, no scenario-ID-specific logic, no distributed state, architecture-budget compliance, and authoritative PHX-CI PASS.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- canonical evidence aggregation;
+- broad assertion library;
+- checkpoint persistence;
+- live executor;
+- scenario catalog migration;
+- plugin/router system;
+- new production seams.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, changed paths, runner result states, focused tests/results, architecture metrics delta, unavailable checks, and no-out-of-allowlist confirmation.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 05C.

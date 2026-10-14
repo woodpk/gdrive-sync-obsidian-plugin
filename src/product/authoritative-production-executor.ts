@@ -17,6 +17,7 @@ import type {
   RemoteObjectId,
   RetrySafePhysicalAuthorityV1_3,
   StateLoadContext,
+  SynchronizationCancellationSignal,
   SynchronizationAuthorityStoreV1_1,
   SynchronizationStateStore,
 } from "../contracts";
@@ -25,7 +26,9 @@ import {
   type RecoverableProductionMutationDependencies,
 } from "./authoritative-production-executor-base";
 import { recoverMatchingDurableIntentToVerifiedReceipt } from "./durable-intent-recovery";
+import { executionRequestAttributionFor } from "./authority-execution-diagnostics";
 import type { ProductSynchronizationExecutor } from "./production-executor";
+import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 
 export type { RecoverableProductionMutationDependencies } from "./authoritative-production-executor-base";
 
@@ -201,8 +204,26 @@ export function createAuthoritativeProductExecutor(
     }
     if (existing.status === "none") return base.execute(operation);
 
+    const recoveryScope = executionRequestAttributionFor(authorityStore, operation);
+    let recoveryLegacy = legacy;
+    if (recoveryScope) {
+      try { recoveryLegacy = legacy.withRequestAttribution(recoveryScope); }
+      catch { /* Attribution is observational; retain the original execution port. */ }
+    }
+    const reader = configured.remoteFolderCreateRecoveryReadPort;
+    let recoveryReader = reader;
+    if (reader && recoveryScope) {
+      try {
+        const scopedReader = reader as typeof reader & {
+          withRequestAttribution?: (scope: RequestAttributionScope) => typeof reader;
+        };
+        recoveryReader = scopedReader.withRequestAttribution?.({
+          ...recoveryScope, purpose: "create-result-verification",
+        }) ?? reader;
+      } catch { /* Diagnostic scoping must not affect recovery. */ }
+    }
     const recovery = await recoverMatchingDurableIntentToVerifiedReceipt(
-      legacy,
+      recoveryLegacy,
       authorityStore,
       identityStateStore,
       stateContext,
@@ -210,7 +231,7 @@ export function createAuthoritativeProductExecutor(
       operation.operationId,
       {
         localTransactionalMutationPort: configured.localTransactionalMutationPort,
-        remoteFolderCreateRecoveryReadPort: configured.remoteFolderCreateRecoveryReadPort,
+        remoteFolderCreateRecoveryReadPort: recoveryReader,
       },
     );
     if (recovery.status === "recovery-required") return { status: "recovery-required", reason: recovery.reason };
@@ -277,6 +298,45 @@ function predecessorToV1_3(result: ExecutionResult): ExecutionResultV1_3 {
  * physical authority; structured operational provenance is captured orthogonally
  * from the frozen successor ports and is never derived from reason strings.
  */
+function scopedV1_3RemotePort(
+  remote: ReliableRemoteMutationPortV1_3,
+  cancellation: SynchronizationCancellationSignal | undefined,
+  outcomes: RemoteMutationOutcomeV1_3[],
+): NonNullable<RecoverableProductionMutationDependencies["reliableRemoteMutationPort"]> {
+  const adapted: NonNullable<RecoverableProductionMutationDependencies["reliableRemoteMutationPort"]> = {
+    reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
+    reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
+    createReserved: async (identity, content) => {
+      const outcome = await remote.createReserved(identity, content, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    updateExisting: async (identity, content) => {
+      const outcome = await remote.updateExisting(identity, content, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    moveExisting: async identity => {
+      const outcome = await remote.moveExisting(identity, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+    trashExisting: async identity => {
+      const outcome = await remote.trashExisting(identity, cancellation);
+      outcomes.push(outcome);
+      return outcome;
+    },
+  };
+  const withAttribution = (remote as ReliableRemoteMutationPortV1_3 & {
+    withRequestAttribution?: (scope: RequestAttributionScope) => ReliableRemoteMutationPortV1_3;
+  }).withRequestAttribution;
+  if (typeof withAttribution !== "function") return adapted;
+  return Object.assign(adapted, {
+    withRequestAttribution: (scope: RequestAttributionScope) =>
+      scopedV1_3RemotePort(withAttribution.call(remote, scope), cancellation, outcomes),
+  });
+}
+
 export function createAuthoritativeProductExecutorV1_3(
   legacy: ProductSynchronizationExecutor,
   authorityStore: SynchronizationAuthorityStoreV1_1,
@@ -284,6 +344,7 @@ export function createAuthoritativeProductExecutorV1_3(
   stateContext: StateLoadContext,
   managedRemote: ManagedRemoteIdentity,
   explicitDependencies: RecoverableProductionMutationDependenciesV1_3,
+  cancellation?: SynchronizationCancellationSignal,
 ): AuthoritativeSynchronizationExecutorV1_3 {
   const remoteOutcomes: RemoteMutationOutcomeV1_3[] = [];
   const localResults: LocalTransactionResultV1_3[] = [];
@@ -292,45 +353,22 @@ export function createAuthoritativeProductExecutorV1_3(
   const local = explicitDependencies.localTransactionalMutationPort;
   const adaptedDependencies: RecoverableProductionMutationDependencies = {
     ...(remote ? {
-      reliableRemoteMutationPort: {
-        reserveFileCreateIdentity: (...args) => remote.reserveFileCreateIdentity(...args),
-        reserveFolderCreateIdentity: (...args) => remote.reserveFolderCreateIdentity(...args),
-        createReserved: async (...args) => {
-          const outcome = await remote.createReserved(...args);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        updateExisting: async (...args) => {
-          const outcome = await remote.updateExisting(...args);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        moveExisting: async (...args) => {
-          const outcome = await remote.moveExisting(...args);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-        trashExisting: async (...args) => {
-          const outcome = await remote.trashExisting(...args);
-          remoteOutcomes.push(outcome);
-          return outcome;
-        },
-      },
+      reliableRemoteMutationPort: scopedV1_3RemotePort(remote, cancellation, remoteOutcomes),
     } : {}),
     ...(local ? {
       localTransactionalMutationPort: {
-        stageAndVerify: async (...args) => {
-          const result = await local.stageAndVerify(...args);
+        stageAndVerify: async (transaction, content) => {
+          const result = await local.stageAndVerify(transaction, content, cancellation);
           localResults.push(result);
           return result;
         },
-        commitVerifiedStage: async (...args) => {
-          const result = await local.commitVerifiedStage(...args);
+        commitVerifiedStage: async transaction => {
+          const result = await local.commitVerifiedStage(transaction, cancellation);
           localResults.push(result);
           return result;
         },
-        recover: async (...args) => {
-          const result = await local.recover(...args);
+        recover: async transaction => {
+          const result = await local.recover(transaction, cancellation);
           localResults.push(result);
           return result;
         },

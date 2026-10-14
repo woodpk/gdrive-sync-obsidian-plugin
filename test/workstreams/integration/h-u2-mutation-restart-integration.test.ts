@@ -214,6 +214,8 @@ class DriveWorld {
       new GoogleOAuthSession({ clientId: "client", redirectUri: "https://callback" }, store),
       new StubTransport((url, init) => this.request(url, init)),
       store,
+      undefined,
+      () => managedRemote,
     );
   }
 

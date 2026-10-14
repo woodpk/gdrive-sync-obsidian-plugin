@@ -2,6 +2,7 @@ import {
   appendDurableRemoteChangeBatch,
   contractId,
   type LocalTransactionalMutationPort,
+  type RemoteFileCreateRecoveryReadPort,
   type RemoteFolderCreateRecoveryReadPort,
   type ReliableRemoteMutationPort,
   type StateRevision,
@@ -156,8 +157,13 @@ export class ProductController extends ProductControllerBase {
       localTransactionalMutationPort: options.localTransactionalMutationPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
     };
+    const remoteFileRecoveryCandidate = options.reliableRemoteMutationPort as (ReliableRemoteMutationPort & Partial<RemoteFileCreateRecoveryReadPort>) | undefined;
+    const remoteFileCreateRecoveryReadPort = typeof remoteFileRecoveryCandidate?.observeFileCreateRecovery === "function"
+      ? remoteFileRecoveryCandidate as ReliableRemoteMutationPort & RemoteFileCreateRecoveryReadPort
+      : undefined;
     const recoveryDependencies: DurableIntentRecoveryDependencies = {
       localTransactionalMutationPort: options.localTransactionalMutationPort,
+      remoteFileCreateRecoveryReadPort,
       remoteFolderCreateRecoveryReadPort: options.remoteFolderCreateRecoveryReadPort,
       remoteUpdateFinalizationPort: options.reliableRemoteMutationPort as (ReliableRemoteMutationPort & RemoteUpdateFinalizationPort) | undefined,
     };

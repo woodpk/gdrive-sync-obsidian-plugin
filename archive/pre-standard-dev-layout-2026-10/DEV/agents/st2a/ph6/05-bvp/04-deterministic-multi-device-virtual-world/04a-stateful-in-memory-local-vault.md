@@ -1,0 +1,205 @@
+# BVP-S04A — Stateful In-Memory Local Vault
+
+## 0. Status
+
+**Agent name:** `agt-brain-bvp-s04-virtual-world-01`  
+**Prompt maturity:** COMPLETE / NON-EXECUTABLE  
+**Primary work package:** BVP-S04 — Deterministic Multi-Device Virtual World  
+**Predecessor:** accepted BVP-S03 primary-stage gate
+
+Read `dev/agents/st2a/ph6/05-bvp/00-execution-contract.md` first.
+
+This is a complete prewritten semantic contract. Dispatch binding supplies hard repository coordinates only.
+
+## 0.1 Authoritative Acceptance Record
+
+S04A is complete and accepted.
+
+- authoritative task base / prerequisite evidence: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- accepted implementation SHA: `18e23b35123deb56e2ba93b1aae94b47b5fb426c`;
+- authoritative PHX-CI evidence / promoted integration SHA: `cfe38db334d3d35d5787837f7c07331e72cc3366`;
+- PHX-CI runtime: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused BVP verification: PASS, 87/87;
+- full repository tests: PASS, 822/822;
+- architecture guard: PASS, 0 violations;
+- production seam: 1 file / 25 logical LOC;
+- framework core: 718 logical TS LOC / 3 runtime modules, within the 4000-LOC budget;
+- live-device/scenario-specific production surfaces: 0;
+- production artifact: unchanged at 872862 bytes, SHA-256 `6e3e1b0deb16f714c19dc9b71b0f9c57b07853add755b46a08ed1cb52b237c7d`.
+
+The initial green S04A run at evidence `6cae030f1be5fa8c2485e5009c84c2a8eaafd57a` was not accepted after supervisory review identified two in-scope local-port fidelity defects. Those defects were repaired before the authoritative acceptance above: absent-target `replaceFile` parity and idempotent existing-target `createFolder` parity.
+
+This file is now a historical completion record and authorizes no further S04A work.
+
+## 1. Objective
+
+Implement the deterministic in-memory local-vault boundary required to run real production synchronization logic without a live Obsidian filesystem.
+
+The adapter models local external reality. It MUST NOT decide synchronization policy, conflict policy, deletion policy, authority, or reconciliation outcomes.
+
+## 2. Required End State
+
+When complete, the deterministic local-vault implementation can represent and expose the local-side behaviors needed by later BVP tests:
+
+- file existence and absence;
+- byte/text content;
+- path identity and path changes;
+- create/write/update;
+- move/rename;
+- trash/delete semantics appropriate to the production port;
+- directory/listing observations required by production code;
+- unreadable/inaccessible paths;
+- path compatibility/case/Unicode conditions required by product tests;
+- active-write/stability observations when the production boundary exposes them;
+- configuration/scope/exclusion observations consumed through the production local-vault contract.
+
+The implementation is stateful across multiple production operations within one test world.
+
+## 3. Dispatch Binding — Hard Data Only
+
+The S04A contract is bound to the accepted post-S03 repository state as follows:
+
+- accepted S04 local-vault seam prerequisite evidence / authoritative task base: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- underlying accepted S03 predecessor: `a80ec07562072224a28f08d6b68069b9fa0b3521`;
+- exact task branch: `bvp-s04a-stateful-in-memory-local-vault`;
+- production local-vault contract: `LocalVaultPort`, semantically defined in `src/contracts/local-vault.ts` and exposed to the BVP through supervisor-owned non-shipping seam `src/product/local-vault-boundary-seam.ts`;
+- required shared value/observation types are existing production types re-exported through that narrow seam, including `VaultPath`, `ObservationToken`, `BinaryContentSource`, `ContentEvidence`, `LocalObservation`, `LocalVaultListing`, `LocalReadResult`, `LocalMutationReceipt`, `PathValidationResult`, `ConfigurationClassification`, `LocalVaultChange`, and `LocalLifecycleEvent`;
+- accepted production policy helpers to reuse rather than duplicate:
+  - `src/local/path-policy.ts` — normalization/case/Unicode/cross-platform validation;
+  - `src/local/config-policy.ts` — selective configuration classification;
+  - `src/local/exclusions.ts` — existing vault-scope/exclusion policy;
+- existing read-only behavioral references:
+  - `src/local/obsidian-local-vault.ts`;
+  - `test/obsidian-local-vault.test.ts`;
+  - `test/local-failure-semantics.test.ts`;
+  - `src/testing/fakes.ts#createLocalVaultFake` is an existing handler-based/stateless test helper and is **not** the S04A stateful implementation and is not writable in this child;
+- exact S04A implementation path: `test-platform/src/virtual-world/in-memory-local-vault.ts`;
+- exact S04A test path: `test-platform/test/in-memory-local-vault.test.ts`;
+- exact writable-path allowlist for S04A implementation:
+  - `test-platform/src/virtual-world/in-memory-local-vault.ts`;
+  - `test-platform/test/in-memory-local-vault.test.ts`;
+- supervisor-owned compile-layout support for approved production seam imports is bound in `test-platform/tsconfig.json` with repository-root `rootDir`; BVP emitted paths are correspondingly under `.test-build/bvp/test-platform/**`;
+- supervisor-owned production seam authority explicitly permits frozen production boundary contracts and pure deterministic policy helpers when individually enumerated for virtual-world adapter fidelity;
+- supervisor-owned production seam allowlist is pre-approved for exactly one entry: `src/product/local-vault-boundary-seam.ts`;
+- that seam re-exports only the existing local-vault contract/types plus `normalizeVaultPath`, `validateCrossPlatformPath`, `SelectiveConfigurationPolicy`, and `LocalExclusionPolicy`; it contains no synchronization policy and is not imported by the shipping product entrypoint;
+- the seam occupies 1 of the frozen maximum 4 production-seam files and remains well below the 350 logical-LOC cap;
+- `LocalIntegrityReconciliationPort` is not a separate S04A implementation requirement: production already obtains that seam through `CanonicalEvidenceLocalVault`; S04A must not invent an alternate integrity or synchronization API;
+- PHX-CI base authority for this task branch: `bc735d9d9fbc4b54b15528f0e9f1018682ee9c45`;
+- target-branch PHX-CI framework/runtime SHA: `192bc722bdd886c1b18731bf5fde35ec7cfe091c`;
+- focused S04A command: `tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/in-memory-local-vault.test.js`;
+- authoritative full BVP focused command remains `npm run test:bvp-root`;
+- BVP-GOV-010 size gate: **PASS** — one platform contract family, one substantive BVP runtime implementation file plus one small supervisor-owned non-shipping production seam, and no more than the two implementation-writable `test-platform/**` files.
+
+The supervisor-owned seam approval above is execution binding, not authority for the implementation child to modify governance or production files. The implementation itself may write only the two bound `test-platform/**` paths.
+
+Binding may not alter the required local-vault semantics below.
+
+## 4. Required Behavior and Semantics
+
+### 4.1 Port fidelity
+
+The adapter must implement the same production boundary contract consumed by real synchronization logic. Later production code must be able to use it without a BVP-specific alternate synchronization API.
+
+### 4.2 Stateful reality
+
+Operations must change retained local-vault state so later observations see the resulting reality.
+
+A write followed by read/list/observation must reflect the write unless a separately injected failure/condition says otherwise.
+
+### 4.3 Path and identity behavior
+
+The model must preserve enough local path/content identity to exercise:
+
+- rename/move without silently converting the event into delete+unrelated-create unless the production boundary itself provides only those observations;
+- case/Unicode/path compatibility distinctions required by the product contract;
+- path collisions and inaccessible paths later injected by scenarios.
+
+Do not invent stronger local identity than the production interface legitimately exposes.
+
+### 4.4 Read/write/trash semantics
+
+Operations must faithfully model observable success/failure states the production local-vault boundary can encounter.
+
+The adapter may simulate external outcomes but must not reinterpret them into synchronization decisions.
+
+### 4.5 Scope/configuration semantics
+
+Where production local observation depends on exclusions, configured vault scope, or path eligibility, expose those facts through the same boundary semantics production uses. The adapter must not independently choose synchronization policy.
+
+## 5. Invariants
+
+- No synchronization/reconciliation policy is implemented in the adapter.
+- No scenario sequencing or verdict logic is implemented here.
+- No durable distributed workflow state is introduced.
+- No production source imports BVP implementation.
+- No wall-clock sleep is required for correctness.
+- Simulated local reality remains distinct per logical device once multi-device composition exists.
+- Fault/error states remain observations for production logic, not pre-decided outcomes.
+
+## 6. Material Edge / Failure Cases
+
+Tests must establish representative behavior for:
+
+- missing file;
+- existing file;
+- overwrite/update;
+- move/rename;
+- trash/delete;
+- unreadable/inaccessible file;
+- incompatible/colliding path condition;
+- listing that contains multiple paths;
+- excluded/out-of-scope path where the production port represents that state;
+- write/read byte fidelity;
+- repeated observation after mutation.
+
+If the current production interface cannot represent a required BVP target behavior, return `BLOCKED` with the exact missing contract rather than adding a BVP-only synchronization interface.
+
+## 7. Engineering Discretion
+
+The agent may choose:
+
+- internal in-memory data structures;
+- content storage representation;
+- helper/module decomposition;
+- deterministic IDs used only inside local simulation where legitimate;
+- test organization;
+- private fixture builders.
+
+Do not change production port semantics merely to simplify the simulator.
+
+## 8. Dependencies
+
+Requires accepted S03 architecture guard/metrics/PHX-CI enforcement.
+
+Later S04 children will consume this adapter; therefore its external behavior must be generic and production-port-aligned, not scenario-specific.
+
+## 9. Acceptance Criteria
+
+Acceptance requires:
+
+- the adapter satisfies the bound production local-vault contract;
+- deterministic tests cover the required behaviors and edge cases above;
+- no synchronization policy appears in the adapter;
+- no production code or frozen governance surface changes unless explicitly bound by higher authority;
+- architecture guard/metrics remain within budget;
+- authoritative PHX-CI passes focused + full repository verification.
+
+## 10. Non-Goals
+
+Do not implement:
+
+- Google Drive simulation;
+- change feed;
+- per-device durable synchronization state;
+- deterministic global time/fault scheduler beyond the minimum local facts this adapter itself needs;
+- world composition;
+- scenario DSL/runner/evidence;
+- live-device validation.
+
+## 11. Handoff / Stop
+
+Report exact input SHA, implementation SHA, actual changed paths, bound production port(s), focused tests/results, unavailable checks, and confirmation that no out-of-allowlist path changed.
+
+Stop at `READY FOR LOCAL PHX-CI VERIFICATION`.
+
+Do not begin 04B.
