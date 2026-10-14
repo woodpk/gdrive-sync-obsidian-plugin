@@ -28,3 +28,14 @@
 5. G1 physical S09 / unresolved `data.json` integrity is independent and blocks live inventory cutover, installation/release, activation and Stage 3.
 
 **No product activation, release, or real Drive/vault operations are part of gate 5.**
+
+## 2026-10-14 — governing SHA-policy adoption, bounded development gate
+
+- The owner directed adoption of the updated Agent-Led Software Engineering Operating Protocol, particularly §5.1 and its separation of development build identity from immutable approved promotion identity. **DEC-340** records this scoped change to the former history-hash assertion.
+- Original integrated source `49415dd335c7a15da9644b6880482f5e44689191` produced **PHX-CI BLOCKED**, run `dd55aa0d-bc3e-483c-8c76-95be5b8d03b7`; change-set focused tests **399/400**, with only S08B #286 failing because newly built `main.js` did not match three historical hashes. Typecheck and **985/985 product tests** passed. Build/repository/artifact stages were not executed; do not claim otherwise. PHX-CI evidence commit: `9a011de9b028f99f2b6bce48a5f304aed87a1c4e`.
+- **Observed, not approved:** new `main.js` SHA-256 `57c33f8920fe6b46635e9ad01598f1ea06cd2477789ec4ec046e2be66997818c` during the original focused test.
+- The new development verification contract requires an explicit `BRAIN_ARTIFACT_PURPOSE=development` plus the PHX-CI-provided verification context and `BVP_CHANGE_CLASS=authorized-governance`. In this case the consumer repository check still validates package identity, required/readable build artifact, code governance and separation and reports the actual observed SHA. Without that combined gate, or when `BRAIN_ARTIFACT_PURPOSE=promotion`, the original strict accepted-hash policy remains unchanged.
+- The S08B product isolation test no longer falsely requires the *new development build* to match an earlier release SHA, but continues to check actual production output and exclusion of BVP sentinels; PHX-CI artifact verification and independent integration review remain required.
+- Tests include negative development cases for missing `main.js` and invalid package identity, rejection of unauthenticated development mode, and promotion exact-hash enforcement.
+- **Status: new corrected source NOT YET PHX-CI VERIFIED.** A PHX-CI run of this changed development gate is required for the new software/tests (not to regenerate old evidence). The previous blocked source must not be rerun. No production activation or release is authorized.
+
