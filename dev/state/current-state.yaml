@@ -3,15 +3,15 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "IN_PROGRESS"
+status: "S09_G102_PHX_CI_PASS_INDEPENDENT_REASSESSMENT_PENDING"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
-last_phx_ci_run_id: "e7c51b4d-e649-4658-8e1b-c117a2901ec3"
+last_phx_ci_run_id: "19a39b67-14d7-4e98-9023-d21f48013e69"
 blockers:
   - "Historical independent review REJECT / DEC-340-01 MAJOR remains an accurate finding, but the owner has now explicitly ACCEPTED the residual context-spoofing risk under DEC-344; DEC-340-01 alone is NON-BLOCKING for BRAIN continued engineering and software-only integration consideration. It remains UNFIXED, and no new merge/release/activation is approved."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
-  - "Independent reassessment of source a9fb045a5ad4fae8c17b260692feadc468c9643d returned REJECT for NEW G1-02 MAJOR (whitespace-only completed-sync identities). Bounded correction committed at 895e8210b8d3d6b508d71c3965d2da61a5f29850; corrected source has NOT yet passed PHX-CI or independent review. Historical PASS e7c51b4d-e649-4658-8e1b-c117a2901ec3 qualifies only the preceding a9fb045 source. No merge authorized."
+  - "Independent previous-source REJECT for G1-02 remains valid for a9fb045a5ad4fae8c17b260692feadc468c9643d. Corrected exact source 6bba74bf3d9df147bfd041f55f881d2cc00048a9 now has genuine PHX-CI PASS 19a39b67-14d7-4e98-9023-d21f48013e69: 11/11 PASS, 403/403 BVP, 994/994 product. NEW independent reassessment of this specific source remains PENDING. No merge authorized."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Qualify the new G1-02 corrected HEAD on fix/s09g1-review-g101-dec34001-20261014 using pinned PHX-CI runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83 against master baseline b1e2ebaee3077e34a4eefaf601ee8124078b7400; preserve the exact SUT SHA and published evidence, then obtain a NEW independent read-only reassessment. Do not merge, release, install, activate, perform live Drive/vault operations, physical S09 or Stage 3. DEC-340-01 remains owner-accepted but unfixed under DEC-344."
+next_action: "Dispatch separately independent READ-ONLY reviewer to execute dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g102-post-phxci-independent-reassessment.md against exact PHX-CI-verified source 6bba74bf3d9df147bfd041f55f881d2cc00048a9 and genuine run 19a39b67-14d7-4e98-9023-d21f48013e69 (evidence parent 520f7f1add0578b8a2e5c5e4d2b8106a9a0acc7b). Do not rerun all-PASS PHX-CI for administrative reasons, merge, release, install, activate, run live Drive/vault, physical S09 or Stage 3. DEC-340-01 remains nonblocking accepted/unfixed under DEC-344."
 updated_at: "2026-10-15"
 
 context:
@@ -24,7 +24,17 @@ context:
     corrected_sut_phx_ci_run: "e7c51b4d-e649-4658-8e1b-c117a2901ec3"
     prior_corrected_verified_source_sha: "a9fb045a5ad4fae8c17b260692feadc468c9643d"
     g1_02_fix_commit_sha: "895e8210b8d3d6b508d71c3965d2da61a5f29850"
-    g1_02_status: "CORRECTION_STAGED_PHX_CI_PENDING_INDEPENDENT_REVIEW_PENDING"
+    g1_02_status: "PHX_CI_PASS_INDEPENDENT_REVIEW_PENDING"
+    g1_02_verified_source_sha: "6bba74bf3d9df147bfd041f55f881d2cc00048a9"
+    g1_02_verified_tree_sha: "5422479d7c9c882b171f05a03a216345247e4096"
+    g1_02_phx_ci_run_id: "19a39b67-14d7-4e98-9023-d21f48013e69"
+    g1_02_evidence_commit: "520f7f1add0578b8a2e5c5e4d2b8106a9a0acc7b"
+    g1_02_canonical_evidence_recovery_commit: "17c949a923c4b01255446b12f2be8f6aa5f4b92f"
+    g1_02_phx_ci_result: "PASS_11_OF_11_FOCUSED_403_OF_403_PRODUCT_994_OF_994"
+    g1_02_development_artifact_bytes: 906210
+    g1_02_development_artifact_sha256: "3dcffa8f66a695b97103d3f8c8d52a9a06e74211938e4cd1140e88e46e2ec65c"
+    g1_02_artifact_release_approved: false
+    g1_02_independent_review_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g102-post-phxci-independent-reassessment.md"
     g1_02_review_reference: "dev/reviews/s09-g102-20261015/independent-reassessment.md"
     owner_risk_acceptance_decision: "DEC-344"
     dec_340_01_blocks_phx_ci: false

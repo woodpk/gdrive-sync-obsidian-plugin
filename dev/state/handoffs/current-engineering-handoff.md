@@ -1,4 +1,17 @@
-# Current engineering handoff — S09 G1-02 correction, PHX-CI pending (2026-10-15)
+# Current engineering handoff — G1-02 PHX-CI PASS, independent review pending (2026-10-15)
+
+- **Current exact tested candidate:** `6bba74bf3d9df147bfd041f55f881d2cc00048a9`; **Git tree:** `5422479d7c9c882b171f05a03a216345247e4096`; **accepted master base:** `b1e2ebaee3077e34a4eefaf601ee8124078b7400`. Branch: `fix/s09g1-review-g101-dec34001-20261014`. The subsequent commits publish or copy evidence and update handoff only; do **not** substitute branch HEAD for verified source.
+- The owner executed pinned PHX-CI framework `0.2.0-dev.2`, runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. Exact run `19a39b67-14d7-4e98-9023-d21f48013e69`: **11/11 stages PASS (exit 0)**, focused BVP **403/403**, product **994/994**, including G1-02 regression cases. Typecheck, build, repository/architecture, artifacts PASS. Source checkout and owner control checkout preserved.
+- **Original PHX-CI evidence publication:** `520f7f1add0578b8a2e5c5e4d2b8106a9a0acc7b`, **direct child of the tested source**. Exact original timestamped evidence preserved; canonical same-Git-blob copies at `dev/test-results/19a39b67-14d7-4e98-9023-d21f48013e69/` recovered administratively by `17c949a923c4b01255446b12f2be8f6aa5f4b92f`. No SUT rerun was performed for publication.
+- Observed ordinary **development** `main.js`: **906210 bytes**, SHA-256 `3dcffa8f66a695b97103d3f8c8d52a9a06e74211938e4cd1140e88e46e2ec65c`. **NOT release-approved**.
+- Historical independent **REJECT** of preceding candidate `a9fb045a5ad4fae8c17b260692feadc468c9643d` for MAJOR G1-02 remains intact. The corrected descendant at `6bba74bf...` has genuine PHX-CI PASS, but **has NOT been independently reviewed or owner-merge-approved**. DEC-343 previously assessed PASS on reviewed scope; DEC-340-01 **CONFIRMED/UNFIXED/OWNER RISK ACCEPTED/NON-BLOCKING** under locked DEC-344.
+- **NEXT:** hand exact assignment `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g102-post-phxci-independent-reassessment.md` to a separate independent read-only reviewer. Only after an evidence-grounded approval may this source be presented to the owner for a distinct software-only merge decision.
+- **NO** merge, release/hash approval, installation, activation, real Google Drive/vault operation, physical S09 acceptance or Stage 3. Original `data.json` incident cause is still unproven.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` — S09; new G1-02 independent-review task above; and `dev/reviews/s09-g102-20261015/independent-reassessment.md` (historical rejected-source report).
+
+---
+
+# Historical engineering handoff — S09 G1-02 correction, PHX-CI pending (2026-10-15)
 
 - The owner supplied a separate independent reviewer verdict **REJECT** for exact previously PHX-CI-verified software source `a9fb045a5ad4fae8c17b260692feadc468c9643d`. New **G1-02 MAJOR**: whitespace-only `vaultIdentity` / `remoteRootId` were truthy when `firstSyncCompleted === true`, permitting startup-side save before usable authority was established.
 - Engineering inspection confirmed the control-flow gap. The bounded fix and regression tests are committed at **`895e8210b8d3d6b508d71c3965d2da61a5f29850`** on `fix/s09g1-review-g101-dec34001-20261014`. The source now checks trimmed nonemptiness for completed-sync identities. New cases cover blank/whitespace inputs, no-write startup safety and legitimate unpaired state.
