@@ -96,7 +96,7 @@ function assertPersistedSettingsIdentity(raw: Record<string, unknown>): void {
   if (typeof value.firstSyncCompleted !== "boolean") {
     throw new Error("Existing BRAIN data.json has no valid first-sync authority; refusing identity reset.");
   }
-  if (value.firstSyncCompleted && (!(value.vaultIdentity as string) || !(value.remoteRootId as string))) {
+  if (value.firstSyncCompleted && (!(value.vaultIdentity as string).trim() || !(value.remoteRootId as string).trim())) {
     throw new Error("Existing BRAIN data.json has inconsistent completed-sync identity; refusing identity reset.");
   }
 }

@@ -87,6 +87,9 @@ test("G1 existing partial or null settings cannot regenerate identity or overwri
     { settings: { deviceIdentity: "", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: false } },
     { settings: { deviceIdentity: "device:survived", vaultIdentity: "", remoteRootId: "" } },
     { settings: { deviceIdentity: "device:survived", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: true } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: " ", remoteRootId: "root:valid", firstSyncCompleted: true } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: "vault:valid", remoteRootId: "\t", firstSyncCompleted: true } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: " \n ", remoteRootId: " \t ", firstSyncCompleted: true } },
   ]) {
     let saves = 0;
     const repository = new PluginDataRepository({
@@ -126,4 +129,21 @@ test("G1 valid persisted identities survive migration of missing optional settin
   assert.equal(stored.settings.vaultIdentity, "vault:survived");
   assert.equal(stored.settings.remoteRootId, "remote:survived");
   assert.equal(stored.audit.length, 1);
+});
+
+test("G1-02 legitimate unpaired existing settings retain blank pre-first-sync identifiers", async () => {
+  let writes = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => ({
+      settings: { deviceIdentity: "device:existing", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: false },
+    }),
+    dataFileExists: async () => true,
+    saveData: async () => { writes++; },
+  });
+  const settings = await repository.loadSettings();
+  assert.equal(settings.firstSyncCompleted, false);
+  assert.equal(settings.vaultIdentity, "");
+  assert.equal(settings.remoteRootId, "");
+  await repository.saveSettings(settings);
+  assert.equal(writes, 1);
 });

@@ -420,6 +420,47 @@ async function loadRuntimeClass() {
   return (await import("../src/product/runtime")).ProductRuntime;
 }
 
+test("G1-02 corrupted completed-sync identities block plugin startup before runtime reconciliation writes", async () => {
+  const ProductRuntime = await loadRuntimeClass();
+  for (const [vaultIdentity, remoteRootId] of [
+    [" ", "root:valid"],
+    ["vault:valid", "\t"],
+    [" \n ", " \t "],
+  ] as const) {
+    const vault = new MemoryVault();
+    let writes = 0;
+    let runtimeInitialized = false;
+    let settings = { ...DEFAULT_SETTINGS };
+    const repository = new PluginDataRepository({
+      loadData: async () => ({
+        settings: { ...DEFAULT_SETTINGS, deviceIdentity: "device:existing", vaultIdentity, remoteRootId, firstSyncCompleted: true },
+      }),
+      dataFileExists: async () => true,
+      saveData: async () => { writes++; },
+    });
+    const initializePlugin = async () => {
+      // Mirrors main.ts onload: persisted settings are loaded before ProductRuntime.initialize.
+      settings = await repository.loadSettings();
+      const runtime = new ProductRuntime({
+        app: { ...vault.app, secretStorage: { getSecret: () => null } } as unknown as App,
+        plugin: {} as never,
+        settings: () => settings,
+        data: repository,
+        saveSettings: async next => {
+          await repository.saveSettings(next);
+          settings = next;
+        },
+        notify: () => undefined,
+      });
+      runtimeInitialized = true;
+      await runtime.initialize();
+    };
+    await assert.rejects(initializePlugin, /inconsistent completed-sync identity/u);
+    assert.equal(runtimeInitialized, false, "invalid persisted authority must block runtime initialization");
+    assert.equal(writes, 0, "runtime reconciliation must not overwrite corrupt data.json");
+  }
+});
+
 async function recoverRelocation(
   vault: MemoryVault,
   initial: ReturnType<typeof withManagedSyncPlanErrorsExclusion>,
