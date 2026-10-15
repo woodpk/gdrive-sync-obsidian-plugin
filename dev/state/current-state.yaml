@@ -3,7 +3,7 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "S09_G104_G105_CORRECTIONS_STAGED_PHX_CI_PENDING"
+status: "S09_G104_G105_REMEDIATION_STAGED_PHX_CI_PENDING"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "d3926ce1-24f6-4747-9459-b843e26e4c17"
 blockers:
@@ -11,14 +11,18 @@ blockers:
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
   - "Prior G1-03 source c3a6c4c98ca542f524b6249671c13a3fbe9729e8 had genuine PHX-CI PASS, but adversarial reassessment identified G1-04 unsafe remote re-pairing/base reuse and G1-05 failed settings write leaking through later whole-document writers. Bounded combined correction is staged at code/test commit e6184713cc21c3801ad4ee88b47c8bf3cfebb35a; PHX-CI and separate independent reassessment are PENDING. No software-only merge authorization."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Execute pinned PHX-CI on the new exact source on branch fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015, using base b1e2ebaee3077e34a4eefaf601ee8124078b7400, development purpose and authorized-governance classification because inherited DEC-343 frozen-surface changes are in the comparison. Inspect and publish original evidence, then commission a separate independent read-only review. No merge, production digest approval, activation, live vault/Drive operations, physical S09 or Stage 3."
+next_action: "Run canonical PHX-CI on new exact-source G1-04/G1-05 correction: initial test failure at run dcac84f4-8b9e-43d5-ae02-4233f52f36eb was addressed in code/test commit d6e471dee4a41de5407dad3eec1076479d86232a. Use branch fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015, baseline b1e2ebaee3077e34a4eefaf601ee8124078b7400, runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83, BRAIN_ARTIFACT_PURPOSE=development, BVP_CHANGE_CLASS=authorized-governance, focused npm run test:bvp-root, push publication. Inspect true verification evidence and dispatch independent read-only review after PASS. No merge/release/activation/live Drive/vault/physical S09/Stage 3."
 updated_at: "2026-10-15"
 
 context:
   s09_g104_g105_corrective_build:
     code_and_test_commit: "e6184713cc21c3801ad4ee88b47c8bf3cfebb35a"
     issues: ["G1-04", "G1-05"]
-    status: "STAGED_PHX_CI_UNVERIFIED"
+    status: "INITIAL_RUN_BLOCKED_TEST_561_CORRECTION_STAGED_PHX_CI_PENDING"
+    failed_run_id: "dcac84f4-8b9e-43d5-ae02-4233f52f36eb"
+    failed_run_evidence_commit: "1c880d02f3dcd9c821fc1da0319d4d884b2e6cf3"
+    failed_source_sha: "4b28d31c450e3a9152b61cea8a3cdfcaaf26757b"
+    repaired_code_commit: "d6e471dee4a41de5407dad3eec1076479d86232a"
     previous_verified_source: "c3a6c4c98ca542f524b6249671c13a3fbe9729e8"
     previous_phx_ci_run: "d3926ce1-24f6-4747-9459-b843e26e4c17"
   s09_g1_review_remediation:

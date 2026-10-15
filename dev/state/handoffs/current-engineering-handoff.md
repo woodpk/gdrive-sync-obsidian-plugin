@@ -1,4 +1,16 @@
-# Current engineering handoff — G1-04/G1-05 corrections staged; PHX-CI pending (2026-10-15)
+# Current engineering handoff — G1-04/G1-05 post-PHX-CI test regression corrected, requalification pending (2026-10-15)
+
+- **Repository/branch:** `woodpk/gdrive-sync-obsidian-plugin` / `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`.
+- **Initial source:** `4b28d31c450e3a9152b61cea8a3cdfcaaf26757b` — PHX-CI run `dcac84f4-8b9e-43d5-ae02-4233f52f36eb` BLOCKED; evidence published at `1c880d02f3dcd9c821fc1da0319d4d884b2e6cf3`. Focused BVP 403/403 PASS, typecheck PASS; full product 1000/1001 PASS, failure #561 in `test/phase6-alpha-mixed-plan-isolation.test.ts` on an intentionally recovering shared plugin repository. Build/repository-check/artifacts did not run. Preserve original evidence, do not label PASS.
+- **Corrective code/test commit:** `d6e471dee4a41de5407dad3eec1076479d86232a`, UNVERIFIED. Corrected the overly broad G1-05 permanent failure latch. On failed save the repository retains last confirmed in-memory authority; before a later writer, it re-reads disk/existence and resumes only if unchanged relative to the last confirmed snapshot. A physically applied-but-rejected write or an unreadable state remains blocked. Updated shared repository test fixture to reflect real durable reads and added explicit failure-after-write and readback-failure regressions. Deauthorization clears OAuth credentials only after successful settings persistence.
+- **Inherited G1-04 scope:** Keep existing IndexedDB keys for historic installations, isolate each deliberate new pairing using independent state/text store namespace and remote ID, forbid pairing/root-creation actions while first-sync-completed; no physical operations.
+- **Next:** Pin final source SHA, execute canonical pinned PHX-CI (runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, base `b1e2ebaee3077e34a4eefaf601ee8124078b7400`, focused `npm run test:bvp-root`, `BRAIN_ARTIFACT_PURPOSE=development`, `BVP_CHANGE_CLASS=authorized-governance`, publication `push`). On PASS inspect original evidence, then commission a genuinely separate read-only review.
+- **No merge, release/production hash approval, installation, activation, live Drive/vault, S09 physical acceptance, or Stage 3.** DEC-340-01 remains owner accepted/unfixed/nonblocking under DEC-344. Historical physical `data.json` disappearance cause remains unknown.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` — S09 G1 integrity mitigation; original G1-03 review assignment `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g103-post-phxci-independent-reassessment.md`.
+
+---
+
+# Historical handoff — G1-04/G1-05 first corrective candidate staged (2026-10-15)
 
 - **Repository:** `woodpk/gdrive-sync-obsidian-plugin`; isolated branch `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`.
 - **Code/test commit:** `e6184713cc21c3801ad4ee88b47c8bf3cfebb35a` (UNVERIFIED). Parent original G1-03 reviewer-assignment commit: `aaf253a779b75036ad6ecf25ec5f037cd370df21`.
