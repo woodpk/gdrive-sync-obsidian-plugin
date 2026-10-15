@@ -1,4 +1,17 @@
-# Current engineering handoff — S09 G1-03 PHX-CI PASS, separate independent review pending (2026-10-15)
+# Current engineering handoff — G1-04/G1-05 corrections staged; PHX-CI pending (2026-10-15)
+
+- **Repository:** `woodpk/gdrive-sync-obsidian-plugin`; isolated branch `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`.
+- **Code/test commit:** `e6184713cc21c3801ad4ee88b47c8bf3cfebb35a` (UNVERIFIED). Parent original G1-03 reviewer-assignment commit: `aaf253a779b75036ad6ecf25ec5f037cd370df21`.
+- **G1-04:** Completed devices must deauthorize before creating/validating pairing. Successful deauthorization and new pairing allocate new storage epoch; new IndexedDB state and text-version database keys bind both epoch and remote root, while existing installs retain legacy keys until an explicit re-pair. This avoids treating an old remote's trusted BASE as authority for a newly paired remote.
+- **G1-05:** PluginDataRepository now queues whole-document updates transactionally; memory is updated only after successful `saveData`, and any failed host save poisons further writes until restart because disk outcome may be uncertain. Regression cases cover rollback/failure, blocked subsequent writers and concurrent successful writers.
+- **Coverage staged:** Four new tests in `test/plugin-data-integrity-regression.test.ts`, plus adjustment to the existing G1-03 deauthorization test. **No PHX-CI PASS for this new source yet.**
+- **Next exact step:** Pin the branch's final source SHA, run canonical PHX-CI using runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, base `b1e2ebaee3077e34a4eefaf601ee8124078b7400`, focused `npm run test:bvp-root`, development artifact observation and authorized-governance classification for the inherited DEC-343 frozen-surface comparison. Publication `push`; preserve a failed disposable diagnostic workspace, remove only after success.
+- **Outstanding:** independent reassessment after genuine PHX-CI PASS; separate owner software-only merge decision; DEC-340-01 remains CONFIRMED/UNFIXED/OWNER ACCEPTED NON-BLOCKING under DEC-344. No release/production hash approval, install, activation, live Drive/vault, physical S09, Stage 3, or claim of historical `data.json` root cause.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` — S09 G1 integrity mitigation; historical review assignment `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g103-post-phxci-independent-reassessment.md`.
+
+---
+
+# Historical engineering handoff — S09 G1-03 PHX-CI PASS, subsequent reassessment REJECT (2026-10-15)
 
 - **Repository:** `woodpk/gdrive-sync-obsidian-plugin`; branch `fix/s09-g103-settings-identity-write-guard-20261015`.
 - **Exact verified source SHA:** `c3a6c4c98ca542f524b6249671c13a3fbe9729e8`; **Git tree** `a4fb9a2ba034fceed7345cf0ff15ad774d89c95d`; **accepted master baseline** `b1e2ebaee3077e34a4eefaf601ee8124078b7400`. The subsequent evidence, administrative recovery and review-handoff commits are **NOT the source PHX-CI tested**.

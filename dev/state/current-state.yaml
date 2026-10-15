@@ -3,18 +3,24 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "S09_G103_PHX_CI_PASS_INDEPENDENT_REVIEW_PENDING"
+status: "S09_G104_G105_CORRECTIONS_STAGED_PHX_CI_PENDING"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "d3926ce1-24f6-4747-9459-b843e26e4c17"
 blockers:
   - "Historical independent review REJECT / DEC-340-01 MAJOR remains an accurate finding, but the owner has now explicitly ACCEPTED the residual context-spoofing risk under DEC-344; DEC-340-01 alone is NON-BLOCKING for BRAIN continued engineering and software-only integration consideration. It remains UNFIXED, and no new merge/release/activation is approved."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
-  - "Owner-supplied prior adversarial SELF-REVIEW REJECT of b430a92999ea4658e0a045d2e8c6eb8895425b72 identified MAJOR G1-03, not an independent review. Corrected exact source c3a6c4c98ca542f524b6249671c13a3fbe9729e8 has genuine PHX-CI PASS run d3926ce1-24f6-4747-9459-b843e26e4c17: 11/11 stages, 403/403 focused BVP, 997/997 product (includes two G1-03 regressions), task exit 0. NEW independent read-only assessment remains PENDING. No owner merge authorization."
+  - "Prior G1-03 source c3a6c4c98ca542f524b6249671c13a3fbe9729e8 had genuine PHX-CI PASS, but adversarial reassessment identified G1-04 unsafe remote re-pairing/base reuse and G1-05 failed settings write leaking through later whole-document writers. Bounded combined correction is staged at code/test commit e6184713cc21c3801ad4ee88b47c8bf3cfebb35a; PHX-CI and separate independent reassessment are PENDING. No software-only merge authorization."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Dispatch genuinely separate READ-ONLY independent reviewer to execute dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g103-post-phxci-independent-reassessment.md at committed assignment HEAD, inspecting exact PHX-CI-verified source c3a6c4c98ca542f524b6249671c13a3fbe9729e8, tree a4fb9a2ba034fceed7345cf0ff15ad774d89c95d, run d3926ce1-24f6-4747-9459-b843e26e4c17, original evidence publication c3616b61c46f969dad36b81ab6b2e423ce546387 and canonical exact-blob recovery. No rerun of all-PASS PHX-CI for administrative layout. DEC-340-01 accepted/unfixed/nonblocking under DEC-344. No merge unless separate owner authorization; no release/digest approval, installation, activation, live Drive/vault, physical S09 or Stage 3."
+next_action: "Execute pinned PHX-CI on the new exact source on branch fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015, using base b1e2ebaee3077e34a4eefaf601ee8124078b7400, development purpose and authorized-governance classification because inherited DEC-343 frozen-surface changes are in the comparison. Inspect and publish original evidence, then commission a separate independent read-only review. No merge, production digest approval, activation, live vault/Drive operations, physical S09 or Stage 3."
 updated_at: "2026-10-15"
 
 context:
+  s09_g104_g105_corrective_build:
+    code_and_test_commit: "e6184713cc21c3801ad4ee88b47c8bf3cfebb35a"
+    issues: ["G1-04", "G1-05"]
+    status: "STAGED_PHX_CI_UNVERIFIED"
+    previous_verified_source: "c3a6c4c98ca542f524b6249671c13a3fbe9729e8"
+    previous_phx_ci_run: "d3926ce1-24f6-4747-9459-b843e26e4c17"
   s09_g1_review_remediation:
     independent_verdict: "SELF_REVIEW_REJECT_G1_03_MAJOR_SEPARATE_INDEPENDENT_REVIEW_PENDING"
     g1_01_status: "PREVIOUS_CORRECTION_PHX_CI_PASS_FURTHER_G1_03_CORRECTION_UNVERIFIED"
