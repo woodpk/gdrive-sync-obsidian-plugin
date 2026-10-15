@@ -1,3 +1,13 @@
+# Current handoff — DEC-344 owner acceptance of DEC-340-01 residual risk (2026-10-14)
+
+- The owner explicitly accepted the **specific DEC-340-01 local verification-context spoofing risk**, after confirming that the risk is a potential attacker-forged standalone safety-check PASS, **not** evidence of falsified genuine PHX-CI test results. **DEC-344** is the authoritative locked decision in `dev/authority/decision-register.yaml`.
+- **DEC-340-01 remains CONFIRMED, UNFIXED and disclosed, but is NON-BLOCKING** for continued BRAIN work, genuine PHX-CI qualification, independent assessment and separately owner-authorized software-only integration consideration. Its authenticated-context redesign is **not** required before proceeding. This is risk acceptance, not a claim of remediation or a blanket merger/release approval.
+- **Next:** fresh exact-source PHX-CI qualification for the corrected G1-01 branch `fix/s09g1-review-g101-dec34001-20261014`, after binding its actual source SHA; then independent reassessment of G1-01 and residual issues. Historical PHX-CI PASS `1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc` qualifies `41dcc92954608214329974bd847b1741b6d37ba5` only, NOT the new corrective code.
+- Software promotion needs a separate owner decision; release/hash approval, installation, activation, live Drive/vault, physical S09, unknown original `data.json` loss cause, and Stage 3 remain separate blocked gates.
+- **Exact Tasking Location:** `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md`, *Independent reviewer REJECT*, and `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09.
+
+---
+
 # Current engineering handoff — independent S09 G1 + DEC-343 review REJECT and corrective response
 
 - The independent review of exact source `41dcc92954608214329974bd847b1741b6d37ba5` found TWO confirmed MAJOR deficiencies: **G1-01**, structurally incomplete existing `data.json` can default and regenerate identity; **DEC-340-01**, standalone artifact check trusts caller-supplied verification-context JSON and environmental change class/purpose without authenticated PHX-CI provenance. Historical physical loss of `data.json` is NOT proven.

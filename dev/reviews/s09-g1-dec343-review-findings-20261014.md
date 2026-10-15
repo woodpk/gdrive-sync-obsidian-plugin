@@ -28,3 +28,7 @@ The actual trusted attestation protocol is not provided by current pinned PHX-CI
 - **Next:** trusted PHX-CI/consumer attestation design and implementation, then a single coordinated PHX-CI qualification of the complete corrective code, then independent reassessment.
 
 **Exact tasking:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09, and `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md`, *Independent reviewer REJECT*.
+
+## Subsequent owner disposition — DEC-344 (2026-10-14)
+
+The owner explicitly **ACCEPTS** the residual DEC-340-01 context-spoofing risk and removes **this specific finding** as a blocker to BRAIN continued engineering, genuine PHX-CI validation, independent reassessment, and consideration of separately owner-authorized software-only integration. The finding remains independently CONFIRMED, technically UNFIXED, and reportable. Previous independent-review REJECT is not rewritten as APPROVE; owner decision is separately binding. Do not make an authenticated-context fix a prerequisite for this corrective candidate solely because of DEC-340-01. Do not approve release, installation, activation, live Drive/vault activity, physical S09, or Stage 3. G1-01 corrective code remains unverified by PHX-CI and must be verified before independent reassessment.
