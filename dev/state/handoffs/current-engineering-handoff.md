@@ -1,3 +1,17 @@
+# Current engineering handoff — G1-04/G1-05 PHX-CI PASS; genuinely independent reassessment PENDING (2026-10-15)
+
+- **Repository:** `woodpk/gdrive-sync-obsidian-plugin`; branch `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`.
+- **Exactly verified source SHA/tree:** `9beb958afd20acb0c6d5fdf9e44010ff8a88b490` / `a5d0de16680817b9a94f0ed86be3e639beaee99d`. The later evidence and review-handoff commits are **not** the tested code.
+- **Accepted pre-correction master baseline:** `b1e2ebaee3077e34a4eefaf601ee8124078b7400`. **PHX-CI pinned runtime:** `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
+- **Original PHX-CI run:** `a0a8d8f7-f464-4063-825c-5517ea20b328`, COMPLETE/PASS, **11/11** stages exit 0, focused BVP **403/403**, full product **1003/1003**, typecheck/build/repository/architecture/artifacts PASS. **Evidence publication:** `6533cf3098eb9931d7595319f41121bac73bc537`, direct child of verified source, original `dev/_ca-output.{json,md}` and timestamped `dev/test-results/20261015T224903Z-operator-fix-s09-g104-g105-pairing-namespace-atomic-persistence-20261015-9beb958afd20.{json,md,log}`.
+- **Development-only main.js:** 910255 bytes; SHA256 `d1ac446a8257461fc292d18f7c0563bf861bcf17f06562a76f358427c7ca59bd`. Not production-approved.
+- **Corrected findings:** G1-04 pairing/remote namespace isolation and completed-sync binding guard (initial implementation/test commit `e6184713cc21c3801ad4ee88b47c8bf3cfebb35a`); G1-05 serialized whole-document persistence and uncertain-write reconciliation (`d6e471dee4a41de5407dad3eec1076479d86232a`). Earlier run `dcac84f4-8b9e-43d5-ae02-4233f52f36eb` was **BLOCKED** at full product test #561; preserve this history, not a PASS.
+- **Next exact task:** Dispatch `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g104-g105-post-phxci-independent-reassessment.md` in a **separate, independent, strictly read-only reviewer session**, anchored to verified source SHA and original evidence. Reviewer must challenge newly paired empty-remote safe-union vs deletion planning, failed persistence durability/readback assumptions, inherited G1-01 through G1-03, and DEC-343 architecture.
+- **Gate:** PHX-CI PASS alone does **not** authorize integration. Await independent APPROVE and a **separate owner-controlled software-only merge decision**. DEC-340-01 remains CONFIRMED/UNFIXED/OWNER RISK ACCEPTED NON-BLOCKING per locked DEC-344. No new release digest, installation, activation, live Drive/vault, physical S09, historical data.json loss/corruption root-cause closure or Stage 3.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09 G1; new immutable-identity reviewer assignment above.
+
+---
+
 # Current engineering handoff — G1-04/G1-05 post-PHX-CI test regression corrected, requalification pending (2026-10-15)
 
 - **Repository/branch:** `woodpk/gdrive-sync-obsidian-plugin` / `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`.
