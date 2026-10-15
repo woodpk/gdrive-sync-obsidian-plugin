@@ -101,6 +101,23 @@ function assertPersistedSettingsIdentity(raw: Record<string, unknown>): void {
   }
 }
 
+
+/** Reject live writes that would make completed synchronization impossible to reload. */
+function assertWritableSettingsIdentity(next: BrainSyncSettings, current: BrainSyncSettings): void {
+  if (!next.firstSyncCompleted) return;
+  if (![next.deviceIdentity, next.vaultIdentity, next.remoteRootId]
+    .every(identity => typeof identity === "string" && identity.trim().length > 0)) {
+    throw new Error("Cannot persist incomplete completed-sync identity; deauthorize this device before changing pairing.");
+  }
+  if (current.firstSyncCompleted && (
+    next.deviceIdentity !== current.deviceIdentity ||
+    next.vaultIdentity !== current.vaultIdentity ||
+    next.remoteRootId !== current.remoteRootId
+  )) {
+    throw new Error("Cannot change completed-sync identity; deauthorize this device before re-pairing.");
+  }
+}
+
 export interface PluginDataHost {
   loadData(): Promise<unknown>;
   /** Distinguishes a new installation from an existing unreadable data.json. */
@@ -121,6 +138,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
   }
   async saveSettings(settings: BrainSyncSettings): Promise<void> {
     const data = await this.data();
+    assertWritableSettingsIdentity(settings, data.settings);
     data.settings = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
     await this.persist(data);
   }
@@ -175,6 +193,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
   }
 
   private async persist(data: MutablePluginData): Promise<void> {
+    assertWritableSettingsIdentity(data.settings, data.settings);
     const payload = structuredClone({
       settings: { ...data.settings, userExclusionPatterns: [...data.settings.userExclusionPatterns] },
       audit: data.audit.map(record => ({ ...record })),

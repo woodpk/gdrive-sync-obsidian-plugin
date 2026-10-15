@@ -216,3 +216,104 @@ test("G1-02 valid completed-sync identities survive optional-setting migration",
   assert.equal(saved.settings.remoteRootId, "root:survived");
   assert.equal(saved.settings.firstSyncCompleted, true);
 });
+
+test("G1-03 completed pairing cannot be cleared or rebound by settings writes", async () => {
+  const initial = {
+    ...DEFAULT_SETTINGS,
+    deviceIdentity: "device:stable",
+    vaultIdentity: "vault:stable",
+    remoteRootId: "root:stable",
+    firstSyncCompleted: true,
+  };
+  let stored: unknown = {
+    settings: initial,
+    audit: [{ id: "prior-audit", event: "plan-created", advisoryAtMs: 1 }],
+    diagnostics: { records: [], nextSequence: 7, nextAttemptId: 1 },
+    syncAttention: [],
+  };
+  let writes = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => stored,
+    dataFileExists: async () => true,
+    saveData: async data => { stored = structuredClone(data); writes++; },
+  });
+  const settings = await repository.loadSettings();
+  for (const patch of [
+    { vaultIdentity: "" },
+    { vaultIdentity: " \u2003 " },
+    { remoteRootId: "" },
+    { remoteRootId: "\t" },
+    { deviceIdentity: "" },
+  ]) {
+    await assert.rejects(
+      () => repository.saveSettings({ ...settings, ...patch }),
+      /Cannot persist incomplete completed-sync identity/u,
+    );
+    assert.equal(writes, 0, "invalid UI edit must not write data.json");
+  }
+  for (const patch of [
+    { vaultIdentity: "vault:different" },
+    { remoteRootId: "root:different" },
+    { deviceIdentity: "device:different" },
+  ]) {
+    await assert.rejects(
+      () => repository.saveSettings({ ...settings, ...patch }),
+      /Cannot change completed-sync identity/u,
+    );
+    assert.equal(writes, 0, "completed authority cannot be silently rebound");
+  }
+  await repository.save([{ id: "retained-audit", event: "plan-created", advisoryAtMs: 2 }]);
+  assert.equal(writes, 1);
+  const recovered = (stored as { settings: typeof initial; diagnostics: unknown; audit: unknown[] }).settings;
+  assert.equal(recovered.vaultIdentity, initial.vaultIdentity);
+  assert.equal(recovered.remoteRootId, initial.remoteRootId);
+  assert.equal(recovered.deviceIdentity, initial.deviceIdentity);
+  assert.equal(recovered.firstSyncCompleted, true);
+  assert.deepEqual((stored as { diagnostics: unknown }).diagnostics, { records: [], nextSequence: 7, nextAttemptId: 1 });
+  const restart = new PluginDataRepository({
+    loadData: async () => stored,
+    dataFileExists: async () => true,
+    saveData: async () => { writes++; },
+  });
+  assert.equal((await restart.loadSettings()).firstSyncCompleted, true, "a rejected UI edit must leave restart viable");
+});
+
+test("G1-03 deliberate deauthorization and re-pairing reset authority before clearing IDs", async () => {
+  let stored: unknown = {
+    settings: {
+      ...DEFAULT_SETTINGS,
+      deviceIdentity: "device:stable",
+      vaultIdentity: "vault:stable",
+      remoteRootId: "root:stable",
+      firstSyncCompleted: true,
+    },
+  };
+  let writes = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => stored,
+    dataFileExists: async () => true,
+    saveData: async data => { stored = structuredClone(data); writes++; },
+  });
+  const paired = await repository.loadSettings();
+  await repository.saveSettings({
+    ...paired, remoteRootId: "", firstSyncCompleted: false,
+    startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+  });
+  const afterDeauth = await repository.loadSettings();
+  assert.equal(afterDeauth.firstSyncCompleted, false);
+  assert.equal(afterDeauth.remoteRootId, "");
+  assert.equal(afterDeauth.deviceIdentity, paired.deviceIdentity);
+  await repository.saveSettings({ ...afterDeauth, vaultIdentity: "vault:repaired", remoteRootId: "root:repaired" });
+  await repository.saveSettings({ ...await repository.loadSettings(), firstSyncCompleted: true });
+  const restart = new PluginDataRepository({
+    loadData: async () => stored,
+    dataFileExists: async () => true,
+    saveData: async () => { writes++; },
+  });
+  const reloaded = await restart.loadSettings();
+  assert.equal(reloaded.firstSyncCompleted, true);
+  assert.equal(reloaded.deviceIdentity, "device:stable");
+  assert.equal(reloaded.vaultIdentity, "vault:repaired");
+  assert.equal(reloaded.remoteRootId, "root:repaired");
+  assert.equal(writes, 3);
+});
