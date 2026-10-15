@@ -1,4 +1,16 @@
-# Current handoff — DEC-344 owner acceptance of DEC-340-01 residual risk (2026-10-14)
+# Current engineering handoff — S09 G1-02 correction, PHX-CI pending (2026-10-15)
+
+- The owner supplied a separate independent reviewer verdict **REJECT** for exact previously PHX-CI-verified software source `a9fb045a5ad4fae8c17b260692feadc468c9643d`. New **G1-02 MAJOR**: whitespace-only `vaultIdentity` / `remoteRootId` were truthy when `firstSyncCompleted === true`, permitting startup-side save before usable authority was established.
+- Engineering inspection confirmed the control-flow gap. The bounded fix and regression tests are committed at **`895e8210b8d3d6b508d71c3965d2da61a5f29850`** on `fix/s09g1-review-g101-dec34001-20261014`. The source now checks trimmed nonemptiness for completed-sync identities. New cases cover blank/whitespace inputs, no-write startup safety and legitimate unpaired state.
+- **CURRENT FIX NOT VERIFIED.** The previous genuine PHX-CI PASS `e7c51b4d-e649-4658-8e1b-c117a2901ec3` (11/11 stages, 403 focused, 992 product) qualifies only **`a9fb045a5ad4fae8c17b260692feadc468c9643d`**. Do not transfer that PASS to the corrected descendant. New source and run/evidence IDs must be bound after PHX-CI.
+- DEC-343 was accepted on the reviewed scope; DEC-340-01 remains **CONFIRMED/UNFIXED/OWNER RISK ACCEPTED/NON-BLOCKING** under locked DEC-344. Do not treat this acceptance as blanket approval or a merge authorization.
+- **NEXT:** run genuine pinned PHX-CI over the exact new final branch source, with focused regression/full suite/build/repository/artifact checks; then dispatch a NEW independent read-only reassessment of G1-02 and the retained G1-01/DEC-343 boundaries. Only after independent approval may the candidate be presented for a separate owner software-only promotion decision.
+- **NO** merge, release/hash approval, install, activation, live vault/Drive operation, physical S09 or Stage 3. Original physical `data.json` loss cause remains unproved.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09; `dev/reviews/s09-g102-20261015/independent-reassessment.md` (new review finding); existing `tasks/s09/s09-g101-dec344-post-phxci-independent-reassessment.md` (historical reviewer assignment).
+
+---
+
+# Historical handoff — DEC-344 owner acceptance of DEC-340-01 residual risk (2026-10-14)
 
 - The owner explicitly accepted the **specific DEC-340-01 local verification-context spoofing risk**, after confirming that the risk is a potential attacker-forged standalone safety-check PASS, **not** evidence of falsified genuine PHX-CI test results. **DEC-344** is the authoritative locked decision in `dev/authority/decision-register.yaml`.
 - **DEC-340-01 remains CONFIRMED, UNFIXED and disclosed, but is NON-BLOCKING** for continued BRAIN work, genuine PHX-CI qualification, independent assessment and separately owner-authorized software-only integration consideration. Its authenticated-context redesign is **not** required before proceeding. This is risk acceptance, not a claim of remediation or a blanket merger/release approval.
