@@ -1,3 +1,15 @@
+# Latest handoff — PHX-CI PASS, evidence layout recovered, independent review pending (2026-10-14 local)
+
+- Exact implementation source: `41dcc92954608214329974bd847b1741b6d37ba5` (tree `363b011f2eec1220e007d8b3112ec06c66bc36e9`); branch `fix/s09g1-plugin-data-existing-null-guard-20261014` at evidence-only head `4e0b225b44e0227390decc176b762ed8ff435556` before this bookkeeping update. `master` remains `b1e2ebaee3077e34a4eefaf601ee8124078b7400`. The evidence commit MUST NOT be presented as the tested source.
+- PHX-CI `1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc`, pinned runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`: **COMPLETE / PASS**, all 11 stages exit 0, focused BVP **403/403**, product **990/990**, build/repository/architecture/artifact checks PASS; `main.js` 905089 bytes, SHA-256 `98cb628178e2591c1e2ca95554a4cee2650127b685cdb3cc1a689416411338b8`. Original published PHX-CI evidence commit `4e0b225b44e0227390decc176b762ed8ff435556`.
+- Original PHX-CI published flat timestamped `.log`, `.json`, `.md` files, not the Section 6 required `dev/test-results/1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc/` folder. Section 27.1 administrative **recovery** duplicates those PHX-CI-produced Git blob bytes without alteration under the canonical run-ID folder and adds a recovery note; original source files remain unchanged. It does not constitute a new run or new validation claim.
+- PREVIOUS BLOCKED run `e8adb542-d2c2-42d9-918a-fd1c0151568c` was repaired via four exact missing `dataFileExists` fixture methods in three tests and is superseded for the substantive software result by the verified PASS above.
+- **NEXT:** read-only independent architectural/security/correctness/governance review of S09 G1 + DEC-343 exact source and evidence. PHX-CI PASS is not independent-review acceptance or owner approval. Release artifact still unapproved. `DEC-340-01` verification-context spoofing finding remains expressly deferred and unfixed; historical G1 physical data loss is unproven. No master promotion without separate owner authorization; no installation, activation, live Drive/vault activity, S09 physical acceptance, or Stage 3.
+- Section 37.1 **prohibits another owner-run PHX-CI verification solely for administrative evidence recovery**.
+- **Exact tasking:** `dev/research/s09-g1-data-json-integrity-investigation-2026-10-14.md` and `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` S09.
+
+---
+
 # Latest handoff — G1 interface consumer repair after PHX-CI BLOCKED (2026-10-14)
 
 - Root cause of exact PHX-CI run `e8adb542-d2c2-42d9-918a-fd1c0151568c` BLOCKED was **four TypeScript TS2345 errors** from an incomplete `PluginDataHost.dataFileExists()` interface migration, NOT a PHX-CI launcher problem. Tested candidate `eceb42a87d87b00997a9ab1a11f9d11a95fe4166`; evidence commit `64c9cb99b2567b9b7101d0e52a81720467adf51d`.

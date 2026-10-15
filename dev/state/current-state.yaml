@@ -3,18 +3,33 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "S09_G1_DEC343_TYPECHECK_CORRECTION_STAGED_UNVERIFIED"
+status: "S09_G1_DEC343_PHX_CI_PASS_REVIEW_PENDING"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
 blockers:
   - "Independent combined DEC-339/DEC-340 review remains REJECT: DEC-340-01 MAJOR verification-control defect unfixed; owner explicitly accepted deferral and separately authorized software-only master merge. Does not approve release/activation."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
-  - "Exact PHX-CI e8adb542-d2c2-42d9-918a-fd1c0151568c on eceb42a87d87b00997a9ab1a11f9d11a95fe4166 BLOCKED at typecheck (four TS2345 errors, three older test files); evidence commit 64c9cb99b2567b9b7101d0e52a81720467adf51d. All four missing PluginDataHost.dataFileExists mock methods corrected; new exact-source PHX-CI must run since focused/full tests, build and repository check never executed."
+  - "S09 G1 + DEC-343 software is PHX-CI PASS (source 41dcc92954608214329974bd847b1741b6d37ba5; run 1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc; evidence 4e0b225b44e0227390decc176b762ed8ff435556; runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83; 11/11 stages, BVP 403/403, product 990/990). Independent review and owner software promotion approval are pending; no release hash approved. Initial blocked run e8adb542-d2c2-42d9-918a-fd1c0151568c remains historical evidence."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Qualify the exact S09 G1 + DEC-343 branch software by pinned PHX-CI against base b1e2ebaee3077e34a4eefaf601ee8124078b7400; focus npm run test:bvp-root, BRAIN_ARTIFACT_PURPOSE=development, and BVP_CHANGE_CLASS=authorized-governance because a supervisor-approved frozen repository-check file genuinely changed. Require complete original evidence and independent review before promotion. No release, install, activation, live S09 or Stage 3."
+next_action: "Obtain independent architectural, security, correctness, and governance review of exact PHX-CI-verified S09 G1 + DEC-343 source 41dcc92954608214329974bd847b1741b6d37ba5 and original evidence 4e0b225b44e0227390decc176b762ed8ff435556; then request separate owner software-promotion decision if review approves. Do NOT rerun successful SUT verification for administrative evidence layout; no release, install, activation, physical S09, live Drive/vault actions or Stage 3."
 updated_at: "2026-10-14"
 
 context:
+  s09_g1_dec343_qualification:
+    verified_implementation_sha: "41dcc92954608214329974bd847b1741b6d37ba5"
+    verified_source_tree_sha: "363b011f2eec1220e007d8b3112ec06c66bc36e9"
+    phx_ci_run_id: "1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc"
+    phx_ci_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+    phx_ci_evidence_commit: "4e0b225b44e0227390decc176b762ed8ff435556"
+    status: "PASS_11_OF_11_REVIEW_PENDING"
+    focused_bvp_tests: "403/403 PASS"
+    product_tests: "990/990 PASS"
+    main_js_bytes: 905089
+    main_js_sha256: "98cb628178e2591c1e2ca95554a4cee2650127b685cdb3cc1a689416411338b8"
+    artifact_release_approved: false
+    canonical_evidence_recovered_admin_only: true
+    original_flat_evidence_preserved: true
+    historical_g1_data_loss_cause_proven: false
   platform_baseline_promotion:
     authorization: "OWNER_SELECTED_OPTION_A_PLATFORM_FIRST_ON_2026-10-12"
     baseline_source_sha: "32b9ec2f2c3ed53d7cf345185b044ee002b9f26b"
