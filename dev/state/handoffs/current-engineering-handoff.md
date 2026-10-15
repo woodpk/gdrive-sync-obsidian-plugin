@@ -1,4 +1,17 @@
-# Current handoff — DEC-344 owner acceptance of DEC-340-01 residual risk (2026-10-14)
+# Current engineering handoff — G1-03 guard implementation STAGED, unverified (2026-10-15)
+
+- **Current branch:** `fix/s09-g103-settings-identity-write-guard-20261015`, based on preserved G1-02 PHX-CI-evidence HEAD `f8de3b72b47edee82f895d5088a386f20c99bf92`. Bounded G1-03 source/test correction: `6514ed01e7488969c1df75488545ea4668c43ae2`, **NOT PHX-CI VERIFIED**.
+- **Reviewer finding:** The owner submitted a ChatGPT adversarial **SELF-REVIEW REJECT**, not genuinely independent review, of prior verified source `b430a92999ea4658e0a045d2e8c6eb8895425b72`, finding **G1-03 MAJOR**: editing vault/remote ID after completed sync saved blank settings and blocked restart. Evidence and disclosure recorded in `dev/reviews/s09-g103-20261015/adversarial-self-review-rejection.md`.
+- **Correction:** `src/product/plugin-data.ts` now rejects empty/whitespace completed-sync identity and identity rebinding **before mutating or persisting settings**; all data writes have a completed-sync sanity guard. `src/product/settings-tab.ts` disables identity controls after first sync and directs deauthorization before re-pairing. `test/plugin-data-integrity-regression.test.ts` adds failed user-edit, preserved restart, deliberate deauthorize-and-repair sequences. No PHX-CI run performed since this change.
+- **Prior source verification only:** PHX-CI `a94124f3-2f2e-4214-883a-d80126f353c1` for **b430 source only**, 11/11 PASS (403/403 focused, 995/995 product), runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. Original evidence directly published in commit `f8de3b72b47edee82f895d5088a386f20c99bf92` and now exact Git blobs recovered under `dev/test-results/a94124f3-2f2e-4214-883a-d80126f353c1/`. Recovery is administrative, **not verification of G1-03**. The original timestamped evidence is preserved.
+- **Governance:** DEC-343 previously assessed PASS in review scope. DEC-340-01 remains **CONFIRMED / UNFIXED / OWNER RISK ACCEPTED NON-BLOCKING** under locked DEC-344, not an independent approval or merge authority. Historic physical `data.json` disappearance/corruption root cause remains unproven.
+- **NEXT:** verify the final exact branch HEAD via pinned PHX-CI, publish/inspect evidence and obtain a **new, genuinely independent read-only review** of G1-03, G1-02, retained G1-01 and DEC-343. Owner must separately authorize any software-only merge even after an APPROVE.
+- **NO** merge, production digest approval, installation, activation, live vault/Drive mutation, physical S09 acceptance or Stage 3.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09; `dev/reviews/s09-g103-20261015/adversarial-self-review-rejection.md` for rejected candidate.
+
+---
+
+# Historical handoff — DEC-344 owner acceptance of DEC-340-01 residual risk (2026-10-14)
 
 - The owner explicitly accepted the **specific DEC-340-01 local verification-context spoofing risk**, after confirming that the risk is a potential attacker-forged standalone safety-check PASS, **not** evidence of falsified genuine PHX-CI test results. **DEC-344** is the authoritative locked decision in `dev/authority/decision-register.yaml`.
 - **DEC-340-01 remains CONFIRMED, UNFIXED and disclosed, but is NON-BLOCKING** for continued BRAIN work, genuine PHX-CI qualification, independent assessment and separately owner-authorized software-only integration consideration. Its authenticated-context redesign is **not** required before proceeding. This is risk acceptance, not a claim of remediation or a blanket merger/release approval.
