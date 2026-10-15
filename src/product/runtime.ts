@@ -26,7 +26,7 @@ import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
 import { automaticNetworkDecision } from "./network-policy";
-import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
+import { assertNewPairingAllowed, pairingStorageKey, type BrainSyncSettings, type PluginDataRepository } from "./plugin-data";
 import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
 import { SyncAttentionLedger, type SyncAttentionRecord } from "./sync-attention-ledger";
 import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "./sync-plan-errors-csv";
@@ -188,7 +188,7 @@ export class ProductRuntime {
       expectedDeviceIdentity: deviceIdentity,
     };
     const durableState = new PersistentSynchronizationStateStore(
-      new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`),
+      new IndexedDbStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
       1,
       undefined,
       this.host.diagnostics,
@@ -209,7 +209,7 @@ export class ProductRuntime {
       this.state,
     );
     const textVersions = new ProductTextVersionStore(
-      new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
+      new IndexedDbTextVersionPersistence(pairingStorageKey("brain-google-drive-sync-text", current)),
       this.local,
       this.boundary.drive,
     );
@@ -476,9 +476,10 @@ export class ProductRuntime {
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {
+    let settings = this.host.settings();
+    assertNewPairingAllowed(settings);
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
-    let settings = this.host.settings();
     let vaultIdentity = settings.vaultIdentity;
     if (!vaultIdentity) {
       vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
@@ -489,6 +490,7 @@ export class ProductRuntime {
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     await this.host.saveSettings({
       ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
+      pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
       firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
       startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
     });
@@ -497,8 +499,9 @@ export class ProductRuntime {
   }
 
   async pairManagedRemote(): Promise<ManagedRemoteIdentity> {
-    const boundary = this.boundary;
     const settings = this.host.settings();
+    assertNewPairingAllowed(settings);
+    const boundary = this.boundary;
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
     if (!settings.vaultIdentity || !settings.remoteRootId) throw new Error("Enter the expected BRAIN vault identity and stable Drive remote root ID.");
     const expected = contractId<"VaultIdentity">(settings.vaultIdentity) as VaultIdentity;
@@ -506,7 +509,7 @@ export class ProductRuntime {
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    await this.host.saveSettings({ ...settings, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.saveSettings({ ...settings, pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.initialize();
     return result.value.identity;
   }
@@ -514,7 +517,7 @@ export class ProductRuntime {
   async deauthorize(): Promise<void> {
     this.boundary?.oauth.clearTokens();
     const settings = this.host.settings();
-    await this.host.saveSettings({ ...settings, remoteRootId: "", firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.saveSettings({ ...settings, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.disposeProduct();
   }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
+import { DEFAULT_SETTINGS, PluginDataRepository, assertNewPairingAllowed, pairingStorageKey } from "../src/product/plugin-data";
 
 test("G1 existing data.json with null or missing parse result fails closed without overwrite", async () => {
   for (const raw of [null, undefined]) {
@@ -296,14 +296,14 @@ test("G1-03 deliberate deauthorization and re-pairing reset authority before cle
   });
   const paired = await repository.loadSettings();
   await repository.saveSettings({
-    ...paired, remoteRootId: "", firstSyncCompleted: false,
+    ...paired, remoteRootId: "", pairingStateNamespace: "pairing-test-deauth", firstSyncCompleted: false,
     startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
   });
   const afterDeauth = await repository.loadSettings();
   assert.equal(afterDeauth.firstSyncCompleted, false);
   assert.equal(afterDeauth.remoteRootId, "");
   assert.equal(afterDeauth.deviceIdentity, paired.deviceIdentity);
-  await repository.saveSettings({ ...afterDeauth, vaultIdentity: "vault:repaired", remoteRootId: "root:repaired" });
+  await repository.saveSettings({ ...afterDeauth, vaultIdentity: "vault:repaired", remoteRootId: "root:repaired", pairingStateNamespace: "pairing-test-repaired" });
   await repository.saveSettings({ ...await repository.loadSettings(), firstSyncCompleted: true });
   const restart = new PluginDataRepository({
     loadData: async () => stored,
@@ -316,4 +316,148 @@ test("G1-03 deliberate deauthorization and re-pairing reset authority before cle
   assert.equal(reloaded.vaultIdentity, "vault:repaired");
   assert.equal(reloaded.remoteRootId, "root:repaired");
   assert.equal(writes, 3);
+});
+
+test("G1-04 completed pairing refuses new remote actions until deauthorization", () => {
+  const completed = {
+    ...DEFAULT_SETTINGS,
+    deviceIdentity: "device:established",
+    vaultIdentity: "vault:established",
+    remoteRootId: "root:established",
+    firstSyncCompleted: true,
+  };
+  assert.throws(() => assertNewPairingAllowed(completed), /Deauthorize this device/u);
+  assert.doesNotThrow(() => assertNewPairingAllowed({ ...completed, firstSyncCompleted: false }));
+});
+
+test("G1-04 deauthorization and re-pairing cannot reuse legacy trusted state or text namespace", async () => {
+  let onDisk: unknown = {
+    settings: {
+      ...DEFAULT_SETTINGS,
+      deviceIdentity: "device:stable",
+      vaultIdentity: "vault:stable",
+      remoteRootId: "root:old",
+      firstSyncCompleted: true,
+      startupResumeEnabled: true,
+      localChangeEnabled: true,
+      periodicEnabled: true,
+    },
+  };
+  const repository = new PluginDataRepository({
+    loadData: async () => onDisk,
+    dataFileExists: async () => true,
+    saveData: async next => { onDisk = structuredClone(next); },
+  });
+  const legacy = await repository.loadSettings();
+  const oldState = pairingStorageKey("brain-google-drive-sync", legacy);
+  const oldText = pairingStorageKey("brain-google-drive-sync-text", legacy);
+  assert.equal(oldState, "brain-google-drive-sync:vault:stable:device:stable");
+  assert.equal(oldText, "brain-google-drive-sync-text:vault:stable:device:stable");
+  await assert.rejects(() => repository.saveSettings({
+    ...legacy, remoteRootId: "", firstSyncCompleted: false,
+    startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+  }), /fresh isolated state/u);
+  const unpaired = {
+    ...legacy, remoteRootId: "", pairingStateNamespace: "pairing-deauth-1",
+    firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+  };
+  await repository.saveSettings(unpaired);
+  const newPair = {
+    ...unpaired,
+    remoteRootId: "root:new",
+    pairingStateNamespace: "pairing-paired-2",
+  };
+  await repository.saveSettings(newPair);
+  for (const prefix of ["brain-google-drive-sync", "brain-google-drive-sync-text"] as const) {
+    const previous = pairingStorageKey(prefix, legacy);
+    const replacement = pairingStorageKey(prefix, newPair);
+    assert.notEqual(replacement, previous, "fresh remote must not read legacy trusted BASE");
+    assert.notEqual(pairingStorageKey(prefix, { ...newPair, remoteRootId: "root:other" }), replacement, "namespace must also bind remote root");
+    assert.notEqual(pairingStorageKey(prefix, { ...newPair, pairingStateNamespace: "pairing-next-3" }), replacement, "explicit re-pair must isolate state");
+  }
+  await repository.saveSettings({ ...newPair, firstSyncCompleted: true });
+  const resumed = new PluginDataRepository({
+    loadData: async () => onDisk,
+    dataFileExists: async () => true,
+    saveData: async () => { throw new Error("unexpected write"); },
+  });
+  assert.equal((await resumed.loadSettings()).remoteRootId, "root:new");
+});
+
+test("G1-05 failed deauthorization cannot be committed by later audit, diagnostics or attention writes", async () => {
+  const initial = {
+    ...DEFAULT_SETTINGS,
+    deviceIdentity: "device:stable",
+    vaultIdentity: "vault:stable",
+    remoteRootId: "root:stable",
+    firstSyncCompleted: true,
+    localChangeEnabled: true,
+  };
+  let persisted: unknown = {
+    settings: initial,
+    audit: [{ id: "prior-audit", event: "plan-created", advisoryAtMs: 1 }],
+    diagnostics: { records: [], nextSequence: 7, nextAttemptId: 3 },
+    syncAttention: [],
+  };
+  let attempts = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => persisted,
+    dataFileExists: async () => true,
+    saveData: async next => {
+      attempts++;
+      if (attempts === 1) throw new Error("injected storage failure");
+      persisted = structuredClone(next);
+    },
+  });
+  const before = await repository.loadSettings();
+  await assert.rejects(() => repository.saveSettings({
+    ...before, remoteRootId: "", firstSyncCompleted: false,
+    pairingStateNamespace: "pairing-failed",
+    startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+  }), /injected storage failure/u);
+  assert.deepEqual(await repository.loadSettings(), before, "failed save must leave cached authority unchanged");
+  await assert.rejects(
+    () => repository.save([{ id: "after-failure-audit", event: "plan-created", advisoryAtMs: 2 }]),
+    /save is uncertain/u,
+  );
+  await assert.rejects(
+    () => repository.saveDiagnostics({ records: [], nextSequence: 8, nextAttemptId: 4 }),
+    /save is uncertain/u,
+  );
+  await assert.rejects(() => repository.saveSyncAttention([]), /save is uncertain/u);
+  assert.equal(attempts, 1, "uncertain persistence must block all follow-up writers");
+  const actual = persisted as { settings: typeof initial; audit: Array<{ id: string }>; diagnostics: { nextSequence: number } };
+  assert.equal(actual.settings.remoteRootId, "root:stable");
+  assert.equal(actual.settings.firstSyncCompleted, true);
+  assert.equal(actual.settings.pairingStateNamespace, "");
+  assert.equal(actual.audit[0]?.id, "prior-audit");
+  assert.equal(actual.diagnostics.nextSequence, 7);
+  const restarted = new PluginDataRepository({
+    loadData: async () => persisted,
+    dataFileExists: async () => true,
+    saveData: async () => { throw new Error("unexpected write"); },
+  });
+  assert.equal((await restarted.loadSettings()).firstSyncCompleted, true);
+});
+
+test("G1-05 concurrent successful writes serialize without losing other persistence sections", async () => {
+  let disk: unknown = {
+    settings: { ...DEFAULT_SETTINGS, deviceIdentity: "device:stable", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: false },
+    audit: [],
+  };
+  const repository = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async payload => { await Promise.resolve(); disk = structuredClone(payload); },
+  });
+  const settings = await repository.loadSettings();
+  await Promise.all([
+    repository.saveSettings({ ...settings, localDebounceMs: 2800 }),
+    repository.save([{ id: "concurrent-audit", event: "plan-created", advisoryAtMs: 3 }]),
+    repository.saveDiagnostics({ records: [], nextSequence: 9, nextAttemptId: 5 }),
+  ]);
+  const durable = disk as { settings: typeof settings; audit: unknown[]; diagnostics: { nextSequence: number } };
+  assert.equal(durable.settings.localDebounceMs, 2800);
+  assert.equal(durable.audit.length, 1);
+  assert.equal(durable.diagnostics.nextSequence, 9);
 });

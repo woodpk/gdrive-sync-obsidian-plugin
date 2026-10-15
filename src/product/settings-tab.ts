@@ -154,8 +154,8 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
       }));
     new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. After first synchronization, deauthorize this device before changing pairing.").addText(text => text.setValue(settings.vaultIdentity).setDisabled(settings.firstSyncCompleted).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
     new Setting(containerEl).setName("Managed remote root ID").setDesc("Stable Google Drive folder ID. After first synchronization, deauthorize this device before changing pairing.").addText(text => text.setValue(settings.remoteRootId).setDisabled(settings.firstSyncCompleted).onChange(async value => this.host.updateSettings({ remoteRootId: value.trim() })));
-    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").onClick(() => this.host.createManagedRemote()));
-    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").onClick(() => this.host.pairManagedRemote()));
+    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").setDisabled(settings.firstSyncCompleted).onClick(() => this.host.createManagedRemote()));
+    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").setDisabled(settings.firstSyncCompleted).onClick(() => this.host.pairManagedRemote()));
     new Setting(containerEl).setName("Deauthorize this device").setDesc("Clears authentication and local pairing only. It never deletes local or shared vault content.").addButton(button => button.setButtonText("Deauthorize").setWarning().onClick(() => this.host.clearAuthenticationAndPairing()));
 
     containerEl.createEl("h3", { text: "Automatic synchronization" });

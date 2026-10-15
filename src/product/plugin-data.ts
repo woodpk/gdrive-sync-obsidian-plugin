@@ -12,6 +12,8 @@ export interface BrainSyncSettings {
   vaultIdentity: string;
   deviceIdentity: string;
   firstSyncCompleted: boolean;
+  /** Empty retains pre-G1-04 IndexedDB storage keys for existing installations. */
+  pairingStateNamespace?: string;
   recoveryInProgress: boolean;
   recoveryBackupId: string;
   userExclusionPatterns: string[];
@@ -40,6 +42,7 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   vaultIdentity: "",
   deviceIdentity: "",
   firstSyncCompleted: false,
+  pairingStateNamespace: "",
   recoveryInProgress: false,
   recoveryBackupId: "",
   userExclusionPatterns: [],
@@ -99,11 +102,27 @@ function assertPersistedSettingsIdentity(raw: Record<string, unknown>): void {
   if (value.firstSyncCompleted && (!(value.vaultIdentity as string).trim() || !(value.remoteRootId as string).trim())) {
     throw new Error("Existing BRAIN data.json has inconsistent completed-sync identity; refusing identity reset.");
   }
+  if (Object.prototype.hasOwnProperty.call(value, "pairingStateNamespace") &&
+      (typeof value.pairingStateNamespace !== "string" ||
+       (value.pairingStateNamespace.length > 0 && !value.pairingStateNamespace.trim()))) {
+    throw new Error("Existing BRAIN data.json has invalid pairing storage identity; refusing identity reset.");
+  }
 }
 
 
-/** Reject live writes that would make completed synchronization impossible to reload. */
+/** Reject write-time pairing corruption and require isolated authority on deauthorization. */
 function assertWritableSettingsIdentity(next: BrainSyncSettings, current: BrainSyncSettings): void {
+  if (current.firstSyncCompleted && !next.firstSyncCompleted) {
+    if (next.deviceIdentity !== current.deviceIdentity ||
+        next.vaultIdentity !== current.vaultIdentity ||
+        next.remoteRootId !== "" ||
+        !next.pairingStateNamespace?.trim() ||
+        next.pairingStateNamespace === current.pairingStateNamespace ||
+        next.startupResumeEnabled || next.localChangeEnabled || next.periodicEnabled) {
+      throw new Error("Completed pairing must be deauthorized with fresh isolated state and automatic sync disabled.");
+    }
+    return;
+  }
   if (!next.firstSyncCompleted) return;
   if (![next.deviceIdentity, next.vaultIdentity, next.remoteRootId]
     .every(identity => typeof identity === "string" && identity.trim().length > 0)) {
@@ -112,9 +131,27 @@ function assertWritableSettingsIdentity(next: BrainSyncSettings, current: BrainS
   if (current.firstSyncCompleted && (
     next.deviceIdentity !== current.deviceIdentity ||
     next.vaultIdentity !== current.vaultIdentity ||
-    next.remoteRootId !== current.remoteRootId
+    next.remoteRootId !== current.remoteRootId ||
+    next.pairingStateNamespace !== current.pairingStateNamespace
   )) {
     throw new Error("Cannot change completed-sync identity; deauthorize this device before re-pairing.");
+  }
+}
+
+/** Legacy installs keep historical keys; new pairing epochs isolate subsequent authority. */
+export function pairingStorageKey(
+  prefix: "brain-google-drive-sync" | "brain-google-drive-sync-text",
+  settings: Pick<BrainSyncSettings, "vaultIdentity" | "deviceIdentity" | "remoteRootId" | "pairingStateNamespace">,
+): string {
+  const legacy = `${prefix}:${settings.vaultIdentity}:${settings.deviceIdentity}`;
+  return settings.pairingStateNamespace
+    ? `${legacy}:pairing:${settings.pairingStateNamespace}:${settings.remoteRootId}`
+    : legacy;
+}
+
+export function assertNewPairingAllowed(settings: BrainSyncSettings): void {
+  if (settings.firstSyncCompleted) {
+    throw new Error("Deauthorize this device before creating or pairing a different managed remote.");
   }
 }
 
@@ -129,6 +166,7 @@ export interface PluginDataHost {
 export class PluginDataRepository implements AuditPersistence, DiagnosticPersistence, SyncAttentionPersistence {
   private loaded?: Promise<MutablePluginData>;
   private saveChain = Promise.resolve();
+  private uncertainWrite = false;
 
   constructor(private readonly host: PluginDataHost) {}
 
@@ -137,33 +175,33 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
     return { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
   }
   async saveSettings(settings: BrainSyncSettings): Promise<void> {
-    const data = await this.data();
-    assertWritableSettingsIdentity(settings, data.settings);
-    data.settings = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
-    await this.persist(data);
+    const copy = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
+    await this.persist(current => {
+      assertWritableSettingsIdentity(copy, current.settings);
+      return { ...current, settings: copy };
+    });
   }
   async load(): Promise<readonly AuditRecord[]> { return [...(await this.data()).audit]; }
   async save(records: readonly AuditRecord[]): Promise<void> {
-    const data = await this.data();
-    data.audit = [...records];
-    await this.persist(data);
+    const audit = [...records];
+    await this.persist(current => ({ ...current, audit }));
   }
   async loadDiagnostics(): Promise<unknown> { return (await this.data()).diagnostics; }
   async saveDiagnostics(state: DiagnosticStoreState): Promise<void> {
-    const data = await this.data();
-    data.diagnostics = {
+    const diagnostics = {
       records: state.records.map(record => ({ ...record, ...(record.fields ? { fields: { ...record.fields } } : {}) })),
       nextSequence: state.nextSequence,
       nextAttemptId: state.nextAttemptId,
       nextRunId: state.nextRunId,
     };
-    await this.persist(data);
+    await this.persist(current => ({ ...current, diagnostics }));
   }
-  async loadSyncAttention(): Promise<readonly SyncAttentionRecord[]> { return (await this.data()).syncAttention.map(record => ({ ...record })); }
+  async loadSyncAttention(): Promise<readonly SyncAttentionRecord[]> {
+    return (await this.data()).syncAttention.map(record => ({ ...record }));
+  }
   async saveSyncAttention(records: readonly SyncAttentionRecord[]): Promise<void> {
-    const data = await this.data();
-    data.syncAttention = records.map(record => ({ ...record }));
-    await this.persist(data);
+    const syncAttention = records.map(record => ({ ...record }));
+    await this.persist(current => ({ ...current, syncAttention }));
   }
 
   private data(): Promise<MutablePluginData> {
@@ -179,6 +217,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       }
       const value = (raw ?? {}) as PersistedPluginData;
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
+      merged.pairingStateNamespace = typeof merged.pairingStateNamespace === "string" ? merged.pairingStateNamespace : "";
       merged.userExclusionPatterns = Array.isArray(merged.userExclusionPatterns) ? merged.userExclusionPatterns.filter(value => typeof value === "string") : [];
       merged.syncPlanErrorsDirectory = typeof merged.syncPlanErrorsDirectory === "string" ? merged.syncPlanErrorsDirectory : "";
       merged.managedSyncPlanErrorsExclusion = typeof merged.managedSyncPlanErrorsExclusion === "string" ? merged.managedSyncPlanErrorsExclusion : "";
@@ -192,15 +231,26 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
     return this.loaded;
   }
 
-  private async persist(data: MutablePluginData): Promise<void> {
-    assertWritableSettingsIdentity(data.settings, data.settings);
-    const payload = structuredClone({
-      settings: { ...data.settings, userExclusionPatterns: [...data.settings.userExclusionPatterns] },
-      audit: data.audit.map(record => ({ ...record })),
-      diagnostics: data.diagnostics,
-      syncAttention: data.syncAttention.map(record => ({ ...record })),
+  private async persist(update: (current: MutablePluginData) => MutablePluginData): Promise<void> {
+    const write = this.saveChain.then(async () => {
+      if (this.uncertainWrite) throw new Error("Previous BRAIN data.json save is uncertain; refusing further persistence until restart.");
+      const current = await this.data();
+      const next = update(current);
+      assertWritableSettingsIdentity(next.settings, next.settings);
+      const payload = structuredClone({
+        settings: { ...next.settings, userExclusionPatterns: [...next.settings.userExclusionPatterns] },
+        audit: next.audit.map(record => ({ ...record })),
+        diagnostics: next.diagnostics,
+        syncAttention: next.syncAttention.map(record => ({ ...record })),
+      });
+      try {
+        await this.host.saveData(payload);
+      } catch (error) {
+        this.uncertainWrite = true;
+        throw error;
+      }
+      this.loaded = Promise.resolve(next);
     });
-    const write = this.saveChain.catch(() => undefined).then(() => this.host.saveData(payload));
     this.saveChain = write.catch(() => undefined);
     await write;
   }
