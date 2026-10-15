@@ -74,6 +74,33 @@ interface MutablePluginData {
   syncAttention: SyncAttentionRecord[];
 }
 
+/**
+ * A persisted data.json must not silently become a new or unpaired installation
+ * when a required identity or first-sync authority field is absent.
+ * Optional settings may still migrate via DEFAULT_SETTINGS.
+ */
+function assertPersistedSettingsIdentity(raw: Record<string, unknown>): void {
+  const settings = raw.settings;
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    throw new Error("Existing BRAIN data.json has missing or invalid settings; refusing identity reset.");
+  }
+  const value = settings as Record<string, unknown>;
+  for (const key of ["deviceIdentity", "vaultIdentity", "remoteRootId"] as const) {
+    if (typeof value[key] !== "string") {
+      throw new Error(`Existing BRAIN data.json is missing a valid ${key}; refusing identity reset.`);
+    }
+  }
+  if (!(value.deviceIdentity as string).trim()) {
+    throw new Error("Existing BRAIN data.json has no device identity; refusing identity reset.");
+  }
+  if (typeof value.firstSyncCompleted !== "boolean") {
+    throw new Error("Existing BRAIN data.json has no valid first-sync authority; refusing identity reset.");
+  }
+  if (value.firstSyncCompleted && (!(value.vaultIdentity as string) || !(value.remoteRootId as string))) {
+    throw new Error("Existing BRAIN data.json has inconsistent completed-sync identity; refusing identity reset.");
+  }
+}
+
 export interface PluginDataHost {
   loadData(): Promise<unknown>;
   /** Distinguishes a new installation from an existing unreadable data.json. */
@@ -129,6 +156,8 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
         }
       } else if (typeof raw !== "object" || Array.isArray(raw)) {
         throw new Error("BRAIN data.json has an invalid top-level structure; refusing to overwrite persisted settings.");
+      } else {
+        assertPersistedSettingsIdentity(raw as Record<string, unknown>);
       }
       const value = (raw ?? {}) as PersistedPluginData;
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };

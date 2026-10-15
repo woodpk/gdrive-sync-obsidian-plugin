@@ -75,3 +75,55 @@ test("G1 inability to establish data.json absence blocks default initialization"
   await assert.rejects(() => repository.loadSettings(), /device storage inaccessible/);
   assert.equal(writes, 0);
 });
+
+
+test("G1 existing partial or null settings cannot regenerate identity or overwrite data.json", async () => {
+  for (const raw of [
+    {},
+    { settings: {} },
+    { settings: null },
+    { settings: { deviceIdentity: "device:survived" } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: "vault:survived" } },
+    { settings: { deviceIdentity: "", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: false } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: "", remoteRootId: "" } },
+    { settings: { deviceIdentity: "device:survived", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: true } },
+  ]) {
+    let saves = 0;
+    const repository = new PluginDataRepository({
+      loadData: async () => raw,
+      dataFileExists: async () => true,
+      saveData: async () => { saves++; },
+    });
+    await assert.rejects(() => repository.loadSettings(), /Existing BRAIN data\.json .*refusing identity reset/u);
+    await assert.rejects(() => repository.saveSettings(DEFAULT_SETTINGS), /refusing identity reset/u);
+    assert.equal(saves, 0, "invalid existing data must never be overwritten");
+  }
+});
+
+test("G1 valid persisted identities survive migration of missing optional settings", async () => {
+  let persisted: unknown;
+  const repository = new PluginDataRepository({
+    loadData: async () => ({
+      settings: {
+        deviceIdentity: "device:survived",
+        vaultIdentity: "vault:survived",
+        remoteRootId: "remote:survived",
+        firstSyncCompleted: false,
+      },
+      audit: [{ id: "prior-audit", event: "plan-created", advisoryAtMs: 1 }],
+    }),
+    dataFileExists: async () => true,
+    saveData: async data => { persisted = structuredClone(data); },
+  });
+  const loaded = await repository.loadSettings();
+  assert.equal(loaded.deviceIdentity, "device:survived");
+  assert.equal(loaded.vaultIdentity, "vault:survived");
+  assert.equal(loaded.remoteRootId, "remote:survived");
+  assert.equal(loaded.localDebounceMs, DEFAULT_SETTINGS.localDebounceMs);
+  await repository.saveSettings({ ...loaded, localDebounceMs: 2500 });
+  const stored = persisted as { settings: { deviceIdentity: string; vaultIdentity: string; remoteRootId: string }; audit: unknown[] };
+  assert.equal(stored.settings.deviceIdentity, "device:survived");
+  assert.equal(stored.settings.vaultIdentity, "vault:survived");
+  assert.equal(stored.settings.remoteRootId, "remote:survived");
+  assert.equal(stored.audit.length, 1);
+});

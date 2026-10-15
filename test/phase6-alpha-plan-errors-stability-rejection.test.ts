@@ -189,7 +189,7 @@ test("persisted case-only and Unicode-equivalent relocation journals are defensi
   ]) {
     assert.throws(() => normalizeSyncPlanErrorsRelocationJournal(relocation), /cross-platform-equivalent/u);
     const repository = new PluginDataRepository({
-      loadData: async () => ({ settings: { syncPlanErrorsRelocation: relocation } }),
+      loadData: async () => ({ settings: { ...DEFAULT_SETTINGS, deviceIdentity: "device:existing", syncPlanErrorsRelocation: relocation } }),
       dataFileExists: async () => true,
       saveData: async () => undefined,
     });
