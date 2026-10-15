@@ -167,6 +167,8 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
   private loaded?: Promise<MutablePluginData>;
   private saveChain = Promise.resolve();
   private uncertainWrite = false;
+  private confirmedAbsent = false;
+  private confirmedData: unknown;
 
   constructor(private readonly host: PluginDataHost) {}
 
@@ -215,6 +217,8 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       } else {
         assertPersistedSettingsIdentity(raw as Record<string, unknown>);
       }
+      this.confirmedAbsent = raw == null;
+      this.confirmedData = raw == null ? undefined : JSON.parse(JSON.stringify(raw));
       const value = (raw ?? {}) as PersistedPluginData;
       const merged = { ...DEFAULT_SETTINGS, ...(value.settings ?? {}) };
       merged.pairingStateNamespace = typeof merged.pairingStateNamespace === "string" ? merged.pairingStateNamespace : "";
@@ -231,9 +235,27 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
     return this.loaded;
   }
 
+  /** After a rejected save, read actual storage before allowing another writer to proceed. */
+  private async reconcileUncertainWrite(): Promise<void> {
+    if (!this.uncertainWrite) return;
+    let matches = false;
+    try {
+      const [actual, exists] = await Promise.all([this.host.loadData(), this.host.dataFileExists()]);
+      matches = this.confirmedAbsent
+        ? !exists && actual == null
+        : exists && actual != null && JSON.stringify(actual) === JSON.stringify(this.confirmedData);
+    } catch {
+      // Unreadable state remains untrusted; do not overwrite it.
+    }
+    if (!matches) {
+      throw new Error("Previous BRAIN data.json save is uncertain; stored state differs from the last confirmed value or cannot be read.");
+    }
+    this.uncertainWrite = false;
+  }
+
   private async persist(update: (current: MutablePluginData) => MutablePluginData): Promise<void> {
     const write = this.saveChain.then(async () => {
-      if (this.uncertainWrite) throw new Error("Previous BRAIN data.json save is uncertain; refusing further persistence until restart.");
+      await this.reconcileUncertainWrite();
       const current = await this.data();
       const next = update(current);
       assertWritableSettingsIdentity(next.settings, next.settings);
@@ -250,6 +272,8 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
         throw error;
       }
       this.loaded = Promise.resolve(next);
+      this.confirmedData = JSON.parse(JSON.stringify(payload));
+      this.confirmedAbsent = false;
     });
     this.saveChain = write.catch(() => undefined);
     await write;

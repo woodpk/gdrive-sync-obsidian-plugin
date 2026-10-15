@@ -515,9 +515,9 @@ export class ProductRuntime {
   }
 
   async deauthorize(): Promise<void> {
-    this.boundary?.oauth.clearTokens();
     const settings = this.host.settings();
     await this.host.saveSettings({ ...settings, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    this.boundary?.oauth.clearTokens();
     await this.disposeProduct();
   }
 

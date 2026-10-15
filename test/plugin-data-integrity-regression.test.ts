@@ -416,28 +416,71 @@ test("G1-05 failed deauthorization cannot be committed by later audit, diagnosti
     startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
   }), /injected storage failure/u);
   assert.deepEqual(await repository.loadSettings(), before, "failed save must leave cached authority unchanged");
-  await assert.rejects(
-    () => repository.save([{ id: "after-failure-audit", event: "plan-created", advisoryAtMs: 2 }]),
-    /save is uncertain/u,
-  );
-  await assert.rejects(
-    () => repository.saveDiagnostics({ records: [], nextSequence: 8, nextAttemptId: 4 }),
-    /save is uncertain/u,
-  );
-  await assert.rejects(() => repository.saveSyncAttention([]), /save is uncertain/u);
-  assert.equal(attempts, 1, "uncertain persistence must block all follow-up writers");
+  // Storage still equals the last confirmed document: unrelated writers may recover safely.
+  await repository.save([{ id: "after-failure-audit", event: "plan-created", advisoryAtMs: 2 }]);
+  await repository.saveDiagnostics({ records: [], nextSequence: 8, nextAttemptId: 4 });
+  await repository.saveSyncAttention([]);
+  assert.equal(attempts, 4, "reconciled recovery must permit subsequent metadata writes");
   const actual = persisted as { settings: typeof initial; audit: Array<{ id: string }>; diagnostics: { nextSequence: number } };
   assert.equal(actual.settings.remoteRootId, "root:stable");
   assert.equal(actual.settings.firstSyncCompleted, true);
   assert.equal(actual.settings.pairingStateNamespace, "");
-  assert.equal(actual.audit[0]?.id, "prior-audit");
-  assert.equal(actual.diagnostics.nextSequence, 7);
+  assert.equal(actual.audit[0]?.id, "after-failure-audit");
+  assert.equal(actual.diagnostics.nextSequence, 8);
   const restarted = new PluginDataRepository({
     loadData: async () => persisted,
     dataFileExists: async () => true,
     saveData: async () => { throw new Error("unexpected write"); },
   });
   assert.equal((await restarted.loadSettings()).firstSyncCompleted, true);
+});
+
+test("G1-05 failed save that altered disk blocks every later persistence writer", async () => {
+  const initial = {
+    ...DEFAULT_SETTINGS, deviceIdentity: "device:stable",
+    vaultIdentity: "vault:stable", remoteRootId: "root:stable",
+    firstSyncCompleted: true,
+  };
+  let disk: unknown = { settings: initial, audit: [], syncAttention: [] };
+  let writes = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async payload => {
+      writes++;
+      disk = structuredClone(payload);
+      throw new Error("saveData threw after mutation");
+    },
+  });
+  const baseline = await repository.loadSettings();
+  await assert.rejects(
+    () => repository.saveSettings({
+      ...baseline, remoteRootId: "", firstSyncCompleted: false,
+      pairingStateNamespace: "pairing-uncertain",
+      startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    }),
+    /saveData threw after mutation/u,
+  );
+  assert.deepEqual(await repository.loadSettings(), baseline, "unconfirmed write does not become cached authority");
+  await assert.rejects(() => repository.save([{ id: "audit", event: "plan-created", advisoryAtMs: 1 }]), /save is uncertain/u);
+  await assert.rejects(() => repository.saveDiagnostics({ records: [], nextSequence: 1, nextAttemptId: 1 }), /save is uncertain/u);
+  await assert.rejects(() => repository.saveSyncAttention([]), /save is uncertain/u);
+  assert.equal(writes, 1, "a failed but physically applied write must not be followed by an implicit overwrite");
+});
+
+test("G1-05 unreadable post-failure storage remains blocked", async () => {
+  let readable = true;
+  const repository = new PluginDataRepository({
+    loadData: async () => {
+      if (!readable) throw new Error("adapter read unavailable");
+      return { settings: { deviceIdentity: "device:stable", vaultIdentity: "", remoteRootId: "", firstSyncCompleted: false } };
+    },
+    dataFileExists: async () => true,
+    saveData: async () => { readable = false; throw new Error("disk write failed"); },
+  });
+  const baseline = await repository.loadSettings();
+  await assert.rejects(() => repository.saveSettings({ ...baseline, oauthClientId: "changed" }), /disk write failed/u);
+  await assert.rejects(() => repository.save([]), /save is uncertain/u);
 });
 
 test("G1-05 concurrent successful writes serialize without losing other persistence sections", async () => {
