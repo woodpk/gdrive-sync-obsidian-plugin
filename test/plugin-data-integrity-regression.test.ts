@@ -127,3 +127,92 @@ test("G1 valid persisted identities survive migration of missing optional settin
   assert.equal(stored.settings.remoteRootId, "remote:survived");
   assert.equal(stored.audit.length, 1);
 });
+test("G1-02 whitespace-only completed-sync identities block all plugin-data writes", async () => {
+  const invalidIdentities: ReadonlyArray<readonly [string, string]> = [
+    [" ", "root:survived"],
+    ["vault:survived", "\t\n"],
+    ["\u2003", "root:survived"],
+    ["vault:survived", "\u00a0"],
+    ["  ", "\u00a0"],
+  ];
+  for (const [vaultIdentity, remoteRootId] of invalidIdentities) {
+    let writes = 0;
+    const repository = new PluginDataRepository({
+      loadData: async () => ({
+        settings: {
+          ...DEFAULT_SETTINGS,
+          deviceIdentity: "device:survived",
+          vaultIdentity,
+          remoteRootId,
+          firstSyncCompleted: true,
+        },
+        audit: [{ id: "prior-audit", event: "plan-created", advisoryAtMs: 1 }],
+        diagnostics: { records: [], nextSequence: 42, nextAttemptId: 3 },
+        syncAttention: [],
+      }),
+      dataFileExists: async () => true,
+      saveData: async () => { writes++; },
+    });
+    await assert.rejects(() => repository.loadSettings(), /inconsistent completed-sync identity/u);
+    await assert.rejects(() => repository.saveSettings({ ...DEFAULT_SETTINGS, deviceIdentity: "device:replacement" }), /inconsistent completed-sync identity/u);
+    await assert.rejects(() => repository.save([]), /inconsistent completed-sync identity/u);
+    await assert.rejects(() => repository.saveSyncAttention([]), /inconsistent completed-sync identity/u);
+    assert.equal(writes, 0, "corrupt completed-sync identity must not be persisted or reset");
+  }
+});
+
+test("G1-02 legitimate existing pre-pairing identity states remain writable", async () => {
+  for (const [vaultIdentity, remoteRootId] of [
+    ["", ""],
+    ["vault:remembered", ""],
+    ["", "root:remembered"],
+  ]) {
+    let persisted: unknown;
+    let writes = 0;
+    const repository = new PluginDataRepository({
+      loadData: async () => ({
+        settings: { deviceIdentity: "device:survived", vaultIdentity, remoteRootId, firstSyncCompleted: false },
+        audit: [{ id: "prior-audit", event: "plan-created", advisoryAtMs: 1 }],
+      }),
+      dataFileExists: async () => true,
+      saveData: async data => { persisted = structuredClone(data); writes++; },
+    });
+    const settings = await repository.loadSettings();
+    assert.equal(settings.deviceIdentity, "device:survived");
+    assert.equal(settings.vaultIdentity, vaultIdentity);
+    assert.equal(settings.remoteRootId, remoteRootId);
+    assert.equal(settings.firstSyncCompleted, false);
+    await repository.saveSettings({ ...settings, localDebounceMs: 2000 });
+    assert.equal(writes, 1);
+    const saved = persisted as { settings: typeof settings; audit: unknown[] };
+    assert.equal(saved.settings.deviceIdentity, "device:survived");
+    assert.equal(saved.settings.vaultIdentity, vaultIdentity);
+    assert.equal(saved.settings.remoteRootId, remoteRootId);
+    assert.equal(saved.settings.firstSyncCompleted, false);
+    assert.equal(saved.audit.length, 1);
+  }
+});
+
+test("G1-02 valid completed-sync identities survive optional-setting migration", async () => {
+  let persisted: unknown;
+  const repository = new PluginDataRepository({
+    loadData: async () => ({
+      settings: {
+        deviceIdentity: "device:survived",
+        vaultIdentity: "vault:survived",
+        remoteRootId: "root:survived",
+        firstSyncCompleted: true,
+      },
+    }),
+    dataFileExists: async () => true,
+    saveData: async data => { persisted = structuredClone(data); },
+  });
+  const settings = await repository.loadSettings();
+  assert.equal(settings.localDebounceMs, DEFAULT_SETTINGS.localDebounceMs);
+  await repository.saveSettings(settings);
+  const saved = persisted as { settings: typeof settings };
+  assert.equal(saved.settings.deviceIdentity, "device:survived");
+  assert.equal(saved.settings.vaultIdentity, "vault:survived");
+  assert.equal(saved.settings.remoteRootId, "root:survived");
+  assert.equal(saved.settings.firstSyncCompleted, true);
+});
