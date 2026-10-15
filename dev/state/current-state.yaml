@@ -3,18 +3,27 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "S09_G1_DEC343_PHX_CI_PASS_REVIEW_PENDING"
+status: "S09_G101_PATCH_STAGED_UNVERIFIED_DEC34001_AUTHENTICATION_BLOCKED"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "ad77ffcc-cf2b-4f99-8d08-97170bb0be2f"
 blockers:
   - "Independent combined DEC-339/DEC-340 review remains REJECT: DEC-340-01 MAJOR verification-control defect unfixed; owner explicitly accepted deferral and separately authorized software-only master merge. Does not approve release/activation."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
-  - "S09 G1 + DEC-343 software is PHX-CI PASS (source 41dcc92954608214329974bd847b1741b6d37ba5; run 1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc; evidence 4e0b225b44e0227390decc176b762ed8ff435556; runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83; 11/11 stages, BVP 403/403, product 990/990). Independent review and owner software promotion approval are pending; no release hash approved. Initial blocked run e8adb542-d2c2-42d9-918a-fd1c0151568c remains historical evidence."
+  - "The ORIGINAL source 41dcc92954608214329974bd847b1741b6d37ba5 has genuine PHX-CI PASS run 1389abe6-e53d-4f4b-b6f2-ea17a9c1fcbc (11/11, 403 BVP, 990 product). That qualification does NOT apply to subsequent correction branch. Independent G1/DEC-343 review REJECTED: G1-01 partial persisted data fallback and DEC-340-01 unauthenticated verification context. G1-01 source+test correction staged UNVERIFIED at 8c59d430bdda05a9516321803fbed6d11521c01d. DEC-340-01 still UNRESOLVED, requiring PHX-CI/consumer trust-contract work. No release or promotion."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Obtain independent architectural, security, correctness, and governance review of exact PHX-CI-verified S09 G1 + DEC-343 source 41dcc92954608214329974bd847b1741b6d37ba5 and original evidence 4e0b225b44e0227390decc176b762ed8ff435556; then request separate owner software-promotion decision if review approves. Do NOT rerun successful SUT verification for administrative evidence layout; no release, install, activation, physical S09, live Drive/vault actions or Stage 3."
+next_action: "Correct DEC-340-01 at the PHX-CI verification-context trust boundary, establishing an authenticated (not caller-forgeable) source/base/changed-path/change-class/artifact-purpose contract and matching consumer rejection cases without weakening DEC-343 ordinary-development observation. G1-01 correction is staged at 8c59d430bdda05a9516321803fbed6d11521c01d but not PHX-CI verified. Only after both code corrections are complete coordinate one exact-source PHX-CI run and independent reassessment. Preserve original PHX-CI PASS and evidence for older SHA. No master promotion, release, install, activation, physical S09, live Drive/vault operation or Stage 3."
 updated_at: "2026-10-14"
 
 context:
+  s09_g1_review_remediation:
+    independent_verdict: "REJECT_TWO_MAJOR_FINDINGS"
+    g1_01_status: "CODE_PATCH_STAGED_UNVERIFIED"
+    g1_01_initial_correction_sha: "8c59d430bdda05a9516321803fbed6d11521c01d"
+    dec_340_01_status: "CONFIRMED_UNRESOLVED_AUTHENTICATED_PHX_CONTEXT_REQUIRED"
+    reviewed_verified_source_sha: "41dcc92954608214329974bd847b1741b6d37ba5"
+    corrected_sut_phx_ci_run: null
+    release_allowed: false
+    owner_merge_authorized: false
   s09_g1_dec343_qualification:
     verified_implementation_sha: "41dcc92954608214329974bd847b1741b6d37ba5"
     verified_source_tree_sha: "363b011f2eec1220e007d8b3112ec06c66bc36e9"
