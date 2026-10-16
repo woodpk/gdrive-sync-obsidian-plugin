@@ -41,14 +41,45 @@ try {
 
     $env:BRAIN_ARTIFACT_PURPOSE = "development"
     $env:BVP_CHANGE_CLASS = "authorized-governance"
-    & pwsh.exe -NoProfile -File $runtime -RepoRoot $repoRoot -Branch $branch -BaseRef $base -FocusedTestCommand "npm run test:bvp-root" -PublicationMode push -TempRoot $runRoot
-    $exitCode = [int] $LASTEXITCODE
-    Write-Host "PHX-CI COMMAND EXIT: $exitCode"
+    # PHX-CI's initial Git fetch can fail transiently before any verification
+    # stages start. Retry ONLY that exact transport failure; a test/typecheck/
+    # repository failure must immediately stop, never be hidden by rerunning.
+    $transportBlocked = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $phxOutput = @()
+        & pwsh.exe -NoProfile -File $runtime -RepoRoot $repoRoot -Branch $branch -BaseRef $base -FocusedTestCommand "npm run test:bvp-root" -PublicationMode push -TempRoot $runRoot 2>&1 | Tee-Object -Variable phxOutput
+        $exitCode = [int] $LASTEXITCODE
+        Write-Host "PHX-CI COMMAND EXIT: $exitCode (attempt $attempt/3)"
+        if ($exitCode -eq 0) { break }
+        $outputText = ($phxOutput | ForEach-Object { [string] $_ }) -join [Environment]::NewLine
+        $transportBlocked = $outputText -match 'fetch origin --prune failed \(exit 128\)' -and
+            $outputText -match '(?i)Connection was reset|Recv failure|timed out|Could not resolve host|TLS connection|HTTP 50[0-9]|RPC failed'
+        if (-not $transportBlocked) { break }
+        if ($attempt -lt 3) {
+            Write-Host "TRANSIENT GITHUB FETCH FAILURE: retrying canonical verifier; source SHA unchanged."
+            Start-Sleep -Seconds (3 * $attempt)
+        }
+    }
+    if ($exitCode -ne 0 -and $transportBlocked) {
+        $exitCode = 92
+        Write-Host "FINAL: NETWORK BLOCKED (92) - Git fetch reset after bounded retry; no code verification result."
+    }
     if ($exitCode -eq 0) {
-        & git -C $repoRoot fetch origin $branch
-        if ($LASTEXITCODE -ne 0) {
+        $fetched = $false
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $fetchOutput = @(& git -C $repoRoot fetch origin $branch 2>&1)
+            if ($LASTEXITCODE -eq 0) { $fetched = $true; break }
+            $fetchText = ($fetchOutput | ForEach-Object { [string] $_ }) -join [Environment]::NewLine
+            if ($fetchText -notmatch '(?i)Connection was reset|Recv failure|timed out|Could not resolve host|TLS connection|HTTP 50[0-9]|RPC failed' -or $attempt -eq 3) {
+                Write-Host "Evidence fetch failed: $fetchText"
+                break
+            }
+            Write-Host "TRANSIENT EVIDENCE FETCH FAILURE: retry $attempt/3."
+            Start-Sleep -Seconds (3 * $attempt)
+        }
+        if (-not $fetched) {
             $exitCode = 91
-            Write-Host "FINAL: BLOCKED - evidence fetch failed (91)"
+            Write-Host "FINAL: BLOCKED - evidence fetch failed (91); PHX-CI may still have passed, preserve published evidence."
         } else {
             $published = (& git -C $repoRoot rev-parse "origin/$branch").Trim()
             & git -C $repoRoot merge-base --is-ancestor $source $published
