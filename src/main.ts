@@ -167,6 +167,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
           const after = userExclusionsWithoutManaged(changed);
           if (before.length !== after.length || before.some((value, index) => value !== after[index])) {
             changed.scopeReconcileRequired = true;
+            const generation = latest.scopeReconcileGeneration ?? 0;
+            if (!Number.isSafeInteger(generation) || generation >= Number.MAX_SAFE_INTEGER) {
+              throw new Error("Scope reconciliation version is invalid or exhausted; refusing unsafe policy edit.");
+            }
+            changed.scopeReconcileGeneration = generation + 1;
           }
         }
         if (!changed.firstSyncCompleted || changed.recoveryInProgress) {
