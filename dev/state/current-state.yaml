@@ -3,7 +3,7 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
-status: "REVIEW"
+status: "IN_PROGRESS"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "bc2d2bf1-fc02-4b75-828c-4b3287725b25"
 blockers:
@@ -17,18 +17,28 @@ blockers:
   - "Independent reassessment REJECTED aecd0b15497789869df8cb57094bcdec3a2bfe6d despite genuine PHX-CI PASS: G1-07 runtime full-settings writers could overwrite competing UI patches. Source-level counterexample validated; bounded transactional repair and new interleaving/failure/restart regressions now staged, but new source is UNVERIFIED until new PHX-CI PASS and independent review."
   - "PHX-CI at source 64bfdd8f8097c0342f02e6eace4f934f40f09a59, run 85d6c61a-9c0d-4923-b8a9-99878036497b, original evidence 855e2e420b4bd587c3a8ea102114927d427b8f6b, was BLOCKED at TypeScript typecheck exit 2: one lost managed-root narrowing and two legacy runtime-host fixtures (four compiler diagnostics total). Tests/build did not execute. Source fix 822339a8322be02ecb69b1ae332cdb3489f5c3cc and both fixture fixes f933267a96c432d94582e5168f21bcb4b7917158 now committed; new source still requires PHX-CI and independent reassessment."
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
+  - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 9bdfefc7cb395a35978d0dae81d4d1c1a2d83db8; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Commission genuinely independent strictly READ-ONLY G1-07 correction-level reassessment using dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g107-transactional-settings-post-phxci-independent-reassessment.md. Review EXACT PHX-CI verified source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223, run bc2d2bf1-fc02-4b75-828c-4b3287725b25, evidence commit 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. This is NOT S09 feature completion. Await independent verdict and separate owner approval for software-only integration; physical S09 and data.json historical root cause unresolved. No unnecessary PHX-CI rerun for evidence-only documentation commits; no master merge, release, artifact promotion, installation, activation, live Drive/vault, physical S09 or Stage 3."
+next_action: "Submit dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md to separate PHX-CI test writer. They must independently inspect the current correction branch, return visual code-review recommendations to coder, own complete concurrency/fault/restart test-battery artifacts, and qualify the exact revised code via pinned local PHX-CI after recommendations are resolved. Implementer is prohibited from authoring PHX-CI test logic. Old PASS run bc2d2bf1-fc02-4b75-828c-4b3287725b25 remains historical proof only for rejected source 436afeee8897fc34764bbdddcdad0eea0be3365d. Do not request new independent review until genuine feature-level readiness. No master merge/release/activation/live Drive/vault/physical S09/Stage 3."
 updated_at: "2026-10-16"
 
 context:
+  s09_g1_invariant_driven_round_20261016:
+    rejected_reviewed_source_sha: "436afeee8897fc34764bbdddcdad0eea0be3365d"
+    rejected_findings: ["F-01 delayed pairing reverses deauthorization", "F-02 stale relocation overwrites user exclusions"]
+    production_correction_commit: "9bdfefc7cb395a35978d0dae81d4d1c1a2d83db8"
+    production_test_status: "NOT_RUN_TEST_WRITER_OWNS_VERIFICATION"
+    code_review_status: "IMPLEMENTER_STATIC_INVENTORY_ONLY_INDEPENDENT_WRITER_PENDING"
+    correction_record: "dev/reviews/s09-g107-runtime-settings-race-20261016/invariant-driven-correction-round.md"
+    test_writer_request: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md"
+    next_independent_review: "DEFERRED_UNTIL_TEST_WRITER_QUALIFIED_FEATURE_READY"
   s09_g107_runtime_settings_race_correction:
     independent_reviewed_source_sha: "aecd0b15497789869df8cb57094bcdec3a2bfe6d"
     prior_phx_ci_run: "95725e97-1e5d-4883-a86f-a4370b49e932"
     prior_phx_ci_evidence_commit: "5448e214dfc18d7d7f08cb78f5c9270b8d34a621"
     independent_verdict: "REJECT_G107_MODERATE_BLOCKING_G106_CORRECTED"
     remediation_review: "dev/reviews/s09-g107-runtime-settings-race-20261016/review-validation-and-remediation.md"
-    implementation_status: "PHX_CI_PASS_11_OF_11_REASSESSMENT_PENDING"
+    implementation_status: "REVIEW_REJECTED_F01_F02_NEW_INVARIANT_SOURCE_STAGED_TEST_WRITER_PENDING"
     new_phx_ci_status: "PASS_11_OF_11_BVP_403_PRODUCT_1010"
     verified_source_sha: "436afeee8897fc34764bbdddcdad0eea0be3365d"
     verified_tree_sha: "5fb9940d814561e328262acb15eb7981899a3223"
@@ -37,7 +47,7 @@ context:
     artifact_bytes: 916125
     artifact_sha256: "39524d7352b1a42945d2cbe5ec0f591aa55e00c64c2eff000bc442b37c31636a"
     next_review_assignment: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g107-transactional-settings-post-phxci-independent-reassessment.md"
-    independent_reassessment_status: "PENDING_READ_ONLY"
+    independent_reassessment_status: "REJECTED_F01_F02_BLOCKING"
   s09_g106_g107_corrective_build:
     reviewed_source_sha: "9beb958afd20acb0c6d5fdf9e44010ff8a88b490"
     reviewed_phx_ci_run_id: "a0a8d8f7-f464-4063-825c-5517ea20b328"
