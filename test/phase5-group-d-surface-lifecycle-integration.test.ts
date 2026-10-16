@@ -100,8 +100,14 @@ test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI s
       notify: () => undefined,
     };
     const runtime = new ProductRuntime(host);
+    const boundPairing = {
+      deviceIdentity: initial.deviceIdentity, vaultIdentity: initial.vaultIdentity,
+      remoteRootId: initial.remoteRootId, pairingStateNamespace: initial.pairingStateNamespace,
+    };
     const markComplete = () =>
-      (runtime as unknown as { completeFullReconciliation(): Promise<void> }).completeFullReconciliation();
+      (runtime as unknown as { completeFullReconciliation(
+        expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+      ): Promise<void> }).completeFullReconciliation(boundPairing);
     const disablePeriodic = () => host.mutateSettings(current => ({ ...current, periodicEnabled: false }));
     const first = runtimeFirst ? markComplete() : disablePeriodic();
     await firstWriteEntered;
@@ -116,5 +122,18 @@ test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI s
     assert.equal(durable.periodicEnabled, false, "runtime must not re-enable periodic sync");
     assert.equal(durable.scopeReconcileRequired, false, "runtime completion flag must persist");
     assert.equal(writes, 2);
+
+    // A late callback from R1 must not clear R2's reconciliation marker.
+    await host.mutateSettings(latest => ({
+      ...latest, remoteRootId: "", pairingStateNamespace: "epoch:deauthorized",
+      firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    }));
+    await host.mutateSettings(latest => ({
+      ...latest, remoteRootId: "root:R2", pairingStateNamespace: "epoch:R2", scopeReconcileRequired: true,
+    }));
+    await assert.rejects(markComplete, /different pairing/u);
+    const afterStaleCallback = await repository.loadSettings();
+    assert.equal(afterStaleCallback.remoteRootId, "root:R2");
+    assert.equal(afterStaleCallback.scopeReconcileRequired, true);
   }
 });
