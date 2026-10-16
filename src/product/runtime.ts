@@ -184,6 +184,12 @@ export class ProductRuntime {
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
     const remoteRootId = contractId<"RemoteObjectId">(current.remoteRootId) as RemoteObjectId;
+    const boundPairing = {
+      deviceIdentity: current.deviceIdentity,
+      vaultIdentity: current.vaultIdentity,
+      remoteRootId: current.remoteRootId,
+      pairingStateNamespace: current.pairingStateNamespace,
+    };
     const stateContext: StateLoadContext = {
       expectation: current.firstSyncCompleted || current.recoveryInProgress ? "existing-pairing" : "new-installation",
       expectedVaultIdentity: vaultIdentity,
@@ -248,20 +254,23 @@ export class ProductRuntime {
       },
       recoveryActive: () => this.host.settings().recoveryInProgress,
       onRecoveryGateChanged: async (active, backupId) => {
-        await this.host.mutateSettings(latest => ({
-          ...latest,
-          recoveryInProgress: active,
-          recoveryBackupId: backupId ?? (active ? latest.recoveryBackupId : ""),
-          ...(active ? { startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false } : {}),
-        }));
+        await this.host.mutateSettings(latest => {
+          this.assertBoundPairing(latest, boundPairing);
+          return {
+            ...latest,
+            recoveryInProgress: active,
+            recoveryBackupId: backupId ?? (active ? latest.recoveryBackupId : ""),
+            ...(active ? { startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false } : {}),
+          };
+        });
         this.scheduler?.refresh();
       },
-      onFullReconciliationCompleted: () => this.completeFullReconciliation(),
+      onFullReconciliationCompleted: () => this.completeFullReconciliation(boundPairing),
       onTrustedBaselineEstablished: async () => {
-        await this.host.mutateSettings(latest => ({
-          ...latest,
-          firstSyncCompleted: true,
-        }));
+        await this.host.mutateSettings(latest => {
+          this.assertBoundPairing(latest, boundPairing);
+          return latest.firstSyncCompleted ? latest : { ...latest, firstSyncCompleted: true };
+        });
         this.scheduler?.refresh();
       },
       diagnostics: this.host.diagnostics,
@@ -290,9 +299,27 @@ export class ProductRuntime {
     diagnostics.trace("runtime", "initialize-exit", { result: "product-ready" });
   }
 
+  /** A retired runtime must not publish completion state into a new pairing. */
+  private assertBoundPairing(
+    latest: BrainSyncSettings,
+    expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+  ): void {
+    if (latest.deviceIdentity !== expected.deviceIdentity ||
+        latest.vaultIdentity !== expected.vaultIdentity ||
+        latest.remoteRootId !== expected.remoteRootId ||
+        latest.pairingStateNamespace !== expected.pairingStateNamespace) {
+      throw new Error("Runtime completion belongs to a different pairing; refusing settings mutation.");
+    }
+  }
+
   /** The run completion marker must never replay a stale full-settings snapshot. */
-  private async completeFullReconciliation(): Promise<void> {
-    await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false }));
+  private async completeFullReconciliation(
+    expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+  ): Promise<void> {
+    await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, expected);
+      return { ...latest, scopeReconcileRequired: false };
+    });
   }
 
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
