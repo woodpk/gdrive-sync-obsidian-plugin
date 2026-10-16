@@ -47,7 +47,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       diagnostics: this.diagnostics,
       settings: () => this.currentSettings,
       data: this.dataRepository,
-      saveSettings: settings => this.replaceSettings(settings),
+      mutateSettings: update => this.mutateSettings(update),
       notify: message => new Notice(message),
     });
     registerGoogleOAuthReturn(
@@ -123,10 +123,12 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
 
-  private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
-    const durable = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
-    await this.dataRepository?.saveSettings(durable);
+  /** Runtime callbacks and UI patches publish only a successfully committed snapshot. */
+  private async mutateSettings(update: (latest: BrainSyncSettings) => BrainSyncSettings): Promise<BrainSyncSettings> {
+    if (!this.dataRepository) throw new Error("BRAIN settings repository is unavailable.");
+    const durable = await this.dataRepository.mutateSettings(update);
     this.currentSettings = durable;
+    return durable;
   }
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
@@ -155,8 +157,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
       await this.runtime.applySettingsChange(previous, next);
     } else {
-      if (!this.dataRepository) throw new Error("BRAIN settings repository is unavailable.");
-      this.currentSettings = await this.dataRepository.patchSettings(durablePatch);
+      await this.mutateSettings(latest => ({ ...latest, ...durablePatch }));
     }
     this.diagnostics?.configure({
       level: this.currentSettings.diagnosticLogLevel,
