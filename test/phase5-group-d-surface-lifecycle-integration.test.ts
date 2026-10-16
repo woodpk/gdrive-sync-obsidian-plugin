@@ -49,7 +49,7 @@ async function runtimeHarness(){
     stat:async(path:string)=>folders.has(path)?{type:"folder",ctime:0,mtime:0,size:0}:files.has(path)?{type:"file",ctime:0,mtime:0,size:files.get(path)!.length}:null,
   };
   const app={secretStorage,vault:{adapter,on:()=>({}),offref:()=>undefined}};
-  const host={app:app as never,plugin:plugin as never,settings:()=>settings,data:data as never,saveSettings:async(next:BrainSyncSettings)=>{settings=next;saved.push(next);},notify:(message:string)=>notifications.push(message)};
+  const host={app:app as never,plugin:plugin as never,settings:()=>settings,data:data as never,saveSettings:async(next:BrainSyncSettings)=>{settings=next;saved.push(next);},mutateSettings:async(update:(latest:BrainSyncSettings)=>BrainSyncSettings)=>{const next=update(settings);settings=next;saved.push(next);return next;},notify:(message:string)=>notifications.push(message)};
   const runtime=new ProductRuntime(host);
   return{runtime,host,saved,notifications,settings:()=>settings};
 }
