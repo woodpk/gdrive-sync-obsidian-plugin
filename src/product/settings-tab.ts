@@ -22,7 +22,7 @@ export interface ProductSettingsHost {
   authenticationButtonPressed(): number;
   authenticate(attemptId: number): Promise<void>;
   createManagedRemote(): Promise<void>;
-  pairManagedRemote(): Promise<void>;
+  pairManagedRemote(remoteRootId: string): Promise<void>;
   clearAuthenticationAndPairing(): Promise<void>;
   diagnosticsSummary(): DiagnosticSummary;
   copyDiagnosticLog(): Promise<void>;
@@ -152,11 +152,12 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
           new Notice(`Prepared authorization could not launch: ${error instanceof Error ? error.message : String(error)}`);
         }
       }));
-    new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. After first synchronization, deauthorize this device before changing pairing.").addText(text => text.setValue(settings.vaultIdentity).setDisabled(settings.firstSyncCompleted).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
-    new Setting(containerEl).setName("Managed remote root ID").setDesc("Stable Google Drive folder ID. After first synchronization, deauthorize this device before changing pairing.").addText(text => text.setValue(settings.remoteRootId).setDisabled(settings.firstSyncCompleted).onChange(async value => this.host.updateSettings({ remoteRootId: value.trim() })));
-    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").setDisabled(settings.firstSyncCompleted).onClick(() => this.host.createManagedRemote()));
-    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").setDisabled(settings.firstSyncCompleted).onClick(() => this.host.pairManagedRemote()));
-    new Setting(containerEl).setName("Deauthorize this device").setDesc("Clears authentication and local pairing only. It never deletes local or shared vault content.").addButton(button => button.setButtonText("Deauthorize").setWarning().onClick(() => this.host.clearAuthenticationAndPairing()));
+    new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Deauthorize the existing remote (even if first sync is incomplete) before changing pairing.").addText(text => text.setValue(settings.vaultIdentity).setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
+    let pendingRemoteRootId = settings.remoteRootId;
+    new Setting(containerEl).setName("Managed remote root ID").setDesc("Draft root ID is validated by Pair before it is saved. Deauthorize an existing remote (including an incomplete first sync) before replacing it.").addText(text => text.setValue(settings.remoteRootId).setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onChange(value => { pendingRemoteRootId = value.trim(); }));
+    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onClick(async () => { await this.host.createManagedRemote(); this.display(); }));
+    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onClick(async () => { await this.host.pairManagedRemote(pendingRemoteRootId); this.display(); }));
+    new Setting(containerEl).setName("Deauthorize this device").setDesc("Clears authentication and local pairing only. It never deletes local or shared vault content.").addButton(button => button.setButtonText("Deauthorize").setWarning().onClick(async () => { await this.host.clearAuthenticationAndPairing(); this.display(); }));
 
     containerEl.createEl("h3", { text: "Automatic synchronization" });
     this.toggle(containerEl, "Startup / resume", "Run after vault readiness or app resume.", settings.startupResumeEnabled, value => ({ startupResumeEnabled: value }));
