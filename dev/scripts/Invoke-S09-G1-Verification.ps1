@@ -39,6 +39,21 @@ try {
         throw "Runtime pin mismatch: $pin"
     }
 
+    # Git for Windows defaults to legacy MAX_PATH for materialized worktree
+    # entries. Archived repository paths exceed that limit when PHX-CI creates
+    # its detached 'c' and 'w' worktrees under the per-run GUID directory.
+    # Set only THIS disposable repository's .git/config; never modify the
+    # global Git configuration, Windows registry, or the control checkout.
+    & git -C $repoRoot config --local core.longpaths true
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to enable core.longpaths for this isolated Git clone."
+    }
+    $longpathsValue = (& git -C $repoRoot config --local --get core.longpaths)
+    if ($LASTEXITCODE -ne 0 -or $longpathsValue.Trim() -cne "true") {
+        throw "Git core.longpaths preflight could not prove effective local setting."
+    }
+    Write-Host "GIT LONG PATHS: enabled (repository-local; supports archived paths beyond MAX_PATH)"
+
     $env:BRAIN_ARTIFACT_PURPOSE = "development"
     $env:BVP_CHANGE_CLASS = "authorized-governance"
     # PHX-CI's initial Git fetch can fail transiently before any verification
