@@ -660,6 +660,9 @@ export class ProductRuntime {
 
   async disposeProduct(retire = true): Promise<void> {
     if (retire) ++this.runtimeGeneration;
+    // Each superseded boundary retains references to an OAuth session. Stop
+    // pending exchanges/refreshes without deleting still-valid stored tokens.
+    for (const session of this.oauthSessions) session.retirePendingOperations();
     this.scheduler?.stop(); this.scheduler = undefined;
     const controller = this.controller;
     // Remove live references synchronously: a competing initialize must not be
