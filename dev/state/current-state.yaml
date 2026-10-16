@@ -20,7 +20,7 @@ context:
     reviewed_phx_ci_run_id: "a0a8d8f7-f464-4063-825c-5517ea20b328"
     reviewed_phx_ci_evidence_commit: "6533cf3098eb9931d7595319f41121bac73bc537"
     independent_review_verdict: "REJECT_G106_MAJOR_G107_MODERATE"
-    code_and_test_commit: "73558eccaf1df16daf279af7902a149095bc79f9"
+    code_and_test_commit: "3bf091ea0896e144b07b7dc70bededea1bd83fee"
     record_path: "dev/reviews/s09-g106-g107-20261015/review-validation-and-correction.md"
     status: "REVIEW_FINDINGS_CONFIRMED_CORRECTIONS_STAGED_UNVERIFIED"
     phx_ci_status: "PENDING"
