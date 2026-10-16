@@ -1,3 +1,15 @@
+# S09 G1-07 runtime/UI settings race — confirmed and corrected, PHX-CI PENDING (2026-10-16)
+
+- **Independent result:** REJECT of prior exact source `aecd0b15497789869df8cb57094bcdec3a2bfe6d` despite its genuine PHX-CI PASS `95725e97-1e5d-4883-a86f-a4370b49e932` / evidence `5448e214dfc18d7d7f08cb78f5c9270b8d34a621`. G1-06 legacy BASE binding was accepted as software-correct; new G1-07 MODERATE blocking source race is valid: runtime full-document settings snapshots can revert concurrent UI changes.
+- **Repair staged on current corrective branch:** `PluginDataRepository.mutateSettings` is the common serialized, identity-validated, latest-committed settings owner for UI and all runtime mutations. `src/main.ts` uses it and reevaluates automatic-sync safety gates at durable mutation time. `src/product/runtime.ts` now writes recovery, first-sync, full-reconciliation, pairing, deauthorization, normalization, scope/exclusion and relocation journal updates transactionally, retaining explicit relocation and binding guards. Stale callbacks from old pairings fail closed.
+- **Regression additions:** actual runtime full-reconciliation callback vs UI-style settings mutation in either order using a delayed storage write, restart and late-R1-to-R2 callback rejection; failed-before-write/failed-after-write runtime mutation recovery and later UI patch isolation. Updated existing runtime host fixtures. New tests **have not yet been executed via PHX-CI**.
+- **Canonical review/correction record:** `dev/reviews/s09-g107-runtime-settings-race-20261016/review-validation-and-remediation.md`.
+- **Next exact action:** Resolve *current pushed branch HEAD* to an immutable source SHA and run installed pinned PHX-CI `69c4aa077d4a1a46d1e85e59f39d36285be99e83` directly with `BaseRef=b1e2ebaee3077e34a4eefaf601ee8124078b7400`, focused `npm run test:bvp-root`, development and authorized-governance environment, `PublicationMode=push`. The launcher MUST allow legitimate HEAD advancement and capture a final result rather than throw on ordinary failures. Correct any PHX-CI-proven defects, then new independent READ-ONLY review before separate owner software-only integration consideration.
+- **Boundaries:** stage `STAGE_2A_PHASE_6`; workstream WS-07; unit S09 G1. The old PASS belongs solely to the previously REJECTED SHA. DEC-340-01 remains accepted-unfixed only under locked DEC-344. No master merge, release/promotion, installation, activation, live Drive/vault, physical S09, root-cause closure of past data.json disappearance or Stage 3. Avoid administrative-only SUT reruns under Protocol §37.1.
+- **Exact Tasking Location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09 G1; review detail in record above.
+
+---
+
 # S09 G1-06/G1-07 — PHX-CI PASS; independent adversarial reassessment PENDING (2026-10-16)
 
 - **Exact PHX-CI-verified SUT:** `aecd0b15497789869df8cb57094bcdec3a2bfe6d`, Git tree `f3a07c01f5ba10a6601cb3f7a9f0a7e9d0eb79dc`; accepted master base `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
