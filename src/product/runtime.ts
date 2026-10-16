@@ -596,6 +596,9 @@ export class ProductRuntime {
     const initiatingAuthority = settings;
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
+    if (String(result.value.vaultIdentity) !== vaultIdentity) {
+      throw new Error("Created remote returned a different vault identity; refusing pairing.");
+    }
     const committed = await this.host.mutateSettings(latest => {
       this.assertBoundPairing(latest, initiatingAuthority);
       assertNewPairingAllowed(latest);
@@ -625,6 +628,10 @@ export class ProductRuntime {
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
     // Full preflight identity must survive the asynchronous Drive validation.
     const validatedIdentity = result.value.identity;
+    if (String(validatedIdentity.vaultIdentity) !== settings.vaultIdentity ||
+        String(validatedIdentity.rootId) !== proposed) {
+      throw new Error("Validated remote identity differs from the requested pairing.");
+    }
     const committed = await this.host.mutateSettings(latest => {
       this.assertBoundPairing(latest, settings);
       assertNewPairingAllowed(latest);
