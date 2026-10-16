@@ -112,29 +112,45 @@ function assertPersistedSettingsIdentity(raw: Record<string, unknown>): void {
 
 /** Reject write-time pairing corruption and require isolated authority on deauthorization. */
 function assertWritableSettingsIdentity(next: BrainSyncSettings, current: BrainSyncSettings): void {
-  if (current.firstSyncCompleted && !next.firstSyncCompleted) {
-    if (next.deviceIdentity !== current.deviceIdentity ||
-        next.vaultIdentity !== current.vaultIdentity ||
-        next.remoteRootId !== "" ||
-        !next.pairingStateNamespace?.trim() ||
-        next.pairingStateNamespace === current.pairingStateNamespace ||
-        next.startupResumeEnabled || next.localChangeEnabled || next.periodicEnabled) {
-      throw new Error("Completed pairing must be deauthorized with fresh isolated state and automatic sync disabled.");
-    }
-    return;
-  }
-  if (!next.firstSyncCompleted) return;
-  if (![next.deviceIdentity, next.vaultIdentity, next.remoteRootId]
+  if (next.firstSyncCompleted && ![next.deviceIdentity, next.vaultIdentity, next.remoteRootId]
     .every(identity => typeof identity === "string" && identity.trim().length > 0)) {
     throw new Error("Cannot persist incomplete completed-sync identity; deauthorize this device before changing pairing.");
   }
-  if (current.firstSyncCompleted && (
-    next.deviceIdentity !== current.deviceIdentity ||
-    next.vaultIdentity !== current.vaultIdentity ||
-    next.remoteRootId !== current.remoteRootId ||
-    next.pairingStateNamespace !== current.pairingStateNamespace
-  )) {
-    throw new Error("Cannot change completed-sync identity; deauthorize this device before re-pairing.");
+
+  // A remote with firstSyncCompleted=false can already have a trusted BASE after a
+  // partial run. It is just as bound to that remote as a completed installation.
+  if (current.remoteRootId.trim()) {
+    const identityChanged = next.deviceIdentity !== current.deviceIdentity ||
+      next.vaultIdentity !== current.vaultIdentity ||
+      next.remoteRootId !== current.remoteRootId ||
+      next.pairingStateNamespace !== current.pairingStateNamespace;
+    if (identityChanged || (current.firstSyncCompleted && !next.firstSyncCompleted)) {
+      const deauthorized = next.deviceIdentity === current.deviceIdentity &&
+        next.vaultIdentity === current.vaultIdentity &&
+        next.remoteRootId === "" &&
+        !next.firstSyncCompleted &&
+        Boolean(next.pairingStateNamespace?.trim()) &&
+        next.pairingStateNamespace !== current.pairingStateNamespace &&
+        !next.startupResumeEnabled && !next.localChangeEnabled && !next.periodicEnabled;
+      if (!deauthorized) {
+        throw new Error("Existing remote pairing (including incomplete first sync) must be deauthorized before changing identity or storage namespace.");
+      }
+      return;
+    }
+  }
+
+  // Even a legacy installation with an empty remoteRootId may retain the old
+  // root's BASE under an identity-only key. First validated pairing must never
+  // read that key: rotate the namespace before persisting a remote ID.
+  if (!current.remoteRootId.trim() && next.remoteRootId.trim()) {
+    if (!next.pairingStateNamespace?.trim() ||
+        next.pairingStateNamespace === current.pairingStateNamespace ||
+        next.startupResumeEnabled || next.localChangeEnabled || next.periodicEnabled) {
+      throw new Error("A newly paired remote requires fresh isolated state and automatic sync disabled.");
+    }
+  }
+  if (current.firstSyncCompleted && !next.firstSyncCompleted) {
+    throw new Error("Completed pairing must be deauthorized with fresh isolated state and automatic sync disabled.");
   }
 }
 
@@ -150,8 +166,8 @@ export function pairingStorageKey(
 }
 
 export function assertNewPairingAllowed(settings: BrainSyncSettings): void {
-  if (settings.firstSyncCompleted) {
-    throw new Error("Deauthorize this device before creating or pairing a different managed remote.");
+  if (settings.firstSyncCompleted || settings.remoteRootId.trim()) {
+    throw new Error("Deauthorize the existing remote pairing (including incomplete first sync) before creating or pairing a different managed remote.");
   }
 }
 
@@ -182,6 +198,21 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       assertWritableSettingsIdentity(copy, current.settings);
       return { ...current, settings: copy };
     });
+  }
+
+  /** Apply a settings patch inside the same queue as every durable data.json write. */
+  async patchSettings(patch: Partial<BrainSyncSettings>): Promise<BrainSyncSettings> {
+    const captured = { ...patch, ...(patch.userExclusionPatterns ? { userExclusionPatterns: [...patch.userExclusionPatterns] } : {}) };
+    let committed: BrainSyncSettings | undefined;
+    await this.persist(current => {
+      const next = { ...current.settings, ...captured };
+      next.userExclusionPatterns = [...next.userExclusionPatterns];
+      assertWritableSettingsIdentity(next, current.settings);
+      committed = next;
+      return { ...current, settings: next };
+    });
+    if (!committed) throw new Error("Settings patch was not committed.");
+    return { ...committed, userExclusionPatterns: [...committed.userExclusionPatterns] };
   }
   async load(): Promise<readonly AuditRecord[]> { return [...(await this.data()).audit]; }
   async save(records: readonly AuditRecord[]): Promise<void> {
