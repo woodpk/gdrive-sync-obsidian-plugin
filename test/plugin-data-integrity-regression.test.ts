@@ -258,7 +258,7 @@ test("G1-03 completed pairing cannot be cleared or rebound by settings writes", 
   ]) {
     await assert.rejects(
       () => repository.saveSettings({ ...settings, ...patch }),
-      /Cannot change completed-sync identity/u,
+      /Existing remote pairing/u,
     );
     assert.equal(writes, 0, "completed authority cannot be silently rebound");
   }
@@ -327,7 +327,8 @@ test("G1-04 completed pairing refuses new remote actions until deauthorization",
     firstSyncCompleted: true,
   };
   assert.throws(() => assertNewPairingAllowed(completed), /Deauthorize this device/u);
-  assert.doesNotThrow(() => assertNewPairingAllowed({ ...completed, firstSyncCompleted: false }));
+  assert.throws(() => assertNewPairingAllowed({ ...completed, firstSyncCompleted: false }), /Deauthorize the existing remote pairing/u);
+  assert.doesNotThrow(() => assertNewPairingAllowed({ ...completed, remoteRootId: "", firstSyncCompleted: false }));
 });
 
 test("G1-04 deauthorization and re-pairing cannot reuse legacy trusted state or text namespace", async () => {
@@ -503,4 +504,118 @@ test("G1-05 concurrent successful writes serialize without losing other persiste
   assert.equal(durable.settings.localDebounceMs, 2800);
   assert.equal(durable.audit.length, 1);
   assert.equal(durable.diagnostics.nextSequence, 9);
+});
+
+test("G1-06 legacy incomplete remote cannot change root or vault before deauthorization", async () => {
+  const original = {
+    ...DEFAULT_SETTINGS,
+    deviceIdentity: "device:legacy",
+    vaultIdentity: "vault:legacy",
+    remoteRootId: "root:R1",
+    firstSyncCompleted: false,
+    pairingStateNamespace: "",
+  };
+  let disk: unknown = { settings: original, audit: [] };
+  let writes = 0;
+  const repository = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async value => { disk = structuredClone(value); writes++; },
+  });
+  const existing = await repository.loadSettings();
+  for (const malicious of [
+    { ...existing, remoteRootId: "root:R2" },
+    { ...existing, remoteRootId: "root:R2", pairingStateNamespace: "rotated-without-deauthorize" },
+    { ...existing, vaultIdentity: "vault:other" },
+    { ...existing, pairingStateNamespace: "rotated-same-root" },
+  ]) {
+    await assert.rejects(() => repository.saveSettings(malicious), /Existing remote pairing/u);
+  }
+  await assert.rejects(
+    () => repository.patchSettings({ remoteRootId: "root:R2" }),
+    /Existing remote pairing/u,
+  );
+  assert.equal(writes, 0);
+  assert.throws(() => assertNewPairingAllowed(existing), /Deauthorize the existing remote pairing/u);
+
+  await repository.saveSettings({
+    ...existing, remoteRootId: "", pairingStateNamespace: "epoch:deauthorized",
+    startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+  });
+  const deauthorized = await repository.loadSettings();
+  assert.doesNotThrow(() => assertNewPairingAllowed(deauthorized));
+  await assert.rejects(
+    () => repository.saveSettings({ ...deauthorized, remoteRootId: "root:R2" }),
+    /fresh isolated state/u,
+  );
+  await repository.saveSettings({
+    ...deauthorized, remoteRootId: "root:R2", pairingStateNamespace: "epoch:validated-R2",
+  });
+  const paired = await repository.loadSettings();
+  assert.notEqual(
+    pairingStorageKey("brain-google-drive-sync", paired),
+    pairingStorageKey("brain-google-drive-sync", existing),
+  );
+  assert.notEqual(
+    pairingStorageKey("brain-google-drive-sync-text", paired),
+    pairingStorageKey("brain-google-drive-sync-text", existing),
+  );
+  assert.equal(writes, 2);
+});
+
+test("G1-06 empty-root legacy state cannot be silently rebound to old state keys", async () => {
+  let disk: unknown = {
+    settings: {
+      ...DEFAULT_SETTINGS,
+      deviceIdentity: "device:legacy",
+      vaultIdentity: "vault:legacy",
+      remoteRootId: "",
+      pairingStateNamespace: "",
+      firstSyncCompleted: false,
+    },
+  };
+  const repo = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async value => { disk = structuredClone(value); },
+  });
+  const legacy = await repo.loadSettings();
+  await assert.rejects(
+    () => repo.saveSettings({ ...legacy, remoteRootId: "root:new" }),
+    /fresh isolated state/u,
+  );
+  await repo.saveSettings({ ...legacy, remoteRootId: "root:new", pairingStateNamespace: "epoch:fresh" });
+  const current = await repo.loadSettings();
+  assert.notEqual(pairingStorageKey("brain-google-drive-sync", current), pairingStorageKey("brain-google-drive-sync", legacy));
+});
+
+test("G1-07 competing settings patches commit both fields from the latest durable snapshot", async () => {
+  let disk: unknown = {
+    settings: { ...DEFAULT_SETTINGS, deviceIdentity: "device:stable", firstSyncCompleted: false },
+    audit: [],
+  };
+  const repo = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async value => { await Promise.resolve(); disk = structuredClone(value); },
+  });
+  await repo.loadSettings();
+  await Promise.all([
+    repo.patchSettings({ localDebounceMs: 2900 }),
+    repo.patchSettings({ diagnosticConsoleMirror: true }),
+    repo.patchSettings({ periodicIntervalMinutes: 31 }),
+  ]);
+  const settings = await repo.loadSettings();
+  assert.equal(settings.localDebounceMs, 2900);
+  assert.equal(settings.diagnosticConsoleMirror, true);
+  assert.equal(settings.periodicIntervalMinutes, 31);
+  const restart = new PluginDataRepository({
+    loadData: async () => disk,
+    dataFileExists: async () => true,
+    saveData: async () => { throw new Error("unexpected write"); },
+  });
+  const durable = await restart.loadSettings();
+  assert.equal(durable.localDebounceMs, 2900);
+  assert.equal(durable.diagnosticConsoleMirror, true);
+  assert.equal(durable.periodicIntervalMinutes, 31);
 });
