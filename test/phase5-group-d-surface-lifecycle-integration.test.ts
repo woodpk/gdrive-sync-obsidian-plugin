@@ -76,8 +76,8 @@ test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI s
     };
     let disk: unknown = { settings: initial, audit: [], syncAttention: [] };
     let writes = 0;
-    let beginFirstWrite: (() => void) | undefined;
-    let unblockFirstWrite: (() => void) | undefined;
+    let beginFirstWrite!: () => void;
+    let unblockFirstWrite!: () => void;
     const firstWriteEntered = new Promise<void>(resolve => { beginFirstWrite = resolve; });
     const firstWriteRelease = new Promise<void>(resolve => { unblockFirstWrite = resolve; });
     const repository = new PluginDataRepository({
@@ -85,7 +85,7 @@ test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI s
       dataFileExists: async () => true,
       saveData: async next => {
         writes++;
-        if (writes === 1) { beginFirstWrite?.(); await firstWriteRelease; }
+        if (writes === 1) { beginFirstWrite(); await firstWriteRelease; }
         disk = structuredClone(next);
       },
     });
@@ -106,7 +106,7 @@ test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI s
     const first = runtimeFirst ? markComplete() : disablePeriodic();
     await firstWriteEntered;
     const second = runtimeFirst ? disablePeriodic() : markComplete();
-    unblockFirstWrite?.();
+    unblockFirstWrite();
     await Promise.all([first, second]);
     const restarted = new PluginDataRepository({
       loadData: async () => disk, dataFileExists: async () => true,
