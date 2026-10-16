@@ -144,6 +144,8 @@ export class GoogleOAuthSession {
   setDiagnosticLogger(logger: DiagnosticLogger | undefined): void { this.diagnostics = logger; }
 
   async beginAuthorization(ttlMs = DEFAULT_TRANSACTION_TTL_MS): Promise<OAuthAuthorizationRequest> {
+    // A new authorization intent retires earlier preparations and token refreshes.
+    this.retirePendingOperations();
     const generation = this.revocationGeneration;
     const diagnostics = this.diagnostics;
     diagnostics?.debug("oauth.transaction", "transaction-preparation-started", {
@@ -283,6 +285,8 @@ export class GoogleOAuthSession {
       };
     }
     if (generation !== this.revocationGeneration) return { ok: false, reason: "missing-transaction" };
+    // A successful new authorization supersedes older in-flight refresh results.
+    this.retirePendingOperations();
     this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(tokens));
     this.accessFailure = undefined;
     return { ok: true };
