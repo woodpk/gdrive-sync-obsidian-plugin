@@ -49,7 +49,7 @@ test("G1-06 trusted R1 BASE cannot become destructive authority over fresh empty
 
   // Model IndexedDB persistence by the exact production pairingStorageKey.
   const databases = new Map<string, MemoryStateByteStorage>();
-  const storageFor = (settings: typeof legacy): MemoryStateByteStorage => {
+  const storageFor = (settings: Parameters<typeof pairingStorageKey>[1]): MemoryStateByteStorage => {
     const key = pairingStorageKey("brain-google-drive-sync", settings);
     let storage = databases.get(key);
     if (!storage) { storage = new MemoryStateByteStorage(); databases.set(key, storage); }
