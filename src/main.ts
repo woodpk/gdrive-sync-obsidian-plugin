@@ -11,6 +11,7 @@ import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "
 import { createProductionVerificationControl, type ProductionVerificationControl } from "./product/live-validation-control-seam";
 import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
+import { userExclusionsWithoutManaged, withManagedSyncPlanErrorsExclusion } from "./product/sync-plan-errors-path";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
@@ -141,20 +142,33 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async applySettingsPatch(patch: Partial<BrainSyncSettings>): Promise<void> {
+    // UI intent never owns the relocation journal or derived managed-path metadata.
+    if (patch.managedSyncPlanErrorsExclusion !== undefined || patch.syncPlanErrorsRelocation !== undefined) {
+      throw new Error("Managed sync-plan-errors metadata cannot be set by a UI patch.");
+    }
+    if (patch.syncPlanErrorsDirectory !== undefined &&
+        Object.keys(patch).some(key => key !== "syncPlanErrorsDirectory")) {
+      throw new Error("Relocation must be submitted as a directory-only intent.");
+    }
     const previous = { ...this.currentSettings, userExclusionPatterns: [...this.currentSettings.userExclusionPatterns] };
     const next = { ...previous, ...patch };
-    if (!next.firstSyncCompleted || next.recoveryInProgress) {
-      next.startupResumeEnabled = false;
-      next.localChangeEnabled = false;
-      next.periodicEnabled = false;
-    }
     const relocatingSyncPlanErrors = previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory;
     if (relocatingSyncPlanErrors) {
       if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
       await this.runtime.applySettingsChange(previous, next);
     } else {
       await this.mutateSettings(latest => {
-        const changed = { ...latest, ...patch };
+        let changed = { ...latest, ...patch };
+        if (patch.userExclusionPatterns !== undefined) {
+          // Rebuild managed exclusions from durable state, not a stale text-area
+          // snapshot captured before other UI/runtime commits.
+          changed = withManagedSyncPlanErrorsExclusion(changed);
+          const before = userExclusionsWithoutManaged(latest);
+          const after = userExclusionsWithoutManaged(changed);
+          if (before.length !== after.length || before.some((value, index) => value !== after[index])) {
+            changed.scopeReconcileRequired = true;
+          }
+        }
         if (!changed.firstSyncCompleted || changed.recoveryInProgress) {
           changed.startupResumeEnabled = false;
           changed.localChangeEnabled = false;
