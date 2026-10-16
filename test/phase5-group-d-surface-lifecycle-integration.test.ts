@@ -9,7 +9,7 @@ import { ProductionSynchronizationPlanner } from "../src/core/production-planner
 import { enterSynchronizationLifecycle, InMemoryRunLeasePort } from "../src/core/run-coordinator";
 import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
 import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { DEFAULT_SETTINGS, type BrainSyncSettings } from "../src/product/plugin-data";
+import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "../src/product/plugin-data";
 import { ProductController } from "../src/product/product-controller";
 import { ProductSynchronizationExecutor } from "../src/product/production-executor";
 import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
@@ -65,3 +65,56 @@ test("G2 scenarios 44 and 45 repeated path-local failure stays isolated while sa
 test("G2 scenario 47 Phase5 runtime-owned notification subscription suppresses ordinary progress and delivers recovery",async()=>{const h=await runtimeHarness(),previousIndexedDb=globalThis.indexedDB;Object.defineProperty(globalThis,"indexedDB",{value:{} as IDBFactory,configurable:true,writable:true});const local={activeConfigurationDirectory:async()=>vp(".obsidian"),onLifecycle:()=>()=>undefined,onChange:()=>()=>undefined,dispose:()=>undefined} as never;Object.assign(h.runtime as unknown as Record<string,unknown>,{createLocalAdapter:async()=>local});try{await h.runtime.initialize();const controller=h.runtime.productController();assert.ok(controller);await controller.request({kind:"pause"});assert.deepEqual(h.notifications,[]);await controller.request({kind:"resume"});assert.deepEqual(h.notifications,[]);await h.host.saveSettings({...h.settings(),recoveryInProgress:true});await controller.runAutomatic("periodic");assert.equal(h.notifications.length,1);assert.match(h.notifications[0],/recovery/i);}finally{await h.runtime.disposeProduct();Object.defineProperty(globalThis,"indexedDB",{value:previousIndexedDb,configurable:true,writable:true});}});
 
 test("G2 scenario 48 allowlisted portable configuration synchronizes through reserved domain while device-local and unknown configuration stay excluded",async()=>{const config=vp(".obsidian"),physical=new Map<string,string>([[".obsidian/app.json",'{"theme":"dark"}'],[".obsidian/workspace.json","device"],[".obsidian/plugins/example/data.json","unknown"]]),created:string[]=[];const raw={enumerate:async()=>({entries:[],completeness:{status:"complete" as const}}),observe:async(p:VaultPath)=>{const t=physical.get(String(p));return t===undefined?{status:"absent" as const,side:"local" as const,path:p}:{status:"present" as const,side:"local" as const,path:p,entityKind:"file" as const,content:ev(t),stability:"stable" as const,observationToken:id<"ObservationToken">(`tok:${String(p)}`)};},readFile:async(p:VaultPath)=>({content:src(physical.get(String(p))!),evidence:ev(physical.get(String(p))!),stability:"stable" as const}),validatePath:async(p:VaultPath)=>({status:"compatible" as const,normalizedComparisonPath:String(p)}),activeConfigurationDirectory:async()=>config,onChange:()=>()=>undefined,onLifecycle:()=>()=>undefined} as never;const scope=new ProductPathScope(config,()=>({userExclusionPatterns:[]})),local=new ScopedLocalVault(raw,scope);const remote=new Map<string,{id:RemoteObjectId;e:ContentEvidence}>();let rawCreateCalls=0;const drive={validateManagedRoot:async()=>({ok:true as const,value:{status:"valid" as const,identity}}),getStartCursor:async()=>({ok:true as const,value:id<"ChangeCursor">("config-cursor")}),listForReconciliation:async()=>({ok:true as const,value:{entries:[...remote].map(([p,x])=>({path:vp(p),entityKind:"file" as const,remoteObjectId:x.id,content:x.e,trashed:false})),completeness:{status:"complete" as const}}}),observe:async(_r:RemoteObjectId,p:VaultPath)=>{const x=remote.get(String(p));return x?{ok:true as const,value:{status:"present" as const,side:"remote" as const,path:p,entityKind:"file" as const,remoteObjectId:x.id,content:x.e,stability:"stable" as const}}:{ok:true as const,value:{status:"absent" as const,side:"remote" as const,path:p}};},create:async()=>{rawCreateCalls++;throw new Error("raw Drive create must not execute");}} as never;let reservation=0;const reliableRemoteMutationPort:ReliableRemoteMutationPort={reserveFileCreateIdentity:async(_managed,intentId,path,intendedContent)=>({ok:true as const,value:{kind:"reserved-file-create" as const,intentId,reservedRemoteObjectId:rid(`rid:reserved:${++reservation}:${String(path)}`),path,intendedContent}}),reserveFolderCreateIdentity:async()=>{throw new Error("folder creation is not used by scenario 48");},createReserved:async(reserved,content)=>{if(reserved.kind!=="reserved-file-create"||!content)return{status:"outcome-unknown" as const,reason:"scenario 48 requires file content"};const text=await txt(content),actual=ev(text);assert.equal(actual.hash,reserved.intendedContent.hash);assert.equal(actual.sizeBytes,reserved.intendedContent.sizeBytes);created.push(String(reserved.path));const e:ContentEvidence={hash:reserved.intendedContent.hash,sizeBytes:reserved.intendedContent.sizeBytes};remote.set(String(reserved.path),{id:reserved.reservedRemoteObjectId,e});return{status:"verified-effect" as const,applicationProof:{kind:"reserved-create" as const,remoteObjectId:reserved.reservedRemoteObjectId,path:reserved.path,verifiedContent:reserved.intendedContent}};},updateExisting:async()=>{throw new Error("update is not used by scenario 48");},moveExisting:async()=>{throw new Error("move is not used by scenario 48");},trashExisting:async()=>{throw new Error("trash is not used by scenario 48");}};const h=await makeController({local:local as never,drive,pathIncluded:p=>scope.isManagedLogical(p),reliableRemoteMutationPort});const p=await h.controller.previewManual();assert.ok(p);const result=await h.controller.request({kind:"execute-plan",planId:p.planId});assert.equal(result.status,"accepted",result.status==="rejected"?result.reason:undefined);assert.deepEqual(created,[`${CONFIG_REMOTE_NAMESPACE}/app.json`]);assert.equal(created.some(x=>/workspace|plugins\/example/.test(x)),false);assert.equal(rawCreateCalls,0);});
+
+test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI settings change", async () => {
+  const ProductRuntime = await loadRuntimeClass();
+  for (const runtimeFirst of [false, true]) {
+    const initial: BrainSyncSettings = {
+      ...DEFAULT_SETTINGS, deviceIdentity: "device:concurrent", vaultIdentity: "vault:concurrent",
+      remoteRootId: "root:concurrent", firstSyncCompleted: true,
+      periodicEnabled: true, scopeReconcileRequired: true,
+    };
+    let disk: unknown = { settings: initial, audit: [], syncAttention: [] };
+    let writes = 0;
+    let beginFirstWrite: (() => void) | undefined;
+    let unblockFirstWrite: (() => void) | undefined;
+    const firstWriteEntered = new Promise<void>(resolve => { beginFirstWrite = resolve; });
+    const firstWriteRelease = new Promise<void>(resolve => { unblockFirstWrite = resolve; });
+    const repository = new PluginDataRepository({
+      loadData: async () => disk,
+      dataFileExists: async () => true,
+      saveData: async next => {
+        writes++;
+        if (writes === 1) { beginFirstWrite?.(); await firstWriteRelease; }
+        disk = structuredClone(next);
+      },
+    });
+    let active = await repository.loadSettings();
+    const host = {
+      app: {} as never, plugin: {} as never, data: repository,
+      settings: () => active,
+      mutateSettings: async (transform: (settings: BrainSyncSettings) => BrainSyncSettings) => {
+        active = await repository.mutateSettings(transform);
+        return active;
+      },
+      notify: () => undefined,
+    };
+    const runtime = new ProductRuntime(host);
+    const markComplete = () =>
+      (runtime as unknown as { completeFullReconciliation(): Promise<void> }).completeFullReconciliation();
+    const disablePeriodic = () => host.mutateSettings(current => ({ ...current, periodicEnabled: false }));
+    const first = runtimeFirst ? markComplete() : disablePeriodic();
+    await firstWriteEntered;
+    const second = runtimeFirst ? disablePeriodic() : markComplete();
+    unblockFirstWrite?.();
+    await Promise.all([first, second]);
+    const restarted = new PluginDataRepository({
+      loadData: async () => disk, dataFileExists: async () => true,
+      saveData: async () => { throw new Error("read-only restart"); },
+    });
+    const durable = await restarted.loadSettings();
+    assert.equal(durable.periodicEnabled, false, "runtime must not re-enable periodic sync");
+    assert.equal(durable.scopeReconcileRequired, false, "runtime completion flag must persist");
+    assert.equal(writes, 2);
+  }
+});
