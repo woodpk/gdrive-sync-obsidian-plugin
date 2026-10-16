@@ -49,6 +49,7 @@ function runtimeHost(settings: BrainSyncSettings, registrationCounter?: { value:
     settings: () => settings,
     data: data as never,
     saveSettings: async (next: BrainSyncSettings) => { settings = next; },
+    mutateSettings: async (update: (latest: BrainSyncSettings) => BrainSyncSettings) => { settings = update(settings); return settings; },
     notify: () => undefined,
   };
 }
