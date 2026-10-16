@@ -51,7 +51,7 @@ export interface ProductRuntimeHost {
   readonly diagnostics?: DiagnosticLogger;
   settings(): BrainSyncSettings;
   data: PluginDataRepository;
-  saveSettings(settings: BrainSyncSettings): Promise<void>;
+  mutateSettings(update: (latest: BrainSyncSettings) => BrainSyncSettings): Promise<BrainSyncSettings>;
   notify(message: string): void;
 }
 
@@ -90,8 +90,10 @@ export class ProductRuntime {
     if (!settings.deviceIdentity) {
       diagnostics.trace("runtime", "device-identity-generation-start", { stage: "device-identity" });
       const generated = generateDeviceIdentity();
-      settings = { ...settings, deviceIdentity: String(generated) };
-      await this.host.saveSettings(settings);
+      await this.host.mutateSettings(latest =>
+        latest.deviceIdentity ? latest : { ...latest, deviceIdentity: String(generated) },
+      );
+      settings = this.host.settings();
       diagnostics.trace("runtime", "device-identity-generation-complete", { stage: "device-identity", deviceIdentityPresent: true });
     } else {
       diagnostics.trace("runtime", "device-identity-ready", { stage: "device-identity", deviceIdentityPresent: true });
@@ -101,7 +103,7 @@ export class ProductRuntime {
       reconciled.syncPlanErrorsDirectory !== this.host.settings().syncPlanErrorsDirectory ||
       reconciled.managedSyncPlanErrorsExclusion !== this.host.settings().managedSyncPlanErrorsExclusion ||
       !exclusionsEqual(reconciled.userExclusionPatterns, this.host.settings().userExclusionPatterns)
-    ) await this.host.saveSettings(reconciled);
+    ) await this.host.mutateSettings(latest => withManagedSyncPlanErrorsExclusion(latest));
     let current = this.host.settings();
     const errorsPath = resolveSyncPlanErrorsPath(current.syncPlanErrorsDirectory).path;
     const pendingRelocation = current.syncPlanErrorsRelocation;
@@ -246,26 +248,23 @@ export class ProductRuntime {
       },
       recoveryActive: () => this.host.settings().recoveryInProgress,
       onRecoveryGateChanged: async (active, backupId) => {
-        const live = this.host.settings();
-        const changed: BrainSyncSettings = {
-          ...live,
+        await this.host.mutateSettings(latest => ({
+          ...latest,
           recoveryInProgress: active,
-          recoveryBackupId: backupId ?? (active ? live.recoveryBackupId : ""),
+          recoveryBackupId: backupId ?? (active ? latest.recoveryBackupId : ""),
           ...(active ? { startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false } : {}),
-        };
-        await this.host.saveSettings(changed);
+        }));
         this.scheduler?.refresh();
       },
       onFullReconciliationCompleted: async () => {
-        const live = this.host.settings();
-        if (live.scopeReconcileRequired) await this.host.saveSettings({ ...live, scopeReconcileRequired: false });
+        await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false }));
       },
       onTrustedBaselineEstablished: async () => {
-        const live = this.host.settings();
-        if (!live.firstSyncCompleted) {
-          await this.host.saveSettings({ ...live, firstSyncCompleted: true });
-          this.scheduler?.refresh();
-        }
+        await this.host.mutateSettings(latest => ({
+          ...latest,
+          firstSyncCompleted: true,
+        }));
+        this.scheduler?.refresh();
       },
       diagnostics: this.host.diagnostics,
       attentionLedger: this.attention,
@@ -307,21 +306,30 @@ export class ProductRuntime {
       this.protectSyncPlanErrorsPath(nextPath);
       try {
         if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation.");
-        const pending = withManagedSyncPlanErrorsExclusion({
-          ...next,
-          syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
-          managedSyncPlanErrorsExclusion: priorPath,
-          syncPlanErrorsRelocation: relocation,
-        }, previous.syncPlanErrorsDirectory);
-        await this.host.saveSettings(pending);
-        await this.attentionPersistence.relocate(nextPath, async () => {
-          const transitioned = withManagedSyncPlanErrorsExclusion({
-            ...this.host.settings(),
-            syncPlanErrorsDirectory: next.syncPlanErrorsDirectory,
-            managedSyncPlanErrorsExclusion: nextPath,
+        await this.host.mutateSettings(latest => {
+          if (latest.syncPlanErrorsRelocation || latest.syncPlanErrorsDirectory !== previous.syncPlanErrorsDirectory) {
+            throw new Error("Sync plan errors relocation state changed before journaling.");
+          }
+          return withManagedSyncPlanErrorsExclusion({
+            ...latest,
+            syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
+            managedSyncPlanErrorsExclusion: priorPath,
             syncPlanErrorsRelocation: relocation,
-          }, next.syncPlanErrorsDirectory);
-          await this.host.saveSettings(transitioned);
+          }, previous.syncPlanErrorsDirectory);
+        });
+        await this.attentionPersistence.relocate(nextPath, async () => {
+          await this.host.mutateSettings(latest => {
+            if (latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+                latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+              throw new Error("Sync plan errors relocation journal changed before transition.");
+            }
+            return withManagedSyncPlanErrorsExclusion({
+              ...latest,
+              syncPlanErrorsDirectory: next.syncPlanErrorsDirectory,
+              managedSyncPlanErrorsExclusion: nextPath,
+              syncPlanErrorsRelocation: relocation,
+            }, next.syncPlanErrorsDirectory);
+          });
         });
         await this.finalizeSyncPlanErrorsRelocation(relocation);
       } catch {
@@ -330,7 +338,7 @@ export class ProductRuntime {
       }
     }
     if (!exclusionsEqual(userExclusionsWithoutManaged(previous), userExclusionsWithoutManaged(next))) {
-      if (!next.scopeReconcileRequired) await this.host.saveSettings({ ...this.host.settings(), scopeReconcileRequired: true });
+      await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: true }));
       this.controller?.noteChangeDuringRun();
     }
   }
@@ -381,14 +389,19 @@ export class ProductRuntime {
     if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation recovery.");
     if (activePath === relocation.sourcePath) {
       await this.attentionPersistence.relocate(relocation.destinationPath, async () => {
-        const live = this.host.settings();
         const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
-        await this.host.saveSettings(withManagedSyncPlanErrorsExclusion({
-          ...live,
-          syncPlanErrorsDirectory: destinationDirectory,
-          managedSyncPlanErrorsExclusion: relocation.destinationPath,
-          syncPlanErrorsRelocation: relocation,
-        }, destinationDirectory));
+        await this.host.mutateSettings(latest => {
+          if (latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+              latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+            throw new Error("Sync plan errors relocation journal changed during recovery.");
+          }
+          return withManagedSyncPlanErrorsExclusion({
+            ...latest,
+            syncPlanErrorsDirectory: destinationDirectory,
+            managedSyncPlanErrorsExclusion: relocation.destinationPath,
+            syncPlanErrorsRelocation: relocation,
+          }, destinationDirectory);
+        });
       });
     } else if (activePath === relocation.destinationPath) {
       await this.attentionPersistence.cleanupRelocationSource(relocation.sourcePath);
@@ -399,19 +412,21 @@ export class ProductRuntime {
   }
 
   private async finalizeSyncPlanErrorsRelocation(relocation: SyncPlanErrorsRelocationJournal): Promise<void> {
-    const live = this.host.settings();
     const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
-    if (resolveSyncPlanErrorsPath(live.syncPlanErrorsDirectory).path !== relocation.destinationPath) {
-      throw new Error("Sync plan errors destination is not the configured active location.");
-    }
-    const finalSettings = withManagedSyncPlanErrorsExclusion({
-      ...live,
-      syncPlanErrorsDirectory: destinationDirectory,
-      managedSyncPlanErrorsExclusion: relocation.destinationPath,
-      syncPlanErrorsRelocation: null,
-      userExclusionPatterns: live.userExclusionPatterns.filter(pattern => pattern !== relocation.sourcePath),
-    }, destinationDirectory);
-    await this.host.saveSettings(finalSettings);
+    await this.host.mutateSettings(latest => {
+      if (resolveSyncPlanErrorsPath(latest.syncPlanErrorsDirectory).path !== relocation.destinationPath ||
+          latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+          latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+        throw new Error("Sync plan errors destination or journal changed before finalization.");
+      }
+      return withManagedSyncPlanErrorsExclusion({
+        ...latest,
+        syncPlanErrorsDirectory: destinationDirectory,
+        managedSyncPlanErrorsExclusion: relocation.destinationPath,
+        syncPlanErrorsRelocation: null,
+        userExclusionPatterns: latest.userExclusionPatterns.filter(pattern => pattern !== relocation.sourcePath),
+      }, destinationDirectory);
+    });
     this.unprotectSyncPlanErrorsPath(relocation.sourcePath);
     this.protectSyncPlanErrorsPath(relocation.destinationPath);
   }
@@ -483,18 +498,23 @@ export class ProductRuntime {
     let vaultIdentity = settings.vaultIdentity;
     if (!vaultIdentity) {
       vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
-      settings = { ...settings, vaultIdentity };
-      await this.host.saveSettings(settings);
+      settings = await this.host.mutateSettings(latest => {
+        assertNewPairingAllowed(latest);
+        return latest.vaultIdentity ? latest : { ...latest, vaultIdentity };
+      });
+      vaultIdentity = settings.vaultIdentity;
     }
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
-    assertNewPairingAllowed(this.host.settings());
-    if (this.host.settings().vaultIdentity !== vaultIdentity) throw new Error("Vault identity changed while creating the remote; do not bind a stale pairing.");
-    await this.host.saveSettings({
-      ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
-      pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
-      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
-      startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    await this.host.mutateSettings(latest => {
+      assertNewPairingAllowed(latest);
+      if (latest.vaultIdentity !== vaultIdentity) throw new Error("Vault identity changed while creating the remote; do not bind a stale pairing.");
+      return {
+        ...latest, remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
+        pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
+        firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
+        startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+      };
     });
     await this.initialize();
     return result.value;
@@ -512,17 +532,21 @@ export class ProductRuntime {
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    const current = this.host.settings();
-    assertNewPairingAllowed(current);
-    if (current.vaultIdentity !== settings.vaultIdentity) throw new Error("Vault identity changed while pairing was being validated; retry.");
-    await this.host.saveSettings({ ...current, remoteRootId: String(result.value.identity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.mutateSettings(latest => {
+      assertNewPairingAllowed(latest);
+      if (latest.vaultIdentity !== settings.vaultIdentity) throw new Error("Vault identity changed while pairing was being validated; retry.");
+      return { ...latest, remoteRootId: String(result.value.identity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false };
+    });
     await this.initialize();
     return result.value.identity;
   }
 
   async deauthorize(): Promise<void> {
-    const settings = this.host.settings();
-    await this.host.saveSettings({ ...settings, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    await this.host.mutateSettings(latest => ({
+      ...latest, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
+      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
+      startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    }));
     this.boundary?.oauth.clearTokens();
     await this.disposeProduct();
   }
