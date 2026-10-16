@@ -65,7 +65,8 @@ export interface ProductControllerOptions {
   readonly onTrustedBaselineEstablished?: () => Promise<void>;
   readonly recoveryActive?: () => boolean;
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
-  readonly onFullReconciliationCompleted?: () => Promise<void>;
+  readonly readScopeReconcileGeneration?: () => number;
+  readonly onFullReconciliationCompleted?: (observedGeneration: number) => Promise<void>;
   readonly diagnostics?: DiagnosticLogger;
   readonly attentionLedger?: SyncAttentionLedger;
 }
@@ -74,6 +75,8 @@ interface PlannedRun {
   readonly assembly: AssembledPlanningInput;
   readonly checkpointId?: CheckpointId;
   readonly reviewed: boolean;
+  /** Version sampled before snapshot acquisition, conservatively guarding delayed completion. */
+  readonly scopeReconcileGeneration?: number;
   readonly diagnosticRunId?: number;
   attentionPersistenceFailed: boolean;
 }
@@ -448,6 +451,7 @@ export class ProductControllerBase implements ProductControlPort {
       return undefined;
     }
     this.setStatus({ kind: "planning", trigger });
+    const scopeReconcileGeneration = this.options.readScopeReconcileGeneration?.();
     this.syncInfo(diagnosticRunId, "planning-start", { stage: "planning", trigger, runMode: full ? "full" : "incremental-preferred" });
     try {
       let assembly: AssembledPlanningInput;
@@ -474,7 +478,7 @@ export class ProductControllerBase implements ProductControlPort {
       }
       let attentionPersistenceFailed = false;
       if (!await this.recordAttentionEntries(attentionOperations(plan).map(operation => this.attentionFor(operation, plan, diagnosticRunId)))) attentionPersistenceFailed = true;
-      this.planned = { plan, assembly, checkpointId, reviewed, diagnosticRunId, attentionPersistenceFailed };
+      this.planned = { plan, assembly, checkpointId, reviewed, scopeReconcileGeneration, diagnosticRunId, attentionPersistenceFailed };
       await this.audit("plan-created", { planId: plan.planId, count: plan.operations.length });
       this.surface = { ...this.surface, planPreview: plan, conflicts: [...this.conflictRegistry.values()].filter(value => value.kind !== "clean-merge") };
 
@@ -715,7 +719,9 @@ export class ProductControllerBase implements ProductControlPort {
               await this.options.onRecoveryGateChanged?.(false);
               await this.audit("recovery-completed");
             }
-            if (planned.assembly.mode === "full" && planned.assembly.nextCursor) await this.options.onFullReconciliationCompleted?.();
+            if (planned.assembly.mode === "full" && planned.assembly.nextCursor && planned.scopeReconcileGeneration !== undefined) {
+              await this.options.onFullReconciliationCompleted?.(planned.scopeReconcileGeneration);
+            }
             if (planned.reviewed) await this.options.onTrustedBaselineEstablished?.();
           }
         }
