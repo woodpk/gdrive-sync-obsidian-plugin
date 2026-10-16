@@ -565,13 +565,15 @@ export class ProductRuntime {
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
+    // Preserve the narrowed, validated identity across the queued mutation callback.
+    const validatedIdentity = result.value.identity;
     await this.host.mutateSettings(latest => {
       assertNewPairingAllowed(latest);
       if (latest.vaultIdentity !== settings.vaultIdentity) throw new Error("Vault identity changed while pairing was being validated; retry.");
-      return { ...latest, remoteRootId: String(result.value.identity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false };
+      return { ...latest, remoteRootId: String(validatedIdentity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false };
     });
     await this.initialize();
-    return result.value.identity;
+    return validatedIdentity;
   }
 
   async deauthorize(): Promise<void> {
