@@ -653,6 +653,9 @@ export class ProductRuntime {
     }));
     // Every previously created OAuth session may have an in-flight token exchange.
     // Clear/revoke them all before releasing their references.
+    if (this.boundary?.oauth && !this.oauthSessions.has(this.boundary.oauth)) {
+      this.boundary.oauth.clearTokens();
+    }
     for (const session of this.oauthSessions) session.clearTokens();
     this.oauthSessions.clear();
     await this.disposeProduct();
