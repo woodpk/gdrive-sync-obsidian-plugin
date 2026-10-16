@@ -326,7 +326,7 @@ test("G1-04 completed pairing refuses new remote actions until deauthorization",
     remoteRootId: "root:established",
     firstSyncCompleted: true,
   };
-  assert.throws(() => assertNewPairingAllowed(completed), /Deauthorize this device/u);
+  assert.throws(() => assertNewPairingAllowed(completed), /Deauthorize the existing remote pairing/u);
   assert.throws(() => assertNewPairingAllowed({ ...completed, firstSyncCompleted: false }), /Deauthorize the existing remote pairing/u);
   assert.doesNotThrow(() => assertNewPairingAllowed({ ...completed, remoteRootId: "", firstSyncCompleted: false }));
 });
@@ -357,7 +357,7 @@ test("G1-04 deauthorization and re-pairing cannot reuse legacy trusted state or 
   await assert.rejects(() => repository.saveSettings({
     ...legacy, remoteRootId: "", firstSyncCompleted: false,
     startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
-  }), /fresh isolated state/u);
+  }), /Existing remote pairing/u);
   const unpaired = {
     ...legacy, remoteRootId: "", pairingStateNamespace: "pairing-deauth-1",
     firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
