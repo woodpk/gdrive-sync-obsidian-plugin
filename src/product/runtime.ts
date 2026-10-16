@@ -67,12 +67,26 @@ export class ProductRuntime {
   private readonly operationalExclusions = new Set<string>();
   private unsubscribeSurface?: () => void;
   private readonly notifications = new MeaningfulNotificationFilter();
+  // Invalidates every suspended initialization after deauthorization/disposal.
+  private runtimeGeneration = 0;
+  // Retain token sessions until revocation, including sessions with in-flight exchanges.
+  private readonly oauthSessions = new Set<ReturnType<typeof createObsidianGoogleDriveBoundary>["oauth"]>();
 
   constructor(private readonly host: ProductRuntimeHost) {}
   productController(): ProductController | undefined { return this.controller; }
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
   async initialize(): Promise<void> {
+    const generation = ++this.runtimeGeneration;
+    const opening = this.host.settings();
+    const assertActive = () => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(this.host.settings(), opening);
+    };
+    const assertLatestActive = (latest: BrainSyncSettings) => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(latest, opening);
+    };
     const diagnostics = this.host.diagnostics ?? NOOP_DIAGNOSTICS;
     diagnostics.trace("runtime", "initialize-enter", { stage: "runtime-initialize" });
     let settings = this.host.settings();
@@ -85,14 +99,17 @@ export class ProductRuntime {
       vaultIdentityPresent: Boolean(settings.vaultIdentity),
       remoteRootPresent: Boolean(settings.remoteRootId),
     });
-    await this.disposeProduct();
+    await this.disposeProduct(false);
+    assertActive();
     diagnostics.trace("runtime", "initialize-dispose-complete", { stage: "dispose-previous-runtime" });
     if (!settings.deviceIdentity) {
       diagnostics.trace("runtime", "device-identity-generation-start", { stage: "device-identity" });
       const generated = generateDeviceIdentity();
-      await this.host.mutateSettings(latest =>
-        latest.deviceIdentity ? latest : { ...latest, deviceIdentity: String(generated) },
-      );
+      await this.host.mutateSettings(latest => {
+        assertLatestActive(latest);
+        return latest.deviceIdentity ? latest : { ...latest, deviceIdentity: String(generated) };
+      });
+      assertActive();
       settings = this.host.settings();
       diagnostics.trace("runtime", "device-identity-generation-complete", { stage: "device-identity", deviceIdentityPresent: true });
     } else {
@@ -103,7 +120,11 @@ export class ProductRuntime {
       reconciled.syncPlanErrorsDirectory !== this.host.settings().syncPlanErrorsDirectory ||
       reconciled.managedSyncPlanErrorsExclusion !== this.host.settings().managedSyncPlanErrorsExclusion ||
       !exclusionsEqual(reconciled.userExclusionPatterns, this.host.settings().userExclusionPatterns)
-    ) await this.host.mutateSettings(latest => withManagedSyncPlanErrorsExclusion(latest));
+    ) await this.host.mutateSettings(latest => {
+      assertLatestActive(latest);
+      return withManagedSyncPlanErrorsExclusion(latest);
+    });
+    assertActive();
     let current = this.host.settings();
     const errorsPath = resolveSyncPlanErrorsPath(current.syncPlanErrorsDirectory).path;
     const pendingRelocation = current.syncPlanErrorsRelocation;
@@ -120,12 +141,18 @@ export class ProductRuntime {
     });
     try {
       const legacy = await this.host.data.loadSyncAttention();
+      assertActive();
       const initialized = pendingRelocation
         ? await this.attentionPersistence.initializePendingRelocation(pendingRelocation, errorsPath, legacy)
         : await this.attentionPersistence.initialize(legacy);
-      if (initialized.migratedLegacyRecords) await this.host.data.saveSyncAttention([]);
+      assertActive();
+      if (initialized.migratedLegacyRecords) {
+        await this.host.data.saveSyncAttention([]);
+        assertActive();
+      }
       if (pendingRelocation) {
         await this.recoverSyncPlanErrorsRelocation(pendingRelocation, errorsPath);
+        assertActive();
         current = this.host.settings();
       }
     } catch (error) {
@@ -159,6 +186,7 @@ export class ProductRuntime {
         : undefined,
     });
     this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
+    this.oauthSessions.add(this.boundary.oauth);
     diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });
     if (!current.vaultIdentity || !current.remoteRootId) {
       diagnostics.info("runtime", "runtime-initialized", { result: "oauth-ready" });
@@ -168,8 +196,16 @@ export class ProductRuntime {
 
     diagnostics.trace("runtime", "local-adapter-create-enter", { stage: "local-adapter" });
     const rawLocal = await this.createLocalAdapter();
+    try { assertActive(); } catch (error) {
+      (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
+      throw error;
+    }
     diagnostics.trace("runtime", "local-adapter-create-exit", { stage: "local-adapter", result: Platform.isDesktopApp ? "desktop-adapter" : "mobile-adapter" });
     const configurationDirectory = await rawLocal.activeConfigurationDirectory();
+    try { assertActive(); } catch (error) {
+      (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
+      throw error;
+    }
     diagnostics.trace("runtime", "configuration-directory-ready", { stage: "path-scope" });
     const scope = new ProductPathScope(
       configurationDirectory,
@@ -297,6 +333,16 @@ export class ProductRuntime {
     diagnostics.trace("runtime", "scheduler-started", { stage: "scheduler" });
     diagnostics.info("runtime", "runtime-initialized", { result: "product-ready" });
     diagnostics.trace("runtime", "initialize-exit", { result: "product-ready" });
+  }
+
+  /** In-flight initialization must retain the epoch in which it started. */
+  private assertInitializationPairing(latest: BrainSyncSettings, opening: BrainSyncSettings): void {
+    if (latest.vaultIdentity !== opening.vaultIdentity ||
+        latest.remoteRootId !== opening.remoteRootId ||
+        latest.pairingStateNamespace !== opening.pairingStateNamespace ||
+        (opening.deviceIdentity && latest.deviceIdentity !== opening.deviceIdentity)) {
+      throw new Error("Runtime initialization authority changed; refusing stale initialization.");
+    }
   }
 
   /** A retired runtime must not publish completion state into a new pairing. */
@@ -581,24 +627,33 @@ export class ProductRuntime {
   }
 
   async deauthorize(): Promise<void> {
+    // Retire suspended initializers before awaiting durable unpairing.
+    ++this.runtimeGeneration;
+    this.scheduler?.stop();
     await this.host.mutateSettings(latest => ({
       ...latest, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
       firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
       startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
     }));
-    this.boundary?.oauth.clearTokens();
+    // Every previously created OAuth session may have an in-flight token exchange.
+    // Clear/revoke them all before releasing their references.
+    for (const session of this.oauthSessions) session.clearTokens();
+    this.oauthSessions.clear();
     await this.disposeProduct();
   }
 
-  async disposeProduct(): Promise<void> {
+  async disposeProduct(retire = true): Promise<void> {
+    if (retire) ++this.runtimeGeneration;
     this.scheduler?.stop(); this.scheduler = undefined;
     const controller = this.controller;
-    if (controller) await controller.beginRuntimeDisposal();
-    this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
+    // Remove live references synchronously: a competing initialize must not be
+    // cleared when an older controller's asynchronous disposal finally resolves.
     this.controller = undefined;
+    this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
     this.attentionPersistence?.dispose(); this.attentionPersistence = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
     disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
+    if (controller) await controller.beginRuntimeDisposal();
   }
 
   private async createLocalAdapter(): Promise<LocalVaultPort> {
