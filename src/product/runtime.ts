@@ -342,9 +342,6 @@ export class ProductRuntime {
           }
           return withManagedSyncPlanErrorsExclusion({
             ...latest,
-            // This is the UI's explicit exclusion edit; unrelated settings still
-            // come from the latest committed document.
-            userExclusionPatterns: [...next.userExclusionPatterns],
             syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
             managedSyncPlanErrorsExclusion: priorPath,
             syncPlanErrorsRelocation: relocation,
@@ -530,18 +527,23 @@ export class ProductRuntime {
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
     let vaultIdentity = settings.vaultIdentity;
     if (!vaultIdentity) {
-      vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
+      const proposedVaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
+      const initialAuthority = settings;
       settings = await this.host.mutateSettings(latest => {
+        this.assertBoundPairing(latest, initialAuthority);
         assertNewPairingAllowed(latest);
-        return latest.vaultIdentity ? latest : { ...latest, vaultIdentity };
+        return latest.vaultIdentity ? latest : { ...latest, vaultIdentity: proposedVaultIdentity };
       });
       vaultIdentity = settings.vaultIdentity;
     }
+    // Capture the complete authority epoch BEFORE asynchronous Drive work. An
+    // unpaired state after deauthorization is not equivalent to the prior epoch.
+    const initiatingAuthority = settings;
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
-    await this.host.mutateSettings(latest => {
+    const committed = await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, initiatingAuthority);
       assertNewPairingAllowed(latest);
-      if (latest.vaultIdentity !== vaultIdentity) throw new Error("Vault identity changed while creating the remote; do not bind a stale pairing.");
       return {
         ...latest, remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
         pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
@@ -550,6 +552,7 @@ export class ProductRuntime {
       };
     });
     await this.initialize();
+    this.assertBoundPairing(this.host.settings(), committed);
     return result.value;
   }
 
@@ -565,14 +568,15 @@ export class ProductRuntime {
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    // Preserve the narrowed, validated identity across the queued mutation callback.
+    // Full preflight identity must survive the asynchronous Drive validation.
     const validatedIdentity = result.value.identity;
-    await this.host.mutateSettings(latest => {
+    const committed = await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, settings);
       assertNewPairingAllowed(latest);
-      if (latest.vaultIdentity !== settings.vaultIdentity) throw new Error("Vault identity changed while pairing was being validated; retry.");
       return { ...latest, remoteRootId: String(validatedIdentity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false };
     });
     await this.initialize();
+    this.assertBoundPairing(this.host.settings(), committed);
     return validatedIdentity;
   }
 
