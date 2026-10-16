@@ -15,6 +15,7 @@ import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-atte
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
+  private settingsUpdateChain: Promise<void> = Promise.resolve();
   private dataRepository?: PluginDataRepository;
   private diagnostics?: DiagnosticLogger;
   private runtime?: ProductRuntime;
@@ -69,7 +70,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       authenticationButtonPressed: () => this.authenticationButtonPressed(),
       authenticate: attemptId => this.authenticate(attemptId),
       createManagedRemote: () => this.createManagedRemote(),
-      pairManagedRemote: () => this.pairManagedRemote(),
+      pairManagedRemote: remoteRootId => this.pairManagedRemote(remoteRootId),
       clearAuthenticationAndPairing: () => this.deauthorize(),
       diagnosticsSummary: () => this.diagnosticsSummary(),
       copyDiagnosticLog: () => this.copyDiagnosticLog(),
@@ -129,19 +130,33 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
+    // Queue entire UI changes (including follow-up runtime effects), not just
+    // host saveData. Two concurrent onChange handlers must never capture the
+    // same stale settings document and later undo one another.
+    const write = this.settingsUpdateChain.then(() => this.applySettingsPatch(patch));
+    this.settingsUpdateChain = write.catch(() => undefined);
+    await write;
+  }
+
+  private async applySettingsPatch(patch: Partial<BrainSyncSettings>): Promise<void> {
     const previous = { ...this.currentSettings, userExclusionPatterns: [...this.currentSettings.userExclusionPatterns] };
-    const next = { ...this.currentSettings, ...patch };
+    const next = { ...previous, ...patch };
+    const durablePatch: Partial<BrainSyncSettings> = { ...patch };
     if (!next.firstSyncCompleted || next.recoveryInProgress) {
       next.startupResumeEnabled = false;
       next.localChangeEnabled = false;
       next.periodicEnabled = false;
+      durablePatch.startupResumeEnabled = false;
+      durablePatch.localChangeEnabled = false;
+      durablePatch.periodicEnabled = false;
     }
     const relocatingSyncPlanErrors = previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory;
     if (relocatingSyncPlanErrors) {
       if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
       await this.runtime.applySettingsChange(previous, next);
     } else {
-      await this.replaceSettings(next);
+      if (!this.dataRepository) throw new Error("BRAIN settings repository is unavailable.");
+      this.currentSettings = await this.dataRepository.patchSettings(durablePatch);
     }
     this.diagnostics?.configure({
       level: this.currentSettings.diagnosticLogLevel,
@@ -243,8 +258,8 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     try { if (!this.runtime) return; const identity = await this.runtime.createManagedRemote(); this.bindStatus(); new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`); }
     catch (error) { this.noticeError("Managed remote creation failed", error); }
   }
-  private async pairManagedRemote(): Promise<void> {
-    try { if (!this.runtime) return; const identity = await this.runtime.pairManagedRemote(); this.bindStatus(); new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`); }
+  private async pairManagedRemote(remoteRootId: string): Promise<void> {
+    try { if (!this.runtime) return; const identity = await this.runtime.pairManagedRemote(remoteRootId); this.bindStatus(); new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`); }
     catch (error) { this.noticeError("Managed remote pairing failed", error); }
   }
   private async deauthorize(): Promise<void> {
