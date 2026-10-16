@@ -488,6 +488,8 @@ export class ProductRuntime {
     }
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
+    assertNewPairingAllowed(this.host.settings());
+    if (this.host.settings().vaultIdentity !== vaultIdentity) throw new Error("Vault identity changed while creating the remote; do not bind a stale pairing.");
     await this.host.saveSettings({
       ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
       pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
@@ -498,18 +500,22 @@ export class ProductRuntime {
     return result.value;
   }
 
-  async pairManagedRemote(): Promise<ManagedRemoteIdentity> {
+  async pairManagedRemote(proposedRemoteRootId: string): Promise<ManagedRemoteIdentity> {
     const settings = this.host.settings();
     assertNewPairingAllowed(settings);
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
-    if (!settings.vaultIdentity || !settings.remoteRootId) throw new Error("Enter the expected BRAIN vault identity and stable Drive remote root ID.");
+    const proposed = proposedRemoteRootId.trim();
+    if (!settings.vaultIdentity.trim() || !proposed) throw new Error("Enter the expected BRAIN vault identity and stable Drive remote root ID.");
     const expected = contractId<"VaultIdentity">(settings.vaultIdentity) as VaultIdentity;
-    const root = contractId<"RemoteObjectId">(settings.remoteRootId) as RemoteObjectId;
+    const root = contractId<"RemoteObjectId">(proposed) as RemoteObjectId;
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    await this.host.saveSettings({ ...settings, pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    const current = this.host.settings();
+    assertNewPairingAllowed(current);
+    if (current.vaultIdentity !== settings.vaultIdentity) throw new Error("Vault identity changed while pairing was being validated; retry.");
+    await this.host.saveSettings({ ...current, remoteRootId: String(result.value.identity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
     await this.initialize();
     return result.value.identity;
   }
