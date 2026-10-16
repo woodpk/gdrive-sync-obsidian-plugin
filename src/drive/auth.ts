@@ -289,9 +289,13 @@ export class GoogleOAuthSession {
   }
 
   tokens(): OAuthTokens | undefined { return decodeTokens(this.secrets.get(GoogleOAuthSession.TOKEN_SECRET_ID)); }
-  clearTokens(): void {
+  /** Retire old requests when the runtime is replaced, without deleting valid stored tokens. */
+  retirePendingOperations(): void {
     ++this.revocationGeneration;
     this.transaction = undefined;
+  }
+  clearTokens(): void {
+    this.retirePendingOperations();
     this.secrets.delete(GoogleOAuthSession.TOKEN_SECRET_ID);
     this.accessFailure = "authentication-required";
   }
