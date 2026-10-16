@@ -1,3 +1,19 @@
+# S09 G1 — Reviewer-Led Invariant Correction / PHX-CI Test-Writer Handoff (2026-10-16)
+
+**Status:** `IN_PROGRESS`, **new production changes not yet PHX-CI tested**. Independent reviewer REJECT of previous exact source `436afeee8897fc34764bbdddcdad0eea0be3365d` accepted: F-01 MAJOR delayed Create/Pair revives deauthorized pairing; F-02 MAJOR relocation replays stale user exclusions. Reviewer systemic diagnosis supersedes prior agent self-assessment: full-workflow concurrency inspection must precede tests/review.
+
+**Latest production-code correction commit:** `3145f2e74ae270173f2d712d10b21b1f7adef7e1` on `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`. Changes cover settings UI intent, durable managed-path construction, epoch-bound async pairing validation, deauthorization, superseded runtime initializer and OAuth session revocation, scope-generation full-reconciliation receipts, and relocation failure reporting. Do not confuse this untested source with prior PASS `bc2d2bf1-fc02-4b75-828c-4b3287725b25` / evidence `76651dbe3d91c1ffb2fb083b68ff742dff7e02e4`, which only qualifies REJECTED older source.
+
+**Invariant inventory:** `dev/reviews/s09-g107-runtime-settings-race-20261016/invariant-driven-correction-round.md`.
+
+**NEXT GATE (not another independent review):** Delegate inspection, code recommendations, all test-battery authoring, PHX-CI execution and evidence to separate **PHX-CI test writer** using `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md`. Tester must inspect and report any material defects back to coder before constructing/finalizing tests. The coding agent must NOT author PHX-CI test logic. Only when tester qualifications and full feature readiness are established may owner consider one independent acceptance review.
+
+**Frozen historical baseline:** `b1e2ebaee3077e34a4eefaf601ee8124078b7400`; pinned PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. No new run claimed. No GitHub Actions, merge, release, artifact approval, installation, live Drive/vault, physical S09 or Stage 3. DEC-340-01 residual risk remains owner-accepted only under DEC-344 for separate software-only consideration; real `data.json` disappearance root cause remains unresolved.
+
+**Exact tasking:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md`, S09 G1.
+
+---
+
 # S09 G1-07 — PHX-CI-qualified correction, independent review gate (2026-10-16)
 
 - **Status:** Exact G1-07 transactional settings correction is **PHX-CI PASS**; **not independently accepted**, **not integrated** and **not complete S09 feature**. Prior PHX-CI BLOCKED attempt remains historical, corrected with committed source and fixture changes.
