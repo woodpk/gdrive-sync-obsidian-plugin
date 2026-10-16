@@ -619,3 +619,62 @@ test("G1-07 competing settings patches commit both fields from the latest durabl
   assert.equal(durable.diagnosticConsoleMirror, true);
   assert.equal(durable.periodicIntervalMinutes, 31);
 });
+
+test("G1-07 rejected runtime mutation cannot leak into later UI patch or restart", async () => {
+  const initial = {
+    ...DEFAULT_SETTINGS, deviceIdentity: "device:mutation",
+    vaultIdentity: "vault:mutation", remoteRootId: "root:mutation",
+    firstSyncCompleted: true, periodicEnabled: true, scopeReconcileRequired: true,
+  };
+  let disk: unknown = { settings: initial, audit: [] };
+  let writes = 0;
+  const repo = new PluginDataRepository({
+    loadData: async () => disk, dataFileExists: async () => true,
+    saveData: async next => {
+      writes++;
+      if (writes === 1) throw new Error("injected failed-before-write runtime transition");
+      disk = structuredClone(next);
+    },
+  });
+  await repo.loadSettings();
+  await assert.rejects(
+    () => repo.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false })),
+    /injected failed-before-write/u,
+  );
+  await repo.patchSettings({ periodicEnabled: false });
+  const restarted = new PluginDataRepository({
+    loadData: async () => disk, dataFileExists: async () => true,
+    saveData: async () => { throw new Error("unexpected restart write"); },
+  });
+  const current = await restarted.loadSettings();
+  assert.equal(current.scopeReconcileRequired, true, "failed runtime update must stay rejected");
+  assert.equal(current.periodicEnabled, false, "subsequent UI edit must persist independently");
+  assert.equal(writes, 2);
+});
+
+test("G1-07 uncertain runtime mutation blocks subsequent settings patches", async () => {
+  let disk: unknown = { settings: {
+    ...DEFAULT_SETTINGS, deviceIdentity: "device:uncertain", vaultIdentity: "vault:uncertain",
+    remoteRootId: "root:uncertain", firstSyncCompleted: true,
+    scopeReconcileRequired: true,
+  } };
+  let writes = 0;
+  const repo = new PluginDataRepository({
+    loadData: async () => disk, dataFileExists: async () => true,
+    saveData: async next => {
+      writes++;
+      disk = structuredClone(next);
+      throw new Error("injected failed-after-write runtime transition");
+    },
+  });
+  await repo.loadSettings();
+  await assert.rejects(
+    () => repo.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false })),
+    /injected failed-after-write/u,
+  );
+  await assert.rejects(
+    () => repo.patchSettings({ periodicIntervalMinutes: 47 }),
+    /save is uncertain/u,
+  );
+  assert.equal(writes, 1, "uncertain runtime write must not be overwritten by a later UI edit");
+});
