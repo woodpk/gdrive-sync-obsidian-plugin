@@ -5,7 +5,7 @@ active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
 status: "S09_G106_G107_CORRECTION_STAGED_PHX_CI_PENDING"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
-last_phx_ci_run_id: "a0a8d8f7-f464-4063-825c-5517ea20b328"
+last_phx_ci_run_id: "b48a7054-7e53-495e-876e-1b0bf4a28111"
 blockers:
   - "Historical independent review REJECT / DEC-340-01 MAJOR remains an accurate finding, but the owner has now explicitly ACCEPTED the residual context-spoofing risk under DEC-344; DEC-340-01 alone is NON-BLOCKING for BRAIN continued engineering and software-only integration consideration. It remains UNFIXED, and no new merge/release/activation is approved."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
@@ -13,8 +13,9 @@ blockers:
   - "G1-06/G1-07 corrective branch at 809f291120d080107947bd8f5b1c757ff582fd03 was PHX-CI BLOCKED at typecheck exit 2 (run 9eb098b3-c71e-42f2-bf67-ea8d67b08425, evidence 0b64bd67fa2b3036041d8ad056317710bcc922e7). Three exact TypeScript fixture errors have been patched; new exact-source PHX-CI remains PENDING, not PASS."
   - "Subsequent operator rerun on exact source 48b43224bbdc27877b9b67be439da643df8e2169 never entered PHX-CI stages: GitHub connection reset during mandatory git fetch origin --prune (git exit 128; wrapper exit 1), with no new verification evidence published. This is external transport interruption, NOT a code or test failure. Bounded transient-only retry added at e9e2d9035e90e753e00be99feee6ced3b8b35ae2; new exact-source PHX-CI verification remains pending."
   - "Next PHX-CI operator run at 3b1d35070fb6f1f71884a1c93f50821c821b86a8 BLOCKED before any test: Git worktree add failed on archived 264-character path (Windows Git core.longpaths disabled), exit 128, no source verification. Corrected operator wrapper enables core.longpaths=true only for isolated clone (baca48bddde6fd716bcc79f8bf95e91635c35055); new exact-source PHX-CI run remains PENDING."
+  - "PHX-CI verified source 88190abbe9b76521481bb74b2bb0756933210b43 was BLOCKED (run b48a7054-7e53-495e-876e-1b0bf4a28111; evidence 747953c907bf33d98f5772e5714044db3cacd405): typecheck PASS, full product 1007/1007 PASS, focused BVP 402/403 with architecture-metrics test 27 failing 4 != 3 PowerShell scripts. Added task-specific S09 verification wrapper caused the fourth script, contrary to dev/scripts/README.md prohibition. Wrapper removed at 3eb7201582e91543ab59c4dfb6f1134952250423; metrics hard limit 4 and test assertion 3 remain unchanged; new verification PENDING."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Execute repository-controlled dev/scripts/Invoke-S09-G1-Verification.ps1 on a new exact SHA after fixing typecheck defects from blocked run 9eb098b3-c71e-42f2-bf67-ea8d67b08425. Runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83; base b1e2ebaee3077e34a4eefaf601ee8124078b7400; focused npm run test:bvp-root; publication push. Report BLOCKED without operator exception on nonzero PHX-CI. Upon genuine PASS, use a separate read-only independent reassessment of G1-06/G1-07 and inherited controls. No merge/release/activation/live Drive/vault/physical S09/Stage 3."
+next_action: "Run pinned PHX-CI front door scripts/Invoke-PhxCi.ps1 directly from the installed 69c4aa077d4a1a46d1e85e59f39d36285be99e83 runtime against fresh exact corrective branch source, base b1e2ebaee3077e34a4eefaf601ee8124078b7400, focused npm run test:bvp-root, publication push, development purpose and authorized-governance change class. Operator uses its disposable clone with Git core.longpaths=true, bounded Git fetch retries, no task-specific verifier file. Prior source 88190abbe9b76521481bb74b2bb0756933210b43 was BLOCKED: focused architecture metrics assertion counted four dev/scripts/*.ps1 where three were expected; removing unauthorized task-specific script restores three without weakening frozen guard. On genuine PASS, commission separate read-only independent reassessment of G1-06/G1-07 and inherited controls. No merge/release/activation/live Drive/vault/physical S09/Stage 3."
 updated_at: "2026-10-15"
 
 context:
@@ -33,7 +34,12 @@ context:
     blocked_stage: "typecheck"
     blocked_failure: "Two old pairManagedRemote zero-argument test calls and optional pairingStateNamespace fixture type"
     fixes_for_blocked_source: ["c6d063be6b4d41b06e23e3df551924a36fc5c9c1", "0c4fc87a475483a67c74d9e08deb556675a99d71"]
-    repository_verification_script: "dev/scripts/Invoke-S09-G1-Verification.ps1"
+    repository_verification_entrypoint: "installed PHX-CI runtime scripts/Invoke-PhxCi.ps1"
+    focused_architecture_failure_source: "88190abbe9b76521481bb74b2bb0756933210b43"
+    focused_architecture_failure_run_id: "b48a7054-7e53-495e-876e-1b0bf4a28111"
+    focused_architecture_failure_evidence_commit: "747953c907bf33d98f5772e5714044db3cacd405"
+    focused_architecture_failure_cause: "BVP script count 4 vs expected 3 due to added task-specific wrapper"
+    prohibited_wrapper_removal_commit: "3eb7201582e91543ab59c4dfb6f1134952250423"
     independent_reassessment_status: "PENDING_NEW_SOURCE"
   s09_g104_g105_corrective_build:
     code_and_test_commit: "e6184713cc21c3801ad4ee88b47c8bf3cfebb35a"
