@@ -267,7 +267,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       merged.managedSyncPlanErrorsExclusion = typeof merged.managedSyncPlanErrorsExclusion === "string" ? merged.managedSyncPlanErrorsExclusion : "";
       merged.syncPlanErrorsRelocation = normalizeSyncPlanErrorsRelocationJournal(merged.syncPlanErrorsRelocation);
       merged.scopeReconcileRequired = Boolean(merged.scopeReconcileRequired);
-      merged.scopeReconcileGeneration = Number.isSafeInteger(merged.scopeReconcileGeneration) && merged.scopeReconcileGeneration >= 0 ? merged.scopeReconcileGeneration : 0;
+      merged.scopeReconcileGeneration = typeof merged.scopeReconcileGeneration === "number" && Number.isSafeInteger(merged.scopeReconcileGeneration) && merged.scopeReconcileGeneration >= 0 ? merged.scopeReconcileGeneration : 0;
       if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
       merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);
       if (!Number.isSafeInteger(merged.diagnosticRetention)) merged.diagnosticRetention = DEFAULT_DIAGNOSTIC_RETENTION;
