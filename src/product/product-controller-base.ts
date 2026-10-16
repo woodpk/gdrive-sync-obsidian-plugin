@@ -719,8 +719,8 @@ export class ProductControllerBase implements ProductControlPort {
               await this.options.onRecoveryGateChanged?.(false);
               await this.audit("recovery-completed");
             }
-            if (planned.assembly.mode === "full" && planned.assembly.nextCursor && planned.scopeReconcileGeneration !== undefined) {
-              await this.options.onFullReconciliationCompleted?.(planned.scopeReconcileGeneration);
+            if (planned.assembly.mode === "full" && planned.assembly.nextCursor) {
+              await this.options.onFullReconciliationCompleted?.(planned.scopeReconcileGeneration ?? 0);
             }
             if (planned.reviewed) await this.options.onTrustedBaselineEstablished?.();
           }
