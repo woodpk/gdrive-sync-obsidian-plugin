@@ -1,3 +1,5 @@
+> **SUPERSEDED / DO NOT EXECUTE.** The independent reviewer REJECTED the immutable source named below for F-01 and F-02. A new invariant-driven corrective source is in progress and has not passed writer-owned verification. The next assignment is **PHX-CI test-writer inspection and batteries**, not another independent review: `s09-g1-settings-lifecycle-phxci-test-writer-request.md`. This archived assignment remains as historical evidence only.
+
 # Independent Adversarial Reassessment — S09 G1-07 Transactional Settings Repair
 
 ## Strict read-only mandate
