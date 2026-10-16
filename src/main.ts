@@ -143,21 +143,25 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private async applySettingsPatch(patch: Partial<BrainSyncSettings>): Promise<void> {
     const previous = { ...this.currentSettings, userExclusionPatterns: [...this.currentSettings.userExclusionPatterns] };
     const next = { ...previous, ...patch };
-    const durablePatch: Partial<BrainSyncSettings> = { ...patch };
     if (!next.firstSyncCompleted || next.recoveryInProgress) {
       next.startupResumeEnabled = false;
       next.localChangeEnabled = false;
       next.periodicEnabled = false;
-      durablePatch.startupResumeEnabled = false;
-      durablePatch.localChangeEnabled = false;
-      durablePatch.periodicEnabled = false;
     }
     const relocatingSyncPlanErrors = previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory;
     if (relocatingSyncPlanErrors) {
       if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
       await this.runtime.applySettingsChange(previous, next);
     } else {
-      await this.mutateSettings(latest => ({ ...latest, ...durablePatch }));
+      await this.mutateSettings(latest => {
+        const changed = { ...latest, ...patch };
+        if (!changed.firstSyncCompleted || changed.recoveryInProgress) {
+          changed.startupResumeEnabled = false;
+          changed.localChangeEnabled = false;
+          changed.periodicEnabled = false;
+        }
+        return changed;
+      });
     }
     this.diagnostics?.configure({
       level: this.currentSettings.diagnosticLogLevel,
