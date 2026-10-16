@@ -1,3 +1,12 @@
+# S09 G1-06/G1-07 typecheck correction — PHX-CI rerun required (2026-10-15)
+
+- **Observed genuine BLOCKED run:** verified source `809f291120d080107947bd8f5b1c757ff582fd03`, PHX-CI run `9eb098b3-c71e-42f2-bf67-ea8d67b08425`, original evidence commit `0b64bd67fa2b3036041d8ad056317710bcc922e7`. Preflight, Node, project files and dependency install PASS; `typecheck` FAIL exit 2; focused/full tests, build, repository gates and artifacts were NOT EXECUTED.
+- **Exact compiler defects addressed:** (1) `test/phase5-group-d-surface-lifecycle-integration.test.ts:57` still called new `pairManagedRemote(proposedRootId)` without an argument; fixture also tried pairing while already bound to a root. Repaired at `c6d063be6b4d41b06e23e3df551924a36fc5c9c1`. (2) `test/s09-g106-legacy-pairing-planner-integration.test.ts:113` required a non-optional namespace despite `BrainSyncSettings.pairingStateNamespace?: string`; helper now consumes the production `pairingStorageKey` parameter type, corrected at `0c4fc87a475483a67c74d9e08deb556675a99d71`.
+- **Operator failure handling corrected:** New repository-owned `dev/scripts/Invoke-S09-G1-Verification.ps1` invokes the same pinned PHX-CI, writes an operator terminal transcript into isolated `C:\temp\<GUID>\`, and reports nonzero PHX-CI exits as normal `BLOCKED` results rather than throwing an uncaught PowerShell exception. Native-command fail-preference explicitly disabled only in this wrapper; unexpected preflight errors return code 90.
+- **Next gate:** Run the new wrapper at an **exact final branch HEAD**, PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, baseline `b1e2ebaee3077e34a4eefaf601ee8124078b7400`, focused `npm run test:bvp-root`, publication `push`. The correction is **NOT VERIFIED** until a new genuine PASS. Preserve past failed run evidence. If PASS, commission a completely independent, strictly read-only assessment; no merge/release/activation/live Drive/vault/physical S09/Stage 3.
+
+---
+
 # Current engineering handoff — G1-06/G1-07 corrections staged; new PHX-CI and independent review PENDING (2026-10-15)
 
 - **Current branch:** `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015` in `woodpk/gdrive-sync-obsidian-plugin`. **Latest code/test commit:** `3bf091ea0896e144b07b7dc70bededea1bd83fee`; later planning/state/handoff commits are administrative and must not be conflated with the last PHX-CI-verified implementation.
