@@ -10,8 +10,9 @@ blockers:
   - "Historical independent review REJECT / DEC-340-01 MAJOR remains an accurate finding, but the owner has now explicitly ACCEPTED the residual context-spoofing risk under DEC-344; DEC-340-01 alone is NON-BLOCKING for BRAIN continued engineering and software-only integration consideration. It remains UNFIXED, and no new merge/release/activation is approved."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
   - "G1-04/G1-05 corrected source 9beb958afd20acb0c6d5fdf9e44010ff8a88b490 has genuine PHX-CI 11/11 PASS (run a0a8d8f7-f464-4063-825c-5517ea20b328, evidence 6533cf3098eb9931d7595319f41121bac73bc537), but its separate independent assessment REJECTED software-only integration due to newly confirmed G1-06 legacy incomplete pairing BASE reuse and G1-07 concurrent UI settings lost updates. Bounded code/test corrections are staged on the corrective branch after 9beb958; PHX-CI and renewed independent review PENDING. No merge authorization."
+  - "G1-06/G1-07 corrective branch at 809f291120d080107947bd8f5b1c757ff582fd03 was PHX-CI BLOCKED at typecheck exit 2 (run 9eb098b3-c71e-42f2-bf67-ea8d67b08425, evidence 0b64bd67fa2b3036041d8ad056317710bcc922e7). Three exact TypeScript fixture errors have been patched; new exact-source PHX-CI remains PENDING, not PASS."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Pin current corrective branch HEAD including G1-06/G1-07 source/test fixes and governance record. Run canonical exact-source PHX-CI using deployed runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83, base b1e2ebaee3077e34a4eefaf601ee8124078b7400, BRAIN_ARTIFACT_PURPOSE=development, BVP_CHANGE_CLASS=authorized-governance, focused npm run test:bvp-root, publication push. Do not relabel previous verified 9beb958 as approval after independent REJECT. On new PASS, commission separate strictly READ-ONLY independent reassessment of G1-06/G1-07 and inherited controls. Only independent APPROVE followed by separate owner authorization permits software-only merge consideration. No release/activation/live Drive/vault/physical S09/Stage 3."
+next_action: "Execute repository-controlled dev/scripts/Invoke-S09-G1-Verification.ps1 on a new exact SHA after fixing typecheck defects from blocked run 9eb098b3-c71e-42f2-bf67-ea8d67b08425. Runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83; base b1e2ebaee3077e34a4eefaf601ee8124078b7400; focused npm run test:bvp-root; publication push. Report BLOCKED without operator exception on nonzero PHX-CI. Upon genuine PASS, use a separate read-only independent reassessment of G1-06/G1-07 and inherited controls. No merge/release/activation/live Drive/vault/physical S09/Stage 3."
 updated_at: "2026-10-15"
 
 context:
@@ -23,7 +24,14 @@ context:
     code_and_test_commit: "3bf091ea0896e144b07b7dc70bededea1bd83fee"
     record_path: "dev/reviews/s09-g106-g107-20261015/review-validation-and-correction.md"
     status: "REVIEW_FINDINGS_CONFIRMED_CORRECTIONS_STAGED_UNVERIFIED"
-    phx_ci_status: "PENDING"
+    phx_ci_status: "PREVIOUS_SOURCE_BLOCKED_TYPECHECK_EXIT_201_CORRECTION_REQUIRES_NEW_RUN"
+    blocked_verification_source: "809f291120d080107947bd8f5b1c757ff582fd03"
+    blocked_verification_run_id: "9eb098b3-c71e-42f2-bf67-ea8d67b08425"
+    blocked_verification_evidence_commit: "0b64bd67fa2b3036041d8ad056317710bcc922e7"
+    blocked_stage: "typecheck"
+    blocked_failure: "Two old pairManagedRemote zero-argument test calls and optional pairingStateNamespace fixture type"
+    fixes_for_blocked_source: ["c6d063be6b4d41b06e23e3df551924a36fc5c9c1", "0c4fc87a475483a67c74d9e08deb556675a99d71"]
+    repository_verification_script: "dev/scripts/Invoke-S09-G1-Verification.ps1"
     independent_reassessment_status: "PENDING_NEW_SOURCE"
   s09_g104_g105_corrective_build:
     code_and_test_commit: "e6184713cc21c3801ad4ee88b47c8bf3cfebb35a"
