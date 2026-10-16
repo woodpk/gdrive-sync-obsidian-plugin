@@ -156,6 +156,8 @@ export class ProductRuntime {
         current = this.host.settings();
       }
     } catch (error) {
+      // A retired initializer must not continue into a new pairing or OAuth runtime.
+      assertActive();
       void error;
       diagnostics.error("sync.controller", "sync-plan-errors-csv-initialization-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
       this.host.notify("BRAIN sync plan errors file is unavailable; safe synchronization may continue, but attention persistence needs review.");
@@ -301,7 +303,8 @@ export class ProductRuntime {
         });
         this.scheduler?.refresh();
       },
-      onFullReconciliationCompleted: () => this.completeFullReconciliation(boundPairing),
+      readScopeReconcileGeneration: () => this.host.settings().scopeReconcileGeneration ?? 0,
+      onFullReconciliationCompleted: generation => this.completeFullReconciliation(boundPairing, generation),
       onTrustedBaselineEstablished: async () => {
         await this.host.mutateSettings(latest => {
           this.assertBoundPairing(latest, boundPairing);
@@ -361,10 +364,15 @@ export class ProductRuntime {
   /** The run completion marker must never replay a stale full-settings snapshot. */
   private async completeFullReconciliation(
     expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+    observedGeneration = this.host.settings().scopeReconcileGeneration ?? 0,
   ): Promise<void> {
     await this.host.mutateSettings(latest => {
       this.assertBoundPairing(latest, expected);
-      return { ...latest, scopeReconcileRequired: false };
+      // A policy edit after snapshot acquisition requires another complete
+      // reconciliation; never clear its marker using an older run's receipt.
+      return (latest.scopeReconcileGeneration ?? 0) === observedGeneration
+        ? { ...latest, scopeReconcileRequired: false }
+        : latest;
     });
   }
 
@@ -408,9 +416,10 @@ export class ProductRuntime {
           });
         });
         await this.finalizeSyncPlanErrorsRelocation(relocation);
-      } catch {
+      } catch (error) {
         this.host.diagnostics?.error("sync.controller", "sync-plan-errors-csv-relocation-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
         this.host.notify("BRAIN sync plan errors file could not be moved; the durable relocation journal keeps both locations excluded for restart recovery.");
+        throw error;
       }
     }
     if (!exclusionsEqual(userExclusionsWithoutManaged(previous), userExclusionsWithoutManaged(next))) {
