@@ -26,7 +26,7 @@ context:
   s09_g1_invariant_driven_round_20261016:
     rejected_reviewed_source_sha: "436afeee8897fc34764bbdddcdad0eea0be3365d"
     rejected_findings: ["F-01 delayed pairing reverses deauthorization", "F-02 stale relocation overwrites user exclusions"]
-    production_correction_commit: "9bdfefc7cb395a35978d0dae81d4d1c1a2d83db8"
+    production_correction_commit: "3145f2e74ae270173f2d712d10b21b1f7adef7e1"
     production_test_status: "NOT_RUN_TEST_WRITER_OWNS_VERIFICATION"
     code_review_status: "IMPLEMENTER_STATIC_INVENTORY_ONLY_INDEPENDENT_WRITER_PENDING"
     correction_record: "dev/reviews/s09-g107-runtime-settings-race-20261016/invariant-driven-correction-round.md"
