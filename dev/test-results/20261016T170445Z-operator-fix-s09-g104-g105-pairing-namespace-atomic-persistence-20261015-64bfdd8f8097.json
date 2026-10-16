@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "64bfdd8f8097c0342f02e6eace4f934f40f09a59",
+    "verifiedTree": "7a7f194e7ebcf93dd600c1c06b5a0f0729958cc3",
+    "expectedHead": "64bfdd8f8097c0342f02e6eace4f934f40f09a59",
+    "baseSha": "b1e2ebaee3077e34a4eefaf601ee8124078b7400"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-16T17:04:49.9576713Z",
+  "endedAt": "2026-10-16T17:05:43.4253402Z",
+  "stages": [
+    {
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "classification": "NONE",
+      "name": "preflight",
+      "result": "PASS",
+      "startedAt": "2026-10-16T17:04:50.9901838Z",
+      "exitCode": 0,
+      "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/temp/246085eb6aa040fca1b09d7820521f22'",
+      "endedAt": "2026-10-16T17:04:52.7064758Z",
+      "stderr": ""
+    },
+    {
+      "classification": "NONE",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w' -OutputPath 'C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/tool-versions.json'",
+      "name": "node-preflight",
+      "exitCode": 0,
+      "result": "PASS",
+      "endedAt": "2026-10-16T17:05:04.3123167Z",
+      "startedAt": "2026-10-16T17:04:53.7436125Z",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "stderr": "",
+      "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b"
+    },
+    {
+      "name": "node-project-files",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w'",
+      "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b",
+      "classification": "NONE",
+      "stderr": "",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "endedAt": "2026-10-16T17:05:08.1163511Z",
+      "startedAt": "2026-10-16T17:05:05.838823Z",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "name": "install",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 12s\n\nfound 0 vulnerabilities\n",
+      "startedAt": "2026-10-16T17:05:09.7519879Z",
+      "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b",
+      "classification": "NONE",
+      "endedAt": "2026-10-16T17:05:25.7240237Z",
+      "command": "npm ci",
+      "stderr": "",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "stderr": "",
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\nsrc/product/runtime.ts(571,61): error TS2339: Property 'identity' does not exist on type 'ManagedRemoteValidation'.\r\n  Property 'identity' does not exist on type '{ readonly status: \"missing-root\"; }'.\r\ntest/phase6-alpha-plan-errors-stability.test.ts(438,38): error TS2345: Argument of type '{ app: App; plugin: never; settings: () => BrainSyncSettings; data: never; saveSettings: (next: typeof initial) => Promise<void>; notify: () => undefined; }' is not assignable to parameter of type 'ProductRuntimeHost'.\r\n  Property 'mutateSettings' is missing in type '{ app: App; plugin: never; settings: () => BrainSyncSettings; data: never; saveSettings: (next: typeof initial) => Promise<void>; notify: () => undefined; }' but required in type 'ProductRuntimeHost'.\r\ntest/phase6-alpha-plan-errors-stability.test.ts(498,5): error TS2561: Object literal may only specify known properties, but 'saveSettings' does not exist in type 'ProductRuntimeHost'. Did you mean to write 'settings'?\r\ntest/phase6-alpha-plan-errors-stability.test.ts(498,25): error TS7006: Parameter 'next' implicitly has an 'any' type.\r\n",
+      "startedAt": "2026-10-16T17:05:26.7530809Z",
+      "endedAt": "2026-10-16T17:05:41.1681989Z",
+      "result": "FAIL",
+      "runId": "85d6c61a-9c0d-4923-b8a9-99878036497b",
+      "command": "npm run typecheck",
+      "name": "typecheck",
+      "classification": "PRODUCT FAILURE",
+      "exitCode": 2
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}
