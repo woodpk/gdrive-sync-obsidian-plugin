@@ -200,19 +200,25 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
     });
   }
 
-  /** Apply a settings patch inside the same queue as every durable data.json write. */
-  async patchSettings(patch: Partial<BrainSyncSettings>): Promise<BrainSyncSettings> {
-    const captured = { ...patch, ...(patch.userExclusionPatterns ? { userExclusionPatterns: [...patch.userExclusionPatterns] } : {}) };
+  /** Evaluate runtime/UI settings mutations against the latest committed document inside saveChain. */
+  async mutateSettings(update: (latest: BrainSyncSettings) => BrainSyncSettings): Promise<BrainSyncSettings> {
     let committed: BrainSyncSettings | undefined;
     await this.persist(current => {
-      const next = { ...current.settings, ...captured };
-      next.userExclusionPatterns = [...next.userExclusionPatterns];
+      const prior = { ...current.settings, userExclusionPatterns: [...current.settings.userExclusionPatterns] };
+      const changed = update(prior);
+      const next = { ...changed, userExclusionPatterns: [...changed.userExclusionPatterns] };
       assertWritableSettingsIdentity(next, current.settings);
       committed = next;
       return { ...current, settings: next };
     });
-    if (!committed) throw new Error("Settings patch was not committed.");
+    if (!committed) throw new Error("Settings mutation was not committed.");
     return { ...committed, userExclusionPatterns: [...committed.userExclusionPatterns] };
+  }
+
+  /** Partial UI patches share the same atomic authority as runtime transitions. */
+  async patchSettings(patch: Partial<BrainSyncSettings>): Promise<BrainSyncSettings> {
+    const captured = { ...patch, ...(patch.userExclusionPatterns ? { userExclusionPatterns: [...patch.userExclusionPatterns] } : {}) };
+    return this.mutateSettings(latest => ({ ...latest, ...captured }));
   }
   async load(): Promise<readonly AuditRecord[]> { return [...(await this.data()).audit]; }
   async save(records: readonly AuditRecord[]): Promise<void> {
