@@ -101,5 +101,11 @@ export function withManagedSyncPlanErrorsExclusion(
 }
 
 export function userExclusionsWithoutManaged(settings: BrainSyncSettings): readonly string[] {
-  return settings.userExclusionPatterns.filter(pattern => pattern !== settings.managedSyncPlanErrorsExclusion);
+  const relocation = normalizeSyncPlanErrorsRelocationJournal(settings.syncPlanErrorsRelocation);
+  const managed = new Set([
+    settings.managedSyncPlanErrorsExclusion,
+    resolveSyncPlanErrorsPath(settings.syncPlanErrorsDirectory).path,
+    ...(relocation ? [relocation.sourcePath, relocation.destinationPath] : []),
+  ]);
+  return settings.userExclusionPatterns.filter(pattern => !managed.has(pattern));
 }
