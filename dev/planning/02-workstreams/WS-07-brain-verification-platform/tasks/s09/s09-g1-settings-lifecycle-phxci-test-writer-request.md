@@ -4,7 +4,7 @@
 
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin`.
 
-**Target:** Current exact source on branch `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`; bind the implementation SHA and Git tree yourself at intake. Do not assume a previously reported PASS verifies subsequent source changes.
+**Target:** Latest production-code commit `1dacb1e5213dac74135f98bce43e4fe3b449e8bc` on branch `fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015`. Later commits through the current administrative HEAD are documentation only; independently confirm that ancestry and bind exact candidate source SHA/tree at intake. Do not assume a previously reported PASS verifies subsequent source changes.
 
 **Read first:** committed governance and verification requirements; WS-07 / S09 G1 decomposition; independent REJECT of implementation `436afeee8897fc34764bbdddcdad0eea0be3365d` (F-01 delayed pairing/deauthorization, F-02 stale exclusions during relocation); `dev/reviews/s09-g107-runtime-settings-race-20261016/invariant-driven-correction-round.md`; and relevant current production source, history, existing tests and original PHX-CI evidence `76651dbe3d91c1ffb2fb083b68ff742dff7e02e4`.
 
