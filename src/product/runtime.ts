@@ -256,9 +256,7 @@ export class ProductRuntime {
         }));
         this.scheduler?.refresh();
       },
-      onFullReconciliationCompleted: async () => {
-        await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false }));
-      },
+      onFullReconciliationCompleted: () => this.completeFullReconciliation(),
       onTrustedBaselineEstablished: async () => {
         await this.host.mutateSettings(latest => ({
           ...latest,
@@ -290,6 +288,11 @@ export class ProductRuntime {
     diagnostics.trace("runtime", "scheduler-started", { stage: "scheduler" });
     diagnostics.info("runtime", "runtime-initialized", { result: "product-ready" });
     diagnostics.trace("runtime", "initialize-exit", { result: "product-ready" });
+  }
+
+  /** The run completion marker must never replay a stale full-settings snapshot. */
+  private async completeFullReconciliation(): Promise<void> {
+    await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: false }));
   }
 
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
