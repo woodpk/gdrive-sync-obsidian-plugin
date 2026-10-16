@@ -1,3 +1,11 @@
+# S09 G1-06/G1-07 network interruption and bounded retry (2026-10-15)
+
+- Prior operator source `48b43224bbdc27877b9b67be439da643df8e2169` was **NOT verified**: pinned PHX-CI launch stopped at initial `git fetch origin --prune` because GitHub returned `Recv failure: Connection was reset` (Git exit 128; wrapper exit 1). No compiler/test stages executed and no new evidence was published. This is network transport, not a code failure.
+- Repo-owned `dev/scripts/Invoke-S09-G1-Verification.ps1` now retries **only** the exact transient fetch-reset signature up to three times; after that reports `NETWORK BLOCKED (92)`. Typecheck/test/repository failures remain immediately blocking and are never rerun automatically; post-PASS evidence fetch is separately retried without rerunning tests. Repair commit `e9e2d9035e90e753e00be99feee6ced3b8b35ae2`.
+- **Next:** Reuse preserved isolated clone `C:\temp\28ce347b2bcd4879a9c79092d40d4cca\source`; do bounded `git fetch` and local fast-forward to exact latest branch SHA, then invoke updated repo-owned verifier. Do not reclone or modify the normal control checkout. Preserve previous BLOCKED evidence. On new PHX-CI PASS, separate strictly read-only independent review remains mandatory.
+
+---
+
 # S09 G1-06/G1-07 typecheck correction — PHX-CI rerun required (2026-10-15)
 
 - **Observed genuine BLOCKED run:** verified source `809f291120d080107947bd8f5b1c757ff582fd03`, PHX-CI run `9eb098b3-c71e-42f2-bf67-ea8d67b08425`, original evidence commit `0b64bd67fa2b3036041d8ad056317710bcc922e7`. Preflight, Node, project files and dependency install PASS; `typecheck` FAIL exit 2; focused/full tests, build, repository gates and artifacts were NOT EXECUTED.
