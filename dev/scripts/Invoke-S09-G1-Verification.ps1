@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 $exitCode = 90
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $runRoot = Split-Path -Parent $repoRoot
