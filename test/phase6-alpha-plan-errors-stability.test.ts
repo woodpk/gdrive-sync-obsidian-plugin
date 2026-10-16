@@ -432,7 +432,7 @@ async function recoverRelocation(
     plugin: {} as never,
     settings: () => settings,
     data: { loadSyncAttention: async () => [], saveSyncAttention: async () => undefined } as never,
-    saveSettings: async (next: typeof initial) => { settings = structuredClone(next); persisted.push(structuredClone(next)); },
+    mutateSettings: async (update: (current: typeof initial) => typeof initial) => { settings = structuredClone(update(settings)); persisted.push(structuredClone(settings)); return settings; },
     notify: () => undefined,
   };
   const runtime = new ProductRuntime(host);
@@ -495,9 +495,10 @@ test("live relocation durably journals both exclusions before copying and clears
     plugin: {} as never,
     settings: () => settings,
     data: { loadSyncAttention: async () => [], saveSyncAttention: async () => undefined } as never,
-    saveSettings: async next => {
-      settings = structuredClone(next);
+    mutateSettings: async (update: (latest: typeof settings) => typeof settings) => {
+      settings = structuredClone(update(settings));
       writes.push({ settings, sourceExists: vault.files.has(source), destinationExists: vault.files.has(destination) });
+      return settings;
     },
     notify: () => undefined,
   });
