@@ -1,3 +1,15 @@
+# S09 G1-07 — PHX-CI-qualified correction, independent review gate (2026-10-16)
+
+- **Status:** Exact G1-07 transactional settings correction is **PHX-CI PASS**; **not independently accepted**, **not integrated** and **not complete S09 feature**. Prior PHX-CI BLOCKED attempt remains historical, corrected with committed source and fixture changes.
+- **Verified immutable source:** `436afeee8897fc34764bbdddcdad0eea0be3365d`, Git tree `5fb9940d814561e328262acb15eb7981899a3223`, accepted master baseline `b1e2ebaee3077e34a4eefaf601ee8124078b7400`, pinned PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
+- **Original published evidence:** run `bc2d2bf1-fc02-4b75-828c-4b3287725b25`, evidence commit `76651dbe3d91c1ffb2fb083b68ff742dff7e02e4` direct child of verified source, changing five evidence-only files. `dev/_ca-output.{json,md}` plus original `dev/test-results/20261016T195816Z-operator-fix-s09-g104-g105-pairing-namespace-atomic-persistence-20261015-436afeee8897.{json,md,log}`. **11/11 PASS**, focused BVP **403/403**, full product **1010/1010**, typecheck, build, repository-check, check, artifacts PASS; task exit 0 and evidence push YES. No failure, both isolated `C:\temp\<GUID>` workspaces cleaned.
+- **Development-only artifact:** `main.js` 916125 bytes, recorded SHA256 `39524d7352b1a42945d2cbe5ec0f591aa55e00c64c2eff000bc442b37c31636a`. Not release-approved; no independent rehash represented.
+- **Next:** Separate truly independent **READ-ONLY correction-level** adversarial reassessment per `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g107-transactional-settings-post-phxci-independent-reassessment.md`. Assess old G1-07 UI/runtime lost-update race, latest-snapshot mutation authority, pairing callback safety, recovery, relocation, restart/fault regressions and inherited G1 controls. Prior independent REJECT of `aecd0b15497789869df8cb57094bcdec3a2bfe6d` remains valid for that earlier source.
+- **Governance:** No PHX-CI rerun solely for these administrative documentation commits (§37.1). DEC-340-01 owner-accepted-under-DEC-344 risk remains confirmed/unfixed; independent review and separate owner authorization precede any software-only integration consideration. Historical `data.json` physical-loss root cause, S09 physical acceptance, product installation, release/activation, master merge, and Stage 3 remain outstanding or prohibited.
+- **Exact tasking location:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/03-BUILD-DECOMPOSITION.md` — S09 G1.
+
+---
+
 # S09 G1-07 — PHX-CI BLOCKED typecheck corrected; new verification required (2026-10-16)
 
 - **Prior run:** exact source `64bfdd8f8097c0342f02e6eace4f934f40f09a59`, Git tree `7a7f194e7ebcf93dd600c1c06b5a0f0729958cc3`, PHX-CI `85d6c61a-9c0d-4923-b8a9-99878036497b`, evidence `855e2e420b4bd587c3a8ea102114927d427b8f6b` (**BLOCKED**, typecheck exit 2, 4 TypeScript diagnostics). Preflight/installation PASS. Focused tests, full tests, build and later gates not executed. Evidence was published; control checkout preserved.
