@@ -1,3 +1,11 @@
+# S09 G1-06/G1-07 — Windows Git MAX_PATH preflight repair (2026-10-15)
+
+- **Latest operator attempt** at source `3b1d35070fb6f1f71884a1c93f50821c821b86a8` was PHX-CI `BLOCKED` before any compiler/test stage; pinned verifier failed to `git worktree add --detach` its configuration worktree due to a **264-character archived relative path plus run-root prefix**, with `Filename too long`, Git exit 128. This was an environment/materialization failure, **not** a product defect or an executed PHX-CI test run. No new evidence-publication commit was produced.
+- **Repair** in `dev/scripts/Invoke-S09-G1-Verification.ps1`: prior to PHX-CI, set `git config --local core.longpaths true` on disposable `C:\temp\<GUID>\source`, read back/verify setting, then run the pinned verifier unchanged; commit `baca48bddde6fd716bcc79f8bf95e91635c35055`. No global Git setting, system registry, product source or PHX-CI runtime was modified. Existing transport retry still only retries source fetch resets, not tests.
+- **Immediate next step:** reuse the clean disposable clone `C:\temp\28ce347b2bcd4879a9c79092d40d4cca\source`, safe fast-forward to latest exact branch SHA, then invoke repository-owned wrapper. Check PHX-CI result/evidence rather than assuming PASS. No merge or release authorization. Independent read-only reassessment remains required after PASS.
+
+---
+
 # S09 G1-06/G1-07 network interruption and bounded retry (2026-10-15)
 
 - Prior operator source `48b43224bbdc27877b9b67be439da643df8e2169` was **NOT verified**: pinned PHX-CI launch stopped at initial `git fetch origin --prune` because GitHub returned `Recv failure: Connection was reset` (Git exit 128; wrapper exit 1). No compiler/test stages executed and no new evidence was published. This is network transport, not a code failure.
