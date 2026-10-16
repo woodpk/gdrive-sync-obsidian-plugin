@@ -204,7 +204,7 @@ export class GoogleOAuthSession {
   }
 
   async completeAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
-    const generation = this.revocationGeneration;
+    let generation = this.revocationGeneration;
     const tx = this.transaction;
     this.transaction = undefined;
     if (!tx) return { ok: false, reason: "missing-transaction" };
@@ -261,7 +261,12 @@ export class GoogleOAuthSession {
     if (generation !== this.revocationGeneration) return { ok: false, reason: "missing-transaction" };
     const previous = this.tokens();
     const previousRefreshToken = previous && hasExactRequiredDriveScope(previous.scope) ? previous.refreshToken : undefined;
-    if (previous && !hasExactRequiredDriveScope(previous.scope)) this.clearTokens();
+    if (previous && !hasExactRequiredDriveScope(previous.scope)) {
+      // Revoke older refresh operations, but allow this already-validated,
+      // current OAuth exchange to install its correctly scoped replacement.
+      this.clearTokens();
+      generation = this.revocationGeneration;
+    }
     const tokens: OAuthTokens = {
       accessToken: parsed.access_token,
       refreshToken: parsed.refresh_token ?? previousRefreshToken,
