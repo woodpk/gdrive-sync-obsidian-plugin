@@ -315,6 +315,9 @@ export class ProductRuntime {
           }
           return withManagedSyncPlanErrorsExclusion({
             ...latest,
+            // This is the UI's explicit exclusion edit; unrelated settings still
+            // come from the latest committed document.
+            userExclusionPatterns: [...next.userExclusionPatterns],
             syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
             managedSyncPlanErrorsExclusion: priorPath,
             syncPlanErrorsRelocation: relocation,
