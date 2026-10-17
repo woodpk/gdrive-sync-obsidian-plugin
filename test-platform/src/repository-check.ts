@@ -88,7 +88,7 @@ function inspectGithubActions(): readonly DevRootViolation[] {
   const workflowRoot = resolve(repositoryRoot, ".github", "workflows");
   if (!existsSync(workflowRoot)) return [];
   return readdirSync(workflowRoot, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() || /\\.ya?ml$/i.test(entry.name))
+    .filter(entry => entry.isDirectory() || /\.ya?ml$/i.test(entry.name))
     .map(entry => ({
       path: ".github/workflows/" + entry.name,
       detail: "GitHub Actions workflows are prohibited as verification or deployment authority. Use the PHX-CI-governed workflow and a separately authorized deployment process.",
