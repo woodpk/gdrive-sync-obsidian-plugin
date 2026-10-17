@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type ChangeCursor, type DeviceIdentity, type RemoteObjectId, type StateRevision, type VaultIdentity } from "../src/contracts/common";
-import type { DriveResult, ManagedRemoteIdentity } from "../src/contracts/google-drive";
-import type { ReliableRemoteChangePort, StateLoadContext, TrustedSynchronizationState } from "../src/contracts";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
+import { contractId, type ChangeCursor, type DeviceIdentity, type RemoteObjectId, type StateRevision, type VaultIdentity } from "../../src/contracts/common";
+import type { DriveResult, ManagedRemoteIdentity } from "../../src/contracts/google-drive";
+import type { ReliableRemoteChangePort, StateLoadContext, TrustedSynchronizationState } from "../../src/contracts";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
 
 class MemorySecrets {
   readonly values=new Map<string,string>();

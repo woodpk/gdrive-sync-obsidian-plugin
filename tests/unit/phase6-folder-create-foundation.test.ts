@@ -16,7 +16,7 @@ import {
   type RemoteObjectId,
   type SemanticStateGeneration,
   type VaultPath,
-} from "../src/contracts";
+} from "../../src/contracts";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const path = (value: string) => id<"VaultPath">(value) as VaultPath;

@@ -15,7 +15,7 @@ import {
   type LocalTransactionResultV1_3,
   type OperationalFailureProvenanceV1_3,
   type RemoteMutationOutcomeV1_3,
-} from "../src/contracts";
+} from "../../src/contracts";
 
 const operationId = contractId<"OperationId">("failure-prov-op");
 const transactionId = contractId<"LocalMutationTransactionId">("failure-prov-tx");

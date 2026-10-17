@@ -9,12 +9,12 @@ import {
   type SynchronizationAuthorityMetadataV1_1,
   type TrustedSynchronizationState,
   type VaultPath,
-} from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
-import { AuthorityCompleteExecutionCoordinator } from "../src/core/execution-coordinator";
-import { ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
-import { createAuthoritativeProductExecutor } from "../src/product/authoritative-production-executor";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
+} from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
+import { AuthorityCompleteExecutionCoordinator } from "../../src/core/execution-coordinator";
+import { ObsidianLocalVaultAdapter } from "../../src/local/obsidian-local-vault";
+import { createAuthoritativeProductExecutor } from "../../src/product/authoritative-production-executor";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const path = (value: string) => id<"VaultPath">(value) as VaultPath;
