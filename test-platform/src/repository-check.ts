@@ -37,7 +37,9 @@ interface DevRootViolation {
 }
 
 function reportViolations(name: string, violations: readonly DevRootViolation[]): void {
-  console.log("=== " + (name === "DEV_ROOT_STRUCTURE" ? "CANONICAL DEV ROOT STRUCTURE" : "SHIPPING ARTIFACT IDENTITY") + " ===");
+  const title = name === "DEV_ROOT_STRUCTURE" ? "CANONICAL DEV ROOT STRUCTURE" :
+    name === "GITHUB_ACTIONS" ? "PROHIBITED GITHUB ACTIONS" : "SHIPPING ARTIFACT IDENTITY";
+  console.log("=== " + title + " ===");
   for (const violation of violations) {
     console.log(name + "_VIOLATION path=" + violation.path + " detail=" + violation.detail);
   }
@@ -69,7 +71,7 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   for (const entry of entries) {
     const allowed =
       (entry.isDirectory() && canonicalDevDirectories.has(entry.name)) ||
-      (entry.isFile() && (canonicalDevFiles.has(entry.name) || entry.name === "_ca-output.json"));
+      (entry.isFile() && (canonicalDevFiles.has(entry.name)));
     if (!allowed) {
       violations.push({
         path: "dev/" + entry.name,
@@ -80,6 +82,17 @@ function inspectCanonicalDevRoot(): readonly DevRootViolation[] {
   }
 
   return violations;
+}
+
+function inspectGithubActions(): readonly DevRootViolation[] {
+  const workflowRoot = resolve(repositoryRoot, ".github", "workflows");
+  if (!existsSync(workflowRoot)) return [];
+  return readdirSync(workflowRoot, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() || /\.ya?ml$/i.test(entry.name))
+    .map(entry => ({
+      path: ".github/workflows/" + entry.name,
+      detail: "GitHub Actions workflows are prohibited as verification or deployment authority. Use the PHX-CI-governed workflow and a separately authorized deployment process.",
+    }));
 }
 
 function inspectShippingArtifactIdentity(developmentObservation: boolean): readonly DevRootViolation[] {
@@ -108,6 +121,9 @@ function inspectShippingArtifactIdentity(developmentObservation: boolean): reado
   }
   console.log("SHIPPING_ARTIFACT_SHA256=" + actualSha256);
   console.log("SHIPPING_ARTIFACT_MODE=" + (developmentObservation ? "development-observation" : "approved-artifact-enforcement"));
+  // Owner-accepted controlled-development context (2026-10-17): a new digest is
+  // recorded, NOT an approval for release or proof of authenticated provenance.
+  // Promotion/default verification still enforces the exact approved digest list.
   if (developmentObservation || approvedProductionMainSha256.has(actualSha256)) return [];
   return [{
     path: "main.js",
@@ -186,7 +202,7 @@ const developmentObservation = artifactPurpose === "development";
 
 if (context) {
   console.log(
-    "BVP_REPOSITORY_CHECK_CONTEXT schema=1 target=" +
+    "BVP_REPOSITORY_CHECK_CONTEXT provenance=unverified schema=1 target=" +
       context.targetHead +
       " base=" +
       context.baseSha +
@@ -197,6 +213,8 @@ if (context) {
   console.log("BVP_REPOSITORY_CHECK_CONTEXT unavailable mode=local");
 }
 
+const workflowViolations = inspectGithubActions();
+reportViolations("GITHUB_ACTIONS", workflowViolations);
 const devRootViolations = inspectCanonicalDevRoot();
 reportViolations("DEV_ROOT_STRUCTURE", devRootViolations);
 const shippingArtifactViolations = inspectShippingArtifactIdentity(developmentObservation);
@@ -217,9 +235,11 @@ const metrics = runArchitectureMetrics({
 });
 process.stdout.write(metrics.output);
 
+const workflowExit = workflowViolations.length === 0 ? 0 : 1;
 const devRootExit = devRootViolations.length === 0 ? 0 : 1;
 const shippingArtifactExit = shippingArtifactViolations.length === 0 ? 0 : 1;
 const passed =
+  workflowExit === 0 &&
   devRootExit === 0 &&
   shippingArtifactExit === 0 &&
   guard.exitCode === 0 &&
@@ -236,9 +256,10 @@ console.log(
     " metricsExit=" +
     metrics.exitCode +
     " context=" +
-    (context ? "authoritative" : "local") +
+    (context ? "declared-unverified" : "local") +
     " changeClass=" +
-    changeClass,
+    changeClass +
+    " workflowExit=" + workflowExit,
 );
 
 process.exit(passed ? 0 : 1);

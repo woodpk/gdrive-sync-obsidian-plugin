@@ -286,7 +286,7 @@ test("repository-check consumes PHX context and TypeScript governance without Po
   );
 });
 
-test("authoritative context supplies exact base and changed-path count", () => {
+test("declared verification context is recorded but never authenticated by JSON shape alone", () => {
   withFixture((root, baseSha) => {
     const contextPath = writeContext(root, baseSha);
     const result = runRepositoryCheck(root, {
@@ -298,7 +298,7 @@ test("authoritative context supplies exact base and changed-path count", () => {
     match(
       result.output,
       new RegExp(
-        "BVP_REPOSITORY_CHECK_CONTEXT schema=1 target=" +
+        "BVP_REPOSITORY_CHECK_CONTEXT provenance=unverified schema=1 target=" +
           baseSha +
           " base=" +
           baseSha +
@@ -406,7 +406,7 @@ test("noncanonical active dev top-level entries block repository check", () => {
   });
 });
 
-test("PHX-CI structured evidence is an optional canonical dev-root file", () => {
+test("noncanonical dev/_ca-output.json is rejected even if it claims a PHX-CI PASS", () => {
   withFixture((root, baseSha) => {
     writeText(root, "dev/_ca-output.json", '{"status":"PASS"}\n');
     const contextPath = writeContext(root, baseSha);
@@ -414,8 +414,30 @@ test("PHX-CI structured evidence is an optional canonical dev-root file", () => 
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
     });
     if (result.error) throw result.error;
-    expectFixtureArtifactMismatch(result);
-    match(result.output, /DEV_ROOT_STRUCTURE_RESULT=PASS violations=0/);
+    strictEqual(result.status, 1, result.output);
+    match(result.output, /DEV_ROOT_STRUCTURE_VIOLATION path=dev\/_ca-output\.json /);
+    match(result.output, /DEV_ROOT_STRUCTURE_RESULT=FAIL violations=1/);
+  });
+});
+
+test("GitHub Actions cannot be reintroduced as an independently runnable verifier", () => {
+  withFixture((root) => {
+    writeText(root, ".github/workflows/phase1-ci.yml", "name: Unauthorized Actions\non: push\njobs: {}\n");
+    const result = runRepositoryCheck(root);
+    if (result.error) throw result.error;
+    strictEqual(result.status, 1, result.output);
+    match(result.output, /GITHUB_ACTIONS_VIOLATION path=\.github\/workflows\/phase1-ci\.yml /);
+    match(result.output, /GITHUB_ACTIONS_RESULT=FAIL violations=1/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL/);
+  });
+});
+
+test("workflow-free canonical source does not generate a GitHub Actions violation", () => {
+  withFixture(root => {
+    const result = runRepositoryCheck(root);
+    if (result.error) throw result.error;
+    match(result.output, /GITHUB_ACTIONS_RESULT=PASS violations=0/);
+    match(result.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1/);
   });
 });
 
@@ -586,7 +608,7 @@ test("DEC-339 shipping acceptance retains exactly the three pre-existing owner-a
   match(source, /approvedProductionMainSha256\.has\(actualSha256\)/);
 });
 
-test("PHX-CI-scoped development artifact observation retains safety checks without historical hash acceptance", () => {
+test("controlled development observation records a new hash but does not approve it for release", () => {
   withFixture((root, baseSha) => {
     const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const environment = {
@@ -597,6 +619,7 @@ test("PHX-CI-scoped development artifact observation retains safety checks witho
     const result = runRepositoryCheck(root, environment);
     if (result.error) throw result.error;
     strictEqual(result.status, 0, result.output);
+    match(result.output, /BVP_REPOSITORY_CHECK_CONTEXT provenance=unverified/);
     match(result.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
     match(result.output, /SHIPPING_ARTIFACT_SHA256=[0-9a-f]{64}/);
     match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=PASS violations=0/);
@@ -613,6 +636,30 @@ test("PHX-CI-scoped development artifact observation retains safety checks witho
     if (invalidPackage.error) throw invalidPackage.error;
     strictEqual(invalidPackage.status, 1, invalidPackage.output);
     match(invalidPackage.output, /Unexpected package identity/);
+  });
+});
+
+test("even caller-supplied context cannot exempt promotion from approved artifact hashes", () => {
+  withFixture((root, baseSha) => {
+    for (const undeclaredSource of [
+      { targetHead: "a".repeat(40) },
+      { baseSha: "b".repeat(40) },
+      { targetHead: "a".repeat(40), baseSha: "b".repeat(40) },
+    ]) {
+      const contextPath = writeContext(root, baseSha, {
+        changedPaths: ["main.js"],
+        ...undeclaredSource,
+      });
+      const result = runRepositoryCheck(root, {
+        PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+        BVP_CHANGE_CLASS: "authorized-governance",
+        BRAIN_ARTIFACT_PURPOSE: "promotion",
+      });
+      if (result.error) throw result.error;
+      notStrictEqual(result.status, 0, result.output);
+      match(result.output, /SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement/);
+      match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
+    }
   });
 });
 

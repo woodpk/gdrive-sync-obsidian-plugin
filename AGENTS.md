@@ -18,9 +18,17 @@ Any instruction in a persisted workstream task or archived historical prompt tha
 
 Archived pre-standard prompts are historical evidence only and are never current task authority merely because they remain accessible under `archive/**`.
 
-PHX-CI is the primary, central, non-substitutable repository-validation pipeline whenever the current protocol assigns that authority to PHX-CI. A task-specific or physical-validation tool may exist only when the freshly-read current protocol permits it for a responsibility PHX-CI does not own, and it MUST remain supplementary.
+PHX-CI is the sole authorized executable software-validation system, including task-specific, physical, artifact, evidence, build, test, policy, and acceptance checks. Every such executable check MUST run within or be coordinated by PHX-CI; no standalone verifier, alternate harness, GitHub Actions workflow, or supplementary verification authority is permitted. If an essential check is unsupported, validation is BLOCKED until the designated PHX-CI owner supplies an authorized capability.
 
 No task prompt may authorize an agent to bypass this gate.
+
+## Mandatory independent testing lifecycle
+
+The current external PTAR v2.0 is binding on every NEW or SUBSTANTIVELY REVISED test, fixture, battery, test-specific discovery check, and test-authoring prompt. Read its canonical link in `dev/authority/external-authorities.md` and the current Operating Protocol and Construction Manual.
+
+The supervisor freezes normative behavior and assigns a distinct Pre-Build Test Author to commit test-owned files on an isolated branch before production implementation. The Coding Agent may not write or alter those tests. After implementation, a FRESH blind Phase 0 reviewer receives only neutral specification/source inputs, publishes a frozen report-only Git commit, and stops. A separately authorized Post-Build Test Author may then create further adversarial test-owned commits. A different Independent PHX-CI Test Execution Agent alone executes the exact supervisor-integrated candidate, and a separate Independent Acceptance Reviewer assesses source, requirements, tests, and original PHX-CI evidence.
+
+New test source defaults to `tests/<category>/` using unit, integration, contracts, architecture, adversarial, or e2e categories; fixtures and support are separate. Historical `test/` and frozen `test-platform/` remain unchanged until independently authorized migration. Any placement exception must be documented with a real native/architectural reason and PHX-CI discovery mapping. For every test handoff record source/base SHA, author branch/commit/tree, changed paths, requirement-to-test mapping, runner/discovery scope, and blockers; a test-file presence check or commit is never proof of PHX-CI PASS.
 
 ## Change authority
 

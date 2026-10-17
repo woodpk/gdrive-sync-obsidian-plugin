@@ -26,7 +26,7 @@ The primary authority is the BRAIN product target-system specification. Historic
 
 | Product target-spec evidence | Primary BVP proof | Physical/live proof still required |
 | --- | --- | --- |
-| §13.1 Build/platform | local PowerShell build/typecheck/tests; production-bundle guard; platform tests | Windows Obsidian functional evidence; iPhone/iOS auth, pairing, upload/download, conflict, interruption/resume, UI-critical flows |
+| §13.1 Build/platform | PHX-CI-consumed build/typecheck/tests; production-bundle guard; platform tests | Windows Obsidian functional evidence; iPhone/iOS auth, pairing, upload/download, conflict, interruption/resume, UI-critical flows |
 | §13.2 Reconciliation semantics | deterministic virtual-world scenarios using production planner/executor | selected real cross-device canaries only; not every semantic permutation needs physical repetition |
 | §13.3 State/crash safety | deterministic faults, runtime reconstruction, persistent simulated reality/state | actual app termination/resume where physical lifecycle behavior itself is material |
 | §13.4 Transfer/large vault | deterministic content integrity, file-change, retry/backoff, concurrency, modeled quota/disk; synthetic scale | representative real mobile constrained-resource/large-transfer evidence |
@@ -77,7 +77,7 @@ These IDs are **historical traceability labels only**. The new platform may comb
 | archived legacy plan regains authority | archive-reference guard | active project-state precedence |
 | agent weakens guard to pass its work | governance files excluded from normal writable scope | supervisor-owned change only |
 | tests pass but architecture drifts | PHX-CI repository check runs architecture guard/metrics | functional pass cannot override architecture failure |
-| GitHub Actions becomes default verification | guard/search + required local verifier | every child/stage gate requires PHX-CI evidence |
+| GitHub Actions becomes default verification | repository state rejects active workflow files | every child/stage gate requires PHX-CI evidence |
 
 ## 6. Coverage Completion Gate
 
@@ -88,7 +88,7 @@ Before P5 can hand off to Stage 3:
 3. no legacy C03–F03 semantic obligation may disappear merely because the old scenario program was archived;
 4. no historical scenario ID itself is treated as more authoritative than the current product requirement it was intended to test;
 5. architecture guard and all hard budgets pass on the final integrated repository;
-6. `dev/_ca-output.md` records the final local verification and architecture metrics.
+6. `dev/_ca-output.md` records the final PHX-CI-produced verification and architecture metrics.
 
 ## 13. Completion Evidence
 
@@ -130,7 +130,7 @@ The BVP is complete only when objective evidence proves all of the following.
 
 ## Verification authority
 
-All executable acceptance is PHX-CI-controlled under DEC-334. Architecture guard and metrics are repository-controlled checks consumed by PHX-CI. Physical Windows/iOS/Obsidian/provider execution belongs to the physical-validation stage defined by the BVP specification and does not become implied evidence merely because deterministic automation passes.
+All executable acceptance is PHX-CI-controlled under current DEC-338 (superseding DEC-334). Architecture guard and metrics are repository-controlled checks consumed by PHX-CI. Physical Windows/iOS/Obsidian/provider execution belongs to the physical-validation stage defined by the BVP specification and does not become implied evidence merely because deterministic automation passes.
 
 ## Future metadata-inventory optimization evidence (planned, not executed)
 
@@ -141,3 +141,14 @@ The current S09A canary battery remains blocked: the unexpected second `upload-c
 ## DEC-339 detailed verification design — pending independent review
 
 The test-case matrix, failure classifiers, exact source/evidence requirements and comparable-workload benchmark design are at `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`, §11. It is prospective: no DEC-339 tests, performance gains or PHX-CI verification are claimed yet. PHX-CI is sole executable verification authority and preserves current BVP platform boundary lock. The 223-request S09A canary with 35 unscoped planning requests is diagnostic background, not a speedup control or permission to repeat physical operations.
+
+
+## Independent PTAR v2.0 authoring, discovery and role ownership (2026-10-17)
+
+**Current candidate test families (not a case-by-case execution claim):** `test-platform/test/*.test.ts` (42 files), `test-platform/scenarios/**` (84 definitions), BVP registries/support under `test-platform/test/batteries/` (architecture/unit/contracts/adversarial/integration/physical e2e intent). Existing `test/` files remain a legacy native TS source root; do not duplicate or migrate them automatically. Classify new tests by *what they prove* under `tests/<category>/` unless an explicitly authorized, documented architecture/toolchain exception applies. The BVP `test-platform/` root is a separately frozen architectural boundary and must not be moved or expanded as a general exception by an ordinary test author.
+
+**Normative coverage to bind in each independent authoring request:** BVP-ARCH/SIM/SCN/RUN/EVID/FAULT/LIVE/GOV requirements; deterministic negative controls and real physical S09 checkpoints where required; live S09 execution is BLOCKED until a PHX-CI-owned adapter exists. Test cases require positive, negative/fail-closed, boundary, concurrency/retry/cancel, persistence/restart and integration expectations **where applicable**, from the target specification and accepted decisions rather than production's incidental implementation. Requirement-family ownership above does not substitute for individual requirement-to-test traceability or physical coverage where the authority requires it.
+
+**Discovery and PHX-CI:** Before writing a new/substantially revised test, bind its exact compiled/discovered path and PHX-CI-consumed runner selection to the whole-project `dev/planning/03-verification/verification-plan.md`. The current `npm test` top-level glob omits 28 active nested product modules: do **not** represent it as complete until TG-01 is independently corrected and proven by a distinct PHX-CI executor. For BVP, the currently configured focused command is `npm run test:bvp-root`, and no direct off-PHX-CI invocation is authorized. The executor must record actual discovered and executed cases against the integrated immutable source/test candidate; static source presence and historical PHX-CI summaries do not count as new execution evidence.
+
+**Mandatory handoffs:** Distinct Pre-Build Test Author → Coding Agent (test files immutable to coder) → fresh blind Phase 0 Reviewer (review-only Git commit and hard stop) → separately authorized Post-Build Test Author → distinct PHX-CI Test Execution Agent → separate Independent Acceptance Reviewer. Each authorized author supplies branch/base/source/commit/tree/changed paths, exact normative requirement/test assertion mapping, category/native exception, discovery scope and blockers. See PTAR v2.0 external authority and whole-project verification plan. Existing accepted tests are preserved; do not fabricate historical pre-build provenance.
