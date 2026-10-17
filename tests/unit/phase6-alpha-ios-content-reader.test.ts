@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter } from "obsidian";
-import { contractId, type ManagedRemoteIdentity, type VaultPath } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { MobileVaultAccessBoundary } from "../src/local/mobile-vault-access-boundary";
+import { contractId, type ManagedRemoteIdentity, type VaultPath } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { MobileVaultAccessBoundary } from "../../src/local/mobile-vault-access-boundary";
 import {
   LocalPlatformCapabilityError,
   LocalStaleObservationError,
   ObsidianLocalVaultAdapter,
-} from "../src/local/obsidian-local-vault";
-import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vault";
-import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
-import { sha256Bytes } from "../src/util/sha256";
+} from "../../src/local/obsidian-local-vault";
+import { CanonicalEvidenceLocalVault } from "../../src/product/canonical-local-vault";
+import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../../src/product/path-scope";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
+import { sha256Bytes } from "../../src/util/sha256";
 
 interface Entry {
   readonly type: "file" | "folder";

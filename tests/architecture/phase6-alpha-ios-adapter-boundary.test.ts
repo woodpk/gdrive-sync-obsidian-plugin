@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { App, DataAdapter, ListedFiles } from "obsidian";
-import { contractId, type BinaryContentSource, type ManagedRemoteIdentity, type VaultPath } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { DesktopExternalReferenceGuard, type DesktopFilesystemOps } from "../src/local/desktop-external-reference-guard";
-import { MobileVaultAccessBoundary } from "../src/local/mobile-vault-access-boundary";
-import { ObsidianLocalVaultAdapter } from "../src/local/obsidian-local-vault";
-import { presentManualSyncPreview } from "../src/diagnostics/sync-diagnostics";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
+import { contractId, type BinaryContentSource, type ManagedRemoteIdentity, type VaultPath } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { DesktopExternalReferenceGuard, type DesktopFilesystemOps } from "../../src/local/desktop-external-reference-guard";
+import { MobileVaultAccessBoundary } from "../../src/local/mobile-vault-access-boundary";
+import { ObsidianLocalVaultAdapter } from "../../src/local/obsidian-local-vault";
+import { presentManualSyncPreview } from "../../src/diagnostics/sync-diagnostics";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
 
 interface Entry { type: "file" | "folder"; bytes?: Uint8Array; mtime: number; }
 interface FixtureOptions {

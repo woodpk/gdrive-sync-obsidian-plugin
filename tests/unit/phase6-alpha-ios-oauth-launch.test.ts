@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
-import type { GoogleOAuthSession } from "../src/drive/auth";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
+import type { GoogleOAuthSession } from "../../src/drive/auth";
 import {
   beginGoogleAuthorization,
   openAuthorizationInExternalBrowser,
   openAuthorizationInSystemBrowser,
-} from "../src/drive/oauth-return";
+} from "../../src/drive/oauth-return";
 
 const finalAuthorizationUrl = "https://accounts.example/authorize?request=final";
 
@@ -102,7 +102,7 @@ test("iOS OAuth launch: mobile selects _external while desktop retains its valid
   openAuthorizationInSystemBrowser(finalAuthorizationUrl, (...args) => { desktopCalls.push(args); });
   assert.deepEqual(desktopCalls, [[finalAuthorizationUrl, "_blank", "noopener,noreferrer"]]);
 
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const [launcherSource, mainSource, runtimeSource] = await Promise.all([
     readFile(join(root, "src", "drive", "oauth-return.ts"), "utf8"),
     readFile(join(root, "src", "main.ts"), "utf8"),

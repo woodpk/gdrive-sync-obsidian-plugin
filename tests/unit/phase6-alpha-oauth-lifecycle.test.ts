@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import type { OAuthCallbackInput, OAuthCompletion } from "../src/drive/auth";
-import { OBSIDIAN_OAUTH_ACTION, registerGoogleOAuthReturn, type ObsidianProtocolRegistrar } from "../src/drive/oauth-return";
-import { DEFAULT_SETTINGS, type BrainSyncSettings } from "../src/product/plugin-data";
+import type { OAuthCallbackInput, OAuthCompletion } from "../../src/drive/auth";
+import { OBSIDIAN_OAUTH_ACTION, registerGoogleOAuthReturn, type ObsidianProtocolRegistrar } from "../../src/drive/oauth-return";
+import { DEFAULT_SETTINGS, type BrainSyncSettings } from "../../src/product/plugin-data";
 
 class CapturingRegistrar implements ObsidianProtocolRegistrar {
   registrations = 0;
@@ -31,7 +31,7 @@ async function loadRuntimeClass() {
     'class Notice { constructor(message) { this.message = message; } }\nmodule.exports = { Notice, Platform: { isDesktopApp: false, isMobile: true }, requestUrl: async () => { throw new Error("requestUrl should not execute in this harness"); } };\n',
     "utf8",
   );
-  const module = await import("../src/product/runtime");
+  const module = await import("../../src/product/runtime");
   return module.ProductRuntime;
 }
 
@@ -131,7 +131,7 @@ test("T4/T5 runtime completion seam dereferences the current OAuth session at ca
 });
 
 test("T3 Authenticate-after-initialization path cannot register the OAuth action again", async () => {
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const mainSource = await readFile(join(root, "src", "main.ts"), "utf8");
   const runtimeSource = await readFile(join(root, "src", "product", "runtime.ts"), "utf8");
   const authenticateStart = mainSource.indexOf("private async authenticate(attemptId: number): Promise<void>");
@@ -156,7 +156,7 @@ test("T2/T6 registration is once per plugin lifetime and relies on lifecycle cle
   assert.equal(lifetimeA.registrations, 1);
   assert.equal(lifetimeB.registrations, 1);
 
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const mainSource = await readFile(join(root, "src", "main.ts"), "utf8");
   const runtimeSource = await readFile(join(root, "src", "product", "runtime.ts"), "utf8");
   const oauthReturnSource = await readFile(join(root, "src", "drive", "oauth-return.ts"), "utf8");
@@ -165,7 +165,7 @@ test("T2/T6 registration is once per plugin lifetime and relies on lifecycle cle
 });
 
 test("T7 lifecycle repair adds no secret-bearing diagnostics and preserves safe completion notices", async () => {
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const sources = await Promise.all([
     readFile(join(root, "src", "main.ts"), "utf8"),
     readFile(join(root, "src", "product", "runtime.ts"), "utf8"),

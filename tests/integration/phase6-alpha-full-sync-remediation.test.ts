@@ -16,17 +16,17 @@ import type {
   SynchronizationPlan,
   VaultIdentity,
   VaultPath,
-} from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { SyncAttentionLedger, type SyncAttentionPersistence, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
-import { DiagnosticLogger, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
-import { createInitialAuthorityState, createInitialTrustedState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { SyncAttentionLedger, type SyncAttentionPersistence, type SyncAttentionRecord } from "../../src/product/sync-attention-ledger";
+import { DiagnosticLogger, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
+import { createInitialAuthorityState, createInitialTrustedState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;

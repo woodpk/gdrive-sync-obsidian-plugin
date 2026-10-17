@@ -15,18 +15,18 @@ import {
   type SynchronizationAuthorityStoreV1_1,
   type SynchronizationPlan,
   type VaultPath,
-} from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
-import { beginManualSyncDiagnostics, presentManualSyncPreview } from "../src/diagnostics/sync-diagnostics";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState, createInitialTrustedState } from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
+import { beginManualSyncDiagnostics, presentManualSyncPreview } from "../../src/diagnostics/sync-diagnostics";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState, createInitialTrustedState } from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:ios-sync-diagnostics");

@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
-import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe, EXTERNAL_BROWSER_TEST_URL } from "../src/diagnostics/browser-probes";
-import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
+import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe, EXTERNAL_BROWSER_TEST_URL } from "../../src/diagnostics/browser-probes";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
 
 class MemoryDiagnostics implements DiagnosticPersistence {
   state?: DiagnosticStoreState;
@@ -43,7 +43,7 @@ test("delayed external-browser probe crosses a controlled microtask before the s
 });
 
 test("OAuth settings button establishes attempt ID before authenticate and the real path exposes required diagnostic boundaries", async () => {
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const [settingsSource, mainSource, runtimeSource, authSource, probeSource, launcherSource] = await Promise.all([
     readFile(join(root, "src", "product", "settings-tab.ts"), "utf8"),
     readFile(join(root, "src", "main.ts"), "utf8"),
@@ -80,7 +80,7 @@ test("OAuth settings button establishes attempt ID before authenticate and the r
 });
 
 test("callback diagnostics record only presence/classification semantics and never callback values", async () => {
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const mainSource = await readFile(join(root, "src", "main.ts"), "utf8");
   const start = mainSource.indexOf("private async completeGoogleAuthorizationWithDiagnostics");
   const end = mainSource.indexOf("private async createManagedRemote", start);

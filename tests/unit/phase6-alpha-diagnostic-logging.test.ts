@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
 import {
   DiagnosticLogger,
   diagnosticPathKey,
@@ -10,8 +10,8 @@ import {
   type DiagnosticPersistence,
   type DiagnosticStoreState,
   type SafeDiagnosticFields,
-} from "../src/diagnostics/diagnostic-logger";
-import { instrumentAuthorizationBrowserLauncher } from "../src/diagnostics/oauth-diagnostics";
+} from "../../src/diagnostics/diagnostic-logger";
+import { instrumentAuthorizationBrowserLauncher } from "../../src/diagnostics/oauth-diagnostics";
 
 class MemoryDiagnostics implements DiagnosticPersistence {
   state?: DiagnosticStoreState;
