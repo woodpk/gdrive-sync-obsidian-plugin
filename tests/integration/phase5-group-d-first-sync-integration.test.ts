@@ -17,26 +17,26 @@ import type {
   StateLoadContext,
   Unsubscribe,
   VaultPath,
-} from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { enterSynchronizationLifecycle } from "../src/core/run-coordinator";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { ProductSyncScheduler } from "../src/product/scheduler";
-import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../src/product/text-version-store";
+} from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { enterSynchronizationLifecycle } from "../../src/core/run-coordinator";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { ProductSyncScheduler } from "../../src/product/scheduler";
+import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../../src/product/text-version-store";
 import {
   createInitialAuthorityState,
   type DurableSynchronizationAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
-} from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;

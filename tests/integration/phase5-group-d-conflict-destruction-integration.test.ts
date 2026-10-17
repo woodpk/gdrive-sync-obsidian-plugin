@@ -13,24 +13,24 @@ import type {
   SemanticStateGeneration,
   StateLoadContext,
   VaultPath,
-} from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../src/product/text-version-store";
+} from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { MemoryTextVersionPersistence, ProductTextVersionStore } from "../../src/product/text-version-store";
 import {
   createInitialAuthorityState,
   type DurableSynchronizationAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
-} from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id=<T extends string>(v:string)=>contractId<T>(v), vp=(v:string)=>id<"VaultPath">(v) as VaultPath, rid=(v:string)=>id<"RemoteObjectId">(v) as RemoteObjectId;
 const gen=(v:string)=>id<"SemanticStateGeneration">(v) as SemanticStateGeneration;

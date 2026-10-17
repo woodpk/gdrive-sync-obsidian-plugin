@@ -1,21 +1,21 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import test from "node:test";
-import type { BinaryContentSource, ContentEvidence, LocalMutationTransaction, LocalTransactionalMutationPort, ManagedRemoteIdentity, ObservationToken, PersistenceRevision, ReliableRemoteMutationPort, RemoteObjectId, SemanticStateGeneration, StateLoadContext, VaultPath } from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { enterSynchronizationLifecycle, InMemoryRunLeasePort } from "../src/core/run-coordinator";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { DEFAULT_SETTINGS, type BrainSyncSettings } from "../src/product/plugin-data";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+import type { BinaryContentSource, ContentEvidence, LocalMutationTransaction, LocalTransactionalMutationPort, ManagedRemoteIdentity, ObservationToken, PersistenceRevision, ReliableRemoteMutationPort, RemoteObjectId, SemanticStateGeneration, StateLoadContext, VaultPath } from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { enterSynchronizationLifecycle, InMemoryRunLeasePort } from "../../src/core/run-coordinator";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../../src/product/path-scope";
+import { DEFAULT_SETTINGS, type BrainSyncSettings } from "../../src/product/plugin-data";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id=<T extends string>(v:string)=>contractId<T>(v),vp=(v:string)=>id<"VaultPath">(v) as VaultPath,rid=(v:string)=>id<"RemoteObjectId">(v) as RemoteObjectId;
 const ev=(t:string):ContentEvidence=>({hash:sha256Text(t),sizeBytes:new TextEncoder().encode(t).byteLength});
@@ -27,7 +27,7 @@ async function loadRuntimeClass(){
   const shimDir=".test-build/node_modules/obsidian";
   await mkdir(shimDir,{recursive:true});
   await writeFile(`${shimDir}/index.js`,`class Notice { constructor(message) { this.message = message; } }\nmodule.exports = { Notice, Platform: { isDesktopApp: false, isMobile: true }, requestUrl: async () => { throw new Error("requestUrl should not execute in this harness"); } };\n`,`utf8`);
-  const module=await import("../src/product/runtime");
+  const module=await import("../../src/product/runtime");
   return module.ProductRuntime;
 }
 async function runtimeHarness(){

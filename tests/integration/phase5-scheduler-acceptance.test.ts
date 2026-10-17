@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { LocalLifecycleEvent, LocalVaultChange, Unsubscribe } from "../src/contracts";
+import type { LocalLifecycleEvent, LocalVaultChange, Unsubscribe } from "../../src/contracts";
 import {
   CoreRunCoordinator,
   consumeDeferredReconciliationAcrossLifecycle,
   enterSynchronizationLifecycle,
   type RunLease,
   type RunLeasePort,
-} from "../src/core/run-coordinator";
-import { ProductSyncScheduler, type AutomaticSyncSettings } from "../src/product/scheduler";
+} from "../../src/core/run-coordinator";
+import { ProductSyncScheduler, type AutomaticSyncSettings } from "../../src/product/scheduler";
 
 interface Harness {
   scheduler: ProductSyncScheduler;
