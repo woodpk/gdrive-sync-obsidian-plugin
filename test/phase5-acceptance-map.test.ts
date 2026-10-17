@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import ts from "typescript";
 import test from "node:test";
 
 export interface Phase5AcceptanceEvidence {
@@ -67,9 +68,43 @@ export const PHASE5_ACCEPTANCE_EVIDENCE:readonly Phase5AcceptanceEvidence[]=[
  e(50,"disable unload or deauthorization does not delete synchronized content",surface,"G2 scenario 50 Phase5 deauthorization and disposal clear authority without local or Drive deletion","ProductRuntime.deauthorize and disposeProduct"),
 ] as const;
 
-test("Phase5 acceptance map has exact source-verified executable evidence for scenarios 1 through 50",async()=>{
- assert.equal(PHASE5_ACCEPTANCE_EVIDENCE.length,50);
- assert.deepEqual(PHASE5_ACCEPTANCE_EVIDENCE.map(r=>r.scenario),Array.from({length:50},(_,i)=>i+1));
- const cache=new Map<string,string>();
- for(const row of PHASE5_ACCEPTANCE_EVIDENCE){assert.match(row.testFile,/^test\/.+\.test\.ts$/);let source=cache.get(row.testFile);if(source===undefined){source=await readFile(row.testFile,"utf8");cache.set(row.testFile,source);}assert.equal(source.includes(row.testName),true,`scenario ${row.scenario} primary executable evidence missing: ${row.testFile} :: ${row.testName}`);assert.equal(row.status,"automated");}
+function literalRegisteredTestNames(source: string, filename: string): ReadonlySet<string> {
+ const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+ const names = new Set<string>();
+ const visit = (node: ts.Node): void => {
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "test") {
+   const name = node.arguments[0];
+   if (name && (ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name))) {
+    names.add(name.text);
+   }
+  }
+  ts.forEachChild(node, visit);
+ };
+ visit(file);
+ return names;
+}
+
+test("Phase5 acceptance map references actual literal test registrations; execution proof is PHX-CI only", async () => {
+ assert.equal(PHASE5_ACCEPTANCE_EVIDENCE.length, 50);
+ assert.deepEqual(PHASE5_ACCEPTANCE_EVIDENCE.map(row => row.scenario), Array.from({ length: 50 }, (_, i) => i + 1));
+ const cache = new Map<string, ReadonlySet<string>>();
+ for (const row of PHASE5_ACCEPTANCE_EVIDENCE) {
+  assert.match(row.testFile, /^test\\/.+\\.test\\.ts$/);
+  let registrations = cache.get(row.testFile);
+  if (!registrations) {
+   const source = await readFile(row.testFile, "utf8");
+   registrations = literalRegisteredTestNames(source, row.testFile);
+   cache.set(row.testFile, registrations);
+  }
+  assert.equal(registrations.has(row.testName), true,
+   `scenario ${row.scenario} literal node:test registration missing: ${row.testFile} :: ${row.testName}`);
+  assert.equal(row.status, "automated");
+ }
+});
+
+test("Phase5 acceptance mapping does not accept a test title only in a comment", () => {
+ const source = '// test("fake accepted test", () => {});\\ntest("actual test", () => {});';
+ const registered = literalRegisteredTestNames(source, "fixture.test.ts");
+ assert.equal(registered.has("fake accepted test"), false);
+ assert.equal(registered.has("actual test"), true);
 });
