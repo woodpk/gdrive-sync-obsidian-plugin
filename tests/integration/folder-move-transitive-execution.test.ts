@@ -15,19 +15,19 @@ import {
   type StateLoadContext,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
-import { AuthorityCompleteExecutionCoordinator } from "../src/core/execution-coordinator";
-import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../src/core/planner";
-import { createAuthoritativeProductExecutor } from "../src/product/authoritative-production-executor";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
+} from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
+import { AuthorityCompleteExecutionCoordinator } from "../../src/core/execution-coordinator";
+import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../../src/core/planner";
+import { createAuthoritativeProductExecutor } from "../../src/product/authoritative-production-executor";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import {
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
   createInitialAuthorityState,
   type DurableSynchronizationAuthorityState,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;

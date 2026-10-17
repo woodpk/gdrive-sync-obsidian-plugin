@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, ListedFiles, Stat } from "obsidian";
-import type { VaultPath } from "../src/contracts/common";
-import { ObsidianLocalVaultAdapter, type ExternalReferenceGuard } from "../src/local/obsidian-local-vault";
+import type { VaultPath } from "../../src/contracts/common";
+import { ObsidianLocalVaultAdapter, type ExternalReferenceGuard } from "../../src/local/obsidian-local-vault";
 
 interface Entry {
   readonly type: "file" | "folder";

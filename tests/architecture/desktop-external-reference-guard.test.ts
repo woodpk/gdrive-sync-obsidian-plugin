@@ -3,12 +3,12 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { VaultPath } from "../src/contracts/common";
+import type { VaultPath } from "../../src/contracts/common";
 import {
   DesktopExternalReferenceGuard,
   ExternalFilesystemReferenceError,
   type DesktopFilesystemOps
-} from "../src/local/desktop-external-reference-guard";
+} from "../../src/local/desktop-external-reference-guard";
 
 const vp = (value: string): VaultPath => value as VaultPath;
 

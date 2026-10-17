@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App } from "obsidian";
-import type { BinaryContentSource, VaultPath } from "../src/contracts/common";
+import type { BinaryContentSource, VaultPath } from "../../src/contracts/common";
 import {
   LocalPlatformCapabilityError,
   LocalStaleObservationError,
   ObsidianLocalVaultAdapter,
   type ExternalReferenceGuard,
   type LocalAdapterOptions
-} from "../src/local/obsidian-local-vault";
+} from "../../src/local/obsidian-local-vault";
 
 interface Entry { type: "file" | "folder"; bytes?: Uint8Array; mtime: number; ctime: number; }
 interface FakeRuntime {

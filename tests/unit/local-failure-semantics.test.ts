@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, Stat } from "obsidian";
-import type { BinaryContentSource, VaultPath } from "../src/contracts/common";
-import { ObsidianLocalVaultAdapter, type ExternalReferenceGuard } from "../src/local/obsidian-local-vault";
+import type { BinaryContentSource, VaultPath } from "../../src/contracts/common";
+import { ObsidianLocalVaultAdapter, type ExternalReferenceGuard } from "../../src/local/obsidian-local-vault";
 
 const vp = (value: string): VaultPath => value as VaultPath;
 const testExternalReferenceGuard: ExternalReferenceGuard = {

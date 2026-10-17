@@ -4,17 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { App, DataAdapter } from "obsidian";
-import { contractId, type VaultPath } from "../src/contracts/common";
-import type { LocalVaultPort } from "../src/contracts/local-vault";
-import { DesktopExternalReferenceGuard } from "../src/local/desktop-external-reference-guard";
+import { contractId, type VaultPath } from "../../src/contracts/common";
+import type { LocalVaultPort } from "../../src/contracts/local-vault";
+import { DesktopExternalReferenceGuard } from "../../src/local/desktop-external-reference-guard";
 import {
   createDesktopLocalVaultAdapter,
   DesktopBoundedContentSourceFactory,
   type DesktopBoundedReadOps
-} from "../src/local/desktop-local-vault";
-import { LocalPlatformCapabilityError, LocalStaleObservationError } from "../src/local/obsidian-local-vault";
-import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vault";
-import { sha256Bytes } from "../src/util/sha256";
+} from "../../src/local/desktop-local-vault";
+import { LocalPlatformCapabilityError, LocalStaleObservationError } from "../../src/local/obsidian-local-vault";
+import { CanonicalEvidenceLocalVault } from "../../src/product/canonical-local-vault";
+import { sha256Bytes } from "../../src/util/sha256";
 
 const vp = (value: string): VaultPath => value as VaultPath;
 

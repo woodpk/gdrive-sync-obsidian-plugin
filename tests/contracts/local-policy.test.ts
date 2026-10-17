@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { VaultPath } from "../src/contracts/common";
-import { SelectiveConfigurationPolicy } from "../src/local/config-policy";
-import { LocalExclusionPolicy } from "../src/local/exclusions";
-import { normalizeVaultPath, validateCrossPlatformPath } from "../src/local/path-policy";
+import type { VaultPath } from "../../src/contracts/common";
+import { SelectiveConfigurationPolicy } from "../../src/local/config-policy";
+import { LocalExclusionPolicy } from "../../src/local/exclusions";
+import { normalizeVaultPath, validateCrossPlatformPath } from "../../src/local/path-policy";
 
 const vp = (value: string): VaultPath => value as VaultPath;
 

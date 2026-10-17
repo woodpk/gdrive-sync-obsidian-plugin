@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, ListedFiles, Stat } from "obsidian";
-import type { BinaryContentSource, ObservationToken, VaultPath } from "../src/contracts/common";
+import type { BinaryContentSource, ObservationToken, VaultPath } from "../../src/contracts/common";
 import {
   LocalStaleObservationError,
   ObsidianLocalVaultAdapter,
   type ExternalReferenceGuard,
-} from "../src/local/obsidian-local-vault";
+} from "../../src/local/obsidian-local-vault";
 
 interface Entry {
   readonly type: "file" | "folder";

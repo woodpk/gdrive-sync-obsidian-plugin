@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PreparedOAuthLaunchDiagnostic } from "../src/product/oauth-prepared-launch-diagnostic";
+import { PreparedOAuthLaunchDiagnostic } from "../../src/product/oauth-prepared-launch-diagnostic";
 
 test("prepared OAuth diagnostic captures the real URL without launching and later launches it once from a fresh call", async () => {
   const originalOpen = globalThis.open;

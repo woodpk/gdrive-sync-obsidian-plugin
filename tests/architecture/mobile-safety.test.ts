@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import test from "node:test";
 
-const root = join(__dirname, "..", "..");
+const root = join(__dirname, "..", "..", "..");
 const sourceRoot = join(root, "src");
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
@@ -50,7 +50,7 @@ test("mobile-required runtime source has no Node/Electron/Windows-only imports",
 
 test("desktop local adapter is loaded only by a Platform-guarded dynamic import", () => {
   const runtime = readFileSync(join(sourceRoot, "product", "runtime.ts"), "utf8");
-  assert.equal(runtime.includes('from "../local/desktop-local-vault"'), false);
+  assert.equal(runtime.includes('from "../../local/desktop-local-vault"'), false);
   assert.equal(runtime.includes("require(\"../local/desktop-local-vault\")"), false);
   assert.match(runtime, /if \(Platform\.isDesktopApp\)[\s\S]*?await import\("\.\.\/local\/desktop-local-vault"\)/);
 });
