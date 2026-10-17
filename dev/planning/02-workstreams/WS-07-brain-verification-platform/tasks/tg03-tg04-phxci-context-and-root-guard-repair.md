@@ -37,3 +37,10 @@ Owner explicitly authorized the testing supervisor to edit the frozen check and 
 **TG-03 operational blocker remains:** The pinned PHX-CI framework's context JSON contains source/base/changedPaths but no authenticated producer binding. Without an extension to the **PHX-CI producer/runtime contract**, the consumer cannot securely approve a newly generated development artifact. The candidate now FAILS CLOSED for unapproved development hashes rather than accepting a forgery; this is source mitigation, not a functional framework trust replacement. Do not weaken the check to make a new development hash PASS by local flags or changing historical release hashes. Authentication must originate in PHX-CI. All changes here are **UNVERIFIED by PHX-CI** and lack normal independent author/acceptance provenance due to the exceptional owner instruction.
 
 Remaining gate: approved authenticated PHX-CI producer-to-consumer contract, exact integrated PHX-CI execution by the authorized executor, and owner-governed acceptance/promotion.
+
+
+## Owner risk disposition — supersedes the earlier TG-03 development-attestation blocker
+
+On 2026-10-17, the owner explicitly judged the additional context-authentication concern outside the current controlled development project's threat model. In this bounded setup, development artifact SHA-256 observation may proceed under the existing declared purpose, valid context and authorized-governance classification; the absence of new PHX-CI producer attestation is **not** a release or verification-blocking prerequisite. Earlier statements in this task demanding such an extension are superseded for this workflow.
+
+The implementation in `test-platform/src/repository-check.ts` again permits controlled *development observation*; it still labels context provenance unverified, leaves all three approved release digests unchanged and enforces exact hashes for promotion/default mode. The test battery has been updated accordingly. TG-04's strict root-file enforcement remains in place. **Actual PHX-CI tests and independent acceptance are still pending; no new PHX-CI PASS is claimed.**
