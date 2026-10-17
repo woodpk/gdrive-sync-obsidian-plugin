@@ -27,3 +27,13 @@ At the audited baseline `test-platform/src/repository-check.ts` accepts BVP_CHAN
 
 ## Completion/handoff
 Maintain independent branches/commits with exact tree IDs and changed paths; supervisor integrates without rewriting assertions. PHX-CI executor demonstrates positive/negative checks through original runtime evidence at exact combined SHA, without direct Node/npm/PowerShell validation. Final independent acceptance reviews the repaired provenance boundary before any release/promotion dependency on it. No user live data/installation, no GitHub Actions, no Stage 3, no self-approval.
+
+## Setup-exception implementation update — 2026-10-17
+
+Owner explicitly authorized the testing supervisor to edit the frozen check and its tests as a setup-only exception (see `dev/authority/reconciliations/testing-governance-setup-exception-2026-10-17.md`).
+
+**Source authored on `repair/testing-governance-ptar-v2-20261017`**: `test-platform/src/repository-check.ts` rejects any non-allowlisted development artifact hash even when caller-supplied `BRAIN_ARTIFACT_PURPOSE=development`, `BVP_CHANGE_CLASS=authorized-governance` and a structurally valid context are present; it records digest and labels context unverified. It rejects `dev/_ca-output.json` at the dev root. It rejects active GitHub Actions YAML by source state; `Taskfile.phx-ci.yml` now permits the specifically owner-authorized workflow deletions while source-state bans persist. `test-platform/test/repository-check-integration.test.ts` contains adversarial negative regression cases. No production source or approved artifact hash list was changed.
+
+**TG-03 operational blocker remains:** The pinned PHX-CI framework's context JSON contains source/base/changedPaths but no authenticated producer binding. Without an extension to the **PHX-CI producer/runtime contract**, the consumer cannot securely approve a newly generated development artifact. The candidate now FAILS CLOSED for unapproved development hashes rather than accepting a forgery; this is source mitigation, not a functional framework trust replacement. Do not weaken the check to make a new development hash PASS by local flags or changing historical release hashes. Authentication must originate in PHX-CI. All changes here are **UNVERIFIED by PHX-CI** and lack normal independent author/acceptance provenance due to the exceptional owner instruction.
+
+Remaining gate: approved authenticated PHX-CI producer-to-consumer contract, exact integrated PHX-CI execution by the authorized executor, and owner-governed acceptance/promotion.
