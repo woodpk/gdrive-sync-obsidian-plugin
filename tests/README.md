@@ -33,6 +33,14 @@ Migration branch: `migration/independent-test-layout-20261017`
 - The Independent Test Execution Agent **must run PHX-CI only**, checking exact combined SHA, product and BVP test discovery and nonzero counts, TypeScript compilation, test outcomes, architecture guard/metrics, source maps and any affected regression. No software validation was performed during this migration.
 - Supervisor controls all integration, correction routing, acceptance and owner promotion. This branch is not merged into `master`.
 
+## Pre-merge static audit — 2026-10-17
+
+- Baseline-to-branch audit: 129/129 tracked TypeScript artifacts relocated once, with the unchanged BVP test platform excluded. No source assertions were removed and the 34 larger renames with omitted GitHub diff patches were compared directly against their expected path-only transformations.
+- Static import/path inspection covered all 129 migrated TypeScript files. Corrected one defect in `tests/integration/phase5-acceptance-map.test.ts`: 14 stale `test/**` evidence paths, plus its path assertion, were updated to the relocated sources.
+- The acceptance map's 50 scenario names were checked against all 14 destination source files; all 50 supporting names exist. TypeScript includes and Node 22 test glob target the new product test layout.
+- Existing BVP `test-platform/**` root, PHX-CI infrastructure, production sources, and historical evidence were not modified. Separate frozen BVP discovery remains in its existing configuration.
+- **Static review only: software verification NOT EXECUTED.** Supervisor to integrate after accepting this audit; Independent Test Execution Agent to execute integrated source exclusively via PHX-CI.
+
 ## Exact old-to-new tracked path map
 
 | Baseline artifact | Migration artifact |
