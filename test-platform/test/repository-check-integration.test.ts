@@ -640,6 +640,30 @@ test("caller-controlled development artifact observations cannot fabricate repos
   });
 });
 
+test("fabricated or mismatched source identities do not authorize a development-hash PASS", () => {
+  withFixture((root, baseSha) => {
+    for (const forgedIdentity of [
+      { targetHead: "a".repeat(40) },
+      { baseSha: "b".repeat(40) },
+      { targetHead: "a".repeat(40), baseSha: "b".repeat(40) },
+    ]) {
+      const contextPath = writeContext(root, baseSha, {
+        changedPaths: ["main.js"],
+        ...forgedIdentity,
+      });
+      const result = runRepositoryCheck(root, {
+        PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+        BVP_CHANGE_CLASS: "authorized-governance",
+        BRAIN_ARTIFACT_PURPOSE: "development",
+      });
+      if (result.error) throw result.error;
+      strictEqual(result.status, 1, result.output);
+      match(result.output, /BVP_UNATTESTED_DEVELOPMENT_OBSERVATION/);
+      match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
+    }
+  });
+});
+
 test("promotion exact-hash gate remains fail-closed; unqualified development mode is rejected", () => {
   withFixture((root, baseSha) => {
     const local = runRepositoryCheck(root, {
