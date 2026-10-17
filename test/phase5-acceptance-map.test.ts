@@ -89,7 +89,7 @@ test("Phase5 acceptance map references actual literal test registrations; execut
  assert.deepEqual(PHASE5_ACCEPTANCE_EVIDENCE.map(row => row.scenario), Array.from({ length: 50 }, (_, i) => i + 1));
  const cache = new Map<string, ReadonlySet<string>>();
  for (const row of PHASE5_ACCEPTANCE_EVIDENCE) {
-  assert.match(row.testFile, /^test\\/.+\\.test\\.ts$/);
+  assert.ok(row.testFile.startsWith("test/") && row.testFile.endsWith(".test.ts"), "mapped file must be a product test module");
   let registrations = cache.get(row.testFile);
   if (!registrations) {
    const source = await readFile(row.testFile, "utf8");
@@ -103,7 +103,7 @@ test("Phase5 acceptance map references actual literal test registrations; execut
 });
 
 test("Phase5 acceptance mapping does not accept a test title only in a comment", () => {
- const source = '// test("fake accepted test", () => {});\\ntest("actual test", () => {});';
+ const source = ['// test("fake accepted test", () => {});', 'test("actual test", () => {});'].join(String.fromCharCode(10));
  const registered = literalRegisteredTestNames(source, "fixture.test.ts");
  assert.equal(registered.has("fake accepted test"), false);
  assert.equal(registered.has("actual test"), true);
