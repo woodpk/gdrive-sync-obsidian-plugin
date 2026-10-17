@@ -26,3 +26,11 @@ Allowed candidate surfaces only after separate owner/supervisor rebind: `test/**
 
 ## Final stop
 Do not run tests, PHX-CI, GitHub Actions or live Obsidian. Do not merge or declare acceptance. Submit exact independent commit/tree and handoff to supervisor; distinct PHX-CI executor then validates the exact integrated candidate.
+
+## Setup-exception implementation update — 2026-10-17
+
+Owner explicitly authorized the testing supervisor to implement the test-owned corrections directly as a setup-only exception (see `dev/authority/reconciliations/testing-governance-setup-exception-2026-10-17.md`).
+
+**Source authored on `repair/testing-governance-ptar-v2-20261017`**: `package.json` now uses the documented Node 22 quoted recursive test globs for legacy and canonical roots; `tsconfig.test.json` compiles both `test/**` and `tests/**`; `tests/architecture/test-discovery.test.ts` checks compiled-module completeness plus negative omitted/duplicate selection; `test/phase5-acceptance-map.test.ts` now parses real TypeScript `test("...")` calls rather than merely searching source text. These are **supervisor-authored under exception**, not normal independent author provenance. Actual PHX-CI discovery and outcomes **NOT VERIFIED**.
+
+Remaining task is distinct PHX-CI-only source/test verification at exact integrated identity when the verification trust blocker is resolved. Do not re-author or rewrite currently valid tests merely to satisfy the original work-order wording.
