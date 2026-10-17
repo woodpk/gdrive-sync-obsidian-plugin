@@ -8,12 +8,12 @@ import test from "node:test";
 import {
   contractId, type InventoryIdentityFence, type InventoryRemoteEntity,
   type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState,
-} from "../src/contracts";
+} from "../../src/contracts";
 import {
   InventoryBackedSnapshotAssembler, readInventoryRemoteListing,
-} from "../src/product/inventory-backed-snapshot-assembler";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { verifyPostDispatchConvergenceRead } from "../src/product/authoritative-production-executor-base";
+} from "../../src/product/inventory-backed-snapshot-assembler";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { verifyPostDispatchConvergenceRead } from "../../src/product/authoritative-production-executor-base";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const vault = id<"VaultIdentity">("vault:d339-07");
@@ -26,7 +26,7 @@ const path = id<"VaultPath">("note.md");
 const deletedPath = id<"VaultPath">("deleted.md");
 const cursor = id<"ChangeCursor">("cursor:07");
 const rev = id<"StateRevision">("revision:07");
-const gen = "inventory:07" as import("../src/contracts").InventoryGeneration;
+const gen = "inventory:07" as import("../../src/contracts").InventoryGeneration;
 const proof = { sizeBytes: 9, revision: "7" };
 const fence: InventoryIdentityFence = {
   vaultIdentity: vault, deviceIdentity: device, pairedAccountKey: "opaque:account",

@@ -2,18 +2,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryIdentityFence, type InventoryRemoteEntity,
-  type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { InventoryBackedSnapshotAssembler } from "../src/product/inventory-backed-snapshot-assembler";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
+  type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState } from "../../src/contracts";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { InventoryBackedSnapshotAssembler } from "../../src/product/inventory-backed-snapshot-assembler";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const root = id<"RemoteObjectId">("root"), content = id<"RemoteObjectId">("content");
 const config = id<"RemoteObjectId">("config"), fileId = id<"RemoteObjectId">("file");
 const path = id<"VaultPath">("note.md"), cursor = id<"ChangeCursor">("cursor:07C");
 const rev = id<"StateRevision">("revision:07C");
-const gen = "generation:07C" as import("../src/contracts").InventoryGeneration;
+const gen = "generation:07C" as import("../../src/contracts").InventoryGeneration;
 const fence: InventoryIdentityFence = {
   vaultIdentity: id<"VaultIdentity">("vault:07C"),
   deviceIdentity: id<"DeviceIdentity">("device:07C"),

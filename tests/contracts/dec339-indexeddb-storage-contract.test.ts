@@ -4,11 +4,11 @@ import {
   contractId, type ChangeCursor, type DurableRemoteChangeBatch,
   type PersistenceRevision, type SemanticStateGeneration,
   type VaultIdentity, type DeviceIdentity,
-} from "../src/contracts";
+} from "../../src/contracts";
 import {
   createInitialAuthorityState, inspectInventoryAuthorityFence, MemoryStateByteStorage,
   PersistentSynchronizationStateStore, prepareInventoryAuthorityPublication,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const revision = (s: string) => contractId<"StateRevision">(s) as PersistenceRevision;
 const semantic = (s: string) => contractId<"SemanticStateGeneration">(s) as SemanticStateGeneration;

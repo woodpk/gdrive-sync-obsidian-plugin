@@ -11,7 +11,7 @@ import {
   type BaseRecord,
   type InitialModelState,
   type ModelEvent,
-} from "./support/model";
+} from "../unit/model";
 
 const base = (path: string, hash: string, remoteId: string, exactBaseAuthority = true, exactIdentityAuthority = true): BaseRecord => ({
   path,

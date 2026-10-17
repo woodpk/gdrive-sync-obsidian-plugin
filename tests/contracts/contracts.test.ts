@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PLAN_OPERATION_KINDS, REQUIRED_DRIVE_SCOPE, contractId, type BinaryContentSource, type ConflictAssessment, type ExecutionResult, type LocalReadResult, type ManagedRemoteIdentity, type PathSnapshot, type PlannedOperation, type RemoteCreateRequest, type RemoteDownload, type RemoteUpdateRequest, type StateLoadResult, type SynchronizationPlan, type SynchronizationStatus, type UserAction } from "../src/contracts";
-import { FakeSynchronizationPlanner, InMemorySynchronizationStateStore, RecordingProductControl, RecordingSuccessCommitter, createGoogleDriveFake, createLocalVaultFake } from "../src/testing/fakes";
+import { PLAN_OPERATION_KINDS, REQUIRED_DRIVE_SCOPE, contractId, type BinaryContentSource, type ConflictAssessment, type ExecutionResult, type LocalReadResult, type ManagedRemoteIdentity, type PathSnapshot, type PlannedOperation, type RemoteCreateRequest, type RemoteDownload, type RemoteUpdateRequest, type StateLoadResult, type SynchronizationPlan, type SynchronizationStatus, type UserAction } from "../../src/contracts";
+import { FakeSynchronizationPlanner, InMemorySynchronizationStateStore, RecordingProductControl, RecordingSuccessCommitter, createGoogleDriveFake, createLocalVaultFake } from "../../src/testing/fakes";
 
 const path = contractId<"VaultPath">("10-Notes/example.md");
 const planId = contractId<"PlanId">("plan-1");

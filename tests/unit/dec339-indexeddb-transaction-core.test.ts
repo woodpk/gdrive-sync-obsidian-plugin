@@ -5,16 +5,16 @@ import {
   type InventoryGeneration, type InventoryGenerationManifest, type InventoryIdentityFence,
   type InventoryOverlayRecord, type PersistenceRevision, type ProtocolVersion,
   type RemoteObjectId, type SemanticStateGeneration, type VaultIdentity,
-} from "../src/contracts";
-import { IndexedDbStateByteStorage } from "../src/state/indexeddb-state-storage";
-import { IndexedDbInventoryAwareStateByteStorage } from "../src/state/indexeddb-inventory-authority-storage";
-import { IndexedDbInventoryObservationStore } from "../src/state/indexeddb-inventory-storage";
-import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
-import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
-import type { VerifiedMetadataInventoryReader } from "../src/drive/verified-metadata-inventory-reader";
+} from "../../src/contracts";
+import { IndexedDbStateByteStorage } from "../../src/state/indexeddb-state-storage";
+import { IndexedDbInventoryAwareStateByteStorage } from "../../src/state/indexeddb-inventory-authority-storage";
+import { IndexedDbInventoryObservationStore } from "../../src/state/indexeddb-inventory-storage";
+import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../../src/state/persistent-state-store";
+import { VerifiedInventoryBaselineCoordinator } from "../../src/state/verified-inventory-integration";
+import type { VerifiedMetadataInventoryReader } from "../../src/drive/verified-metadata-inventory-reader";
 
 /** Deterministic IDB transaction fixture; software validation is executed exclusively by PHX-CI. */
-import { FakeDatabase, withRangeOnly, id, c, rev, sem, g, r0, s0, cursor0, cursor1, fence, candidate, seeded, rows, simulatedBaseline, simulatedDelta, integratedFile, assertDurablePair } from "./support/dec339-inventory-idb-fixtures";
+import { FakeDatabase, withRangeOnly, id, c, rev, sem, g, r0, s0, cursor0, cursor1, fence, candidate, seeded, rows, simulatedBaseline, simulatedDelta, integratedFile, assertDurablePair } from "../fixtures/dec339-inventory-idb-fixtures";
 
 test("v1 authority survives additive v2 schema, stage, atomic publish and restart", async () => {
   withRangeOnly();
