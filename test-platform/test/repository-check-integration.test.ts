@@ -608,7 +608,7 @@ test("DEC-339 shipping acceptance retains exactly the three pre-existing owner-a
   match(source, /approvedProductionMainSha256\.has\(actualSha256\)/);
 });
 
-test("caller-controlled development artifact observations cannot fabricate repository approval", () => {
+test("controlled development observation records a new hash but does not approve it for release", () => {
   withFixture((root, baseSha) => {
     const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const environment = {
@@ -618,12 +618,11 @@ test("caller-controlled development artifact observations cannot fabricate repos
     };
     const result = runRepositoryCheck(root, environment);
     if (result.error) throw result.error;
-    strictEqual(result.status, 1, result.output);
+    strictEqual(result.status, 0, result.output);
     match(result.output, /BVP_REPOSITORY_CHECK_CONTEXT provenance=unverified/);
     match(result.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
     match(result.output, /SHIPPING_ARTIFACT_SHA256=[0-9a-f]{64}/);
-    match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
-    match(result.output, /BVP_UNATTESTED_DEVELOPMENT_OBSERVATION/);
+    match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=PASS violations=0/);
 
     rmSync(join(root, "main.js"));
     const missing = runRepositoryCheck(root, environment);
@@ -640,25 +639,25 @@ test("caller-controlled development artifact observations cannot fabricate repos
   });
 });
 
-test("fabricated or mismatched source identities do not authorize a development-hash PASS", () => {
+test("even caller-supplied context cannot exempt promotion from approved artifact hashes", () => {
   withFixture((root, baseSha) => {
-    for (const forgedIdentity of [
+    for (const undeclaredSource of [
       { targetHead: "a".repeat(40) },
       { baseSha: "b".repeat(40) },
       { targetHead: "a".repeat(40), baseSha: "b".repeat(40) },
     ]) {
       const contextPath = writeContext(root, baseSha, {
         changedPaths: ["main.js"],
-        ...forgedIdentity,
+        ...undeclaredSource,
       });
       const result = runRepositoryCheck(root, {
         PHX_VERIFICATION_CONTEXT_PATH: contextPath,
         BVP_CHANGE_CLASS: "authorized-governance",
-        BRAIN_ARTIFACT_PURPOSE: "development",
+        BRAIN_ARTIFACT_PURPOSE: "promotion",
       });
       if (result.error) throw result.error;
-      strictEqual(result.status, 1, result.output);
-      match(result.output, /BVP_UNATTESTED_DEVELOPMENT_OBSERVATION/);
+      notStrictEqual(result.status, 0, result.output);
+      match(result.output, /SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement/);
       match(result.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
     }
   });
