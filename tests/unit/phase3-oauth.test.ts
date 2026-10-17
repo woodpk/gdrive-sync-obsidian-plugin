@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
 
 class MemorySecrets {
   readonly values = new Map<string,string>();

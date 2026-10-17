@@ -11,20 +11,20 @@ import type {
   RemoteEntry,
   VaultPath,
   VersionReference,
-} from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import type { AssembledPlanningInput } from "../src/product/snapshot-assembler";
+} from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import type { AssembledPlanningInput } from "../../src/product/snapshot-assembler";
 import {
   createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
-} from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;

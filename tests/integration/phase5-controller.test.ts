@@ -4,16 +4,16 @@ import type {
   BinaryContentSource, ConflictAssessment, ConflictId, ContentEvidence, LocalMutationTransaction,
   LocalTransactionalMutationPort, ManagedRemoteIdentity, PathSnapshot, ReliableRemoteMutationPort,
   RemoteObjectId, SynchronizationPlan, VersionReference,
-} from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import type { DurableSynchronizationAuthorityState } from "../src/state/persistent-state-store";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../src/state/persistent-state-store";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import type { DurableSynchronizationAuthorityState } from "../../src/state/persistent-state-store";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialAuthorityState } from "../../src/state/persistent-state-store";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:controller");

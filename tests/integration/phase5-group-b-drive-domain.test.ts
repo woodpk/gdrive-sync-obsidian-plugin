@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type ChangeCursor, type RemoteObjectId, type VaultIdentity } from "../src/contracts/common";
-import type { DriveResult } from "../src/contracts/google-drive";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
+import { contractId, type ChangeCursor, type RemoteObjectId, type VaultIdentity } from "../../src/contracts/common";
+import type { DriveResult } from "../../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
 
 class MemorySecrets {
   readonly values = new Map<string,string>();

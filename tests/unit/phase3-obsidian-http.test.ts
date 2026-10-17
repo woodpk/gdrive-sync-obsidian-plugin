@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createObsidianRequestUrlFetcher } from "../src/drive/obsidian-http";
+import { createObsidianRequestUrlFetcher } from "../../src/drive/obsidian-http";
 
 test("Obsidian requestUrl bridge posts OAuth form data without browser CORS dependency", async () => {
   let seen: { url?: string; method?: string; body?: string | ArrayBuffer; throw?: boolean } = {};

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleHttpTransport } from "../src/drive/transport";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleHttpTransport } from "../../src/drive/transport";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
 class MemorySecrets { readonly values=new Map<string,string>(); getSecret(id:string){return this.values.get(id)??null;} setSecret(id:string,v:string){this.values.set(id,v);} deleteSecret(id:string){this.values.delete(id);} }
 function session(fetcher: typeof fetch = fetch){ const b=new MemorySecrets(); b.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({accessToken:"a",refreshToken:"r",expiresAtMs:Date.now()+3600000,tokenType:"Bearer",scope:REQUIRED_DRIVE_SCOPE})); return new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},new ObsidianSecretStore(b),fetcher); }
 
