@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type BaseEntry, type ContentHash, type DeviceIdentity, type PathSnapshot, type RemoteObjectId, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DestructiveSafetyPolicy } from "../src/core/destructive-safety";
-import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../src/core/planner";
+import { contractId, type BaseEntry, type ContentHash, type DeviceIdentity, type PathSnapshot, type RemoteObjectId, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DestructiveSafetyPolicy } from "../../src/core/destructive-safety";
+import { DeterministicSynchronizationPlanner, TRANSITIVELY_CARRIED_MOVE_REASON } from "../../src/core/planner";
 
 const path = (s: string) => contractId<"VaultPath">(s) as VaultPath;
 const hash = (s: string) => contractId<"ContentHash">(s) as ContentHash;

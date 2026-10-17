@@ -8,14 +8,14 @@ import {
   type StateRevision,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
+} from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
 import {
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
   type StateByteStorage,
   createInitialTrustedState,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const vault = contractId<"VaultIdentity">("vault-hardening") as VaultIdentity;
 const device = contractId<"DeviceIdentity">("device-hardening") as DeviceIdentity;

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { Script } from "node:vm";
 
-const root=join(__dirname,"..","..");
+const root=join(__dirname,"..","..", "..");
 
 const html=readFileSync(join(root,"oauth-callback","index.html"),"utf8");
 const inlineScript=html.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";

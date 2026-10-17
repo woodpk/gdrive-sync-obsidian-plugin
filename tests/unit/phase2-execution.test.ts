@@ -12,10 +12,10 @@ import {
   type SynchronizationExecutor,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
-import { CrashSafeExecutionCoordinator } from "../src/core/execution-coordinator";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
+} from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
+import { CrashSafeExecutionCoordinator } from "../../src/core/execution-coordinator";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../../src/state/persistent-state-store";
 
 const vault = contractId<"VaultIdentity">("vault-exec") as VaultIdentity;
 const device = contractId<"DeviceIdentity">("device-exec") as DeviceIdentity;

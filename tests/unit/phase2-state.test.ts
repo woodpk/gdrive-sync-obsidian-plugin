@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type ChangeCursor, type CheckpointId, type DeviceIdentity, type OperationId, type PlannedOperation, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
-import { CoreRunCoordinator, InMemoryRunLeasePort } from "../src/core/run-coordinator";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../src/state/persistent-state-store";
-import { removeKnownDevice } from "../src/state/state-policy";
+import { contractId, type ChangeCursor, type CheckpointId, type DeviceIdentity, type OperationId, type PlannedOperation, type StateRevision, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
+import { CoreRunCoordinator, InMemoryRunLeasePort } from "../../src/core/run-coordinator";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore, createInitialTrustedState } from "../../src/state/persistent-state-store";
+import { removeKnownDevice } from "../../src/state/state-policy";
 
 const vault = contractId<"VaultIdentity">("vault") as VaultIdentity;
 const device = contractId<"DeviceIdentity">("device") as DeviceIdentity;

@@ -1,11 +1,11 @@
 import "./workstreams/drive/phase6-remote-protocol.test";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../src/contracts/common";
-import type { DriveResult } from "../src/contracts/google-drive";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
+import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../../src/contracts/common";
+import type { DriveResult } from "../../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
 class MemorySecrets { readonly values=new Map<string,string>(); getSecret(id:string){return this.values.get(id)??null;} setSecret(id:string,v:string){this.values.set(id,v);} deleteSecret(id:string){this.values.delete(id);} }
 class StubTransport extends GoogleHttpTransport { constructor(private readonly handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){ const m=new MemorySecrets(); super(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},new ObsidianSecretStore(m))); } override request(url:string,init:PortableRequestInit={}):Promise<DriveResult<Response>>{ return this.handler(url,init); } }
 const ok=(body:unknown,status=200,headers:Record<string,string>={})=>Promise.resolve({ok:true,value:new Response(body===undefined?undefined:JSON.stringify(body),{status,headers:{"content-type":"application/json",...headers}})} as DriveResult<Response>);

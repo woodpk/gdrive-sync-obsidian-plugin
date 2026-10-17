@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type DeviceIdentity, type PlannedOperation, type StateRevision, type SynchronizationPlan, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../src/contracts";
-import { DestructiveSafetyPolicy } from "../src/core/destructive-safety";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { TombstoneRetentionPolicy, generateDeviceIdentity } from "../src/state/state-policy";
+import { contractId, type DeviceIdentity, type PlannedOperation, type StateRevision, type SynchronizationPlan, type TrustedSynchronizationState, type VaultIdentity, type VaultPath } from "../../src/contracts";
+import { DestructiveSafetyPolicy } from "../../src/core/destructive-safety";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { TombstoneRetentionPolicy, generateDeviceIdentity } from "../../src/state/state-policy";
 
 const path = contractId<"VaultPath">("gone.md") as VaultPath;
 const device = contractId<"DeviceIdentity">("device-current") as DeviceIdentity;
