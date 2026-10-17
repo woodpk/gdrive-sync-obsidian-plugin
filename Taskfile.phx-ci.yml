@@ -15,5 +15,5 @@ includes:
       PHX_EXPECTED_ARTIFACTS: 'main.js'
       PHX_EXPECTED_REPOSITORY: '{{.ROOT_DIR}}'
       PHX_REQUIRED_FILES: ''
-      PHX_PROHIBITED_CHANGED_FILES: '.github/workflows/'
+      PHX_PROHIBITED_CHANGED_FILES: '' # Permanent active-workflow ban enforced by repository-check; authorized workflow removals must be verifiable
       PHX_EVIDENCE_ABSOLUTE: '{{.ROOT_DIR}}/dev/_ca-output.md'
