@@ -26,7 +26,7 @@ The primary authority is the BRAIN product target-system specification. Historic
 
 | Product target-spec evidence | Primary BVP proof | Physical/live proof still required |
 | --- | --- | --- |
-| §13.1 Build/platform | local PowerShell build/typecheck/tests; production-bundle guard; platform tests | Windows Obsidian functional evidence; iPhone/iOS auth, pairing, upload/download, conflict, interruption/resume, UI-critical flows |
+| §13.1 Build/platform | PHX-CI-consumed build/typecheck/tests; production-bundle guard; platform tests | Windows Obsidian functional evidence; iPhone/iOS auth, pairing, upload/download, conflict, interruption/resume, UI-critical flows |
 | §13.2 Reconciliation semantics | deterministic virtual-world scenarios using production planner/executor | selected real cross-device canaries only; not every semantic permutation needs physical repetition |
 | §13.3 State/crash safety | deterministic faults, runtime reconstruction, persistent simulated reality/state | actual app termination/resume where physical lifecycle behavior itself is material |
 | §13.4 Transfer/large vault | deterministic content integrity, file-change, retry/backoff, concurrency, modeled quota/disk; synthetic scale | representative real mobile constrained-resource/large-transfer evidence |
@@ -77,7 +77,7 @@ These IDs are **historical traceability labels only**. The new platform may comb
 | archived legacy plan regains authority | archive-reference guard | active project-state precedence |
 | agent weakens guard to pass its work | governance files excluded from normal writable scope | supervisor-owned change only |
 | tests pass but architecture drifts | PHX-CI repository check runs architecture guard/metrics | functional pass cannot override architecture failure |
-| GitHub Actions becomes default verification | guard/search + required local verifier | every child/stage gate requires PHX-CI evidence |
+| GitHub Actions becomes default verification | repository state rejects active workflow files | every child/stage gate requires PHX-CI evidence |
 
 ## 6. Coverage Completion Gate
 
@@ -88,7 +88,7 @@ Before P5 can hand off to Stage 3:
 3. no legacy C03–F03 semantic obligation may disappear merely because the old scenario program was archived;
 4. no historical scenario ID itself is treated as more authoritative than the current product requirement it was intended to test;
 5. architecture guard and all hard budgets pass on the final integrated repository;
-6. `dev/_ca-output.md` records the final local verification and architecture metrics.
+6. `dev/_ca-output.md` records the final PHX-CI-produced verification and architecture metrics.
 
 ## 13. Completion Evidence
 
@@ -130,7 +130,7 @@ The BVP is complete only when objective evidence proves all of the following.
 
 ## Verification authority
 
-All executable acceptance is PHX-CI-controlled under DEC-334. Architecture guard and metrics are repository-controlled checks consumed by PHX-CI. Physical Windows/iOS/Obsidian/provider execution belongs to the physical-validation stage defined by the BVP specification and does not become implied evidence merely because deterministic automation passes.
+All executable acceptance is PHX-CI-controlled under current DEC-338 (superseding DEC-334). Architecture guard and metrics are repository-controlled checks consumed by PHX-CI. Physical Windows/iOS/Obsidian/provider execution belongs to the physical-validation stage defined by the BVP specification and does not become implied evidence merely because deterministic automation passes.
 
 ## Future metadata-inventory optimization evidence (planned, not executed)
 
