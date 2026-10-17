@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { contractId, type AuditRecord, type VaultPath } from "../src/contracts";
+import { contractId, type AuditRecord, type VaultPath } from "../../src/contracts";
 import {
   DIAGNOSTIC_BUNDLE_RECORD_LIMIT,
   DIAGNOSTIC_BUNDLE_SCHEMA_VERSION,
   DIAGNOSTIC_BUNDLE_STATE_LIMIT,
   renderDiagnosticBundle,
-} from "../src/diagnostics/diagnostic-bundle";
-import { DiagnosticLogger, diagnosticPathKey, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
-import { copyDiagnosticLogText, type DiagnosticClipboardNavigator } from "../src/diagnostics/share-export";
-import { DEFAULT_SETTINGS } from "../src/product/plugin-data";
-import type { SyncAttentionRecord } from "../src/product/sync-attention-ledger";
+} from "../../src/diagnostics/diagnostic-bundle";
+import { DiagnosticLogger, diagnosticPathKey, type DiagnosticPersistence, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
+import { copyDiagnosticLogText, type DiagnosticClipboardNavigator } from "../../src/diagnostics/share-export";
+import { DEFAULT_SETTINGS } from "../../src/product/plugin-data";
+import type { SyncAttentionRecord } from "../../src/product/sync-attention-ledger";
 
 class MemoryDiagnostics implements DiagnosticPersistence {
   state?: DiagnosticStoreState;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type OperationId, type PlanOperationKind, type PlannedOperation, type VaultPath } from "../src/contracts";
-import { groupPlanOperations, shouldExpandSystemGroup } from "../src/product/plan-presentation";
+import { contractId, type OperationId, type PlanOperationKind, type PlannedOperation, type VaultPath } from "../../src/contracts";
+import { groupPlanOperations, shouldExpandSystemGroup } from "../../src/product/plan-presentation";
 
 function operation(kind: PlanOperationKind, pathValue: string): PlannedOperation {
   return {

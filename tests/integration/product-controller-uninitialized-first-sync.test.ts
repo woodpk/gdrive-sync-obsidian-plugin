@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { BinaryContentSource, ContentEvidence, ManagedRemoteIdentity, StateLoadContext, VaultPath } from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
+import type { BinaryContentSource, ContentEvidence, ManagedRemoteIdentity, StateLoadContext, VaultPath } from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import {
   createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
-} from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const path = id<"VaultPath">("first-sync.md") as VaultPath;

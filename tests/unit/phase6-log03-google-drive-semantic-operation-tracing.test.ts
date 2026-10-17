@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { contractId, type BinaryContentSource, type ContentHash, type MutationIntentId, type RemoteObjectId, type RemoteRevisionId, type VaultIdentity, type VaultPath } from "../src/contracts";
-import type { DriveResult, ManagedRemoteIdentity } from "../src/contracts/google-drive";
-import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
+import { contractId, type BinaryContentSource, type ContentHash, type MutationIntentId, type RemoteObjectId, type RemoteRevisionId, type VaultIdentity, type VaultPath } from "../../src/contracts";
+import type { DriveResult, ManagedRemoteIdentity } from "../../src/contracts/google-drive";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
 
 class MemorySecrets {
   readonly values = new Map<string, string>();

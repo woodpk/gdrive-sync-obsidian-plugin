@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
-import { contractId, type PersistenceRevision, type SemanticStateGeneration, type VaultIdentity } from "../src/contracts";
-import { ProductController } from "../src/product/product-controller";
+import { contractId, type PersistenceRevision, type SemanticStateGeneration, type VaultIdentity } from "../../src/contracts";
+import { ProductController } from "../../src/product/product-controller";
 import {
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
   createInitialAuthorityState,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const rev = id<"StateRevision">("state:1") as PersistenceRevision;

@@ -9,22 +9,22 @@ import {
   type SemanticStateGeneration,
   type StateLoadContext,
   type StateRevision,
-} from "../src/contracts";
+} from "../../src/contracts";
 import {
   DiagnosticLogger,
   type DiagnosticPersistence,
   type DiagnosticStoreState,
-} from "../src/diagnostics/diagnostic-logger";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
+} from "../../src/diagnostics/diagnostic-logger";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import {
   createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
   type DurableSynchronizationAuthorityState,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:c1:r1");

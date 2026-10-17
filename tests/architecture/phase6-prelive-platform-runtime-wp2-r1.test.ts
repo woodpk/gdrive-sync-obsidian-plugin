@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import test from "node:test";
-import { ProductController } from "../src/product/product-controller";
-import { ProductControllerBase } from "../src/product/product-controller-base";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductControllerBase } from "../../src/product/product-controller-base";
 
 function deferred(): { promise: Promise<void>; release: () => void } {
   let release!: () => void;
@@ -18,7 +18,7 @@ async function loadRuntimeClass() {
     `class Notice { constructor(message) { this.message = message; } }\nmodule.exports = { Notice, Platform: { isDesktopApp: false, isMobile: true }, requestUrl: async () => { throw new Error("requestUrl should not execute in this harness"); } };\n`,
     "utf8",
   );
-  const module = await import("../src/product/runtime");
+  const module = await import("../../src/product/runtime");
   return module.ProductRuntime;
 }
 

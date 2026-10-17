@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
 import {
   DiagnosticLogger,
   type DiagnosticPersistence,
   type DiagnosticStoreState,
-} from "../src/diagnostics/diagnostic-logger";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleHttpTransport } from "../src/drive/transport";
+} from "../../src/diagnostics/diagnostic-logger";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleHttpTransport } from "../../src/drive/transport";
 
 class MemorySecrets {
   readonly values = new Map<string, string>();

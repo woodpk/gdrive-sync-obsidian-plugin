@@ -10,24 +10,24 @@ import {
   type StateLoadContext,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
-import { REQUIRED_DRIVE_SCOPE, type ManagedRemoteIdentity } from "../src/contracts/google-drive";
-import { renderDiagnosticBundle } from "../src/diagnostics/diagnostic-bundle";
-import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../src/diagnostics/diagnostic-logger";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport } from "../src/drive/transport";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { DEFAULT_SETTINGS } from "../src/product/plugin-data";
-import { ProductController } from "../src/product/product-controller";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
+} from "../../src/contracts";
+import { REQUIRED_DRIVE_SCOPE, type ManagedRemoteIdentity } from "../../src/contracts/google-drive";
+import { renderDiagnosticBundle } from "../../src/diagnostics/diagnostic-bundle";
+import { DiagnosticLogger, type DiagnosticPersistence, type DiagnosticStoreState } from "../../src/diagnostics/diagnostic-logger";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport } from "../../src/drive/transport";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { DEFAULT_SETTINGS } from "../../src/product/plugin-data";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import {
   createInitialAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
   type DurableSynchronizationAuthorityState,
-} from "../src/state/persistent-state-store";
+} from "../../src/state/persistent-state-store";
 
 const cid = <T extends string>(value: string) => contractId<T>(value);
 const rawPath = "private/PRIVATE-target.md";
