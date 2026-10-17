@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
-import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../src/contracts/common";
-import type { DriveResult } from "../src/contracts/google-drive";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import { GoogleHttpTransport, type PortableRequestInit } from "../src/drive/transport";
+import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../../src/contracts/common";
+import type { DriveResult } from "../../src/contracts/google-drive";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
 
 const LARGE_FILE_BYTES = 16 * 1024 * 1024;
 const SOURCE_CHUNK_BYTES = 64 * 1024;

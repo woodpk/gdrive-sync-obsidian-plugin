@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { PlannedOperation } from "../src/contracts";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
-import { DiagnosticLogger } from "../src/diagnostics/diagnostic-logger";
+import type { PlannedOperation } from "../../src/contracts";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
+import { DiagnosticLogger } from "../../src/diagnostics/diagnostic-logger";
 import {
   RequestAttributionMonitor, registerRequestAttributionMonitor,
   type RequestAttributionScope,
-} from "../src/diagnostics/request-attribution";
-import { GoogleOAuthSession, ObsidianSecretStore } from "../src/drive/auth";
-import { GoogleHttpTransport } from "../src/drive/transport";
+} from "../../src/diagnostics/request-attribution";
+import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
+import { GoogleHttpTransport } from "../../src/drive/transport";
 
 function logger(level: "info" | "off" = "info"): DiagnosticLogger {
   return new DiagnosticLogger({
@@ -178,7 +178,7 @@ test("S09A disabled diagnostics remain observational and produce no persistent s
 });
 
 test("S09A scoped Drive adapter classifies real reconciliation traversal independently of provenance and root checks", async () => {
-  const { GoogleDriveAdapter } = await import("../src/drive/google-drive-port");
+  const { GoogleDriveAdapter } = await import("../../src/drive/google-drive-port");
   const diagnostics = logger();
   const monitor = new RequestAttributionMonitor(diagnostics);
   registerRequestAttributionMonitor(diagnostics, monitor);
