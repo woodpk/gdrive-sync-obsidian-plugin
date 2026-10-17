@@ -3,11 +3,11 @@ import test from "node:test";
 import {
   contractId, type EnumerationCompleteness, type LocalObservation,
   type LocalVaultPort, type ObservationToken, type VaultPath,
-} from "../src/contracts";
-import { IndexedDbInventoryObservationStore } from "../src/state/indexeddb-inventory-storage";
-import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
-import { VerifiedLocalInventoryCoordinator } from "../src/state/verified-local-inventory";
-import { FakeDatabase, candidate, fence, g, id, seeded, simulatedBaseline, withRangeOnly } from "./support/dec339-inventory-idb-fixtures";
+} from "../../src/contracts";
+import { IndexedDbInventoryObservationStore } from "../../src/state/indexeddb-inventory-storage";
+import { VerifiedInventoryBaselineCoordinator } from "../../src/state/verified-inventory-integration";
+import { VerifiedLocalInventoryCoordinator } from "../../src/state/verified-local-inventory";
+import { FakeDatabase, candidate, fence, g, id, seeded, simulatedBaseline, withRangeOnly } from "../fixtures/dec339-inventory-idb-fixtures";
 
 const path = (name: string): VaultPath => contractId<"VaultPath">(name) as VaultPath;
 const token = (value: string): ObservationToken => contractId<"ObservationToken">(value) as ObservationToken;
@@ -132,7 +132,7 @@ test("D339-08A file changes during fresh enumeration invalidate the local snapsh
   assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
     .publishBaseline(fence, baseline.manifest.generation)).status, "published");
   const note = path("during-scan.md");
-  let fileChanged: ((event: import("../src/contracts").LocalVaultChange) => void) | undefined;
+  let fileChanged: ((event: import("../../src/contracts").LocalVaultChange) => void) | undefined;
   const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
     enumerate: async () => {
       fileChanged?.({ kind: "modified", path: note });

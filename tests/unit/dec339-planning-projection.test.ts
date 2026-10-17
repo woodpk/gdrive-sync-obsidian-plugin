@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type VaultPath } from "../src/contracts";
-import { VerifiedInventoryPlanningProjection } from "../src/product/verified-inventory-planning-projection";
-import { readInventoryRemoteListing } from "../src/product/inventory-backed-snapshot-assembler";
-import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
-import { FakeDatabase, candidate, c, cursor1, fence, g, id, integratedFile, seeded, simulatedBaseline, withRangeOnly } from "./support/dec339-inventory-idb-fixtures";
+import { contractId, type VaultPath } from "../../src/contracts";
+import { VerifiedInventoryPlanningProjection } from "../../src/product/verified-inventory-planning-projection";
+import { readInventoryRemoteListing } from "../../src/product/inventory-backed-snapshot-assembler";
+import { VerifiedInventoryBaselineCoordinator } from "../../src/state/verified-inventory-integration";
+import { FakeDatabase, candidate, c, cursor1, fence, g, id, integratedFile, seeded, simulatedBaseline, withRangeOnly } from "../fixtures/dec339-inventory-idb-fixtures";
 
 const path = (s: string) => contractId<"VaultPath">(s) as VaultPath;
 

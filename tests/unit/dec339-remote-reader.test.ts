@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type ChangeCursor, type RemoteObjectId } from "../src/contracts/common";
-import type { InventoryGeneration, InventoryIdentityFence } from "../src/contracts/verified-metadata-inventory";
+import { contractId, type ChangeCursor, type RemoteObjectId } from "../../src/contracts/common";
+import type { InventoryGeneration, InventoryIdentityFence } from "../../src/contracts/verified-metadata-inventory";
 import {
   type InventoryDriveChange, type InventoryDriveFile, type InventoryDriveFetch,
   type InventoryDriveListPage, type InventoryDriveChangesPage, type InventoryMetadataSource,
   GoogleDriveInventoryMetadataSource,
-} from "../src/drive/inventory-metadata-source";
-import { VerifiedMetadataInventoryReader } from "../src/drive/verified-metadata-inventory-reader";
-import type { GoogleDriveAdapter } from "../src/drive/google-drive-port";
-import type { GoogleHttpTransport } from "../src/drive/transport";
+} from "../../src/drive/inventory-metadata-source";
+import { VerifiedMetadataInventoryReader } from "../../src/drive/verified-metadata-inventory-reader";
+import type { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import type { GoogleHttpTransport } from "../../src/drive/transport";
 
 const id = (s: string) => contractId<"RemoteObjectId">(s) as RemoteObjectId;
 const cursor = (s: string) => contractId<"ChangeCursor">(s) as ChangeCursor;

@@ -2,19 +2,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryReadLease, type InventoryIdentityFence,
-  type InventoryRemoteEntity, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
-import { InventoryBackedSnapshotAssembler } from "../src/product/inventory-backed-snapshot-assembler";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { VerifiedMetadataInventoryReader } from "../src/drive/verified-metadata-inventory-reader";
-import { verifyPostDispatchConvergenceRead } from "../src/product/authoritative-production-executor-base";
-import type { InventoryMetadataSource, InventoryDriveFile } from "../src/drive/inventory-metadata-source";
+  type InventoryRemoteEntity, type RemoteEntry, type TrustedSynchronizationState } from "../../src/contracts";
+import { InventoryBackedSnapshotAssembler } from "../../src/product/inventory-backed-snapshot-assembler";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { VerifiedMetadataInventoryReader } from "../../src/drive/verified-metadata-inventory-reader";
+import { verifyPostDispatchConvergenceRead } from "../../src/product/authoritative-production-executor-base";
+import type { InventoryMetadataSource, InventoryDriveFile } from "../../src/drive/inventory-metadata-source";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const root = id<"RemoteObjectId">("managed"), contentRoot = id<"RemoteObjectId">("content");
 const configRoot = id<"RemoteObjectId">("config"), doc = id<"RemoteObjectId">("doc");
 const path = id<"VaultPath">("note.md"), removed = id<"VaultPath">("deleted.md");
 const cursor = id<"ChangeCursor">("cursor:B2"), rev = id<"StateRevision">("revision:B2");
-const gen = "generation:B2" as import("../src/contracts").InventoryGeneration;
+const gen = "generation:B2" as import("../../src/contracts").InventoryGeneration;
 const fence: InventoryIdentityFence = {
   vaultIdentity: id<"VaultIdentity">("vault:B2"), deviceIdentity: id<"DeviceIdentity">("device:B2"),
   pairedAccountKey: "opaque:B2", managedRootId: root, protocolVersion: id<"ProtocolVersion">("1"),

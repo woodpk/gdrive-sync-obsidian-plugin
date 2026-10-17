@@ -2,16 +2,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryReadLease, type InventoryIdentityFence,
-  type InventoryRemoteEntity, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { InventoryBackedSnapshotAssembler } from "../src/product/inventory-backed-snapshot-assembler";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
+  type InventoryRemoteEntity, type RemoteEntry, type TrustedSynchronizationState } from "../../src/contracts";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { InventoryBackedSnapshotAssembler } from "../../src/product/inventory-backed-snapshot-assembler";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
 
 const cid = <T extends string>(s: string) => contractId<T>(s);
 const root = cid<"RemoteObjectId">("managed"), content = cid<"RemoteObjectId">("content");
 const config = cid<"RemoteObjectId">("config"), cursor = cid<"ChangeCursor">("token:07C");
-const rev = cid<"StateRevision">("rev:07C"), gen = "inventory:07C" as import("../src/contracts").InventoryGeneration;
+const rev = cid<"StateRevision">("rev:07C"), gen = "inventory:07C" as import("../../src/contracts").InventoryGeneration;
 const fence: InventoryIdentityFence = { vaultIdentity: cid<"VaultIdentity">("vault:07C"),
   deviceIdentity: cid<"DeviceIdentity">("device:07C"), pairedAccountKey: "opaque:07C",
   managedRootId: root, protocolVersion: cid<"ProtocolVersion">("1"),

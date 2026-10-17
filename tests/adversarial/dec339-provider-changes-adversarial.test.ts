@@ -1,14 +1,14 @@
 /** D339-07B2: provider/Changes fault matrix; PHX-CI alone runs this file. */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId } from "../src/contracts/common";
-import type { InventoryIdentityFence, InventoryGeneration } from "../src/contracts/verified-metadata-inventory";
-import { VerifiedMetadataInventoryReader } from "../src/drive/verified-metadata-inventory-reader";
-import { GoogleDriveInventoryMetadataSource } from "../src/drive/inventory-metadata-source";
+import { contractId } from "../../src/contracts/common";
+import type { InventoryIdentityFence, InventoryGeneration } from "../../src/contracts/verified-metadata-inventory";
+import { VerifiedMetadataInventoryReader } from "../../src/drive/verified-metadata-inventory-reader";
+import { GoogleDriveInventoryMetadataSource } from "../../src/drive/inventory-metadata-source";
 import type { InventoryDriveFile, InventoryDriveChangesPage, InventoryDriveFetch,
-  InventoryDriveListPage, InventoryMetadataSource } from "../src/drive/inventory-metadata-source";
-import type { GoogleHttpTransport } from "../src/drive/transport";
-import type { GoogleDriveAdapter } from "../src/drive/google-drive-port";
+  InventoryDriveListPage, InventoryMetadataSource } from "../../src/drive/inventory-metadata-source";
+import type { GoogleHttpTransport } from "../../src/drive/transport";
+import type { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
 
 const id = (s: string) => contractId<"RemoteObjectId">(s);
 const tok = (s: string) => contractId<"ChangeCursor">(s);

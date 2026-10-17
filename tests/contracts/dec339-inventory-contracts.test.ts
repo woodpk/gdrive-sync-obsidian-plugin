@@ -6,12 +6,12 @@ import {
   type VaultIdentity, type VaultPath, type InventoryCoverage, type InventoryDomain,
   type InventoryGeneration, type InventoryGenerationManifest, type InventoryIdentityFence,
   type InventoryOverlayRecord, type InventoryPublishRequest, type InventoryRemoteEntity,
-} from "../src/contracts";
+} from "../../src/contracts";
 import {
   assessInventoryPublishPreconditions, classifyInventoryChangeMembership,
   classifyInventoryOccupancy, inventoryFenceMatches, validateInventoryCandidate,
   validateInventoryTargetedProof, type InventoryValidationInput,
-} from "../src/state/verified-metadata-inventory-validation";
+} from "../../src/state/verified-metadata-inventory-validation";
 
 const id = (v: string) => contractId<"RemoteObjectId">(v) as RemoteObjectId;
 const gen = (v: string) => v as InventoryGeneration;

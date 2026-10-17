@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { InventoryOverlayRecord } from "../src/contracts";
-import { IndexedDbInventoryObservationStore } from "../src/state/indexeddb-inventory-storage";
-import { VerifiedInventoryBaselineCoordinator } from "../src/state/verified-inventory-integration";
+import type { InventoryOverlayRecord } from "../../src/contracts";
+import { IndexedDbInventoryObservationStore } from "../../src/state/indexeddb-inventory-storage";
+import { VerifiedInventoryBaselineCoordinator } from "../../src/state/verified-inventory-integration";
 import {
   FakeDatabase, c, candidate, fence, g, id, integratedFile, rows, seeded,
   simulatedBaseline, withRangeOnly,
-} from "./support/dec339-inventory-idb-fixtures";
+} from "../fixtures/dec339-inventory-idb-fixtures";
 
 test("D339-10 cross-context GC preserves an older-generation reader using an independent IDBFactory", async () => {
   withRangeOnly();

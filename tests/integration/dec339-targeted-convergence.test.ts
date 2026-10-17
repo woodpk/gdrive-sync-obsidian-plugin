@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryIdentityFence,
-  type RecoverablePhysicalMutationDescriptorV1_1 } from "../src/contracts";
-import type { InventoryTargetedReadObservation } from "../src/drive/verified-metadata-inventory-reader";
+  type RecoverablePhysicalMutationDescriptorV1_1 } from "../../src/contracts";
+import type { InventoryTargetedReadObservation } from "../../src/drive/verified-metadata-inventory-reader";
 import {
   InventoryTargetedConvergenceReader, observeRemoteConvergenceWithFallback,
-} from "../src/product/inventory-targeted-convergence-read";
-import { verifyPostDispatchConvergenceRead } from "../src/product/authoritative-production-executor-base";
-import type { RecoverableProductionMutationDependenciesV1_3 } from "../src/product/authoritative-production-executor";
+} from "../../src/product/inventory-targeted-convergence-read";
+import { verifyPostDispatchConvergenceRead } from "../../src/product/authoritative-production-executor-base";
+import type { RecoverableProductionMutationDependenciesV1_3 } from "../../src/product/authoritative-production-executor";
 
 const id = <T extends string>(s: string) => contractId<T>(s);
 const root = id<"RemoteObjectId">("root");
@@ -20,7 +20,7 @@ const opId = id<"OperationId">("op:create");
 const intentId = id<"MutationIntentId">("intent:create");
 const semantic = id<"SemanticStateGeneration">("semantic:1");
 const persistence = id<"StateRevision">("persistence:1");
-const generation = "inventory:1" as import("../src/contracts").InventoryGeneration;
+const generation = "inventory:1" as import("../../src/contracts").InventoryGeneration;
 const hash = id<"ContentHash">("sha256:fedcba");
 const fence: InventoryIdentityFence = {
   vaultIdentity: id<"VaultIdentity">("vault"),

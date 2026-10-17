@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryIdentityFence, type InventoryRemoteEntity,
-  type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState } from "../src/contracts";
-import { InventoryBackedSnapshotAssembler, readInventoryRemoteListing } from "../src/product/inventory-backed-snapshot-assembler";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
+  type InventoryReadLease, type RemoteEntry, type TrustedSynchronizationState } from "../../src/contracts";
+import { InventoryBackedSnapshotAssembler, readInventoryRemoteListing } from "../../src/product/inventory-backed-snapshot-assembler";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:d339-05");
@@ -13,7 +13,7 @@ const content = id<"RemoteObjectId">("drive:content");
 const config = id<"RemoteObjectId">("drive:config");
 const cursor = id<"ChangeCursor">("cursor:5");
 const revision = id<"StateRevision">("rev:7");
-const generation = "inventory:5" as import("../src/contracts").InventoryGeneration;
+const generation = "inventory:5" as import("../../src/contracts").InventoryGeneration;
 const fence: InventoryIdentityFence = {
   vaultIdentity: vault, deviceIdentity: device, pairedAccountKey: "opaque:paired",
   managedRootId: root, protocolVersion: id<"ProtocolVersion">("1"),
