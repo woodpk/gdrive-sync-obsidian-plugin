@@ -14,13 +14,13 @@ import {
   type TrustedSynchronizationState,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
+} from "../../src/contracts";
 import {
   DEFAULT_DESTRUCTIVE_SAFETY_SETTINGS,
   DestructiveSafetyPolicy,
-} from "../src/core/destructive-safety";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { DEFAULT_TOMBSTONE_RETENTION, TombstoneRetentionPolicy } from "../src/state/state-policy";
+} from "../../src/core/destructive-safety";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { DEFAULT_TOMBSTONE_RETENTION, TombstoneRetentionPolicy } from "../../src/state/state-policy";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const device = id<"DeviceIdentity">("device:phase6-b") as DeviceIdentity;

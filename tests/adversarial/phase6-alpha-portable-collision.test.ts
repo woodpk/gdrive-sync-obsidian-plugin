@@ -4,20 +4,20 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import type { App, DataAdapter, Stat } from "obsidian";
-import type { ContentEvidence, ManagedRemoteIdentity, RemoteObjectId, VaultPath } from "../src/contracts";
-import { contractId } from "../src/contracts";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
+import type { ContentEvidence, ManagedRemoteIdentity, RemoteObjectId, VaultPath } from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
 import {
   DesktopExternalReferenceGuard,
   ExternalFilesystemReferenceError,
   type DesktopFilesystemOps
-} from "../src/local/desktop-external-reference-guard";
-import { createDesktopLocalVaultAdapter } from "../src/local/desktop-local-vault";
-import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/local/desktop-external-reference-guard";
+import { createDesktopLocalVaultAdapter } from "../../src/local/desktop-local-vault";
+import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../../src/product/path-scope";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vp = (value: string) => id<"VaultPath">(value) as VaultPath;

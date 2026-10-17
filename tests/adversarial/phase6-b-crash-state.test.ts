@@ -7,15 +7,15 @@ import {
   type StateRevision,
   type VaultIdentity,
   type VaultPath,
-} from "../src/contracts";
-import { StateCommitCoordinator } from "../src/core/commit-coordinator";
-import { CrashSafeExecutionCoordinator } from "../src/core/execution-coordinator";
+} from "../../src/contracts";
+import { StateCommitCoordinator } from "../../src/core/commit-coordinator";
+import { CrashSafeExecutionCoordinator } from "../../src/core/execution-coordinator";
 import {
   createInitialTrustedState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
-} from "../src/state/persistent-state-store";
-import { sha256Text } from "../src/util/sha256";
+} from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
 
 const id = <T extends string>(value: string) => contractId<T>(value);
 const vault = id<"VaultIdentity">("vault:phase6-b") as VaultIdentity;

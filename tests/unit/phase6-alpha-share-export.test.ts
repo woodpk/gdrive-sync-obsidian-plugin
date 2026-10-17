@@ -7,7 +7,7 @@ import {
   shareDiagnosticLogText,
   type DiagnosticClipboardNavigator,
   type DiagnosticShareNavigator,
-} from "../src/diagnostics/share-export";
+} from "../../src/diagnostics/share-export";
 
 test("diagnostic clipboard export invokes writeText synchronously with the exact rendered text", async () => {
   let writeCalled = false;

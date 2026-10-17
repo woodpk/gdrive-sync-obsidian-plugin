@@ -1,22 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter } from "obsidian";
-import { contractId, type VaultPath } from "../src/contracts";
-import { normalizedComparisonPath } from "../src/local/path-policy";
-import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
+import { contractId, type VaultPath } from "../../src/contracts";
+import { normalizedComparisonPath } from "../../src/local/path-policy";
+import { DEFAULT_SETTINGS, PluginDataRepository } from "../../src/product/plugin-data";
 import {
   DEFAULT_SYNC_ATTENTION_RETENTION,
   parseSyncAttentionRecordsCsv,
   renderSyncAttentionRecordsCsv,
   type SyncAttentionRecord,
-} from "../src/product/sync-attention-ledger";
-import { SyncPlanErrorsCsvPersistence } from "../src/product/sync-plan-errors-csv";
+} from "../../src/product/sync-attention-ledger";
+import { SyncPlanErrorsCsvPersistence } from "../../src/product/sync-plan-errors-csv";
 import {
   normalizeSyncPlanErrorsRelocationJournal,
   resolveSyncPlanErrorsPath,
   syncPlanErrorsOperationalPaths,
   withManagedSyncPlanErrorsExclusion,
-} from "../src/product/sync-plan-errors-path";
+} from "../../src/product/sync-plan-errors-path";
 
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 

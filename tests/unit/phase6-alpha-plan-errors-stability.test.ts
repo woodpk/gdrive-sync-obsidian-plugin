@@ -1,25 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { App, DataAdapter, TAbstractFile } from "obsidian";
-import { contractId, type LocalVaultPort, type ManagedRemoteIdentity, type ObservationToken, type PersistenceRevision, type ReliableRemoteMutationPort, type SemanticStateGeneration, type VaultPath } from "../src/contracts";
-import { DeterministicSynchronizationPlanner } from "../src/core/planner";
-import { ProductionSynchronizationPlanner } from "../src/core/production-planner";
-import { ThreeWayConflictResolver } from "../src/core/conflict-resolver";
-import { InMemoryRunLeasePort } from "../src/core/run-coordinator";
-import { LocalStaleObservationError } from "../src/local/obsidian-local-vault";
-import { BoundedAuditHistory, MemoryAuditPersistence } from "../src/product/audit-history";
-import { CanonicalEvidenceLocalVault } from "../src/product/canonical-local-vault";
-import { DEFAULT_SETTINGS, PluginDataRepository } from "../src/product/plugin-data";
-import { ProductPathScope, ScopedLocalVault } from "../src/product/path-scope";
-import { ProductController } from "../src/product/product-controller";
-import { SynchronizationStateAuthorityAdapter } from "../src/product/synchronization-adapters";
-import { ProductSynchronizationExecutor } from "../src/product/production-executor";
-import { ProductSnapshotAssembler } from "../src/product/snapshot-assembler";
-import { SyncAttentionLedger, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv, type SyncAttentionRecord } from "../src/product/sync-attention-ledger";
-import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "../src/product/sync-plan-errors-csv";
-import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "../src/product/sync-plan-errors-path";
-import { sha256Bytes } from "../src/util/sha256";
-import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../src/state/persistent-state-store";
+import { contractId, type LocalVaultPort, type ManagedRemoteIdentity, type ObservationToken, type PersistenceRevision, type ReliableRemoteMutationPort, type SemanticStateGeneration, type VaultPath } from "../../src/contracts";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { InMemoryRunLeasePort } from "../../src/core/run-coordinator";
+import { LocalStaleObservationError } from "../../src/local/obsidian-local-vault";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { CanonicalEvidenceLocalVault } from "../../src/product/canonical-local-vault";
+import { DEFAULT_SETTINGS, PluginDataRepository } from "../../src/product/plugin-data";
+import { ProductPathScope, ScopedLocalVault } from "../../src/product/path-scope";
+import { ProductController } from "../../src/product/product-controller";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { SyncAttentionLedger, parseSyncAttentionRecordsCsv, renderSyncAttentionRecordsCsv, type SyncAttentionRecord } from "../../src/product/sync-attention-ledger";
+import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "../../src/product/sync-plan-errors-csv";
+import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "../../src/product/sync-plan-errors-path";
+import { sha256Bytes } from "../../src/util/sha256";
+import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
 
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
 const token = (value: string) => contractId<"ObservationToken">(value) as ObservationToken;
@@ -417,7 +417,7 @@ test("unrecoverable replacement residue fails initialization without fabricating
 });
 
 async function loadRuntimeClass() {
-  return (await import("../src/product/runtime")).ProductRuntime;
+  return (await import("../../src/product/runtime")).ProductRuntime;
 }
 
 async function recoverRelocation(

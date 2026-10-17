@@ -7,7 +7,7 @@ import type {
   ObservationToken,
   OperationId,
   VaultPath,
-} from "../src/contracts/common";
+} from "../../src/contracts/common";
 import type {
   ConfigurationClassification,
   LocalLifecycleEvent,
@@ -18,17 +18,17 @@ import type {
   LocalVaultPort,
   PathValidationResult,
   Unsubscribe,
-} from "../src/contracts/local-vault";
-import type { LocalObservation } from "../src/contracts/snapshot";
+} from "../../src/contracts/local-vault";
+import type { LocalObservation } from "../../src/contracts/snapshot";
 import type {
   CanonicalFileContentProof,
   LocalMutationTransaction,
-} from "../src/contracts/synchronization-foundation";
-import { LocalExclusionPolicy } from "../src/local/exclusions";
-import { validateCrossPlatformPath } from "../src/local/path-policy";
-import { ProductPathScope } from "../src/product/path-scope";
-import { ScopedLocalTransactionalMutationPort } from "../src/product/synchronization-adapters";
-import { sha256Bytes } from "../src/util/sha256";
+} from "../../src/contracts/synchronization-foundation";
+import { LocalExclusionPolicy } from "../../src/local/exclusions";
+import { validateCrossPlatformPath } from "../../src/local/path-policy";
+import { ProductPathScope } from "../../src/product/path-scope";
+import { ScopedLocalTransactionalMutationPort } from "../../src/product/synchronization-adapters";
+import { sha256Bytes } from "../../src/util/sha256";
 
 const vp = (value: string) => value as VaultPath;
 const tok = (value: string) => value as ObservationToken;

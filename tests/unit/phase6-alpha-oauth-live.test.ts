@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { REQUIRED_DRIVE_SCOPE } from "../src/contracts/google-drive";
+import { REQUIRED_DRIVE_SCOPE } from "../../src/contracts/google-drive";
 import {
   formatOAuthDiagnosticSuffix,
   GoogleOAuthSession,
   ObsidianSecretStore,
   type OAuthCompletion,
-} from "../src/drive/auth";
-import { openAuthorizationInSystemBrowser } from "../src/drive/oauth-return";
+} from "../../src/drive/auth";
+import { openAuthorizationInSystemBrowser } from "../../src/drive/oauth-return";
 
 class MemorySecrets {
   readonly values = new Map<string, string>();
@@ -151,7 +151,7 @@ test("Alpha OAuth live: successful exact drive.file exchange remains unchanged",
 });
 
 test("Alpha OAuth live: failure diagnostic remains visible and copyable without console logging", async () => {
-  const mainSource = await readFile(join(__dirname, "..", "..", "src", "main.ts"), "utf8");
+  const mainSource = await readFile(join(__dirname, "..", "..", "..", "src", "main.ts"), "utf8");
   assert.match(mainSource, /lastOAuthDiagnosticText/);
   assert.match(mainSource, /result\.ok \? 5_000 : 30_000/);
   assert.match(mainSource, /id: "copy-last-oauth-diagnostic"/);
@@ -160,7 +160,7 @@ test("Alpha OAuth live: failure diagnostic remains visible and copyable without 
 });
 
 test("Alpha OAuth live: Web client secret is wired through Obsidian SecretStorage and never plugin data", async () => {
-  const root = join(__dirname, "..", "..");
+  const root = join(__dirname, "..", "..", "..");
   const [authSource, runtimeSource, settingsSource, pluginDataSource] = await Promise.all([
     readFile(join(root, "src", "drive", "auth.ts"), "utf8"),
     readFile(join(root, "src", "product", "runtime.ts"), "utf8"),
