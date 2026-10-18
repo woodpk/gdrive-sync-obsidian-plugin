@@ -69,6 +69,14 @@ export class ProductRuntime {
   private readonly notifications = new MeaningfulNotificationFilter();
   // Invalidates every suspended initialization after deauthorization/disposal.
   private runtimeGeneration = 0;
+  // Only one initialize/deauthorization transition may own and publish runtime
+  // resources at a time. Failures must not poison later lifecycle requests.
+  private lifecycleTail: Promise<void> = Promise.resolve();
+  private serializeLifecycle<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.lifecycleTail.then(operation, operation);
+    this.lifecycleTail = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
   // Retain token sessions until revocation, including sessions with in-flight exchanges.
   private readonly oauthSessions = new Set<ReturnType<typeof createObsidianGoogleDriveBoundary>["oauth"]>();
 
@@ -76,9 +84,17 @@ export class ProductRuntime {
   productController(): ProductController | undefined { return this.controller; }
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
     const generation = ++this.runtimeGeneration;
     const opening = this.host.settings();
+    return this.serializeLifecycle(async () => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(this.host.settings(), opening);
+      await this.initializeOwned(generation, opening);
+    });
+  }
+
+  private async initializeOwned(generation: number, opening: BrainSyncSettings): Promise<void> {
     const assertActive = () => {
       if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
       this.assertInitializationPairing(this.host.settings(), opening);
@@ -642,23 +658,31 @@ export class ProductRuntime {
     return validatedIdentity;
   }
 
-  async deauthorize(): Promise<void> {
-    // Retire suspended initializers before awaiting durable unpairing.
+  deauthorize(): Promise<void> {
+    // Revoke old-epoch entry points synchronously at user intent, before any
+    // awaited setting writes or earlier lifecycle operation can resume.
     ++this.runtimeGeneration;
     this.scheduler?.stop();
-    await this.host.mutateSettings(latest => ({
-      ...latest, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
-      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
-      startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
-    }));
-    // Every previously created OAuth session may have an in-flight token exchange.
-    // Clear/revoke them all before releasing their references.
+    const retiring = this.controller?.beginRuntimeDisposal();
+    // Retain the rejection for the awaited transition without an unhandled
+    // promise if an earlier queued initializer must finish first.
+    if (retiring) void retiring.catch(() => undefined);
     if (this.boundary?.oauth && !this.oauthSessions.has(this.boundary.oauth)) {
       this.boundary.oauth.clearTokens();
     }
     for (const session of this.oauthSessions) session.clearTokens();
     this.oauthSessions.clear();
-    await this.disposeProduct();
+    return this.serializeLifecycle(async () => {
+      // Old-pairing operations and their atomic/durable completions must
+      // quiesce BEFORE the unpairing namespace is made persistent.
+      if (retiring) await retiring;
+      await this.disposeProduct(false);
+      await this.host.mutateSettings(latest => ({
+        ...latest, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
+        firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
+        startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+      }));
+    });
   }
 
   async disposeProduct(retire = true): Promise<void> {
@@ -672,10 +696,18 @@ export class ProductRuntime {
     // cleared when an older controller's asynchronous disposal finally resolves.
     this.controller = undefined;
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
-    this.attentionPersistence?.dispose(); this.attentionPersistence = undefined;
+    const attentionPersistence = this.attentionPersistence;
+    this.attentionPersistence = undefined;
     const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
-    disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
-    if (controller) await controller.beginRuntimeDisposal();
+    this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
+    // Keep the old adapters and persistence alive until an in-flight run has
+    // cancelled or safely completed its atomic operation and durable commit.
+    try {
+      if (controller) await controller.beginRuntimeDisposal();
+    } finally {
+      disposable?.dispose?.();
+      attentionPersistence?.dispose();
+    }
   }
 
   private async createLocalAdapter(): Promise<LocalVaultPort> {
