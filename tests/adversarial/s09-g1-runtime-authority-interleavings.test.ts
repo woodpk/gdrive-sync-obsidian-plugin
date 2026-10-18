@@ -11,6 +11,24 @@ function gate(): { readonly promise: Promise<void>; release(): void } {
   return { promise, release };
 }
 
+async function waitForEntry(entry: Promise<void>, operation: Promise<void>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      entry,
+      operation.then(
+        () => { throw new Error("initializer completed before reaching controlled adapter seam"); },
+        error => { throw error; },
+      ),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("initializer did not reach controlled adapter seam")), 5_000);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 async function runtimeClass() {
   // Match the existing PHX-CI-consumed Node test harness: the Obsidian API
   // is unavailable in a plain Node process; no live vault/Drive is opened.
@@ -214,7 +232,7 @@ test("F02-02: later initialize supersedes initializer suspended at adapter await
   });
   try {
     const superseded = h.runtime.initialize();
-    await firstAdapterEntered;
+    await waitForEntry(firstAdapterEntered, superseded);
     assert.equal(invoked, 1, "first initializer must reach the controlled adapter seam");
     const latest = h.runtime.initialize();
     firstAdapterGate.release();
@@ -253,7 +271,7 @@ test("F02-02: deauthorization while initialize awaits adapter prevents publicati
   Object.defineProperty(globalThis, "indexedDB", { value: {} as IDBFactory, configurable: true, writable: true });
   try {
     const initialization = h.runtime.initialize();
-    await adapterEntered;
+    await waitForEntry(adapterEntered, initialization);
     const unpair = h.runtime.deauthorize();
     firstAdapterGate.release();
     await assert.rejects(initialization, /Runtime initialization was retired/);
