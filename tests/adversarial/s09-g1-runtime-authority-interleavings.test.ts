@@ -201,27 +201,21 @@ test("F02-02: later initialize supersedes initializer suspended at adapter await
   const originalIndexedDb = globalThis.indexedDB;
   Object.defineProperty(globalThis, "indexedDB", { value: {} as IDBFactory, configurable: true, writable: true });
   const firstAdapterGate = gate();
-  const adapters: string[] = [];
+  let signalAdapterEntered!: () => void;
+  const firstAdapterEntered = new Promise<void>(resolve => { signalAdapterEntered = resolve; });
   const disposed: string[] = [];
   let invoked = 0;
   Object.assign(h.runtime as unknown as RuntimeInternals, {
     createLocalAdapter: async () => {
       const iteration = ++invoked;
-      if (iteration === 1) await firstAdapterGate.promise;
-      adapters.push("adapter:" + iteration);
+      if (iteration === 1) { signalAdapterEntered(); await firstAdapterGate.promise; }
       return localFixture(() => disposed.push("adapter:" + iteration));
     },
   });
   try {
     const superseded = h.runtime.initialize();
-    // First initialize must enter asynchronous adapter creation without an
-    // arbitrary timeout; the next microtask turns allow CSV initialization.
-    // use a deterministic signal from an adapter call instead of wall-clock delay.
-    const adapterEntered = async (): Promise<void> => {
-      for (let attempt = 0; attempt < 50 && invoked === 0; attempt++) await Promise.resolve();
-      assert.equal(invoked, 1, "first initializer should reach the controlled adapter seam");
-    };
-    await adapterEntered();
+    await firstAdapterEntered;
+    assert.equal(invoked, 1, "first initializer must reach the controlled adapter seam");
     const latest = h.runtime.initialize();
     firstAdapterGate.release();
     await assert.rejects(superseded, /Runtime initialization was retired/);
